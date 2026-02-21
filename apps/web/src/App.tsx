@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from './store';
 import { restoreSession } from './store/authSlice';
-import { fetchLocations, fetchCurrencyDefs, fetchItemDefs } from './store/gameSlice';
+import { fetchCurrencyDefs, fetchItemDefs } from './store/gameSlice';
 import { useSyncEngine } from './hooks/useSyncEngine';
 import { NotificationProvider } from './context/NotificationContext';
 import { ModalProvider } from './context/ModalContext';
@@ -37,7 +37,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (token && !initializing) {
-      dispatch(fetchLocations());
+      // locations, entities, and other instance data are served by the sync bootstrap
       dispatch(fetchCurrencyDefs());
       dispatch(fetchItemDefs());
     }

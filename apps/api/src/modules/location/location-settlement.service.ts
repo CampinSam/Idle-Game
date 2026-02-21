@@ -124,6 +124,14 @@ export class LocationSettlementService {
 
     const storedAmounts: Record<string, number> = { ...(existingStorage.stored || {}) };
 
+    // Clamp stored amounts to current capacity to handle cases where capacity decreased
+    for (const resourceId of Object.keys(storedAmounts)) {
+      const cap = locStorageCapacity[resourceId] ?? 0;
+      if (cap > 0 && storedAmounts[resourceId] > cap) {
+        storedAmounts[resourceId] = cap;
+      }
+    }
+
     const produced: Array<{ resourceId: string; amount: string }> = [];
 
     for (const [resourceId, ratePerHour] of Object.entries(mergedOutputs)) {
