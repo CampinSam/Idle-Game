@@ -18,19 +18,19 @@ export class StartCraftingHandler implements CommandHandler {
 
     const pb = new PatchBuilder();
 
-    const job = await this.prisma.job.findUnique({ where: { id: result.id } });
+    const job = await ctx.tx.job.findUnique({ where: { id: result.id } });
     if (job) pb.upsertJob(job);
 
-    const entity = await (this.prisma as any).entity.findUnique({
+    const entity = await (ctx.tx as any).entity.findUnique({
       where: { id: entityId },
       include: { equipment: true },
     });
     if (entity) pb.upsertEntity(entity);
 
-    const currencyMap = await fetchCurrencyMap(this.prisma, ctx.userId);
+    const currencyMap = await fetchCurrencyMap(ctx.tx, ctx.userId);
     pb.upsertCurrencyBalances(currencyMap);
 
-    const items = await this.prisma.itemInstance.findMany({
+    const items = await ctx.tx.itemInstance.findMany({
       where: { userId: ctx.userId },
       include: { definition: true },
     });

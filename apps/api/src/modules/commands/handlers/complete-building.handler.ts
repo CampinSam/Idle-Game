@@ -19,13 +19,13 @@ export class CompleteBuildingHandler implements CommandHandler {
     const pb = new PatchBuilder();
 
     const [location, buildingJobs, currencyIds] = await Promise.all([
-      fetchFullLocation(this.prisma, locationId),
-      fetchBuildingJobs(this.prisma, ctx.userId),
-      fetchCurrencyIds(this.prisma),
+      fetchFullLocation(ctx.tx, locationId),
+      fetchBuildingJobs(ctx.tx, ctx.userId),
+      fetchCurrencyIds(ctx.tx),
     ]);
     if (location) pb.upsertLocation(location, buildingJobs, currencyIds);
 
-    const completedJobs = await this.prisma.job.findMany({
+    const completedJobs = await ctx.tx.job.findMany({
       where: { userId: ctx.userId, type: 'BuildingJob', status: { in: ['completed', 'collected'] } },
       orderBy: { updatedAt: 'desc' },
       take: 5,

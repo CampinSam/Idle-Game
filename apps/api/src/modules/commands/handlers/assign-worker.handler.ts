@@ -19,13 +19,13 @@ export class AssignWorkerHandler implements CommandHandler {
     const pb = new PatchBuilder();
 
     const [location, buildingJobs, currencyIds] = await Promise.all([
-      fetchFullLocation(this.prisma, locationId),
-      fetchBuildingJobs(this.prisma, ctx.userId),
-      fetchCurrencyIds(this.prisma),
+      fetchFullLocation(ctx.tx, locationId),
+      fetchBuildingJobs(ctx.tx, ctx.userId),
+      fetchCurrencyIds(ctx.tx),
     ]);
     if (location) pb.upsertLocation(location, buildingJobs, currencyIds);
 
-    const entity = await (this.prisma as any).entity.findUnique({
+    const entity = await (ctx.tx as any).entity.findUnique({
       where: { id: entityId },
       include: { equipment: true },
     });
