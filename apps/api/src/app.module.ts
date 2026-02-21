@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
@@ -31,6 +32,11 @@ import { ObjectStorageModule } from './integrations/object-storage/object-storag
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
+  ThrottlerModule.forRoot([{
+    name: 'commands',
+    ttl: 60_000,   // 1 minute window
+    limit: 120,    // max 120 commands per minute per user (~2/sec)
+  }]),
   PrismaModule,
   GameRulesModule,
   InfrastructureModule,

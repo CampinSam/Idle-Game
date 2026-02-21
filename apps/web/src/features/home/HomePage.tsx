@@ -11,6 +11,7 @@ import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { GameImage } from '../../components/GameImage';
+import { HomePageSkeleton } from '../../components/Skeleton';
 import './HomePage.css';
 
 function formatTime(ms: number) {
@@ -49,7 +50,7 @@ export default function HomePage() {
     }
   }, [pushModal]);
 
-  if (!profile) return <div className="hp-loading"><div className="hp-loading-spinner" /><span>Loading...</span></div>;
+  if (!profile) return <HomePageSkeleton />;
 
   const idleEntities = entities.filter((b: any) => b.status === 'idle').length;
   const busyEntities = entities.length - idleEntities;

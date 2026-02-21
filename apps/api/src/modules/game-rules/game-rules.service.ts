@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { EntityTraits } from '@derp/shared';
+
+export interface GameUser {
+  keeperLevel?: number;
+  flags?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 export interface LocationContext {
   buildings?: { buildingDefId: string; rooms?: { roomDefId: string }[] }[];
@@ -9,8 +16,8 @@ export interface LocationContext {
 }
 
 export interface RequirementContext {
-  user: any;
-  userFlags: Record<string, any>;
+  user: GameUser;
+  userFlags: Record<string, unknown>;
   allPlayerLocations?: LocationContext[];
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
@@ -41,18 +48,18 @@ export class GameRulesService {
     }
   }
 
-  checkRequirement(req: any, context: RequirementContext): boolean {
-    const op = req.operator ?? (req.type === 'flag' ? 'eq' : 'gte');
+  checkRequirement(req: Record<string, unknown>, context: RequirementContext): boolean {
+    const op = (req.operator as string) ?? (req.type === 'flag' ? 'eq' : 'gte');
 
     switch (req.type) {
       case 'keeper_level':
-        return this.compareValues(context.user.keeperLevel ?? 0, Number(req.value ?? 0), op);
+        return this.compareValues(Number(context.user.keeperLevel ?? 0), Number(req.value ?? 0), op);
       case 'team_size':
         return true;
       case 'trait':
         return true;
       case 'flag': {
-        const flagVal = context.userFlags[req.key];
+        const flagVal = context.userFlags[req.key as string];
         if (op === 'exists') return flagVal !== undefined && flagVal !== null;
         if (op === 'dne') return flagVal === undefined || flagVal === null;
         if (flagVal === undefined || flagVal === null) return false;
@@ -113,26 +120,26 @@ export class GameRulesService {
     }
   }
 
-  checkRequirements(reqs: any, context: RequirementContext): boolean {
+  checkRequirements(reqs: unknown, context: RequirementContext): boolean {
     if (!reqs || !Array.isArray(reqs) || reqs.length === 0) return true;
-    return reqs.every((req: any) => this.checkRequirement(req, context));
+    return reqs.every((req: Record<string, unknown>) => this.checkRequirement(req, context));
   }
 
-  checkVisibility(visReqs: any, user: any, userFlags?: Record<string, any>, extra?: Partial<RequirementContext>): boolean {
+  checkVisibility(visReqs: unknown, user: GameUser, userFlags?: Record<string, unknown>, extra?: Partial<RequirementContext>): boolean {
     if (!visReqs || !Array.isArray(visReqs) || visReqs.length === 0) return true;
-    const flags = userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags : {});
-    return visReqs.every((req: any) => this.checkRequirement(req, { user, userFlags: flags as Record<string, any>, ...extra }));
+    const flags: Record<string, unknown> = userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags : {});
+    return visReqs.every((req: Record<string, unknown>) => this.checkRequirement(req, { user, userFlags: flags, ...extra }));
   }
 
-  buildRequirementContext(user: any, extra?: Partial<RequirementContext>): RequirementContext {
-    const userFlags = (user.flags && typeof user.flags === 'object') ? user.flags as Record<string, any> : {};
+  buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {
+    const userFlags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? user.flags : {};
     return { user, userFlags, ...extra };
   }
 
-  async applyFlagEffect(userId: string, effect: any): Promise<void> {
+  async applyFlagEffect(userId: string, effect: Record<string, unknown>): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
-    const flags = (user.flags && typeof user.flags === 'object') ? { ...(user.flags as any) } : {};
+    const flags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? { ...(user.flags as Record<string, unknown>) } : {};
     const op = effect.operation ?? 'set';
 
     switch (op) {
@@ -200,14 +207,14 @@ export class GameRulesService {
   resolveOutcomes(
     items: any[],
     reqContext: RequirementContext,
-    rng?: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
+    rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
   ): { resolved: { entry: any; amount?: number }[]; texts: string[] } {
     const texts: string[] = [];
 
     const pickWeightedText = (pool: any[]): { message: string } | undefined => {
       if (pool.length === 0) return undefined;
       const totalOdds = pool.reduce((sum: number, t: any) => sum + (t.odds ?? 100), 0);
-      let roll = rng ? rng.nextInt(0, totalOdds - 1) : Math.floor(Math.random() * totalOdds);
+      let roll = rng.nextInt(0, totalOdds - 1);
       for (const t of pool) {
         roll -= (t.odds ?? 100);
         if (roll < 0) return t;
@@ -230,8 +237,7 @@ export class GameRulesService {
 
     const rollAmount = (min: number, max: number): number => {
       if (min === max) return min;
-      if (rng) return rng.nextInt(min, max);
-      return Math.floor(Math.random() * (max - min + 1)) + min;
+      return rng.nextInt(min, max);
     };
 
     const resolved: { entry: any; amount?: number }[] = [];
@@ -266,19 +272,19 @@ export class GameRulesService {
 
   async resolveName(type: string, key: string): Promise<string> {
     if (type === 'currency') {
-      const cur = await (this.prisma as any).currency.findUnique({ where: { id: key }, select: { name: true } });
+      const cur = await (this.prisma as any).currency.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
       if (cur?.name) return cur.name;
     } else if (type === 'item') {
-      const item = await (this.prisma as any).itemDefinition.findUnique({ where: { id: key }, select: { name: true } });
+      const item = await (this.prisma as any).itemDefinition.findUnique({ where: { id: key }, select: { name: true } }) as { name?: string } | null;
       if (item?.name) return item.name;
     }
     return key;
   }
 
-  countTeamTraits(entities: any[], traitKey: string): number {
+  countTeamTraits(entities: Array<{ traits?: unknown }>, traitKey: string): number {
     let count = 0;
     for (const entity of entities) {
-      const traits = entity.traits as any;
+      const traits = entity.traits as Partial<EntityTraits> | null;
       if (traits && typeof traits === 'object') {
         for (const slot of Object.values(traits)) {
           if (slot === traitKey) count++;

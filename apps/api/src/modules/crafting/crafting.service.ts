@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EntityService } from '../entity/entity.service';
@@ -8,7 +9,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { PlayerService } from '../player/player.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
-import { calculateCraftingLuck, durationSecondsToTicks } from '@derp/math';
+import { calculateCraftingLuck, durationSecondsToTicks, SeededRng } from '@derp/math';
 
 @Injectable()
 export class CraftingService {
@@ -138,6 +139,7 @@ export class CraftingService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: [entityId],
+        data: { seed: randomUUID() },
       },
     });
 
@@ -204,7 +206,9 @@ export class CraftingService {
     const outcomeItems: any[] = Array.isArray(recipe?.rewards) ? recipe.rewards : [];
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
 
-    const { resolved, texts: rolledTexts } = this.gameRules.resolveOutcomes(outcomeItems, reqContext);
+    const seed = (job.data as { seed?: string })?.seed ?? jobId;
+    const rng = new SeededRng(seed);
+    const { resolved, texts: rolledTexts } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     for (const { entry, amount } of resolved) {
       if (entry.type === 'flag') {
