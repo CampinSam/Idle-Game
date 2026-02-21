@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { LocationSettlementService } from './location-settlement.service';
-import { TickService } from '../tick/tick.service';
-import { CurrencyService } from '../currency/currency.service';
-import { InventoryService } from '../inventory/inventory.service';
-import { GameRulesService } from '../game-rules/game-rules.service';
-import { NotificationService } from '../notification/notification.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../../prisma/prisma.service";
+import { LocationSettlementService } from "./location-settlement.service";
+import { TickService } from "../tick/tick.service";
+import { CurrencyService } from "../currency/currency.service";
+import { InventoryService } from "../inventory/inventory.service";
+import { GameRulesService } from "../game-rules/game-rules.service";
+import { NotificationService } from "../notification/notification.service";
 import {
   resolveLevelConfig,
   resolveConstructionCosts,
@@ -14,7 +18,7 @@ import {
   resolveAllowedBuildings,
   calcGrowth,
   LevelRules,
-} from '../game-rules/level-config.util';
+} from "../game-rules/level-config.util";
 
 @Injectable()
 export class LocationService {
@@ -28,9 +32,12 @@ export class LocationService {
     private notificationService: NotificationService,
   ) {}
 
-  private async getCurrencyIds(): Promise<Set<string>> {
-    const currencies = await this.prisma.currency.findMany({ select: { id: true } });
-    return new Set(currencies.map((c) => c.id));
+  private async getCurrencyIds(externalTx?: any): Promise<Set<string>> {
+    const client = externalTx || this.prisma;
+    const currencies = await client.currency.findMany({
+      select: { id: true },
+    });
+    return new Set(currencies.map((c: any) => c.id));
   }
 
   async getLocations(userId: string) {
@@ -39,36 +46,59 @@ export class LocationService {
         where: { ownerUserId: userId },
         include: {
           definition: true,
-          buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+          buildings: {
+            include: {
+              buildingDef: true,
+              rooms: { include: { roomDef: true } },
+            },
+          },
           workerAssignments: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       (this.prisma as any).job.findMany({
-        where: { userId, type: 'BuildingJob', status: { in: ['active', 'ready_notified'] } },
+        where: {
+          userId,
+          type: "BuildingJob",
+          status: { in: ["active", "ready_notified"] },
+        },
       }),
       this.getCurrencyIds(),
     ]);
 
-    return locations.map((loc: any) => this.serializeLocation(loc, buildingJobs, currencyIds));
+    return locations.map((loc: any) =>
+      this.serializeLocation(loc, buildingJobs, currencyIds),
+    );
   }
 
   async getLocation(userId: string, locationId: string) {
-    const currentTick = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+    const currentTick = BigInt(
+      Math.floor(await this.tickService.getCurrentTick()),
+    );
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTick);
+      await this.settlementService.settleLocationTx(
+        tx,
+        locationId,
+        userId,
+        currentTick,
+      );
 
       const location = await (tx as any).locationInstance.findFirst({
         where: { id: locationId, ownerUserId: userId },
         include: {
           definition: true,
-          buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+          buildings: {
+            include: {
+              buildingDef: true,
+              rooms: { include: { roomDef: true } },
+            },
+          },
           workerAssignments: true,
         },
       });
 
-      if (!location) throw new NotFoundException('Location not found');
+      if (!location) throw new NotFoundException("Location not found");
       return location;
     });
 
@@ -76,9 +106,9 @@ export class LocationService {
       (this.prisma as any).job.findMany({
         where: {
           userId,
-          type: 'BuildingJob',
-          status: { in: ['active', 'ready_notified'] },
-          data: { path: ['locationId'], equals: locationId },
+          type: "BuildingJob",
+          status: { in: ["active", "ready_notified"] },
+          data: { path: ["locationId"], equals: locationId },
         },
       }),
       this.settlementService.getStorageInfo(locationId, userId),
@@ -91,18 +121,27 @@ export class LocationService {
     };
   }
 
-  private async buildLocationRequirementContext(userId: string, currentLocation?: any, parentBuilding?: any) {
+  private async buildLocationRequirementContext(
+    userId: string,
+    currentLocation?: any,
+    parentBuilding?: any,
+  ) {
     const [user, allLocations] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),
       (this.prisma as any).locationInstance.findMany({
         where: { ownerUserId: userId },
         include: {
           definition: true,
-          buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+          buildings: {
+            include: {
+              buildingDef: true,
+              rooms: { include: { roomDef: true } },
+            },
+          },
         },
       }),
     ]);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     const allPlayerLocations = allLocations.map((loc: any) => ({
       buildings: loc.buildings.map((b: any) => ({
@@ -112,18 +151,24 @@ export class LocationService {
       regionId: loc.definition?.regionId ?? null,
     }));
 
-    const currentLocationCtx = currentLocation ? {
-      buildings: (currentLocation.buildings ?? []).map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
-      })),
-      regionId: currentLocation.definition?.regionId ?? null,
-    } : undefined;
+    const currentLocationCtx = currentLocation
+      ? {
+          buildings: (currentLocation.buildings ?? []).map((b: any) => ({
+            buildingDefId: b.buildingDefId,
+            rooms: b.rooms?.map((r: any) => ({ roomDefId: r.roomDefId })) ?? [],
+          })),
+          regionId: currentLocation.definition?.regionId ?? null,
+        }
+      : undefined;
 
-    const parentBuildingCtx = parentBuilding ? {
-      buildingDefId: parentBuilding.buildingDefId,
-      rooms: (parentBuilding.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
-    } : undefined;
+    const parentBuildingCtx = parentBuilding
+      ? {
+          buildingDefId: parentBuilding.buildingDefId,
+          rooms: (parentBuilding.rooms ?? []).map((r: any) => ({
+            roomDefId: r.roomDefId,
+          })),
+        }
+      : undefined;
 
     return this.gameRules.buildRequirementContext(user, {
       allPlayerLocations,
@@ -137,10 +182,12 @@ export class LocationService {
       where: { id: locationId, ownerUserId: userId },
       include: {
         definition: true,
-        buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+        buildings: {
+          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+        },
       },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location) throw new NotFoundException("Location not found");
 
     const locRules = (location.definition?.rules as LevelRules) || {};
     const allowedBuildings = resolveAllowedBuildings(locRules, location.level);
@@ -155,7 +202,10 @@ export class LocationService {
     });
     const defMap = new Map(buildingDefs.map((d: any) => [d.id, d]));
 
-    const reqContext = await this.buildLocationRequirementContext(userId, location);
+    const reqContext = await this.buildLocationRequirementContext(
+      userId,
+      location,
+    );
 
     const existingCounts = new Map<string, number>();
     for (const b of location.buildings) {
@@ -171,13 +221,22 @@ export class LocationService {
 
         const def = defMap.get(entry.buildingDefId) as any;
         if (!def) return false;
-        if (!this.gameRules.checkRequirements(def.visibilityRequirements, reqContext)) return false;
+        if (
+          !this.gameRules.checkRequirements(
+            def.visibilityRequirements,
+            reqContext,
+          )
+        )
+          return false;
 
         return true;
       })
       .map((entry) => {
         const def = defMap.get(entry.buildingDefId) as any;
-        const meetsReqs = this.gameRules.checkRequirements(def.requirements, reqContext);
+        const meetsReqs = this.gameRules.checkRequirements(
+          def.requirements,
+          reqContext,
+        );
         return {
           id: def.id,
           name: def.name,
@@ -187,7 +246,10 @@ export class LocationService {
           requirements: def.requirements,
           meetsRequirements: meetsReqs,
           data: def.data,
-          allowedRules: { maxCount: entry.maxCount ?? 1, minCount: entry.minCount ?? 0 },
+          allowedRules: {
+            maxCount: entry.maxCount ?? 1,
+            minCount: entry.minCount ?? 0,
+          },
         };
       });
 
@@ -197,60 +259,93 @@ export class LocationService {
     };
   }
 
-  async buildBuilding(userId: string, locationId: string, buildingDefId: string) {
+  async buildBuilding(
+    userId: string,
+    locationId: string,
+    buildingDefId: string,
+  ) {
     const location = await (this.prisma as any).locationInstance.findFirst({
       where: { id: locationId, ownerUserId: userId },
       include: {
         definition: true,
-        buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+        buildings: {
+          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+        },
       },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location) throw new NotFoundException("Location not found");
 
     const locRules = (location.definition?.rules as LevelRules) || {};
     const allowedBuildings = resolveAllowedBuildings(locRules, location.level);
-    const allowedEntry = allowedBuildings.find((a) => a.buildingDefId === buildingDefId);
-    if (!allowedEntry) throw new BadRequestException('Building not available for this location at current level');
+    const allowedEntry = allowedBuildings.find(
+      (a) => a.buildingDefId === buildingDefId,
+    );
+    if (!allowedEntry)
+      throw new BadRequestException(
+        "Building not available for this location at current level",
+      );
 
     const maxCount = allowedEntry.maxCount ?? 1;
-    const existingCount = location.buildings.filter((b: any) => b.buildingDefId === buildingDefId).length;
+    const existingCount = location.buildings.filter(
+      (b: any) => b.buildingDefId === buildingDefId,
+    ).length;
     if (existingCount >= maxCount) {
-      throw new BadRequestException(`Maximum ${maxCount} of this building already built`);
+      throw new BadRequestException(
+        `Maximum ${maxCount} of this building already built`,
+      );
     }
 
-    const def = await (this.prisma as any).buildingDef.findUnique({ where: { id: buildingDefId } });
-    if (!def) throw new BadRequestException('Building definition not found');
-    const reqContext = await this.buildLocationRequirementContext(userId, location);
+    const def = await (this.prisma as any).buildingDef.findUnique({
+      where: { id: buildingDefId },
+    });
+    if (!def) throw new BadRequestException("Building definition not found");
+    const reqContext = await this.buildLocationRequirementContext(
+      userId,
+      location,
+    );
     if (!this.gameRules.checkRequirements(def.requirements, reqContext)) {
-      throw new BadRequestException('Requirements not met to build this');
+      throw new BadRequestException("Requirements not met to build this");
     }
     const defRules = (def.rules as LevelRules) || {};
     const buildLevel = 1;
     const buildConfig = resolveLevelConfig(defRules, buildLevel);
-    const costs = resolveConstructionCosts(buildConfig.constructionCost, buildLevel);
+    const costs = resolveConstructionCosts(
+      buildConfig.constructionCost,
+      buildLevel,
+    );
 
     const currentTick = await this.tickService.getCurrentTick();
     const currentTickBig = BigInt(Math.floor(currentTick));
 
-    const timer = buildConfig.timer as any || {};
+    const timer = (buildConfig.timer as any) || {};
     const baseDuration = timer.duration ?? 0;
-    const durationSeconds = calcGrowth(baseDuration, timer.growthRate, timer.growthScalar, buildLevel);
+    const durationSeconds = calcGrowth(
+      baseDuration,
+      timer.growthRate,
+      timer.growthScalar,
+      buildLevel,
+    );
     const durationTicks = durationSeconds;
     const isInstant = durationTicks <= 0;
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await this.settlementService.settleLocationTx(
+        tx,
+        locationId,
+        userId,
+        currentTickBig,
+      );
 
       for (const cost of costs) {
         if (cost.amount <= 0) continue;
 
-        if (cost.type === 'currency') {
+        if (cost.type === "currency") {
           await this.currencyService.spendTx(tx as any, {
             userId,
             currencyId: cost.id,
             amount: cost.amount,
-            reason: 'building_construction',
-            sourceType: 'location_building',
+            reason: "building_construction",
+            sourceType: "location_building",
             sourceId: buildingDefId,
           });
         } else {
@@ -258,14 +353,14 @@ export class LocationService {
             userId,
             itemId: cost.id,
             quantity: cost.amount,
-            reason: 'building_construction',
-            sourceType: 'location_building',
+            reason: "building_construction",
+            sourceType: "location_building",
             sourceId: buildingDefId,
           });
         }
       }
 
-      const buildingState: any = { status: isInstant ? 'active' : 'building' };
+      const buildingState: any = { status: isInstant ? "active" : "building" };
 
       const building = await (tx as any).locationBuildingInstance.create({
         data: {
@@ -281,9 +376,9 @@ export class LocationService {
         await (tx as any).job.create({
           data: {
             userId,
-            type: 'BuildingJob',
+            type: "BuildingJob",
             defId: buildingDefId,
-            status: 'active',
+            status: "active",
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId: building.id },
@@ -298,7 +393,9 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(`Failed to recalculate storage for location ${locationId}: ${err}`);
+        console.warn(
+          `Failed to recalculate storage for location ${locationId}: ${err}`,
+        );
       }
     }
 
@@ -313,39 +410,50 @@ export class LocationService {
     };
   }
 
-  async completeBuilding(userId: string, locationId: string, buildingId: string) {
-    const building: any = await (this.prisma as any).locationBuildingInstance.findFirst({
+  async completeBuilding(
+    userId: string,
+    locationId: string,
+    buildingId: string,
+  ) {
+    const building: any = await (
+      this.prisma as any
+    ).locationBuildingInstance.findFirst({
       where: { id: buildingId, locationId, location: { ownerUserId: userId } },
       include: { buildingDef: true },
     });
 
-    if (!building) throw new NotFoundException('Building not found');
+    if (!building) throw new NotFoundException("Building not found");
 
     if (!building.buildingDef) {
-      console.warn(`completeBuilding: definition not found for buildingDefId=${building.buildingDefId}, failing job gracefully`);
+      console.warn(
+        `completeBuilding: definition not found for buildingDefId=${building.buildingDefId}, failing job gracefully`,
+      );
       const buildingJob = await (this.prisma as any).job.findFirst({
         where: {
           userId,
-          type: 'BuildingJob',
-          status: { in: ['active', 'ready_notified'] },
-          data: { path: ['buildingId'], equals: buildingId },
+          type: "BuildingJob",
+          status: { in: ["active", "ready_notified"] },
+          data: { path: ["buildingId"], equals: buildingId },
         },
       });
       const errorMsg = `ERROR: Job with id BuildingJob - ${buildingJob?.id || buildingId} could not be found.`;
       if (buildingJob) {
         await (this.prisma as any).job.update({
           where: { id: buildingJob.id },
-          data: { status: 'failed', results: { success: false, error: errorMsg, rewards: [] } },
+          data: {
+            status: "failed",
+            results: { success: false, error: errorMsg, rewards: [] },
+          },
         });
         try {
           await this.notificationService.updateBySource({
             userId,
-            sourceType: 'job_ready',
+            sourceType: "job_ready",
             sourceId: buildingJob.id,
-            type: 'building_complete',
-            category: 'buildings',
-            priority: 'normal',
-            title: 'Construction Failed',
+            type: "building_complete",
+            category: "buildings",
+            priority: "normal",
+            title: "Construction Failed",
             body: errorMsg,
             markRead: true,
           });
@@ -355,32 +463,41 @@ export class LocationService {
       }
       await (this.prisma as any).locationBuildingInstance.update({
         where: { id: buildingId },
-        data: { state: { status: 'active' } },
+        data: { state: { status: "active" } },
       });
-      return { id: buildingId, buildingDefId: building.buildingDefId, name: building.buildingDefId, level: building.level, state: { status: 'active' }, error: errorMsg };
+      return {
+        id: buildingId,
+        buildingDefId: building.buildingDefId,
+        name: building.buildingDefId,
+        level: building.level,
+        state: { status: "active" },
+        error: errorMsg,
+      };
     }
 
     const buildingState = (building.state as any) || {};
-    if (buildingState.status !== 'building') {
-      throw new BadRequestException('Building is not under construction');
+    if (buildingState.status !== "building") {
+      throw new BadRequestException("Building is not under construction");
     }
 
     const buildingJob = await (this.prisma as any).job.findFirst({
       where: {
         userId,
-        type: 'BuildingJob',
-        status: { in: ['active', 'ready_notified'] },
-        data: { path: ['buildingId'], equals: buildingId },
+        type: "BuildingJob",
+        status: { in: ["active", "ready_notified"] },
+        data: { path: ["buildingId"], equals: buildingId },
       },
     });
 
     if (!buildingJob) {
-      throw new NotFoundException('Building job not found');
+      throw new NotFoundException("Building job not found");
     }
 
     const jobData = buildingJob.data as any;
     if (jobData?.locationId !== locationId) {
-      throw new BadRequestException('Building job does not belong to this location');
+      throw new BadRequestException(
+        "Building job does not belong to this location",
+      );
     }
 
     const currentTick = await this.tickService.getCurrentTick();
@@ -388,21 +505,26 @@ export class LocationService {
     const targetTick = jobTimer.startTick + jobTimer.durationTicks;
 
     if (currentTick < targetTick) {
-      throw new BadRequestException('Construction is not yet complete');
+      throw new BadRequestException("Construction is not yet complete");
     }
 
     const currentTickBig = BigInt(Math.floor(currentTick));
     const upgradeToLevel = jobData?.upgradeToLevel;
 
     const updated: any = await this.prisma.$transaction(async (tx) => {
-      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await this.settlementService.settleLocationTx(
+        tx,
+        locationId,
+        userId,
+        currentTickBig,
+      );
 
       await (tx as any).job.update({
         where: { id: buildingJob.id },
-        data: { status: 'completed' },
+        data: { status: "completed" },
       });
 
-      const newState: any = { status: 'active' };
+      const newState: any = { status: "active" };
       const updateData: any = { state: newState };
       if (upgradeToLevel) {
         updateData.level = upgradeToLevel;
@@ -418,21 +540,23 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(`Failed to recalculate location meta for ${locationId}: ${err}`);
+      console.warn(
+        `Failed to recalculate location meta for ${locationId}: ${err}`,
+      );
     }
 
     try {
       const isUpgrade = !!upgradeToLevel;
       await this.notificationService.updateBySource({
         userId,
-        sourceType: 'job_ready',
+        sourceType: "job_ready",
         sourceId: buildingJob.id,
-        type: 'building_complete',
-        category: 'buildings',
-        priority: 'normal',
-        title: isUpgrade ? 'Upgrade Complete!' : 'Construction Complete!',
-        body: `${updated.buildingDef.name}${isUpgrade ? ` upgraded to level ${updated.level}` : ' has been built'}`,
-        deepLink: { screen: '/locations', locationId, buildingId },
+        type: "building_complete",
+        category: "buildings",
+        priority: "normal",
+        title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
+        body: `${updated.buildingDef.name}${isUpgrade ? ` upgraded to level ${updated.level}` : " has been built"}`,
+        deepLink: { screen: "/locations", locationId, buildingId },
         markRead: true,
       });
     } catch (err) {
@@ -448,52 +572,73 @@ export class LocationService {
     };
   }
 
-  async upgradeBuilding(userId: string, locationId: string, buildingId: string) {
-    const building: any = await (this.prisma as any).locationBuildingInstance.findFirst({
+  async upgradeBuilding(
+    userId: string,
+    locationId: string,
+    buildingId: string,
+  ) {
+    const building: any = await (
+      this.prisma as any
+    ).locationBuildingInstance.findFirst({
       where: { id: buildingId, locationId, location: { ownerUserId: userId } },
       include: { buildingDef: true },
     });
 
-    if (!building) throw new NotFoundException('Building not found');
+    if (!building) throw new NotFoundException("Building not found");
     const buildingState = (building.state as any) || {};
-    if (buildingState.status !== 'active') {
-      throw new BadRequestException('Building must be active to upgrade');
+    if (buildingState.status !== "active") {
+      throw new BadRequestException("Building must be active to upgrade");
     }
 
     const def = building.buildingDef;
     const defRules = (def.rules as LevelRules) || {};
     const maxLevel = defRules.maxLevel ?? 10;
     if (building.level >= maxLevel) {
-      throw new BadRequestException(`Building is already at max level (${maxLevel})`);
+      throw new BadRequestException(
+        `Building is already at max level (${maxLevel})`,
+      );
     }
 
     const currentLevel = building.level;
     const nextLevel = currentLevel + 1;
     const nextConfig = resolveLevelConfig(defRules, nextLevel);
-    const costs = resolveConstructionCosts(nextConfig.constructionCost, nextLevel);
+    const costs = resolveConstructionCosts(
+      nextConfig.constructionCost,
+      nextLevel,
+    );
 
     const currentTick = await this.tickService.getCurrentTick();
     const currentTickBig = BigInt(Math.floor(currentTick));
 
-    const timer = nextConfig.timer as any || {};
+    const timer = (nextConfig.timer as any) || {};
     const baseDuration = timer.duration ?? 0;
-    const durationSeconds = calcGrowth(baseDuration, timer.growthRate, timer.growthScalar, nextLevel);
+    const durationSeconds = calcGrowth(
+      baseDuration,
+      timer.growthRate,
+      timer.growthScalar,
+      nextLevel,
+    );
     const durationTicks = durationSeconds;
     const isInstant = durationTicks <= 0;
 
     const updated: any = await this.prisma.$transaction(async (tx) => {
-      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await this.settlementService.settleLocationTx(
+        tx,
+        locationId,
+        userId,
+        currentTickBig,
+      );
 
       for (const cost of costs) {
         if (cost.amount <= 0) continue;
 
-        if (cost.type === 'currency') {
+        if (cost.type === "currency") {
           await this.currencyService.spendTx(tx as any, {
             userId,
             currencyId: cost.id,
             amount: cost.amount,
-            reason: 'building_upgrade',
-            sourceType: 'location_building',
+            reason: "building_upgrade",
+            sourceType: "location_building",
             sourceId: buildingId,
           });
         } else {
@@ -501,8 +646,8 @@ export class LocationService {
             userId,
             itemId: cost.id,
             quantity: cost.amount,
-            reason: 'building_upgrade',
-            sourceType: 'location_building',
+            reason: "building_upgrade",
+            sourceType: "location_building",
             sourceId: buildingId,
           });
         }
@@ -517,16 +662,16 @@ export class LocationService {
       } else {
         const result = await (tx as any).locationBuildingInstance.update({
           where: { id: buildingId },
-          data: { state: { status: 'building' } },
+          data: { state: { status: "building" } },
           include: { buildingDef: true },
         });
 
         await (tx as any).job.create({
           data: {
             userId,
-            type: 'BuildingJob',
+            type: "BuildingJob",
             defId: def.id,
-            status: 'active',
+            status: "active",
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId, upgradeToLevel: currentLevel + 1 },
@@ -541,7 +686,9 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(`Failed to recalculate storage for location ${locationId}: ${err}`);
+        console.warn(
+          `Failed to recalculate storage for location ${locationId}: ${err}`,
+        );
       }
     }
 
@@ -555,23 +702,34 @@ export class LocationService {
   }
 
   async claimLocation(userId: string, locationId: string, externalTx?: any) {
-    const currentTick = BigInt(Math.floor(await this.tickService.getCurrentTick()));
-    const currencyIds = await this.getCurrencyIds();
+    const currentTick = BigInt(
+      Math.floor(await this.tickService.getCurrentTick()),
+    );
+    const currencyIds = await this.getCurrencyIds(externalTx);
 
     const doWork = async (tx: any) => {
-      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTick);
+      await this.settlementService.settleLocationTx(
+        tx,
+        locationId,
+        userId,
+        currentTick,
+      );
 
       const location = await (tx as any).locationInstance.findFirst({
         where: { id: locationId, ownerUserId: userId },
       });
 
-      if (!location) throw new NotFoundException('Location not found');
+      if (!location) throw new NotFoundException("Location not found");
 
       const storage = (location.storage as any) || {};
       const storedAmounts: Record<string, number> = storage.stored || {};
       const capacityAmounts: Record<string, number> = storage.capacity || {};
 
-      const claimed: Array<{ outputType: string; outputRefId: string; amount: string }> = [];
+      const claimed: Array<{
+        outputType: string;
+        outputRefId: string;
+        amount: string;
+      }> = [];
 
       for (const [resourceId, amount] of Object.entries(storedAmounts)) {
         if (amount <= 0) continue;
@@ -582,8 +740,8 @@ export class LocationService {
             userId,
             currencyId: resourceId,
             amount: Number(amount),
-            reason: 'location_claim',
-            sourceType: 'location',
+            reason: "location_claim",
+            sourceType: "location",
             sourceId: locationId,
           });
         } else {
@@ -591,14 +749,14 @@ export class LocationService {
             userId,
             itemId: resourceId,
             quantity: Number(amount),
-            reason: 'location_claim',
-            sourceType: 'location',
+            reason: "location_claim",
+            sourceType: "location",
             sourceId: locationId,
           });
         }
 
         claimed.push({
-          outputType: isCurrency ? 'CURRENCY' : 'ITEM',
+          outputType: isCurrency ? "CURRENCY" : "ITEM",
           outputRefId: resourceId,
           amount: String(amount),
         });
@@ -638,26 +796,35 @@ export class LocationService {
       where: { id: locationId, ownerUserId: userId },
       include: { workerAssignments: true },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location) throw new NotFoundException("Location not found");
 
     const entity = await (this.prisma as any).entity.findFirst({
       where: { id: entityId, ownerUserId: userId },
     });
-    if (!entity) throw new NotFoundException('Entity not found');
+    if (!entity) throw new NotFoundException("Entity not found");
 
     const entityState = (entity.state as any) || {};
-    if (entityState.status === 'working' || entityState.status === 'on_mission') {
-      throw new BadRequestException('Entity is currently busy');
+    if (
+      entityState.status === "working" ||
+      entityState.status === "on_mission"
+    ) {
+      throw new BadRequestException("Entity is currently busy");
     }
 
-    const existingAssignment = await (this.prisma as any).locationWorkerAssignment.findFirst({
+    const existingAssignment = await (
+      this.prisma as any
+    ).locationWorkerAssignment.findFirst({
       where: { locationId, entityId },
     });
     if (existingAssignment) {
-      throw new BadRequestException('Entity is already assigned to this location');
+      throw new BadRequestException(
+        "Entity is already assigned to this location",
+      );
     }
 
-    const locationDef = await (this.prisma as any).locationDefinition.findUnique({
+    const locationDef = await (
+      this.prisma as any
+    ).locationDefinition.findUnique({
       where: { id: location.definitionId },
     });
     const locRules = (locationDef?.rules as LevelRules) || {};
@@ -665,27 +832,33 @@ export class LocationService {
 
     const maxWorkers = locConfig.workers?.slots ?? 2;
     if (location.workerAssignments.length >= maxWorkers) {
-      throw new BadRequestException(`Maximum ${maxWorkers} workers reached for this location`);
+      throw new BadRequestException(
+        `Maximum ${maxWorkers} workers reached for this location`,
+      );
     }
 
-    const assignment = await (this.prisma as any).locationWorkerAssignment.create({
+    const assignment = await (
+      this.prisma as any
+    ).locationWorkerAssignment.create({
       data: {
         locationId,
         entityId,
-        roleTag: 'production',
+        roleTag: "production",
         bonus: {},
       },
     });
 
     await (this.prisma as any).entity.update({
       where: { id: entityId },
-      data: { state: { ...entityState, status: 'working' } },
+      data: { state: { ...entityState, status: "working" } },
     });
 
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(`Failed to recalculate location meta for ${locationId}: ${err}`);
+      console.warn(
+        `Failed to recalculate location meta for ${locationId}: ${err}`,
+      );
     }
 
     return {
@@ -700,12 +873,14 @@ export class LocationService {
     const location = await (this.prisma as any).locationInstance.findFirst({
       where: { id: locationId, ownerUserId: userId },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location) throw new NotFoundException("Location not found");
 
-    const assignment = await (this.prisma as any).locationWorkerAssignment.findFirst({
+    const assignment = await (
+      this.prisma as any
+    ).locationWorkerAssignment.findFirst({
       where: { locationId, entityId },
     });
-    if (!assignment) throw new NotFoundException('Worker assignment not found');
+    if (!assignment) throw new NotFoundException("Worker assignment not found");
 
     await (this.prisma as any).locationWorkerAssignment.delete({
       where: { id: assignment.id },
@@ -718,27 +893,36 @@ export class LocationService {
       const entityState = (entity.state as any) || {};
       await (this.prisma as any).entity.update({
         where: { id: entityId },
-        data: { state: { ...entityState, status: 'idle' } },
+        data: { state: { ...entityState, status: "idle" } },
       });
     }
 
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(`Failed to recalculate location meta for ${locationId}: ${err}`);
+      console.warn(
+        `Failed to recalculate location meta for ${locationId}: ${err}`,
+      );
     }
 
     return { success: true };
   }
 
-  private resolveResourceType(resourceId: string, currencyIds: Set<string>): { outputType: string; outputRefId: string } {
+  private resolveResourceType(
+    resourceId: string,
+    currencyIds: Set<string>,
+  ): { outputType: string; outputRefId: string } {
     if (currencyIds.has(resourceId)) {
-      return { outputType: 'CURRENCY', outputRefId: resourceId };
+      return { outputType: "CURRENCY", outputRefId: resourceId };
     }
-    return { outputType: 'ITEM', outputRefId: resourceId };
+    return { outputType: "ITEM", outputRefId: resourceId };
   }
 
-  private serializeLocation(location: any, buildingJobs: any[] = [], currencyIds: Set<string> = new Set()) {
+  private serializeLocation(
+    location: any,
+    buildingJobs: any[] = [],
+    currencyIds: Set<string> = new Set(),
+  ) {
     const jobsByBuildingId = new Map<string, any>();
     for (const job of buildingJobs) {
       const jobData = job.data as any;
@@ -763,8 +947,8 @@ export class LocationService {
       ownerUserId: location.ownerUserId,
       definitionId: location.definitionId,
       regionId: location.regionId,
-      name: location.definitionId || location.regionId || 'Location',
-      region: location.regionId || '',
+      name: location.definitionId || location.regionId || "Location",
+      region: location.regionId || "",
       isUnique: location.isUnique,
       level: location.level,
       xp: location.xp.toString(),
@@ -785,22 +969,29 @@ export class LocationService {
         const bState = (b.state as any) || {};
         const bRules = (b.buildingDef?.rules as LevelRules) || {};
         const bConfig = resolveLevelConfig(bRules, b.level);
-        const defTags: string[] = Array.isArray(b.buildingDef?.tags) ? b.buildingDef.tags : [];
+        const defTags: string[] = Array.isArray(b.buildingDef?.tags)
+          ? b.buildingDef.tags
+          : [];
         const isEnabled = b.enabled !== false;
-        const status = job ? 'building' : (isEnabled ? 'active' : 'disabled');
+        const status = job ? "building" : isEnabled ? "active" : "disabled";
 
-        let category = 'GENERATOR';
-        if (defTags.includes('storage')) category = 'STORAGE';
-        else if (defTags.includes('defense')) category = 'DEFENSE';
+        let category = "GENERATOR";
+        if (defTags.includes("storage")) category = "STORAGE";
+        else if (defTags.includes("defense")) category = "DEFENSE";
 
         const bProduction = resolveProductionRates(bConfig.production, b.level);
         const primaryResource = Object.keys(bProduction)[0] || null;
-        const resolved = primaryResource ? this.resolveResourceType(primaryResource, currencyIds) : { outputType: null, outputRefId: null };
+        const resolved = primaryResource
+          ? this.resolveResourceType(primaryResource, currencyIds)
+          : { outputType: null, outputRefId: null };
         const rph = primaryResource ? bProduction[primaryResource] : 0;
 
         const nextLevel = b.level + 1;
         const nextConfig = resolveLevelConfig(bRules, nextLevel);
-        const nextCosts = resolveConstructionCosts(nextConfig.constructionCost, nextLevel);
+        const nextCosts = resolveConstructionCosts(
+          nextConfig.constructionCost,
+          nextLevel,
+        );
 
         return {
           id: b.id,
@@ -830,7 +1021,10 @@ export class LocationService {
             const rStorage = resolveStorageCapacity(rConfig.storage, r.level);
             const nextLevel = r.level + 1;
             const nextConfig = resolveLevelConfig(rRules, nextLevel);
-            const nextCosts = resolveConstructionCosts(nextConfig.constructionCost, nextLevel);
+            const nextCosts = resolveConstructionCosts(
+              nextConfig.constructionCost,
+              nextLevel,
+            );
             return {
               id: r.id,
               roomDefId: r.roomDefId,
@@ -859,11 +1053,15 @@ export class LocationService {
     };
   }
 
-  async toggleLocationEnabled(userId: string, locationId: string, enabled: boolean) {
+  async toggleLocationEnabled(
+    userId: string,
+    locationId: string,
+    enabled: boolean,
+  ) {
     const location = await this.prisma.locationInstance.findFirst({
       where: { id: locationId, ownerUserId: userId },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location) throw new NotFoundException("Location not found");
     await this.prisma.locationInstance.update({
       where: { id: locationId },
       data: { enabled },
@@ -871,11 +1069,16 @@ export class LocationService {
     return { id: locationId, enabled };
   }
 
-  async toggleBuildingEnabled(userId: string, locationId: string, buildingId: string, enabled: boolean) {
+  async toggleBuildingEnabled(
+    userId: string,
+    locationId: string,
+    buildingId: string,
+    enabled: boolean,
+  ) {
     const building = await this.prisma.locationBuildingInstance.findFirst({
       where: { id: buildingId, locationId, location: { ownerUserId: userId } },
     });
-    if (!building) throw new NotFoundException('Building not found');
+    if (!building) throw new NotFoundException("Building not found");
     await this.prisma.locationBuildingInstance.update({
       where: { id: buildingId },
       data: { enabled },
@@ -883,16 +1086,26 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(`Failed to recalculate location meta for ${locationId}: ${err}`);
+      console.warn(
+        `Failed to recalculate location meta for ${locationId}: ${err}`,
+      );
     }
     return { id: buildingId, enabled };
   }
 
-  async toggleRoomEnabled(userId: string, locationId: string, roomId: string, enabled: boolean) {
+  async toggleRoomEnabled(
+    userId: string,
+    locationId: string,
+    roomId: string,
+    enabled: boolean,
+  ) {
     const room = await (this.prisma as any).locationRoomInstance.findFirst({
-      where: { id: roomId, building: { locationId, location: { ownerUserId: userId } } },
+      where: {
+        id: roomId,
+        building: { locationId, location: { ownerUserId: userId } },
+      },
     });
-    if (!room) throw new NotFoundException('Room not found');
+    if (!room) throw new NotFoundException("Room not found");
     await (this.prisma as any).locationRoomInstance.update({
       where: { id: roomId },
       data: { enabled },
@@ -900,7 +1113,9 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(`Failed to recalculate location meta for ${locationId}: ${err}`);
+      console.warn(
+        `Failed to recalculate location meta for ${locationId}: ${err}`,
+      );
     }
     return { id: roomId, enabled };
   }
