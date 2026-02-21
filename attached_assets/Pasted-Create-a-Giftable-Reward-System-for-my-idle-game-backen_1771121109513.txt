@@ -1,0 +1,285 @@
+Create a Giftable Reward System for my idle game backend. The intended UX flow is:
+
+Complete Quest/Mission (Job completes)
+→ System creates a Notification with a Gift attachment
+→ Player opens gift modal
+→ Player claims gift
+→ Server grants rewards (e.g., a new Bird)
+→ Gift is marked claimed and can’t be claimed again
+
+============================================================
+GOALS & CONSTRAINTS
+============================================================
+
+- Server-authoritative (no client-side granting).
+- Idempotent and exploit-resistant (safe for retries).
+- Fully auditable chain:
+  Job → EventInstance (optional) → GiftInstance → GiftClaimTx → granted entities/items/currency.
+- Gift creation does NOT grant rewards.
+- Rewards are granted ONLY on claim.
+- Gift stores a snapshot of presentation + rewardSpec at creation time.
+- Support multiple reward types:
+  currency, item, entity (bird), cosmetic, loot table, bundle.
+- If already claimed, claim endpoint must return original result (idempotent).
+- Use server timestamps only.
+
+============================================================
+1) PRISMA DATA MODELS
+============================================================
+
+Add the following models:
+
+model GiftInstance {
+  id              String   @id @default(cuid())
+  playerId        String   @index
+  giftDefId       String
+  giftDefVersion  Int
+
+  status          GiftStatus @default(UNCLAIMED)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+
+  sourceType      String?
+  sourceId        String?
+  idempotencyKey  String?  @unique
+
+  snapshot        Json     // { presentation, rewardSpec }
+  claim           Json?
+  claimTxId       String?  @unique
+
+  @@index([playerId, status])
+}
+
+model GiftClaimTx {
+  id        String   @id @default(cuid())
+  giftId    String   @unique
+  playerId  String   @index
+  status    String
+  seed      String
+  rolls     Json
+  grants    Json
+  createdAt DateTime @default(now())
+}
+
+enum GiftStatus {
+  UNCLAIMED
+  CLAIMED
+  EXPIRED
+  REVOKED
+}
+
+Ensure Notification model supports:
+attachment Json?  // { type: "gift", giftId }
+
+============================================================
+2) GIFT DEFINITION (ADMIN JSON SHAPE)
+============================================================
+
+Support a GiftDefinition document:
+
+{
+  "id": "gift_bonus_bird_v1",
+  "name": "Bonus Bird Gift",
+  "version": 1,
+  "presentation": {
+    "title": "A New Companion!",
+    "body": "A Derp has joined your flock.",
+    "icon": "gift_bird",
+    "modalStyle": "reveal_bird"
+  },
+  "claimRules": {
+    "claimMode": "manual",
+    "expiresInSeconds": 1209600,
+    "limitPerPlayer": 1
+  },
+  "rewardSpec": {
+    "type": "bundle",
+    "entries": [
+      {
+        "type": "entity",
+        "entityType": "bird",
+        "definitionId": "basic_bird_v1",
+        "qty": 1,
+        "roll": "fixed"
+      }
+    ]
+  }
+}
+
+============================================================
+3) REWARD SPEC FORMAT (GENERIC)
+============================================================
+
+RewardSpec supports:
+
+currency:
+{ "type": "currency", "currencyId": "arcanium", "amount": 250 }
+
+item:
+{ "type": "item", "itemDefId": "iron_ore", "qty": 20 }
+
+entity:
+{ "type": "entity", "entityType": "bird", "definitionId": "basic_bird_v1", "qty": 1 }
+
+cosmetic:
+{ "type": "cosmetic", "cosmeticDefId": "hat_party_01", "qty": 1 }
+
+lootTable:
+{ "type": "lootTable", "tableId": "lt_starter_pack_v1", "rolls": 1 }
+
+bundle:
+{ "type": "bundle", "entries": [ ...RewardEntry ] }
+
+============================================================
+4) OUTCOME → EVENT → GIFT CREATION
+============================================================
+
+OutcomeBlock emits:
+
+{
+  "type": "emitEvent",
+  "event": {
+    "defId": "evt_create_gift",
+    "payload": { "giftDefId": "gift_bonus_bird_v1" }
+  },
+  "idempotencyKey": "quest:${jobId}:gift_bonus_bird_v1"
+}
+
+EventDefinition:
+
+{
+  "id": "evt_create_gift",
+  "version": 1,
+  "kind": "system",
+  "handlerKey": "createGiftForPlayer",
+  "security": {
+    "allowedEmitters": ["QuestJob", "MissionJob", "AdminGrant"]
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "giftDefId": { "type": "string" }
+    },
+    "required": ["giftDefId"]
+  }
+}
+
+If no async worker exists, implement synchronous dispatch,
+but structure code so it can move to queue-based processing later.
+
+============================================================
+5) SERVICE: createGiftForPlayer
+============================================================
+
+Function signature:
+
+createGiftForPlayer(playerId, giftDefId, sourceType, sourceId, idempotencyKey)
+
+Steps:
+
+1) Load GiftDefinition.
+2) Enforce limitPerPlayer.
+3) Compute expiresAt if defined.
+4) Create GiftInstance:
+   - status: UNCLAIMED
+   - idempotencyKey
+   - snapshot: { presentation, rewardSpec }
+   - sourceType/sourceId
+5) Create Notification:
+   - type: "gift"
+   - title/body from snapshot
+   - attachment: { type: "gift", giftId }
+   - sourceType: "Gift"
+   - sourceId: giftId
+6) Ensure idempotency:
+   - If GiftInstance with same idempotencyKey exists, return existing.
+   - Do not duplicate notifications.
+
+============================================================
+6) ENDPOINTS
+============================================================
+
+GET /gifts?status=unclaimed
+Returns list of gifts (presentation + id).
+
+GET /gifts/:giftId
+Returns gift details.
+
+POST /gifts/:giftId/claim
+Server must:
+
+1) Begin DB transaction.
+2) Lock gift row.
+3) Validate ownership + status UNCLAIMED.
+4) If already CLAIMED:
+     return existing GiftClaimTx.
+5) Create GiftClaimTx:
+     seed = sha256(giftId + playerId + createdAt)
+6) Resolve rewardSpec:
+     - currency → increment wallet
+     - item → add inventory
+     - entity(bird) → create BirdInstance
+     - lootTable → resolve via seed
+     - bundle → recursive resolve
+7) Record grants in GiftClaimTx.grants.
+8) Update GiftInstance:
+     status = CLAIMED
+     claimTxId = GiftClaimTx.id
+     claim.claimedAt = now
+9) Commit transaction.
+10) Return claimTx + grant summary.
+
+============================================================
+7) BIRD ENTITY MODEL (IF NEEDED)
+============================================================
+
+model BirdInstance {
+  id          String @id @default(cuid())
+  playerId    String @index
+  definitionId String
+  level       Int    @default(1)
+  xp          Int    @default(0)
+  status      String @default("idle")
+  originType  String?
+  originId    String?
+}
+
+============================================================
+8) SECURITY REQUIREMENTS
+============================================================
+
+- All endpoints authenticated.
+- Gift must belong to player.
+- Claim endpoint idempotent.
+- Use transaction + row lock.
+- No client-provided reward data trusted.
+- Rate-limit claim endpoint.
+
+============================================================
+9) TESTS REQUIRED
+============================================================
+
+1) Idempotent gift creation (same idempotencyKey → one gift).
+2) Claim grants exactly once.
+3) Double claim returns same GiftClaimTx.
+4) Expired gift fails claim.
+5) Concurrent claim calls → only one success.
+6) Bird is created and linked to gift origin.
+
+============================================================
+10) DEMO FLOW
+============================================================
+
+Implement a test route:
+
+POST /debug/complete-quest
+
+This should:
+- Emit evt_create_gift
+- Create gift_bonus_bird_v1
+- Send notification
+- Allow gift claim
+- Grant 1 basic_bird_v1
+
+Ensure entire flow works locally with Postgres.
+Return clear JSON responses at each step.

@@ -1,0 +1,133 @@
+.crafting-page h1 {
+  margin-bottom: 4px;
+}
+
+.craft-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--error-red);
+  color: var(--error-red);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.craft-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.craft-job-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+}
+
+.craft-job-card.ready {
+  border-color: var(--success-green);
+}
+
+.craft-job-card strong {
+  text-transform: capitalize;
+}
+
+.recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.recipe-card {
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.recipe-card:hover:not(.locked) {
+  border-color: var(--derp-purple);
+}
+
+.recipe-card.selected {
+  border-color: var(--derp-purple);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.recipe-card.locked {
+  opacity: 1;
+  cursor: not-allowed;
+  background: rgba(12, 10, 26, 0.85);
+}
+
+.recipe-card.locked h3,
+.recipe-card.locked .recipe-desc,
+.recipe-card.locked .recipe-meta span {
+  color: var(--text-secondary);
+}
+
+.recipe-card h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.recipe-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.recipe-details {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.recipe-details .insufficient {
+  color: var(--error-red);
+}
+
+.level-req {
+  color: var(--warning-orange);
+}
+
+.start-craft-btn {
+  padding: 12px 32px;
+  font-size: 15px;
+}
+
+.entity-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.entity-select-card {
+  padding: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.entity-select-card:hover {
+  border-color: var(--derp-purple);
+}
+
+.entity-select-card.selected {
+  border-color: var(--success-green);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.entity-select-card strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.entity-select-card span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}

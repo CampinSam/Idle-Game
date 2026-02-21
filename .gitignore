@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+*.log
+coverage/
+.turbo/
+.next/
+prisma/*.db
+prisma/migrations/

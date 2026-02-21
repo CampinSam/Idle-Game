@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --derp-blue: #3A7BD5;
+  --derp-purple: #8B5CF6;
+  --success-green: #10B981;
+  --warning-orange: #F59E0B;
+  --error-red: #EF4444;
+  --bg-primary: #0c0a1a;
+  --bg-secondary: #151030;
+  --bg-card: #1a1640;
+  --text-primary: #f0f0f0;
+  --text-secondary: #9ca3af;
+  --border: #2a2055;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.game-icon {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  background-image: url('/images/background.png');
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--derp-blue);
+  color: white;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #2d6bc4;
+}
+
+button.secondary {
+  background: var(--derp-purple);
+  color: white;
+}
+
+button.secondary:hover:not(:disabled) {
+  background: #7c4fe6;
+}
+
+button.success {
+  background: var(--success-green);
+  color: white;
+}
+
+input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  width: 100%;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--derp-blue);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+
+.status-idle { color: var(--success-green); }
+.status-mission { color: var(--warning-orange); }
+.status-working { color: var(--derp-purple); }
+.status-injured { color: var(--error-red); }

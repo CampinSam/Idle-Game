@@ -1,0 +1,175 @@
+DERP BIRDS IDLE GAME MASTER BACKEND INTEGRATION SPEC (PRISMA +
+POSTGRES + TICK-BASED TIME SYSTEM)
+
+============================================================ SYSTEMS
+INCLUDED ============================================================
+
+1)  Currency System (already implemented)
+2)  Inventory System
+3)  Outpost System (tick-based production)
+4)  Integration Rules Between Systems
+
+All systems must operate transactionally and use BigInt for all numeric
+balances.
+
+============================================================ SECTION 1:
+CURRENCY SYSTEM (REFERENCE SUMMARY)
+============================================================
+
+Currencies are data-driven.
+
+Tables: - Currency - UserCurrencyBalance - CurrencyLedger
+
+Rules: - All changes must occur inside transactions. - Debit must use
+conditional update (balance >= amount). - BigInt values must be
+serialized as strings in APIs. - No negative balances allowed.
+
+Settlement from other systems (like Outposts) must call
+transaction-aware currency service functions.
+
+============================================================ SECTION 2:
+INVENTORY SYSTEM
+============================================================
+
+Inventory consists of:
+
+1)  Item Definitions (ItemDef)
+2)  User Stackable Items (UserItemBalance)
+3)  Optional Gear Instances (GearInstance)
+4)  Item Ledger (ItemLedger)
+
+  ------------------
+  ITEM DEFINITIONS
+  ------------------
+
+model ItemDef { id String @id name String type ItemType iconKey String?
+rarity Int @default(1) stackable Boolean @default(true) maxStack Int?
+data Json @default(“{}”) }
+
+  -----------------
+  USER STACKABLES
+  -----------------
+
+model UserItemBalance { userId String itemId String quantity BigInt
+@default(0)
+
+@@id([userId, itemId]) }
+
+  ---------------------------
+  GEAR INSTANCES (OPTIONAL)
+  ---------------------------
+
+model GearInstance { id String @id @default(cuid()) userId String itemId
+String level Int @default(1) data Json @default(“{}”) }
+
+  -----------------
+  INVENTORY RULES
+  -----------------
+
+-   Use upsert + increment for grants.
+-   Use conditional updateMany (quantity >= amount) for removal.
+-   All operations inside transactions.
+-   Use ItemLedger for auditing.
+-   BigInt only.
+
+============================================================ SECTION 3:
+OUTPOST SYSTEM (TICK-BASED)
+============================================================
+
+Outposts use worldTick as time source.
+
+  ---------------
+  OUTPOST MODEL
+  ---------------
+
+model Outpost { id String @id @default(cuid()) userId String region
+OutpostRegion level Int @default(1) threat Int @default(0) corruption
+Int @default(0) isActive Boolean @default(true) lastAccruedTick BigInt
+@default(0) }
+
+  ----------------------
+  BUILDING DEFINITIONS
+  ----------------------
+
+model BuildingDef { id String @id category BuildingCategory
+baseOutputPerTick BigInt outputType OutputType outputRefId String data
+Json @default(“{}”) }
+
+  --------------------
+  PRODUCTION FORMULA
+  --------------------
+
+elapsedTicks = currentWorldTick - lastAccruedTick
+
+base = baseOutputPerTick * elapsedTicks
+
+Apply multipliers using basis points (1.00x = 10000):
+
+FinalOutput = base * buildingMult / 10000 * workerMult / 10000 *
+roomMult / 10000 * threatMult / 10000
+
+  ------------------------
+  THREAT PENALTY EXAMPLE
+  ------------------------
+
+0–20 → 10000 21–40 → 9500 41–60 → 8500 61–80 → 7000 81–100 → 5000
+
+  ------------------
+  SETTLEMENT RULES
+  ------------------
+
+On settlement:
+
+1)  Fetch currentWorldTick
+2)  Compute elapsedTicks
+3)  Generate currency grants and/or item grants
+4)  Call transaction-aware currency + inventory services
+5)  Update lastAccruedTick = currentWorldTick
+
+All inside ONE transaction.
+
+  -------------------
+  WORKER SLOT RULES
+  -------------------
+
+Outpost Level → Max Workers
+
+1–9 → 2 10–19 → 3 20–29 → 4 30–39 → 5 40–49 → 6 50 → 7
+
+  --------------------
+  ACTIVE OUTPOST CAP
+  --------------------
+
+Keeper Level → Active Outposts
+
+1–19 → 1 20–39 → 2 40–59 → 3 60–79 → 4 80–99 → 5 100+ → 6
+
+============================================================ SECTION 4:
+SYSTEM INTEGRATION
+============================================================
+
+Outposts generate:
+
+-   CURRENCY → use currency credit service
+-   ITEM → use inventory grant service
+
+Crafting, Missions, Shops should operate using bundle logic:
+
+RewardBundle = { currencies: […], items: […] }
+
+CostBundle = { currencies: […], items: […] }
+
+All bundles must be processed inside a transaction.
+
+============================================================ SECTION 5:
+SAFETY RULES
+============================================================
+
+1)  Cap elapsedTicks (e.g., 7 days worth of ticks).
+2)  Never mix wall-clock time with ticks.
+3)  Always use BigInt.
+4)  Always run settlement before mutations.
+5)  Never expose grant endpoints publicly.
+
+============================================================ END OF
+MASTER SPEC ============================================================

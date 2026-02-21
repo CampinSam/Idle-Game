@@ -1,0 +1,111 @@
+export type MissionType = 'quick' | 'standard';
+export type MissionStatus = 'active' | 'completed' | 'failed';
+
+export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
+
+export type RequirementType = 'keeper_level' | 'flag' | 'building' | 'currency' | 'item' | 'team_size' | 'trait';
+
+export interface Requirement {
+  type: RequirementType;
+  key?: string;
+  value?: number | string | boolean;
+  operator?: ComparisonOperator;
+}
+
+export type FlagOperation = 'set' | 'increment' | 'decrement' | 'invert';
+
+export type TextBehavior = 'overwrite' | 'append';
+
+export interface RewardEntry {
+  type: 'entity_xp' | 'keeper_xp' | 'currency' | 'item';
+  key?: string;
+  min: number;
+  max: number;
+  odds?: number;
+}
+
+export interface EffectEntry {
+  type: 'flag';
+  operation: FlagOperation;
+  key: string;
+  value?: number | string | boolean;
+  odds?: number;
+}
+
+export interface TextEntry {
+  type: 'text';
+  message: string;
+  behavior?: TextBehavior;
+  odds?: number;
+}
+
+export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry;
+
+export interface OutcomeBundle {
+  bundle: OutcomeOrBundle[];
+  odds?: number;
+}
+
+export type OutcomeOrBundle = OutcomeEntry | OutcomeBundle;
+
+export interface OutcomeBlock {
+  rewards: OutcomeOrBundle[];
+}
+
+export interface MissionDefinition {
+  id: string;
+  name: string;
+  description: string;
+  type: MissionType;
+  difficulty: number;
+  timer: import('./timer').Timer;
+  success: OutcomeBlock;
+  failure: OutcomeBlock;
+  requirements: Requirement[];
+  visibilityRequirements?: Requirement[];
+}
+
+export interface Mission {
+  id: string;
+  userId: string;
+  defId: string;
+  missionType: MissionType;
+  difficulty: number;
+  team: string[];
+  status: MissionStatus;
+  startedAt: string;
+  completesAt: string;
+  result?: MissionResult;
+}
+
+export interface MissionResult {
+  success: boolean;
+  xpEarned: number;
+  arcaniumEarned: number;
+  itemsFound: string[];
+  seed: string;
+}
+
+export interface StartMissionDto {
+  defId: string;
+  entityIds: string[];
+}
+
+/** @deprecated Use OutcomeEntry instead */
+export type EditorEffect = EffectEntry;
+/** @deprecated Use OutcomeBundle instead */
+export type RewardBundle = OutcomeBundle;
+/** @deprecated Use OutcomeOrBundle instead */
+export type RewardOrBundle = OutcomeOrBundle;
+/** @deprecated Use OutcomeBundle instead */
+export type EffectBundle = OutcomeBundle;
+/** @deprecated Use OutcomeOrBundle instead */
+export type EffectOrBundle = OutcomeOrBundle;
+/** @deprecated Use TextEntry instead */
+export type OutcomeText = TextEntry;
+
+export function isBundle(entry: OutcomeOrBundle): entry is OutcomeBundle;
+export function isBundle<T>(entry: T | { bundle: T[]; odds?: number }): entry is { bundle: T[]; odds?: number };
+export function isBundle(entry: any): entry is { bundle: any[]; odds?: number } {
+  return entry !== null && typeof entry === 'object' && 'bundle' in entry && Array.isArray((entry as any).bundle);
+}

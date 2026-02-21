@@ -1,0 +1,125 @@
+# Replit Prompt — Implement In-App Banners + Notification Center (Derp Birds Idle Game)
+
+You are building features in an existing mobile idle game app (“Derp Birds Idle Game”). Implement a complete **in-app notification system** with:
+
+- **Dismissible toast banners** (ephemeral)
+- A durable **Notification Center / Inbox** where all notifications remain accessible after dismissal
+- (Optional, stretch) an **Activity Log** for verbose history
+
+## Goals / UX Requirements
+
+### 1) Toast Banners (“toasts”)
+- Display at the **top of screen** as an overlay.
+- Auto-dismiss after **4–6 seconds** for non-critical items.
+- Support **swipe to dismiss**.
+- Support **tap to open** a deep link (navigate to relevant screen) and mark as **read**.
+- If multiple notifications arrive quickly:
+  - Show max **2 toasts visible**.
+  - Queue the rest; overflow always exists in the Notification Center.
+- Priority handling:
+  - **Critical** toasts persist until dismissed (no auto-dismiss) OR use a much longer timer.
+  - **High**: show toast by default.
+  - **Normal/Low**: do NOT toast by default; just add to Notification Center.
+
+### 2) Notification Center (“Inbox”)
+- Accessible via a **bell icon** on the Home screen (or global top bar).
+- Bell shows a **badge count** of **unread notifications**.
+- Center layout:
+  - Sections: **New**, **Today**, **Earlier**
+  - Filters: **All / Missions / Crafting / Outposts / System**
+  - Bulk actions: **Mark all as read**, **Clear read**
+- Retention:
+  - Keep notifications **30–90 days** OR cap at **200–500**, pruning oldest **read** first.
+- Dismissal behavior:
+  - Dismissing a toast does **not delete** it.
+  - Toast dismissal sets `dismissed_at` but item remains in Notification Center until cleared/archived.
+
+### 3) Anti-spam / Grouping
+- Implement batching/grouping to avoid spam:
+  - Example: “3 missions completed — tap to review”
+  - Example: “Crafting finished (2) — tap to collect”
+- Grouping logic:
+  - Use `group_key` (category + entity id + time window).
+  - Group notifications that occur within a configurable window (e.g., **60–120 seconds**).
+- Priority levels: `critical`, `high`, `normal`, `low`.
+
+### 4) Push vs In-App (delivery channels)
+- The **in-app notification record** is the source of truth.
+- Push notifications are optional and separate:
+  - Only send if user opted in
+  - Only for priority ≥ `high`
+  - Respect quiet hours
+  - Avoid double-notifying if user is currently active in-app
+
+## Data Model (Server-authoritative)
+Create a `notifications` table (preferred) instead of storing only locally.
+
+### notifications table (minimum fields)
+- `id` (uuid or serial)
+- `user_id` (fk)
+- `type` (enum/string: `mission_complete`, `craft_complete`, `outpost_alert`, `system_update`, etc.)
+- `category` (enum/string: `missions`, `crafting`, `outposts`, `system`)
+- `priority` (enum/string: `critical|high|normal|low`)
+- `title` (text)
+- `body` (text)
+- `deep_link` (json/text: screen + entity ids)
+- `group_key` (text, nullable)
+- `created_at` (timestamp)
+- `read_at` (timestamp nullable)
+- `dismissed_at` (timestamp nullable)
+- `archived_at` (timestamp nullable)
+
+### Events that generate notifications
+Use existing long-running activities:
+- **Missions** completing/failing
+- **Crafting** finishing
+- **Outpost** critical events/raids
+- **System** announcements (patch notes / season start)
+
+When an activity transitions to a terminal state (success/fail/complete), create a notification row.
+For grouped events, either:
+- Create a new notification and mark previous grouped ones as `archived_at`, OR
+- Update an existing grouped notification’s title/body/count.
+
+## App Integration Requirements
+
+### Navigation / Deep Links
+- Each notification has a `deep_link` that opens the correct screen, e.g.:
+  - Mission results screen with missionRunId
+  - Crafting screen with craftJobId
+  - Outpost view with outpostId
+  - News/updates modal
+- Tapping a toast or Notification Center item navigates and sets `read_at`.
+
+### State & Rendering
+- App must display:
+  - Toast overlay component with queue
+  - Notification Center list screen
+  - Badge count (unread)
+- Notifications should sync:
+  - On app start / resume: fetch latest notifications
+  - Poll periodically OR use realtime if available
+  - When a toast appears, it should also already exist in the Notification Center
+
+## Acceptance Criteria
+1) Toast appears for `high`/`critical` notifications, can be dismissed/swiped, taps deep link, marks read.
+2) Notification Center lists all notifications (including dismissed toasts), supports filtering, sections, bulk actions.
+3) Badge count reflects unread count accurately.
+4) Grouping prevents spam for bursts of mission/crafting completions.
+5) Database table exists and API endpoints exist:
+   - `GET /notifications?user_id=...`
+   - `POST /notifications/mark-read`
+   - `POST /notifications/mark-all-read`
+   - `POST /notifications/clear-read`
+   - (Optional) `POST /notifications/archive`
+6) Retention policy prunes old read notifications.
+
+## Implementation Notes
+- Choose sane defaults:
+  - toast duration: 5s
+  - grouping window: 90s
+  - max visible toasts: 2
+  - retention: 500 max, prune oldest read first
+- Ensure system is resilient if offline (cache last fetch locally; reconcile on reconnect).
+
+Build this end-to-end: schema/migrations, backend endpoints, frontend UI components (toast + inbox), and wiring from mission/crafting/outpost completion events into notification creation.

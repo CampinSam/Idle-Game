@@ -1,0 +1,72 @@
+.building-progress-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.building-progress-track {
+  position: relative;
+  width: 100%;
+  height: 24px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.building-progress-track.large {
+  height: 36px;
+  border-radius: 10px;
+}
+
+.building-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+  border-radius: inherit;
+  transition: width 0.5s ease;
+}
+
+.building-progress-fill.ready {
+  background: linear-gradient(90deg, #059669, #10B981);
+}
+
+.building-progress-track.clickable {
+  cursor: pointer;
+}
+
+.building-progress-track.clickable:active {
+  transform: scale(0.98);
+}
+
+.building-progress-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+}
+
+.building-progress-track.large .building-progress-text {
+  font-size: 16px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.building-progress-compact {
+  margin-bottom: 6px;
+}

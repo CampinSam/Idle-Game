@@ -1,0 +1,290 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+
+export interface LocationContext {
+  buildings?: { buildingDefId: string; rooms?: { roomDefId: string }[] }[];
+  rooms?: { roomDefId: string }[];
+  regionId?: string | null;
+  parentBuildingRooms?: { roomDefId: string }[];
+}
+
+export interface RequirementContext {
+  user: any;
+  userFlags: Record<string, any>;
+  allPlayerLocations?: LocationContext[];
+  currentLocation?: LocationContext;
+  parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
+}
+
+@Injectable()
+export class GameRulesService {
+  constructor(private prisma: PrismaService) {}
+
+  compareValues(actual: number, target: number, operator: string): boolean {
+    switch (operator) {
+      case 'exists':
+        return actual !== undefined && actual !== null;
+      case 'eq':
+        return actual === target;
+      case 'neq':
+        return actual !== target;
+      case 'gt':
+        return actual > target;
+      case 'gte':
+        return actual >= target;
+      case 'lt':
+        return actual < target;
+      case 'lte':
+        return actual <= target;
+      default:
+        return actual >= target;
+    }
+  }
+
+  checkRequirement(req: any, context: RequirementContext): boolean {
+    const op = req.operator ?? (req.type === 'flag' ? 'eq' : 'gte');
+
+    switch (req.type) {
+      case 'keeper_level':
+        return this.compareValues(context.user.keeperLevel ?? 0, Number(req.value ?? 0), op);
+      case 'team_size':
+        return true;
+      case 'trait':
+        return true;
+      case 'flag': {
+        const flagVal = context.userFlags[req.key];
+        if (op === 'exists') return flagVal !== undefined && flagVal !== null;
+        if (op === 'dne') return flagVal === undefined || flagVal === null;
+        if (flagVal === undefined || flagVal === null) return false;
+        const numFlag = Number(flagVal);
+        const numTarget = Number(req.value);
+        const bothNumeric = !isNaN(numFlag) && !isNaN(numTarget);
+        if (bothNumeric) return this.compareValues(numFlag, numTarget, op);
+        if (op === 'eq') return String(flagVal) === String(req.value);
+        if (op === 'neq') return String(flagVal) !== String(req.value);
+        return false;
+      }
+      case 'has_building': {
+        const ids = req.ids as string[];
+        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
+        const allLocs = context.allPlayerLocations ?? [];
+        return ids.some(id =>
+          allLocs.some(loc => loc.buildings?.some(b => b.buildingDefId === id)),
+        );
+      }
+      case 'has_room': {
+        const ids = req.ids as string[];
+        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
+        const allLocs = context.allPlayerLocations ?? [];
+        return ids.some(id =>
+          allLocs.some(loc =>
+            loc.buildings?.some(b => b.rooms?.some(r => r.roomDefId === id)) ||
+            loc.rooms?.some(r => r.roomDefId === id),
+          ),
+        );
+      }
+      case 'parent_has_building': {
+        const ids = req.ids as string[];
+        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
+        const loc = context.currentLocation;
+        if (!loc) return false;
+        return ids.some(id => loc.buildings?.some(b => b.buildingDefId === id));
+      }
+      case 'parent_has_room': {
+        const ids = req.ids as string[];
+        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
+        const bld = context.parentBuilding;
+        if (!bld) return false;
+        return ids.some(id => bld.rooms?.some(r => r.roomDefId === id));
+      }
+      case 'in_region': {
+        const ids = req.ids as string[];
+        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
+        const loc = context.currentLocation;
+        if (!loc || !loc.regionId) return false;
+        return ids.includes(loc.regionId);
+      }
+      case 'building':
+      case 'currency':
+      case 'item':
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  checkRequirements(reqs: any, context: RequirementContext): boolean {
+    if (!reqs || !Array.isArray(reqs) || reqs.length === 0) return true;
+    return reqs.every((req: any) => this.checkRequirement(req, context));
+  }
+
+  checkVisibility(visReqs: any, user: any, userFlags?: Record<string, any>, extra?: Partial<RequirementContext>): boolean {
+    if (!visReqs || !Array.isArray(visReqs) || visReqs.length === 0) return true;
+    const flags = userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags : {});
+    return visReqs.every((req: any) => this.checkRequirement(req, { user, userFlags: flags as Record<string, any>, ...extra }));
+  }
+
+  buildRequirementContext(user: any, extra?: Partial<RequirementContext>): RequirementContext {
+    const userFlags = (user.flags && typeof user.flags === 'object') ? user.flags as Record<string, any> : {};
+    return { user, userFlags, ...extra };
+  }
+
+  async applyFlagEffect(userId: string, effect: any): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return;
+    const flags = (user.flags && typeof user.flags === 'object') ? { ...(user.flags as any) } : {};
+    const op = effect.operation ?? 'set';
+
+    switch (op) {
+      case 'set':
+        flags[effect.key] = effect.value;
+        break;
+      case 'increment':
+        flags[effect.key] = (typeof flags[effect.key] === 'number' ? flags[effect.key] : 0) + Number(effect.value ?? 1);
+        break;
+      case 'decrement':
+        flags[effect.key] = (typeof flags[effect.key] === 'number' ? flags[effect.key] : 0) - Number(effect.value ?? 1);
+        break;
+      case 'invert':
+        flags[effect.key] = !flags[effect.key];
+        break;
+      case 'remove':
+        delete flags[effect.key];
+        break;
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { flags } });
+  }
+
+  rollOdds(odds: number | undefined, rng?: { chance: (p: number) => boolean }): boolean {
+    const o = odds ?? 100;
+    if (o >= 100) return true;
+    if (o <= 0) return false;
+    if (rng) return rng.chance(o / 100);
+    return Math.random() * 100 < o;
+  }
+
+  async processEffectsWithBundles(
+    userId: string,
+    effects: any[],
+    rng?: { chance: (p: number) => boolean },
+  ): Promise<void> {
+    if (!effects || !Array.isArray(effects)) return;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return;
+    const reqContext = this.buildRequirementContext(user);
+
+    const applyEntry = async (effect: any) => {
+      if (effect.requirements && !this.checkRequirements(effect.requirements, reqContext)) return;
+      if (!this.rollOdds(effect.odds, rng)) return;
+      if (effect.type === 'flag') {
+        await this.applyFlagEffect(userId, effect);
+      }
+    };
+
+    const processItems = async (items: any[]) => {
+      for (const item of items) {
+        if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
+        if (item.bundle && Array.isArray(item.bundle)) {
+          if (!this.rollOdds(item.odds, rng)) continue;
+          await processItems(item.bundle);
+        } else {
+          await applyEntry(item);
+        }
+      }
+    };
+
+    await processItems(effects);
+  }
+
+  resolveOutcomes(
+    items: any[],
+    reqContext: RequirementContext,
+    rng?: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
+  ): { resolved: { entry: any; amount?: number }[]; texts: string[] } {
+    const texts: string[] = [];
+
+    const pickWeightedText = (pool: any[]): { message: string } | undefined => {
+      if (pool.length === 0) return undefined;
+      const totalOdds = pool.reduce((sum: number, t: any) => sum + (t.odds ?? 100), 0);
+      let roll = rng ? rng.nextInt(0, totalOdds - 1) : Math.floor(Math.random() * totalOdds);
+      for (const t of pool) {
+        roll -= (t.odds ?? 100);
+        if (roll < 0) return t;
+      }
+      return pool[pool.length - 1];
+    };
+
+    const collectTexts = (entries: any[]): any[] => {
+      const out: any[] = [];
+      for (const e of entries) {
+        if (e.bundle && Array.isArray(e.bundle)) continue;
+        if (e.type === 'text') out.push(e);
+      }
+      return out;
+    };
+
+    const applyText = (picked: { message: string } | undefined) => {
+      if (picked) texts.push(picked.message);
+    };
+
+    const rollAmount = (min: number, max: number): number => {
+      if (min === max) return min;
+      if (rng) return rng.nextInt(min, max);
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    };
+
+    const resolved: { entry: any; amount?: number }[] = [];
+
+    const resolveItems = (entries: any[]) => {
+      for (const item of entries) {
+        if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
+        if (item.bundle && Array.isArray(item.bundle)) {
+          if (!this.rollOdds(item.odds, rng)) continue;
+          resolveItems(item.bundle);
+          applyText(pickWeightedText(collectTexts(item.bundle)));
+        } else {
+          if (item.type === 'text') continue;
+          if (item.type === 'flag' || item.type === 'emitEvent') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            resolved.push({ entry: item });
+          } else {
+            const amount = rollAmount(item.min || 0, item.max || 0);
+            if (amount <= 0) continue;
+            if (!this.rollOdds(item.odds, rng)) continue;
+            resolved.push({ entry: item, amount });
+          }
+        }
+      }
+    };
+
+    resolveItems(items);
+    applyText(pickWeightedText(collectTexts(items)));
+
+    return { resolved, texts };
+  }
+
+  async resolveName(type: string, key: string): Promise<string> {
+    if (type === 'currency') {
+      const cur = await (this.prisma as any).currency.findUnique({ where: { id: key }, select: { name: true } });
+      if (cur?.name) return cur.name;
+    } else if (type === 'item') {
+      const item = await (this.prisma as any).itemDefinition.findUnique({ where: { id: key }, select: { name: true } });
+      if (item?.name) return item.name;
+    }
+    return key;
+  }
+
+  countTeamTraits(entities: any[], traitKey: string): number {
+    let count = 0;
+    for (const entity of entities) {
+      const traits = entity.traits as any;
+      if (traits && typeof traits === 'object') {
+        for (const slot of Object.values(traits)) {
+          if (slot === traitKey) count++;
+        }
+      }
+    }
+    return count;
+  }
+}

@@ -1,0 +1,108 @@
+# Derp Birds Idle Game — Inventory System Spec (Prisma + Postgres)
+This spec adds an inventory system for **materials, potions, consumables, and gear**, designed to mesh cleanly with the already-implemented currency system.
+
+Key design:
+- **Item definitions are data-driven** (like currencies).
+- **Stackable items** (materials/potions) use per-user quantity rows.
+- **Gear** can be either stackable (simple) or **instanced** (unique rolls). This spec supports both; you can ship stackables first and add instances later.
+- Inventory mutations should be **atomic** and (optionally) ledgered for audit/debugging.
+
+---
+
+## 1) Data Model Overview
+### Two rails inside "Inventory":
+1) **Item Catalog (ItemDef)** — what items exist, their type/rarity/stacking rules, and any JSON-configurable data.
+2) **User Holdings**
+   - **UserItemBalance** — stackable quantities per item
+   - **GearInstance** — unique gear objects (optional, for rolled stats/affixes/durability)
+3) **ItemLedger** — append-only audit trail (recommended)
+
+---
+
+## 2) Prisma Models
+
+Add these to `schema.prisma` (adjust `User` id field types if needed).
+
+```prisma
+enum ItemType {
+  MATERIAL
+  POTION
+  CONSUMABLE
+  GEAR
+  QUEST
+}
+
+model ItemDef {
+  id        String   @id // e.g. "mat_iron_ore", "potion_heal_small", "gear_sword_common"
+  name      String
+  type      ItemType
+  iconKey   String?
+  rarity    Int      @default(1) // 1..5 etc
+  stackable Boolean  @default(true)
+  maxStack  Int?     // null = unlimited stack
+  data      Json     @default("{}") // item config: potion effect, gear base stats, crafting tags, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  balances  UserItemBalance[]
+  gear      GearInstance[]
+}
+
+model UserItemBalance {
+  userId    String
+  itemId    String
+  quantity  BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item      ItemDef  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@id([userId, itemId])
+  @@index([itemId])
+  @@index([userId])
+}
+
+//
+// OPTIONAL (recommended for real gear):
+// unique gear objects with rolled stats, durability, sockets, etc.
+//
+model GearInstance {
+  id         String   @id @default(cuid())
+  userId     String
+  itemId     String   // references ItemDef; should be type=GEAR and stackable=false
+  level      Int      @default(1)
+  isEquipped Boolean  @default(false)
+  slot       String?  // "weapon", "helm", etc (optional)
+  data       Json     @default("{}") // rolled stats/affixes/durability/sockets
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item       ItemDef  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([itemId])
+}
+
+//
+// RECOMMENDED: inventory audit log (like currency ledger)
+//
+model ItemLedger {
+  id         BigInt   @id @default(autoincrement())
+  userId     String
+  itemId     String
+  delta      BigInt   // +gain / -spend (for stackables)
+  reason     String   // "mission_reward", "craft_cost", "consume_potion", etc
+  sourceType String?  // "mission", "crafting", "shop", "system", "admin"
+  sourceId   String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item       ItemDef  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([itemId, createdAt(sort: Desc)])
+}

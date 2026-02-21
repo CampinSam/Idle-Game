@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perps.game/schemas/ui/modal-spec-v1.json",
+  "title": "ModalSpecV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "kind", "dismiss", "header", "body", "buttons"],
+  "properties": {
+    "version": { "const": 1 },
+
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable id for telemetry + debugging (not necessarily globally unique forever, but unique for the response)."
+    },
+
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Semantic modal kind for analytics + client routing."
+    },
+
+    "dismiss": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backdrop", "x", "escape"],
+      "properties": {
+        "backdrop": { "type": "boolean" },
+        "x": { "type": "boolean" },
+        "escape": { "type": "boolean" }
+      }
+    },
+
+    "header": { "$ref": "#/$defs/header" },
+
+    "body": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/block" }
+    },
+
+    "buttons": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/button" }
+    },
+
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional analytics context.",
+      "properties": {
+        "sourceType": { "type": "string" },
+        "sourceId": { "type": "string" },
+        "notificationId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "templateId": { "type": "string" },
+        "experiment": { "type": "string" }
+      }
+    }
+  },
+
+  "$defs": {
+    "assetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetKey"],
+      "properties": {
+        "assetKey": { "type": "string", "minLength": 1 },
+        "alt": { "type": "string" }
+      }
+    },
+
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "icon": { "$ref": "#/$defs/assetRef" },
+        "banner": { "$ref": "#/$defs/assetRef" }
+      }
+    },
+
+    "button": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "variant", "action"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "variant": {
+          "type": "string",
+          "enum": ["primary", "secondary", "ghost", "danger"]
+        },
+        "disabled": { "type": "boolean" },
+        "requiresConfirm": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "body"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1 },
+            "body": { "$ref": "#/$defs/richTextDoc" },
+            "confirmLabel": { "type": "string" },
+            "cancelLabel": { "type": "string" }
+          }
+        },
+        "action": { "$ref": "#/$defs/action" }
+      }
+    },
+
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "CLOSE_MODAL",
+            "NAVIGATE",
+            "ACK_NOTIFICATION",
+            "COMPLETE_JOB",
+            "CLAIM_GIFT",
+            "OPEN_INVENTORY",
+            "OPEN_MISSIONS",
+            "OPEN_CRAFTING",
+            "REPEAT_MISSION",
+            "CRAFT_AGAIN",
+            "API_CALL"
+          ]
+        },
+
+        "route": { "type": "string" },
+        "params": { "type": "object" },
+
+        "notificationId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "giftId": { "type": "string" },
+        "missionDefId": { "type": "string" },
+        "recipeDefId": { "type": "string" },
+
+        "apiKey": {
+          "type": "string",
+          "description": "Allowlisted server-defined key, not a raw URL."
+        },
+        "payload": { "type": "object" }
+      },
+
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "NAVIGATE" } } },
+          "then": { "required": ["route"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "ACK_NOTIFICATION" } } },
+          "then": { "required": ["notificationId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "COMPLETE_JOB" } } },
+          "then": { "required": ["jobId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "CLAIM_GIFT" } } },
+          "then": { "required": ["giftId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "REPEAT_MISSION" } } },
+          "then": { "required": ["missionDefId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "CRAFT_AGAIN" } } },
+          "then": { "required": ["recipeDefId"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "API_CALL" } } },
+          "then": { "required": ["apiKey"] }
+        }
+      ]
+    },
+
+    "block": {
+      "oneOf": [
+        { "$ref": "#/$defs/block_richText" },
+        { "$ref": "#/$defs/block_divider" },
+        { "$ref": "#/$defs/block_image" },
+        { "$ref": "#/$defs/block_metaRows" },
+        { "$ref": "#/$defs/block_timer" },
+        { "$ref": "#/$defs/block_progress" },
+        { "$ref": "#/$defs/block_rewardsPreview" },
+        { "$ref": "#/$defs/block_rewardsList" },
+        { "$ref": "#/$defs/block_inventoryDelta" },
+        { "$ref": "#/$defs/block_giftReveal" },
+        { "$ref": "#/$defs/block_error" }
+      ]
+    },
+
+    "blockBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" }
+      }
+    },
+
+    "block_richText": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "richText" },
+            "doc": { "$ref": "#/$defs/richTextDoc" }
+          },
+          "required": ["doc"]
+        }
+      ]
+    },
+
+    "block_divider": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        { "properties": { "type": { "const": "divider" } } }
+      ]
+    },
+
+    "block_image": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "image" },
+            "image": { "$ref": "#/$defs/assetRef" },
+            "caption": { "type": "string" }
+          },
+          "required": ["image"]
+        }
+      ]
+    },
+
+    "block_metaRows": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "metaRows" },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "value"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "value": { "type": "string" }
+                }
+              }
+            }
+          },
+          "required": ["rows"]
+        }
+      ]
+    },
+
+    "block_timer": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "timer" },
+            "label": { "type": "string" },
+            "endsAt": { "type": "string", "format": "date-time" }
+          },
+          "required": ["endsAt"]
+        }
+      ]
+    },
+
+    "block_progress": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "progress" },
+            "label": { "type": "string" },
+            "current": { "type": "number", "minimum": 0 },
+            "max": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "required": ["current", "max"]
+        }
+      ]
+    },
+
+    "block_rewardsPreview": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "rewardsPreview" },
+            "items": { "$ref": "#/$defs/rewardItems" }
+          },
+          "required": ["items"]
+        }
+      ]
+    },
+
+    "block_rewardsList": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "rewardsList" },
+            "title": { "type": "string" },
+            "items": { "$ref": "#/$defs/rewardItems" }
+          },
+          "required": ["items"]
+        }
+      ]
+    },
+
+    "block_inventoryDelta": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "inventoryDelta" },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "qtyDelta"],
+                "properties": {
+                  "assetKey": { "type": "string" },
+                  "name": { "type": "string" },
+                  "qtyDelta": { "type": "integer" }
+                }
+              }
+            }
+          },
+          "required": ["items"]
+        }
+      ]
+    },
+
+    "block_giftReveal": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "giftReveal" },
+            "gift": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["giftId", "title"],
+              "properties": {
+                "giftId": { "type": "string" },
+                "title": { "type": "string" },
+                "image": { "$ref": "#/$defs/assetRef" }
+              }
+            },
+            "rewards": { "$ref": "#/$defs/rewardItems" }
+          },
+          "required": ["gift"]
+        }
+      ]
+    },
+
+    "block_error": {
+      "allOf": [
+        { "$ref": "#/$defs/blockBase" },
+        {
+          "properties": {
+            "type": { "const": "error" },
+            "message": { "type": "string" }
+          },
+          "required": ["message"]
+        }
+      ]
+    },
+
+    "rewardItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "assetKey": { "type": "string" },
+          "name": { "type": "string" },
+          "qty": { "type": "integer", "minimum": 0 },
+          "rarity": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    },
+
+    "richTextDoc": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/richTextNode" }
+    },
+
+    "richTextNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t"],
+      "properties": {
+        "t": {
+          "type": "string",
+          "enum": ["p", "h1", "h2", "ul", "li", "text", "strong", "em", "code", "br", "link", "token"]
+        },
+        "v": { "type": "string" },
+        "c": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/richTextNode" }
+        },
+        "href": { "type": "string" },
+        "key": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "t": { "const": "text" } } },
+          "then": { "required": ["v"] }
+        },
+        {
+          "if": { "properties": { "t": { "const": "token" } } },
+          "then": { "required": ["key"] }
+        },
+        {
+          "if": { "properties": { "t": { "enum": ["p", "h1", "h2", "ul", "li", "strong", "em", "code", "link"] } } },
+          "then": { "required": ["c"] }
+        },
+        {
+          "if": { "properties": { "t": { "const": "link" } } },
+          "then": { "required": ["href"] }
+        }
+      ]
+    }
+  }
+}

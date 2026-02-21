@@ -1,0 +1,184 @@
+[
+  {
+    "id": "dave",
+    "archetype": "Dave",
+    "slotStats": {
+      "head": { "ATK": 1 },
+      "beak": { "ATK": 1 },
+      "eyes": { "FOC": 1 },
+      "body": { "VIT": 1 },
+      "ears": { "FOC": 1 },
+      "back": { "DEF": 1 },
+      "tail": { "SPD": 1 }
+    }
+  },
+  {
+    "id": "astro",
+    "archetype": "Astro",
+    "slotStats": {
+      "head": { "SPD": 1 },
+      "beak": { "SPD": 1 },
+      "eyes": { "FOC": 1 },
+      "body": { "VIT": 1 },
+      "ears": { "FOC": 1 },
+      "back": { "DEF": 1 },
+      "tail": { "SPD": 1 }
+    }
+  },
+  {
+    "id": "magician",
+    "archetype": "Magician",
+    "slotStats": {
+      "head": { "FOC": 1 },
+      "beak": { "FOC": 1 },
+      "eyes": { "FOC": 1 },
+      "body": { "VIT": 1 },
+      "ears": { "FOC": 1 },
+      "back": { "DEF": 1 },
+      "tail": { "SPD": 1 }
+    }
+  },
+  {
+    "id": "ninja",
+    "archetype": "Ninja",
+    "slotStats": {
+      "head": { "SPD": 1, "ATK": 1 },
+      "beak": { "ATK": 1, "SPD": 1 },
+      "eyes": { "SPD": 1, "FOC": 1 },
+      "body": { "VIT": 1, "SPD": 1 },
+      "ears": { "SPD": 1, "FOC": 1 },
+      "back": { "DEF": 1, "SPD": 1 },
+      "tail": { "SPD": 1, "ATK": 1 }
+    }
+  },
+  {
+    "id": "redneck",
+    "archetype": "Redneck",
+    "slotStats": {
+      "head": { "ATK": 1, "VIT": 1 },
+      "beak": { "ATK": 1, "VIT": 1 },
+      "eyes": { "ATK": 1, "LCK": 1 },
+      "body": { "VIT": 1, "ATK": 1 },
+      "ears": { "LCK": 1, "ATK": 1 },
+      "back": { "DEF": 1, "VIT": 1 },
+      "tail": { "SPD": 1, "ATK": 1 }
+    }
+  },
+  {
+    "id": "stoner",
+    "archetype": "Stoner",
+    "slotStats": {
+      "head": { "LCK": 1, "FOC": 1 },
+      "beak": { "LCK": 1, "SPD": 1 },
+      "eyes": { "LCK": 1, "FOC": 1 },
+      "body": { "VIT": 1, "LCK": 1 },
+      "ears": { "LCK": 1, "FOC": 1 },
+      "back": { "DEF": 1, "LCK": 1 },
+      "tail": { "SPD": 1, "LCK": 1 }
+    }
+  },
+  {
+    "id": "dj",
+    "archetype": "DJ",
+    "slotStats": {
+      "head": { "FOC": 1, "SPD": 1, "LCK": 1 },
+      "beak": { "SPD": 1, "FOC": 1, "LCK": 1 },
+      "eyes": { "FOC": 1, "SPD": 1, "LCK": 1 },
+      "body": { "VIT": 1, "DEF": 1, "FOC": 1 },
+      "ears": { "FOC": 1, "SPD": 1, "LCK": 1 },
+      "back": { "DEF": 1, "FOC": 1, "SPD": 1 },
+      "tail": { "SPD": 1, "LCK": 1, "FOC": 1 }
+    }
+  },
+  {
+    "id": "viking",
+    "archetype": "Viking",
+    "slotStats": {
+      "head": { "ATK": 1, "VIT": 1, "DEF": 1 },
+      "beak": { "ATK": 1, "VIT": 1, "DEF": 1 },
+      "eyes": { "ATK": 1, "SPD": 1, "DEF": 1 },
+      "body": { "VIT": 1, "ATK": 1, "DEF": 1 },
+      "ears": { "DEF": 1, "VIT": 1, "ATK": 1 },
+      "back": { "DEF": 1, "VIT": 1, "ATK": 1 },
+      "tail": { "SPD": 1, "ATK": 1, "VIT": 1 }
+    }
+  },
+  {
+    "id": "monk",
+    "archetype": "Monk",
+    "slotStats": {
+      "head": { "DEF": 1, "FOC": 1, "VIT": 1, "SPD": 1 },
+      "beak": { "DEF": 1, "FOC": 1, "SPD": 1, "VIT": 1 },
+      "eyes": { "FOC": 1, "DEF": 1, "VIT": 1, "SPD": 1 },
+      "body": { "VIT": 1, "DEF": 1, "FOC": 1, "SPD": 1 },
+      "ears": { "DEF": 1, "FOC": 1, "VIT": 1, "LCK": 1 },
+      "back": { "DEF": 1, "FOC": 1, "VIT": 1, "SPD": 1 },
+      "tail": { "SPD": 1, "DEF": 1, "FOC": 1, "VIT": 1 }
+    }
+  },
+  {
+    "id": "corpo",
+    "archetype": "Corpo",
+    "slotStats": {
+      "head": { "DEF": 1, "FOC": 1, "SPD": 1, "LCK": 1 },
+      "beak": { "DEF": 1, "FOC": 1, "SPD": 1, "ATK": 1 },
+      "eyes": { "FOC": 1, "DEF": 1, "SPD": 1, "LCK": 1 },
+      "body": { "VIT": 1, "DEF": 1, "FOC": 1, "SPD": 1 },
+      "ears": { "FOC": 1, "DEF": 1, "SPD": 1, "LCK": 1 },
+      "back": { "DEF": 1, "FOC": 1, "SPD": 1, "LCK": 1 },
+      "tail": { "SPD": 1, "DEF": 1, "FOC": 1, "LCK": 1 }
+    }
+  },
+  {
+    "id": "cyborg",
+    "archetype": "Cyborg",
+    "slotStats": {
+      "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }
+    }
+  },
+  {
+    "id": "buff",
+    "archetype": "Buff",
+    "slotStats": {
+      "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 },
+      "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }
+    }
+  },
+  {
+    "id": "mad_scientist",
+    "archetype": "Mad Scientist",
+    "slotStats": {
+      "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
+    }
+  },
+  {
+    "id": "deity",
+    "archetype": "Deity",
+    "slotStats": {
+      "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+      "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
+    }
+  }
+]

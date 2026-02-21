@@ -1,0 +1,106 @@
+enum ItemRarity {
+  common
+  uncommon
+  scare
+  advanced
+  rare
+  Ultra_rare
+  epic
+  mythic
+  legendary
+}
+
+model ItemDefinition {
+  id              String   @id
+  version         Int      @default(1)
+
+  type            ItemType
+  rarity          ItemRarity
+
+  // Display
+  name            String
+  description     String?
+  iconKey     String?
+  uiColor         String?
+  category    ItemCategory @default(MISC)
+  groups      String[]         @default("[]")
+
+  // Flexible categorization
+  tags            String[] @default([])
+
+  // Stacking
+  stackable       Boolean  @default(false)
+  maxStack        Int?     // null if non-stackable
+
+  // Ownership behavior
+  uniqueInstance  Boolean  @default(false)
+  tradable        Boolean  @default(true)
+  bindOnEquip     Boolean  @default(false)
+  bindOnPickup    Boolean  @default(false)
+
+  // Instance State Schema
+  hasState        Boolean  @default(false)
+  stateSchema     Json?    // JSON schema for instance.state
+
+  // Equip Configuration (JSONB for flexibility)
+  equipData       Json?    // slotFootprint, conflicts, restrictions
+
+  // Effects
+  statModifiers   Json?    // {"atk":25,"spd":10}
+  passiveEffects  Json?    // [{"id":"bonus_vs_dark","params":{}}]
+
+  // Consumable Data
+  consumableData  Json?    // charges, durationTicks, etc.
+
+  // Crafting Metadata
+  craftingData    Json?    // salvageReturns, categories, etc.
+
+  // Catch All
+  data Json?
+
+  // Seasonal
+  seasonId        String?  // nullable, only for seasonal items
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Indexes
+  @@index([kind])
+  @@index([rarity])
+  @@index([seasonId])
+}
+
+model ItemInstance {
+  id             String   @id @default(uuid())
+
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  definitionId   String
+  definition     ItemDefinition @relation(fields: [definitionId], references: [id])
+
+  // Stackable handling
+  quantity       Int      @default(1)
+
+  // Dynamic state for unique items
+  state          Json?    // {"level":5,"durability":87,"rolls":{}}
+
+  // Equipment linkage
+  equippedToId   String?  // Bird or other entity
+
+  // Binding
+  bound          Boolean  @default(false)
+
+  // Trade
+  tradeLocked    Boolean  @default(false)
+
+  // Catch All
+  data Json?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([definitionId])
+  @@index([equippedToId])
+}

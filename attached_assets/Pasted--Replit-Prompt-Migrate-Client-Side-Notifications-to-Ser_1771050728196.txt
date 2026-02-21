@@ -1,0 +1,174 @@
+# Replit Prompt — Migrate Client-Side Notifications to Server-Authoritative Notifications (Derp Birds Idle Game)
+
+You are working in an existing idle-game codebase. Currently, notifications/toasts are generated client-side only. Upgrade the system so that **notifications are stored and managed server-side** (Postgres), and the client becomes a renderer + cache. Implement end-to-end: DB schema + backend APIs + job-completion hooks + client sync + toast/inbox behavior.
+
+## High-level Requirements
+
+### Source of truth
+- The backend must be the **authoritative ledger** for notifications.
+- The client must NOT “invent” server-derived notifications (mission complete, crafting done, outpost alerts, system announcements). It only displays and updates state (read/dismiss/archive).
+
+### Event sources
+Server notifications must be created from server-known events:
+- Mission completion (success/fail)
+- Crafting completion
+- Outpost critical alerts/raids (if applicable)
+- System announcements (admin-published updates)
+
+### UX behavior (client)
+- Toasts are ephemeral overlays; Notification Center is persistent.
+- Toast dismiss ≠ delete. Dismiss sets `dismissed_at` but item remains in Notification Center until cleared/archived.
+- Toasts appear only for priority ≥ `high` by default.
+- Notification Center supports: unread badge count, filters by category, bulk actions (mark all read, clear read).
+
+## Database (Postgres)
+
+### Create table: notifications
+Fields:
+- `id` UUID PK (default gen_random_uuid())
+- `player_id` UUID NOT NULL (indexed)
+- `type` TEXT NOT NULL (e.g. `mission_complete`, `craft_complete`, `outpost_alert`, `system_update`)
+- `category` TEXT NOT NULL (`missions|crafting|outposts|system`)
+- `priority` TEXT NOT NULL (`critical|high|normal|low`)
+- `title` TEXT NOT NULL
+- `body` TEXT NOT NULL
+- `deep_link` JSONB NOT NULL (screen + ids payload)
+- `meta` JSONB NOT NULL DEFAULT '{}'::jsonb (for counts/grouping, etc.)
+- `group_key` TEXT NULL
+- `source_type` TEXT NULL (e.g. `mission_run`, `craft_job`)
+- `source_id` UUID/TEXT NULL (id of the job/run)
+- `created_at` TIMESTAMPTZ NOT NULL DEFAULT now()
+- `read_at` TIMESTAMPTZ NULL
+- `dismissed_at` TIMESTAMPTZ NULL
+- `archived_at` TIMESTAMPTZ NULL
+
+Indexes:
+- `(player_id, created_at DESC)`
+- `(player_id, read_at)`
+- `(player_id, archived_at)`
+- `(player_id, group_key)` optional
+
+Idempotency:
+- Add UNIQUE constraint on `(player_id, source_type, source_id, type)` to prevent duplicates.
+
+Retention:
+- Implement a server job/cron that caps notifications per player to **500**, pruning oldest **read AND archived** first, then oldest **read**, and never deleting unread unless extremely old (configurable).
+
+## Backend API
+
+Implement these endpoints (auth required; `player_id` derived from auth/session, not passed by client):
+
+1) `GET /api/notifications`
+- Supports cursor pagination:
+  - query: `limit` (default 50, max 100)
+  - query: `cursorCreatedAt` + `cursorId` (optional)
+  - query: `includeArchived` (default false)
+- Returns:
+  - `items`: ordered newest-first
+  - `nextCursor`: `{ createdAt, id }` or null
+  - `unreadCount`: count where `read_at IS NULL AND archived_at IS NULL`
+
+2) `POST /api/notifications/:id/read`
+- Sets `read_at = now()` if null.
+
+3) `POST /api/notifications/:id/dismiss`
+- Sets `dismissed_at = now()` if null.
+
+4) `POST /api/notifications/mark-all-read`
+- Sets `read_at = now()` for all unread + not archived.
+
+5) `POST /api/notifications/clear-read`
+- Sets `archived_at = now()` for all read + not archived (or actually delete if desired, but prefer archive for safety).
+
+(Optionally) `POST /api/notifications/:id/archive`
+
+### Grouping / Anti-spam (server-side)
+Implement grouping when inserting:
+- Compute `group_key` for relevant types:
+  - missions: `missions:<outpostId>` or `missions:<playerId>` if no outpost context
+  - crafting: `crafting:<stationId>` or `crafting:<outpostId>`
+- Grouping window: 90 seconds.
+- When creating a new notification:
+  - If an existing notification exists for the same `player_id`, same `group_key`, unread, not archived, created within last 90s:
+    - Update it instead of inserting a new row:
+      - Increment `meta.count`
+      - Update `title/body` to a summary like “3 missions completed — tap to review”
+      - Update `deep_link` to route to the relevant collection view
+  - Else insert a new row with `meta.count = 1`.
+
+## Hook notifications into job completion
+
+### Completion strategy
+Implement at least one of:
+- **Lazy finalize (preferred fast path):**
+  - Whenever client calls `GET /api/jobs` or `POST /api/jobs/claim`, the server checks for jobs with `end <= now()` (or ticks) and status not finalized.
+  - Finalize them and insert notifications idempotently.
+- **Worker finalize (optional but recommended):**
+  - Background worker/cron scans due jobs and finalizes them; inserts notifications.
+
+### Insert notifications idempotently
+When a job is finalized (mission run/craft job):
+- Create notification using `source_type` + `source_id`.
+- Use UPSERT to avoid duplicates due to retries.
+
+Notification details:
+- mission success:
+  - type: `mission_complete`
+  - category: `missions`
+  - priority: `high`
+  - title: “Mission Complete”
+  - body: “<MissionName>: Success — rewards ready”
+  - deep_link: `{ "screen": "MissionResult", "missionRunId": "..." }`
+- mission fail:
+  - priority: `normal` (or `high` if you want)
+- crafting complete:
+  - type: `craft_complete`
+  - category: `crafting`
+  - priority: `high`
+  - deep_link: `{ "screen": "Crafting", "craftJobId": "..." }`
+
+## Client Changes
+
+### Stop creating server-derived notifications locally
+- Remove/disable client code that generates notifications for mission/crafting/outpost/system events.
+- The client must fetch from `GET /api/notifications` and display them.
+
+### Sync & UI behavior
+- On app start/resume:
+  - Fetch first page of notifications
+  - Cache locally (AsyncStorage/SQLite depending on codebase)
+- Poll every 30–60 seconds (simple solution). Later can switch to websockets.
+- Toast behavior:
+  - When new notifications arrive (compare `created_at` > lastSeenCreatedAt):
+    - If priority >= high and not dismissed:
+      - show toast overlay
+  - Toast actions:
+    - Dismiss -> call `POST /:id/dismiss`
+    - Tap -> navigate using deep_link; call `POST /:id/read`
+- Notification Center:
+  - List all notifications (excluding archived by default)
+  - Filters by category
+  - Bulk actions call the bulk endpoints
+  - Badge count uses `unreadCount` from API
+
+### Offline handling
+- If offline:
+  - show cached notifications
+  - queue read/dismiss actions and replay when online (best effort)
+  - never generate “mission complete” notifications locally; those come from server once sync occurs.
+
+## Acceptance Criteria / Tests
+1) Completing a mission/craft results in a row in `notifications` created by the server (no duplicates on retries).
+2) Client displays toast for new `high|critical` notifications and can dismiss/tap.
+3) Notification Center shows the notification even after toast is dismissed.
+4) Read/dismiss states persist across app restarts and across devices (server-authoritative).
+5) Grouping works: multiple completions within 90 seconds produce one aggregated notification with `meta.count`.
+6) `GET /api/notifications` supports cursor pagination and returns `unreadCount`.
+7) Retention job caps to 500 per player and prunes safely.
+
+## Deliverables
+- DB migration(s) for `notifications`
+- Backend routes/controllers/services
+- Job-finalization hook that creates notifications
+- Client integration: fetch/sync, toast queue, inbox screen updates, badge
+- Minimal documentation: how to trigger and verify end-to-end flow

@@ -1,0 +1,272 @@
+DERP BIRDS IDLE GAME
+OUTPOST STORAGE CAPACITY SPEC (OPTION A: BUFFERS + CAPS + CLAIM)
+(PRISMA + POSTGRES + TICK-BASED TIME)
+
+This spec extends the existing tick-based Outpost backend to support storage capacities so outposts cannot produce forever.
+Chosen approach: OPTION A (Recommended)
+- Production accrues into per-outpost storage buffers.
+- Buffers are capped by per-output capacity derived from upgrades (outpost level, rooms, generators, support buildings).
+- On settlement, production is CLAMPED by remaining capacity (overflow is effectively wasted).
+- Player must CLAIM to transfer buffered outputs into global wallet (currencies) and inventory (items).
+
+Assumptions:
+- Global ticking system already exists and provides currentWorldTick.
+- Currency system already exists and supports tx-aware credit functions.
+- Inventory system already exists and supports tx-aware grant functions.
+- All balances are BigInt.
+- JSON API uses strings for BigInt values.
+
+============================================================
+1) CORE BEHAVIOR
+============================================================
+
+A) Production settlement (tick-based) now writes into outpost buffers, not directly to the user.
+B) Buffers cannot exceed capacity. If buffers are full, additional production is clamped to 0.
+C) Claim transfers buffered outputs to the user's wallet/inventory and clears buffers.
+
+Key times when settlement runs:
+- GET /outposts/:id (view outpost)
+- POST /outposts/:id/claim
+- Any outpost mutation endpoint (upgrade building/room/outpost, assign workers, activate/deactivate, etc.)
+
+Settlement ALWAYS runs before any mutation.
+
+============================================================
+2) NEW DATABASE MODEL: OUTPOST STORAGE BUFFERS
+============================================================
+
+Add a new table for per-outpost buffered outputs.
+One row per (outpostId, outputType, outputRefId).
+
+Prisma model:
+
+model OutpostStorageBalance {
+  outpostId   String
+  outputType  OutputType   // CURRENCY | ITEM
+  outputRefId String       // currencyId OR itemId
+  amount      BigInt       @default(0)
+  updatedAt   DateTime     @updatedAt
+
+  outpost     Outpost      @relation(fields: [outpostId], references: [id], onDelete: Cascade)
+
+  @@id([outpostId, outputType, outputRefId])
+  @@index([outpostId])
+  @@index([outputType, outputRefId])
+}
+
+Recommended DB safety constraint (SQL migration):
+ALTER TABLE "OutpostStorageBalance"
+ADD CONSTRAINT outpost_storage_nonnegative CHECK (amount >= 0);
+
+============================================================
+3) CAPACITY MODEL (DERIVED FROM UPGRADES)
+============================================================
+
+Capacity should be computed server-side from:
+- Outpost level
+- Rooms (e.g., Warehouse / Storage rooms)
+- Generator upgrades (optional: generator-specific storage bonuses)
+- Support buildings (optional)
+
+Capacity is defined per “output key”:
+- "CURRENCY:<currencyId>"
+- "ITEM:<itemId>"
+
+Example output keys:
+- CURRENCY:soft_gold
+- ITEM:mat_iron_ore
+
+A) Capacity function (recommended)
+Use integer math with basis points multipliers:
+
+capacity = (base + flatAdds) * multBps / 10_000
+
+Where:
+- base: baseline capacity from outpost level and/or region
+- flatAdds: sum of flat bonuses from rooms/buildings/upgrades
+- multBps: multiplicative bonuses from rooms/buildings/upgrades (1.00x = 10_000)
+
+B) Where to store capacity rules
+Store curves and bonuses in definition JSON:
+- Outpost level curve in server config (or a table if you prefer)
+- RoomDef.data can contain:
+  - capacityFlatByKey
+  - capacityMultBpsByKey
+  - or capacityByCategory, etc.
+- BuildingDef.data can contain:
+  - capacityFlatByKey
+  - capacityMultBpsByKey
+
+Example RoomDef.data snippets (conceptual):
+{
+  "capacityFlat": {
+    "ITEM:mat_iron_ore": "500",
+    "ITEM:mat_wood": "500"
+  },
+  "capacityMultBps": {
+    "CURRENCY:soft_gold": 11000
+  }
+}
+
+IMPORTANT: store numeric BigInt-like values as strings in JSON config to avoid precision issues.
+
+C) Optional caching
+You can compute capacity on demand per settlement, OR cache per outpost and invalidate on:
+- outpost level change
+- room added/upgraded
+- building added/upgraded
+- building enabled/disabled
+- worker assignment changes if workers affect capacity (optional)
+
+Caching is optional; correctness comes first.
+
+============================================================
+4) UPDATED OUTPOST SETTLEMENT (CAPACITY-AWARE)
+============================================================
+
+Settlement now:
+1) Reads currentWorldTick
+2) Computes elapsedTicks = currentWorldTick - outpost.lastAccruedTick
+3) Computes theoretical production amounts for each generator building
+4) Merges theoretical production by output key
+5) For each output key:
+   - capacity = getCapacityForKey(outpost, key)
+   - currentStored = OutpostStorageBalance.amount (0 if missing)
+   - available = max(0, capacity - currentStored)
+   - produced = min(theoretical, available)
+   - storeDelta = produced
+6) Writes storeDelta into OutpostStorageBalance via upsert + increment
+7) Updates outpost.lastAccruedTick = currentWorldTick
+8) Returns produced summary (used for claim UI, etc.)
+
+Overflow behavior:
+- Anything above available capacity is ignored (wasted).
+- This enforces “cannot produce forever” and incentivizes claim/upgrades.
+
+Safety recommendation:
+- Cap elapsedTicks to prevent runaway accrual in case of outages/bugs:
+  MAX_ELAPSED_TICKS = 7 days worth of ticks (or your preferred cap)
+
+Basis points math:
+- Use bps multipliers for building/worker/room/threat.
+- Apply stepwise: amount = amount * multBps / 10_000
+
+------------------------------------------------------------
+Settlement pseudocode (inside one DB transaction)
+------------------------------------------------------------
+
+Inputs:
+- tx: Prisma transaction client
+- userId, outpostId
+- currentTick (BigInt)
+
+Steps:
+
+A) Load outpost state:
+- outpost + buildings(def) + rooms(def) + workers
+- existing OutpostStorageBalance rows for that outpost (or fetch on demand per key)
+
+B) Compute elapsedTicks:
+elapsedTicks = currentTick - outpost.lastAccruedTick
+if elapsedTicks <= 0 -> return
+
+(optional) clamp elapsedTicks to cap
+
+C) Compute theoretical production merged by key:
+theoreticalByKey = Map<key, BigInt>
+
+For each GENERATOR building:
+  base = def.baseOutputPerTick * elapsedTicks
+  apply multipliers -> theoretical
+  key = outputType + ":" + outputRefId
+  theoreticalByKey[key] += theoretical
+
+D) Clamp by capacity and update buffers:
+for each key in theoreticalByKey:
+  capacity = getCapacityForKey(outpost, key)
+  currentStored = storageByKey[key] ?? 0
+  available = max(0, capacity - currentStored)
+  produced = min(theoreticalByKey[key], available)
+
+  if produced > 0:
+    upsert OutpostStorageBalance row and increment amount by produced
+
+E) Update outpost.lastAccruedTick = currentTick
+
+Return produced summary (optional).
+
+============================================================
+5) CLAIM ENDPOINT (TRANSFER BUFFER -> USER WALLET/INVENTORY)
+============================================================
+
+Endpoint:
+POST /outposts/:id/claim
+
+Behavior (ONE transaction):
+1) currentTick = getCurrentWorldTick()
+2) settleOutpostTx(tx, outpostId, userId, currentTick)   // capacity-aware settlement
+3) Read all OutpostStorageBalance rows for outpostId
+4) For each row with amount > 0:
+   - If outputType == CURRENCY:
+       creditCurrencyTx(tx, userId, currencyId=outputRefId, amount, reason="outpost_claim", sourceType="outpost", sourceId=outpostId)
+   - If outputType == ITEM:
+       grantItemsTx(tx, userId, itemId=outputRefId, quantity=amount, reason="outpost_claim", sourceType="outpost", sourceId=outpostId)
+5) Clear buffers (recommended: set amount=0 for all rows, or delete rows with amount=0)
+6) Return claimed summary to client:
+   - currencies: [{currencyId, amount}]
+   - items: [{itemId, quantity}]
+
+Notes:
+- Claim is the point where global wallet/inventory increases.
+- Outpost view should show:
+  - stored amount per key
+  - capacity per key
+  - % full and “FULL” indicator
+- Consider adding claim cooldowns or UX constraints if desired; backend is agnostic.
+
+============================================================
+6) API CHANGES / ADDITIONS
+============================================================
+
+A) GET /outposts/:id
+- settleOutpostTx first
+- return:
+  - outpost state
+  - buildings/rooms/workers
+  - storage buffers (amount per key)
+  - derived capacities per key (or enough info for UI to show bars)
+
+B) POST /outposts/:id/claim
+- as defined above
+
+C) Mutations (upgrade/assign)
+- always call settleOutpostTx first
+
+============================================================
+7) IMPLEMENTATION REQUIREMENTS
+============================================================
+
+1) Add OutpostStorageBalance model + migration
+2) Implement getCapacityForKey(outpost, key)
+   - uses outpost level curve + room/building data
+3) Update settlement to:
+   - compute theoretical outputs
+   - clamp to capacity
+   - write to OutpostStorageBalance
+4) Implement claim transfer logic using tx-aware currency/inventory services
+5) Ensure BigInt serialization:
+   - API request/response amounts are strings
+
+============================================================
+8) OPTIONAL PRODUCTION HARDENING NOTES
+============================================================
+
+- Index OutpostStorageBalance by outpostId (done) for fast reads.
+- Use merged per-key outputs to minimize writes.
+- Clamp elapsedTicks and sanity-check maximum possible production per cap.
+- Consider idempotency keys for /claim to prevent double-claim on retries:
+  - store idempotency response or claim record.
+
+============================================================
+END OF OUTPOST STORAGE CAPACITY SPEC
+============================================================

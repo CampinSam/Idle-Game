@@ -1,0 +1,821 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CurrencyType {
+  SOFT
+  HARD
+  PREMIUM
+  SEASONAL
+  EVENT
+  GUILD
+}
+
+model User {
+  id             String   @id @default(uuid())
+  username       String   @unique
+  email          String   @unique
+  passwordHash   String?
+  authProvider   String?
+  providerId     String?
+  walletAddress  String?
+  keeperLevel    Int      @default(1)
+  keeperXp       BigInt   @default(0)
+  prestigeTokens Int      @default(0)
+  flags          Json     @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  entities           Entity[]
+  locationInstances  LocationInstance[]
+  jobs               Job[]
+  notifications      Notification[]
+  currencyBalances   UserCurrencyBalance[]
+  currencyLedger     CurrencyLedger[]
+  itemInstances      ItemInstance[]     @relation("UserItemInstances")
+  itemLedger         ItemLedger[]
+  giftInstances      GiftInstance[]
+  playerDeltas       PlayerDelta[]
+
+  @@unique([authProvider, providerId])
+  @@map("users")
+}
+
+model Currency {
+  id          String       @id
+  name        String
+  symbol      String?
+  iconKey     String?
+  type        CurrencyType
+  seasonId    String?
+  isTradeable Boolean      @default(false)
+  isSpendable Boolean      @default(true)
+  decimals    Int          @default(0)
+  cap         BigInt?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  balances    UserCurrencyBalance[]
+  ledger      CurrencyLedger[]
+
+  @@map("currencies")
+}
+
+model UserCurrencyBalance {
+  userId     String
+  currencyId String
+  balance    BigInt      @default(0)
+  updatedAt  DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency   Currency    @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+
+  @@id([userId, currencyId])
+  @@index([currencyId])
+  @@index([userId])
+  @@map("user_currency_balances")
+}
+
+model CurrencyLedger {
+  id         BigInt     @id @default(autoincrement())
+  userId     String
+  currencyId String
+
+  delta      BigInt
+  reason     String
+  sourceType String?
+  sourceId   String?
+  metadata   Json       @default("{}")
+  createdAt  DateTime   @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency   Currency   @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([currencyId, createdAt(sort: Desc)])
+  @@map("currency_ledger")
+}
+
+// ═══════════════════════════════════════════════════
+// ENTITY (CHARACTER) DEFINITION TABLES
+// ═══════════════════════════════════════════════════
+
+model EntityDefinition {
+  id                     String   @id
+  speciesId              String
+  bodySchemaId           String
+  equipmentSchemaId      String
+  progressionProfileId   String
+  rules                  Json     @default("{}")
+  data                   Json     @default("{}")
+
+  bodySchema             BodySchema           @relation(fields: [bodySchemaId], references: [id])
+  equipmentSchema        EquipmentSchema      @relation(fields: [equipmentSchemaId], references: [id])
+  progressionProfile     ProgressionProfile   @relation(fields: [progressionProfileId], references: [id])
+
+  entities               Entity[]
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([speciesId])
+  @@map("entity_definitions")
+}
+
+model BodySchema {
+  id    String   @id
+  slots Json     @default("[]")
+  data  Json     @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entityDefinitions EntityDefinition[]
+
+  @@map("body_schemas")
+}
+
+model ProgressionProfile {
+  id               String   @id
+  leveling         Boolean  @default(true)
+  ascension        Boolean  @default(true)
+  mastery          Boolean  @default(true)
+  prestigeEligible Boolean  @default(true)
+  maxLevel         Int      @default(50)
+  ascensionCap     Int      @default(5)
+  data             Json     @default("{}")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  entityDefinitions EntityDefinition[]
+
+  @@map("progression_profiles")
+}
+
+model EquipmentSchema {
+  id     String   @id
+  schema Json     @default("{}")
+  data   Json     @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entityDefinitions EntityDefinition[]
+
+  @@map("equipment_schemas")
+}
+
+model TraitDefinition {
+  id            String   @id
+  archetype     String
+  slotStats     Json     @default("{}")
+  tags          Json     @default("[]")
+  data          Json     @default("{}")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([archetype])
+  @@map("trait_definitions")
+}
+
+// ═══════════════════════════════════════════════════
+// ENTITY (CHARACTER) INSTANCE TABLES
+// ═══════════════════════════════════════════════════
+
+model Entity {
+  id              String   @id @default(uuid())
+  ownerUserId     String
+  nftAssetId      String?  @unique
+
+  definitionId    String
+  speciesId       String
+  role            String   @default("player_unit")
+
+  display         Json     @default("{}")
+  progression     Json     @default("{}")
+  stats           Json     @default("{}")
+  traits          Json     @default("{}")
+  archetypeVector Json     @default("{}")
+  affinities      Json     @default("{}")
+  state           Json     @default("{}")
+
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner           User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  definition      EntityDefinition @relation(fields: [definitionId], references: [id])
+
+  equipment       EntityEquipment[]
+  workerAssignments LocationWorkerAssignment[]
+
+  @@index([ownerUserId])
+  @@index([speciesId])
+  @@index([definitionId])
+  @@map("entities")
+}
+
+model EntityEquipment {
+  id              String   @id @default(uuid())
+  entityId        String
+  itemInstanceId  String
+  slotClaims      Json     @default("[]")
+  equippedAt      DateTime @default(now())
+
+  entity          Entity   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([entityId])
+  @@map("entity_equipment")
+}
+
+// ═══════════════════════════════════════════════════
+// LOCATION / OUTPOST DEFINITION TABLES
+// ═══════════════════════════════════════════════════
+
+model RegionDefinition {
+  id          String   @id
+  displayName String
+  biome       String?
+  modifiers   Json     @default("{}")
+  data        Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  locationDefinitions LocationDefinition[]
+
+  @@map("region_definitions")
+}
+
+model LocationDefinition {
+  id                       String   @id
+  kind                     String   @default("outpost_fungible")
+  regionId                 String?
+  isUnique                 Boolean  @default(false)
+  rules                    Json     @default("{}")
+  productionProfile        Json     @default("{}")
+  data                     Json     @default("{}")
+  requirements             Json     @default("[]")
+  visibilityRequirements   Json     @default("[]")
+
+  region            RegionDefinition? @relation(fields: [regionId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  instances         LocationInstance[]
+
+  @@index([regionId])
+  @@map("location_definitions")
+}
+
+model BuildingDef {
+  id                       String   @id
+  name                     String
+  description              String?
+  tags                     Json     @default("[]")
+  rules                    Json     @default("{}")
+  data                     Json     @default("{}")
+  requirements             Json     @default("[]")
+  visibilityRequirements   Json     @default("[]")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  buildingInstances    LocationBuildingInstance[]
+
+  @@map("building_defs")
+}
+
+model RoomDef {
+  id                       String   @id
+  name                     String
+  description              String?
+  tags                     Json     @default("[]")
+  rules                    Json     @default("{}")
+  data                     Json     @default("{}")
+  requirements             Json     @default("[]")
+  visibilityRequirements   Json     @default("[]")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roomInstances    LocationRoomInstance[]
+
+  @@map("room_defs")
+}
+
+// ═══════════════════════════════════════════════════
+// LOCATION / OUTPOST INSTANCE TABLES
+// ═══════════════════════════════════════════════════
+
+model LocationInstance {
+  id              String   @id @default(uuid())
+  ownerUserId     String
+  nftAssetId      String?  @unique
+
+  definitionId    String
+  regionId        String?
+  kind            String   @default("outpost_fungible")
+  isUnique        Boolean  @default(false)
+
+  level           Int      @default(1)
+  xp              BigInt   @default(0)
+
+  threatLevel     Int      @default(0)
+  corruptionLevel Int      @default(0)
+
+  lastCollectionTick BigInt @default(0)
+
+  storage         Json     @default("{}")
+  state           Json     @default("{}")
+  enabled         Boolean  @default(true)
+
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  owner           User               @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  definition      LocationDefinition @relation(fields: [definitionId], references: [id])
+
+  buildings       LocationBuildingInstance[]
+  workerAssignments LocationWorkerAssignment[]
+
+  @@index([ownerUserId])
+  @@index([definitionId])
+  @@map("location_instances")
+}
+
+model LocationBuildingInstance {
+  id              String   @id @default(uuid())
+  locationId      String
+  buildingDefId   String
+  level           Int      @default(1)
+  state           Json     @default("{}")
+  enabled         Boolean  @default(true)
+
+  location        LocationInstance @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  buildingDef     BuildingDef      @relation(fields: [buildingDefId], references: [id], onDelete: Restrict)
+  rooms           LocationRoomInstance[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([locationId])
+  @@index([buildingDefId])
+  @@map("location_building_instances")
+}
+
+model LocationRoomInstance {
+  id                  String   @id @default(uuid())
+  buildingInstanceId  String
+  roomDefId           String
+  level               Int      @default(1)
+  state               Json     @default("{}")
+  enabled             Boolean  @default(true)
+
+  building            LocationBuildingInstance @relation(fields: [buildingInstanceId], references: [id], onDelete: Cascade)
+  roomDef             RoomDef          @relation(fields: [roomDefId], references: [id], onDelete: Restrict)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([buildingInstanceId])
+  @@index([roomDefId])
+  @@map("location_room_instances")
+}
+
+model LocationWorkerAssignment {
+  id         String   @id @default(uuid())
+  locationId String
+  entityId   String
+  roleTag    String   @default("production")
+  bonus      Json     @default("{}")
+  assignedAt DateTime @default(now())
+
+  location   LocationInstance @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  entity     Entity           @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, entityId])
+  @@index([locationId])
+  @@index([entityId])
+  @@map("location_worker_assignments")
+}
+
+// ═══════════════════════════════════════════════════
+// EXISTING MODELS (unchanged)
+// ═══════════════════════════════════════════════════
+
+model IdempotencyKey {
+  id           String   @id
+  userId       String
+  endpoint     String
+  commandType  String   @default("")
+  requestHash  String
+  responseJson Json
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, endpoint, id])
+  @@unique([userId, commandType, id])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("idempotency_keys")
+}
+
+model PlayerDelta {
+  id        BigInt   @id @default(autoincrement())
+  userId    String
+  patches   Json
+  ui        Json?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, id])
+  @@map("player_deltas")
+}
+
+model DisplayDef {
+  id              String   @id
+  name            String
+  borderColor     String?
+  backgroundImage String?
+  cardBackground  String?
+  data            Json     @default("{}")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  missionCategoryDefs MissionCategoryDef[]
+  missionDefs         MissionDef[]
+
+  @@map("display_defs")
+}
+
+model MissionCategoryDef {
+  id                       String      @id
+  name                     String
+  parentId                 String?
+  parent                   MissionCategoryDef?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children                 MissionCategoryDef[] @relation("CategoryHierarchy")
+  displayDefId             String?
+  displayDef               DisplayDef? @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
+  tags                     Json        @default("[]")
+  requirements             Json        @default("[]")
+  visibilityRequirements   Json        @default("[]")
+  enabled                  Boolean     @default(true)
+  sortOrder                Int         @default(0)
+  data                     Json        @default("{}")
+
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  missionDefs              MissionDef[]
+
+  @@map("mission_category_defs")
+}
+
+model MissionDef {
+  id                       String             @id
+  name                     String
+  description              String?
+  type                     String
+  category                 String?
+  group                    String?
+  difficulty               Int                @default(0)
+  minSuccessChance         Int                @default(0)
+  maxSuccessChance         Int                @default(100)
+  timer                    Json               @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
+  success                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
+  failure                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
+  requirements             Json               @default("[]")
+  visibilityRequirements   Json               @default("[]")
+  tags                     Json               @default("[]")
+  rewardPreview            Json               @default("[]")
+  enabled                  Boolean            @default(true)
+  displayDefId             String?
+  displayDef               DisplayDef?        @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
+  missionCategoryDefId     String?
+  missionCategoryDef       MissionCategoryDef? @relation(fields: [missionCategoryDefId], references: [id], onDelete: SetNull)
+  data                     Json               @default("{}")
+
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+
+  @@index([missionCategoryDefId])
+  @@map("mission_defs")
+}
+
+model RecipeDef {
+  id                       String   @id
+  name                     String
+  description              String?
+  category                 String?
+  group                    String?
+  cost                     Json     @default("{}")
+  timer                    Json     @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
+  requiredKeeperLevel      Int      @default(1)
+  rewards                  Json     @default("{}")
+  requirements             Json     @default("[]")
+  effects                  Json     @default("[]")
+  visibilityRequirements   Json     @default("[]")
+  data                     Json     @default("{}")
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("recipe_defs")
+}
+
+enum JobType {
+  MissionJob
+  CraftingJob
+  BuildingJob
+}
+
+model Job {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          JobType
+  defId         String
+  status        String   @default("active")
+  timer         Json     @default("{}")
+  team          Json     @default("[]")
+  results       Json?
+  data          Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, type, status])
+  @@index([type, status])
+  @@index([defId])
+  @@map("jobs")
+}
+
+model TickRateInterval {
+  id                String   @id @default(uuid())
+  ticksPerSecond    Float    @default(1.0)
+  effectiveFromTime DateTime
+  effectiveFromTick Float
+  boostEventId      String?
+  boostEvent        BoostEvent? @relation(fields: [boostEventId], references: [id])
+  createdAt         DateTime @default(now())
+
+  @@index([effectiveFromTime])
+  @@map("tick_rate_intervals")
+}
+
+model BoostEvent {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  multiplier  Float
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("scheduled")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  intervals   TickRateInterval[]
+
+  @@index([status])
+  @@index([startTime])
+  @@map("boost_events")
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  SCARCE
+  ADVANCED
+  RARE
+  ULTRA_RARE
+  EPIC
+  MYTHIC
+  LEGENDARY
+}
+
+enum ItemType {
+  MATERIAL
+  POTION
+  CONSUMABLE
+  GEAR
+  QUEST
+}
+
+enum ItemCategory {
+  MISC
+  CRAFTING
+  COMBAT
+  EXPLORATION
+  QUEST_ITEMS
+  ENHANCEMENT
+}
+
+model ItemDefinition {
+  id              String       @id
+  version         Int          @default(1)
+
+  type            ItemType
+  rarity          ItemRarity   @default(COMMON)
+
+  name            String
+  description     String?
+  iconKey         String?
+  iconUrl         String?
+  uiColor         String?
+  category        ItemCategory @default(MISC)
+  groups          String[]     @default([])
+
+  tags            String[]     @default([])
+
+  stackable       Boolean      @default(false)
+  maxStack        Int?
+
+  uniqueInstance  Boolean      @default(false)
+  tradable        Boolean      @default(true)
+  bindOnEquip     Boolean      @default(false)
+  bindOnPickup    Boolean      @default(false)
+
+  hasState        Boolean      @default(false)
+  stateSchema     Json?
+
+  equipData       Json?
+  statModifiers   Json?
+  passiveEffects  Json?
+  consumableData  Json?
+  craftingData    Json?
+  data            Json?
+
+  seasonId        String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  instances       ItemInstance[]
+  ledger          ItemLedger[]
+
+  @@index([type])
+  @@index([rarity])
+  @@index([seasonId])
+  @@map("item_defs")
+}
+
+model ItemInstance {
+  id             String   @id @default(uuid())
+
+  userId         String
+  user           User     @relation("UserItemInstances", fields: [userId], references: [id], onDelete: Cascade)
+
+  definitionId   String
+  definition     ItemDefinition @relation(fields: [definitionId], references: [id])
+
+  quantity       Int      @default(1)
+
+  state          Json?
+
+  equippedToId   String?
+
+  bound          Boolean  @default(false)
+
+  tradeLocked    Boolean  @default(false)
+
+  data           Json?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([definitionId])
+  @@index([equippedToId])
+  @@map("item_instances")
+}
+
+model ItemLedger {
+  id         BigInt   @id @default(autoincrement())
+  userId     String
+  itemId     String
+  delta      BigInt
+  reason     String
+  sourceType String?
+  sourceId   String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item       ItemDefinition  @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([itemId, createdAt(sort: Desc)])
+  @@map("item_ledger")
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  category    String
+  priority    String
+  title       String
+  body        String
+  deepLink    Json?     @default("{}")
+  meta        Json      @default("{}")
+  groupKey    String?
+  sourceType  String?
+  sourceId    String?
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+  dismissedAt DateTime?
+  archivedAt  DateTime?
+
+  @@unique([userId, sourceType, sourceId, type], name: "notifications_source_unique")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([userId, archivedAt])
+  @@index([userId, groupKey])
+  @@index([category])
+  @@map("notifications")
+}
+
+enum GiftStatus {
+  UNCLAIMED
+  CLAIMED
+  EXPIRED
+  REVOKED
+}
+
+model EventDefinition {
+  id              String   @id
+  name            String
+  version         Int      @default(1)
+  kind            String   @default("system")
+  handlerKey      String
+  security        Json     @default("{}")
+  inputSchema     Json     @default("{}")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("event_definitions")
+}
+
+model GiftDef {
+  id              String   @id
+  name            String
+  version         Int      @default(1)
+  presentation    Json     @default("{}")
+  claimRules      Json     @default("{}")
+  rewardSpec      Json     @default("{}")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("gift_defs")
+}
+
+model GiftInstance {
+  id              String     @id @default(uuid())
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  giftDefId       String
+  giftDefVersion  Int
+
+  status          GiftStatus @default(UNCLAIMED)
+  createdAt       DateTime   @default(now())
+  expiresAt       DateTime?
+
+  sourceType      String?
+  sourceId        String?
+  idempotencyKey  String?    @unique
+
+  snapshot        Json
+  claim           Json?
+  claimTxId       String?    @unique
+
+  @@index([userId, status])
+  @@map("gift_instances")
+}
+
+model GiftClaimTx {
+  id        String   @id @default(uuid())
+  giftId    String   @unique
+  userId    String
+  status    String
+  seed      String
+  rolls     Json     @default("[]")
+  grants    Json     @default("[]")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("gift_claim_txs")
+}

@@ -1,0 +1,76 @@
+modules = ["nodejs-20", "web", "postgresql-16"]
+[agent]
+expertMode = true
+integrations = ["javascript_object_storage:2.0.0"]
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+JWT_SECRET = "replit-dev-jwt-secret-change-in-production"
+JWT_EXPIRES_IN = "7d"
+
+[userenv.development]
+NODE_ENV = "development"
+API_PORT = "3001"
+
+[userenv.production]
+NODE_ENV = "production"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash /home/runner/workspace/start.sh"
+waitForPort = 5000
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
+
+[[ports]]
+localPort = 5555
+externalPort = 3002
+
+[[ports]]
+localPort = 9876
+externalPort = 3003
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd /home/runner/workspace && npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma --accept-data-loss && NODE_ENV=production node apps/api/dist/main.js"]
+build = ["bash", "-c", "cd /home/runner/workspace && pnpm --filter @derp/shared build && pnpm --filter @derp/math build && pnpm --filter @derp/web build && pnpm --filter @derp/api build"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-bdb73ea8-5bc7-48a6-859f-1e1c58b98d1c"

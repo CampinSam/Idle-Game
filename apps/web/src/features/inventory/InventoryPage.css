@@ -1,0 +1,369 @@
+.inventory-page {
+  padding: 12px;
+  padding-bottom: calc(64px + 12px);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 48px);
+}
+
+.inv-container {
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.inv-category-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.inv-category-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.inv-cat-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.inv-cat-tab.active {
+  background: linear-gradient(135deg, var(--derp-purple), var(--derp-blue));
+  border-color: var(--derp-purple);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+}
+
+.inv-grid-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.inv-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.inv-empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.inv-card {
+  position: relative;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  aspect-ratio: 3 / 4;
+  min-width: 0;
+}
+
+.inv-card.selected {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.25);
+}
+
+.inv-card-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.inv-card-img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+
+.inv-card-missing {
+  width: 50%;
+  height: 50%;
+  opacity: 0.35;
+}
+
+.inv-card-qty {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.inv-card-name {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.inv-card-sub {
+  font-size: 9px;
+  color: var(--text-secondary);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.inv-card.rarity-COMMON {
+  background: linear-gradient(135deg, #2a2a3a, #1e1e2e);
+  border-color: #4a4a5a;
+}
+.inv-card.rarity-COMMON.selected { border-color: #8a8a9a; }
+
+.inv-card.rarity-UNCOMMON {
+  background: linear-gradient(135deg, #1a3a2a, #1e2e1e);
+  border-color: #2d8a4e;
+}
+.inv-card.rarity-UNCOMMON.selected { border-color: #4dcb6a; }
+
+.inv-card.rarity-SCARCE {
+  background: linear-gradient(135deg, #1a2a3a, #1e2e3e);
+  border-color: #2d6a8a;
+}
+.inv-card.rarity-SCARCE.selected { border-color: #4db0da; }
+
+.inv-card.rarity-ADVANCED {
+  background: linear-gradient(135deg, #2a2a4a, #2e1e4e);
+  border-color: #5a4aaa;
+}
+.inv-card.rarity-ADVANCED.selected { border-color: #8a7aee; }
+
+.inv-card.rarity-RARE {
+  background: linear-gradient(135deg, #2a2050, #3a1a6a);
+  border-color: #7b5adf;
+}
+.inv-card.rarity-RARE.selected { border-color: #a98aff; }
+
+.inv-card.rarity-ULTRA_RARE {
+  background: linear-gradient(135deg, #3a1a4a, #4a1060);
+  border-color: #c040e0;
+}
+.inv-card.rarity-ULTRA_RARE.selected { border-color: #e060ff; }
+
+.inv-card.rarity-EPIC {
+  background: linear-gradient(135deg, #3a1a1a, #4a1020);
+  border-color: #d04060;
+}
+.inv-card.rarity-EPIC.selected { border-color: #ff6090; }
+
+.inv-card.rarity-MYTHIC {
+  background: linear-gradient(135deg, #3a2a0a, #4a3010);
+  border-color: #e0a020;
+}
+.inv-card.rarity-MYTHIC.selected { border-color: #ffc040; }
+
+.inv-card.rarity-LEGENDARY {
+  background: linear-gradient(135deg, #3a2a00, #4a3a00);
+  border-color: #f0c000;
+  box-shadow: 0 0 8px rgba(240, 192, 0, 0.2);
+}
+.inv-card.rarity-LEGENDARY.selected {
+  border-color: #ffe040;
+  box-shadow: 0 0 16px rgba(240, 192, 0, 0.45);
+}
+
+.inv-detail-panel {
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  animation: inv-slide-up 0.2s ease-out;
+}
+
+@keyframes inv-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.inv-detail-img-wrap {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--border);
+}
+
+.inv-detail-img {
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+}
+
+.inv-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.inv-detail-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.inv-detail-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.inv-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.inv-detail-tag {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.inv-detail-tag.tag-type {
+  background: rgba(58, 123, 213, 0.2);
+  color: var(--derp-blue);
+  border-color: rgba(58, 123, 213, 0.4);
+}
+
+.inv-detail-tag.tag-category {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--derp-purple);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.inv-detail-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inv-manage-btn {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--success-green), #0ea573);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.inv-manage-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.inv-rarity-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.inv-rarity-label.rarity-COMMON { color: #8a8a9a; }
+.inv-rarity-label.rarity-UNCOMMON { color: #4dcb6a; }
+.inv-rarity-label.rarity-SCARCE { color: #4db0da; }
+.inv-rarity-label.rarity-ADVANCED { color: #8a7aee; }
+.inv-rarity-label.rarity-RARE { color: #a98aff; }
+.inv-rarity-label.rarity-ULTRA_RARE { color: #e060ff; }
+.inv-rarity-label.rarity-EPIC { color: #ff6090; }
+.inv-rarity-label.rarity-MYTHIC { color: #ffc040; }
+.inv-rarity-label.rarity-LEGENDARY { color: #ffe040; }
+
+@media (max-width: 360px) {
+  .inv-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

@@ -1,0 +1,982 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "exportedAt": "2026-02-15T12:00:00.000Z",
+    "tables": [
+      "Currency",
+      "ItemDef",
+      "BodySchema",
+      "EquipmentSchema",
+      "ProgressionProfile",
+      "TraitDefinition",
+      "EntityDefinition",
+      "RegionDefinition",
+      "LocationDefinition",
+      "BuildingDef",
+      "RoomDef",
+      "DisplayDef",
+      "MissionCategoryDef",
+      "MissionDef",
+      "RecipeDef",
+      "EventDefinition",
+      "GiftDef"
+    ],
+    "description": "Complete seed data for Derp Universe extracted from seed.ts"
+  },
+
+  "Currency": [
+    { "id": "soft_arcanium", "name": "Arcanium", "symbol": "💎", "iconKey": "arcanium", "type": "SOFT" },
+    { "id": "hard_essence", "name": "Essence", "symbol": "💠", "iconKey": "essence", "type": "HARD" },
+    { "id": "premium_gems", "name": "Gems", "symbol": "💠", "iconKey": "gems", "type": "PREMIUM" },
+    { "id": "season_frost_coin", "name": "Frost Coin", "symbol": "❄️", "iconKey": "frost_coin", "type": "SEASONAL", "seasonId": "season_1" }
+  ],
+
+  "ItemDef": [
+    { "id": "mat_iron_ore", "name": "Iron Ore", "type": "MATERIAL", "category": "CRAFTING", "groups": ["ore", "basic"], "iconKey": "iron_ore", "rarity": "COMMON", "stackable": true, "description": "Common ore used in basic crafting." },
+    { "id": "mat_mana_shard", "name": "Mana Shard", "type": "MATERIAL", "category": "CRAFTING", "groups": ["arcane", "basic"], "iconKey": "mana_shard", "rarity": "UNCOMMON", "stackable": true, "description": "Glimmering shard infused with arcane energy." },
+    { "id": "mat_feather_dust", "name": "Feather Dust", "type": "MATERIAL", "category": "CRAFTING", "groups": ["basic"], "iconKey": "feather_dust", "rarity": "COMMON", "stackable": true, "description": "Fine dust gathered from enchanted feathers." },
+    { "id": "mat_shadow_silk", "name": "Shadow Silk", "type": "MATERIAL", "category": "CRAFTING", "groups": ["rare", "textile"], "iconKey": "shadow_silk", "rarity": "SCARCE", "stackable": true, "description": "Rare silk woven from shadow threads." },
+    { "id": "mat_crystal_bloom", "name": "Crystal Bloom", "type": "MATERIAL", "category": "CRAFTING", "groups": ["arcane", "botanical"], "iconKey": "crystal_bloom", "rarity": "UNCOMMON", "stackable": true, "description": "A flower that grows near ley lines." },
+    { "id": "mat_void_essence", "name": "Void Essence", "type": "MATERIAL", "category": "CRAFTING", "groups": ["rare", "arcane"], "iconKey": "void_essence", "rarity": "RARE", "stackable": true, "description": "Concentrated essence from the void between realms." },
+    { "id": "mat_starlight_dust", "name": "Starlight Dust", "type": "MATERIAL", "category": "CRAFTING", "groups": ["rare", "arcane"], "iconKey": "starlight_dust", "rarity": "ADVANCED", "stackable": true, "description": "Glittering particles that fall from the night sky." },
+    { "id": "potion_heal_small", "name": "Minor Healing Potion", "type": "POTION", "category": "COMBAT", "groups": ["healing"], "iconKey": "potion_heal", "rarity": "COMMON", "stackable": true, "maxStack": 99, "description": "Restores a small amount of health.", "consumableData": { "effect": "heal", "amount": 20 } },
+    { "id": "potion_heal_medium", "name": "Healing Potion", "type": "POTION", "category": "COMBAT", "groups": ["healing"], "iconKey": "potion_heal", "rarity": "UNCOMMON", "stackable": true, "maxStack": 99, "description": "Restores a moderate amount of health.", "consumableData": { "effect": "heal", "amount": 50 } },
+    { "id": "potion_speed_small", "name": "Swift Draught", "type": "POTION", "category": "ENHANCEMENT", "groups": ["buff", "speed"], "iconKey": "potion_speed", "rarity": "COMMON", "stackable": true, "maxStack": 99, "description": "Temporarily increases movement speed.", "consumableData": { "effect": "speed_boost", "duration": 60 } },
+    { "id": "consumable_lucky_charm", "name": "Lucky Charm", "type": "CONSUMABLE", "category": "ENHANCEMENT", "groups": ["buff", "luck"], "iconKey": "lucky_charm", "rarity": "UNCOMMON", "stackable": true, "maxStack": 10, "description": "Boosts luck for the next mission.", "consumableData": { "effect": "luck_boost", "duration": 300 } },
+    { "id": "consumable_xp_scroll", "name": "XP Scroll", "type": "CONSUMABLE", "category": "ENHANCEMENT", "groups": ["buff", "xp"], "iconKey": "xp_scroll", "rarity": "SCARCE", "stackable": true, "maxStack": 5, "description": "Doubles experience gained for the next mission.", "consumableData": { "effect": "xp_boost", "multiplier": 2, "duration": 600 } },
+    { "id": "quest_ancient_map", "name": "Ancient Map Fragment", "type": "QUEST", "category": "QUEST_ITEMS", "groups": ["treasure"], "iconKey": "ancient_map", "rarity": "SCARCE", "stackable": true, "maxStack": 5, "description": "A piece of a larger map leading to forgotten treasure." },
+    { "id": "gear_iron_sword", "name": "Iron Sword", "type": "GEAR", "category": "COMBAT", "groups": ["weapon", "melee"], "iconKey": "iron_sword", "rarity": "COMMON", "stackable": false, "description": "A sturdy blade forged from iron ore.", "equipData": { "slot": "weapon", "stats": { "ATK": 5 } } },
+    { "id": "gear_mana_ring", "name": "Ring of Focus", "type": "GEAR", "category": "COMBAT", "groups": ["accessory", "arcane"], "iconKey": "mana_ring", "rarity": "UNCOMMON", "stackable": false, "description": "A ring that sharpens the wearer's focus.", "equipData": { "slot": "accessory", "stats": { "FOC": 3, "LCK": 1 } } }
+  ],
+
+  "BodySchema": [
+    {
+      "id": "avian_7",
+      "slots": {
+        "head": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "ears": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "beak": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "eyes": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "body": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "back": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "tail": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"]
+      },
+      "data": {}
+    }
+  ],
+
+  "EquipmentSchema": [
+    {
+      "id": "bird_equip_v1",
+      "schema": { "weapon": 1, "armor": 1, "accessory": 2 },
+      "data": {}
+    }
+  ],
+
+  "ProgressionProfile": [
+    {
+      "id": "bird_prog_v1",
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
+      "data": {}
+    }
+  ],
+
+  "TraitDefinition": [
+    {
+      "id": "dave",
+      "archetype": "Dave",
+      "slotStats": { "head": { "ATK": 1 }, "beak": { "ATK": 1 }, "eyes": { "FOC": 1 }, "body": { "VIT": 1 }, "ears": { "FOC": 1 }, "back": { "DEF": 1 }, "tail": { "SPD": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "astro",
+      "archetype": "Astro",
+      "slotStats": { "head": { "SPD": 1 }, "beak": { "SPD": 1 }, "eyes": { "FOC": 1 }, "body": { "VIT": 1 }, "ears": { "FOC": 1 }, "back": { "DEF": 1 }, "tail": { "SPD": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "magician",
+      "archetype": "Magician",
+      "slotStats": { "head": { "FOC": 1 }, "beak": { "FOC": 1 }, "eyes": { "FOC": 1 }, "body": { "VIT": 1 }, "ears": { "FOC": 1 }, "back": { "DEF": 1 }, "tail": { "SPD": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "ninja",
+      "archetype": "Ninja",
+      "slotStats": { "head": { "SPD": 1, "ATK": 1 }, "beak": { "ATK": 1, "SPD": 1 }, "eyes": { "SPD": 1, "FOC": 1 }, "body": { "VIT": 1, "SPD": 1 }, "ears": { "SPD": 1, "FOC": 1 }, "back": { "DEF": 1, "SPD": 1 }, "tail": { "SPD": 1, "ATK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "redneck",
+      "archetype": "Redneck",
+      "slotStats": { "head": { "ATK": 1, "VIT": 1 }, "beak": { "ATK": 1, "VIT": 1 }, "eyes": { "ATK": 1, "LCK": 1 }, "body": { "VIT": 1, "ATK": 1 }, "ears": { "LCK": 1, "ATK": 1 }, "back": { "DEF": 1, "VIT": 1 }, "tail": { "SPD": 1, "ATK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "stoner",
+      "archetype": "Stoner",
+      "slotStats": { "head": { "LCK": 1, "FOC": 1 }, "beak": { "LCK": 1, "SPD": 1 }, "eyes": { "LCK": 1, "FOC": 1 }, "body": { "VIT": 1, "LCK": 1 }, "ears": { "LCK": 1, "FOC": 1 }, "back": { "DEF": 1, "LCK": 1 }, "tail": { "SPD": 1, "LCK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "dj",
+      "archetype": "DJ",
+      "slotStats": { "head": { "FOC": 1, "SPD": 1, "LCK": 1 }, "beak": { "SPD": 1, "FOC": 1, "LCK": 1 }, "eyes": { "FOC": 1, "SPD": 1, "LCK": 1 }, "body": { "VIT": 1, "DEF": 1, "FOC": 1 }, "ears": { "FOC": 1, "SPD": 1, "LCK": 1 }, "back": { "DEF": 1, "FOC": 1, "SPD": 1 }, "tail": { "SPD": 1, "LCK": 1, "FOC": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "viking",
+      "archetype": "Viking",
+      "slotStats": { "head": { "ATK": 1, "VIT": 1, "DEF": 1 }, "beak": { "ATK": 1, "VIT": 1, "DEF": 1 }, "eyes": { "ATK": 1, "SPD": 1, "DEF": 1 }, "body": { "VIT": 1, "ATK": 1, "DEF": 1 }, "ears": { "DEF": 1, "VIT": 1, "ATK": 1 }, "back": { "DEF": 1, "VIT": 1, "ATK": 1 }, "tail": { "SPD": 1, "ATK": 1, "VIT": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "monk",
+      "archetype": "Monk",
+      "slotStats": { "head": { "DEF": 1, "FOC": 1, "VIT": 1, "SPD": 1 }, "beak": { "DEF": 1, "FOC": 1, "SPD": 1, "VIT": 1 }, "eyes": { "FOC": 1, "DEF": 1, "VIT": 1, "SPD": 1 }, "body": { "VIT": 1, "DEF": 1, "FOC": 1, "SPD": 1 }, "ears": { "DEF": 1, "FOC": 1, "VIT": 1, "LCK": 1 }, "back": { "DEF": 1, "FOC": 1, "VIT": 1, "SPD": 1 }, "tail": { "SPD": 1, "DEF": 1, "FOC": 1, "VIT": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "corpo",
+      "archetype": "Corpo",
+      "slotStats": { "head": { "DEF": 1, "FOC": 1, "SPD": 1, "LCK": 1 }, "beak": { "DEF": 1, "FOC": 1, "SPD": 1, "ATK": 1 }, "eyes": { "FOC": 1, "DEF": 1, "SPD": 1, "LCK": 1 }, "body": { "VIT": 1, "DEF": 1, "FOC": 1, "SPD": 1 }, "ears": { "FOC": 1, "DEF": 1, "SPD": 1, "LCK": 1 }, "back": { "DEF": 1, "FOC": 1, "SPD": 1, "LCK": 1 }, "tail": { "SPD": 1, "DEF": 1, "FOC": 1, "LCK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "cyborg",
+      "archetype": "Cyborg",
+      "slotStats": { "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "buff",
+      "archetype": "Buff",
+      "slotStats": { "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 }, "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "mad_scientist",
+      "archetype": "Mad Scientist",
+      "slotStats": { "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 } },
+      "tags": [],
+      "data": {}
+    },
+    {
+      "id": "deity",
+      "archetype": "Deity",
+      "slotStats": { "head": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "beak": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "eyes": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "body": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "ears": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "back": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }, "tail": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 } },
+      "tags": [],
+      "data": {}
+    }
+  ],
+
+  "EntityDefinition": [
+    {
+      "id": "derp_bird",
+      "speciesId": "derp_bird",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
+    }
+  ],
+
+  "RegionDefinition": [
+    { "id": "derpshire_valley", "displayName": "Derpshire Valley", "biome": "plains", "modifiers": { "gatherBonus": 0.05 }, "data": {} },
+    { "id": "verdant_hollow", "displayName": "Verdant Hollow", "biome": "forest", "modifiers": { "gatherBonus": 0.1 }, "data": {} },
+    { "id": "frostpeak_range", "displayName": "Frostpeak Range", "biome": "mountain", "modifiers": { "defenseBonus": 0.15 }, "data": {} },
+    { "id": "shadow_marshes", "displayName": "Shadow Marshes", "biome": "swamp", "modifiers": { "threatReduction": 0.1 }, "data": {} },
+    { "id": "region_verdant_glade", "displayName": "Verdant Glade", "biome": "forest", "modifiers": {}, "data": {} },
+    { "id": "region_crystal_peaks", "displayName": "Crystal Peaks", "biome": "mountain", "modifiers": {}, "data": {} }
+  ],
+
+  "LocationDefinition": [
+    {
+      "id": "derp_outpost",
+      "kind": "outpost_fungible",
+      "regionId": "derpshire_valley",
+      "isUnique": false,
+      "rules": {
+        "level": {
+          "1": {
+            "workers": { "slots": 1 },
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 100 }
+            ],
+            "buildings": {
+              "allowed": [
+                { "buildingDefId": "gen_arcanium_mine" },
+                { "buildingDefId": "stor_warehouse" }
+              ]
+            }
+          },
+          "3": {
+            "workers": { "slots": 2 },
+            "buildings": {
+              "allowed": [
+                { "buildingDefId": "gen_iron_excavator" },
+                { "buildingDefId": "sup_watchtower" }
+              ]
+            }
+          }
+        }
+      },
+      "productionProfile": {},
+      "data": {}
+    },
+    {
+      "id": "outpost_default",
+      "kind": "outpost_fungible",
+      "regionId": "verdant_hollow",
+      "isUnique": false,
+      "rules": {
+        "maxLevel": 50,
+        "xpCurve": "exp",
+        "baseXP": 100,
+        "xpRate": 1.5,
+        "level": {
+          "1": {
+            "workers": { "slots": 2, "rules": {} },
+            "buildings": {
+              "slots": 3,
+              "allowed": [
+                { "buildingDefId": "gen_arcanium_mine", "maxCount": 1, "minCount": 0 },
+                { "buildingDefId": "stor_warehouse", "maxCount": 1, "minCount": 0 }
+              ]
+            },
+            "rooms": {
+              "allowed": [
+                { "roomDefId": "room_storage_vault" },
+                { "roomDefId": "room_workshop" }
+              ]
+            },
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 1000, "growthRate": "linear", "growthScalar": 200 },
+              { "type": "item", "id": "mat_iron_ore", "baseCapacity": 500, "growthRate": "linear", "growthScalar": 100 },
+              { "type": "item", "id": "mat_mana_shard", "baseCapacity": 300, "growthRate": "linear", "growthScalar": 60 }
+            ],
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 3600, "growthRate": "linear", "growthScalar": 360 }
+            ]
+          },
+          "2": {
+            "buildings": {
+              "allowed": [
+                { "buildingDefId": "gen_iron_excavator", "maxCount": 1, "minCount": 0 }
+              ]
+            }
+          },
+          "3": {
+            "buildings": {
+              "allowed": [
+                { "buildingDefId": "gen_mana_collector", "maxCount": 1, "minCount": 0 },
+                { "buildingDefId": "sup_watchtower", "maxCount": 1, "minCount": 0 }
+              ]
+            }
+          },
+          "5": {
+            "workers": { "slots": 3 },
+            "buildings": { "slots": 5 }
+          },
+          "10": {
+            "workers": { "slots": 5 },
+            "buildings": { "slots": 7 }
+          },
+          "20": {
+            "workers": { "slots": 6 }
+          },
+          "30": {
+            "workers": { "slots": 7 }
+          }
+        }
+      },
+      "productionProfile": {},
+      "data": {}
+    }
+  ],
+
+  "BuildingDef": [
+    {
+      "id": "gen_arcanium_mine",
+      "name": "Arcanium Mine",
+      "description": "Extracts raw Arcanium from the earth.",
+      "tags": ["generator", "arcanium"],
+      "rules": {
+        "level": {
+          "1": {
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 60 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 50 }
+            ]
+          },
+          "5": {
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 120 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": []
+    },
+    {
+      "id": "gen_iron_excavator",
+      "name": "Iron Excavator",
+      "description": "Digs up iron ore from deep veins.",
+      "tags": ["generator", "iron"],
+      "rules": {
+        "level": {
+          "1": {
+            "production": [
+              { "type": "item", "id": "mat_iron_ore", "ratePerHour": 30 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 100 },
+              { "type": "item", "id": "mat_iron_ore", "baseAmount": 30 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 2 }]
+    },
+    {
+      "id": "gen_mana_collector",
+      "name": "Mana Collector",
+      "description": "Harvests ambient mana into crystallized shards.",
+      "tags": ["generator", "mana"],
+      "rules": {
+        "level": {
+          "1": {
+            "production": [
+              { "type": "item", "id": "mat_mana_shard", "ratePerHour": 15 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 150 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 3 }]
+    },
+    {
+      "id": "sup_watchtower",
+      "name": "Watchtower",
+      "description": "Reduces threat level over time, protecting your outpost.",
+      "tags": ["defense"],
+      "rules": {
+        "level": {
+          "1": {
+            "effects": [{ "type": "threat_reduction", "amount": 5 }],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 200 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 3 }]
+    },
+    {
+      "id": "stor_warehouse",
+      "name": "Warehouse",
+      "description": "Increases storage capacity for all resource types.",
+      "tags": ["storage"],
+      "rules": {
+        "level": {
+          "1": {
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 500 },
+              { "type": "item", "id": "mat_iron_ore", "baseCapacity": 300 },
+              { "type": "item", "id": "mat_mana_shard", "baseCapacity": 200 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 75 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": []
+    }
+  ],
+
+  "RoomDef": [
+    {
+      "id": "room_storage_vault",
+      "name": "Storage Vault",
+      "description": "Increases storage capacity for all resource types.",
+      "tags": ["storage"],
+      "rules": {
+        "level": {
+          "1": {
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 200 },
+              { "type": "item", "id": "mat_iron_ore", "baseCapacity": 100 }
+            ]
+          }
+        }
+      },
+      "data": {},
+      "requirements": []
+    },
+    {
+      "id": "room_workshop",
+      "name": "Workshop",
+      "description": "Boosts production efficiency for generators.",
+      "tags": ["production"],
+      "rules": {
+        "level": {
+          "1": {
+            "effects": [{ "type": "production_multiplier_bps", "amount": 11000 }]
+          }
+        }
+      },
+      "data": {},
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 2 }]
+    }
+  ],
+
+  "DisplayDef": [
+    { "id": "display_quick_mission", "name": "Quick Mission", "borderColor": "#4dcb6a", "backgroundImage": "/images/mission-quick.png", "cardBackground": null, "data": {} },
+    { "id": "display_standard_mission", "name": "Standard Mission", "borderColor": "#4db0da", "backgroundImage": "/images/mission-standard.png", "cardBackground": null, "data": {} },
+    { "id": "display_outpost_mission", "name": "Outpost Mission", "borderColor": "#8a7aee", "backgroundImage": "/images/mission-outpost.png", "cardBackground": null, "data": {} },
+    { "id": "display_scavenging_mission", "name": "Scavenging Mission", "borderColor": "#e0a020", "backgroundImage": "/images/mission-scavenging.png", "cardBackground": null, "data": {} },
+    { "id": "display_seasonal_mission", "name": "Seasonal Mission", "borderColor": "#c040e0", "backgroundImage": "/images/mission-seasonal.png", "cardBackground": null, "data": {} }
+  ],
+
+  "MissionCategoryDef": [
+    { "id": "cat_quick", "name": "Quick Missions", "displayDefId": "display_quick_mission", "tags": ["quick"], "sortOrder": 1, "requirements": [], "visibilityRequirements": [], "data": {} },
+    { "id": "cat_standard", "name": "Standard Missions", "displayDefId": "display_standard_mission", "tags": ["standard"], "sortOrder": 2, "requirements": [{ "type": "keeper_level", "value": 2 }], "visibilityRequirements": [], "data": {} },
+    { "id": "cat_outpost", "name": "Outpost Missions", "displayDefId": "display_outpost_mission", "tags": ["outpost"], "sortOrder": 3, "requirements": [{ "type": "keeper_level", "value": 5 }], "visibilityRequirements": [], "data": {} },
+    { "id": "cat_scavenging", "name": "Scavenging", "displayDefId": "display_scavenging_mission", "tags": ["scavenging"], "sortOrder": 4, "requirements": [{ "type": "keeper_level", "value": 3 }], "visibilityRequirements": [], "data": {} },
+    { "id": "cat_seasonal", "name": "Seasonal Events", "displayDefId": "display_seasonal_mission", "tags": ["seasonal"], "sortOrder": 5, "enabled": false, "requirements": [], "visibilityRequirements": [], "data": {} }
+  ],
+
+  "MissionDef": [
+    {
+      "id": "mission_quick_gather",
+      "name": "Quick Gather",
+      "description": "Send your birds on a short foraging trip.",
+      "type": "quick",
+      "category": "cat_quick",
+      "missionCategoryDefId": "cat_quick",
+      "displayDefId": "display_quick_mission",
+      "difficulty": 5,
+      "timer": { "duration": 30, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "currency", "key": "soft_arcanium", "min": 25, "max": 25, "odds": 100 },
+          { "type": "item", "key": "mat_feather_dust", "min": 3, "max": 3, "odds": 60 },
+          { "type": "text", "message": "Your birds returned with supplies!", "odds": 100 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "currency", "key": "soft_arcanium", "min": 5, "max": 5, "odds": 100 },
+          { "type": "text", "message": "The trip was uneventful.", "odds": 100 }
+        ]
+      },
+      "rewardPreview": [
+        { "type": "currency", "id": "soft_arcanium", "amount": 25 },
+        { "type": "item", "id": "mat_feather_dust", "amount": 3 }
+      ]
+    },
+    {
+      "id": "mission_iron_run",
+      "name": "Iron Mining Run",
+      "description": "Venture into the caves to mine iron ore.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 10,
+      "timer": { "duration": 90, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "item", "key": "mat_iron_ore", "min": 8, "max": 8, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 4, "max": 4, "odds": 100 },
+          { "type": "text", "message": "Rich iron veins discovered!", "odds": 100 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "item", "key": "mat_iron_ore", "min": 2, "max": 2, "odds": 100 },
+          { "type": "text", "message": "The caves were mostly empty.", "odds": 100 }
+        ]
+      },
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 2 }],
+      "rewardPreview": [
+        { "type": "item", "id": "mat_iron_ore", "amount": 8 },
+        { "type": "currency", "id": "soft_arcanium", "amount": 40 }
+      ]
+    },
+    {
+      "id": "mission_mana_expedition",
+      "name": "Mana Expedition",
+      "description": "Explore ley line convergences to collect mana shards.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 3,
+      "timer": { "duration": 1800, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "item", "key": "mat_mana_shard", "min": 5, "max": 5, "odds": 100 },
+          { "type": "item", "key": "mat_crystal_bloom", "min": 2, "max": 2, "odds": 40 },
+          { "type": "currency", "key": "soft_arcanium", "min": 60, "max": 60, "odds": 100 },
+          { "type": "text", "message": "The ley lines pulsed with energy!", "odds": 100 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "currency", "key": "soft_arcanium", "min": 10, "max": 10, "odds": 100 },
+          { "type": "text", "message": "The ley lines were dormant today.", "odds": 100 }
+        ]
+      },
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 3 }],
+      "rewardPreview": [
+        { "type": "item", "id": "mat_mana_shard", "amount": 5 },
+        { "type": "item", "id": "mat_crystal_bloom", "amount": 2 }
+      ]
+    },
+    {
+      "id": "mission_void_rift",
+      "name": "Void Rift Exploration",
+      "description": "Brave the dangerous void rifts for rare materials.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 5,
+      "timer": { "duration": 3600, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "item", "key": "mat_void_essence", "min": 2, "max": 2, "odds": 100 },
+          { "type": "item", "key": "mat_shadow_silk", "min": 3, "max": 3, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 100, "odds": 100 },
+          { "type": "text", "message": "You navigated the rift successfully!", "odds": 100 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "currency", "key": "soft_arcanium", "min": 15, "max": 15, "odds": 100 },
+          { "type": "text", "message": "The rift collapsed before you could gather much.", "odds": 100 }
+        ]
+      },
+      "requirements": [{ "type": "keeper_level", "operator": "gte", "value": 5 }],
+      "rewardPreview": [
+        { "type": "item", "id": "mat_void_essence", "amount": 2 },
+        { "type": "item", "id": "mat_shadow_silk", "amount": 3 }
+      ]
+    },
+    {
+      "id": "quick_egg_hunt",
+      "name": "The Great Egg Hunt",
+      "description": "Scramble around Derpshire looking for shiny eggs. Try not to sit on them.",
+      "type": "quick",
+      "category": "cat_quick",
+      "missionCategoryDefId": "cat_quick",
+      "displayDefId": "display_quick_mission",
+      "difficulty": 50,
+      "timer": { "duration": 30, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 5 }], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 10, "max": 25, "odds": 100 },
+          { "type": "keeper_xp", "min": 5, "max": 12, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 5, "max": 15, "odds": 100 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 3, "max": 6, "odds": 100 },
+          { "type": "keeper_xp", "min": 1, "max": 3, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 1, "operator": "gte" },
+        { "type": "team_size", "value": 1, "operator": "lte" }
+      ],
+      "rewardPreview": ["⚡ 10-25 XP", "🛡️ 5-12 KXP", "💎 5-15 soft_arcanium"],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "quick_mushroom_patrol",
+      "name": "Suspicious Mushroom Patrol",
+      "description": "Those mushrooms are looking a bit too happy. Investigate immediately.",
+      "type": "quick",
+      "category": "cat_quick",
+      "missionCategoryDefId": "cat_quick",
+      "displayDefId": "display_quick_mission",
+      "difficulty": 75,
+      "timer": { "duration": 300, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 10 }], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 15, "max": 35, "odds": 100 },
+          { "type": "keeper_xp", "min": 8, "max": 18, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 8, "max": 20, "odds": 100 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 4, "max": 9, "odds": 100 },
+          { "type": "keeper_xp", "min": 2, "max": 5, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 1, "operator": "gte" },
+        { "type": "team_size", "value": 2, "operator": "lte" }
+      ],
+      "rewardPreview": ["⚡ 15-35 XP", "🛡️ 8-18 KXP", "💎 8-20 soft_arcanium"],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "quick_mail_run",
+      "name": "Derp Mail Express",
+      "description": "Deliver very important letters. Contents: mostly doodles and snack requests.",
+      "type": "quick",
+      "category": "cat_quick",
+      "missionCategoryDefId": "cat_quick",
+      "displayDefId": "display_quick_mission",
+      "difficulty": 40,
+      "timer": { "duration": 180, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 8 }], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 8, "max": 18, "odds": 100 },
+          { "type": "keeper_xp", "min": 4, "max": 9, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 3, "max": 10, "odds": 100 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 2, "max": 5, "odds": 100 },
+          { "type": "keeper_xp", "min": 1, "max": 2, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 1, "operator": "gte" },
+        { "type": "team_size", "value": 1, "operator": "lte" }
+      ],
+      "rewardPreview": ["⚡ 8-18 XP", "🛡️ 4-9 KXP", "💎 3-10 soft_arcanium"],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "standard_cave_explore",
+      "name": "The Somewhat Scary Cave",
+      "description": "A cave that is definitely not haunted. Probably. Send a team to find out.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 120,
+      "timer": { "duration": 1800, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 50 }], "skip_type": "scaling" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 40, "max": 80, "odds": 100 },
+          { "type": "keeper_xp", "min": 20, "max": 40, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 20, "max": 50, "odds": 100 },
+          { "type": "item", "key": "mat_iron_ore", "min": 1, "max": 3, "odds": 10 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 10, "max": 20, "odds": 100 },
+          { "type": "keeper_xp", "min": 5, "max": 10, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 2, "operator": "gte" },
+        { "type": "team_size", "value": 3, "operator": "lte" },
+        { "type": "keeper_level", "value": 2 }
+      ],
+      "rewardPreview": ["⚡ 40-80 XP", "🛡️ 20-40 KXP", "💎 20-50 soft_arcanium", "🎁 1-3 iron_ore (10%)"],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 2 }],
+      "data": {}
+    },
+    {
+      "id": "standard_bandit_camp",
+      "name": "Bandit Camp Buffet Raid",
+      "description": "The bandits stole the village snack supply. This cannot stand.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 150,
+      "timer": { "duration": 2700, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 75 }], "skip_type": "scaling" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 60, "max": 120, "odds": 100 },
+          { "type": "keeper_xp", "min": 30, "max": 60, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 30, "max": 70, "odds": 100 },
+          { "type": "item", "key": "mat_mana_shard", "min": 1, "max": 2, "odds": 15 },
+          { "type": "flag", "operation": "set", "key": "completed_bandit_camp", "value": true, "odds": 100 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 15, "max": 30, "odds": 100 },
+          { "type": "keeper_xp", "min": 8, "max": 15, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 2, "operator": "gte" },
+        { "type": "team_size", "value": 3, "operator": "lte" },
+        { "type": "keeper_level", "value": 3 }
+      ],
+      "rewardPreview": ["⚡ 60-120 XP", "🛡️ 30-60 KXP", "💎 30-70 soft_arcanium", "🎁 1-2 mana_shard (15%)"],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 3 }],
+      "data": {}
+    },
+    {
+      "id": "standard_tower_climb",
+      "name": "The Leaning Tower of Derp",
+      "description": "Climb a suspiciously wobbly tower. Rumor has it there's treasure at the top. Also vertigo.",
+      "type": "standard",
+      "category": "cat_standard",
+      "missionCategoryDefId": "cat_standard",
+      "displayDefId": "display_standard_mission",
+      "difficulty": 200,
+      "timer": { "duration": 3600, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "success": {
+        "rewards": [
+          { "type": "entity_xp", "min": 80, "max": 160, "odds": 100 },
+          { "type": "keeper_xp", "min": 40, "max": 80, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 40, "max": 100, "odds": 100 },
+          { "type": "item", "key": "mat_shadow_silk", "min": 1, "max": 2, "odds": 20 },
+          { "type": "item", "key": "mat_crystal_bloom", "min": 1, "max": 1, "odds": 10 },
+          { "type": "flag", "operation": "set", "key": "completed_tower_climb", "value": true, "odds": 100 },
+          { "type": "text", "message": "Mission accomplished!", "odds": 70 },
+          { "type": "text", "message": "Flawless victory!", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "entity_xp", "min": 20, "max": 40, "odds": 100 },
+          { "type": "keeper_xp", "min": 10, "max": 20, "odds": 100 },
+          { "type": "text", "message": "Better luck next time...", "odds": 60 },
+          { "type": "text", "message": "That was embarrassing.", "odds": 40 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 3, "operator": "gte" },
+        { "type": "team_size", "value": 4, "operator": "lte" },
+        { "type": "keeper_level", "value": 5 }
+      ],
+      "rewardPreview": ["⚡ 80-160 XP", "🛡️ 40-80 KXP", "💎 40-100 soft_arcanium", "🎁 1-2 shadow_silk (20%)", "🎁 1 crystal_bloom (10%)"],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 5 }],
+      "data": {}
+    }
+  ],
+
+  "RecipeDef": [
+    {
+      "id": "recipe_iron_sword",
+      "name": "Forge Iron Sword",
+      "description": "Forge a basic iron sword from ore.",
+      "category": "weapons",
+      "cost": { "mat_iron_ore": 10, "soft_arcanium": 50 },
+      "timer": { "duration": 600, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "requiredKeeperLevel": 2,
+      "rewards": [{ "type": "item", "key": "gear_iron_sword", "min": 1, "max": 1, "odds": 100 }],
+      "data": {}
+    },
+    {
+      "id": "recipe_mana_ring",
+      "name": "Enchant Ring of Focus",
+      "description": "Imbue a ring with concentrated mana energy.",
+      "category": "accessories",
+      "cost": { "mat_mana_shard": 8, "mat_crystal_bloom": 3, "soft_arcanium": 100 },
+      "timer": { "duration": 1200, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "requiredKeeperLevel": 3,
+      "rewards": [{ "type": "item", "key": "gear_mana_ring", "min": 1, "max": 1, "odds": 100 }],
+      "data": {}
+    },
+    {
+      "id": "recipe_heal_potion",
+      "name": "Brew Healing Potion",
+      "description": "Brew a moderate healing potion from crystal blooms.",
+      "category": "potions",
+      "cost": { "mat_crystal_bloom": 2, "mat_feather_dust": 5, "soft_arcanium": 30 },
+      "timer": { "duration": 300, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "requiredKeeperLevel": 2,
+      "rewards": [{ "type": "item", "key": "potion_heal_medium", "min": 2, "max": 2, "odds": 100 }],
+      "data": {}
+    },
+    {
+      "id": "health_potion",
+      "name": "Sketchy Health Potion",
+      "description": "Heals your bird. Side effects may include temporary feather loss.",
+      "cost": { "soft_arcanium": 20 },
+      "requiredKeeperLevel": 1,
+      "timer": { "duration": 600, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 15 }], "skip_type": "absolute" },
+      "rewards": [
+        { "type": "item", "key": "potion_heal_small", "min": 1, "max": 1, "odds": 100 }
+      ],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "speed_potion",
+      "name": "Turbo Juice",
+      "description": "Makes birds go ZOOM. They may forget how to stop.",
+      "cost": { "soft_arcanium": 30 },
+      "requiredKeeperLevel": 5,
+      "timer": { "duration": 900, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 25 }], "skip_type": "absolute" },
+      "rewards": [
+        { "type": "item", "key": "potion_speed_small", "min": 1, "max": 1, "odds": 100 }
+      ],
+      "requirements": [{ "type": "keeper_level", "value": 5 }],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 3 }],
+      "data": {}
+    },
+    {
+      "id": "luck_potion",
+      "name": "Liquid Four-Leaf Clover",
+      "description": "Statistically questionable, but birds love the taste.",
+      "cost": { "soft_arcanium": 40 },
+      "requiredKeeperLevel": 10,
+      "timer": { "duration": 1200, "boostable": true, "skipable": true, "skip_cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 35 }], "skip_type": "scaling" },
+      "rewards": [
+        { "type": "item", "key": "consumable_lucky_charm", "min": 1, "max": 1, "odds": 100 }
+      ],
+      "requirements": [{ "type": "keeper_level", "value": 10 }],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 7 }],
+      "data": {}
+    },
+    {
+      "id": "power_potion",
+      "name": "Buff Bird Brew",
+      "description": "Guaranteed to make your bird feel swole. Temporary gains only.",
+      "cost": { "soft_arcanium": 50 },
+      "requiredKeeperLevel": 15,
+      "timer": { "duration": 1500, "boostable": true, "skipable": false, "skip_cost": [], "skip_type": "absolute" },
+      "rewards": [
+        { "type": "entity_xp", "min": 20, "max": 50, "odds": 100 },
+        { "type": "item", "key": "mat_feather_dust", "min": 2, "max": 5, "odds": 100 }
+      ],
+      "requirements": [{ "type": "keeper_level", "value": 15 }],
+      "visibilityRequirements": [{ "type": "keeper_level", "value": 10 }],
+      "data": {}
+    }
+  ],
+
+  "EventDefinition": [
+    {
+      "id": "evt_welcome_gift",
+      "name": "Welcome Gift",
+      "version": 1,
+      "kind": "system",
+      "handlerKey": "createGiftForPlayer",
+      "security": {},
+      "inputSchema": {
+        "type": "object",
+        "properties": { "giftDefId": { "type": "string" } },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    },
+    {
+      "id": "evt_new_guest_arrived",
+      "name": "New Guest Arrived",
+      "version": 1,
+      "kind": "system",
+      "handlerKey": "createGiftForPlayer",
+      "security": {
+        "allowedEmitters": ["MissionJob", "CraftingJob"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": { "giftDefId": { "type": "string" } },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    }
+  ],
+
+  "GiftDef": [
+    {
+      "id": "gift_welcome_gems",
+      "name": "Welcome Gems",
+      "version": 1,
+      "presentation": {
+        "title": "Welcome to Derp Universe!",
+        "body": "Here are 100 Gems to get you started on your journey. Spend them wisely!",
+        "iconKey": "premium_gems",
+        "rarity": "RARE"
+      },
+      "claimRules": {
+        "limitPerPlayer": 1,
+        "expiresInSeconds": 2592000
+      },
+      "rewardSpec": {
+        "type": "currency",
+        "currencyId": "premium_gems",
+        "amount": 100
+      },
+      "enabled": true
+    },
+    {
+      "id": "gift_starter_bird",
+      "name": "Starter Bird",
+      "version": 1,
+      "presentation": {
+        "title": "A New Guest Has Arrived!",
+        "body": "A mysterious bird has wandered into your outpost. Claim this gift to welcome them to your flock!",
+        "iconKey": "entity_bird",
+        "rarity": "EPIC"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "entity",
+        "definitionId": "derp_bird"
+      },
+      "enabled": true
+    }
+  ]
+}

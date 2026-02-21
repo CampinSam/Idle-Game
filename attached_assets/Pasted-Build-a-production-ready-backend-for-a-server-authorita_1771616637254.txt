@@ -1,0 +1,110 @@
+Build a production-ready backend for a server-authoritative idle/mid-core game using:
+Node.js
+TypeScript
+NestJS
+Prisma ORM
+PostgreSQL
+REST (for commands + reads)
+SSE (Server-Sent Events) for push updates
+The architecture must follow these principles:
+ARCHITECTURE OVERVIEW
+Server is authoritative.
+All writes go through a single command endpoint.
+Commands return patches + UI intents.
+SSE is used only for server→client push notifications.
+Client pulls deltas when notified.
+Commands must be idempotent.
+Commands must be serialized per player (no race conditions).
+Use append-only delta log for replay and recovery.
+PROJECT STRUCTURE
+Create the following modules:
+GameModule
+CommandsModule
+QueryModule
+StreamModule (SSE)
+InfrastructureModule (locking, idempotency, pubsub)
+DATABASE (PRISMA SCHEMA)
+Include these models:
+model Player { id        String   @id @default(cuid()) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
+model PlayerState { playerId  String   @id updatedAt DateTime @updatedAt }
+model IdempotencyKey { id            String   @id @default(cuid()) playerId      String key           String commandType   String requestHash   String responseJson  Json createdAt     DateTime @default(now())
+@@unique([playerId, key]) @@index([playerId, createdAt]) }
+model PlayerDelta { id        BigInt   @id @default(autoincrement()) playerId  String patches   Json ui        Json? createdAt DateTime @default(now())
+@@index([playerId, id]) }
+REST ENDPOINTS
+GET /v1/bootstrap
+Returns: { serverTime, snapshot: { player, state, inventory?, jobs?, notifications? }, cursor: { delta: BigInt } }
+POST /v1/commands
+Request: { type: string, payload: object, idempotencyKey: string }
+Response: { patches: Patch[], ui: UiIntent[], cursor: { delta: BigInt } }
+GET /v1/delta?since=BigInt
+Returns: { from, to, patches: Patch[], ui: UiIntent[] }
+If cursor is too old, return: { resetRequired: true }
+PATCH FORMAT
+Define a stable patch format:
+type Patch = | { op: "upsert"; entity: string; id: string; data: any } | { op: "delete"; entity: string; id: string };
+UI INTENT FORMAT
+type UiIntent = | { type: "modal"; key: string; title: string; body: any; buttons: any[] } | { type: "toast"; tone: "success" | "error" | "info"; message: string } | { type: "navigate"; deepLink: string };
+COMMAND PIPELINE
+Implement a CommandService that:
+Validates idempotency key.
+Checks if key already exists for player:
+If yes → return stored response.
+Runs everything inside a Prisma transaction.
+Serializes per-player execution by locking PlayerState row using: SELECT ... FOR UPDATE
+Executes handler.
+Persists state changes.
+Writes PlayerDelta row.
+Stores idempotency response.
+Returns patches + ui + new delta cursor.
+Create a CommandRouter mapping:
+StartMission
+ClaimReward
+ExampleTestCommand
+Handlers must return: { patches: Patch[], ui: UiIntent[] }
+SSE IMPLEMENTATION
+Create GET /v1/stream endpoint.
+Requirements:
+One SSE connection per authenticated player.
+Support resume via Last-Event-ID header or ?cursor query param.
+On connection:
+Send initial hello event.
+If cursor provided, replay missed delta IDs (bounded).
+Heartbeat every 15 seconds (event: ping).
+When a new PlayerDelta is created:
+Notify connected client(s).
+Send event: event: delta.available id:  data: { delta:  }
+DELTA RECOVERY FLOW
+Client flow:
+Call /bootstrap.
+Store delta cursor.
+Connect to /stream.
+On delta.available:
+Call /v1/delta?since=cursor.
+Apply patches.
+Update cursor.
+On reconnect:
+Fetch delta again to catch up.
+SCALING PREP
+Design SSE broadcasting abstraction so it can later swap to Redis pub/sub.
+Create a PubSubService with two implementations:
+InMemoryPubSubService (default)
+RedisPubSubService (stubbed but structured)
+ERROR HANDLING
+All commands must be safe for retry.
+If delta history expired → force reset via bootstrap.
+Use structured error responses.
+OUTPUT REQUIREMENTS
+Generate:
+Complete NestJS project structure
+Prisma schema
+DTOs
+Controllers
+Services
+Command pipeline implementation
+SSE controller implementation
+Basic example command handler
+Proper typing throughout
+Comments explaining important decisions
+Do NOT overcomplicate. Do NOT introduce GraphQL. Do NOT introduce WebSockets. Focus on correctness, idempotency, and clean architecture.
+The result should be production-grade, minimal, and extensible.

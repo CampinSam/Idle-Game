@@ -1,0 +1,1347 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "exportedAt": "2025-02-15T12:00:00.000Z",
+    "tables": [
+      "Currency",
+      "ItemDef",
+      "EntityDefinition",
+      "BodySchema",
+      "EquipmentSchema",
+      "ProgressionProfile",
+      "TraitDefinition",
+      "RegionDefinition",
+      "LocationDefinition",
+      "BuildingDef",
+      "RoomDef",
+      "DisplayDef",
+      "MissionCategoryDef",
+      "MissionDef",
+      "RecipeDef",
+      "EventDefinition",
+      "GiftDef"
+    ],
+    "description": "Example seed data for Derp Universe"
+  },
+
+  "Currency": [
+    {
+      "id": "soft_arcanium",
+      "name": "Arcanium",
+      "symbol": "💠",
+      "iconKey": "currency_arcanium",
+      "type": "SOFT",
+      "isTradeable": false,
+      "isSpendable": true,
+      "decimals": 0,
+      "cap": 9999999
+    },
+    {
+      "id": "premium_gems",
+      "name": "Derp Gems",
+      "symbol": "💎",
+      "iconKey": "currency_gems",
+      "type": "PREMIUM",
+      "isTradeable": false,
+      "isSpendable": true,
+      "decimals": 0
+    },
+    {
+      "id": "seasonal_snowflakes",
+      "name": "Frost Flakes",
+      "symbol": "❄️",
+      "iconKey": "currency_snowflake",
+      "type": "SEASONAL",
+      "seasonId": "season_winter_2025",
+      "isTradeable": false,
+      "isSpendable": true,
+      "decimals": 0
+    },
+    {
+      "id": "pure_essence",
+      "name": "Pure Essence",
+      "symbol": "✨",
+      "iconKey": "currency_essence",
+      "type": "HARD",
+      "isTradeable": true,
+      "isSpendable": true,
+      "decimals": 0
+    },
+    {
+      "id": "guild_tokens",
+      "name": "Guild Tokens",
+      "symbol": "🏰",
+      "iconKey": "currency_guild",
+      "type": "GUILD",
+      "isTradeable": false,
+      "isSpendable": true,
+      "decimals": 0
+    }
+  ],
+
+  "ItemDef": [
+    {
+      "id": "mat_iron_ore",
+      "version": 1,
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Iron Ore",
+      "description": "A chunk of iron ore. Smells like progress.",
+      "iconKey": "item_iron_ore",
+      "uiColor": "#8B8B8B",
+      "category": "CRAFTING",
+      "groups": ["ore", "metal", "basic"],
+      "tags": ["mineable", "smeltable"],
+      "stackable": true,
+      "maxStack": 999,
+      "uniqueInstance": false,
+      "tradable": true,
+      "bindOnEquip": false,
+      "bindOnPickup": false,
+      "hasState": false,
+      "data": {}
+    },
+    {
+      "id": "mat_rare_gem",
+      "version": 1,
+      "type": "MATERIAL",
+      "rarity": "RARE",
+      "name": "Prismatic Gem",
+      "description": "A gem that sparkles with chaotic energy. Very shiny. Much wow.",
+      "iconKey": "item_rare_gem",
+      "uiColor": "#9B59B6",
+      "category": "CRAFTING",
+      "groups": ["gem", "rare", "magical"],
+      "tags": ["precious"],
+      "stackable": true,
+      "maxStack": 99,
+      "tradable": true,
+      "data": {}
+    },
+    {
+      "id": "mat_shadow_vellum",
+      "version": 1,
+      "type": "MATERIAL",
+      "rarity": "ULTRA_RARE",
+      "name": "Shadow Vellum",
+      "description": "Paper made from darkness itself. Don't ask how.",
+      "iconKey": "item_shadow_vellum",
+      "uiColor": "#2C3E50",
+      "category": "CRAFTING",
+      "groups": ["paper", "dark", "magical"],
+      "tags": ["dark_crafting"],
+      "stackable": true,
+      "maxStack": 50,
+      "tradable": true,
+      "data": {}
+    },
+    {
+      "id": "gear_iron_sword",
+      "version": 1,
+      "type": "GEAR",
+      "rarity": "UNCOMMON",
+      "name": "Iron Sword of Derping",
+      "description": "A sturdy sword. Slightly derpy around the edges.",
+      "iconKey": "item_iron_sword",
+      "uiColor": "#95A5A6",
+      "category": "COMBAT",
+      "groups": ["weapon", "melee", "sword"],
+      "tags": ["equippable"],
+      "stackable": false,
+      "uniqueInstance": true,
+      "tradable": true,
+      "bindOnEquip": true,
+      "equipData": {
+        "slot": "weapon",
+        "stats": {
+          "ATK": 8,
+          "SPD": 2
+        }
+      },
+      "data": {}
+    },
+    {
+      "id": "gear_ninja_hood",
+      "version": 1,
+      "type": "GEAR",
+      "rarity": "RARE",
+      "name": "Hood of Sneaky Sneaking",
+      "description": "Makes you 73% more ninja-like. Results may vary.",
+      "iconKey": "item_ninja_hood",
+      "uiColor": "#1A1A2E",
+      "category": "COMBAT",
+      "groups": ["armor", "head", "ninja"],
+      "tags": ["equippable", "archetype_ninja"],
+      "stackable": false,
+      "uniqueInstance": true,
+      "tradable": true,
+      "bindOnEquip": true,
+      "equipData": {
+        "slot": "armor",
+        "stats": {
+          "DEF": 5,
+          "SPD": 8,
+          "FOC": 3
+        }
+      },
+      "data": {
+        "archetypeBonus": "Ninja"
+      }
+    },
+    {
+      "id": "potion_power_minor",
+      "version": 1,
+      "type": "POTION",
+      "rarity": "COMMON",
+      "name": "Minor Power Potion",
+      "description": "Tastes like victory. And blueberries.",
+      "iconKey": "item_potion_blue",
+      "uiColor": "#3498DB",
+      "category": "ENHANCEMENT",
+      "groups": ["potion", "buff", "power"],
+      "tags": ["consumable"],
+      "stackable": true,
+      "maxStack": 50,
+      "tradable": true,
+      "consumableData": {
+        "effect": "power_boost",
+        "amount": 10,
+        "duration": 3600
+      },
+      "data": {}
+    },
+    {
+      "id": "potion_heal_standard",
+      "version": 1,
+      "type": "POTION",
+      "rarity": "UNCOMMON",
+      "name": "Healing Draught",
+      "description": "Fixes boo-boos and existential dread. Mostly boo-boos.",
+      "iconKey": "item_potion_red",
+      "uiColor": "#E74C3C",
+      "category": "ENHANCEMENT",
+      "groups": ["potion", "heal"],
+      "tags": ["consumable"],
+      "stackable": true,
+      "maxStack": 50,
+      "tradable": true,
+      "consumableData": {
+        "effect": "heal",
+        "amount": 50
+      },
+      "data": {}
+    },
+    {
+      "id": "quest_ancient_key",
+      "version": 1,
+      "type": "QUEST",
+      "rarity": "EPIC",
+      "name": "Ancient Derp Key",
+      "description": "Opens something. We're not sure what yet.",
+      "iconKey": "item_quest_key",
+      "uiColor": "#F1C40F",
+      "category": "QUEST_ITEMS",
+      "groups": ["quest", "key"],
+      "tags": ["quest_item", "unique"],
+      "stackable": false,
+      "uniqueInstance": true,
+      "tradable": false,
+      "bindOnPickup": true,
+      "data": {
+        "questId": "quest_ancient_temple"
+      }
+    }
+  ],
+
+  "BodySchema": [
+    {
+      "id": "avian_7",
+      "slots": {
+        "head": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "ears": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "beak": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "eyes": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "body": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "back": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "tail": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"]
+      },
+      "data": {
+        "description": "Standard 7-slot avian body schema for Derp Birds"
+      }
+    }
+  ],
+
+  "EquipmentSchema": [
+    {
+      "id": "bird_equip_v1",
+      "schema": {
+        "weapon": 1,
+        "armor": 1,
+        "accessory": 2
+      },
+      "data": {
+        "description": "Standard bird equipment layout"
+      }
+    }
+  ],
+
+  "ProgressionProfile": [
+    {
+      "id": "bird_prog_v1",
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
+      "data": {
+        "xpFormula": "50 × level^1.2"
+      }
+    }
+  ],
+
+  "TraitDefinition": [
+    {
+      "id": "trait_dave",
+      "archetype": "Dave",
+      "slotStats": {
+        "head": { "ATK": 1, "DEF": 1 },
+        "ears": { "FOC": 1, "LCK": 1 },
+        "beak": { "ATK": 1, "VIT": 1 },
+        "eyes": { "FOC": 2 },
+        "body": { "VIT": 2, "DEF": 1 },
+        "back": { "DEF": 2 },
+        "tail": { "SPD": 1, "LCK": 1 }
+      },
+      "tags": ["balanced", "starter"],
+      "data": {
+        "description": "The everyman. Balanced and reliable."
+      }
+    },
+    {
+      "id": "trait_ninja",
+      "archetype": "Ninja",
+      "slotStats": {
+        "head": { "SPD": 2, "FOC": 1 },
+        "ears": { "FOC": 2, "SPD": 1 },
+        "beak": { "ATK": 2 },
+        "eyes": { "FOC": 3 },
+        "body": { "SPD": 2, "ATK": 1 },
+        "back": { "SPD": 3 },
+        "tail": { "SPD": 2, "LCK": 1 }
+      },
+      "tags": ["stealth", "speed", "damage"],
+      "data": {
+        "description": "Fast and deadly. Reduces mission duration by 10-15%."
+      }
+    },
+    {
+      "id": "trait_buff",
+      "archetype": "Buff",
+      "slotStats": {
+        "head": { "ATK": 2, "VIT": 1 },
+        "ears": { "VIT": 2 },
+        "beak": { "ATK": 3 },
+        "eyes": { "ATK": 1, "FOC": 1 },
+        "body": { "VIT": 3, "ATK": 2 },
+        "back": { "VIT": 2, "DEF": 1 },
+        "tail": { "ATK": 2 }
+      },
+      "tags": ["strength", "tank", "damage"],
+      "data": {
+        "description": "Gym bro energy. +20% damage against bosses."
+      }
+    },
+    {
+      "id": "trait_magician",
+      "archetype": "Magician",
+      "slotStats": {
+        "head": { "FOC": 3 },
+        "ears": { "FOC": 2, "LCK": 1 },
+        "beak": { "LCK": 2, "FOC": 1 },
+        "eyes": { "FOC": 3, "LCK": 1 },
+        "body": { "FOC": 2, "VIT": 1 },
+        "back": { "LCK": 2, "FOC": 1 },
+        "tail": { "LCK": 3 }
+      },
+      "tags": ["magic", "luck", "trickster"],
+      "data": {
+        "description": "The trickster. Can reroll one mission outcome per day."
+      }
+    },
+    {
+      "id": "trait_deity",
+      "archetype": "Deity",
+      "slotStats": {
+        "head": { "ATK": 2, "DEF": 2, "FOC": 1 },
+        "ears": { "FOC": 2, "LCK": 2 },
+        "beak": { "ATK": 2, "VIT": 1 },
+        "eyes": { "FOC": 3, "LCK": 1 },
+        "body": { "VIT": 3, "DEF": 2 },
+        "back": { "DEF": 2, "SPD": 2 },
+        "tail": { "SPD": 2, "LCK": 2 }
+      },
+      "tags": ["divine", "rare", "scaling"],
+      "data": {
+        "description": "Celestial being. Scales +5% per ascension tier."
+      }
+    }
+  ],
+
+  "EntityDefinition": [
+    {
+      "id": "derp_bird",
+      "speciesId": "bird",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {
+        "maxLevel": 50,
+        "xpCurve": "exp",
+        "baseXP": 100,
+        "xpRate": 1.5,
+        "level": {
+          "1": {
+            "xpThreshold": 0
+          },
+          "10": {
+            "xpThreshold": 2500
+          },
+          "25": {
+            "xpThreshold": 15000
+          },
+          "50": {
+            "xpThreshold": 100000
+          }
+        }
+      },
+      "data": {
+        "description": "The standard Derp Bird entity"
+      }
+    }
+  ],
+
+  "RegionDefinition": [
+    {
+      "id": "derpshire_valley",
+      "displayName": "Derpshire Valley",
+      "biome": "plains",
+      "modifiers": {
+        "gatherBonus": 0.05,
+        "archetypeAffinity": ["Dave", "Redneck"]
+      },
+      "data": {
+        "description": "A peaceful valley where the journey begins.",
+        "difficulty": "starter"
+      }
+    },
+    {
+      "id": "chillartica_drifts",
+      "displayName": "Chillartica Drifts",
+      "biome": "frozen",
+      "modifiers": {
+        "gatherBonus": 0.0,
+        "cosmicMaterialBonus": 0.15,
+        "archetypeAffinity": ["Astro", "Magician"]
+      },
+      "data": {
+        "description": "Frozen tundra where cosmic energies flow.",
+        "difficulty": "medium"
+      }
+    },
+    {
+      "id": "sandcrypt_badlands",
+      "displayName": "Sandcrypt Badlands",
+      "biome": "desert",
+      "modifiers": {
+        "combatBonus": 0.10,
+        "archetypeAffinity": ["Viking", "Buff"]
+      },
+      "data": {
+        "description": "Harsh desert for hardened warriors.",
+        "difficulty": "hard"
+      }
+    },
+    {
+      "id": "chillvine_jungle",
+      "displayName": "Chillvine Jungle",
+      "biome": "jungle",
+      "modifiers": {
+        "stealthBonus": 0.15,
+        "botanicalBonus": 0.10,
+        "archetypeAffinity": ["Ninja", "Monk"]
+      },
+      "data": {
+        "description": "Dense rainforest perfect for stealth operations.",
+        "difficulty": "medium"
+      }
+    }
+  ],
+
+  "BuildingDef": [
+    {
+      "id": "gen_arcanium_mine",
+      "name": "Arcanium Mine",
+      "description": "Extracts precious Arcanium from the earth. Makes satisfying clink sounds.",
+      "tags": ["generator", "arcanium", "production"],
+      "rules": {
+        "maxLevel": 10,
+        "level": {
+          "1": {
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 60, "growthRate": "linear", "growthScalar": 30 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 100, "growthRate": "exp", "growthScalar": 1.5 }
+            ]
+          },
+          "5": {
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 180 }
+            ]
+          },
+          "10": {
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 360 }
+            ]
+          }
+        }
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "gen_essence_extractor",
+      "name": "Essence Extractor",
+      "description": "Pulls pure essence from the void. Don't look directly at it.",
+      "tags": ["generator", "essence", "production", "advanced"],
+      "rules": {
+        "maxLevel": 5,
+        "level": {
+          "1": {
+            "production": [
+              { "type": "currency", "id": "pure_essence", "ratePerHour": 2, "growthRate": "linear", "growthScalar": 1 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 5000 },
+              { "type": "currency", "id": "pure_essence", "baseAmount": 10 }
+            ]
+          }
+        }
+      },
+      "requirements": [
+        { "type": "keeper_level", "value": 20 }
+      ],
+      "visibilityRequirements": [
+        { "type": "keeper_level", "value": 15 }
+      ],
+      "data": {}
+    },
+    {
+      "id": "stor_warehouse",
+      "name": "Storage Warehouse",
+      "description": "Holds your stuff. All the stuff. So much stuff.",
+      "tags": ["storage", "general"],
+      "rules": {
+        "maxLevel": 10,
+        "level": {
+          "1": {
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 5000, "growthRate": "linear", "growthScalar": 2500 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 200 }
+            ]
+          }
+        }
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "craft_trait_forge",
+      "name": "Trait Forge",
+      "description": "Where archetypes are born. Smells like hot metal and destiny.",
+      "tags": ["crafting", "trait", "forge"],
+      "rules": {
+        "maxLevel": 5,
+        "level": {
+          "1": {
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 1000 }
+            ],
+            "effects": [
+              { "type": "unlock_recipes", "category": "trait_crafting" }
+            ]
+          }
+        }
+      },
+      "requirements": [
+        { "type": "keeper_level", "value": 10 }
+      ],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "craft_relic_vault",
+      "name": "Relic Vault",
+      "description": "Ancient relics whisper secrets here. Mostly about cheese, actually.",
+      "tags": ["crafting", "relic", "vault"],
+      "rules": {
+        "maxLevel": 5,
+        "level": {
+          "1": {
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 2500 },
+              { "type": "currency", "id": "pure_essence", "baseAmount": 5 }
+            ],
+            "effects": [
+              { "type": "unlock_recipes", "category": "relic_crafting" }
+            ]
+          }
+        }
+      },
+      "requirements": [
+        { "type": "keeper_level", "value": 20 },
+        { "type": "has_building", "ids": ["craft_trait_forge"] }
+      ],
+      "visibilityRequirements": [
+        { "type": "keeper_level", "value": 15 }
+      ],
+      "data": {}
+    }
+  ],
+
+  "RoomDef": [
+    {
+      "id": "room_storage_vault",
+      "name": "Storage Vault",
+      "description": "Extra secure storage. Dragons not included.",
+      "tags": ["storage", "vault"],
+      "rules": {
+        "maxLevel": 3,
+        "level": {
+          "1": {
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 2000 },
+              { "type": "currency", "id": "pure_essence", "baseCapacity": 50 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 500 }
+            ]
+          }
+        }
+      },
+      "requirements": [
+        { "type": "parent_has_building", "ids": ["stor_warehouse"] }
+      ],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "room_efficiency_chamber",
+      "name": "Efficiency Chamber",
+      "description": "Makes everything 10% more efficient. Don't ask how.",
+      "tags": ["production", "efficiency"],
+      "rules": {
+        "maxLevel": 3,
+        "level": {
+          "1": {
+            "effects": [
+              { "type": "production_multiplier_bps", "amount": 11000 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 1000 }
+            ]
+          },
+          "2": {
+            "effects": [
+              { "type": "production_multiplier_bps", "amount": 11500 }
+            ]
+          },
+          "3": {
+            "effects": [
+              { "type": "production_multiplier_bps", "amount": 12000 }
+            ]
+          }
+        }
+      },
+      "requirements": [
+        { "type": "keeper_level", "value": 15 }
+      ],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "room_workshop",
+      "name": "Crafting Workshop",
+      "description": "Where the magic happens. Sometimes literally explodes.",
+      "tags": ["crafting", "workshop"],
+      "rules": {
+        "maxLevel": 5,
+        "level": {
+          "1": {
+            "effects": [
+              { "type": "crafting_speed_bonus", "amount": 0.10 }
+            ],
+            "constructionCost": [
+              { "type": "currency", "id": "soft_arcanium", "baseAmount": 750 }
+            ]
+          }
+        }
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "data": {}
+    }
+  ],
+
+  "LocationDefinition": [
+    {
+      "id": "outpost_starter",
+      "kind": "outpost_fungible",
+      "regionId": "derpshire_valley",
+      "isUnique": false,
+      "rules": {
+        "maxLevel": 50,
+        "xpCurve": "exp",
+        "baseXP": 200,
+        "xpRate": 1.4,
+        "level": {
+          "1": {
+            "workers": { "slots": 2 },
+            "buildings": {
+              "slots": 3,
+              "allowed": [
+                { "buildingDefId": "gen_arcanium_mine", "maxCount": 2 },
+                { "buildingDefId": "stor_warehouse", "maxCount": 1 }
+              ]
+            },
+            "rooms": {
+              "allowed": [
+                { "roomDefId": "room_storage_vault", "maxCount": 1 },
+                { "roomDefId": "room_workshop", "maxCount": 1 }
+              ]
+            },
+            "storage": [
+              { "type": "currency", "id": "soft_arcanium", "baseCapacity": 1000, "growthRate": "linear", "growthScalar": 500 }
+            ],
+            "production": [
+              { "type": "currency", "id": "soft_arcanium", "ratePerHour": 100, "growthRate": "linear", "growthScalar": 50 }
+            ]
+          },
+          "10": {
+            "workers": { "slots": 3 },
+            "buildings": {
+              "slots": 5,
+              "allowed": [
+                { "buildingDefId": "craft_trait_forge", "maxCount": 1 }
+              ]
+            }
+          },
+          "25": {
+            "workers": { "slots": 4 },
+            "buildings": {
+              "slots": 7,
+              "allowed": [
+                { "buildingDefId": "gen_essence_extractor", "maxCount": 1 },
+                { "buildingDefId": "craft_relic_vault", "maxCount": 1 }
+              ]
+            },
+            "rooms": {
+              "allowed": [
+                { "roomDefId": "room_efficiency_chamber", "maxCount": 2 }
+              ]
+            }
+          },
+          "50": {
+            "workers": { "slots": 6 },
+            "buildings": { "slots": 10 }
+          }
+        }
+      },
+      "productionProfile": {},
+      "requirements": [],
+      "visibilityRequirements": [],
+      "data": {
+        "description": "Your first outpost in Derpshire Valley"
+      }
+    }
+  ],
+
+  "DisplayDef": [
+    {
+      "id": "display_quick_mission",
+      "name": "Quick Mission Style",
+      "borderColor": "#4dcb6a",
+      "backgroundImage": "/assets/cards/quick_bg.png",
+      "cardBackground": "linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%)",
+      "data": {}
+    },
+    {
+      "id": "display_standard_mission",
+      "name": "Standard Mission Style",
+      "borderColor": "#3498db",
+      "backgroundImage": "/assets/cards/standard_bg.png",
+      "cardBackground": "linear-gradient(135deg, #1a3a5c 0%, #2d4a6d 100%)",
+      "data": {}
+    },
+    {
+      "id": "display_boss_mission",
+      "name": "Boss Mission Style",
+      "borderColor": "#e74c3c",
+      "backgroundImage": "/assets/cards/boss_bg.png",
+      "cardBackground": "linear-gradient(135deg, #5c1a1a 0%, #8b2d2d 100%)",
+      "data": {}
+    },
+    {
+      "id": "display_seasonal_mission",
+      "name": "Seasonal Mission Style",
+      "borderColor": "#9b59b6",
+      "backgroundImage": "/assets/cards/seasonal_bg.png",
+      "cardBackground": "linear-gradient(135deg, #4a1a5c 0%, #6d2d8b 100%)",
+      "data": {}
+    }
+  ],
+
+  "MissionCategoryDef": [
+    {
+      "id": "cat_quick",
+      "name": "Quick Missions",
+      "parentId": null,
+      "displayDefId": "display_quick_mission",
+      "tags": ["quick", "casual"],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 1,
+      "data": {
+        "description": "Fast missions for busy birds"
+      }
+    },
+    {
+      "id": "cat_standard",
+      "name": "Standard Missions",
+      "parentId": null,
+      "displayDefId": "display_standard_mission",
+      "tags": ["standard", "core"],
+      "requirements": [
+        { "type": "keeper_level", "value": 5 }
+      ],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 2,
+      "data": {}
+    },
+    {
+      "id": "cat_boss",
+      "name": "Boss Encounters",
+      "parentId": null,
+      "displayDefId": "display_boss_mission",
+      "tags": ["boss", "endgame"],
+      "requirements": [
+        { "type": "keeper_level", "value": 30 }
+      ],
+      "visibilityRequirements": [
+        { "type": "keeper_level", "value": 25 }
+      ],
+      "enabled": true,
+      "sortOrder": 10,
+      "data": {}
+    },
+    {
+      "id": "cat_seasonal_winter",
+      "name": "Frost Reign Events",
+      "parentId": null,
+      "displayDefId": "display_seasonal_mission",
+      "tags": ["seasonal", "winter", "frost_reign"],
+      "requirements": [],
+      "visibilityRequirements": [
+        { "type": "flag", "key": "season_winter_2025_active", "value": true }
+      ],
+      "enabled": true,
+      "sortOrder": 5,
+      "data": {
+        "seasonId": "season_winter_2025"
+      }
+    }
+  ],
+
+  "MissionDef": [
+    {
+      "id": "mission_quick_gather",
+      "name": "Quick Gather",
+      "description": "Send your birds to quickly gather some resources. They might bring back snacks.",
+      "type": "quick",
+      "category": "gathering",
+      "group": "basic",
+      "difficulty": 1,
+      "minSuccessChance": 0.20,
+      "maxSuccessChance": 0.95,
+      "timer": {
+        "duration": 60,
+        "boostable": true,
+        "skipable": true,
+        "skip_cost": { "soft_arcanium": 10 },
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          { "type": "bird_xp", "min": 10, "max": 25, "odds": 100 },
+          { "type": "keeper_xp", "min": 5, "max": 10, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 20, "max": 50, "odds": 100 },
+          { "type": "item", "key": "mat_iron_ore", "min": 1, "max": 3, "odds": 30 },
+          { "type": "text", "message": "Your birds return with pockets full of goodies!", "odds": 50 },
+          { "type": "text", "message": "Success! And only minor property damage this time.", "odds": 50 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "bird_xp", "min": 3, "max": 8, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 5, "max": 15, "odds": 100 },
+          { "type": "text", "message": "Your birds got distracted by a butterfly. Classic.", "odds": 50 },
+          { "type": "text", "message": "They tried their best. It wasn't great.", "odds": 50 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 1, "operator": "gte" },
+        { "type": "team_size", "value": 2, "operator": "lte" }
+      ],
+      "visibilityRequirements": [],
+      "tags": ["beginner", "gathering", "casual"],
+      "rewardPreview": [
+        { "type": "currency", "id": "soft_arcanium", "display": "20-50" },
+        { "type": "item", "id": "mat_iron_ore", "display": "1-3 (30%)" }
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {}
+    },
+    {
+      "id": "mission_standard_expedition",
+      "name": "Expedition into the Unknown",
+      "description": "A proper adventure awaits! Pack sandwiches.",
+      "type": "standard",
+      "category": "exploration",
+      "group": "adventure",
+      "difficulty": 15,
+      "minSuccessChance": 0.10,
+      "maxSuccessChance": 0.90,
+      "timer": {
+        "duration": 1800,
+        "boostable": true,
+        "skipable": true,
+        "skip_cost": { "soft_arcanium": 100 },
+        "skip_type": "scaling"
+      },
+      "success": {
+        "rewards": [
+          { "type": "bird_xp", "min": 50, "max": 120, "odds": 100 },
+          { "type": "keeper_xp", "min": 30, "max": 60, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 250, "odds": 100 },
+          { "type": "item", "key": "mat_iron_ore", "min": 3, "max": 8, "odds": 60 },
+          { "type": "item", "key": "mat_rare_gem", "min": 1, "max": 2, "odds": 15 },
+          { "type": "flag", "operation": "increment", "key": "expeditions_completed", "value": 1, "odds": 100 },
+          {
+            "bundle": [
+              { "type": "item", "key": "mat_rare_gem", "min": 2, "max": 3, "odds": 100 },
+              { "type": "currency", "key": "pure_essence", "min": 1, "max": 2, "odds": 100 },
+              { "type": "text", "message": "JACKPOT! Your birds found a hidden cache!", "odds": 100 }
+            ],
+            "odds": 5,
+            "requirements": [
+              { "type": "keeper_level", "value": 15, "operator": "gte" }
+            ]
+          },
+          { "type": "text", "message": "The expedition was a success! Everyone gets a gold star.", "odds": 70 },
+          { "type": "text", "message": "Your birds have returned as heroes. Mostly.", "odds": 30 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "bird_xp", "min": 15, "max": 40, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 20, "max": 60, "odds": 100 },
+          { "type": "text", "message": "The expedition hit some snags. And by snags, we mean a very angry squirrel.", "odds": 100 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 2, "operator": "gte" },
+        { "type": "team_size", "value": 4, "operator": "lte" },
+        { "type": "keeper_level", "value": 5 }
+      ],
+      "visibilityRequirements": [],
+      "tags": ["exploration", "adventure", "standard"],
+      "rewardPreview": [
+        { "type": "currency", "id": "soft_arcanium", "display": "100-250" },
+        { "type": "item", "id": "mat_rare_gem", "display": "1-2 (15%)" }
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {}
+    },
+    {
+      "id": "mission_boss_ancient_derp",
+      "name": "Confront the Ancient Derp",
+      "description": "Face the legendary Ancient Derp. Bring snacks, it gets hungry.",
+      "type": "boss",
+      "category": "boss",
+      "group": "world_boss",
+      "difficulty": 100,
+      "minSuccessChance": 0.05,
+      "maxSuccessChance": 0.75,
+      "timer": {
+        "duration": 3600,
+        "boostable": true,
+        "skipable": false,
+        "skip_cost": {},
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          { "type": "bird_xp", "min": 500, "max": 1000, "odds": 100 },
+          { "type": "keeper_xp", "min": 250, "max": 500, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 1000, "max": 2500, "odds": 100 },
+          { "type": "currency", "key": "pure_essence", "min": 5, "max": 15, "odds": 100 },
+          { "type": "item", "key": "mat_rare_gem", "min": 3, "max": 6, "odds": 80 },
+          { "type": "item", "key": "mat_shadow_vellum", "min": 1, "max": 2, "odds": 25 },
+          { "type": "flag", "operation": "set", "key": "defeated_ancient_derp", "value": true, "odds": 100 },
+          { "type": "flag", "operation": "increment", "key": "boss_kills", "value": 1, "odds": 100 },
+          {
+            "type": "emitEvent",
+            "defId": "evt_boss_reward",
+            "payload": { "giftDefId": "gift_boss_chest" },
+            "idempotencyKey": "boss-ancient-derp-${jobId}",
+            "odds": 10,
+            "requirements": [
+              { "type": "keeper_level", "value": 40, "operator": "gte" }
+            ]
+          },
+          { "type": "text", "message": "THE ANCIENT DERP HAS BEEN VANQUISHED! Confetti falls from the sky.", "odds": 100 }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          { "type": "bird_xp", "min": 100, "max": 200, "odds": 100 },
+          { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 300, "odds": 100 },
+          { "type": "text", "message": "The Ancient Derp was unimpressed. It offered you tea.", "odds": 50 },
+          { "type": "text", "message": "Your birds retreated strategically. Very strategically.", "odds": 50 }
+        ]
+      },
+      "requirements": [
+        { "type": "team_size", "value": 5 },
+        { "type": "keeper_level", "value": 30 },
+        { "type": "flag", "key": "unlocked_boss_area", "value": true }
+      ],
+      "visibilityRequirements": [
+        { "type": "keeper_level", "value": 25 }
+      ],
+      "tags": ["boss", "endgame", "epic"],
+      "rewardPreview": [
+        { "type": "currency", "id": "soft_arcanium", "display": "1000-2500" },
+        { "type": "currency", "id": "pure_essence", "display": "5-15" },
+        { "type": "item", "id": "mat_shadow_vellum", "display": "1-2 (25%)" }
+      ],
+      "enabled": true,
+      "displayDefId": "display_boss_mission",
+      "missionCategoryDefId": "cat_boss",
+      "data": {
+        "bossId": "ancient_derp",
+        "bossHealth": 10000000
+      }
+    }
+  ],
+
+  "RecipeDef": [
+    {
+      "id": "recipe_iron_sword",
+      "name": "Forge Iron Sword",
+      "description": "Hammer some iron into pointy sword shape. Classic.",
+      "category": "weapons",
+      "group": "melee",
+      "cost": {
+        "soft_arcanium": 200,
+        "mat_iron_ore": 10
+      },
+      "timer": {
+        "duration": 300,
+        "boostable": true,
+        "skipable": true,
+        "skip_cost": { "soft_arcanium": 50 },
+        "skip_type": "scaling"
+      },
+      "requiredKeeperLevel": 5,
+      "rewards": {
+        "items": [
+          { "itemDefId": "gear_iron_sword", "quantity": 1 }
+        ]
+      },
+      "requirements": [
+        { "type": "has_building", "ids": ["craft_trait_forge"] }
+      ],
+      "effects": [
+        { "type": "flag", "operation": "increment", "key": "items_crafted", "value": 1, "odds": 100 }
+      ],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "recipe_power_potion",
+      "name": "Brew Power Potion",
+      "description": "Mix ingredients. Add sparkles. Profit.",
+      "category": "potions",
+      "group": "buffs",
+      "cost": {
+        "soft_arcanium": 100,
+        "mat_iron_ore": 2
+      },
+      "timer": {
+        "duration": 120,
+        "boostable": true,
+        "skipable": true,
+        "skip_cost": { "soft_arcanium": 25 },
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 3,
+      "rewards": {
+        "items": [
+          { "itemDefId": "potion_power_minor", "quantity": 3 }
+        ]
+      },
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {}
+    },
+    {
+      "id": "recipe_ninja_hood",
+      "name": "Craft Hood of Sneaky Sneaking",
+      "description": "Requires actual ninja skills to craft. Or at least a YouTube tutorial.",
+      "category": "armor",
+      "group": "archetype_gear",
+      "cost": {
+        "soft_arcanium": 1500,
+        "mat_rare_gem": 3,
+        "mat_shadow_vellum": 1,
+        "pure_essence": 5
+      },
+      "timer": {
+        "duration": 1800,
+        "boostable": true,
+        "skipable": true,
+        "skip_cost": { "premium_gems": 10 },
+        "skip_type": "scaling"
+      },
+      "requiredKeeperLevel": 25,
+      "rewards": {
+        "items": [
+          { "itemDefId": "gear_ninja_hood", "quantity": 1 }
+        ]
+      },
+      "requirements": [
+        { "type": "has_building", "ids": ["craft_relic_vault"] },
+        { "type": "flag", "key": "unlocked_archetype_gear", "value": true }
+      ],
+      "effects": [
+        { "type": "flag", "operation": "increment", "key": "legendary_items_crafted", "value": 1, "odds": 100 }
+      ],
+      "visibilityRequirements": [
+        { "type": "keeper_level", "value": 20 }
+      ],
+      "data": {
+        "archetypeRequirement": "Ninja"
+      }
+    }
+  ],
+
+  "EventDefinition": [
+    {
+      "id": "evt_welcome_gift",
+      "name": "Welcome Gift Event",
+      "version": 1,
+      "kind": "system",
+      "handlerKey": "createGiftForPlayer",
+      "security": {},
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "giftDefId": { "type": "string" }
+        },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    },
+    {
+      "id": "evt_boss_reward",
+      "name": "Boss Reward Drop",
+      "version": 1,
+      "kind": "system",
+      "handlerKey": "createGiftForPlayer",
+      "security": {
+        "allowedEmitters": ["MissionJob"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "giftDefId": { "type": "string" }
+        },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    },
+    {
+      "id": "evt_crafting_bonus",
+      "name": "Crafting Bonus Drop",
+      "version": 1,
+      "kind": "system",
+      "handlerKey": "createGiftForPlayer",
+      "security": {
+        "allowedEmitters": ["CraftingJob"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "giftDefId": { "type": "string" }
+        },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    },
+    {
+      "id": "evt_seasonal_bonus",
+      "name": "Seasonal Event Bonus",
+      "version": 1,
+      "kind": "seasonal",
+      "handlerKey": "createGiftForPlayer",
+      "security": {
+        "allowedEmitters": ["MissionJob", "CraftingJob"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "giftDefId": { "type": "string" },
+          "seasonId": { "type": "string" }
+        },
+        "required": ["giftDefId"]
+      },
+      "enabled": true
+    }
+  ],
+
+  "GiftDef": [
+    {
+      "id": "gift_welcome_pack",
+      "name": "Welcome Pack",
+      "version": 1,
+      "presentation": {
+        "title": "Welcome to Derp Universe!",
+        "body": "Here's a starter pack to begin your derpy adventure. Don't spend it all in one place!",
+        "iconKey": "gift_welcome",
+        "rarity": "UNCOMMON"
+      },
+      "claimRules": {
+        "expiresInSeconds": 2592000,
+        "limitPerPlayer": 1
+      },
+      "rewardSpec": {
+        "type": "bundle",
+        "entries": [
+          { "type": "currency", "currencyId": "soft_arcanium", "amount": 1000 },
+          { "type": "currency", "currencyId": "premium_gems", "amount": 50 },
+          { "type": "item", "itemDefId": "potion_power_minor", "qty": 5 },
+          { "type": "item", "itemDefId": "potion_heal_standard", "qty": 3 }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "gift_boss_chest",
+      "name": "Ancient Derp's Treasure",
+      "version": 1,
+      "presentation": {
+        "title": "The Ancient Derp's Treasure!",
+        "body": "A legendary chest filled with the spoils of victory. It's surprisingly shiny.",
+        "iconKey": "gift_legendary_chest",
+        "rarity": "LEGENDARY"
+      },
+      "claimRules": {
+        "expiresInSeconds": 604800
+      },
+      "rewardSpec": {
+        "type": "bundle",
+        "entries": [
+          { "type": "currency", "currencyId": "soft_arcanium", "amount": 5000 },
+          { "type": "currency", "currencyId": "pure_essence", "amount": 25 },
+          { "type": "item", "itemDefId": "mat_shadow_vellum", "qty": 3 },
+          { "type": "item", "itemDefId": "mat_rare_gem", "qty": 10 }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "gift_starter_bird",
+      "name": "New Feathered Friend",
+      "version": 1,
+      "presentation": {
+        "title": "A New Guest Has Arrived!",
+        "body": "A mysterious bird has wandered into your outpost. They look derpy. You should keep them.",
+        "iconKey": "gift_bird",
+        "rarity": "EPIC"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "entity",
+        "definitionId": "derp_bird"
+      },
+      "enabled": true
+    },
+    {
+      "id": "gift_daily_login",
+      "name": "Daily Login Bonus",
+      "version": 1,
+      "presentation": {
+        "title": "Daily Derp Bonus!",
+        "body": "Thanks for logging in! Here's your daily dose of derp.",
+        "iconKey": "gift_daily",
+        "rarity": "COMMON"
+      },
+      "claimRules": {
+        "expiresInSeconds": 86400
+      },
+      "rewardSpec": {
+        "type": "bundle",
+        "entries": [
+          { "type": "currency", "currencyId": "soft_arcanium", "amount": 200 },
+          { "type": "item", "itemDefId": "mat_iron_ore", "qty": 5 }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "gift_seasonal_frost",
+      "name": "Frost Reign Bonus Pack",
+      "version": 1,
+      "presentation": {
+        "title": "Frost Reign Season Gift!",
+        "body": "A chilly package filled with seasonal goodies. Warning: may contain actual frost.",
+        "iconKey": "gift_seasonal_winter",
+        "rarity": "RARE"
+      },
+      "claimRules": {
+        "expiresInSeconds": 604800
+      },
+      "rewardSpec": {
+        "type": "bundle",
+        "entries": [
+          { "type": "currency", "currencyId": "seasonal_snowflakes", "amount": 500 },
+          { "type": "currency", "currencyId": "soft_arcanium", "amount": 1000 },
+          { "type": "item", "itemDefId": "mat_rare_gem", "qty": 2 }
+        ]
+      },
+      "enabled": true
+    }
+  ]
+}
