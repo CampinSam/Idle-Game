@@ -1,15 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, fetchFullLocation, fetchBuildingJobs, fetchCurrencyMap, fetchCurrencyIds } from '../patch-builder';
+import { PatchBuilder, buildLocationPatches, buildCurrencyPatches, buildActiveJobPatches } from '../patch-builder';
 import { LocationService } from '../../location/location.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class BuildBuildingHandler implements CommandHandler {
-  constructor(
-    private locationService: LocationService,
-    private prisma: PrismaService,
-  ) {}
+  constructor(private locationService: LocationService) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, buildingDefId } = payload;
@@ -17,31 +13,13 @@ export class BuildBuildingHandler implements CommandHandler {
     await this.locationService.buildBuilding(ctx.userId, locationId, buildingDefId);
 
     const pb = new PatchBuilder();
-
-    const [location, buildingJobs, currencyIds] = await Promise.all([
-      fetchFullLocation(ctx.tx, locationId),
-      fetchBuildingJobs(ctx.tx, ctx.userId),
-      fetchCurrencyIds(ctx.tx),
-    ]);
-    if (location) pb.upsertLocation(location, buildingJobs, currencyIds);
-
-    const currencyMap = await fetchCurrencyMap(ctx.tx, ctx.userId);
-    pb.upsertCurrencyBalances(currencyMap);
-
-    const jobs = await ctx.tx.job.findMany({
-      where: { userId: ctx.userId, status: { in: ['active', 'ready_notified'] } },
-    });
-    for (const job of jobs) pb.upsertJob(job);
+    await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
+    await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
+    await buildActiveJobPatches(pb, ctx.tx, ctx.userId);
 
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'toast' as const,
-          tone: 'info' as const,
-          message: 'Construction started!',
-        },
-      ],
+      ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Construction started!' }],
     };
   }
 }

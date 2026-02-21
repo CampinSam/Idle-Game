@@ -252,3 +252,50 @@ export async function fetchUserItems(prisma: PrismaService | any, userId: string
     include: { definition: true },
   });
 }
+
+export async function fetchActiveJobs(tx: any, userId: string) {
+  return tx.job.findMany({
+    where: { userId, status: { in: ['active', 'ready_notified'] } },
+  });
+}
+
+export async function fetchEntity(tx: any, entityId: string) {
+  return tx.entity.findUnique({
+    where: { id: entityId },
+    include: { equipment: true },
+  });
+}
+
+export async function buildLocationPatches(pb: PatchBuilder, tx: any, userId: string, locationId: string) {
+  const [location, buildingJobs, currencyIds] = await Promise.all([
+    fetchFullLocation(tx, locationId),
+    fetchBuildingJobs(tx, userId),
+    fetchCurrencyIds(tx),
+  ]);
+  if (location) pb.upsertLocation(location, buildingJobs, currencyIds);
+}
+
+export async function buildCurrencyPatches(pb: PatchBuilder, tx: any, userId: string) {
+  const currencyMap = await fetchCurrencyMap(tx, userId);
+  pb.upsertCurrencyBalances(currencyMap);
+}
+
+export async function buildActiveJobPatches(pb: PatchBuilder, tx: any, userId: string) {
+  const jobs = await fetchActiveJobs(tx, userId);
+  for (const job of jobs) pb.upsertJob(job);
+}
+
+export async function buildItemPatches(pb: PatchBuilder, tx: any, userId: string) {
+  const items = await fetchUserItems(tx, userId);
+  for (const item of items) pb.upsertItem(item);
+}
+
+export async function buildEntityPatch(pb: PatchBuilder, tx: any, entityId: string) {
+  const entity = await fetchEntity(tx, entityId);
+  if (entity) pb.upsertEntity(entity);
+}
+
+export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string) {
+  const user = await tx.user.findUnique({ where: { id: userId } });
+  if (user) pb.upsertPlayer(user);
+}

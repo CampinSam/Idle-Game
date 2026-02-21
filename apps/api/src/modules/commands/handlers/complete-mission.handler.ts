@@ -1,47 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, fetchCurrencyMap } from '../patch-builder';
+import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
-import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class CompleteMissionHandler implements CommandHandler {
-  constructor(
-    private missionService: MissionService,
-    private prisma: PrismaService,
-  ) {}
+  constructor(private missionService: MissionService) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { jobId } = payload;
-    const tx = ctx.tx as any;
 
-    const result = await this.missionService.completeMission(ctx.userId, jobId, tx);
+    const result = await this.missionService.completeMission(ctx.userId, jobId, ctx.tx);
 
     const pb = new PatchBuilder();
 
-    const job = await tx.job.findUnique({ where: { id: jobId } });
+    const job = await (ctx.tx as any).job.findUnique({ where: { id: jobId } });
     if (job) pb.upsertJob(job);
 
     const entityIds = result.missionResult?.entityIds || [];
     for (const entityId of entityIds) {
-      const entity = await tx.entity.findUnique({
-        where: { id: entityId },
-        include: { equipment: true },
-      });
-      if (entity) pb.upsertEntity(entity);
+      await buildEntityPatch(pb, ctx.tx, entityId);
     }
 
-    const user = await tx.user.findUnique({ where: { id: ctx.userId } });
-    if (user) pb.upsertPlayer(user);
-
-    const currencyMap = await fetchCurrencyMap(tx, ctx.userId);
-    pb.upsertCurrencyBalances(currencyMap);
-
-    const items = await tx.itemInstance.findMany({
-      where: { userId: ctx.userId },
-      include: { definition: true },
-    });
-    for (const item of items) pb.upsertItem(item);
+    await buildPlayerPatch(pb, ctx.tx, ctx.userId);
+    await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
+    await buildItemPatches(pb, ctx.tx, ctx.userId);
 
     const missionResult = result.missionResult;
     const success = missionResult?.success;
