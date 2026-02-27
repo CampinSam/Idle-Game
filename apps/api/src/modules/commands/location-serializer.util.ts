@@ -1,6 +1,7 @@
 import {
   resolveLevelConfig,
   resolveProductionRates,
+  resolveStorageCapacity,
   resolveConstructionCosts,
   calcGrowth,
   LevelRules,
@@ -56,6 +57,7 @@ export function serializeLocation(
       const bRules = (b.buildingDef?.rules as LevelRules) || {};
       const bConfig = resolveLevelConfig(bRules, b.level);
       const bProduction = resolveProductionRates(bConfig.production, b.level);
+      const bStorageContributions = resolveStorageCapacity(bConfig.storage, b.level);
       const primaryResource = Object.keys(bProduction)[0] || null;
       const resolved = primaryResource
         ? (currencyIds.has(primaryResource)
@@ -87,6 +89,7 @@ export function serializeLocation(
         outputType: resolved.outputType,
         outputRefId: resolved.outputRefId,
         resourcePerHour: String(rph),
+        storageContributions: bStorageContributions,
         upgradeCosts,
         upgradeTimer,
         jobId: job?.id || null,

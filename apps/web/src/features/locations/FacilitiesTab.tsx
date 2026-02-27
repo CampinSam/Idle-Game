@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
@@ -52,6 +52,8 @@ export default function FacilitiesTab({
       });
     return () => { cancelled = true; };
   }, [outpostId]);
+
+  const currencyIds = useMemo(() => new Set(currencyDefs.map((c: any) => c.id)), [currencyDefs]);
 
   const slotsAvailable = availableData?.slotsAvailable ?? true;
   const isAddTab = activeSubTab === buildings.length;
@@ -151,28 +153,26 @@ export default function FacilitiesTab({
             {!isBuilding && b.category === 'STORAGE' && (
               <div className="facility-card-storage">
                 <div className="facility-storage-header">
-                  <span className="facility-storage-label">Storage Capacity</span>
+                  <span className="facility-storage-label">Storage Capacity Added</span>
                 </div>
-                {Object.entries(storageCapacity).length > 0 ? (
-                  Object.entries(storageCapacity).map(([resourceId, cap]) => {
-                    const bal = storageBalances.find((sb: any) => sb.outputRefId === resourceId);
-                    const current = bal ? Number(bal.amount) : 0;
-                    const pct = cap > 0 ? Math.min((current / cap) * 100, 100) : 0;
+                {Object.entries(b.storageContributions || {}).length > 0 ? (
+                  Object.entries(b.storageContributions as Record<string, number>).map(([resourceId, cap]) => {
+                    const outputType = currencyIds.has(resourceId) ? 'CURRENCY' : 'ITEM';
                     return (
                       <div key={resourceId} className="facility-storage-row">
                         <span className="facility-storage-icon">
-                          <GameIcon src={resolveIcon(bal?.outputType || 'CURRENCY', resourceId, currencyDefs, itemDefs)} size={16} />
+                          <GameIcon src={resolveIcon(outputType, resourceId, currencyDefs, itemDefs)} size={16} />
                         </span>
                         <span className="facility-storage-name">
-                          {resolveName(bal?.outputType || 'CURRENCY', resourceId, currencyDefs, itemDefs)}
+                          {resolveName(outputType, resourceId, currencyDefs, itemDefs)}
                         </span>
-                        <span className="facility-storage-cap">{formatAmount(current)} / {formatAmount(cap)}</span>
+                        <span className="facility-storage-cap">+{formatAmount(cap)}</span>
                       </div>
                     );
                   })
                 ) : (
                   <div className="facility-storage-row">
-                    <span className="facility-storage-name">No resources stored</span>
+                    <span className="facility-storage-name">No capacity contributions</span>
                   </div>
                 )}
               </div>

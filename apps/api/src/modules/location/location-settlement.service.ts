@@ -174,7 +174,7 @@ export class LocationSettlementService {
     };
   }
 
-  computeLocationMeta(location: any): { capacity: Record<string, number>; productionRates: Record<string, number> } {
+  computeLocationMeta(location: any, buildingIdsUnderConstruction: Set<string> = new Set()): { capacity: Record<string, number>; productionRates: Record<string, number> } {
     const locRules = (location.definition?.rules as LevelRules) || {};
     const locConfig = resolveLevelConfig(locRules, location.level);
     const capacity = resolveStorageCapacity(locConfig.storage, location.level);
@@ -182,8 +182,7 @@ export class LocationSettlementService {
 
     for (const building of (location.buildings ?? [])) {
       if (building.enabled === false) continue;
-      const bState = (building.state as any) || {};
-      if (bState.status !== 'active') continue;
+      if (buildingIdsUnderConstruction.has(building.id)) continue;
       const bRules = (building.buildingDef?.rules as LevelRules) || {};
       const bConfig = resolveLevelConfig(bRules, building.level);
 
@@ -200,8 +199,7 @@ export class LocationSettlementService {
 
     for (const building of (location.buildings ?? [])) {
       if (building.enabled === false) continue;
-      const bState = (building.state as any) || {};
-      if (bState.status !== 'active') continue;
+      if (buildingIdsUnderConstruction.has(building.id)) continue;
       for (const room of (building.rooms ?? [])) {
         if (room.enabled === false) continue;
         const rRules = (room.roomDef?.rules as LevelRules) || {};
@@ -256,7 +254,15 @@ export class LocationSettlementService {
     });
     if (!location) return { capacity: {}, productionRates: {}, effectiveProductionRates: {} };
 
-    const { capacity, productionRates } = this.computeLocationMeta(location);
+    const activeJobs = await (db as any).job.findMany({
+      where: { userId: location.ownerUserId, type: 'BuildingJob', status: 'active' },
+      select: { data: true },
+    });
+    const buildingIdsUnderConstruction = new Set<string>(
+      activeJobs.map((j: any) => (j.data as any)?.buildingId).filter(Boolean),
+    );
+
+    const { capacity, productionRates } = this.computeLocationMeta(location, buildingIdsUnderConstruction);
 
     const locRules = (location.definition?.rules as LevelRules) || {};
     const locConfig = resolveLevelConfig(locRules, location.level);

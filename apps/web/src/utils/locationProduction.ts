@@ -102,6 +102,7 @@ export function computeGeneratorProduction(
   const results: GeneratorProduction[] = [];
 
   for (const building of generators) {
+    if (!building.outputRefId || building.outputRefId === 'null') continue;
     const resourcePerHour = Number(building.resourcePerHour || 0);
     const buildingMultBps = getBuildingLevelMult(building.level);
     const key = `${building.outputType}:${building.outputRefId}`;
