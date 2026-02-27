@@ -19,10 +19,24 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
   return useMemo(() => {
     const map = new Map<string, LocationTimerData>();
     for (const op of locations) {
+      const storage = (op as any).storage || {};
+      const effectiveRates: Record<string, number> = storage.effectiveProductionRates || {};
+      const storedAmounts: Record<string, number> = storage.stored || {};
+
       const generators = computeGeneratorProduction(op);
-      const resourceSummaries = aggregateByResource(op, generators);
+      const rawSummaries = aggregateByResource(op, generators);
+      const lastAccrued = Number((op as any).lastAccruedTick || 0);
+
       const resourceTimers = new Map<string, TickTimer>();
-      const lastAccrued = Number(op.lastAccruedTick || 0);
+      const resourceSummaries: ResourceSummary[] = rawSummaries.map((res) => {
+        const serverRate = effectiveRates[res.outputRefId];
+        const serverStored = storedAmounts[res.outputRefId];
+
+        const totalRatePerHour = serverRate !== undefined ? serverRate : res.totalRatePerHour;
+        const currentAmount = serverStored !== undefined ? serverStored : res.currentAmount;
+
+        return { ...res, totalRatePerHour, currentAmount };
+      });
 
       for (const res of resourceSummaries) {
         const ratePerTick = res.totalRatePerHour / 3600;
