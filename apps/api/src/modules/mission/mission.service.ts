@@ -386,7 +386,10 @@ export class MissionService {
       traits: b.traits as any,
     }));
 
-    const teamMP = calculateTeamMP(teamForMP);
+    const rawTeamMP = calculateTeamMP(teamForMP);
+    // Apply diminishing returns above mpEffectivenessCap (anti-whale constraint)
+    const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
+    const teamMP = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
     const difficulty = mission.data.difficulty;
     const successChance = calculateSuccessChance(
       teamMP,

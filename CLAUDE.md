@@ -166,8 +166,17 @@ const calculateTeamMP = (birds: Bird[]): number => {
 };
 
 // Success probability
-const calculateSuccessChance = (mp: number, difficulty: number): number => {
-  return Math.min(Math.max(mp / (mp + difficulty), 0.05), 0.95);
+// minSuccessChance and maxSuccessChance (integers 0–100) are set per MissionDef,
+// allowing each mission to define its own floor and ceiling — do NOT hardcode
+// global bounds here. Configure them via the admin panel on each MissionDef.
+const calculateSuccessChance = (
+  mp: number,
+  difficulty: number,
+  minSuccessChance: number, // from MissionDef.minSuccessChance
+  maxSuccessChance: number, // from MissionDef.maxSuccessChance
+): number => {
+  const raw = mp / (mp + difficulty);
+  return Math.min(Math.max(raw, minSuccessChance / 100), maxSuccessChance / 100);
 };
 ```
 
