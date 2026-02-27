@@ -23,23 +23,8 @@ import LootPop, { type LootPopItem } from '../../components/LootPop';
 import FacilitiesTab from './FacilitiesTab';
 import BuildBuildingModal from './BuildBuildingModal';
 import UpgradeBuildingModal from './UpgradeBuildingModal';
+import { getRegionDisplay } from '@derp/shared';
 import './LocationDetailPage.css';
-
-const REGION_NAMES: Record<string, string> = {
-  derpshire_valley: 'Derpshire Valley',
-  chillarctica_drifts: 'Chillarctica Drifts',
-  sandcrypt_badlands: 'Sandcrypt Badlands',
-  chillvine_jungle: 'Chillvine Jungle',
-  pinnacle_perch: 'Pinnacle Perch',
-  baldos_bog: "Baldo's Bog",
-  lavalode_peaks: 'LavaLode Peaks',
-  frostpeak_mountains: 'Frostpeak Mountains',
-};
-
-const REGION_IMAGES: Record<string, string> = {
-  derpshire_valley: '/images/outpost-derpshire-valley.png',
-  frostpeak_mountains: '/images/outpost-frostpeak-mountains.png',
-};
 
 const SIZE_LABELS: Record<number, string> = {
   1: 'SMALL',
@@ -155,8 +140,9 @@ export default function LocationDetailPage() {
     );
   }
 
-  const regionName = /*REGION_NAMES[outpost.region] || */outpost.region;
-  const regionImage = REGION_IMAGES[outpost.region] || '/images/outpost-scene.png';
+  const regionDisplay = getRegionDisplay(outpost.region);
+  const regionName = regionDisplay.displayName;
+  const regionImage = regionDisplay.imagePath;
   const size = SIZE_LABELS[outpost.level] || (outpost.level >= 5 ? 'LARGE' : 'SMALL');
   const fort = getFortification(outpost.level);
   const defenseBoost = getDefenseBoost(outpost.level);

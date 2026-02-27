@@ -4,6 +4,7 @@ import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
 import { formatRate, formatAmount } from '../../utils/locationProduction';
 import BuildingProgressBar from '../../components/BuildingProgressBar';
+import { getBuildingCategoryDisplay } from '@derp/shared';
 import './FacilitiesTab.css';
 
 interface FacilitiesTabProps {
@@ -19,12 +20,6 @@ interface FacilitiesTabProps {
   onCompleteBuilding: (buildingId: string) => void;
   onUpgradeClick: (building: any) => void;
 }
-
-const CATEGORY_ICONS: Record<string, string> = {
-  GENERATOR: '⚡',
-  DEFENSE: '🛡️',
-  STORAGE: '📦',
-};
 
 export default function FacilitiesTab({
   outpostId,
@@ -97,7 +92,7 @@ export default function FacilitiesTab({
 
       {!isAddTab && buildings[activeSubTab] && (() => {
         const b = buildings[activeSubTab];
-        const catIcon = CATEGORY_ICONS[b.category] || '🏗️';
+        const catIcon = getBuildingCategoryDisplay(b.category).icon;
         const isBuilding = b.status === 'building';
         const genEntry = resourceSummaries
           .flatMap((r: any) => r.generators)
