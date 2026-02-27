@@ -52,9 +52,10 @@ export default function HomePage() {
 
   if (!profile) return <HomePageSkeleton />;
 
-  // Sum real production rates from LocationInstance.storage.productionRates
+  // Sum effective production rates (with worker + threat multipliers applied server-side)
+  // Falls back to base productionRates for locations not yet backfilled
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
-    const rates: Record<string, number> = loc?.storage?.productionRates ?? {};
+    const rates: Record<string, number> = loc?.storage?.effectiveProductionRates ?? loc?.storage?.productionRates ?? {};
     for (const [resourceId, rate] of Object.entries(rates)) {
       acc[resourceId] = (acc[resourceId] ?? 0) + rate;
     }

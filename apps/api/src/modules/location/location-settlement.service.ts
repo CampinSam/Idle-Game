@@ -244,7 +244,7 @@ export class LocationSettlementService {
     };
   }
 
-  async recalculateLocationMeta(locationId: string, client?: any): Promise<{ capacity: Record<string, number>; productionRates: Record<string, number> }> {
+  async recalculateLocationMeta(locationId: string, client?: any): Promise<{ capacity: Record<string, number>; productionRates: Record<string, number>; effectiveProductionRates: Record<string, number> }> {
     const db = client || this.prisma;
     const location = await (db as any).locationInstance.findFirst({
       where: { id: locationId },
@@ -254,9 +254,25 @@ export class LocationSettlementService {
         workerAssignments: true,
       },
     });
-    if (!location) return { capacity: {}, productionRates: {} };
+    if (!location) return { capacity: {}, productionRates: {}, effectiveProductionRates: {} };
 
     const { capacity, productionRates } = this.computeLocationMeta(location);
+
+    const locRules = (location.definition?.rules as LevelRules) || {};
+    const locConfig = resolveLevelConfig(locRules, location.level);
+    const maxWorkers: number = locConfig.workers?.slots ?? 2;
+    const workerCount: number = (location.workerAssignments || []).length;
+    const workerMultBps = getWorkerMultBps(workerCount, maxWorkers);
+    const threatMultBps = getThreatMultBps(location.threatLevel || 0);
+
+    const effectiveProductionRates: Record<string, number> = {};
+    for (const [resId, rate] of Object.entries(productionRates)) {
+      let effective = rate;
+      effective = Math.floor(effective * Number(workerMultBps) / 10000);
+      effective = Math.floor(effective * Number(threatMultBps) / 10000);
+      effectiveProductionRates[resId] = effective;
+    }
+
     const storage = (location.storage as any) || {};
     await (db as any).locationInstance.update({
       where: { id: locationId },
@@ -265,9 +281,10 @@ export class LocationSettlementService {
           ...storage,
           capacity,
           productionRates,
+          effectiveProductionRates,
         },
       },
     });
-    return { capacity, productionRates };
+    return { capacity, productionRates, effectiveProductionRates };
   }
 }
