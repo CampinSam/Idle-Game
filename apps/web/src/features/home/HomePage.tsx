@@ -52,6 +52,19 @@ export default function HomePage() {
 
   if (!profile) return <HomePageSkeleton />;
 
+  // Sum real production rates from LocationInstance.storage.productionRates
+  const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
+    const rates: Record<string, number> = loc?.storage?.productionRates ?? {};
+    for (const [resourceId, rate] of Object.entries(rates)) {
+      acc[resourceId] = (acc[resourceId] ?? 0) + rate;
+    }
+    return acc;
+  }, {});
+  const arcaniumRate = totalProductionByResource['soft_arcanium'] ?? 0;
+  const otherRate = Object.entries(totalProductionByResource)
+    .filter(([id]) => id !== 'soft_arcanium')
+    .reduce((sum, [, rate]) => sum + rate, 0);
+
   const idleEntities = entities.filter((b: any) => b.status === 'idle').length;
   const busyEntities = entities.length - idleEntities;
   const getMissionRemaining = (m: any): number => {
@@ -78,6 +91,9 @@ export default function HomePage() {
 
   return (
     <div className="hp">
+      {/* TODO(Phase 5): Replace with live season data from GET /season/current.
+           Season name, time remaining, and CTA label should come from the SeasonService.
+           See Phase 5 in the post-MVP roadmap. */}
       <div className="hp-section">
         <div className="hp-season-banner" onClick={() => navigate('/missions')}>
           <img src="/images/season-banner.png" alt="" className="hp-season-bg" />
@@ -104,12 +120,14 @@ export default function HomePage() {
           <div className="hp-outpost-stats">
             <div className="hp-outpost-stat">
               <span className="hp-outpost-stat-icon">💎</span>
-              <span className="hp-outpost-stat-val">{(locations.length * 120).toLocaleString()} /h</span>
+              <span className="hp-outpost-stat-val">{arcaniumRate.toLocaleString()} /h</span>
             </div>
-            <div className="hp-outpost-stat">
-              <span className="hp-outpost-stat-icon">⭐</span>
-              <span className="hp-outpost-stat-val">{locations.length * 15} /h</span>
-            </div>
+            {otherRate > 0 && (
+              <div className="hp-outpost-stat">
+                <span className="hp-outpost-stat-icon">⭐</span>
+                <span className="hp-outpost-stat-val">{otherRate.toLocaleString()} /h</span>
+              </div>
+            )}
             <div className="hp-outpost-stat">
               <span className="hp-outpost-stat-icon">🏠</span>
               <span className="hp-outpost-stat-val">{locations.length}</span>
