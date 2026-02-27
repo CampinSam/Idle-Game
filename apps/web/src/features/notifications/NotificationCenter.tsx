@@ -5,15 +5,8 @@ import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import type { ActiveBoostInfo } from '../../hooks/useActiveBoosts';
+import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
 import './NotificationCenter.css';
-
-const CATEGORY_ICONS: Record<string, string> = {
-  missions: '⚔️',
-  crafting: '🔮',
-  locations: '🏰',
-  gift: '🎁',
-  system: '📢',
-};
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
@@ -182,7 +175,7 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
                       onClick={() => handleTap(n)}
                     >
                       <span className="nc-item-icon">
-                        {CATEGORY_ICONS[n.category] || '🔔'}
+                        {NOTIFICATION_CATEGORY_DISPLAY[n.category]?.icon ?? '🔔'}
                       </span>
                       <div className="nc-item-content">
                         <span className="nc-item-title">{n.title}</span>

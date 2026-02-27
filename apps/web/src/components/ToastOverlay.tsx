@@ -4,23 +4,8 @@ import { useNotifications, AppNotification } from '../context/NotificationContex
 import { useModal } from '../context/ModalContext';
 import { useCollectJob } from '../hooks/useCollectJob';
 import { api } from '../services/api';
+import { NOTIFICATION_CATEGORY_DISPLAY, NOTIFICATION_PRIORITY_COLORS } from '@derp/shared';
 import './ToastOverlay.css';
-
-const CATEGORY_ICONS: Record<string, string> = {
-  missions: '⚔️',
-  crafting: '🔮',
-  locations: '🏰',
-  boost: '⚡',
-  gift: '🎁',
-  system: '🔔',
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  high: '#f59e0b',
-  normal: '#8b5cf6',
-  low: '#64748b',
-};
 
 function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNotification; onDismiss: () => void; onHide: () => void }) {
   const navigate = useNavigate();
@@ -123,8 +108,8 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
     }
   }, [notification, navigate, markRead, onDismiss, isReadyType, isCompleteType, isGiftType, handleJobView, handleGiftView]);
 
-  const icon = CATEGORY_ICONS[notification.category] || '🔔';
-  const accentColor = PRIORITY_COLORS[notification.priority] || PRIORITY_COLORS.normal;
+  const icon = NOTIFICATION_CATEGORY_DISPLAY[notification.category]?.icon ?? '🔔';
+  const accentColor = NOTIFICATION_PRIORITY_COLORS[notification.priority] ?? NOTIFICATION_PRIORITY_COLORS.normal;
 
   return (
     <div

@@ -3,58 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
+import { getArchetypeDisplay, STAT_DISPLAY, TRAIT_SLOT_DISPLAY } from '@derp/shared';
 import './EntityDetailPage.css';
-
-const CLASS_COLORS: Record<string, string> = {
-  buff: '#10B981', astro: '#3B82F6', viking: '#F59E0B', cyborg: '#8B5CF6',
-  ninja: '#6366F1', stoner: '#F97316', magician: '#A855F7', shadow: '#6B7280',
-  crystal: '#06B6D4', fire: '#EF4444', default: '#8B5CF6',
-};
-
-const CLASS_GRADIENTS: Record<string, string> = {
-  buff: 'linear-gradient(180deg, #065F46 0%, #10B981 50%, #34D399 100%)',
-  astro: 'linear-gradient(180deg, #1E3A5F 0%, #3B82F6 50%, #93C5FD 100%)',
-  viking: 'linear-gradient(180deg, #78350F 0%, #F59E0B 50%, #FCD34D 100%)',
-  cyborg: 'linear-gradient(180deg, #4C1D95 0%, #8B5CF6 50%, #C4B5FD 100%)',
-  ninja: 'linear-gradient(180deg, #312E81 0%, #6366F1 50%, #A5B4FC 100%)',
-  stoner: 'linear-gradient(180deg, #7C2D12 0%, #F97316 50%, #FDBA74 100%)',
-  magician: 'linear-gradient(180deg, #581C87 0%, #A855F7 50%, #D8B4FE 100%)',
-  shadow: 'linear-gradient(180deg, #1F2937 0%, #6B7280 50%, #9CA3AF 100%)',
-  crystal: 'linear-gradient(180deg, #164E63 0%, #06B6D4 50%, #67E8F9 100%)',
-  fire: 'linear-gradient(180deg, #7F1D1D 0%, #EF4444 50%, #FCA5A5 100%)',
-  default: 'linear-gradient(180deg, #2D1B69 0%, #7C3AED 50%, #A78BFA 100%)',
-};
-
-const ENTITY_EMOJIS: Record<string, string> = {
-  buff: '💪', astro: '🚀', viking: '⚔️', cyborg: '🤖', ninja: '🥷',
-  stoner: '🎸', magician: '🧙', shadow: '🌑', crystal: '💎', fire: '🔥', default: '🐦',
-};
-
-const TRAIT_ICONS: Record<string, string> = {
-  head: '👑', ears: '👂', beak: '🦷', eyes: '👁️', body: '🦺', back: '🎒', tail: '🪶',
-};
 
 const STAT_LABELS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 
-const STAT_COLORS: Record<string, string> = {
-  ATK: '#EF4444', DEF: '#3B82F6', SPD: '#10B981',
-  FOC: '#F59E0B', LCK: '#A855F7', VIT: '#EC4899',
-};
-
 const TABS = ['STATS', 'EQUIPMENT', 'TRAITS'];
-
-function getEntityClass(entity: any): string {
-  const traits = entity.traits || {};
-  const dominant = traits.body || traits.head || '';
-  const lower = dominant.toLowerCase();
-  for (const cls of Object.keys(CLASS_COLORS)) {
-    if (cls !== 'default' && lower.includes(cls)) return cls;
-  }
-  if (lower.includes('sleek') || lower.includes('shadow')) return 'shadow';
-  if (lower.includes('plump') || lower.includes('crystal')) return 'crystal';
-  if (lower.includes('muscular') || lower.includes('fire') || lower.includes('flame')) return 'fire';
-  return 'default';
-}
 
 function getPowerScore(entity: any): number {
   const stats = entity.stats || {};
@@ -112,10 +66,8 @@ export default function EntityDetailPage() {
     );
   }
 
-  const entityClass = getEntityClass(entity);
-  const gradient = CLASS_GRADIENTS[entityClass] || CLASS_GRADIENTS.default;
-  const emoji = ENTITY_EMOJIS[entityClass] || ENTITY_EMOJIS.default;
-  const classColor = CLASS_COLORS[entityClass] || CLASS_COLORS.default;
+  const archetype: string = entity.traits?.body || entity.traits?.head || '';
+  const archetypeDisplay = getArchetypeDisplay(archetype);
   const power = getPowerScore(entity);
   const stats = entity.stats || {};
   const traits = entity.traits || {};
@@ -135,15 +87,15 @@ export default function EntityDetailPage() {
         </div>
       </div>
 
-      <div className="bd-hero" style={{ background: gradient }}>
+      <div className="bd-hero" style={{ background: archetypeDisplay.gradient }}>
         <GameImage
-          src={getEntityImagePath(entity.id, entityClass)}
+          src={getEntityImagePath(entity.id, archetype)}
           category="entities"
           alt={entity.name}
-          fallbackSrc={ENTITY_ARCHETYPE_IMAGES[entityClass] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+          fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
           className="bd-hero-portrait"
           glow
-          glowColor={classColor}
+          glowColor={archetypeDisplay.color}
         />
         <div className="bd-hero-platform">
           <div className="bd-platform-ring"></div>
@@ -207,13 +159,14 @@ export default function EntityDetailPage() {
           <div className="bd-stat-bars">
             {STAT_LABELS.map((stat) => {
               const val = stats[stat] || 0;
+              const statColor = STAT_DISPLAY[stat]?.color ?? '#8B5CF6';
               return (
                 <div key={stat} className="bd-stat-row">
-                  <span className="bd-stat-label" style={{ color: STAT_COLORS[stat] }}>{stat}</span>
+                  <span className="bd-stat-label" style={{ color: statColor }}>{stat}</span>
                   <div className="bd-stat-bar-wrap">
                     <div
                       className="bd-stat-bar"
-                      style={{ width: `${getStatBarWidth(val)}%`, background: STAT_COLORS[stat] }}
+                      style={{ width: `${getStatBarWidth(val)}%`, background: statColor }}
                     />
                   </div>
                   <span className="bd-stat-value">{val}</span>
@@ -229,7 +182,9 @@ export default function EntityDetailPage() {
 
           <div className="bd-class-row">
             <span className="bd-class-label">Class</span>
-            <span className="bd-class-val" style={{ backgroundColor: classColor }}>{entityClass.toUpperCase()}</span>
+            <span className="bd-class-val" style={{ backgroundColor: archetypeDisplay.color }}>
+              {archetype.toUpperCase() || 'UNKNOWN'}
+            </span>
           </div>
         </div>
       )}
@@ -261,7 +216,7 @@ export default function EntityDetailPage() {
           <div className="bd-traits-grid">
             {Object.entries(traits).map(([slot, value]: [string, any]) => (
               <div key={slot} className="bd-trait-card">
-                <div className="bd-trait-icon">{TRAIT_ICONS[slot] || '🔹'}</div>
+                <div className="bd-trait-icon">{TRAIT_SLOT_DISPLAY[slot]?.icon ?? '🔹'}</div>
                 <div className="bd-trait-name">{String(value)}</div>
                 <div className="bd-trait-slot">{slot}</div>
               </div>

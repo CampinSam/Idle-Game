@@ -18,6 +18,7 @@ import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
+import { getArchetypeDisplay, getDifficultyDisplay } from '@derp/shared';
 import './MissionsPage.css';
 
 const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/mission-quick.png', cardBackground: '#1a1a2e' };
@@ -55,13 +56,6 @@ function meetsNonTeamRequirements(def: any): boolean {
   return true;
 }
 
-function getDifficultyInfo(diff: number) {
-  if (diff <= 60) return { label: 'EASY', color: '#10B981', tier: 'BEGINNER' };
-  if (diff <= 100) return { label: 'MEDIUM', color: '#3B82F6', tier: 'STANDARD' };
-  if (diff <= 150) return { label: 'HARD', color: '#F59E0B', tier: 'ADVANCED' };
-  return { label: 'EXTREME', color: '#EF4444', tier: 'ADVANCED' };
-}
-
 function getEntityMP(entity: any) {
   const s = entity.stats || {};
   return (s.atk || s.ATK || 0) * 0.40 + (s.def || s.DEF || 0) * 0.30 + (s.spd || s.SPD || 0) * 0.20 + (s.foc || s.FOC || 0) * 0.10 + (s.lck || s.LCK || 0) * 0.05 + (s.vit || s.VIT || 0) * 0.05;
@@ -81,36 +75,6 @@ function getReqArray(requirements: any, type: string): any[] {
   if (!Array.isArray(requirements)) return [];
   const entry = requirements.find((r: any) => r.type === type);
   return Array.isArray(entry?.value) ? entry.value : [];
-}
-
-function getArchetypeEmoji(archetype: string) {
-  const map: Record<string, string> = {
-    Dave: '🐦', Astro: '🚀', Magician: '🎩', Ninja: '🥷',
-    Redneck: '🤠', Stoner: '🍄', DJ: '🎧', Viking: '⚔️',
-    Monk: '🧘', Corpo: '💼', Cyborg: '🤖', Buff: '💪',
-    MadScientist: '🧪', Deity: '👑',
-  };
-  return map[archetype] || '🐦';
-}
-
-function getArchetypeGradient(archetype: string) {
-  const map: Record<string, string> = {
-    Ninja: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    Astro: 'linear-gradient(135deg, #0c0032 0%, #190061 50%, #240090 100%)',
-    Magician: 'linear-gradient(135deg, #2d1b69 0%, #5b2c8e 50%, #7b2ff7 100%)',
-    Redneck: 'linear-gradient(135deg, #4a1a00 0%, #8b4513 50%, #cd853f 100%)',
-    Viking: 'linear-gradient(135deg, #1a0a0a 0%, #4a1c1c 50%, #8b0000 100%)',
-    Buff: 'linear-gradient(135deg, #1a3a1a 0%, #2d5a2d 50%, #228B22 100%)',
-    DJ: 'linear-gradient(135deg, #1a0033 0%, #4a0080 50%, #8000ff 100%)',
-    Stoner: 'linear-gradient(135deg, #0a2a0a 0%, #1a4a1a 50%, #2d7a2d 100%)',
-    Monk: 'linear-gradient(135deg, #2a1a00 0%, #5a3a00 50%, #daa520 100%)',
-    Corpo: 'linear-gradient(135deg, #1a1a2e 0%, #2a2a4e 50%, #4a4a6e 100%)',
-    Cyborg: 'linear-gradient(135deg, #0a1a2a 0%, #1a3a5a 50%, #2a5a8a 100%)',
-    MadScientist: 'linear-gradient(135deg, #1a2a0a 0%, #3a5a1a 50%, #7aff00 100%)',
-    Deity: 'linear-gradient(135deg, #2a1a00 0%, #5a3a0a 50%, #ffd700 100%)',
-    Dave: 'linear-gradient(135deg, #1e1850 0%, #2a2060 50%, #3a3080 100%)',
-  };
-  return map[archetype] || map.Dave;
 }
 
 function formatTimeShort(ms: number) {
@@ -398,7 +362,7 @@ export default function MissionsPage() {
               const locked = !meetsNonTeamRequirements(def);
               const missionEnabled = def.enabled ?? true;
               const unavailable = locked || !missionEnabled;
-              const diffInfo = getDifficultyInfo(def.difficulty);
+              const diffInfo = getDifficultyDisplay(def.difficulty);
               const display = resolveDisplay(def, missionCategoryDefs);
               const missionTags = def.tags || [];
               return (
@@ -440,7 +404,7 @@ export default function MissionsPage() {
   }
 
   if (selectedCategory && selectedMission && selectedDef && currentCat) {
-    const diffInfo = getDifficultyInfo(selectedDef.difficulty);
+    const diffInfo = getDifficultyDisplay(selectedDef.difficulty);
     const display = resolveDisplay(selectedDef, missionCategoryDefs);
     const missionTags = selectedDef.tags || [];
 
@@ -561,7 +525,7 @@ export default function MissionsPage() {
                 const isActive = activeSlotIndex === slotIndex;
                 return (
                   <div key={entity.id} className={`md-entity-card ${isActive ? 'md-slot-active' : ''}`} onClick={() => openSlot(slotIndex)}>
-                    <div className="md-entity-card-top" style={{ background: getArchetypeGradient(archetype) }}>
+                    <div className="md-entity-card-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
                       <div className="md-entity-remove" onClick={(e) => { e.stopPropagation(); removeEntityFromSlot(slotIndex); }}>✕</div>
                       <span className="md-entity-power-badge">⚡{mp}</span>
                       <GameImage
@@ -612,7 +576,7 @@ export default function MissionsPage() {
                         }
                       }}
                     >
-                      <div className="md-select-entity-top" style={{ background: getArchetypeGradient(archetype) }}>
+                      <div className="md-select-entity-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
                         <GameImage
                           src={getEntityImagePath(entity.id, archetype)}
                           category="entities"

@@ -13,23 +13,8 @@ import {
   formatRate,
   formatAmount,
 } from '../../utils/locationProduction';
+import { getRegionDisplay } from '@derp/shared';
 import './LocationsPage.css';
-
-const REGION_NAMES: Record<string, string> = {
-  derpshire_valley: 'Derpshire Valley',
-  chillarctica_drifts: 'Chillarctica Drifts',
-  sandcrypt_badlands: 'Sandcrypt Badlands',
-  chillvine_jungle: 'Chillvine Jungle',
-  pinnacle_perch: 'Pinnacle Perch',
-  baldos_bog: "Baldo's Bog",
-  lavalode_peaks: 'LavaLode Peaks',
-  frostpeak_mountains: 'Frostpeak Mountains',
-};
-
-const REGION_IMAGES: Record<string, string> = {
-  derpshire_valley: '/images/regions/derpshire-valley.png',
-  frostpeak_mountains: '/images/regions/frostpeak-mountains.png',
-};
 
 const MAX_OUTPOST_SLOTS = 5;
 
@@ -80,8 +65,9 @@ export default function LocationsPage() {
       >
         <div className="outpost-cards-row">
           {pagedLocations.map((op: any) => {
-            const regionName = REGION_NAMES[op.region] || op.region;
-            const regionImage = REGION_IMAGES[op.region] || '/images/outpost-scene.png';
+            const regionDisplay = getRegionDisplay(op.region);
+            const regionName = regionDisplay.displayName;
+            const regionImage = regionDisplay.imagePath;
             const timerData = locationTimerMap.get(op.id);
             const resourceSummaries = timerData?.resourceSummaries || [];
 
