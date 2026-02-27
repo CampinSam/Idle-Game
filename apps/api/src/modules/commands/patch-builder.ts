@@ -4,6 +4,7 @@ import {
   resolveLevelConfig,
   resolveProductionRates,
   resolveConstructionCosts,
+  calcGrowth,
   LevelRules,
 } from '../game-rules/level-config.util';
 
@@ -155,7 +156,11 @@ export class PatchBuilder {
         const nextLevel = b.level + 1;
         const nextConfig = resolveLevelConfig(bRules, nextLevel);
         const upgradeCosts = resolveConstructionCosts(nextConfig.constructionCost, nextLevel);
-        const upgradeTimer = nextConfig.timer || null;
+        const rawTimer = (nextConfig.timer as any) || null;
+        const scaledDuration = rawTimer
+          ? calcGrowth(rawTimer.duration ?? 0, rawTimer.growthRate, rawTimer.growthScalar, nextLevel)
+          : 0;
+        const upgradeTimer = scaledDuration > 0 ? { duration: scaledDuration } : null;
 
         return {
           id: b.id,
