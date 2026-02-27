@@ -160,9 +160,10 @@ export default function LocationDetailPage() {
     outputType: 'ITEM' as const,
   }));
 
-  const hasClaimable = resourceSummaries.some((res) => {
-    return Math.floor(res.currentAmount) >= 1;
-  });
+  const storedResources = Object.values((outpost.storage?.stored as Record<string, number>) || {});
+  const hasClaimable =
+    resourceSummaries.some((res) => Math.floor(res.currentAmount) >= 1) ||
+    storedResources.some((v) => Math.floor(Number(v)) >= 1);
 
   const assignedEntityIds = workersData.map((w: any) => w.entityId);
   const assignedEntities = entities.filter((b: any) => assignedEntityIds.includes(b.id));
@@ -256,7 +257,7 @@ export default function LocationDetailPage() {
                     </div>
                   </>
                 ) : (
-                  <div className="od-empty-tasks">No generators built</div>
+                  <div className="od-empty-tasks">No active generators.</div>
                 )}
                 <div className="od-prod-actions" style={{ position: 'relative' }}>
                   <LootPop
