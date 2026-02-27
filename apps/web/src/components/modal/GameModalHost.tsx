@@ -3,12 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import type { ModalAction } from '@derp/shared';
 import { useModal } from '../../context/ModalContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { useAppDispatch } from '../../store';
-import {
-  fetchCurrencyBalances,
-  fetchEntities,
-  fetchProfile,
-} from '../../store/gameSlice';
 import { api } from '../../services/api';
 import { useCommand } from '../../hooks/useCommand';
 import GameModal from './GameModal';
@@ -16,7 +10,6 @@ import GameModal from './GameModal';
 export default function GameModalHost() {
   const { currentModal, dismissModal, replaceModal } = useModal();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { refresh: refreshNotifications } = useNotifications();
   const { execute } = useCommand();
 
@@ -102,9 +95,6 @@ export default function GameModalHost() {
 
         case 'CLAIM_GIFT': {
           await api.claimGift(action.giftId);
-          dispatch(fetchCurrencyBalances());
-          dispatch(fetchEntities());
-          dispatch(fetchProfile());
 
           const replaced = await tryFetchFollowUp({ giftId: action.giftId });
           if (!replaced) {
@@ -145,7 +135,6 @@ export default function GameModalHost() {
           if (apiKey === 'jobs.skip' && payload?.jobId) {
             const jobId = payload.jobId as string;
             await api.skipJob(jobId);
-            dispatch(fetchCurrencyBalances());
             const replaced = await tryFetchFollowUp({ jobId });
             if (!replaced) {
               dismissModal();
@@ -165,7 +154,7 @@ export default function GameModalHost() {
         }
       }
     },
-    [dispatch, dismissModal, execute, handleNavigate, refreshNotifications, tryFetchFollowUp],
+    [dismissModal, execute, handleNavigate, refreshNotifications, tryFetchFollowUp],
   );
 
   if (!currentModal) return null;

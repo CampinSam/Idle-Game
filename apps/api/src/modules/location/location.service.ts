@@ -193,7 +193,7 @@ export class LocationService {
         }
       : undefined;
 
-    return this.gameRules.buildRequirementContext(user, {
+    return this.gameRules.buildRequirementContext(user as any, {
       allPlayerLocations,
       currentLocation: currentLocationCtx,
       parentBuilding: parentBuildingCtx,

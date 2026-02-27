@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import {
   fetchMissionDefs,
   fetchMissionCategoryDefs,
-  fetchMissionHistory,
 } from '../../store/gameSlice';
 import { useCommand } from '../../hooks/useCommand';
 import {
@@ -137,7 +136,6 @@ export default function MissionsPage() {
   useEffect(() => {
     dispatch(fetchMissionDefs());
     dispatch(fetchMissionCategoryDefs());
-    dispatch(fetchMissionHistory());
   }, [dispatch]);
 
   const repeatMissionDefId = searchParams.get('repeat');

@@ -80,9 +80,9 @@ export class MissionService {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user) {
         filtered = categories.filter((c: any) =>
-          this.gameRules.checkVisibility(c.visibilityRequirements, user)
+          this.gameRules.checkVisibility(c.visibilityRequirements, user as any)
         );
-        reqContext = this.gameRules.buildRequirementContext(user);
+        reqContext = this.gameRules.buildRequirementContext(user as any);
       }
     }
 
@@ -129,10 +129,10 @@ export class MissionService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return allDefs.map((d: any) => this.mapDefToLegacy(d));
 
-    const reqContext = this.gameRules.buildRequirementContext(user);
+    const reqContext = this.gameRules.buildRequirementContext(user as any);
 
     return allDefs
-      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user))
+      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any))
       .map((d: any) => this.mapDefToLegacy(d, reqContext));
   }
 

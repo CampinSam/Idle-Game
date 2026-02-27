@@ -51,7 +51,7 @@ export class CraftingService {
     if (!user) return allDefs.map((d: any) => this.mapDefToLegacy(d));
 
     return allDefs
-      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user))
+      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any))
       .map((d: any) => this.mapDefToLegacy(d));
   }
 
@@ -97,7 +97,7 @@ export class CraftingService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
 
-    if (!this.gameRules.checkVisibility(recipe.visibilityRequirements, user)) {
+    if (!this.gameRules.checkVisibility(recipe.visibilityRequirements, user as any)) {
       throw new BadRequestException('Recipe is not available');
     }
 
@@ -162,7 +162,7 @@ export class CraftingService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
-    const reqContext = this.gameRules.buildRequirementContext(user);
+    const reqContext = this.gameRules.buildRequirementContext(user as any);
 
     const entityId = job.team[0];
     const entity = await (this.prisma as any).entity.findUnique({ where: { id: entityId } });

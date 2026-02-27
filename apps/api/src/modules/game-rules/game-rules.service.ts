@@ -142,24 +142,25 @@ export class GameRulesService {
     const flags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? { ...(user.flags as Record<string, unknown>) } : {};
     const op = effect.operation ?? 'set';
 
+    const key = effect.key as string;
     switch (op) {
       case 'set':
-        flags[effect.key] = effect.value;
+        flags[key] = effect.value;
         break;
       case 'increment':
-        flags[effect.key] = (typeof flags[effect.key] === 'number' ? flags[effect.key] : 0) + Number(effect.value ?? 1);
+        flags[key] = (typeof flags[key] === 'number' ? flags[key] : 0) + Number(effect.value ?? 1);
         break;
       case 'decrement':
-        flags[effect.key] = (typeof flags[effect.key] === 'number' ? flags[effect.key] : 0) - Number(effect.value ?? 1);
+        flags[key] = (typeof flags[key] === 'number' ? flags[key] : 0) - Number(effect.value ?? 1);
         break;
       case 'invert':
-        flags[effect.key] = !flags[effect.key];
+        flags[key] = !flags[key];
         break;
       case 'remove':
-        delete flags[effect.key];
+        delete flags[key];
         break;
     }
-    await this.prisma.user.update({ where: { id: userId }, data: { flags } });
+    await this.prisma.user.update({ where: { id: userId }, data: { flags: flags as any } });
   }
 
   rollOdds(odds: number | undefined, rng?: { chance: (p: number) => boolean }): boolean {
@@ -179,7 +180,7 @@ export class GameRulesService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
-    const reqContext = this.buildRequirementContext(user);
+    const reqContext = this.buildRequirementContext(user as any);
 
     const applyEntry = async (effect: any) => {
       if (effect.requirements && !this.checkRequirements(effect.requirements, reqContext)) return;
