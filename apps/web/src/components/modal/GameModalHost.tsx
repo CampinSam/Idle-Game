@@ -2,16 +2,16 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ModalAction } from '@derp/shared';
 import { useModal } from '../../context/ModalContext';
-import { useNotifications } from '../../context/NotificationContext';
 import { api } from '../../services/api';
 import { useCommand } from '../../hooks/useCommand';
+import { useAppSelector } from '../../store';
 import GameModal from './GameModal';
 
 export default function GameModalHost() {
   const { currentModal, dismissModal, replaceModal } = useModal();
   const navigate = useNavigate();
-  const { refresh: refreshNotifications } = useNotifications();
   const { execute } = useCommand();
+  const jobs = useAppSelector((s) => s.sync.jobs);
 
   const handleNavigate = useCallback(
     (route: string) => {
@@ -63,14 +63,18 @@ export default function GameModalHost() {
 
         case 'ACK_NOTIFICATION': {
           await api.markNotificationsRead([action.notificationId]);
-          refreshNotifications();
           dismissModal();
           return;
         }
 
         case 'COMPLETE_JOB': {
           const jobId = action.jobId;
-          const jobData = await api.getJob(jobId);
+          const jobData = jobs[jobId];
+          if (!jobData) {
+            console.warn('[GameModalHost] Job not found in sync store:', jobId);
+            dismissModal();
+            return;
+          }
           const { type, data: jd } = jobData;
 
           if (type === 'MissionJob') {
@@ -87,7 +91,6 @@ export default function GameModalHost() {
 
           const replaced = await tryFetchFollowUp({ jobId });
           if (!replaced) {
-            refreshNotifications();
             dismissModal();
           }
           return;
@@ -98,7 +101,6 @@ export default function GameModalHost() {
 
           const replaced = await tryFetchFollowUp({ giftId: action.giftId });
           if (!replaced) {
-            refreshNotifications();
             dismissModal();
           }
           return;
@@ -154,7 +156,7 @@ export default function GameModalHost() {
         }
       }
     },
-    [dismissModal, execute, handleNavigate, refreshNotifications, tryFetchFollowUp],
+    [dismissModal, execute, handleNavigate, tryFetchFollowUp, jobs],
   );
 
   if (!currentModal) return null;

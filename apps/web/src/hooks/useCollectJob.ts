@@ -1,17 +1,23 @@
 import { useCallback } from 'react';
-import { api } from '../services/api';
+import { useAppSelector } from '../store';
 import { useCommand } from './useCommand';
 import { useModal } from '../context/ModalContext';
+import { api } from '../services/api';
 
 export function useCollectJob() {
   const { execute } = useCommand();
   const { pushModal } = useModal();
+  const jobs = useAppSelector((s) => s.sync.jobs);
 
   const collectJob = useCallback(
     async (jobId: string) => {
-      const jobData = await api.getJob(jobId);
-      const { type, data: jd } = jobData;
+      const jobData = jobs[jobId];
+      if (!jobData) {
+        console.warn('[useCollectJob] Job not found in sync store:', jobId);
+        return;
+      }
 
+      const { type, data: jd } = jobData;
       let completed = false;
 
       if (type === 'MissionJob') {
@@ -44,7 +50,7 @@ export function useCollectJob() {
         console.warn('[useCollectJob] Failed to fetch results modal:', err);
       }
     },
-    [execute, pushModal],
+    [execute, pushModal, jobs],
   );
 
   return { collectJob };

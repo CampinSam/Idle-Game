@@ -68,6 +68,7 @@ The project is structured as a pnpm monorepo, encompassing a React+Vite frontend
 - **useCommand** hook: Sends commands via `POST /v1/commands` with auto-generated idempotency keys, applies response patches locally, and dispatches UI intents (toasts, modals, navigation).
 - **API routing**: v1 endpoints use `/api/v1/*` path through Vite's `/api` proxy (strips prefix → `/v1/*` reaches NestJS). SSE uses `/api/v1/stream?token=<jwt>` directly since EventSource can't set custom headers.
 - **Known Future Work**: Legacy REST endpoints still exist on backend (for backward compat); can be deprecated after full validation. Gift claiming still uses legacy REST pattern (not yet migrated to commands).
+- **Frontend Sync Migration Status (complete)**: All instance data is read exclusively from syncSlice. Eliminated: REST polling for notifications (NotificationContext now derives from syncSlice), REST fetch for entity detail (EntityDetailPage), REST job lookup in useCollectJob and GameModalHost COMPLETE_JOB handler. Remaining justified REST calls: `getAvailableBuildings` (server-computed requirement check), `getActiveBoosts` (not yet in sync pipeline), `getTickInfo` (infra state), write operations, and definition fetches (gameSlice).
 
 **Admin Panel:**
 - **Dashboard**: `/admin` provides tools for player editing, tick boosts, testing notifications, events, and gifts.

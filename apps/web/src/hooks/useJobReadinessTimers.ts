@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useTickEngine } from '../tick/TickEngine';
 import { api } from '../services/api';
-import { useNotifications } from '../context/NotificationContext';
 
 interface ActiveJob {
   id: string;
@@ -14,14 +13,11 @@ export function useJobReadinessTimers(jobs: ActiveJob[]) {
   const { snapshot } = useTickEngine();
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const notifiedRef = useRef<Set<string>>(new Set());
-  const { refresh } = useNotifications();
 
   const onJobReady = useCallback((jobId: string) => {
     notifiedRef.current.add(jobId);
-    api.markJobsNotified([jobId]).then(() => {
-      refresh();
-    }).catch(() => {});
-  }, [refresh]);
+    api.markJobsNotified([jobId]).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!snapshot || snapshot.tickRate <= 0) return;

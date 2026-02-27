@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
-import { useAppSelector } from '../store';
+import { useAppSelector, useAppDispatch } from '../store';
+import { applyPatches } from '../store/syncSlice';
+import { useSyncNotifications } from '../hooks/useSyncSelectors';
 
 export interface AppNotification {
   id: string;
@@ -29,7 +31,6 @@ interface NotificationContextValue {
   unreadCount: number;
   toasts: ToastItem[];
   loading: boolean;
-  refresh: () => void;
   markRead: (ids: string[]) => Promise<void>;
   markAllRead: () => Promise<void>;
   clearRead: () => Promise<void>;
@@ -42,7 +43,6 @@ const NotificationContext = createContext<NotificationContextValue>({
   unreadCount: 0,
   toasts: [],
   loading: false,
-  refresh: () => {},
   markRead: async () => {},
   markAllRead: async () => {},
   clearRead: async () => {},
@@ -57,57 +57,35 @@ export function useNotifications() {
 const MAX_VISIBLE_TOASTS = 2;
 const TOAST_DURATION = 5000;
 const CRITICAL_TOAST_DURATION = 15000;
-const POLL_INTERVAL = 15000;
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const dispatch = useAppDispatch();
   const token = useAppSelector((s) => s.auth.token);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const syncNotifs = useSyncNotifications();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const seenIds = useRef<Set<string>>(new Set());
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const lastSeenCreatedAt = useRef<string | null>(null);
 
-  const fetchNotifications = useCallback(async () => {
+  const notifications: AppNotification[] = (syncNotifs as any[])
+    .filter((n) => !n.dismissedAt)
+    .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
+
+  useEffect(() => {
     if (!token) return;
-    try {
-      const result = await api.getNotifications({ limit: 50 });
-      const items: AppNotification[] = result.items || [];
-
-      setNotifications(items);
-      setUnreadCount(result.unreadCount ?? 0);
-
-      const newToasts: ToastItem[] = [];
-      for (const n of items) {
-        if (seenIds.current.has(n.id)) continue;
-        seenIds.current.add(n.id);
-
-        if (lastSeenCreatedAt.current && n.createdAt <= lastSeenCreatedAt.current) continue;
-
-        if (n.readAt || n.dismissedAt) continue;
-
-        if (n.priority === 'critical' || n.priority === 'high') {
-          newToasts.push({ notification: n, id: n.id });
-        }
-      }
-
-      if (items.length > 0) {
-        const newest = items[0]?.createdAt;
-        if (!lastSeenCreatedAt.current || (newest && newest > lastSeenCreatedAt.current)) {
-          lastSeenCreatedAt.current = newest;
-        }
-      }
-
-      if (newToasts.length > 0) {
+    for (const n of notifications) {
+      if (seenIds.current.has(n.id)) continue;
+      seenIds.current.add(n.id);
+      if (n.readAt || n.dismissedAt) continue;
+      if (n.priority === 'critical' || n.priority === 'high') {
         setToasts((prev) => {
-          const combined = [...prev, ...newToasts];
+          const combined = [...prev, { notification: n, id: n.id }];
           return combined.slice(0, MAX_VISIBLE_TOASTS + 5);
         });
       }
-    } catch {
     }
-  }, [token]);
+  }, [notifications, token]);
 
   const scheduleToastDismiss = useCallback((toastId: string, duration: number) => {
     if (toastTimers.current.has(toastId)) return;
@@ -124,14 +102,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       scheduleToastDismiss(toast.id, dur);
     }
   }, [toasts, scheduleToastDismiss]);
-
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    fetchNotifications().finally(() => setLoading(false));
-    const interval = setInterval(fetchNotifications, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [token, fetchNotifications]);
 
   const dismissToast = useCallback((toastId: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== toastId));
@@ -157,23 +127,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       await api.markNotificationsRead(ids);
     }
     const now = new Date().toISOString();
-    setNotifications((prev) =>
-      prev.map((n) => (ids.includes(n.id) ? { ...n, readAt: n.readAt || now } : n)),
-    );
-    setUnreadCount((prev) => Math.max(0, prev - ids.length));
-  }, []);
+    dispatch(applyPatches({
+      patches: notifications
+        .filter((n) => ids.includes(n.id))
+        .map((n) => ({ op: 'upsert', entity: 'notification', id: n.id, data: { ...n, readAt: n.readAt || now } })),
+    }));
+  }, [dispatch, notifications]);
 
   const markAllRead = useCallback(async () => {
     await api.markAllNotificationsRead();
     const now = new Date().toISOString();
-    setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt || now })));
-    setUnreadCount(0);
-  }, []);
+    dispatch(applyPatches({
+      patches: notifications.map((n) => ({ op: 'upsert', entity: 'notification', id: n.id, data: { ...n, readAt: n.readAt || now } })),
+    }));
+  }, [dispatch, notifications]);
 
   const clearRead = useCallback(async () => {
     await api.clearReadNotifications();
-    setNotifications((prev) => prev.filter((n) => !n.readAt));
-  }, []);
+    dispatch(applyPatches({
+      patches: notifications
+        .filter((n) => n.readAt)
+        .map((n) => ({ op: 'delete', entity: 'notification', id: n.id })),
+    }));
+  }, [dispatch, notifications]);
 
   return (
     <NotificationContext.Provider
@@ -181,8 +157,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         notifications,
         unreadCount,
         toasts: toasts.slice(0, MAX_VISIBLE_TOASTS),
-        loading,
-        refresh: fetchNotifications,
+        loading: false,
         markRead,
         markAllRead,
         clearRead,

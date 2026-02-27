@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { useAppSelector } from '../../store';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
 import { getArchetypeDisplay, STAT_DISPLAY, TRAIT_SLOT_DISPLAY } from '@derp/shared';
@@ -33,29 +33,9 @@ function getStatBarWidth(value: number): number {
 export default function EntityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [entity, setEntity] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
 
-  const loadEntity = useCallback(async () => {
-    if (!id) return;
-    try {
-      const data = await api.getEntity(id);
-      setEntity(data);
-    } catch (err) {
-      console.error('Failed to load entity:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    loadEntity();
-  }, [loadEntity]);
-
-  if (loading) {
-    return <div className="bd-page"><div className="bd-loading">Loading...</div></div>;
-  }
+  const entity = useAppSelector((s) => s.sync.entities[id ?? '']);
 
   if (!entity) {
     return (
