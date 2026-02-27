@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../store/gameSlice';
@@ -10,7 +10,6 @@ import {
   useSyncItems,
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
-import { api } from '../../services/api';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
 import { useCurrentTick, useTickRate } from '../../tick';
@@ -54,8 +53,6 @@ export default function LocationDetailPage() {
   const syncItems = useSyncItems();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
-  const [detailOutpost, setDetailOutpost] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTabRaw] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
@@ -80,26 +77,12 @@ export default function LocationDetailPage() {
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
-  const storeOutpost = locations.find((op: any) => op.id === id);
-  const outpost = detailOutpost || storeOutpost;
-
-  const loadOutpost = useCallback(async () => {
-    if (!id) return;
-    try {
-      const data = await api.getLocation(id);
-      setDetailOutpost(data);
-    } catch (err) {
-      console.error('Failed to load outpost:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const outpost = locations.find((op: any) => op.id === id);
 
   useEffect(() => {
-    loadOutpost();
     if (currencyDefs.length === 0) dispatch(fetchCurrencyDefs());
     if (itemDefs.length === 0) dispatch(fetchItemDefs());
-  }, [loadOutpost, dispatch, currencyDefs.length, itemDefs.length]);
+  }, [dispatch, currencyDefs.length, itemDefs.length]);
 
   const handleClaim = async () => {
     if (!id || claiming) return;
@@ -143,19 +126,10 @@ export default function LocationDetailPage() {
     }
   };
 
-  if (!outpost && loading) {
-    return (
-      <div className="outpost-detail-page">
-        <div className="od-loading">Loading outpost...</div>
-      </div>
-    );
-  }
-
   if (!outpost) {
     return (
       <div className="outpost-detail-page">
-        <div className="od-loading">Outpost not found.</div>
-        <button className="od-back-link" onClick={() => navigate('/locations')}>Back to Locations</button>
+        <div className="od-loading">Loading outpost...</div>
       </div>
     );
   }
@@ -177,8 +151,13 @@ export default function LocationDetailPage() {
     (s, r) => s + r.totalRatePerHour, 0,
   );
 
-  const buildingsData: any[] = storeOutpost?.buildings || outpost.buildings || [];
+  const buildingsData: any[] = outpost.buildings || [];
   const workersData: any[] = outpost.workers || [];
+  const storageBalances = Object.entries((outpost.storage?.stored as Record<string, number>) || {}).map(([key, amount]) => ({
+    outputRefId: key,
+    amount: Number(amount),
+    outputType: 'ITEM' as const,
+  }));
 
   const hasClaimable = resourceSummaries.some((res) => {
     const timer = timerData?.resourceTimers.get(res.key);
@@ -360,7 +339,7 @@ export default function LocationDetailPage() {
             outpostId={outpost.id}
             buildings={buildingsData}
             resourceSummaries={resourceSummaries}
-            storageBalances={outpost.storageBalances || []}
+            storageBalances={storageBalances}
             storageCapacity={outpost.storage?.capacity || {}}
             currencyDefs={currencyDefs}
             itemDefs={itemDefs}
