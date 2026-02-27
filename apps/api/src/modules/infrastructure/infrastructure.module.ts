@@ -1,5 +1,5 @@
 import { Module, Global } from '@nestjs/common';
-import { PubSubService, InMemoryPubSubService } from './pubsub.service';
+import { PubSubService, InMemoryPubSubService, RedisPubSubService } from './pubsub.service';
 import { PlayerLockService } from './player-lock.service';
 import { IdempotencyService } from './idempotency.service';
 
@@ -8,7 +8,12 @@ import { IdempotencyService } from './idempotency.service';
   providers: [
     {
       provide: PubSubService,
-      useClass: InMemoryPubSubService,
+      useFactory: () => {
+        if (process.env.REDIS_URL) {
+          return new RedisPubSubService(process.env.REDIS_URL);
+        }
+        return new InMemoryPubSubService();
+      },
     },
     PlayerLockService,
     IdempotencyService,

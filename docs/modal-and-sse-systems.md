@@ -145,7 +145,7 @@ Actions are triggered by button clicks and handled by `GameModalHost.handleActio
 | `ACK_NOTIFICATION` | `{ notificationId: string }` | Mark notification as read, dismiss |
 | `COMPLETE_JOB` | `{ jobId: string }` | Complete the job via command pipeline, then fetch follow-up modal |
 | `CLAIM_GIFT` | `{ giftId: string }` | Claim gift via REST, refresh state, fetch follow-up modal |
-| `REPEAT_MISSION` | `{ missionDefId: string }` | Navigate to `/missions` (payload fields are available for future use but currently ignored by frontend) |
+| `REPEAT_MISSION` | `{ defId: string, entityIds: string[] }` | Re-send the same mission with the same team via command pipeline; falls back to navigating to `/missions` if the command fails |
 | `CRAFT_AGAIN` | `{ recipeDefId: string }` | Navigate to `/crafting` (payload fields are available for future use but currently ignored by frontend) |
 | `API_CALL` | `{ apiKey: string, payload?: Record }` | Execute a named API call (e.g., `jobs.skip`) |
 
@@ -324,14 +324,14 @@ When a user logs in, `SyncEngine.start()` runs:
 **Client sends:**
 ```typescript
 const { execute } = useCommand();
-await execute('StartMission', { missionDefId: 'scout_01', team: ['entity_1'] });
+await execute('StartMission', { defId: 'scout_01', entityIds: ['entity_1'] });
 ```
 
 **Wire format:**
 ```json
 {
   "type": "StartMission",
-  "payload": { "missionDefId": "scout_01", "team": ["entity_1"] },
+  "payload": { "defId": "scout_01", "entityIds": ["entity_1"] },
   "idempotencyKey": "StartMission-1708400000000-1"
 }
 ```

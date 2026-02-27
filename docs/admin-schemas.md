@@ -758,7 +758,7 @@ Populated when a job completes. Stores the outcome for auditing and display. Str
 {
   "success": true,
   "rewards": [
-    { "type": "bird_xp", "amount": 65 },
+    { "type": "entity_xp", "amount": 65 },
     { "type": "currency", "key": "soft_arcanium", "amount": 35 }
   ],
   "effects": [
@@ -1342,7 +1342,7 @@ The `rewards` array supports all of these entry types in any combination:
 
 | Entry Type | `type` value | Purpose |
 |---|---|---|
-| Reward | `bird_xp`, `keeper_xp`, `currency`, `item` | Grants resources to the player |
+| Reward | `entity_xp`, `keeper_xp`, `currency`, `item` | Grants resources to the player |
 | Effect | `flag` (with `operation`) | Mutates a player flag |
 | Text | `text` | Flavor text, one selected by weighted odds |
 | Event | `emitEvent` | Dispatches a server event (e.g. to create a gift) |
@@ -1360,7 +1360,7 @@ Every entry and bundle supports an optional `requirements` array that gates proc
 ```json
 {
   "rewards": [
-    { "type": "bird_xp", "min": 40, "max": 80, "odds": 100 },
+    { "type": "entity_xp", "min": 40, "max": 80, "odds": 100 },
     { "type": "currency", "key": "soft_arcanium", "min": 20, "max": 50, "odds": 100 },
     { "type": "item", "key": "mat_iron_ore", "min": 1, "max": 3, "odds": 10 },
     { "type": "flag", "operation": "set", "key": "completed_cave", "value": true, "odds": 100 },
@@ -1404,7 +1404,7 @@ Reward-type entries grant resources to the player. Each has a `type`, optional `
 
 | Type | Key | Min/Max | Odds | Meaning |
 |---|---|---|---|---|
-| `bird_xp` | — | XP range | 100 = guaranteed | XP split across all entities on the team |
+| `entity_xp` | — | XP range | 100 = guaranteed | XP split across all entities on the team |
 | `keeper_xp` | — | XP range | 100 = guaranteed | XP granted to the keeper |
 | `currency` | currency ID | amount range | 100 = guaranteed | Currency granted to the player |
 | `item` | item def ID | quantity range | 10 = 10% chance | Item granted (odds = percentage chance, omit or 100 for guaranteed) |
@@ -1814,7 +1814,7 @@ Players can receive a new bird entity as a gift triggered by mission or crafting
 {
   "success": {
     "rewards": [
-      { "type": "bird_xp", "min": 20, "max": 40, "odds": 100 },
+      { "type": "entity_xp", "min": 20, "max": 40, "odds": 100 },
       { "type": "currency", "key": "soft_arcanium", "min": 50, "max": 100, "odds": 100 },
       {
         "type": "emitEvent",
@@ -1836,7 +1836,7 @@ Players can receive a new bird entity as a gift triggered by mission or crafting
 ```
 Mission completes successfully
   → Outcome processing iterates success.rewards[]
-    → bird_xp and currency granted normally
+    → entity_xp and currency granted normally
     → emitEvent entry found:
       → Requirements checked: keeper_level >= 3? If not met → skip silently
       → Odds rolled: 5% chance → if roll fails → skip

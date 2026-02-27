@@ -10,6 +10,7 @@ import { CurrencyService } from "../currency/currency.service";
 import { InventoryService } from "../inventory/inventory.service";
 import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
+import { ANTI_WHALE_CAPS } from "@derp/shared";
 import {
   resolveLevelConfig,
   resolveConstructionCosts,
@@ -31,6 +32,28 @@ export class LocationService {
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
   ) {}
+
+  /**
+   * Enforces the maxActiveOutposts anti-whale cap.
+   * Call this before creating any new LocationInstance for a player.
+   */
+  async assertOutpostCap(userId: string, externalTx?: any): Promise<void> {
+    const client = externalTx || this.prisma;
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: { keeperLevel: true },
+    });
+    if (!user) throw new NotFoundException("User not found");
+    const activeCount = await (client as any).locationInstance.count({
+      where: { ownerUserId: userId, enabled: true },
+    });
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel);
+    if (activeCount >= maxOutposts) {
+      throw new BadRequestException(
+        `Maximum ${maxOutposts} active outpost(s) allowed at Keeper Level ${user.keeperLevel}`,
+      );
+    }
+  }
 
   private async getCurrencyIds(externalTx?: any): Promise<Set<string>> {
     const client = externalTx || this.prisma;
