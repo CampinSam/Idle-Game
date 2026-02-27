@@ -417,7 +417,9 @@ export class LocationService {
       ? await doWork(externalTx)
       : await this.prisma.$transaction(async (tx) => doWork(tx));
 
-    if (!externalTx && isInstant) {
+    if (externalTx) {
+      await this.settlementService.recalculateLocationMeta(locationId, externalTx);
+    } else {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
@@ -724,7 +726,9 @@ export class LocationService {
       ? await doWork(externalTx)
       : await this.prisma.$transaction(async (tx) => doWork(tx));
 
-    if (!externalTx && isInstant) {
+    if (externalTx) {
+      await this.settlementService.recalculateLocationMeta(locationId, externalTx);
+    } else {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {

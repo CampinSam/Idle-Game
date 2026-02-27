@@ -62,7 +62,7 @@ export default function LocationDetailPage() {
   };
   const lootPopKey = useRef(0);
   const [buildModalDef, setBuildModalDef] = useState<any>(null);
-  const [upgradeBuilding, setUpgradeBuilding] = useState<any>(null);
+  const [upgradeBuildingId, setUpgradeBuildingId] = useState<string | null>(null);
   const itemBalances = useMemo(() => {
     const balances: Record<string, number> = {};
     for (const item of syncItems) {
@@ -152,6 +152,9 @@ export default function LocationDetailPage() {
   );
 
   const buildingsData: any[] = outpost.buildings || [];
+  const upgradeBuildingData = upgradeBuildingId
+    ? buildingsData.find((b: any) => b.id === upgradeBuildingId) ?? null
+    : null;
   const workersData: any[] = outpost.workers || [];
   const storageBalances = Object.entries((outpost.storage?.stored as Record<string, number>) || {}).map(([key, amount]) => ({
     outputRefId: key,
@@ -346,7 +349,7 @@ export default function LocationDetailPage() {
             tickRate={tickRate}
             onBuildClick={(def: any) => setBuildModalDef(def)}
             onCompleteBuilding={handleCompleteBuilding}
-            onUpgradeClick={(b: any) => setUpgradeBuilding(b)}
+            onUpgradeClick={(b: any) => setUpgradeBuildingId(b.id)}
           />
         )}
 
@@ -426,17 +429,17 @@ export default function LocationDetailPage() {
         />
       )}
 
-      {upgradeBuilding && (
+      {upgradeBuildingData && (
         <UpgradeBuildingModal
-          building={upgradeBuilding}
+          building={upgradeBuildingData}
           outpostId={outpost.id}
           currencyDefs={currencyDefs}
           itemDefs={itemDefs}
           currencyBalances={currencyBalances}
           itemBalances={itemBalances}
-          onClose={() => setUpgradeBuilding(null)}
+          onClose={() => setUpgradeBuildingId(null)}
           onUpgraded={() => {
-            setUpgradeBuilding(null);
+            setUpgradeBuildingId(null);
           }}
         />
       )}
