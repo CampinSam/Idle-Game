@@ -120,7 +120,8 @@ export default function MissionsPage() {
       console.error('[MissionsPage] Failed to fetch modal spec:', err);
     }
   }, [pushModal]);
-  const { missionDefs, missionCategoryDefs, missionHistory } = useAppSelector((s) => s.game);
+  const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
+  const missionHistory: any[] = [];
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
