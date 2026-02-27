@@ -101,6 +101,8 @@ export class PatchBuilder {
   }
 
   upsertNotification(notification: any): this {
+    const toIso = (v: any) =>
+      v instanceof Date ? v.toISOString() : (v ?? null);
     this.patches.push({
       op: 'upsert',
       entity: 'notification',
@@ -109,11 +111,17 @@ export class PatchBuilder {
         id: notification.id,
         type: notification.type,
         category: notification.category,
+        priority: notification.priority,
         title: notification.title,
         body: notification.body,
-        createdAt: notification.createdAt instanceof Date
-          ? notification.createdAt.toISOString()
-          : notification.createdAt,
+        deepLink: notification.deepLink ?? {},
+        meta: notification.meta ?? {},
+        groupKey: notification.groupKey ?? null,
+        sourceType: notification.sourceType ?? null,
+        sourceId: notification.sourceId ?? null,
+        createdAt: toIso(notification.createdAt),
+        readAt: toIso(notification.readAt),
+        dismissedAt: toIso(notification.dismissedAt),
       },
     });
     return this;
