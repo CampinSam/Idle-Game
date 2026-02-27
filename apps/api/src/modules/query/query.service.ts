@@ -145,6 +145,7 @@ export class QueryService {
       inventory,
       latestDelta,
       currencyDefs,
+      missionHistory,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -207,6 +208,15 @@ export class QueryService {
         select: { id: true },
       }),
       this.prisma.currency.findMany({ select: { id: true } }),
+      this.prisma.job.findMany({
+        where: {
+          userId,
+          type: 'MissionJob',
+          status: { in: ['completed', 'failed'] },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 20,
+      }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -264,7 +274,7 @@ export class QueryService {
           definitionId: item.definitionId,
           quantity: item.quantity,
         })),
-        jobs: jobs.map((j: any) => {
+        jobs: [...jobs, ...missionHistory].map((j: any) => {
           const timer = j.timer as any;
           return {
             id: j.id,
@@ -274,8 +284,10 @@ export class QueryService {
             timer: j.timer,
             team: j.team,
             data: j.data,
+            results: j.results,
             startTick: timer?.startTick ?? null,
             durationTicks: timer?.durationTicks ?? null,
+            updatedAt: j.updatedAt?.toISOString?.() ?? j.updatedAt,
           };
         }),
         notifications: notifications.map((n) => ({

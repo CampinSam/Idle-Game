@@ -61,6 +61,21 @@ export function useSyncActiveMissions() {
   );
 }
 
+export function useSyncMissionHistory() {
+  const jobs = useSyncJobs();
+  return useMemo(
+    () => jobs
+      .filter((j: any) => j.type === 'MissionJob' && (j.status === 'completed' || j.status === 'failed'))
+      .sort((a: any, b: any) => {
+        const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return bTime - aTime;
+      })
+      .slice(0, 20),
+    [jobs],
+  );
+}
+
 export function useSyncActiveCraftingJobs() {
   const jobs = useSyncJobs();
   return useMemo(

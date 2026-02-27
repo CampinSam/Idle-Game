@@ -10,6 +10,7 @@ import {
   useSyncPlayer,
   useSyncEntities,
   useSyncActiveMissions,
+  useSyncMissionHistory,
 } from '../../hooks/useSyncSelectors';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
@@ -121,7 +122,7 @@ export default function MissionsPage() {
     }
   }, [pushModal]);
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
-  const missionHistory: any[] = [];
+  const missionHistory = useSyncMissionHistory();
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
@@ -337,8 +338,8 @@ export default function MissionsPage() {
               <span className={`mp-activity-status ${m.status}`}>
                 {m.status === 'completed' ? '✅' : '❌'}
               </span>
-              {m.result?.rewards && (
-                <span className="mp-activity-rewards">{(m.result.rewards as any[]).map((r: any) => `+${r.amount} ${r.name || r.key || r.type}`).join(', ')}</span>
+              {(m.results?.rewards || m.result?.rewards) && (
+                <span className="mp-activity-rewards">{((m.results?.rewards || m.result?.rewards) as any[]).map((r: any) => `+${r.amount} ${r.name || r.key || r.type}`).join(', ')}</span>
               )}
             </div>
           ))}
