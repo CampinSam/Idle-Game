@@ -127,6 +127,7 @@ export class PatchBuilder {
         capacity: storage.capacity || {},
         stored: storage.stored || {},
         productionRates: storage.productionRates || {},
+        effectiveProductionRates: storage.effectiveProductionRates || {},
       },
       lastAccruedTick: location.lastCollectionTick?.toString?.() ?? '0',
       buildings: (location.buildings ?? []).map((b: any) => {

@@ -75,6 +75,7 @@ function serializeLocationForBootstrap(location: any, buildingJobs: any[], curre
       capacity: storage.capacity || {},
       stored: storage.stored || {},
       productionRates: storage.productionRates || {},
+      effectiveProductionRates: storage.effectiveProductionRates || {},
     },
     lastAccruedTick: location.lastCollectionTick.toString(),
     buildings: (location.buildings ?? []).map((b: any) => {
