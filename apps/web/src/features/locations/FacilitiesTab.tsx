@@ -109,7 +109,7 @@ export default function FacilitiesTab({
                   {isBuilding ? (
                     'Under Construction'
                   ) : (
-                    <>Level {b.level}{b.maxLevel ? ` / ${b.maxLevel}` : ''} &middot; {b.isEnabled ? 'Active' : 'Disabled'}</>
+                    <>Level {b.level}{b.maxLevel ? ` / ${b.maxLevel}` : ''} &middot; {(b.enabled ?? b.isEnabled) ? 'Active' : 'Disabled'}</>
                   )}
                 </div>
               </div>

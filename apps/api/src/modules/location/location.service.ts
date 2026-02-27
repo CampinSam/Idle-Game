@@ -442,6 +442,7 @@ export class LocationService {
     userId: string,
     locationId: string,
     buildingId: string,
+    externalTx?: any,
   ) {
     const building: any = await (
       this.prisma as any
@@ -539,7 +540,7 @@ export class LocationService {
     const currentTickBig = BigInt(Math.floor(currentTick));
     const upgradeToLevel = jobData?.upgradeToLevel;
 
-    const updated: any = await this.prisma.$transaction(async (tx) => {
+    const doWork = async (tx: any) => {
       await this.settlementService.settleLocationTx(
         tx,
         locationId,
@@ -563,14 +564,22 @@ export class LocationService {
         data: updateData,
         include: { buildingDef: true },
       });
-    });
+    };
 
-    try {
-      await this.settlementService.recalculateLocationMeta(locationId);
-    } catch (err) {
-      console.warn(
-        `Failed to recalculate location meta for ${locationId}: ${err}`,
-      );
+    const updated: any = externalTx
+      ? await doWork(externalTx)
+      : await this.prisma.$transaction(doWork);
+
+    if (externalTx) {
+      await this.settlementService.recalculateLocationMeta(locationId, externalTx);
+    } else {
+      try {
+        await this.settlementService.recalculateLocationMeta(locationId);
+      } catch (err) {
+        console.warn(
+          `Failed to recalculate location meta for ${locationId}: ${err}`,
+        );
+      }
     }
 
     try {
