@@ -41,6 +41,7 @@ export function serializeLocation(
       stored: storage.stored || {},
       productionRates: storage.productionRates || {},
       effectiveProductionRates: storage.effectiveProductionRates || {},
+      lastSettledAt: storage.lastSettledAt ?? null,
     },
     lastAccruedTick: location.lastCollectionTick?.toString?.() ?? '0',
     buildings: (location.buildings ?? []).map((b: any) => {

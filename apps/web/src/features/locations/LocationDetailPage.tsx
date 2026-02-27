@@ -12,7 +12,7 @@ import {
 import { useCommand } from '../../hooks/useCommand';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
-import { useCurrentTick, useTickRate } from '../../tick';
+import { useTickRate } from '../../tick';
 import { useLocationTimers } from '../../hooks/useLocationTimers';
 import {
   formatRate,
@@ -73,7 +73,6 @@ export default function LocationDetailPage() {
   const currencyBalances = useSyncCurrencyBalances();
   const profile = useSyncPlayer();
 
-  const currentTick = useCurrentTick();
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
@@ -91,8 +90,7 @@ export default function LocationDetailPage() {
 
     const snapshot: LootPopItem[] = resourceSummaries
       .map((res) => {
-        const timer = timerData?.resourceTimers.get(res.key);
-        const amount = timer ? timer.getValue(currentTick) : res.currentAmount;
+        const amount = res.currentAmount;
         const floored = Math.floor(amount);
         if (floored < 1) return null;
         const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
@@ -163,9 +161,7 @@ export default function LocationDetailPage() {
   }));
 
   const hasClaimable = resourceSummaries.some((res) => {
-    const timer = timerData?.resourceTimers.get(res.key);
-    const current = timer ? timer.getValue(currentTick) : res.currentAmount;
-    return Math.floor(current) >= 1;
+    return Math.floor(res.currentAmount) >= 1;
   });
 
   const assignedEntityIds = workersData.map((w: any) => w.entityId);
@@ -286,8 +282,7 @@ export default function LocationDetailPage() {
                 {resourceSummaries.length > 0 ? (
                   <div className="od-storage-mini-list">
                     {resourceSummaries.map((res) => {
-                      const timer = timerData?.resourceTimers.get(res.key);
-                      const current = timer ? timer.getValue(currentTick) : res.currentAmount;
+                      const current = res.currentAmount;
                       const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
                       const isFull = pct >= 99.5;
 
@@ -386,8 +381,7 @@ export default function LocationDetailPage() {
               {resourceSummaries.length > 0 ? (
                 <div className="od-storage-list">
                   {resourceSummaries.map((res) => {
-                    const timer = timerData?.resourceTimers.get(res.key);
-                    const current = timer ? timer.getValue(currentTick) : res.currentAmount;
+                    const current = res.currentAmount;
                     const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
                     const isFull = pct >= 99.5;
 

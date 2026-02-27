@@ -91,7 +91,7 @@ export function computeGeneratorProduction(
   location: any,
 ): GeneratorProduction[] {
   const generators = (location.buildings || []).filter(
-    (b: any) => b.enabled,
+    (b: any) => b.enabled && b.status !== 'building',
   );
 
   const maxWorkers = getMaxWorkers(location.level);

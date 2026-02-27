@@ -162,6 +162,7 @@ export class LocationSettlementService {
         storage: {
           ...existingStorage,
           stored: storedAmounts,
+          lastSettledAt: new Date().toISOString(),
         },
       },
     });
@@ -288,6 +289,7 @@ export class LocationSettlementService {
           capacity,
           productionRates,
           effectiveProductionRates,
+          lastSettledAt: new Date().toISOString(),
         },
       },
     });

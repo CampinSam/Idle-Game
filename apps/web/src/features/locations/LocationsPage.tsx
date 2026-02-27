@@ -4,7 +4,7 @@ import { useAppSelector } from '../../store';
 import { useSyncLocations } from '../../hooks/useSyncSelectors';
 import { getRegionImagePath, slugifyRegion } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
-import { useCurrentTick, useTickRate } from '../../tick';
+import { useTickRate } from '../../tick';
 import { useLocationTimers } from '../../hooks/useLocationTimers';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
@@ -28,7 +28,6 @@ export default function LocationsPage() {
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
 
-  const currentTick = useCurrentTick();
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
@@ -116,10 +115,7 @@ export default function LocationsPage() {
                       />
                     ))}
                   {resourceSummaries.map((res) => {
-                    const timer = timerData?.resourceTimers.get(res.key);
-                    const current = timer
-                      ? timer.getValue(currentTick)
-                      : res.currentAmount;
+                    const current = res.currentAmount;
                     const pct = res.capacity > 0
                       ? Math.min(100, (current / res.capacity) * 100)
                       : 0;
