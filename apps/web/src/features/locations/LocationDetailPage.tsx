@@ -177,7 +177,7 @@ export default function LocationDetailPage() {
     (s, r) => s + r.totalRatePerHour, 0,
   );
 
-  const buildingsData: any[] = outpost.buildings || [];
+  const buildingsData: any[] = storeOutpost?.buildings || outpost.buildings || [];
   const workersData: any[] = outpost.workers || [];
 
   const hasClaimable = resourceSummaries.some((res) => {

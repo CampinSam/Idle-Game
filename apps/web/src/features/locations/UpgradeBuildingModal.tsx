@@ -28,6 +28,7 @@ export default function UpgradeBuildingModal({
 }: UpgradeBuildingModalProps) {
   const { execute } = useCommand();
   const [upgrading, setUpgrading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const currentLevel = building.level;
   const maxLevel = building.maxLevel ?? 50;
@@ -56,11 +57,12 @@ export default function UpgradeBuildingModal({
     setUpgrading(true);
     try {
       await execute('UpgradeBuilding', { locationId: outpostId, buildingId: building.id });
-      onUpgraded();
-    } catch (err: any) {
-      alert('Upgrade failed: ' + (err.message || 'Unknown error'));
-    } finally {
       setUpgrading(false);
+      setSuccess(true);
+      setTimeout(() => onUpgraded(), 800);
+    } catch (err: any) {
+      setUpgrading(false);
+      alert('Upgrade failed: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -124,7 +126,7 @@ export default function UpgradeBuildingModal({
               onClick={handleUpgrade}
               disabled={!canUpgrade}
             >
-              {upgrading ? 'Upgrading...' : 'Upgrade'}
+              {success ? '✓ Upgrade started!' : upgrading ? 'Upgrading...' : 'Upgrade'}
             </button>
           )}
         </div>

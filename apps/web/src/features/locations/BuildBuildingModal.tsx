@@ -30,6 +30,7 @@ export default function BuildBuildingModal({
 }: BuildBuildingModalProps) {
   const { execute } = useCommand();
   const [building, setBuilding] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const requirements = def.requirements || [];
   const levelMap = def.rules?.level || {};
@@ -73,11 +74,12 @@ export default function BuildBuildingModal({
     setBuilding(true);
     try {
       await execute('BuildBuilding', { locationId: outpostId, buildingDefId: def.id });
-      onBuilt();
-    } catch (err: any) {
-      alert('Build failed: ' + (err.message || 'Unknown error'));
-    } finally {
       setBuilding(false);
+      setSuccess(true);
+      setTimeout(() => onBuilt(), 800);
+    } catch (err: any) {
+      setBuilding(false);
+      alert('Build failed: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -148,7 +150,7 @@ export default function BuildBuildingModal({
             onClick={handleBuild}
             disabled={!canBuild}
           >
-            {building ? 'Building...' : 'Build'}
+            {success ? '✓ Build started!' : building ? 'Building...' : 'Build'}
           </button>
         </div>
       </div>
