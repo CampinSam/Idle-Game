@@ -1,11 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Patch, UiIntent } from '../commands/command.types';
-import {
-  resolveLevelConfig,
-  resolveProductionRates,
-  LevelRules,
-} from '../game-rules/level-config.util';
+import { serializeLocation } from '../commands/location-serializer.util';
 
 const MAX_DELTA_AGE = 10000;
 
@@ -46,87 +42,6 @@ function serializeEntity(entity: any) {
   };
 }
 
-function serializeLocationForBootstrap(location: any, buildingJobs: any[], currencyIds: Set<string> = new Set()) {
-  const jobsByBuildingId = new Map<string, any>();
-  for (const job of buildingJobs) {
-    const jobData = job.data as any;
-    if (jobData?.buildingId) {
-      jobsByBuildingId.set(jobData.buildingId, job);
-    }
-  }
-
-  const storage = (location.storage as any) || {};
-
-  return {
-    id: location.id,
-    ownerUserId: location.ownerUserId,
-    definitionId: location.definitionId,
-    regionId: location.regionId,
-    name: location.definitionId || location.regionId || 'Location',
-    region: location.regionId || '',
-    isUnique: location.isUnique,
-    level: location.level,
-    xp: location.xp.toString(),
-    threatLevel: location.threatLevel,
-    corruptionLevel: location.corruptionLevel,
-    enabled: location.enabled !== false,
-    lastCollectionTick: location.lastCollectionTick.toString(),
-    storage: {
-      capacity: storage.capacity || {},
-      stored: storage.stored || {},
-      productionRates: storage.productionRates || {},
-      effectiveProductionRates: storage.effectiveProductionRates || {},
-    },
-    lastAccruedTick: location.lastCollectionTick.toString(),
-    buildings: (location.buildings ?? []).map((b: any) => {
-      const job = jobsByBuildingId.get(b.id);
-      const jobTimer = job?.timer as any;
-      const isEnabled = b.enabled !== false;
-      const status = job ? 'building' : (isEnabled ? 'active' : 'disabled');
-
-      const bRules = (b.buildingDef?.rules as LevelRules) || {};
-      const bConfig = resolveLevelConfig(bRules, b.level);
-      const bProduction = resolveProductionRates(bConfig.production, b.level);
-      const primaryResource = Object.keys(bProduction)[0] || null;
-      const resolved = primaryResource
-        ? (currencyIds.has(primaryResource) ? { outputType: 'CURRENCY', outputRefId: primaryResource } : { outputType: 'ITEM', outputRefId: primaryResource })
-        : { outputType: null, outputRefId: null };
-      const rph = primaryResource ? bProduction[primaryResource] : 0;
-
-      return {
-        id: b.id,
-        locationId: location.id,
-        buildingDefId: b.buildingDefId,
-        name: b.buildingDef?.name || b.buildingDefId,
-        level: b.level,
-        enabled: isEnabled,
-        status,
-        outputType: resolved.outputType,
-        outputRefId: resolved.outputRefId,
-        resourcePerHour: String(rph),
-        jobId: job?.id || null,
-        startTick: jobTimer?.startTick ?? null,
-        durationTicks: jobTimer?.durationTicks ?? null,
-        jobData: job?.data || null,
-        rooms: (b.rooms ?? []).map((r: any) => ({
-          id: r.id,
-          buildingInstanceId: b.id,
-          roomDefId: r.roomDefId,
-          name: r.roomDef?.name || r.roomDefId,
-          level: r.level,
-          enabled: r.enabled !== false,
-        })),
-      };
-    }),
-    workers: (location.workerAssignments ?? []).map((w: any) => ({
-      id: w.id,
-      locationId: location.id,
-      entityId: w.entityId,
-      roleTag: w.roleTag,
-      slotIndex: 0,
-    })),
-  };
-}
 
 @Injectable()
 export class QueryService {
@@ -225,7 +140,7 @@ export class QueryService {
 
     const serializedEntities = entities.map(serializeEntity);
     const serializedLocations = locations.map((loc: any) =>
-      serializeLocationForBootstrap(loc, buildingJobs, currencyIds),
+      serializeLocation(loc, buildingJobs, currencyIds),
     );
 
     const currencyMap: Record<string, number> = {};
