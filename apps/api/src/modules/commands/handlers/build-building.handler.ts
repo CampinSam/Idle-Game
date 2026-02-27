@@ -10,7 +10,7 @@ export class BuildBuildingHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, buildingDefId } = payload;
 
-    await this.locationService.buildBuilding(ctx.userId, locationId, buildingDefId);
+    await this.locationService.buildBuilding(ctx.userId, locationId, buildingDefId, ctx.tx);
 
     const pb = new PatchBuilder();
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);

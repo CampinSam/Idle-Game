@@ -286,6 +286,7 @@ export class LocationService {
     userId: string,
     locationId: string,
     buildingDefId: string,
+    externalTx?: any,
   ) {
     const location = await (this.prisma as any).locationInstance.findFirst({
       where: { id: locationId, ownerUserId: userId },
@@ -351,7 +352,7 @@ export class LocationService {
     const durationTicks = durationSeconds;
     const isInstant = durationTicks <= 0;
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const doWork = async (tx: any) => {
       await this.settlementService.settleLocationTx(
         tx,
         locationId,
@@ -410,9 +411,13 @@ export class LocationService {
       }
 
       return building;
-    });
+    };
 
-    if (isInstant) {
+    const result = externalTx
+      ? await doWork(externalTx)
+      : await this.prisma.$transaction(async (tx) => doWork(tx));
+
+    if (!externalTx && isInstant) {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
@@ -599,6 +604,7 @@ export class LocationService {
     userId: string,
     locationId: string,
     buildingId: string,
+    externalTx?: any,
   ) {
     const building: any = await (
       this.prisma as any
@@ -644,7 +650,7 @@ export class LocationService {
     const durationTicks = durationSeconds;
     const isInstant = durationTicks <= 0;
 
-    const updated: any = await this.prisma.$transaction(async (tx) => {
+    const doWork = async (tx: any) => {
       await this.settlementService.settleLocationTx(
         tx,
         locationId,
@@ -703,9 +709,13 @@ export class LocationService {
 
         return result;
       }
-    });
+    };
 
-    if (isInstant) {
+    const updated: any = externalTx
+      ? await doWork(externalTx)
+      : await this.prisma.$transaction(async (tx) => doWork(tx));
+
+    if (!externalTx && isInstant) {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
