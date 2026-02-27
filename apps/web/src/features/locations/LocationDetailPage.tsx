@@ -105,8 +105,28 @@ export default function LocationDetailPage() {
     if (!id || claiming) return;
     setClaiming(true);
     setLootPopItems([]);
+
+    const snapshot: LootPopItem[] = resourceSummaries
+      .map((res) => {
+        const timer = timerData?.resourceTimers.get(res.key);
+        const amount = timer ? timer.getValue(currentTick) : res.currentAmount;
+        const floored = Math.floor(amount);
+        if (floored < 1) return null;
+        const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
+        return {
+          key: res.key,
+          icon: <GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} />,
+          label: `+${formatAmount(floored)} ${name}`,
+        } satisfies LootPopItem;
+      })
+      .filter((item): item is LootPopItem => item !== null);
+
     try {
       await execute('ClaimLocation', { locationId: id });
+      if (snapshot.length > 0) {
+        lootPopKey.current += 1;
+        setLootPopItems(snapshot);
+      }
     } catch (err: any) {
       alert('Claim failed: ' + (err.message || 'Unknown error'));
     } finally {
