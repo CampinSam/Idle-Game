@@ -172,6 +172,8 @@ export default function LocationDetailPage() {
   const circumference = 2 * Math.PI * 38;
   const strokeDashoffset = circumference - (fortPercent / 100) * circumference;
 
+  const hasStorageData = resourceSummaries.length > 0 || storageBalances.some(s => s.amount >= 1);
+
   return (
     <div className="outpost-detail-page">
       <div className="od-container">
@@ -280,26 +282,50 @@ export default function LocationDetailPage() {
             <div className="od-cards-row">
               <div className="od-card od-storage-overview">
                 <h3 className="od-card-title">STORAGE</h3>
-                {resourceSummaries.length > 0 ? (
+                {hasStorageData ? (
                   <div className="od-storage-mini-list">
-                    {resourceSummaries.map((res) => {
-                      const current = res.currentAmount;
-                      const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
-                      const isFull = pct >= 99.5;
+                    {resourceSummaries.length > 0 ? (
+                      resourceSummaries.map((res) => {
+                        const current = res.currentAmount;
+                        const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
+                        const isFull = pct >= 99.5;
 
-                      return (
-                        <div key={res.key} className="od-storage-mini-item">
-                          <span className="od-storage-mini-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
-                          <div className="od-storage-mini-info">
-                            <div className="od-storage-mini-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
-                            <div className="od-storage-bar-wrap">
-                              <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        return (
+                          <div key={res.key} className="od-storage-mini-item">
+                            <span className="od-storage-mini-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
+                            <div className="od-storage-mini-info">
+                              <div className="od-storage-mini-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
+                              <div className="od-storage-bar-wrap">
+                                <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                              </div>
                             </div>
+                            <span className="od-storage-mini-amount">{formatAmount(current)}/{formatAmount(res.capacity)}</span>
                           </div>
-                          <span className="od-storage-mini-amount">{formatAmount(current)}/{formatAmount(res.capacity)}</span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    ) : (
+                      storageBalances.filter(s => s.amount >= 1).map((s) => {
+                        const resId = s.outputRefId;
+                        const outputType = s.outputType;
+                        const current = s.amount;
+                        const capacity = (outpost.storage?.capacity as any)?.[resId] || 0;
+                        const pct = capacity > 0 ? Math.min((current / capacity) * 100, 100) : 0;
+                        const isFull = pct >= 99.5;
+
+                        return (
+                          <div key={resId} className="od-storage-mini-item">
+                            <span className="od-storage-mini-icon"><GameIcon src={resolveIcon(outputType, resId, currencyDefs, itemDefs)} size={16} /></span>
+                            <div className="od-storage-mini-info">
+                              <div className="od-storage-mini-name">{resolveName(outputType, resId, currencyDefs, itemDefs)}</div>
+                              <div className="od-storage-bar-wrap">
+                                <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                              </div>
+                            </div>
+                            <span className="od-storage-mini-amount">{formatAmount(current)}/{formatAmount(capacity)}</span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 ) : (
                   <div className="od-empty-tasks">No resources stored</div>
@@ -379,26 +405,50 @@ export default function LocationDetailPage() {
           <div className="od-tab-content">
             <div className="od-card">
               <h3 className="od-card-title">STORAGE</h3>
-              {resourceSummaries.length > 0 ? (
+              {hasStorageData ? (
                 <div className="od-storage-list">
-                  {resourceSummaries.map((res) => {
-                    const current = res.currentAmount;
-                    const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
-                    const isFull = pct >= 99.5;
+                  {resourceSummaries.length > 0 ? (
+                    resourceSummaries.map((res) => {
+                      const current = res.currentAmount;
+                      const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
+                      const isFull = pct >= 99.5;
 
-                    return (
-                      <div key={res.key} className="od-storage-item">
-                        <span className="od-storage-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
-                        <div className="od-storage-info">
-                          <div className="od-storage-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
-                          <div className="od-storage-bar-wrap">
-                            <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      return (
+                        <div key={res.key} className="od-storage-item">
+                          <span className="od-storage-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
+                          <div className="od-storage-info">
+                            <div className="od-storage-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
+                            <div className="od-storage-bar-wrap">
+                              <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
                           </div>
+                          <span className="od-storage-amount">{formatAmount(current)} / {formatAmount(res.capacity)}</span>
                         </div>
-                        <span className="od-storage-amount">{formatAmount(current)} / {formatAmount(res.capacity)}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    storageBalances.filter(s => s.amount >= 1).map((s) => {
+                      const resId = s.outputRefId;
+                      const outputType = s.outputType;
+                      const current = s.amount;
+                      const capacity = (outpost.storage?.capacity as any)?.[resId] || 0;
+                      const pct = capacity > 0 ? Math.min((current / capacity) * 100, 100) : 0;
+                      const isFull = pct >= 99.5;
+
+                      return (
+                        <div key={resId} className="od-storage-item">
+                          <span className="od-storage-icon"><GameIcon src={resolveIcon(outputType, resId, currencyDefs, itemDefs)} size={16} /></span>
+                          <div className="od-storage-info">
+                            <div className="od-storage-name">{resolveName(outputType, resId, currencyDefs, itemDefs)}</div>
+                            <div className="od-storage-bar-wrap">
+                              <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
+                          </div>
+                          <span className="od-storage-amount">{formatAmount(current)} / {formatAmount(capacity)}</span>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               ) : (
                 <div className="od-empty-tasks">No storage data. Build generators to start producing resources.</div>

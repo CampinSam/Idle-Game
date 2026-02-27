@@ -114,35 +114,69 @@ export default function LocationsPage() {
                         compact
                       />
                     ))}
-                  {resourceSummaries.map((res) => {
-                    const current = res.currentAmount;
-                    const pct = res.capacity > 0
-                      ? Math.min(100, (current / res.capacity) * 100)
-                      : 0;
-                    const isFull = pct >= 99.5;
+                  {resourceSummaries.length > 0 ? (
+                    resourceSummaries.map((res) => {
+                      const current = res.currentAmount;
+                      const pct = res.capacity > 0
+                        ? Math.min(100, (current / res.capacity) * 100)
+                        : 0;
+                      const isFull = pct >= 99.5;
 
-                    return (
-                      <div key={res.key} className="storage-bar-row">
-                        <div className="storage-bar-label">
-                          <span className="storage-bar-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={14} /></span>
-                          <span className="storage-bar-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
-                          <span className="storage-bar-rate">+{formatRate(res.totalRatePerHour)}/hr</span>
+                      return (
+                        <div key={res.key} className="storage-bar-row">
+                          <div className="storage-bar-label">
+                            <span className="storage-bar-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={14} /></span>
+                            <span className="storage-bar-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
+                            <span className="storage-bar-rate">+{formatRate(res.totalRatePerHour)}/hr</span>
+                          </div>
+                          <div className="storage-bar-track">
+                            <div
+                              className={`storage-bar-fill ${isFull ? 'full' : ''}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <div className="storage-bar-amounts">
+                            <span className="storage-current">{formatAmount(current)}</span>
+                            <span className="storage-sep">/</span>
+                            <span className="storage-cap">{formatAmount(res.capacity)}</span>
+                          </div>
                         </div>
-                        <div className="storage-bar-track">
-                          <div
-                            className={`storage-bar-fill ${isFull ? 'full' : ''}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="storage-bar-amounts">
-                          <span className="storage-current">{formatAmount(current)}</span>
-                          <span className="storage-sep">/</span>
-                          <span className="storage-cap">{formatAmount(res.capacity)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {resourceSummaries.length === 0 && (
+                      );
+                    })
+                  ) : (
+                    Object.entries((op.storage?.stored as Record<string, number>) || {})
+                      .filter(([, amount]) => amount >= 1)
+                      .map(([resId, amount]) => {
+                        const capacity = (op.storage?.capacity as any)?.[resId] || 0;
+                        const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
+                        const isFull = pct >= 99.5;
+                        // For items/currencies, we'd ideally know the type.
+                        // Default to CURRENCY as it's common for produced resources.
+                        const outputType = 'CURRENCY';
+
+                        return (
+                          <div key={resId} className="storage-bar-row">
+                            <div className="storage-bar-label">
+                              <span className="storage-bar-icon"><GameIcon src={resolveIcon(outputType, resId, currencyDefs, itemDefs)} size={14} /></span>
+                              <span className="storage-bar-name">{resolveName(outputType, resId, currencyDefs, itemDefs)}</span>
+                              <span className="storage-bar-rate">+0/hr</span>
+                            </div>
+                            <div className="storage-bar-track">
+                              <div
+                                className={`storage-bar-fill ${isFull ? 'full' : ''}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <div className="storage-bar-amounts">
+                              <span className="storage-current">{formatAmount(amount)}</span>
+                              <span className="storage-sep">/</span>
+                              <span className="storage-cap">{formatAmount(capacity)}</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                  {resourceSummaries.length === 0 && !Object.values((op.storage?.stored as Record<string, number>) || {}).some(v => v >= 1) && (
                     <div className="storage-empty">No generators active</div>
                   )}
                 </div>
