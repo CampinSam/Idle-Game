@@ -561,14 +561,35 @@ export class LocationService {
         updateData.level = upgradeToLevel;
       }
 
-      return (tx as any).locationBuildingInstance.update({
+      const building = await (tx as any).locationBuildingInstance.update({
         where: { id: buildingId },
         data: updateData,
         include: { buildingDef: true },
       });
+
+      const isUpgrade = !!upgradeToLevel;
+      const existingNotif = await (tx as any).notification.findFirst({
+        where: { userId, sourceType: "job_ready", sourceId: buildingJob.id, archivedAt: null },
+      });
+      let updatedNotification: any = null;
+      if (existingNotif) {
+        updatedNotification = await (tx as any).notification.update({
+          where: { id: existingNotif.id },
+          data: {
+            type: "building_complete",
+            title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
+            body: `${building.buildingDef.name}${isUpgrade ? ` upgraded to level ${building.level}` : " has been built"}`,
+            readAt: new Date(),
+            dismissedAt: null,
+            deepLink: { screen: "/locations", locationId, buildingId },
+          },
+        });
+      }
+
+      return { building, updatedNotification };
     };
 
-    const updated: any = externalTx
+    const { building: updated, updatedNotification } = externalTx
       ? await doWork(externalTx)
       : await this.prisma.$transaction(doWork);
 
@@ -584,30 +605,13 @@ export class LocationService {
       }
     }
 
-    try {
-      const isUpgrade = !!upgradeToLevel;
-      await this.notificationService.updateBySource({
-        userId,
-        sourceType: "job_ready",
-        sourceId: buildingJob.id,
-        type: "building_complete",
-        category: "buildings",
-        priority: "normal",
-        title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
-        body: `${updated.buildingDef.name}${isUpgrade ? ` upgraded to level ${updated.level}` : " has been built"}`,
-        deepLink: { screen: "/locations", locationId, buildingId },
-        markRead: true,
-      });
-    } catch (err) {
-      // notification update is non-critical
-    }
-
     return {
       id: updated.id,
       buildingDefId: updated.buildingDefId,
       name: updated.buildingDef.name,
       level: updated.level,
       state: updated.state,
+      updatedNotification,
     };
   }
 

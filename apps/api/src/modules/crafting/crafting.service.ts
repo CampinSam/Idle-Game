@@ -146,7 +146,7 @@ export class CraftingService {
     return this.mapJobToCraftingResponse(job);
   }
 
-  async collectCrafting(userId: string, jobId: string) {
+  async collectCrafting(userId: string, jobId: string, externalTx?: any) {
     const job = await (this.prisma as any).job.findFirst({
       where: { id: jobId, userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified'] } },
     });
@@ -201,7 +201,7 @@ export class CraftingService {
       } catch (err) {
         this.logger.warn(`Failed to update crafting notification: ${err}`);
       }
-      return this.mapJobToCraftingResponse(updated);
+      return { ...this.mapJobToCraftingResponse(updated), updatedNotification: null };
     }
     const outcomeItems: any[] = Array.isArray(recipe?.rewards) ? recipe.rewards : [];
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
@@ -275,23 +275,43 @@ export class CraftingService {
     });
 
     const rewardSummary = grantedRewards.map(r => `${r.amount}x ${r.name || r.key || r.type}`).join(', ');
-    try {
-      await this.notificationService.updateBySource({
-        userId,
-        sourceType: 'job_ready',
-        sourceId: jobId,
-        type: 'craft_complete',
-        category: 'crafting',
-        priority: 'normal',
-        title: 'Crafting Complete!',
-        body: `${recipe?.name || recipeId} — ${quality} quality${rewardSummary ? ` (${rewardSummary})` : ''}`,
-        deepLink: { screen: '/crafting', craftJobId: jobId },
-        markRead: true,
-      });
-    } catch (err) {
-      // notification update is non-critical
+    const notifBody = `${recipe?.name || recipeId} — ${quality} quality${rewardSummary ? ` (${rewardSummary})` : ''}`;
+    const notifDeepLink = { screen: '/crafting', craftJobId: jobId };
+    let updatedNotification: any = null;
+
+    if (externalTx) {
+      try {
+        const existing = await (externalTx as any).notification.findFirst({
+          where: { userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
+        });
+        if (existing) {
+          updatedNotification = await (externalTx as any).notification.update({
+            where: { id: existing.id },
+            data: { type: 'craft_complete', title: 'Crafting Complete!', body: notifBody, readAt: new Date(), dismissedAt: null, deepLink: notifDeepLink },
+          });
+        }
+      } catch (err) {
+        // notification update is non-critical
+      }
+    } else {
+      try {
+        await this.notificationService.updateBySource({
+          userId,
+          sourceType: 'job_ready',
+          sourceId: jobId,
+          type: 'craft_complete',
+          category: 'crafting',
+          priority: 'normal',
+          title: 'Crafting Complete!',
+          body: notifBody,
+          deepLink: notifDeepLink,
+          markRead: true,
+        });
+      } catch (err) {
+        // notification update is non-critical
+      }
     }
 
-    return this.mapJobToCraftingResponse(updated);
+    return { ...this.mapJobToCraftingResponse(updated), updatedNotification };
   }
 }

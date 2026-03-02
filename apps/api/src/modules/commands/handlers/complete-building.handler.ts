@@ -10,7 +10,7 @@ export class CompleteBuildingHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, buildingId } = payload;
 
-    await this.locationService.completeBuilding(ctx.userId, locationId, buildingId, ctx.tx);
+    const result = await this.locationService.completeBuilding(ctx.userId, locationId, buildingId, ctx.tx);
 
     const pb = new PatchBuilder();
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
@@ -21,6 +21,8 @@ export class CompleteBuildingHandler implements CommandHandler {
       take: 5,
     });
     for (const job of completedJobs) pb.upsertJob(job);
+
+    if (result.updatedNotification) pb.upsertNotification(result.updatedNotification);
 
     return {
       patches: pb.build(),

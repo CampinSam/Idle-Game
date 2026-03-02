@@ -10,7 +10,7 @@ export class CollectCraftingHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { jobId } = payload;
 
-    const result = await this.craftingService.collectCrafting(ctx.userId, jobId);
+    const result = await this.craftingService.collectCrafting(ctx.userId, jobId, ctx.tx);
 
     const pb = new PatchBuilder();
 
@@ -24,6 +24,8 @@ export class CollectCraftingHandler implements CommandHandler {
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
+
+    if (result.updatedNotification) pb.upsertNotification(result.updatedNotification);
 
     return {
       patches: pb.build(),
