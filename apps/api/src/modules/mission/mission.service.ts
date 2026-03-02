@@ -409,25 +409,9 @@ export class MissionService {
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
 
-    const { resolved, texts: rolledTexts } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     for (const { entry, amount } of resolved) {
-      if (entry.type === 'flag') {
-        const flagUser = await db.user.findUnique({ where: { id: userId } });
-        if (flagUser) {
-          const flags = (flagUser.flags && typeof flagUser.flags === 'object') ? { ...(flagUser.flags as any) } : {};
-          const op = entry.operation ?? 'set';
-          switch (op) {
-            case 'set': flags[entry.key] = entry.value; break;
-            case 'increment': flags[entry.key] = (typeof flags[entry.key] === 'number' ? flags[entry.key] : 0) + Number(entry.value ?? 1); break;
-            case 'decrement': flags[entry.key] = (typeof flags[entry.key] === 'number' ? flags[entry.key] : 0) - Number(entry.value ?? 1); break;
-            case 'invert': flags[entry.key] = !flags[entry.key]; break;
-            case 'remove': delete flags[entry.key]; break;
-          }
-          await db.user.update({ where: { id: userId }, data: { flags } });
-        }
-        continue;
-      }
       if (entry.type === 'emitEvent') {
         try {
           const idempotencyKey = entry.idempotencyKey
@@ -509,6 +493,10 @@ export class MissionService {
           break;
         }
       }
+    }
+
+    if (resolvedFlags.length > 0) {
+      await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
     }
 
     const results = {

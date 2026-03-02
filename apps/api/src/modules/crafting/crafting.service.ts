@@ -208,13 +208,9 @@ export class CraftingService {
 
     const seed = (job.data as { seed?: string })?.seed ?? jobId;
     const rng = new SeededRng(seed);
-    const { resolved, texts: rolledTexts } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
     for (const { entry, amount } of resolved) {
-      if (entry.type === 'flag') {
-        await this.gameRules.applyFlagEffect(userId, entry);
-        continue;
-      }
       if (entry.type === 'emitEvent') {
         try {
           const idempotencyKey = entry.idempotencyKey
@@ -262,6 +258,10 @@ export class CraftingService {
           break;
         }
       }
+    }
+
+    if (resolvedFlags.length > 0) {
+      await (this.prisma as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
     }
 
     await this.entityService.setEntityStatus(entity.id, userId, 'idle');

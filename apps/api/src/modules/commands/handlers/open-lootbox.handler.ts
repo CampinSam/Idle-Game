@@ -64,9 +64,11 @@ export class OpenLootBoxHandler implements CommandHandler {
     const reqContext = this.gameRules.buildRequirementContext(user);
 
     const allGrants: any[] = [];
+    let anyFlags = false;
 
     for (let i = 0; i < rollCount; i++) {
-      const { resolved } = this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
+      const { resolved, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
+      if (resolvedFlags.length > 0) anyFlags = true;
       for (const { entry, amount } of resolved) {
         if (entry.type === 'currency') {
           await this.currencyService.creditTx(ctx.tx, {
@@ -90,6 +92,10 @@ export class OpenLootBoxHandler implements CommandHandler {
           allGrants.push({ type: 'item', itemDefId: entry.key, qty: amount ?? 1 });
         }
       }
+    }
+
+    if (anyFlags) {
+      await (ctx.tx as any).user.update({ where: { id: ctx.userId }, data: { flags: reqContext.userFlags as any } });
     }
 
     await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });

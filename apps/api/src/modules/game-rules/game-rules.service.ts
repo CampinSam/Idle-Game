@@ -209,8 +209,9 @@ export class GameRulesService {
     items: any[],
     reqContext: RequirementContext,
     rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
-  ): { resolved: { entry: any; amount?: number }[]; texts: string[] } {
+  ): { resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[] } {
     const texts: string[] = [];
+    const flags: { entry: any }[] = [];
 
     const pickWeightedText = (pool: any[]): { message: string } | undefined => {
       if (pool.length === 0) return undefined;
@@ -241,6 +242,23 @@ export class GameRulesService {
       return rng.nextInt(min, max);
     };
 
+    const pickWeighted = (pool: any[], count: number): any[] => {
+      const remaining = [...pool];
+      const picks: any[] = [];
+      for (let i = 0; i < count && remaining.length > 0; i++) {
+        const totalOdds = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
+        let roll = rng.nextInt(0, totalOdds - 1);
+        let pickedIdx = remaining.length - 1;
+        for (let j = 0; j < remaining.length; j++) {
+          roll -= (remaining[j].odds ?? 100);
+          if (roll < 0) { pickedIdx = j; break; }
+        }
+        picks.push(remaining[pickedIdx]);
+        remaining.splice(pickedIdx, 1);
+      }
+      return picks;
+    };
+
     const resolved: { entry: any; amount?: number }[] = [];
 
     const resolveItems = (entries: any[]) => {
@@ -248,11 +266,34 @@ export class GameRulesService {
         if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
         if (item.bundle && Array.isArray(item.bundle)) {
           if (!this.rollOdds(item.odds, rng)) continue;
-          resolveItems(item.bundle);
-          applyText(pickWeightedText(collectTexts(item.bundle)));
+          if (item.minChoices !== undefined || item.maxChoices !== undefined) {
+            const pool = item.bundle.filter((e: any) =>
+              !e.requirements || this.checkRequirements(e.requirements, reqContext),
+            );
+            const count = Math.min(
+              pool.length,
+              rollAmount(item.minChoices ?? 1, item.maxChoices ?? item.minChoices ?? 1),
+            );
+            const picks = pickWeighted(pool, count);
+            resolveItems(picks);
+            applyText(pickWeightedText(collectTexts(picks)));
+          } else {
+            resolveItems(item.bundle);
+            applyText(pickWeightedText(collectTexts(item.bundle)));
+          }
         } else {
           if (item.type === 'text') continue;
-          if (item.type === 'flag' || item.type === 'emitEvent') {
+          if (item.type === 'flag') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            switch (item.operation) {
+              case 'set':       reqContext.userFlags[item.key] = item.value; break;
+              case 'increment': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) + Number(item.value ?? 1); break;
+              case 'decrement': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) - Number(item.value ?? 1); break;
+              case 'invert':    reqContext.userFlags[item.key] = !reqContext.userFlags[item.key]; break;
+              case 'remove':    delete reqContext.userFlags[item.key]; break;
+            }
+            flags.push({ entry: item });
+          } else if (item.type === 'emitEvent') {
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item });
           } else {
@@ -268,7 +309,7 @@ export class GameRulesService {
     resolveItems(items);
     applyText(pickWeightedText(collectTexts(items)));
 
-    return { resolved, texts };
+    return { resolved, texts, flags };
   }
 
   async resolveName(type: string, key: string): Promise<string> {
