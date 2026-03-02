@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CheckInService } from '../checkin/checkin.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
@@ -47,7 +48,10 @@ function serializeEntity(entity: any) {
 export class QueryService {
   private readonly logger = new Logger(QueryService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private checkInService: CheckInService,
+  ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
     const [
@@ -62,6 +66,8 @@ export class QueryService {
       latestDelta,
       currencyDefs,
       missionHistory,
+      questInstances,
+      checkInInstances,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -133,7 +139,21 @@ export class QueryService {
         orderBy: { updatedAt: 'desc' },
         take: 20,
       }),
+      (this.prisma as any).questInstance.findMany({
+        where: { userId },
+        orderBy: { startedAt: 'desc' },
+      }),
+      (this.prisma as any).checkInInstance.findMany({
+        where: { userId },
+      }),
     ]);
+
+    // Auto check-in on bootstrap (fire-and-forget so fresh gifts appear next bootstrap)
+    try {
+      await this.checkInService.autoCheck(userId);
+    } catch (err) {
+      this.logger.warn(`Failed to auto check-in on bootstrap for ${userId}: ${err}`);
+    }
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
@@ -168,6 +188,8 @@ export class QueryService {
               (b.rooms || []).map((r: any) => ({ ...r, buildingInstanceId: b.id })),
             ),
           ),
+          quests: questInstances,
+          checkins: checkInInstances,
           missions: jobs
             .filter((j: any) => j.type === 'MissionJob')
             .map((j: any) => {

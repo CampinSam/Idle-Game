@@ -29,6 +29,9 @@ import { QueryModule } from './modules/query/query.module';
 import { StreamModule } from './modules/stream/stream.module';
 import { BootstrapService } from './bootstrap.service';
 import { ObjectStorageModule } from './integrations/object-storage/object-storage.module';
+import { TelemetryModule } from './modules/telemetry/telemetry.module';
+import { CheckInModule } from './modules/checkin/checkin.module';
+import { QuestModule } from './modules/quest/quest.module';
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -61,6 +64,9 @@ const imports: any[] = [
   QueryModule,
   StreamModule,
   ObjectStorageModule,
+  TelemetryModule,
+  CheckInModule,
+  QuestModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

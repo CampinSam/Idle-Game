@@ -281,6 +281,9 @@ export class AdminService {
       locationDefinition: (this.prisma as any).locationDefinition,
       eventDefinition: (this.prisma as any).eventDefinition,
       giftDef: (this.prisma as any).giftDef,
+      lootboxDef: (this.prisma as any).lootboxDef,
+      checkInDef: (this.prisma as any).checkInDef,
+      questDef: (this.prisma as any).questDef,
     };
 
     if (!models[table]) {

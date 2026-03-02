@@ -42,6 +42,9 @@ model User {
   itemLedger         ItemLedger[]
   giftInstances      GiftInstance[]
   playerDeltas       PlayerDelta[]
+  playerEvents       PlayerEvent[]
+  checkInInstances   CheckInInstance[]
+  questInstances     QuestInstance[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
@@ -618,6 +621,8 @@ enum ItemType {
   CONSUMABLE
   GEAR
   QUEST
+  LOOTBOX
+  GIFT_PACKAGE
 }
 
 enum ItemCategory {
@@ -784,6 +789,7 @@ model GiftDef {
   presentation    Json     @default("{}")
   claimRules      Json     @default("{}")
   rewardSpec      Json     @default("{}")
+  instant         Boolean  @default(true)
   enabled         Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -826,6 +832,123 @@ model GiftClaimTx {
 
   @@index([userId])
   @@map("gift_claim_txs")
+}
+
+// ═══════════════════════════════════════════════════
+// LOOTBOX SYSTEM
+// ═══════════════════════════════════════════════════
+
+model LootboxDef {
+  id          String   @id
+  name        String
+  description String?
+  version     Int      @default(1)
+  iconKey     String?
+  outcomes    Json     @default("[]")
+  rollCount   Int      @default(1)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("lootbox_defs")
+}
+
+// ═══════════════════════════════════════════════════
+// PLAYER TELEMETRY
+// ═══════════════════════════════════════════════════
+
+model PlayerEvent {
+  id        BigInt   @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType String
+  key       String?
+  amount    Float    @default(1)
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([userId, eventType])
+  @@index([userId, createdAt])
+  @@map("player_events")
+}
+
+// ═══════════════════════════════════════════════════
+// DAILY CHECK-IN SYSTEM
+// ═══════════════════════════════════════════════════
+
+model CheckInDef {
+  id            String   @id
+  name          String
+  description   String?
+  rewards       Json     @default("[]")
+  cycleLength   Int      @default(7)
+  requireStreak Boolean  @default(false)
+  allowReclaim  Boolean  @default(false)
+  frequency     Json     @default("{\"type\":\"daily\"}")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  instances     CheckInInstance[]
+
+  @@map("checkin_defs")
+}
+
+model CheckInInstance {
+  id            String     @id @default(uuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkInDefId  String
+  checkInDef    CheckInDef @relation(fields: [checkInDefId], references: [id], onDelete: Cascade)
+  streak        Int        @default(0)
+  lastClaimedAt DateTime?
+  totalClaimed  Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([userId, checkInDefId])
+  @@index([userId])
+  @@map("checkin_instances")
+}
+
+// ═══════════════════════════════════════════════════
+// QUEST SYSTEM
+// ═══════════════════════════════════════════════════
+
+model QuestDef {
+  id           String   @id
+  name         String
+  description  String?
+  category     String?
+  objectives   Json     @default("[]")
+  rewardSpec   Json     @default("{}")
+  requirements Json     @default("[]")
+  repeatable   Boolean  @default(false)
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  instances    QuestInstance[]
+
+  @@map("quest_defs")
+}
+
+model QuestInstance {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questDefId   String
+  questDef     QuestDef  @relation(fields: [questDefId], references: [id], onDelete: Cascade)
+  progress     Json      @default("[]")
+  status       String    @default("active")
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  claimedAt    DateTime?
+
+  @@unique([userId, questDefId])
+  @@index([userId, status])
+  @@map("quest_instances")
 }
 
 // ═══════════════════════════════════════════════════

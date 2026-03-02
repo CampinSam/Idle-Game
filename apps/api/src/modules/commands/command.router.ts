@@ -15,6 +15,9 @@ import { RemoveWorkerHandler } from './handlers/remove-worker.handler';
 import { ToggleLocationHandler } from './handlers/toggle-location.handler';
 import { ToggleBuildingHandler } from './handlers/toggle-building.handler';
 import { ToggleRoomHandler } from './handlers/toggle-room.handler';
+import { OpenGiftPackageHandler } from './handlers/open-gift-package.handler';
+import { OpenLootBoxHandler } from './handlers/open-lootbox.handler';
+import { ClaimQuestRewardHandler } from './handlers/claim-quest-reward.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -36,6 +39,9 @@ export class CommandRouter {
     private toggleLocation: ToggleLocationHandler,
     private toggleBuilding: ToggleBuildingHandler,
     private toggleRoom: ToggleRoomHandler,
+    private openGiftPackage: OpenGiftPackageHandler,
+    private openLootBox: OpenLootBoxHandler,
+    private claimQuestReward: ClaimQuestRewardHandler,
   ) {
     this.handlers.set('ExampleTestCommand', this.exampleTest);
     this.handlers.set('StartMission', this.startMission);
@@ -52,6 +58,9 @@ export class CommandRouter {
     this.handlers.set('ToggleLocation', this.toggleLocation);
     this.handlers.set('ToggleBuilding', this.toggleBuilding);
     this.handlers.set('ToggleRoom', this.toggleRoom);
+    this.handlers.set('OpenGiftPackage', this.openGiftPackage);
+    this.handlers.set('OpenLootBox', this.openLootBox);
+    this.handlers.set('ClaimQuestReward', this.claimQuestReward);
   }
 
   resolve(commandType: string): CommandHandler {

@@ -83,3 +83,13 @@ export function useSyncActiveCraftingJobs() {
     [jobs],
   );
 }
+
+export function useSyncQuests() {
+  const table = useAppSelector((s) => s.sync.quests);
+  return useMemo(() => Object.values(table), [table]);
+}
+
+export function useSyncCheckIns() {
+  const table = useAppSelector((s) => s.sync.checkins);
+  return useMemo(() => Object.values(table), [table]);
+}

@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
+import { CheckInService } from '../checkin/checkin.service';
 import { generateEntityData } from '../entity/entity-generator.util';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class AuthService {
     private tickService: TickService,
     private eventService: EventService,
     private settlementService: LocationSettlementService,
+    private checkInService: CheckInService,
   ) {}
 
   async register(username: string, email: string, password: string) {
@@ -94,6 +96,12 @@ export class AuthService {
       await this.recalculateUserLocations(user.id);
     } catch (err) {
       this.logger.warn(`Failed to recalculate location meta on login for ${user.id}: ${err}`);
+    }
+
+    try {
+      await this.checkInService.autoCheck(user.id);
+    } catch (err) {
+      this.logger.warn(`Failed to auto check-in for ${user.id}: ${err}`);
     }
 
     const token = this.jwt.sign({ sub: user.id, username: user.username });

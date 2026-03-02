@@ -43,6 +43,9 @@ export class AdminController {
       { key: 'locationDefinition', name: 'Location Definitions', table: 'location_definitions' },
       { key: 'eventDefinition', name: 'Event Definitions', table: 'event_definitions' },
       { key: 'giftDef', name: 'Gift Definitions', table: 'gift_defs' },
+      { key: 'lootboxDef', name: 'Lootbox Definitions', table: 'lootbox_defs' },
+      { key: 'checkInDef', name: 'Check-In Definitions', table: 'checkin_defs' },
+      { key: 'questDef', name: 'Quest Definitions', table: 'quest_defs' },
     ];
   }
 

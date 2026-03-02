@@ -5,6 +5,7 @@ import { EventModule } from '../event/event.module';
 import { NotificationModule } from '../notification/notification.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     NotificationModule,
     CurrencyModule,
     InventoryModule,
+    TelemetryModule,
   ],
   providers: [GiftService],
   controllers: [GiftController],

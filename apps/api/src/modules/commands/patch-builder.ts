@@ -127,6 +127,16 @@ export class PatchBuilder {
     return this;
   }
 
+  upsert(entity: string, id: string, data: any): this {
+    this.patches.push({ op: 'upsert', entity, id, data });
+    return this;
+  }
+
+  delete(entity: string, id: string): this {
+    this.patches.push({ op: 'delete', entity, id });
+    return this;
+  }
+
   build(): Patch[] {
     return this.patches;
   }

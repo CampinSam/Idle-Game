@@ -9,7 +9,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
-import { generateEntityData } from '../entity/entity-generator.util';
+import { TelemetryService } from '../telemetry/telemetry.service';
+import { resolveRewardSpec } from './reward-resolver.util';
 
 @Injectable()
 export class GiftService {
@@ -18,6 +19,7 @@ export class GiftService {
     private notificationService: NotificationService,
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
+    private telemetryService: TelemetryService,
   ) {}
 
   private get giftInstance() {
@@ -84,6 +86,7 @@ export class GiftService {
         snapshot: {
           presentation: def.presentation,
           rewardSpec: def.rewardSpec,
+          instant: def.instant ?? true,
         },
       },
     });
@@ -141,11 +144,45 @@ export class GiftService {
 
     const snapshot = (gift.snapshot as any) || {};
     const rewardSpec = snapshot.rewardSpec || {};
+    const instant: boolean = snapshot.instant !== false;
+    const giftDefId = gift.giftDefId;
 
-    const grants = await this.resolveRewards(userId, rewardSpec, giftId);
+    let grants: any[];
+    let claimTx: any;
 
-    try {
-      const claimTx = await this.giftClaimTx.create({
+    if (!instant) {
+      const packageItemDef = await (this.prisma as any).itemDefinition.findFirst({
+        where: { type: 'GIFT_PACKAGE' },
+      });
+
+      if (!packageItemDef) {
+        throw new BadRequestException('No GIFT_PACKAGE item definition found in the system');
+      }
+
+      const existing = await this.prisma.itemInstance.findFirst({
+        where: { userId, definitionId: packageItemDef.id },
+      });
+
+      let itemInstance: any;
+      if (existing && packageItemDef.stackable) {
+        itemInstance = await this.prisma.itemInstance.update({
+          where: { id: existing.id },
+          data: { quantity: { increment: 1 }, state: { rewardSpec } },
+        });
+      } else {
+        itemInstance = await this.prisma.itemInstance.create({
+          data: {
+            userId,
+            definitionId: packageItemDef.id,
+            quantity: 1,
+            state: { rewardSpec },
+          },
+        });
+      }
+
+      grants = [{ type: 'gift_package', itemInstanceId: itemInstance.id }];
+
+      claimTx = await this.giftClaimTx.create({
         data: {
           giftId,
           userId,
@@ -154,29 +191,43 @@ export class GiftService {
           grants,
         },
       });
+    } else {
+      grants = await this.resolveRewards(userId, rewardSpec, giftId);
 
-      const updatedGift = await this.giftInstance.update({
-        where: { id: giftId },
-        data: {
-          status: 'CLAIMED',
-          claimTxId: claimTx.id,
-          claim: { claimedAt: new Date() },
-        },
-      });
-
-      return { gift: updatedGift, claimTx };
-    } catch (err: any) {
-      if (err.code === 'P2002') {
-        const existingTx = await this.giftClaimTx.findUnique({
-          where: { giftId },
+      try {
+        claimTx = await this.giftClaimTx.create({
+          data: {
+            giftId,
+            userId,
+            status: 'completed',
+            seed,
+            grants,
+          },
         });
-        const currentGift = await this.giftInstance.findUnique({
-          where: { id: giftId },
-        });
-        return { gift: currentGift, claimTx: existingTx };
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          const existingTx = await this.giftClaimTx.findUnique({ where: { giftId } });
+          const currentGift = await this.giftInstance.findUnique({ where: { id: giftId } });
+          return { gift: currentGift, claimTx: existingTx };
+        }
+        throw err;
       }
-      throw err;
     }
+
+    const updatedGift = await this.giftInstance.update({
+      where: { id: giftId },
+      data: {
+        status: 'CLAIMED',
+        claimTxId: claimTx.id,
+        claim: { claimedAt: new Date() },
+      },
+    });
+
+    try {
+      await this.telemetryService.record(userId, 'gift_claimed', giftDefId, 1, {});
+    } catch (_) {}
+
+    return { gift: updatedGift, claimTx };
   }
 
   private async resolveRewards(
@@ -184,86 +235,15 @@ export class GiftService {
     spec: any,
     giftId: string,
   ): Promise<any[]> {
-    if (!spec || !spec.type) return [];
-
-    const grants: any[] = [];
-
-    switch (spec.type) {
-      case 'currency': {
-        await this.currencyService.credit({
-          userId,
-          currencyId: spec.currencyId,
-          amount: spec.amount,
-          reason: 'Gift claim',
-          sourceType: 'gift',
-          sourceId: giftId,
-        });
-        grants.push({
-          type: 'currency',
-          currencyId: spec.currencyId,
-          amount: spec.amount,
-        });
-        break;
-      }
-
-      case 'item': {
-        await this.inventoryService.addItem({
-          userId,
-          itemId: spec.itemDefId,
-          quantity: spec.qty,
-          reason: 'Gift claim',
-          sourceType: 'gift',
-          sourceId: giftId,
-        });
-        grants.push({
-          type: 'item',
-          itemDefId: spec.itemDefId,
-          qty: spec.qty,
-        });
-        break;
-      }
-
-      case 'entity': {
-        const entityData = await generateEntityData(
-          this.prisma,
-          userId,
-          spec.definitionId,
-          'New Entity',
-        );
-        const entity = await (this.prisma as any).entity.create({
-          data: entityData,
-        });
-        grants.push({
-          type: 'entity',
-          entityId: entity.id,
-          definitionId: spec.definitionId,
-        });
-        break;
-      }
-
-      case 'bundle': {
-        if (Array.isArray(spec.entries)) {
-          for (const entry of spec.entries) {
-            const subGrants = await this.resolveRewards(userId, entry, giftId);
-            grants.push(...subGrants);
-          }
-        }
-        break;
-      }
-
-      case 'cosmetic':
-      case 'lootTable': {
-        grants.push({ type: spec.type, status: 'not_implemented' });
-        break;
-      }
-
-      default:
-        break;
-    }
-
-    return grants;
+    return resolveRewardSpec(
+      this.prisma,
+      this.currencyService,
+      this.inventoryService,
+      userId,
+      spec,
+      giftId,
+    );
   }
-
 
   async getGifts(userId: string, status?: string) {
     const where: any = { userId };

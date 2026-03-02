@@ -14,6 +14,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL } from '@derp/shared';
 import { calculateTeamMP, calculateSuccessChance, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
@@ -32,6 +33,7 @@ export class MissionService {
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
     private eventService: EventService,
+    private telemetryService: TelemetryService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -533,6 +535,17 @@ export class MissionService {
     });
 
     this.logger.log(`completeMission success: missionId=${missionId.slice(0,8)}, result=${success ? 'completed' : 'failed'}, rewards=${JSON.stringify(grantedRewards)}`);
+
+    try {
+      await this.telemetryService.record(
+        userId,
+        'mission_complete',
+        missionDefId,
+        1,
+        { outcome: success ? 'success' : 'failure' },
+        externalTx,
+      );
+    } catch (_) {}
 
     try {
       const rewardSummary = grantedRewards.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ');

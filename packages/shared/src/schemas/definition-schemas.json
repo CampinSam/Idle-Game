@@ -3,107 +3,324 @@
   "title": "Derp Universe Definition Schemas",
   "description": "Comprehensive JSON Schema documenting all 17 definition tables used in Derp Universe. These definitions drive the data-driven game engine and are editable via the admin panel at /admin/def.",
   "version": "1.0.0",
-
   "enums": {
     "CurrencyType": {
-      "values": ["SOFT", "HARD", "PREMIUM", "SEASONAL", "EVENT", "GUILD"],
+      "values": [
+        "SOFT",
+        "HARD",
+        "PREMIUM",
+        "SEASONAL",
+        "EVENT",
+        "GUILD"
+      ],
       "description": "The category of currency"
     },
     "ItemType": {
-      "values": ["MATERIAL", "POTION", "CONSUMABLE", "GEAR", "QUEST"],
+      "values": [
+        "MATERIAL",
+        "POTION",
+        "CONSUMABLE",
+        "GEAR",
+        "QUEST",
+        "LOOTBOX",
+        "GIFT_PACKAGE"
+      ],
       "description": "The functional type of an item"
     },
     "ItemRarity": {
-      "values": ["COMMON", "UNCOMMON", "SCARCE", "ADVANCED", "RARE", "ULTRA_RARE", "EPIC", "MYTHIC", "LEGENDARY"],
+      "values": [
+        "COMMON",
+        "UNCOMMON",
+        "SCARCE",
+        "ADVANCED",
+        "RARE",
+        "ULTRA_RARE",
+        "EPIC",
+        "MYTHIC",
+        "LEGENDARY"
+      ],
       "description": "Rarity tiers in ascending order"
     },
     "ItemCategory": {
-      "values": ["MISC", "CRAFTING", "COMBAT", "EXPLORATION", "QUEST_ITEMS", "ENHANCEMENT"],
+      "values": [
+        "MISC",
+        "CRAFTING",
+        "COMBAT",
+        "EXPLORATION",
+        "QUEST_ITEMS",
+        "ENHANCEMENT"
+      ],
       "description": "UI grouping for items"
     },
     "XpCurve": {
-      "values": ["linear", "exp", "custom"],
+      "values": [
+        "linear",
+        "exp",
+        "custom"
+      ],
       "description": "XP progression curve type"
     },
     "GrowthRate": {
-      "values": ["flat", "linear", "exp"],
+      "values": [
+        "flat",
+        "linear",
+        "exp"
+      ],
       "description": "Numeric growth rate formula"
     },
     "Operator": {
-      "values": ["eq", "neq", "gt", "gte", "lt", "lte", "exists", "dne"],
+      "values": [
+        "eq",
+        "neq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "exists",
+        "dne"
+      ],
       "description": "Comparison operators for requirement evaluation"
     },
     "RequirementType": {
-      "values": ["keeper_level", "team_size", "flag", "trait", "building", "currency", "item", "has_building", "has_room", "parent_has_building", "parent_has_room", "in_region"],
+      "values": [
+        "keeper_level",
+        "team_size",
+        "flag",
+        "trait",
+        "building",
+        "currency",
+        "item",
+        "has_building",
+        "has_room",
+        "parent_has_building",
+        "parent_has_room",
+        "in_region"
+      ],
       "description": "Types of requirements that gate access to content"
     },
     "RewardType": {
-      "values": ["entity_xp", "keeper_xp", "currency", "item", "flag", "text", "emitEvent"],
+      "values": [
+        "entity_xp",
+        "keeper_xp",
+        "currency",
+        "item",
+        "flag",
+        "text",
+        "emitEvent"
+      ],
       "description": "Types of rewards/effects in outcome blocks"
     },
     "FlagOperation": {
-      "values": ["set", "increment", "decrement", "invert", "remove"],
+      "values": [
+        "set",
+        "increment",
+        "decrement",
+        "invert",
+        "remove"
+      ],
       "description": "Operations for flag-type rewards"
     },
     "SkipType": {
-      "values": ["absolute", "scaling"],
+      "values": [
+        "absolute",
+        "scaling"
+      ],
       "description": "How skip cost is calculated for timers"
     },
     "GiftRewardType": {
-      "values": ["currency", "item", "entity", "bundle"],
+      "values": [
+        "currency",
+        "item",
+        "entity",
+        "bundle"
+      ],
       "description": "Types of rewards in gift definitions"
     },
     "EventKind": {
-      "values": ["system", "seasonal", "promotional"],
+      "values": [
+        "system",
+        "seasonal",
+        "promotional"
+      ],
       "description": "Categories of game events"
     },
     "HandlerKey": {
-      "values": ["createGiftForPlayer"],
+      "values": [
+        "createGiftForPlayer"
+      ],
       "description": "Available server-side event handler functions"
     },
     "Stats": {
-      "values": ["ATK", "DEF", "SPD", "FOC", "LCK", "VIT"],
+      "values": [
+        "ATK",
+        "DEF",
+        "SPD",
+        "FOC",
+        "LCK",
+        "VIT"
+      ],
       "description": "Entity stat types"
     },
     "Archetypes": {
-      "values": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+      "values": [
+        "Dave",
+        "Astro",
+        "Magician",
+        "Ninja",
+        "Redneck",
+        "Stoner",
+        "DJ",
+        "Viking",
+        "Monk",
+        "Corpo",
+        "Cyborg",
+        "Buff",
+        "Mad Scientist",
+        "Deity"
+      ],
       "description": "Available trait archetypes (14 total)"
     },
     "BodySlots": {
-      "values": ["head", "ears", "beak", "eyes", "body", "back", "tail"],
+      "values": [
+        "head",
+        "ears",
+        "beak",
+        "eyes",
+        "body",
+        "back",
+        "tail"
+      ],
       "description": "Body slot positions for the avian_7 body schema"
     },
     "EquipmentSlots": {
-      "values": ["weapon", "armor", "accessory"],
+      "values": [
+        "weapon",
+        "armor",
+        "accessory"
+      ],
       "description": "Equipment slot types"
     },
     "ModalActionType": {
-      "values": ["CLOSE_MODAL", "NAVIGATE", "ACK_NOTIFICATION", "COMPLETE_JOB", "CLAIM_GIFT", "OPEN_INVENTORY", "OPEN_MISSIONS", "OPEN_CRAFTING", "REPEAT_MISSION", "CRAFT_AGAIN", "API_CALL"],
+      "values": [
+        "CLOSE_MODAL",
+        "NAVIGATE",
+        "ACK_NOTIFICATION",
+        "COMPLETE_JOB",
+        "CLAIM_GIFT",
+        "OPEN_INVENTORY",
+        "OPEN_MISSIONS",
+        "OPEN_CRAFTING",
+        "REPEAT_MISSION",
+        "CRAFT_AGAIN",
+        "API_CALL"
+      ],
       "description": "Discriminant values for ModalAction — determines which fields are present on the action object"
     },
     "ModalBlockType": {
-      "values": ["richText", "divider", "image", "metaRows", "timer", "progress", "rewardsPreview", "rewardsList", "inventoryDelta", "giftReveal", "error"],
+      "values": [
+        "richText",
+        "divider",
+        "image",
+        "metaRows",
+        "timer",
+        "progress",
+        "rewardsPreview",
+        "rewardsList",
+        "inventoryDelta",
+        "giftReveal",
+        "error"
+      ],
       "description": "Discriminant values for ModalBlock — determines the block renderer and its fields"
     },
     "ButtonVariant": {
-      "values": ["primary", "secondary", "ghost", "danger"],
+      "values": [
+        "primary",
+        "secondary",
+        "ghost",
+        "danger"
+      ],
       "description": "Visual style of a modal button"
     },
     "RichTextNodeType": {
-      "values": ["p", "h1", "h2", "ul", "li", "strong", "em", "code", "link", "text", "br", "token"],
+      "values": [
+        "p",
+        "h1",
+        "h2",
+        "ul",
+        "li",
+        "strong",
+        "em",
+        "code",
+        "link",
+        "text",
+        "br",
+        "token"
+      ],
       "description": "Rich text node types. Block nodes (p, h1, h2, ul, li) contain child nodes. Leaf nodes (text, br, token) carry data. link adds an href field."
+    },
+    "PlayerEventType": {
+      "values": [
+        "mission_complete",
+        "currency_earned",
+        "item_collected",
+        "location_claimed",
+        "item_crafted",
+        "building_built",
+        "keeper_level_up",
+        "entity_level_up",
+        "gift_claimed",
+        "lootbox_opened",
+        "checkin_completed"
+      ],
+      "description": "Tracked player event types for telemetry and quest progression"
+    },
+    "QuestStatus": {
+      "values": [
+        "active",
+        "completed",
+        "claimed"
+      ],
+      "description": "Quest instance lifecycle state"
+    },
+    "CheckInFrequencyType": {
+      "values": [
+        "daily",
+        "every_x_days",
+        "weekly",
+        "monthly"
+      ],
+      "description": "How often a check-in window opens"
     }
   },
-
   "complexTypes": {
     "Timer": {
       "description": "Duration and skip settings for timed activities (missions, crafting, building)",
       "properties": {
-        "duration": { "type": "number", "description": "Duration in seconds" },
-        "boostable": { "type": "boolean", "default": true, "description": "Whether tick boosts affect this timer" },
-        "skipable": { "type": "boolean", "default": false, "description": "Whether the timer can be skipped for a cost" },
-        "skip_type": { "type": "enum", "enum": "SkipType", "default": "absolute", "description": "How skip cost scales" },
-        "skip_cost": { "type": "CostObject", "default": {}, "description": "Cost to skip (only if skipable=true)" }
+        "duration": {
+          "type": "number",
+          "description": "Duration in seconds"
+        },
+        "boostable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether tick boosts affect this timer"
+        },
+        "skipable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the timer can be skipped for a cost"
+        },
+        "skip_type": {
+          "type": "enum",
+          "enum": "SkipType",
+          "default": "absolute",
+          "description": "How skip cost scales"
+        },
+        "skip_cost": {
+          "type": "CostObject",
+          "default": {},
+          "description": "Cost to skip (only if skipable=true)"
+        }
       },
       "defaults": {
         "duration": 0,
@@ -113,107 +330,215 @@
         "skip_type": "absolute"
       }
     },
-
     "Requirement": {
       "description": "A single condition that must be met. Structure varies by type.",
       "variants": {
         "value-based": {
           "description": "For types: keeper_level, team_size, flag, trait, building, currency, item",
           "properties": {
-            "type": { "type": "enum", "enum": "RequirementType", "required": true },
-            "key": { "type": "string", "description": "Identifier key (required for flag, trait, building, currency, item)" },
-            "value": { "type": "any", "description": "The value to compare against" },
-            "operator": { "type": "enum", "enum": "Operator", "description": "Comparison operator (optional, defaults to gte for numeric)" }
+            "type": {
+              "type": "enum",
+              "enum": "RequirementType",
+              "required": true
+            },
+            "key": {
+              "type": "string",
+              "description": "Identifier key (required for flag, trait, building, currency, item)"
+            },
+            "value": {
+              "type": "any",
+              "description": "The value to compare against"
+            },
+            "operator": {
+              "type": "enum",
+              "enum": "Operator",
+              "description": "Comparison operator (optional, defaults to gte for numeric)"
+            }
           }
         },
         "ids-based": {
           "description": "For types: has_building, has_room, parent_has_building, parent_has_room, in_region",
           "properties": {
-            "type": { "type": "enum", "enum": "RequirementType", "required": true },
-            "ids": { "type": "string[]", "description": "Array of IDs that satisfy the requirement" }
+            "type": {
+              "type": "enum",
+              "enum": "RequirementType",
+              "required": true
+            },
+            "ids": {
+              "type": "string[]",
+              "description": "Array of IDs that satisfy the requirement"
+            }
           }
         }
       }
     },
-
     "Requirements": {
       "description": "Array of Requirement objects. All must be satisfied (AND logic).",
       "type": "array",
-      "items": { "$ref": "#/complexTypes/Requirement" },
+      "items": {
+        "$ref": "#/complexTypes/Requirement"
+      },
       "default": []
     },
-
     "RewardEntry": {
       "description": "A single reward/effect entry in an outcome block. Structure varies by type.",
       "commonProperties": {
-        "type": { "type": "enum", "enum": "RewardType", "required": true },
-        "odds": { "type": "number", "min": 0, "max": 100, "default": 100, "description": "Percentage chance of this reward" },
-        "requirements": { "type": "Requirements", "default": [], "description": "Optional per-entry requirements" }
+        "type": {
+          "type": "enum",
+          "enum": "RewardType",
+          "required": true
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "default": 100,
+          "description": "Percentage chance of this reward"
+        },
+        "requirements": {
+          "type": "Requirements",
+          "default": [],
+          "description": "Optional per-entry requirements"
+        }
       },
       "variants": {
         "currency": {
           "properties": {
-            "key": { "type": "string", "description": "Currency ID" },
-            "min": { "type": "number", "description": "Minimum amount" },
-            "max": { "type": "number", "description": "Maximum amount" }
+            "key": {
+              "type": "string",
+              "description": "Currency ID"
+            },
+            "min": {
+              "type": "number",
+              "description": "Minimum amount"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum amount"
+            }
           }
         },
         "item": {
           "properties": {
-            "key": { "type": "string", "description": "Item definition ID" },
-            "min": { "type": "number", "description": "Minimum quantity" },
-            "max": { "type": "number", "description": "Maximum quantity" }
+            "key": {
+              "type": "string",
+              "description": "Item definition ID"
+            },
+            "min": {
+              "type": "number",
+              "description": "Minimum quantity"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum quantity"
+            }
           }
         },
         "entity_xp": {
           "properties": {
-            "min": { "type": "number", "description": "Minimum XP" },
-            "max": { "type": "number", "description": "Maximum XP" }
+            "min": {
+              "type": "number",
+              "description": "Minimum XP"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum XP"
+            }
           }
         },
         "keeper_xp": {
           "properties": {
-            "min": { "type": "number", "description": "Minimum XP" },
-            "max": { "type": "number", "description": "Maximum XP" }
+            "min": {
+              "type": "number",
+              "description": "Minimum XP"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum XP"
+            }
           }
         },
         "flag": {
           "properties": {
-            "operation": { "type": "enum", "enum": "FlagOperation", "default": "set" },
-            "key": { "type": "string", "description": "Flag key" },
-            "value": { "type": "any", "description": "Value to set/apply" }
+            "operation": {
+              "type": "enum",
+              "enum": "FlagOperation",
+              "default": "set"
+            },
+            "key": {
+              "type": "string",
+              "description": "Flag key"
+            },
+            "value": {
+              "type": "any",
+              "description": "Value to set/apply"
+            }
           }
         },
         "text": {
           "properties": {
-            "message": { "type": "string", "description": "Text message to display" }
+            "message": {
+              "type": "string",
+              "description": "Text message to display"
+            }
           }
         },
         "emitEvent": {
           "properties": {
-            "defId": { "type": "string", "description": "EventDefinition ID to emit" },
-            "idempotencyKey": { "type": "string", "description": "Optional dedup key" },
-            "payload": { "type": "object", "description": "Key-value payload for the event handler" }
+            "defId": {
+              "type": "string",
+              "description": "EventDefinition ID to emit"
+            },
+            "idempotencyKey": {
+              "type": "string",
+              "description": "Optional dedup key"
+            },
+            "payload": {
+              "type": "object",
+              "description": "Key-value payload for the event handler"
+            }
           }
         }
       }
     },
-
     "BundleEntry": {
       "description": "A container grouping multiple reward entries with shared odds and requirements",
       "properties": {
-        "bundle": { "type": "array", "items": { "$ref": "#/complexTypes/RewardEntry" }, "description": "Nested reward entries" },
-        "odds": { "type": "number", "min": 0, "max": 100, "description": "Percentage chance the entire bundle triggers" },
-        "requirements": { "type": "Requirements", "default": [], "description": "Conditions for this bundle" }
+        "bundle": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/RewardEntry"
+          },
+          "description": "Nested reward entries"
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "description": "Percentage chance the entire bundle triggers"
+        },
+        "requirements": {
+          "type": "Requirements",
+          "default": [],
+          "description": "Conditions for this bundle"
+        }
       }
     },
-
     "OutcomeBlock": {
       "description": "Outcome definition containing a rewards array. Used for mission success/failure.",
       "properties": {
         "rewards": {
           "type": "array",
-          "items": { "oneOf": [{ "$ref": "#/complexTypes/RewardEntry" }, { "$ref": "#/complexTypes/BundleEntry" }] },
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/complexTypes/RewardEntry"
+              },
+              {
+                "$ref": "#/complexTypes/BundleEntry"
+              }
+            ]
+          },
           "description": "Array of reward entries and/or bundles"
         }
       },
@@ -221,7 +546,6 @@
         "rewards": []
       }
     },
-
     "CostObject": {
       "description": "Map of resource ID to amount. Used for crafting costs and skip costs.",
       "type": "object",
@@ -229,45 +553,77 @@
         "type": "number",
         "description": "Amount of this resource required"
       },
-      "example": { "soft_arcanium": 100, "hard_gems": 5 }
+      "example": {
+        "soft_arcanium": 100,
+        "hard_gems": 5
+      }
     },
-
     "ResourceEntry": {
       "description": "Canonical resource entry format used in level-based rules",
       "properties": {
-        "type": { "type": "string", "enum": ["currency", "item"], "description": "Resource type (lowercase)" },
-        "id": { "type": "string", "description": "Resource identifier" }
+        "type": {
+          "type": "string",
+          "enum": [
+            "currency",
+            "item"
+          ],
+          "description": "Resource type (lowercase)"
+        },
+        "id": {
+          "type": "string",
+          "description": "Resource identifier"
+        }
       }
     },
-
     "CostEntry": {
       "description": "Cost entry in level rules (extends ResourceEntry)",
-      "allOf": [{ "$ref": "#/complexTypes/ResourceEntry" }],
+      "allOf": [
+        {
+          "$ref": "#/complexTypes/ResourceEntry"
+        }
+      ],
       "properties": {
-        "amount": { "type": "number", "description": "Amount required" }
+        "amount": {
+          "type": "number",
+          "description": "Amount required"
+        }
       }
     },
-
     "ProductionEntry": {
       "description": "Production rate entry in level rules",
-      "allOf": [{ "$ref": "#/complexTypes/ResourceEntry" }],
+      "allOf": [
+        {
+          "$ref": "#/complexTypes/ResourceEntry"
+        }
+      ],
       "properties": {
-        "ratePerHour": { "type": "number", "description": "Units produced per hour" }
+        "ratePerHour": {
+          "type": "number",
+          "description": "Units produced per hour"
+        }
       }
     },
-
     "StorageEntry": {
       "description": "Storage capacity entry in level rules",
-      "allOf": [{ "$ref": "#/complexTypes/ResourceEntry" }],
+      "allOf": [
+        {
+          "$ref": "#/complexTypes/ResourceEntry"
+        }
+      ],
       "properties": {
-        "baseCapacity": { "type": "number", "description": "Base storage capacity" }
+        "baseCapacity": {
+          "type": "number",
+          "description": "Base storage capacity"
+        }
       }
     },
-
     "LevelBlock": {
       "description": "Configuration for a specific level within level-based rules. Sparse entries inherit downward via resolveLevelConfig().",
       "properties": {
-        "workers": { "type": "object", "description": "Worker capacity and assignment rules" },
+        "workers": {
+          "type": "object",
+          "description": "Worker capacity and assignment rules"
+        },
         "buildings": {
           "type": "object",
           "description": "Building allowance config",
@@ -277,8 +633,12 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "defId": { "type": "string" },
-                  "maxCount": { "type": "number" }
+                  "defId": {
+                    "type": "string"
+                  },
+                  "maxCount": {
+                    "type": "number"
+                  }
                 }
               }
             }
@@ -293,8 +653,12 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "defId": { "type": "string" },
-                  "maxCount": { "type": "number" }
+                  "defId": {
+                    "type": "string"
+                  },
+                  "maxCount": {
+                    "type": "number"
+                  }
                 }
               }
             }
@@ -302,368 +666,728 @@
         },
         "storage": {
           "type": "array",
-          "items": { "$ref": "#/complexTypes/StorageEntry" },
+          "items": {
+            "$ref": "#/complexTypes/StorageEntry"
+          },
           "description": "Storage capacity entries"
         },
         "production": {
           "type": "array",
-          "items": { "$ref": "#/complexTypes/ProductionEntry" },
+          "items": {
+            "$ref": "#/complexTypes/ProductionEntry"
+          },
           "description": "Production rate entries"
         },
         "constructionCost": {
           "type": "array",
-          "items": { "$ref": "#/complexTypes/CostEntry" },
+          "items": {
+            "$ref": "#/complexTypes/CostEntry"
+          },
           "description": "Cost to build/upgrade to this level"
         },
-        "effects": { "type": "array", "description": "Effects applied at this level" },
-        "timer": { "$ref": "#/complexTypes/Timer", "description": "Construction/upgrade timer for this level" }
+        "effects": {
+          "type": "array",
+          "description": "Effects applied at this level"
+        },
+        "timer": {
+          "$ref": "#/complexTypes/Timer",
+          "description": "Construction/upgrade timer for this level"
+        }
       }
     },
-
     "LevelRules": {
       "description": "Top-level rules object with level-based configuration. Uses singular 'level' key containing numbered level blocks.",
       "properties": {
-        "maxLevel": { "type": "number", "description": "Maximum level cap" },
-        "xpCurve": { "type": "enum", "enum": "XpCurve", "description": "XP progression curve" },
-        "baseXP": { "type": "number", "description": "Base XP per level" },
-        "xpRate": { "type": "number", "description": "XP scaling rate" },
+        "maxLevel": {
+          "type": "number",
+          "description": "Maximum level cap"
+        },
+        "xpCurve": {
+          "type": "enum",
+          "enum": "XpCurve",
+          "description": "XP progression curve"
+        },
+        "baseXP": {
+          "type": "number",
+          "description": "Base XP per level"
+        },
+        "xpRate": {
+          "type": "number",
+          "description": "XP scaling rate"
+        },
         "level": {
           "type": "object",
           "description": "Map of level number (string key) to LevelBlock. Sparse entries inherit downward.",
-          "additionalProperties": { "$ref": "#/complexTypes/LevelBlock" },
+          "additionalProperties": {
+            "$ref": "#/complexTypes/LevelBlock"
+          },
           "example": {
-            "1": { "production": [{ "type": "currency", "id": "soft_arcanium", "ratePerHour": 10 }] },
-            "5": { "production": [{ "type": "currency", "id": "soft_arcanium", "ratePerHour": 25 }] }
+            "1": {
+              "production": [
+                {
+                  "type": "currency",
+                  "id": "soft_arcanium",
+                  "ratePerHour": 10
+                }
+              ]
+            },
+            "5": {
+              "production": [
+                {
+                  "type": "currency",
+                  "id": "soft_arcanium",
+                  "ratePerHour": 25
+                }
+              ]
+            }
           }
         }
       },
       "default": {}
     },
-
     "EquipData": {
       "description": "Equipment configuration for items",
       "properties": {
-        "slot": { "type": "enum", "enum": "EquipmentSlots", "description": "Equipment slot this item occupies" },
+        "slot": {
+          "type": "enum",
+          "enum": "EquipmentSlots",
+          "description": "Equipment slot this item occupies"
+        },
         "stats": {
           "type": "object",
           "description": "Map of stat name to bonus value",
-          "additionalProperties": { "type": "number" },
-          "keys": { "enum": "Stats" }
+          "additionalProperties": {
+            "type": "number"
+          },
+          "keys": {
+            "enum": "Stats"
+          }
         }
       }
     },
-
     "ConsumableData": {
       "description": "Consumable behavior configuration",
       "properties": {
-        "effect": { "type": "string", "description": "Effect type (e.g. heal, speed_boost)" },
-        "amount": { "type": "number", "description": "Effect magnitude" },
-        "duration": { "type": "number", "description": "Duration in seconds (0 = instant)" },
-        "multiplier": { "type": "number", "description": "Effect multiplier" }
+        "effect": {
+          "type": "string",
+          "description": "Effect type (e.g. heal, speed_boost)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Effect magnitude"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Duration in seconds (0 = instant)"
+        },
+        "multiplier": {
+          "type": "number",
+          "description": "Effect multiplier"
+        }
       }
     },
-
     "BodySlots": {
       "description": "Map of body slot to array of allowed archetype names",
       "type": "object",
       "additionalProperties": {
         "type": "array",
-        "items": { "type": "string", "enum": "Archetypes" }
+        "items": {
+          "type": "string",
+          "enum": "Archetypes"
+        }
       },
-      "keys": { "enum": "BodySlots" },
+      "keys": {
+        "enum": "BodySlots"
+      },
       "example": {
-        "head": ["Dave", "Astro", "Magician"],
-        "beak": ["Ninja", "Redneck"],
-        "tail": ["Viking", "Monk"]
+        "head": [
+          "Dave",
+          "Astro",
+          "Magician"
+        ],
+        "beak": [
+          "Ninja",
+          "Redneck"
+        ],
+        "tail": [
+          "Viking",
+          "Monk"
+        ]
       }
     },
-
     "SlotStats": {
       "description": "Nested map of body slot to stat bonuses for a trait archetype",
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "additionalProperties": { "type": "number" },
-        "keys": { "enum": "Stats" }
+        "additionalProperties": {
+          "type": "number"
+        },
+        "keys": {
+          "enum": "Stats"
+        }
       },
-      "keys": { "enum": "BodySlots" },
+      "keys": {
+        "enum": "BodySlots"
+      },
       "example": {
-        "head": { "ATK": 1, "DEF": 1 },
-        "beak": { "SPD": 2 }
+        "head": {
+          "ATK": 1,
+          "DEF": 1
+        },
+        "beak": {
+          "SPD": 2
+        }
       }
     },
-
     "EquipmentSlotSchema": {
       "description": "Map of equipment slot name to max count",
       "type": "object",
-      "additionalProperties": { "type": "number" },
-      "keys": { "enum": "EquipmentSlots" },
-      "example": { "weapon": 1, "armor": 1, "accessory": 2 }
+      "additionalProperties": {
+        "type": "number"
+      },
+      "keys": {
+        "enum": "EquipmentSlots"
+      },
+      "example": {
+        "weapon": 1,
+        "armor": 1,
+        "accessory": 2
+      }
     },
-
     "GiftPresentation": {
       "description": "Visual presentation properties for a gift",
       "properties": {
-        "title": { "type": "string", "description": "Gift title text" },
-        "body": { "type": "string", "description": "Gift description text" },
-        "iconKey": { "type": "string", "description": "Icon identifier" },
-        "rarity": { "type": "enum", "enum": "ItemRarity", "description": "Display rarity tier" }
+        "title": {
+          "type": "string",
+          "description": "Gift title text"
+        },
+        "body": {
+          "type": "string",
+          "description": "Gift description text"
+        },
+        "iconKey": {
+          "type": "string",
+          "description": "Icon identifier"
+        },
+        "rarity": {
+          "type": "enum",
+          "enum": "ItemRarity",
+          "description": "Display rarity tier"
+        }
       }
     },
-
     "GiftClaimRules": {
       "description": "Rules governing gift claiming behavior",
       "properties": {
-        "expiresInSeconds": { "type": "number", "description": "Seconds until gift expires (null = no expiry)" },
-        "limitPerPlayer": { "type": "number", "description": "Max claims per player (null = unlimited)" }
+        "expiresInSeconds": {
+          "type": "number",
+          "description": "Seconds until gift expires (null = no expiry)"
+        },
+        "limitPerPlayer": {
+          "type": "number",
+          "description": "Max claims per player (null = unlimited)"
+        }
       }
     },
-
     "GiftRewardSpec": {
       "description": "Reward specification for gifts. Structure varies by type.",
       "commonProperties": {
-        "type": { "type": "enum", "enum": "GiftRewardType", "required": true }
+        "type": {
+          "type": "enum",
+          "enum": "GiftRewardType",
+          "required": true
+        }
       },
       "variants": {
         "currency": {
           "properties": {
-            "currencyId": { "type": "string", "description": "Currency definition ID (ref: Currency)" },
-            "amount": { "type": "number", "description": "Amount to grant" }
+            "currencyId": {
+              "type": "string",
+              "description": "Currency definition ID (ref: Currency)"
+            },
+            "amount": {
+              "type": "number",
+              "description": "Amount to grant"
+            }
           }
         },
         "item": {
           "properties": {
-            "itemDefId": { "type": "string", "description": "Item definition ID (ref: ItemDef)" },
-            "qty": { "type": "number", "description": "Quantity to grant" }
+            "itemDefId": {
+              "type": "string",
+              "description": "Item definition ID (ref: ItemDef)"
+            },
+            "qty": {
+              "type": "number",
+              "description": "Quantity to grant"
+            }
           }
         },
         "entity": {
           "properties": {
-            "entityDefId": { "type": "string", "description": "Entity definition ID (ref: EntityDefinition)" }
+            "entityDefId": {
+              "type": "string",
+              "description": "Entity definition ID (ref: EntityDefinition)"
+            }
           }
         },
         "bundle": {
           "properties": {
             "entries": {
               "type": "array",
-              "items": { "$ref": "#/complexTypes/GiftRewardSpec" },
+              "items": {
+                "$ref": "#/complexTypes/GiftRewardSpec"
+              },
               "description": "Array of nested reward specs"
             }
           }
         }
       }
     },
-
     "EventSecurity": {
       "description": "Access control for event definitions",
       "properties": {
         "allowedEmitters": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "List of allowed emitter identifiers"
         }
       }
     },
-
     "AssetRef": {
       "description": "Reference to a media asset by key, with optional alt text",
       "properties": {
-        "assetKey": { "type": "string", "required": true, "description": "Key used to resolve the asset URL (e.g. via /media/*)" },
-        "alt": { "type": "string", "nullable": true, "description": "Accessibility alt text" }
+        "assetKey": {
+          "type": "string",
+          "required": true,
+          "description": "Key used to resolve the asset URL (e.g. via /media/*)"
+        },
+        "alt": {
+          "type": "string",
+          "nullable": true,
+          "description": "Accessibility alt text"
+        }
       }
     },
-
     "RichTextNode": {
       "description": "A single node in a rich text document tree. Leaf nodes carry data; block nodes contain children.",
       "variants": {
         "block": {
           "description": "Container nodes: p, h1, h2, ul, li, strong, em, code",
           "properties": {
-            "t": { "type": "enum", "enum": "RichTextNodeType", "required": true },
-            "c": { "type": "array", "items": { "$ref": "#/complexTypes/RichTextNode" }, "description": "Child nodes" }
+            "t": {
+              "type": "enum",
+              "enum": "RichTextNodeType",
+              "required": true
+            },
+            "c": {
+              "type": "array",
+              "items": {
+                "$ref": "#/complexTypes/RichTextNode"
+              },
+              "description": "Child nodes"
+            }
           }
         },
         "link": {
           "description": "Hyperlink node",
           "properties": {
-            "t": { "type": "string", "const": "link" },
-            "href": { "type": "string", "required": true },
-            "c": { "type": "array", "items": { "$ref": "#/complexTypes/RichTextNode" }, "description": "Link label nodes" }
+            "t": {
+              "type": "string",
+              "const": "link"
+            },
+            "href": {
+              "type": "string",
+              "required": true
+            },
+            "c": {
+              "type": "array",
+              "items": {
+                "$ref": "#/complexTypes/RichTextNode"
+              },
+              "description": "Link label nodes"
+            }
           }
         },
         "text": {
           "description": "Plain text leaf",
           "properties": {
-            "t": { "type": "string", "const": "text" },
-            "v": { "type": "string", "required": true, "description": "The text value" }
+            "t": {
+              "type": "string",
+              "const": "text"
+            },
+            "v": {
+              "type": "string",
+              "required": true,
+              "description": "The text value"
+            }
           }
         },
         "br": {
           "description": "Line break",
           "properties": {
-            "t": { "type": "string", "const": "br" }
+            "t": {
+              "type": "string",
+              "const": "br"
+            }
           }
         },
         "token": {
           "description": "Named placeholder resolved at render time (e.g. player name, entity name)",
           "properties": {
-            "t": { "type": "string", "const": "token" },
-            "key": { "type": "string", "required": true, "description": "Token key to resolve" }
+            "t": {
+              "type": "string",
+              "const": "token"
+            },
+            "key": {
+              "type": "string",
+              "required": true,
+              "description": "Token key to resolve"
+            }
           }
         }
       }
     },
-
     "RichTextDoc": {
       "description": "An ordered array of RichTextNode objects representing formatted text",
       "type": "array",
-      "items": { "$ref": "#/complexTypes/RichTextNode" },
+      "items": {
+        "$ref": "#/complexTypes/RichTextNode"
+      },
       "default": []
     },
-
     "RewardItem": {
       "description": "Display-only reward entry used inside rewardsPreview and rewardsList blocks",
       "properties": {
-        "assetKey": { "type": "string", "nullable": true, "description": "Icon asset key" },
-        "name": { "type": "string", "required": true, "description": "Display name of the reward" },
-        "qty": { "type": "number", "nullable": true, "description": "Quantity (omit for non-stackable rewards)" },
-        "rarity": { "type": "string", "nullable": true, "description": "Rarity label (e.g. RARE)" },
-        "note": { "type": "string", "nullable": true, "description": "Extra display note (e.g. odds percentage)" }
+        "assetKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Icon asset key"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name of the reward"
+        },
+        "qty": {
+          "type": "number",
+          "nullable": true,
+          "description": "Quantity (omit for non-stackable rewards)"
+        },
+        "rarity": {
+          "type": "string",
+          "nullable": true,
+          "description": "Rarity label (e.g. RARE)"
+        },
+        "note": {
+          "type": "string",
+          "nullable": true,
+          "description": "Extra display note (e.g. odds percentage)"
+        }
       }
     },
-
     "ModalTelemetry": {
       "description": "Optional analytics metadata attached to a modal for tracking display and interaction events",
       "properties": {
-        "sourceType": { "type": "string", "nullable": true, "description": "What triggered the modal (e.g. mission, gift, system)" },
-        "sourceId": { "type": "string", "nullable": true, "description": "ID of the source record" },
-        "notificationId": { "type": "string", "nullable": true, "description": "Linked notification ID" },
-        "jobId": { "type": "string", "nullable": true, "description": "Linked job ID" },
-        "templateId": { "type": "string", "nullable": true, "description": "Template or def ID that produced this modal" },
-        "experiment": { "type": "string", "nullable": true, "description": "A/B experiment key" }
+        "sourceType": {
+          "type": "string",
+          "nullable": true,
+          "description": "What triggered the modal (e.g. mission, gift, system)"
+        },
+        "sourceId": {
+          "type": "string",
+          "nullable": true,
+          "description": "ID of the source record"
+        },
+        "notificationId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Linked notification ID"
+        },
+        "jobId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Linked job ID"
+        },
+        "templateId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Template or def ID that produced this modal"
+        },
+        "experiment": {
+          "type": "string",
+          "nullable": true,
+          "description": "A/B experiment key"
+        }
       }
     },
-
     "ModalAction": {
       "description": "Action triggered when a modal button is pressed. Discriminated by the 'type' field.",
       "variants": {
         "CLOSE_MODAL": {
           "description": "Dismiss the modal with no side effects",
-          "properties": { "type": { "type": "string", "const": "CLOSE_MODAL" } }
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "CLOSE_MODAL"
+            }
+          }
         },
         "NAVIGATE": {
           "description": "Push a client-side route",
           "properties": {
-            "type": { "type": "string", "const": "NAVIGATE" },
-            "route": { "type": "string", "required": true, "description": "Client route path (e.g. /locations/:id)" },
-            "params": { "type": "object", "nullable": true, "description": "Route params or query string values" }
+            "type": {
+              "type": "string",
+              "const": "NAVIGATE"
+            },
+            "route": {
+              "type": "string",
+              "required": true,
+              "description": "Client route path (e.g. /locations/:id)"
+            },
+            "params": {
+              "type": "object",
+              "nullable": true,
+              "description": "Route params or query string values"
+            }
           }
         },
         "ACK_NOTIFICATION": {
           "description": "Mark a notification as read/dismissed",
           "properties": {
-            "type": { "type": "string", "const": "ACK_NOTIFICATION" },
-            "notificationId": { "type": "string", "required": true }
+            "type": {
+              "type": "string",
+              "const": "ACK_NOTIFICATION"
+            },
+            "notificationId": {
+              "type": "string",
+              "required": true
+            }
           }
         },
         "COMPLETE_JOB": {
           "description": "Complete a job (mission, crafting) and collect its rewards via the command pipeline",
           "properties": {
-            "type": { "type": "string", "const": "COMPLETE_JOB" },
-            "jobId": { "type": "string", "required": true }
+            "type": {
+              "type": "string",
+              "const": "COMPLETE_JOB"
+            },
+            "jobId": {
+              "type": "string",
+              "required": true
+            }
           }
         },
         "CLAIM_GIFT": {
           "description": "Claim a gift for the player",
           "properties": {
-            "type": { "type": "string", "const": "CLAIM_GIFT" },
-            "giftId": { "type": "string", "required": true }
+            "type": {
+              "type": "string",
+              "const": "CLAIM_GIFT"
+            },
+            "giftId": {
+              "type": "string",
+              "required": true
+            }
           }
         },
-        "OPEN_INVENTORY": { "description": "Navigate to the inventory screen", "properties": { "type": { "type": "string", "const": "OPEN_INVENTORY" } } },
-        "OPEN_MISSIONS": { "description": "Navigate to the missions screen", "properties": { "type": { "type": "string", "const": "OPEN_MISSIONS" } } },
-        "OPEN_CRAFTING": { "description": "Navigate to the crafting screen", "properties": { "type": { "type": "string", "const": "OPEN_CRAFTING" } } },
+        "OPEN_INVENTORY": {
+          "description": "Navigate to the inventory screen",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "OPEN_INVENTORY"
+            }
+          }
+        },
+        "OPEN_MISSIONS": {
+          "description": "Navigate to the missions screen",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "OPEN_MISSIONS"
+            }
+          }
+        },
+        "OPEN_CRAFTING": {
+          "description": "Navigate to the crafting screen",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "OPEN_CRAFTING"
+            }
+          }
+        },
         "REPEAT_MISSION": {
           "description": "Re-launch a mission with the same def and optional entity team",
           "properties": {
-            "type": { "type": "string", "const": "REPEAT_MISSION" },
-            "defId": { "type": "string", "required": true },
-            "entityIds": { "type": "array", "items": { "type": "string" }, "nullable": true }
+            "type": {
+              "type": "string",
+              "const": "REPEAT_MISSION"
+            },
+            "defId": {
+              "type": "string",
+              "required": true
+            },
+            "entityIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "nullable": true
+            }
           }
         },
         "CRAFT_AGAIN": {
           "description": "Re-submit a crafting job for the same recipe",
           "properties": {
-            "type": { "type": "string", "const": "CRAFT_AGAIN" },
-            "recipeDefId": { "type": "string", "required": true }
+            "type": {
+              "type": "string",
+              "const": "CRAFT_AGAIN"
+            },
+            "recipeDefId": {
+              "type": "string",
+              "required": true
+            }
           }
         },
         "API_CALL": {
           "description": "Make an arbitrary API call identified by a stable key",
           "properties": {
-            "type": { "type": "string", "const": "API_CALL" },
-            "apiKey": { "type": "string", "required": true, "description": "Stable identifier mapped server-side to an endpoint" },
-            "payload": { "type": "object", "nullable": true, "description": "Arbitrary key-value payload forwarded to the endpoint" }
+            "type": {
+              "type": "string",
+              "const": "API_CALL"
+            },
+            "apiKey": {
+              "type": "string",
+              "required": true,
+              "description": "Stable identifier mapped server-side to an endpoint"
+            },
+            "payload": {
+              "type": "object",
+              "nullable": true,
+              "description": "Arbitrary key-value payload forwarded to the endpoint"
+            }
           }
         }
       }
     },
-
     "ModalButton": {
       "description": "A button rendered at the bottom of a modal",
       "properties": {
-        "id": { "type": "string", "required": true, "description": "Stable button ID for deduplication and telemetry" },
-        "label": { "type": "string", "required": true, "description": "Button label text" },
-        "variant": { "type": "enum", "enum": "ButtonVariant", "required": true },
-        "disabled": { "type": "boolean", "default": false },
-        "action": { "$ref": "#/complexTypes/ModalAction", "required": true },
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Stable button ID for deduplication and telemetry"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "description": "Button label text"
+        },
+        "variant": {
+          "type": "enum",
+          "enum": "ButtonVariant",
+          "required": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "action": {
+          "$ref": "#/complexTypes/ModalAction",
+          "required": true
+        },
         "requiresConfirm": {
           "type": "object",
           "nullable": true,
           "description": "If set, tapping this button shows an inline confirmation prompt before executing the action",
           "properties": {
-            "title": { "type": "string", "required": true },
-            "body": { "$ref": "#/complexTypes/RichTextDoc", "required": true },
-            "confirmLabel": { "type": "string", "default": "Confirm" },
-            "cancelLabel": { "type": "string", "default": "Cancel" }
+            "title": {
+              "type": "string",
+              "required": true
+            },
+            "body": {
+              "$ref": "#/complexTypes/RichTextDoc",
+              "required": true
+            },
+            "confirmLabel": {
+              "type": "string",
+              "default": "Confirm"
+            },
+            "cancelLabel": {
+              "type": "string",
+              "default": "Cancel"
+            }
           }
         }
       }
     },
-
     "ModalBlock": {
       "description": "A single content block rendered in the modal body. Discriminated by the 'type' field.",
       "variants": {
         "richText": {
           "description": "Formatted rich text content",
           "properties": {
-            "type": { "type": "string", "const": "richText" },
-            "doc": { "$ref": "#/complexTypes/RichTextDoc", "required": true }
+            "type": {
+              "type": "string",
+              "const": "richText"
+            },
+            "doc": {
+              "$ref": "#/complexTypes/RichTextDoc",
+              "required": true
+            }
           }
         },
         "divider": {
           "description": "Horizontal rule separator",
-          "properties": { "type": { "type": "string", "const": "divider" } }
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "divider"
+            }
+          }
         },
         "image": {
           "description": "A full-width image with optional caption",
           "properties": {
-            "type": { "type": "string", "const": "image" },
-            "image": { "$ref": "#/complexTypes/AssetRef", "required": true },
-            "caption": { "type": "string", "nullable": true }
+            "type": {
+              "type": "string",
+              "const": "image"
+            },
+            "image": {
+              "$ref": "#/complexTypes/AssetRef",
+              "required": true
+            },
+            "caption": {
+              "type": "string",
+              "nullable": true
+            }
           }
         },
         "metaRows": {
           "description": "A table of label/value pairs (e.g. mission stats, item properties)",
           "properties": {
-            "type": { "type": "string", "const": "metaRows" },
+            "type": {
+              "type": "string",
+              "const": "metaRows"
+            },
             "rows": {
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
-                  "label": { "type": "string", "required": true },
-                  "value": { "type": "string", "required": true }
+                  "label": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "value": {
+                    "type": "string",
+                    "required": true
+                  }
                 }
               },
               "required": true
@@ -673,47 +1397,103 @@
         "timer": {
           "description": "Countdown timer block that ticks in real time",
           "properties": {
-            "type": { "type": "string", "const": "timer" },
-            "endsAt": { "type": "string", "required": true, "description": "ISO 8601 timestamp when the timer expires" },
-            "label": { "type": "string", "nullable": true }
+            "type": {
+              "type": "string",
+              "const": "timer"
+            },
+            "endsAt": {
+              "type": "string",
+              "required": true,
+              "description": "ISO 8601 timestamp when the timer expires"
+            },
+            "label": {
+              "type": "string",
+              "nullable": true
+            }
           }
         },
         "progress": {
           "description": "A labeled progress bar",
           "properties": {
-            "type": { "type": "string", "const": "progress" },
-            "label": { "type": "string", "nullable": true },
-            "current": { "type": "number", "required": true },
-            "max": { "type": "number", "required": true }
+            "type": {
+              "type": "string",
+              "const": "progress"
+            },
+            "label": {
+              "type": "string",
+              "nullable": true
+            },
+            "current": {
+              "type": "number",
+              "required": true
+            },
+            "max": {
+              "type": "number",
+              "required": true
+            }
           }
         },
         "rewardsPreview": {
           "description": "Read-only preview of potential rewards (shown before an action)",
           "properties": {
-            "type": { "type": "string", "const": "rewardsPreview" },
-            "items": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "required": true }
+            "type": {
+              "type": "string",
+              "const": "rewardsPreview"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/complexTypes/RewardItem"
+              },
+              "required": true
+            }
           }
         },
         "rewardsList": {
           "description": "Claimed rewards list (shown after a completed action)",
           "properties": {
-            "type": { "type": "string", "const": "rewardsList" },
-            "title": { "type": "string", "nullable": true },
-            "items": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "required": true }
+            "type": {
+              "type": "string",
+              "const": "rewardsList"
+            },
+            "title": {
+              "type": "string",
+              "nullable": true
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/complexTypes/RewardItem"
+              },
+              "required": true
+            }
           }
         },
         "inventoryDelta": {
           "description": "Shows inventory changes (items added or removed with signed quantities)",
           "properties": {
-            "type": { "type": "string", "const": "inventoryDelta" },
+            "type": {
+              "type": "string",
+              "const": "inventoryDelta"
+            },
             "items": {
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
-                  "assetKey": { "type": "string", "nullable": true },
-                  "name": { "type": "string", "required": true },
-                  "qtyDelta": { "type": "number", "required": true, "description": "Positive = gained, negative = consumed" }
+                  "assetKey": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "name": {
+                    "type": "string",
+                    "required": true
+                  },
+                  "qtyDelta": {
+                    "type": "number",
+                    "required": true,
+                    "description": "Positive = gained, negative = consumed"
+                  }
                 }
               },
               "required": true
@@ -723,73 +1503,196 @@
         "giftReveal": {
           "description": "Animated gift reveal block showing a gift and its contents",
           "properties": {
-            "type": { "type": "string", "const": "giftReveal" },
+            "type": {
+              "type": "string",
+              "const": "giftReveal"
+            },
             "gift": {
               "type": "object",
               "required": true,
               "properties": {
-                "giftId": { "type": "string", "required": true },
-                "title": { "type": "string", "required": true },
-                "image": { "$ref": "#/complexTypes/AssetRef", "nullable": true }
+                "giftId": {
+                  "type": "string",
+                  "required": true
+                },
+                "title": {
+                  "type": "string",
+                  "required": true
+                },
+                "image": {
+                  "$ref": "#/complexTypes/AssetRef",
+                  "nullable": true
+                }
               }
             },
-            "rewards": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "nullable": true }
+            "rewards": {
+              "type": "array",
+              "items": {
+                "$ref": "#/complexTypes/RewardItem"
+              },
+              "nullable": true
+            }
           }
         },
         "error": {
           "description": "Inline error message block",
           "properties": {
-            "type": { "type": "string", "const": "error" },
-            "message": { "type": "string", "required": true }
+            "type": {
+              "type": "string",
+              "const": "error"
+            },
+            "message": {
+              "type": "string",
+              "required": true
+            }
           }
         }
       }
     },
-
     "ModalHeader": {
       "description": "Header section of a modal containing title, optional subtitle, icon, and banner image",
       "properties": {
-        "title": { "type": "string", "required": true },
-        "subtitle": { "type": "string", "nullable": true },
-        "icon": { "$ref": "#/complexTypes/AssetRef", "nullable": true, "description": "Small icon shown beside the title" },
-        "banner": { "$ref": "#/complexTypes/AssetRef", "nullable": true, "description": "Full-width banner image shown above the title" }
+        "title": {
+          "type": "string",
+          "required": true
+        },
+        "subtitle": {
+          "type": "string",
+          "nullable": true
+        },
+        "icon": {
+          "$ref": "#/complexTypes/AssetRef",
+          "nullable": true,
+          "description": "Small icon shown beside the title"
+        },
+        "banner": {
+          "$ref": "#/complexTypes/AssetRef",
+          "nullable": true,
+          "description": "Full-width banner image shown above the title"
+        }
       }
     },
-
     "ModalSpecV1": {
       "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup.",
       "properties": {
-        "version": { "type": "number", "const": 1, "required": true },
-        "id": { "type": "string", "required": true, "description": "Stable modal ID used for deduplication in the modal stack" },
-        "kind": { "type": "string", "required": true, "description": "Semantic kind (e.g. mission_complete, gift_reveal, generic_info) for telemetry and styling hints" },
+        "version": {
+          "type": "number",
+          "const": 1,
+          "required": true
+        },
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Stable modal ID used for deduplication in the modal stack"
+        },
+        "kind": {
+          "type": "string",
+          "required": true,
+          "description": "Semantic kind (e.g. mission_complete, gift_reveal, generic_info) for telemetry and styling hints"
+        },
         "dismiss": {
           "type": "object",
           "required": true,
           "description": "Controls which gestures can dismiss the modal",
           "properties": {
-            "backdrop": { "type": "boolean", "default": true, "description": "Tap outside to close" },
-            "x": { "type": "boolean", "default": true, "description": "Show close (×) button" },
-            "escape": { "type": "boolean", "default": true, "description": "Keyboard Escape to close" }
+            "backdrop": {
+              "type": "boolean",
+              "default": true,
+              "description": "Tap outside to close"
+            },
+            "x": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show close (×) button"
+            },
+            "escape": {
+              "type": "boolean",
+              "default": true,
+              "description": "Keyboard Escape to close"
+            }
           }
         },
-        "header": { "$ref": "#/complexTypes/ModalHeader", "required": true },
+        "header": {
+          "$ref": "#/complexTypes/ModalHeader",
+          "required": true
+        },
         "body": {
           "type": "array",
-          "items": { "$ref": "#/complexTypes/ModalBlock" },
+          "items": {
+            "$ref": "#/complexTypes/ModalBlock"
+          },
           "default": [],
           "description": "Ordered list of content blocks rendered between the header and the buttons"
         },
         "buttons": {
           "type": "array",
-          "items": { "$ref": "#/complexTypes/ModalButton" },
+          "items": {
+            "$ref": "#/complexTypes/ModalButton"
+          },
           "default": [],
           "description": "Action buttons rendered at the bottom of the modal (typically 1–2)"
         },
-        "telemetry": { "$ref": "#/complexTypes/ModalTelemetry", "nullable": true }
+        "telemetry": {
+          "$ref": "#/complexTypes/ModalTelemetry",
+          "nullable": true
+        }
+      }
+    },
+    "CheckInFrequency": {
+      "type": "object",
+      "description": "Controls how often a check-in window opens",
+      "properties": {
+        "type": {
+          "$ref": "#/enums/CheckInFrequencyType",
+          "description": "Frequency type"
+        },
+        "interval": {
+          "type": "integer",
+          "description": "Used with every_x_days; number of days"
+        }
+      }
+    },
+    "CheckInDayReward": {
+      "type": "object",
+      "description": "A reward entry for a specific check-in day",
+      "properties": {
+        "day": {
+          "type": "integer",
+          "description": "0-indexed day in cycle (or 1-indexed — match to streak % cycleLength)"
+        },
+        "giftDefId": {
+          "type": "string",
+          "description": "GiftDef to issue when this day is claimed"
+        }
+      }
+    },
+    "QuestObjective": {
+      "type": "object",
+      "description": "A single objective that must be completed as part of a quest",
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "description": "PlayerEvent.eventType to match"
+        },
+        "key": {
+          "type": "string",
+          "description": "If set, also matches PlayerEvent.key. Null = any key"
+        },
+        "target": {
+          "type": "number",
+          "description": "Total amount needed to complete this objective"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable objective text"
+        },
+        "dataFilter": {
+          "type": "object",
+          "description": "Optional shallow key-value match against PlayerEvent.data (e.g. {outcome:\"success\"})"
+        }
       }
     }
   },
-
   "tables": {
     "Currency": {
       "description": "Data-driven currency definitions with type, caps, and trade rules",
@@ -797,330 +1700,1147 @@
       "tableName": "currencies",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier (e.g. soft_arcanium)" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "symbol": { "type": "string", "nullable": true, "description": "Short symbol (e.g. a gem emoji)" },
-        "iconKey": { "type": "string", "nullable": true, "description": "Icon key for display" },
-        "type": { "type": "enum", "enum": "CurrencyType", "required": true, "description": "Currency type" },
-        "seasonId": { "type": "string", "nullable": true, "description": "Season ID (for SEASONAL type)" },
-        "isTradeable": { "type": "boolean", "default": false, "description": "Can players trade this?" },
-        "isSpendable": { "type": "boolean", "default": true, "description": "Can be spent?" },
-        "decimals": { "type": "integer", "default": 0, "description": "Decimal precision" },
-        "cap": { "type": "bigint", "nullable": true, "description": "Max amount (null = unlimited)" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (e.g. soft_arcanium)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "symbol": {
+          "type": "string",
+          "nullable": true,
+          "description": "Short symbol (e.g. a gem emoji)"
+        },
+        "iconKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Icon key for display"
+        },
+        "type": {
+          "type": "enum",
+          "enum": "CurrencyType",
+          "required": true,
+          "description": "Currency type"
+        },
+        "seasonId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Season ID (for SEASONAL type)"
+        },
+        "isTradeable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Can players trade this?"
+        },
+        "isSpendable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can be spent?"
+        },
+        "decimals": {
+          "type": "integer",
+          "default": 0,
+          "description": "Decimal precision"
+        },
+        "cap": {
+          "type": "bigint",
+          "nullable": true,
+          "description": "Max amount (null = unlimited)"
+        }
       }
     },
-
     "ItemDef": {
       "description": "Item definitions with rarity, stacking, binding, equipment, consumable, and crafting metadata",
       "prismaModel": "ItemDefinition",
       "tableName": "item_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "version": { "type": "integer", "default": 1, "description": "Schema version" },
-        "type": { "type": "enum", "enum": "ItemType", "required": true, "description": "Item type" },
-        "rarity": { "type": "enum", "enum": "ItemRarity", "default": "COMMON", "description": "Rarity tier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "description": { "type": "string", "nullable": true, "description": "Flavor text" },
-        "iconKey": { "type": "string", "nullable": true, "description": "Icon key" },
-        "iconUrl": { "type": "string", "nullable": true, "description": "Direct icon URL" },
-        "uiColor": { "type": "string", "format": "css-color", "nullable": true, "description": "CSS color for UI accent" },
-        "category": { "type": "enum", "enum": "ItemCategory", "default": "MISC", "description": "Item category" },
-        "groups": { "type": "string[]", "default": [], "description": "Tags for filtering" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags" },
-        "stackable": { "type": "boolean", "default": false, "description": "Can stack in inventory?" },
-        "maxStack": { "type": "integer", "nullable": true, "description": "Max stack size" },
-        "uniqueInstance": { "type": "boolean", "default": false, "description": "Each item unique?" },
-        "tradable": { "type": "boolean", "default": true, "description": "Can be traded?" },
-        "bindOnEquip": { "type": "boolean", "default": false, "description": "Binds when equipped?" },
-        "bindOnPickup": { "type": "boolean", "default": false, "description": "Binds when acquired?" },
-        "hasState": { "type": "boolean", "default": false, "description": "Has dynamic state?" },
-        "stateSchema": { "type": "json", "nullable": true, "description": "JSON Schema for state validation" },
-        "equipData": { "$ref": "#/complexTypes/EquipData", "nullable": true, "description": "Equipment slot and stats" },
-        "statModifiers": { "type": "json", "nullable": true, "description": "Passive stat modifiers" },
-        "passiveEffects": { "type": "json", "nullable": true, "description": "Passive effects" },
-        "consumableData": { "$ref": "#/complexTypes/ConsumableData", "nullable": true, "description": "Consumable behavior" },
-        "craftingData": { "type": "json", "nullable": true, "description": "Crafting metadata" },
-        "data": { "type": "json", "nullable": true, "default": {}, "description": "Extra data catch-all" },
-        "seasonId": { "type": "string", "nullable": true, "description": "Season ID for seasonal items" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1,
+          "description": "Schema version"
+        },
+        "type": {
+          "type": "enum",
+          "enum": "ItemType",
+          "required": true,
+          "description": "Item type"
+        },
+        "rarity": {
+          "type": "enum",
+          "enum": "ItemRarity",
+          "default": "COMMON",
+          "description": "Rarity tier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text"
+        },
+        "iconKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Icon key"
+        },
+        "iconUrl": {
+          "type": "string",
+          "nullable": true,
+          "description": "Direct icon URL"
+        },
+        "uiColor": {
+          "type": "string",
+          "format": "css-color",
+          "nullable": true,
+          "description": "CSS color for UI accent"
+        },
+        "category": {
+          "type": "enum",
+          "enum": "ItemCategory",
+          "default": "MISC",
+          "description": "Item category"
+        },
+        "groups": {
+          "type": "string[]",
+          "default": [],
+          "description": "Tags for filtering"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags"
+        },
+        "stackable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Can stack in inventory?"
+        },
+        "maxStack": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Max stack size"
+        },
+        "uniqueInstance": {
+          "type": "boolean",
+          "default": false,
+          "description": "Each item unique?"
+        },
+        "tradable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can be traded?"
+        },
+        "bindOnEquip": {
+          "type": "boolean",
+          "default": false,
+          "description": "Binds when equipped?"
+        },
+        "bindOnPickup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Binds when acquired?"
+        },
+        "hasState": {
+          "type": "boolean",
+          "default": false,
+          "description": "Has dynamic state?"
+        },
+        "stateSchema": {
+          "type": "json",
+          "nullable": true,
+          "description": "JSON Schema for state validation"
+        },
+        "equipData": {
+          "$ref": "#/complexTypes/EquipData",
+          "nullable": true,
+          "description": "Equipment slot and stats"
+        },
+        "statModifiers": {
+          "type": "json",
+          "nullable": true,
+          "description": "Passive stat modifiers"
+        },
+        "passiveEffects": {
+          "type": "json",
+          "nullable": true,
+          "description": "Passive effects"
+        },
+        "consumableData": {
+          "$ref": "#/complexTypes/ConsumableData",
+          "nullable": true,
+          "description": "Consumable behavior"
+        },
+        "craftingData": {
+          "type": "json",
+          "nullable": true,
+          "description": "Crafting metadata"
+        },
+        "data": {
+          "type": "json",
+          "nullable": true,
+          "default": {},
+          "description": "Extra data catch-all"
+        },
+        "seasonId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Season ID for seasonal items"
+        }
       }
     },
-
     "EntityDefinition": {
       "description": "Character/entity blueprints referencing body, equipment, and progression schemas",
       "prismaModel": "EntityDefinition",
       "tableName": "entity_definitions",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "speciesId": { "type": "string", "required": true, "description": "Species identifier" },
-        "bodySchemaId": { "type": "ref", "refTable": "BodySchema", "required": true, "description": "References BodySchema" },
-        "equipmentSchemaId": { "type": "ref", "refTable": "EquipmentSchema", "required": true, "description": "References EquipmentSchema" },
-        "progressionProfileId": { "type": "ref", "refTable": "ProgressionProfile", "required": true, "description": "References ProgressionProfile" },
-        "rules": { "$ref": "#/complexTypes/LevelRules", "default": {}, "description": "Level-based rules" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "speciesId": {
+          "type": "string",
+          "required": true,
+          "description": "Species identifier"
+        },
+        "bodySchemaId": {
+          "type": "ref",
+          "refTable": "BodySchema",
+          "required": true,
+          "description": "References BodySchema"
+        },
+        "equipmentSchemaId": {
+          "type": "ref",
+          "refTable": "EquipmentSchema",
+          "required": true,
+          "description": "References EquipmentSchema"
+        },
+        "progressionProfileId": {
+          "type": "ref",
+          "refTable": "ProgressionProfile",
+          "required": true,
+          "description": "References ProgressionProfile"
+        },
+        "rules": {
+          "$ref": "#/complexTypes/LevelRules",
+          "default": {},
+          "description": "Level-based rules"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       },
       "relations": {
-        "bodySchema": { "model": "BodySchema", "field": "bodySchemaId" },
-        "equipmentSchema": { "model": "EquipmentSchema", "field": "equipmentSchemaId" },
-        "progressionProfile": { "model": "ProgressionProfile", "field": "progressionProfileId" }
+        "bodySchema": {
+          "model": "BodySchema",
+          "field": "bodySchemaId"
+        },
+        "equipmentSchema": {
+          "model": "EquipmentSchema",
+          "field": "equipmentSchemaId"
+        },
+        "progressionProfile": {
+          "model": "ProgressionProfile",
+          "field": "progressionProfileId"
+        }
       },
-      "indexes": ["speciesId"]
+      "indexes": [
+        "speciesId"
+      ]
     },
-
     "BodySchema": {
       "description": "Defines body slots and which archetypes are allowed per slot",
       "prismaModel": "BodySchema",
       "tableName": "body_schemas",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier (e.g. avian_7)" },
-        "slots": { "$ref": "#/complexTypes/BodySlots", "default": {}, "description": "Map of slot to allowed archetypes" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (e.g. avian_7)"
+        },
+        "slots": {
+          "$ref": "#/complexTypes/BodySlots",
+          "default": {},
+          "description": "Map of slot to allowed archetypes"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "EquipmentSchema": {
       "description": "Defines equipment slot types and max counts per slot",
       "prismaModel": "EquipmentSchema",
       "tableName": "equipment_schemas",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "schema": { "$ref": "#/complexTypes/EquipmentSlotSchema", "default": {}, "description": "Map of slot to max count" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "schema": {
+          "$ref": "#/complexTypes/EquipmentSlotSchema",
+          "default": {},
+          "description": "Map of slot to max count"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "ProgressionProfile": {
       "description": "Defines leveling, ascension, mastery, and prestige capabilities for entities",
       "prismaModel": "ProgressionProfile",
       "tableName": "progression_profiles",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "leveling": { "type": "boolean", "default": true, "description": "Can level up?" },
-        "ascension": { "type": "boolean", "default": true, "description": "Can ascend?" },
-        "mastery": { "type": "boolean", "default": true, "description": "Can gain mastery?" },
-        "prestigeEligible": { "type": "boolean", "default": true, "description": "Eligible for prestige?" },
-        "maxLevel": { "type": "integer", "default": 50, "description": "Maximum level cap" },
-        "ascensionCap": { "type": "integer", "default": 5, "description": "Maximum ascension tier" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "leveling": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can level up?"
+        },
+        "ascension": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can ascend?"
+        },
+        "mastery": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can gain mastery?"
+        },
+        "prestigeEligible": {
+          "type": "boolean",
+          "default": true,
+          "description": "Eligible for prestige?"
+        },
+        "maxLevel": {
+          "type": "integer",
+          "default": 50,
+          "description": "Maximum level cap"
+        },
+        "ascensionCap": {
+          "type": "integer",
+          "default": 5,
+          "description": "Maximum ascension tier"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "TraitDefinition": {
       "description": "Trait archetypes with per-slot stat bonuses. One record per archetype.",
       "prismaModel": "TraitDefinition",
       "tableName": "trait_definitions",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "archetype": { "type": "string", "required": true, "description": "Display name of archetype (e.g. Dave, Astro)" },
-        "slotStats": { "$ref": "#/complexTypes/SlotStats", "default": {}, "description": "Nested map of slot to stat bonuses" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "archetype": {
+          "type": "string",
+          "required": true,
+          "description": "Display name of archetype (e.g. Dave, Astro)"
+        },
+        "slotStats": {
+          "$ref": "#/complexTypes/SlotStats",
+          "default": {},
+          "description": "Nested map of slot to stat bonuses"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       },
-      "indexes": ["archetype"]
+      "indexes": [
+        "archetype"
+      ]
     },
-
     "RegionDefinition": {
       "description": "World regions that locations belong to, with biome and modifier data",
       "prismaModel": "RegionDefinition",
       "tableName": "region_definitions",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier (snake_case, matches DB regionId format)" },
-        "displayName": { "type": "string", "required": true, "description": "Human-readable name" },
-        "biome": { "type": "string", "nullable": true, "description": "Biome type" },
-        "modifiers": { "type": "json", "default": {}, "description": "Region-wide modifiers" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (snake_case, matches DB regionId format)"
+        },
+        "displayName": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable name"
+        },
+        "biome": {
+          "type": "string",
+          "nullable": true,
+          "description": "Biome type"
+        },
+        "modifiers": {
+          "type": "json",
+          "default": {},
+          "description": "Region-wide modifiers"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "LocationDefinition": {
       "description": "Location blueprints with production profiles, level-based rules, buildings/rooms allowance, and requirements",
       "prismaModel": "LocationDefinition",
       "tableName": "location_definitions",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "kind": { "type": "string", "default": "outpost_fungible", "description": "Location type" },
-        "regionId": { "type": "ref", "refTable": "RegionDefinition", "nullable": true, "description": "Region reference" },
-        "isUnique": { "type": "boolean", "default": false, "description": "Only one per player?" },
-        "rules": { "$ref": "#/complexTypes/LevelRules", "default": {}, "description": "Level-based rules (workers, buildings, rooms, storage, production, construction costs)" },
-        "productionProfile": { "type": "json", "default": {}, "description": "Production configuration" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Acquisition conditions" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "kind": {
+          "type": "string",
+          "default": "outpost_fungible",
+          "description": "Location type"
+        },
+        "regionId": {
+          "type": "ref",
+          "refTable": "RegionDefinition",
+          "nullable": true,
+          "description": "Region reference"
+        },
+        "isUnique": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only one per player?"
+        },
+        "rules": {
+          "$ref": "#/complexTypes/LevelRules",
+          "default": {},
+          "description": "Level-based rules (workers, buildings, rooms, storage, production, construction costs)"
+        },
+        "productionProfile": {
+          "type": "json",
+          "default": {},
+          "description": "Production configuration"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Acquisition conditions"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       },
       "relations": {
-        "region": { "model": "RegionDefinition", "field": "regionId", "optional": true }
+        "region": {
+          "model": "RegionDefinition",
+          "field": "regionId",
+          "optional": true
+        }
       },
-      "indexes": ["regionId"]
+      "indexes": [
+        "regionId"
+      ]
     },
-
     "BuildingDef": {
       "description": "Building blueprints with level-based rules (production, storage, construction costs) and requirements",
       "prismaModel": "BuildingDef",
       "tableName": "building_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "description": { "type": "string", "nullable": true, "description": "Flavor text" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags (used to derive category)" },
-        "rules": { "$ref": "#/complexTypes/LevelRules", "default": {}, "description": "Level-based rules" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Construction conditions" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags (used to derive category)"
+        },
+        "rules": {
+          "$ref": "#/complexTypes/LevelRules",
+          "default": {},
+          "description": "Level-based rules"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Construction conditions"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "RoomDef": {
       "description": "Room blueprints (rooms belong to buildings) with level-based rules and requirements",
       "prismaModel": "RoomDef",
       "tableName": "room_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "description": { "type": "string", "nullable": true, "description": "Flavor text" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags" },
-        "rules": { "$ref": "#/complexTypes/LevelRules", "default": {}, "description": "Level-based rules" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Construction conditions" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags"
+        },
+        "rules": {
+          "$ref": "#/complexTypes/LevelRules",
+          "default": {},
+          "description": "Level-based rules"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Construction conditions"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "DisplayDef": {
       "description": "Universal display definitions for visual card styling, referenced by missions and categories",
       "prismaModel": "DisplayDef",
       "tableName": "display_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "borderColor": { "type": "string", "format": "css-color", "nullable": true, "description": "CSS border color" },
-        "backgroundImage": { "type": "string", "nullable": true, "description": "Background image URL" },
-        "cardBackground": { "type": "string", "nullable": true, "description": "CSS background value" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "borderColor": {
+          "type": "string",
+          "format": "css-color",
+          "nullable": true,
+          "description": "CSS border color"
+        },
+        "backgroundImage": {
+          "type": "string",
+          "nullable": true,
+          "description": "Background image URL"
+        },
+        "cardBackground": {
+          "type": "string",
+          "nullable": true,
+          "description": "CSS background value"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "MissionCategoryDef": {
       "description": "Hierarchical mission categories with display properties, tags, and access requirements",
       "prismaModel": "MissionCategoryDef",
       "tableName": "mission_category_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "parentId": { "type": "ref", "refTable": "MissionCategoryDef", "nullable": true, "description": "Parent category (self-referential)" },
-        "displayDefId": { "type": "ref", "refTable": "DisplayDef", "nullable": true, "description": "Visual styling" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Access conditions" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "enabled": { "type": "boolean", "default": true, "description": "Is active?" },
-        "sortOrder": { "type": "integer", "default": 0, "description": "Display order" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "parentId": {
+          "type": "ref",
+          "refTable": "MissionCategoryDef",
+          "nullable": true,
+          "description": "Parent category (self-referential)"
+        },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Access conditions"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is active?"
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Display order"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       },
       "relations": {
-        "parent": { "model": "MissionCategoryDef", "field": "parentId", "optional": true },
-        "displayDef": { "model": "DisplayDef", "field": "displayDefId", "optional": true }
+        "parent": {
+          "model": "MissionCategoryDef",
+          "field": "parentId",
+          "optional": true
+        },
+        "displayDef": {
+          "model": "DisplayDef",
+          "field": "displayDefId",
+          "optional": true
+        }
       }
     },
-
     "MissionDef": {
       "description": "Mission blueprints with success/failure outcomes, timers, difficulty, and requirements",
       "prismaModel": "MissionDef",
       "tableName": "mission_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "description": { "type": "string", "nullable": true, "description": "Flavor text" },
-        "type": { "type": "string", "required": true, "description": "Mission type" },
-        "category": { "type": "string", "nullable": true, "description": "Grouping category" },
-        "group": { "type": "string", "nullable": true, "description": "Sub-group" },
-        "difficulty": { "type": "integer", "default": 0, "description": "Difficulty rating" },
-        "minSuccessChance": { "type": "integer", "default": 0, "description": "Min success chance (0-100)" },
-        "maxSuccessChance": { "type": "integer", "default": 100, "description": "Max success chance (0-100)" },
-        "timer": { "$ref": "#/complexTypes/Timer", "description": "Duration and skip settings" },
-        "success": { "$ref": "#/complexTypes/OutcomeBlock", "description": "Success outcome (rewards, effects, text)" },
-        "failure": { "$ref": "#/complexTypes/OutcomeBlock", "description": "Failure outcome" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "All conditions to start mission" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "tags": { "type": "string[]", "default": [], "description": "Classification tags" },
-        "rewardPreview": { "type": "json", "default": [], "description": "Reward preview data for UI" },
-        "enabled": { "type": "boolean", "default": true, "description": "Is active?" },
-        "displayDefId": { "type": "ref", "refTable": "DisplayDef", "nullable": true, "description": "Visual styling" },
-        "missionCategoryDefId": { "type": "ref", "refTable": "MissionCategoryDef", "nullable": true, "description": "Category grouping" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text"
+        },
+        "type": {
+          "type": "string",
+          "required": true,
+          "description": "Mission type"
+        },
+        "category": {
+          "type": "string",
+          "nullable": true,
+          "description": "Grouping category"
+        },
+        "group": {
+          "type": "string",
+          "nullable": true,
+          "description": "Sub-group"
+        },
+        "difficulty": {
+          "type": "integer",
+          "default": 0,
+          "description": "Difficulty rating"
+        },
+        "minSuccessChance": {
+          "type": "integer",
+          "default": 0,
+          "description": "Min success chance (0-100)"
+        },
+        "maxSuccessChance": {
+          "type": "integer",
+          "default": 100,
+          "description": "Max success chance (0-100)"
+        },
+        "timer": {
+          "$ref": "#/complexTypes/Timer",
+          "description": "Duration and skip settings"
+        },
+        "success": {
+          "$ref": "#/complexTypes/OutcomeBlock",
+          "description": "Success outcome (rewards, effects, text)"
+        },
+        "failure": {
+          "$ref": "#/complexTypes/OutcomeBlock",
+          "description": "Failure outcome"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "All conditions to start mission"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "tags": {
+          "type": "string[]",
+          "default": [],
+          "description": "Classification tags"
+        },
+        "rewardPreview": {
+          "type": "json",
+          "default": [],
+          "description": "Reward preview data for UI"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is active?"
+        },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling"
+        },
+        "missionCategoryDefId": {
+          "type": "ref",
+          "refTable": "MissionCategoryDef",
+          "nullable": true,
+          "description": "Category grouping"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       },
       "relations": {
-        "displayDef": { "model": "DisplayDef", "field": "displayDefId", "optional": true },
-        "missionCategoryDef": { "model": "MissionCategoryDef", "field": "missionCategoryDefId", "optional": true }
+        "displayDef": {
+          "model": "DisplayDef",
+          "field": "displayDefId",
+          "optional": true
+        },
+        "missionCategoryDef": {
+          "model": "MissionCategoryDef",
+          "field": "missionCategoryDefId",
+          "optional": true
+        }
       },
-      "indexes": ["missionCategoryDefId"]
+      "indexes": [
+        "missionCategoryDefId"
+      ]
     },
-
     "RecipeDef": {
       "description": "Crafting recipe definitions with costs, timers, rewards, and requirements",
       "prismaModel": "RecipeDef",
       "tableName": "recipe_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "description": { "type": "string", "nullable": true, "description": "Flavor text" },
-        "category": { "type": "string", "nullable": true, "description": "Grouping category" },
-        "group": { "type": "string", "nullable": true, "description": "Sub-group" },
-        "cost": { "$ref": "#/complexTypes/CostObject", "default": {}, "description": "Crafting cost (map of resourceId to amount)" },
-        "timer": { "$ref": "#/complexTypes/Timer", "description": "Duration and skip settings" },
-        "requiredKeeperLevel": { "type": "integer", "default": 1, "description": "Min keeper level" },
-        "rewards": { "type": "json", "default": {}, "description": "Crafting output" },
-        "requirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Crafting conditions" },
-        "visibilityRequirements": { "$ref": "#/complexTypes/Requirements", "default": [], "description": "Visibility conditions" },
-        "data": { "type": "json", "default": {}, "description": "Extra data" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text"
+        },
+        "category": {
+          "type": "string",
+          "nullable": true,
+          "description": "Grouping category"
+        },
+        "group": {
+          "type": "string",
+          "nullable": true,
+          "description": "Sub-group"
+        },
+        "cost": {
+          "$ref": "#/complexTypes/CostObject",
+          "default": {},
+          "description": "Crafting cost (map of resourceId to amount)"
+        },
+        "timer": {
+          "$ref": "#/complexTypes/Timer",
+          "description": "Duration and skip settings"
+        },
+        "requiredKeeperLevel": {
+          "type": "integer",
+          "default": 1,
+          "description": "Min keeper level"
+        },
+        "rewards": {
+          "type": "json",
+          "default": {},
+          "description": "Crafting output"
+        },
+        "requirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Crafting conditions"
+        },
+        "visibilityRequirements": {
+          "$ref": "#/complexTypes/Requirements",
+          "default": [],
+          "description": "Visibility conditions"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Extra data"
+        }
       }
     },
-
     "EventDefinition": {
       "description": "Server-side event definitions with handler functions and access control",
       "prismaModel": "EventDefinition",
       "tableName": "event_definitions",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Human-readable name" },
-        "version": { "type": "integer", "default": 1, "description": "Schema version" },
-        "kind": { "type": "enum", "enum": "EventKind", "default": "system", "description": "Event kind" },
-        "handlerKey": { "type": "enum", "enum": "HandlerKey", "required": true, "description": "Server-side handler function" },
-        "security": { "$ref": "#/complexTypes/EventSecurity", "default": {}, "description": "Access control" },
-        "inputSchema": { "type": "json", "default": {}, "description": "Expected payload JSON schema" },
-        "enabled": { "type": "boolean", "default": true, "description": "Is active?" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable name"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1,
+          "description": "Schema version"
+        },
+        "kind": {
+          "type": "enum",
+          "enum": "EventKind",
+          "default": "system",
+          "description": "Event kind"
+        },
+        "handlerKey": {
+          "type": "enum",
+          "enum": "HandlerKey",
+          "required": true,
+          "description": "Server-side handler function"
+        },
+        "security": {
+          "$ref": "#/complexTypes/EventSecurity",
+          "default": {},
+          "description": "Access control"
+        },
+        "inputSchema": {
+          "type": "json",
+          "default": {},
+          "description": "Expected payload JSON schema"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is active?"
+        }
       }
     },
-
     "GiftDef": {
       "description": "Gift definitions with presentation, claiming rules, and reward specifications",
       "prismaModel": "GiftDef",
       "tableName": "gift_defs",
       "primaryKey": "id",
       "fields": {
-        "id": { "type": "string", "required": true, "description": "Unique identifier" },
-        "name": { "type": "string", "required": true, "description": "Display name" },
-        "version": { "type": "integer", "default": 1, "description": "Schema version" },
-        "presentation": { "$ref": "#/complexTypes/GiftPresentation", "default": {}, "description": "Visual properties" },
-        "claimRules": { "$ref": "#/complexTypes/GiftClaimRules", "default": {}, "description": "Claiming behavior" },
-        "rewardSpec": { "$ref": "#/complexTypes/GiftRewardSpec", "default": {}, "description": "Reward on claim" },
-        "enabled": { "type": "boolean", "default": true, "description": "Can create instances?" }
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1,
+          "description": "Schema version"
+        },
+        "presentation": {
+          "$ref": "#/complexTypes/GiftPresentation",
+          "default": {},
+          "description": "Visual properties"
+        },
+        "claimRules": {
+          "$ref": "#/complexTypes/GiftClaimRules",
+          "default": {},
+          "description": "Claiming behavior"
+        },
+        "rewardSpec": {
+          "$ref": "#/complexTypes/GiftRewardSpec",
+          "default": {},
+          "description": "Reward on claim"
+        },
+        "instant": {
+          "type": "boolean",
+          "default": true,
+          "description": "If false, claim creates a GIFT_PACKAGE item; player opens via OpenGiftPackage command"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Can create instances?"
+        }
+      }
+    },
+    "LootboxDef": {
+      "description": "Defines a lootbox with weighted outcome pools. Items with type=LOOTBOX reference a LootboxDef via data.lootboxDefId.",
+      "prismaModel": "LootboxDef",
+      "tableName": "lootbox_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1
+        },
+        "iconKey": {
+          "type": "string",
+          "description": "Asset key for the lootbox icon"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/RewardEntry"
+          },
+          "default": [],
+          "description": "Weighted outcome pool (same format as MissionDef rewards)"
+        },
+        "rollCount": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of independent rolls per open"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "CheckInDef": {
+      "description": "Defines a check-in track with per-day gifts and frequency rules. Multiple tracks run independently per player.",
+      "prismaModel": "CheckInDef",
+      "tableName": "checkin_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string"
+        },
+        "rewards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/CheckInDayReward"
+          },
+          "default": [],
+          "description": "Per-day reward entries"
+        },
+        "cycleLength": {
+          "type": "integer",
+          "default": 7,
+          "description": "Streak wraps after this many days"
+        },
+        "requireStreak": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, missing a window resets streak to 0"
+        },
+        "allowReclaim": {
+          "type": "boolean",
+          "default": false,
+          "description": "If requireStreak=true and streak resets, allow re-claiming day 0 gift"
+        },
+        "frequency": {
+          "$ref": "#/complexTypes/CheckInFrequency",
+          "default": {
+            "type": "daily"
+          }
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "QuestDef": {
+      "description": "Defines a quest with objectives matched against player telemetry events.",
+      "prismaModel": "QuestDef",
+      "tableName": "quest_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional grouping category"
+        },
+        "objectives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/QuestObjective"
+          },
+          "default": [],
+          "description": "List of objectives; all must complete to finish quest"
+        },
+        "rewardSpec": {
+          "$ref": "#/complexTypes/GiftRewardSpec",
+          "default": {},
+          "description": "Reward granted on claim"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/Requirement"
+          },
+          "default": []
+        },
+        "repeatable": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, resets after claim"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0
+        }
       }
     }
   },
-
   "tableList": [
     "Currency",
     "ItemDef",
@@ -1138,20 +2858,46 @@
     "MissionDef",
     "RecipeDef",
     "EventDefinition",
-    "GiftDef"
+    "GiftDef",
+    "LootboxDef",
+    "CheckInDef",
+    "QuestDef"
   ],
-
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
     "references": [
-      { "from": "EntityDefinition.bodySchemaId", "to": "BodySchema.id" },
-      { "from": "EntityDefinition.equipmentSchemaId", "to": "EquipmentSchema.id" },
-      { "from": "EntityDefinition.progressionProfileId", "to": "ProgressionProfile.id" },
-      { "from": "LocationDefinition.regionId", "to": "RegionDefinition.id" },
-      { "from": "MissionCategoryDef.parentId", "to": "MissionCategoryDef.id" },
-      { "from": "MissionCategoryDef.displayDefId", "to": "DisplayDef.id" },
-      { "from": "MissionDef.displayDefId", "to": "DisplayDef.id" },
-      { "from": "MissionDef.missionCategoryDefId", "to": "MissionCategoryDef.id" }
+      {
+        "from": "EntityDefinition.bodySchemaId",
+        "to": "BodySchema.id"
+      },
+      {
+        "from": "EntityDefinition.equipmentSchemaId",
+        "to": "EquipmentSchema.id"
+      },
+      {
+        "from": "EntityDefinition.progressionProfileId",
+        "to": "ProgressionProfile.id"
+      },
+      {
+        "from": "LocationDefinition.regionId",
+        "to": "RegionDefinition.id"
+      },
+      {
+        "from": "MissionCategoryDef.parentId",
+        "to": "MissionCategoryDef.id"
+      },
+      {
+        "from": "MissionCategoryDef.displayDefId",
+        "to": "DisplayDef.id"
+      },
+      {
+        "from": "MissionDef.displayDefId",
+        "to": "DisplayDef.id"
+      },
+      {
+        "from": "MissionDef.missionCategoryDefId",
+        "to": "MissionCategoryDef.id"
+      }
     ]
   }
 }

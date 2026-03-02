@@ -8,6 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { TickModule } from '../tick/tick.module';
 import { EventModule } from '../event/event.module';
 import { LocationSettlementService } from '../location/location-settlement.service';
+import { CheckInModule } from '../checkin/checkin.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
     }),
     TickModule,
     EventModule,
+    CheckInModule,
   ],
   providers: [AuthService, JwtStrategy, LocationSettlementService],
   controllers: [AuthController],
