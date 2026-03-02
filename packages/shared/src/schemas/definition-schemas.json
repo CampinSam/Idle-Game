@@ -76,6 +76,22 @@
     "EquipmentSlots": {
       "values": ["weapon", "armor", "accessory"],
       "description": "Equipment slot types"
+    },
+    "ModalActionType": {
+      "values": ["CLOSE_MODAL", "NAVIGATE", "ACK_NOTIFICATION", "COMPLETE_JOB", "CLAIM_GIFT", "OPEN_INVENTORY", "OPEN_MISSIONS", "OPEN_CRAFTING", "REPEAT_MISSION", "CRAFT_AGAIN", "API_CALL"],
+      "description": "Discriminant values for ModalAction — determines which fields are present on the action object"
+    },
+    "ModalBlockType": {
+      "values": ["richText", "divider", "image", "metaRows", "timer", "progress", "rewardsPreview", "rewardsList", "inventoryDelta", "giftReveal", "error"],
+      "description": "Discriminant values for ModalBlock — determines the block renderer and its fields"
+    },
+    "ButtonVariant": {
+      "values": ["primary", "secondary", "ghost", "danger"],
+      "description": "Visual style of a modal button"
+    },
+    "RichTextNodeType": {
+      "values": ["p", "h1", "h2", "ul", "li", "strong", "em", "code", "link", "text", "br", "token"],
+      "description": "Rich text node types. Block nodes (p, h1, h2, ul, li) contain child nodes. Leaf nodes (text, br, token) carry data. link adds an href field."
     }
   },
 
@@ -446,6 +462,330 @@
           "items": { "type": "string" },
           "description": "List of allowed emitter identifiers"
         }
+      }
+    },
+
+    "AssetRef": {
+      "description": "Reference to a media asset by key, with optional alt text",
+      "properties": {
+        "assetKey": { "type": "string", "required": true, "description": "Key used to resolve the asset URL (e.g. via /media/*)" },
+        "alt": { "type": "string", "nullable": true, "description": "Accessibility alt text" }
+      }
+    },
+
+    "RichTextNode": {
+      "description": "A single node in a rich text document tree. Leaf nodes carry data; block nodes contain children.",
+      "variants": {
+        "block": {
+          "description": "Container nodes: p, h1, h2, ul, li, strong, em, code",
+          "properties": {
+            "t": { "type": "enum", "enum": "RichTextNodeType", "required": true },
+            "c": { "type": "array", "items": { "$ref": "#/complexTypes/RichTextNode" }, "description": "Child nodes" }
+          }
+        },
+        "link": {
+          "description": "Hyperlink node",
+          "properties": {
+            "t": { "type": "string", "const": "link" },
+            "href": { "type": "string", "required": true },
+            "c": { "type": "array", "items": { "$ref": "#/complexTypes/RichTextNode" }, "description": "Link label nodes" }
+          }
+        },
+        "text": {
+          "description": "Plain text leaf",
+          "properties": {
+            "t": { "type": "string", "const": "text" },
+            "v": { "type": "string", "required": true, "description": "The text value" }
+          }
+        },
+        "br": {
+          "description": "Line break",
+          "properties": {
+            "t": { "type": "string", "const": "br" }
+          }
+        },
+        "token": {
+          "description": "Named placeholder resolved at render time (e.g. player name, entity name)",
+          "properties": {
+            "t": { "type": "string", "const": "token" },
+            "key": { "type": "string", "required": true, "description": "Token key to resolve" }
+          }
+        }
+      }
+    },
+
+    "RichTextDoc": {
+      "description": "An ordered array of RichTextNode objects representing formatted text",
+      "type": "array",
+      "items": { "$ref": "#/complexTypes/RichTextNode" },
+      "default": []
+    },
+
+    "RewardItem": {
+      "description": "Display-only reward entry used inside rewardsPreview and rewardsList blocks",
+      "properties": {
+        "assetKey": { "type": "string", "nullable": true, "description": "Icon asset key" },
+        "name": { "type": "string", "required": true, "description": "Display name of the reward" },
+        "qty": { "type": "number", "nullable": true, "description": "Quantity (omit for non-stackable rewards)" },
+        "rarity": { "type": "string", "nullable": true, "description": "Rarity label (e.g. RARE)" },
+        "note": { "type": "string", "nullable": true, "description": "Extra display note (e.g. odds percentage)" }
+      }
+    },
+
+    "ModalTelemetry": {
+      "description": "Optional analytics metadata attached to a modal for tracking display and interaction events",
+      "properties": {
+        "sourceType": { "type": "string", "nullable": true, "description": "What triggered the modal (e.g. mission, gift, system)" },
+        "sourceId": { "type": "string", "nullable": true, "description": "ID of the source record" },
+        "notificationId": { "type": "string", "nullable": true, "description": "Linked notification ID" },
+        "jobId": { "type": "string", "nullable": true, "description": "Linked job ID" },
+        "templateId": { "type": "string", "nullable": true, "description": "Template or def ID that produced this modal" },
+        "experiment": { "type": "string", "nullable": true, "description": "A/B experiment key" }
+      }
+    },
+
+    "ModalAction": {
+      "description": "Action triggered when a modal button is pressed. Discriminated by the 'type' field.",
+      "variants": {
+        "CLOSE_MODAL": {
+          "description": "Dismiss the modal with no side effects",
+          "properties": { "type": { "type": "string", "const": "CLOSE_MODAL" } }
+        },
+        "NAVIGATE": {
+          "description": "Push a client-side route",
+          "properties": {
+            "type": { "type": "string", "const": "NAVIGATE" },
+            "route": { "type": "string", "required": true, "description": "Client route path (e.g. /locations/:id)" },
+            "params": { "type": "object", "nullable": true, "description": "Route params or query string values" }
+          }
+        },
+        "ACK_NOTIFICATION": {
+          "description": "Mark a notification as read/dismissed",
+          "properties": {
+            "type": { "type": "string", "const": "ACK_NOTIFICATION" },
+            "notificationId": { "type": "string", "required": true }
+          }
+        },
+        "COMPLETE_JOB": {
+          "description": "Complete a job (mission, crafting) and collect its rewards via the command pipeline",
+          "properties": {
+            "type": { "type": "string", "const": "COMPLETE_JOB" },
+            "jobId": { "type": "string", "required": true }
+          }
+        },
+        "CLAIM_GIFT": {
+          "description": "Claim a gift for the player",
+          "properties": {
+            "type": { "type": "string", "const": "CLAIM_GIFT" },
+            "giftId": { "type": "string", "required": true }
+          }
+        },
+        "OPEN_INVENTORY": { "description": "Navigate to the inventory screen", "properties": { "type": { "type": "string", "const": "OPEN_INVENTORY" } } },
+        "OPEN_MISSIONS": { "description": "Navigate to the missions screen", "properties": { "type": { "type": "string", "const": "OPEN_MISSIONS" } } },
+        "OPEN_CRAFTING": { "description": "Navigate to the crafting screen", "properties": { "type": { "type": "string", "const": "OPEN_CRAFTING" } } },
+        "REPEAT_MISSION": {
+          "description": "Re-launch a mission with the same def and optional entity team",
+          "properties": {
+            "type": { "type": "string", "const": "REPEAT_MISSION" },
+            "defId": { "type": "string", "required": true },
+            "entityIds": { "type": "array", "items": { "type": "string" }, "nullable": true }
+          }
+        },
+        "CRAFT_AGAIN": {
+          "description": "Re-submit a crafting job for the same recipe",
+          "properties": {
+            "type": { "type": "string", "const": "CRAFT_AGAIN" },
+            "recipeDefId": { "type": "string", "required": true }
+          }
+        },
+        "API_CALL": {
+          "description": "Make an arbitrary API call identified by a stable key",
+          "properties": {
+            "type": { "type": "string", "const": "API_CALL" },
+            "apiKey": { "type": "string", "required": true, "description": "Stable identifier mapped server-side to an endpoint" },
+            "payload": { "type": "object", "nullable": true, "description": "Arbitrary key-value payload forwarded to the endpoint" }
+          }
+        }
+      }
+    },
+
+    "ModalButton": {
+      "description": "A button rendered at the bottom of a modal",
+      "properties": {
+        "id": { "type": "string", "required": true, "description": "Stable button ID for deduplication and telemetry" },
+        "label": { "type": "string", "required": true, "description": "Button label text" },
+        "variant": { "type": "enum", "enum": "ButtonVariant", "required": true },
+        "disabled": { "type": "boolean", "default": false },
+        "action": { "$ref": "#/complexTypes/ModalAction", "required": true },
+        "requiresConfirm": {
+          "type": "object",
+          "nullable": true,
+          "description": "If set, tapping this button shows an inline confirmation prompt before executing the action",
+          "properties": {
+            "title": { "type": "string", "required": true },
+            "body": { "$ref": "#/complexTypes/RichTextDoc", "required": true },
+            "confirmLabel": { "type": "string", "default": "Confirm" },
+            "cancelLabel": { "type": "string", "default": "Cancel" }
+          }
+        }
+      }
+    },
+
+    "ModalBlock": {
+      "description": "A single content block rendered in the modal body. Discriminated by the 'type' field.",
+      "variants": {
+        "richText": {
+          "description": "Formatted rich text content",
+          "properties": {
+            "type": { "type": "string", "const": "richText" },
+            "doc": { "$ref": "#/complexTypes/RichTextDoc", "required": true }
+          }
+        },
+        "divider": {
+          "description": "Horizontal rule separator",
+          "properties": { "type": { "type": "string", "const": "divider" } }
+        },
+        "image": {
+          "description": "A full-width image with optional caption",
+          "properties": {
+            "type": { "type": "string", "const": "image" },
+            "image": { "$ref": "#/complexTypes/AssetRef", "required": true },
+            "caption": { "type": "string", "nullable": true }
+          }
+        },
+        "metaRows": {
+          "description": "A table of label/value pairs (e.g. mission stats, item properties)",
+          "properties": {
+            "type": { "type": "string", "const": "metaRows" },
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "label": { "type": "string", "required": true },
+                  "value": { "type": "string", "required": true }
+                }
+              },
+              "required": true
+            }
+          }
+        },
+        "timer": {
+          "description": "Countdown timer block that ticks in real time",
+          "properties": {
+            "type": { "type": "string", "const": "timer" },
+            "endsAt": { "type": "string", "required": true, "description": "ISO 8601 timestamp when the timer expires" },
+            "label": { "type": "string", "nullable": true }
+          }
+        },
+        "progress": {
+          "description": "A labeled progress bar",
+          "properties": {
+            "type": { "type": "string", "const": "progress" },
+            "label": { "type": "string", "nullable": true },
+            "current": { "type": "number", "required": true },
+            "max": { "type": "number", "required": true }
+          }
+        },
+        "rewardsPreview": {
+          "description": "Read-only preview of potential rewards (shown before an action)",
+          "properties": {
+            "type": { "type": "string", "const": "rewardsPreview" },
+            "items": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "required": true }
+          }
+        },
+        "rewardsList": {
+          "description": "Claimed rewards list (shown after a completed action)",
+          "properties": {
+            "type": { "type": "string", "const": "rewardsList" },
+            "title": { "type": "string", "nullable": true },
+            "items": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "required": true }
+          }
+        },
+        "inventoryDelta": {
+          "description": "Shows inventory changes (items added or removed with signed quantities)",
+          "properties": {
+            "type": { "type": "string", "const": "inventoryDelta" },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "assetKey": { "type": "string", "nullable": true },
+                  "name": { "type": "string", "required": true },
+                  "qtyDelta": { "type": "number", "required": true, "description": "Positive = gained, negative = consumed" }
+                }
+              },
+              "required": true
+            }
+          }
+        },
+        "giftReveal": {
+          "description": "Animated gift reveal block showing a gift and its contents",
+          "properties": {
+            "type": { "type": "string", "const": "giftReveal" },
+            "gift": {
+              "type": "object",
+              "required": true,
+              "properties": {
+                "giftId": { "type": "string", "required": true },
+                "title": { "type": "string", "required": true },
+                "image": { "$ref": "#/complexTypes/AssetRef", "nullable": true }
+              }
+            },
+            "rewards": { "type": "array", "items": { "$ref": "#/complexTypes/RewardItem" }, "nullable": true }
+          }
+        },
+        "error": {
+          "description": "Inline error message block",
+          "properties": {
+            "type": { "type": "string", "const": "error" },
+            "message": { "type": "string", "required": true }
+          }
+        }
+      }
+    },
+
+    "ModalHeader": {
+      "description": "Header section of a modal containing title, optional subtitle, icon, and banner image",
+      "properties": {
+        "title": { "type": "string", "required": true },
+        "subtitle": { "type": "string", "nullable": true },
+        "icon": { "$ref": "#/complexTypes/AssetRef", "nullable": true, "description": "Small icon shown beside the title" },
+        "banner": { "$ref": "#/complexTypes/AssetRef", "nullable": true, "description": "Full-width banner image shown above the title" }
+      }
+    },
+
+    "ModalSpecV1": {
+      "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup.",
+      "properties": {
+        "version": { "type": "number", "const": 1, "required": true },
+        "id": { "type": "string", "required": true, "description": "Stable modal ID used for deduplication in the modal stack" },
+        "kind": { "type": "string", "required": true, "description": "Semantic kind (e.g. mission_complete, gift_reveal, generic_info) for telemetry and styling hints" },
+        "dismiss": {
+          "type": "object",
+          "required": true,
+          "description": "Controls which gestures can dismiss the modal",
+          "properties": {
+            "backdrop": { "type": "boolean", "default": true, "description": "Tap outside to close" },
+            "x": { "type": "boolean", "default": true, "description": "Show close (×) button" },
+            "escape": { "type": "boolean", "default": true, "description": "Keyboard Escape to close" }
+          }
+        },
+        "header": { "$ref": "#/complexTypes/ModalHeader", "required": true },
+        "body": {
+          "type": "array",
+          "items": { "$ref": "#/complexTypes/ModalBlock" },
+          "default": [],
+          "description": "Ordered list of content blocks rendered between the header and the buttons"
+        },
+        "buttons": {
+          "type": "array",
+          "items": { "$ref": "#/complexTypes/ModalButton" },
+          "default": [],
+          "description": "Action buttons rendered at the bottom of the modal (typically 1–2)"
+        },
+        "telemetry": { "$ref": "#/complexTypes/ModalTelemetry", "nullable": true }
       }
     }
   },
