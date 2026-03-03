@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { BoostService } from '../tick/boost.service';
@@ -7,6 +8,7 @@ import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -154,6 +156,45 @@ export class AdminController {
       }
     }
     return { total: locations.length, updated, failed };
+  }
+
+  @Post('media/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMedia(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
+    if (!paths.length) throw new BadRequestException('PUBLIC_OBJECT_SEARCH_PATHS not configured');
+    const firstPath = paths[0];
+    const parts = firstPath.slice(1).split('/');
+    const bucketName = parts[0];
+    const prefix = parts.slice(1).join('/');
+    const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const objectName = prefix ? `${prefix}/media/${safeFilename}` : `media/${safeFilename}`;
+    const bucket = objectStorageClient.bucket(bucketName);
+    const gcsFile = bucket.file(objectName);
+    await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
+    const assetKey = `media/${safeFilename}`;
+    return { assetKey, url: `/api/media/${assetKey}` };
+  }
+
+  @Get('media/list')
+  async listMedia() {
+    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
+    if (!paths.length) return [];
+    const firstPath = paths[0];
+    const parts = firstPath.slice(1).split('/');
+    const bucketName = parts[0];
+    const prefix = parts.slice(1).join('/');
+    const mediaPrefix = prefix ? `${prefix}/media/` : 'media/';
+    const bucket = objectStorageClient.bucket(bucketName);
+    const [files] = await bucket.getFiles({ prefix: mediaPrefix });
+    return files.map(f => {
+      const name = f.name.replace(mediaPrefix, '');
+      const assetKey = `media/${name}`;
+      return { assetKey, name, url: `/api/media/${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
+    }).filter(f => f.name);
   }
 
   @Get(':table')

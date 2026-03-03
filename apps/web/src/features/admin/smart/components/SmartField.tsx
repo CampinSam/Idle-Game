@@ -1,0 +1,338 @@
+import { useState, useCallback } from 'react';
+import { FieldDef, isAssetKeyField } from '../tableSchemas';
+import RefSelect from './RefSelect';
+import CollapsibleObject from './CollapsibleObject';
+import MediaUploader from './MediaUploader';
+
+interface Props {
+  fieldName: string;
+  fieldDef: FieldDef;
+  value: any;
+  onChange: (val: any) => void;
+  enumOptions?: Record<string, string[]>;
+}
+
+const FALLBACK_ENUMS: Record<string, string[]> = {
+  currencyType: ['SOFT', 'HARD', 'PREMIUM', 'SEASONAL', 'EVENT', 'GUILD'],
+  itemType: ['MATERIAL', 'POTION', 'CONSUMABLE', 'GEAR', 'QUEST', 'LOOTBOX', 'GIFT_PACKAGE'],
+  itemRarity: ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'],
+  itemCategory: ['MISC', 'WEAPON', 'ARMOR', 'ACCESSORY', 'CONSUMABLE', 'CRAFTING', 'QUEST', 'CURRENCY'],
+  buildingCategory: ['PRODUCTION', 'STORAGE', 'UTILITY', 'DEFENSE', 'SPECIAL'],
+  eventKind: ['system', 'player', 'admin'],
+  handlerKey: ['on_claim_location', 'on_complete_mission', 'on_claim_reward'],
+  checkInFrequency: ['daily', 'every_x_days', 'weekly', 'monthly'],
+};
+
+function JSONField({ value, onChange, onBlur, touched, error }: {
+  value: any; onChange: (v: any) => void; onBlur: () => void; touched: boolean; error: string | null;
+}) {
+  const [mode, setMode] = useState<'tree' | 'raw'>('tree');
+  const [rawText, setRawText] = useState(() => JSON.stringify(value, null, 2));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleRawChange = (text: string) => {
+    setRawText(text);
+    try {
+      const parsed = JSON.parse(text);
+      setLocalError(null);
+      onChange(parsed);
+    } catch (e: any) {
+      setLocalError(`JSON error: ${e.message}`);
+    }
+  };
+
+  const handleSwitchToTree = () => {
+    setRawText(JSON.stringify(value, null, 2));
+    setLocalError(null);
+    setMode('tree');
+  };
+
+  const showError = (touched && error) || localError;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+        <button
+          type="button"
+          onClick={() => setMode('tree')}
+          style={{
+            padding: '2px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
+            background: mode === 'tree' ? '#a78bfa' : 'transparent',
+            border: mode === 'tree' ? 'none' : '1px solid #333',
+            color: mode === 'tree' ? '#fff' : '#888',
+          }}
+        >
+          Tree
+        </button>
+        <button
+          type="button"
+          onClick={() => { setMode('raw'); setRawText(JSON.stringify(value, null, 2)); }}
+          style={{
+            padding: '2px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
+            background: mode === 'raw' ? '#a78bfa' : 'transparent',
+            border: mode === 'raw' ? 'none' : '1px solid #333',
+            color: mode === 'raw' ? '#fff' : '#888',
+          }}
+        >
+          Raw JSON
+        </button>
+      </div>
+
+      {mode === 'tree' ? (
+        <div style={{
+          background: '#0f0f2e', border: `1px solid ${showError ? '#ef4444' : '#333'}`,
+          borderRadius: 6, padding: 10,
+        }}>
+          <CollapsibleObject value={value} onChange={onChange} />
+        </div>
+      ) : (
+        <textarea
+          value={rawText}
+          onChange={e => handleRawChange(e.target.value)}
+          onBlur={() => { handleSwitchToTree(); onBlur(); }}
+          style={{
+            width: '100%', minHeight: 120, background: '#0f0f2e',
+            border: `1px solid ${showError ? '#ef4444' : '#333'}`,
+            borderRadius: 6, color: '#e0e0ff', fontSize: 12,
+            fontFamily: 'monospace', padding: 8, resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+      )}
+      {showError && (
+        <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{localError || error}</div>
+      )}
+    </div>
+  );
+}
+
+export default function SmartField({ fieldName, fieldDef, value, onChange, enumOptions }: Props) {
+  const [touched, setTouched] = useState(false);
+  const [uploaderOpen, setUploaderOpen] = useState(false);
+  const touch = useCallback(() => setTouched(true), []);
+
+  const isRequired = fieldDef.required;
+  const error = touched && isRequired && (value === undefined || value === null || value === '')
+    ? `${fieldName} is required`
+    : null;
+
+  const borderColor = touched ? (error ? '#ef4444' : '#4ade80') : '#333';
+
+  const inputStyle = {
+    width: '100%',
+    padding: '7px 10px',
+    background: '#1a1a2e',
+    border: `1px solid ${borderColor}`,
+    borderRadius: 6,
+    color: '#e0e0ff',
+    fontSize: 13,
+    boxSizing: 'border-box' as const,
+    transition: 'border-color 0.15s',
+  };
+
+  const renderField = () => {
+    const t = fieldDef.type;
+
+    if (t === 'ref' && fieldDef.refTable) {
+      return (
+        <RefSelect
+          refTable={fieldDef.refTable}
+          value={value ?? null}
+          onChange={onChange}
+          onBlur={touch}
+        />
+      );
+    }
+
+    if (t === 'boolean') {
+      return (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+          <div
+            onClick={() => { onChange(!value); touch(); }}
+            style={{
+              width: 42, height: 24, borderRadius: 12, position: 'relative',
+              background: value ? '#7c3aed' : '#333',
+              transition: 'background 0.2s', cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 3, left: value ? 20 : 3,
+              width: 18, height: 18, borderRadius: 9, background: '#fff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            }} />
+          </div>
+          <span style={{ color: value ? '#a78bfa' : '#888', fontSize: 13 }}>
+            {value ? 'Enabled' : 'Disabled'}
+          </span>
+        </label>
+      );
+    }
+
+    if (t === 'number') {
+      return (
+        <input
+          type="number"
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+          onBlur={touch}
+          style={inputStyle}
+        />
+      );
+    }
+
+    if (t === 'color') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="color"
+            value={value || '#000000'}
+            onChange={e => onChange(e.target.value)}
+            onBlur={touch}
+            style={{ width: 40, height: 34, borderRadius: 4, border: 'none', cursor: 'pointer', background: 'none', padding: 2 }}
+          />
+          <input
+            type="text"
+            value={value || ''}
+            onChange={e => onChange(e.target.value)}
+            onBlur={touch}
+            placeholder="#rrggbb"
+            style={{ ...inputStyle, flex: 1 }}
+          />
+        </div>
+      );
+    }
+
+    if (t === 'enum' && fieldDef.enum) {
+      const opts = (enumOptions && enumOptions[fieldDef.enum]) || FALLBACK_ENUMS[fieldDef.enum] || [];
+      return (
+        <select
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value || undefined)}
+          onBlur={touch}
+          style={{ ...inputStyle, cursor: 'pointer' }}
+        >
+          <option value="">— select —</option>
+          {opts.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      );
+    }
+
+    if (t === 'stringArray') {
+      const arr: string[] = Array.isArray(value) ? value : [];
+      const addTag = (tag: string) => {
+        if (tag && !arr.includes(tag)) onChange([...arr, tag]);
+      };
+      return (
+        <div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: arr.length ? 6 : 0 }}>
+            {arr.map(tag => (
+              <span key={tag} style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+                background: '#1a1a2e', border: '1px solid #444', borderRadius: 20,
+                color: '#e0e0ff', fontSize: 12,
+              }}>
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => onChange(arr.filter(t => t !== tag))}
+                  style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <input
+            type="text"
+            placeholder="Type and press Enter or comma..."
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const v = (e.currentTarget.value).trim();
+                if (v) { addTag(v); e.currentTarget.value = ''; }
+              }
+            }}
+            onBlur={e => { touch(); const v = e.target.value.trim(); if (v) { addTag(v); e.target.value = ''; } }}
+            style={inputStyle}
+          />
+        </div>
+      );
+    }
+
+    if (t === 'json' || t === 'levelRules' || t === 'requirements' || t === 'timer' || t === 'giftPresentation' || t === 'giftClaimRules' || t === 'giftRewardSpec' || t === 'outcomeBlock' || t === 'costObject') {
+      const safeVal = value ?? (fieldDef.default !== undefined ? fieldDef.default : {});
+      return (
+        <JSONField
+          value={safeVal}
+          onChange={onChange}
+          onBlur={touch}
+          touched={touched}
+          error={error}
+        />
+      );
+    }
+
+    if (t === 'assetKey' || isAssetKeyField(fieldName)) {
+      return (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            type="text"
+            value={value ?? ''}
+            onChange={e => onChange(e.target.value)}
+            onBlur={touch}
+            placeholder={`e.g. media/icon.png`}
+            style={{ ...inputStyle, flex: 1, borderColor }}
+          />
+          <button
+            type="button"
+            onClick={() => setUploaderOpen(true)}
+            title="Browse or upload media"
+            style={{
+              padding: '0 10px', background: '#1a1a2e', border: '1px solid #444',
+              borderRadius: 6, cursor: 'pointer', fontSize: 16, color: '#a78bfa',
+              flexShrink: 0,
+            }}
+          >
+            🖼
+          </button>
+          {uploaderOpen && (
+            <MediaUploader
+              fieldName={fieldName}
+              onInsert={v => { onChange(v); touch(); }}
+              onClose={() => setUploaderOpen(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <input
+        type="text"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        onBlur={touch}
+        style={{ ...inputStyle, borderColor }}
+        placeholder={fieldDef.description}
+      />
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>
+          {fieldName}
+          {isRequired && <span style={{ color: '#ef4444', marginLeft: 2 }}>*</span>}
+        </label>
+        {fieldDef.description && (
+          <span style={{ fontSize: 11, color: '#555' }}>— {fieldDef.description}</span>
+        )}
+      </div>
+      {renderField()}
+      {error && touched && (
+        <div style={{ color: '#ef4444', fontSize: 11 }}>{error}</div>
+      )}
+    </div>
+  );
+}

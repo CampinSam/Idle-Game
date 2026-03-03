@@ -1,0 +1,395 @@
+import { useState, useEffect, useReducer, useCallback, useMemo } from 'react';
+import { adminApi } from '../adminApi';
+import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
+import SmartField from './components/SmartField';
+import ModalPreview from './components/ModalPreview';
+
+interface TableEntry {
+  key: string;
+  name: string;
+  table: string;
+}
+
+interface EditorState {
+  record: Record<string, any> | null;
+  original: Record<string, any> | null;
+  dirty: boolean;
+  saving: boolean;
+  saveError: string | null;
+}
+
+type EditorAction =
+  | { type: 'LOAD'; record: Record<string, any> }
+  | { type: 'SET_FIELD'; field: string; value: any }
+  | { type: 'SAVE_START' }
+  | { type: 'SAVE_OK'; record: Record<string, any> }
+  | { type: 'SAVE_ERR'; error: string }
+  | { type: 'CLEAR' };
+
+function editorReducer(state: EditorState, action: EditorAction): EditorState {
+  switch (action.type) {
+    case 'LOAD':
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null };
+    case 'SET_FIELD':
+      if (!state.record) return state;
+      const updated = { ...state.record, [action.field]: action.value };
+      return { ...state, record: updated, dirty: JSON.stringify(updated) !== JSON.stringify(state.original), saveError: null };
+    case 'SAVE_START':
+      return { ...state, saving: true, saveError: null };
+    case 'SAVE_OK':
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null };
+    case 'SAVE_ERR':
+      return { ...state, saving: false, saveError: action.error };
+    case 'CLEAR':
+      return { record: null, original: null, dirty: false, saving: false, saveError: null };
+    default:
+      return state;
+  }
+}
+
+function buildNewRecord(tableName: string): Record<string, any> {
+  const schema = TABLE_SCHEMAS[tableName];
+  if (!schema) return {};
+  const rec: Record<string, any> = {};
+  Object.entries(schema.fields).forEach(([key, def]) => {
+    if (def.default !== undefined) rec[key] = def.default;
+  });
+  return rec;
+}
+
+interface Props {
+  adminKey: string;
+}
+
+export default function SmartAdminEditor({ adminKey: _ }: Props) {
+  const [tables, setTables] = useState<TableEntry[]>([]);
+  const [activeTable, setActiveTable] = useState<string>('');
+  const [records, setRecords] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [isNew, setIsNew] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [enumOptions, setEnumOptions] = useState<Record<string, string[]>>({});
+
+  const [editorState, dispatch] = useReducer(editorReducer, {
+    record: null, original: null, dirty: false, saving: false, saveError: null,
+  });
+
+  useEffect(() => {
+    adminApi.getTables().then(setTables).catch(() => {});
+    fetch('/api/meta/enums').then(r => r.json()).then(setEnumOptions).catch(() => {});
+  }, []);
+
+  const activeMappedKey = useMemo(() => {
+    if (!activeTable) return '';
+    const entry = tables.find(t => t.key === activeTable);
+    return entry?.key || activeTable;
+  }, [activeTable, tables]);
+
+  const loadRecords = useCallback(async (tableKey: string) => {
+    setRecordsLoading(true);
+    setRecords([]);
+    try {
+      const data = await adminApi.list(tableKey);
+      setRecords(Array.isArray(data) ? data : []);
+    } catch { setRecords([]); }
+    finally { setRecordsLoading(false); }
+  }, []);
+
+  const handleSelectTable = (key: string) => {
+    if (editorState.dirty) {
+      if (!confirm('You have unsaved changes. Discard them?')) return;
+    }
+    setActiveTable(key);
+    setSelectedId(null);
+    setIsNew(false);
+    setSearch('');
+    dispatch({ type: 'CLEAR' });
+    loadRecords(key);
+  };
+
+  const handleSelectRecord = (rec: any) => {
+    if (editorState.dirty) {
+      if (!confirm('You have unsaved changes. Discard them?')) return;
+    }
+    setSelectedId(rec.id);
+    setIsNew(false);
+    setDeleteConfirm(false);
+    dispatch({ type: 'LOAD', record: rec });
+  };
+
+  const handleNewRecord = () => {
+    if (editorState.dirty) {
+      if (!confirm('You have unsaved changes. Discard them?')) return;
+    }
+    const blank = buildNewRecord(getSchemaName());
+    setSelectedId(null);
+    setIsNew(true);
+    setDeleteConfirm(false);
+    dispatch({ type: 'LOAD', record: blank });
+  };
+
+  const getSchemaName = () => {
+    const entry = Object.entries(TABLE_API_KEYS).find(([, v]) => v === activeTable);
+    return entry ? entry[0] : '';
+  };
+
+  const schema = useMemo(() => {
+    const sn = getSchemaName();
+    return sn ? TABLE_SCHEMAS[sn] : null;
+  }, [activeTable, tables]);
+
+  const handleSave = async () => {
+    if (!editorState.record) return;
+    dispatch({ type: 'SAVE_START' });
+    try {
+      let saved: any;
+      if (isNew) {
+        saved = await adminApi.create(activeMappedKey, editorState.record);
+      } else {
+        saved = await adminApi.update(activeMappedKey, editorState.record.id, editorState.record);
+      }
+      dispatch({ type: 'SAVE_OK', record: saved });
+      setIsNew(false);
+      setSelectedId(saved.id);
+      await loadRecords(activeTable);
+    } catch (e: any) {
+      dispatch({ type: 'SAVE_ERR', error: e.message || 'Save failed' });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editorState.record?.id || isNew) return;
+    try {
+      await adminApi.delete(activeMappedKey, editorState.record.id);
+      dispatch({ type: 'CLEAR' });
+      setSelectedId(null);
+      setDeleteConfirm(false);
+      await loadRecords(activeTable);
+    } catch (e: any) {
+      dispatch({ type: 'SAVE_ERR', error: e.message || 'Delete failed' });
+    }
+  };
+
+  const filteredRecords = useMemo(() =>
+    records.filter(r => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (r.id || '').toLowerCase().includes(s) || (r.name || '').toLowerCase().includes(s);
+    }),
+    [records, search]
+  );
+
+  const isModalDefTable = getSchemaName() === 'ModalDef';
+
+  const tableGroupsForSidebar = useMemo(() => {
+    const grouped: Array<{ group: string; items: TableEntry[] }> = [];
+    const usedKeys = new Set<string>();
+    Object.entries(TABLE_GROUPS).forEach(([group, schemaNames]) => {
+      const items = schemaNames
+        .map(sn => {
+          const apiKey = TABLE_API_KEYS[sn];
+          return tables.find(t => t.key === apiKey);
+        })
+        .filter(Boolean) as TableEntry[];
+      if (items.length) {
+        grouped.push({ group, items });
+        items.forEach(i => usedKeys.add(i.key));
+      }
+    });
+    const misc = tables.filter(t => !usedKeys.has(t.key));
+    if (misc.length) grouped.push({ group: 'Other', items: misc });
+    return grouped;
+  }, [tables]);
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', background: '#0a0a1a', color: '#e0e0ff', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
+      <div style={{ width: 220, borderRight: '1px solid #1a1a3e', overflowY: 'auto', flexShrink: 0, background: '#0d0d20' }}>
+        <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1a1a3e' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>Def Editor</div>
+          <a href="/admin/def" style={{ fontSize: 11, color: '#555', textDecoration: 'none', display: 'block', marginTop: 4 }}>
+            ← Classic Editor
+          </a>
+        </div>
+        {tableGroupsForSidebar.map(({ group, items }) => (
+          <div key={group}>
+            <div style={{ padding: '10px 16px 4px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+              {group}
+            </div>
+            {items.map(t => (
+              <div
+                key={t.key}
+                onClick={() => handleSelectTable(t.key)}
+                style={{
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  background: activeTable === t.key ? 'rgba(167,139,250,0.15)' : 'transparent',
+                  color: activeTable === t.key ? '#a78bfa' : '#bbb',
+                  borderLeft: activeTable === t.key ? '3px solid #a78bfa' : '3px solid transparent',
+                  transition: 'all 0.1s',
+                }}
+                onMouseEnter={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                onMouseLeave={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'transparent'; }}
+              >
+                {t.name}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ width: 260, borderRight: '1px solid #1a1a3e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box' }}
+          />
+          <button
+            type="button"
+            disabled={!activeTable}
+            onClick={handleNewRecord}
+            style={{
+              padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
+              borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
+            }}
+            title="New record"
+          >
+            +
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {!activeTable && (
+            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+              Select a table from the sidebar
+            </div>
+          )}
+          {activeTable && recordsLoading && (
+            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>Loading...</div>
+          )}
+          {activeTable && !recordsLoading && filteredRecords.length === 0 && (
+            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+              {search ? 'No matches' : 'No records yet'}
+            </div>
+          )}
+          {filteredRecords.map(r => (
+            <div
+              key={r.id}
+              onClick={() => handleSelectRecord(r)}
+              style={{
+                padding: '10px 14px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #1a1a3e',
+                background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
+                borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
+              }}
+              onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+              onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {r.id}
+              </div>
+              {r.name && (
+                <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.name}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {activeTable && !recordsLoading && (
+          <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11 }}>
+            {records.length} record{records.length !== 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {!editorState.record ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 14 }}>
+            {activeTable ? 'Select a record or create a new one' : 'Select a table to begin'}
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff' }}>
+                    {isNew ? 'New Record' : (editorState.record.id || 'Record')}
+                  </span>
+                  {editorState.dirty && (
+                    <span style={{ marginLeft: 8, color: '#f59e0b', fontSize: 12 }}>● Unsaved</span>
+                  )}
+                </div>
+                {editorState.saveError && (
+                  <span style={{ color: '#ef4444', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {editorState.saveError}
+                  </span>
+                )}
+                {!isNew && !deleteConfirm && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(true)}
+                    style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', cursor: 'pointer', fontSize: 12 }}
+                  >
+                    Delete
+                  </button>
+                )}
+                {deleteConfirm && (
+                  <>
+                    <span style={{ color: '#ef4444', fontSize: 12 }}>Confirm delete?</span>
+                    <button type="button" onClick={handleDelete} style={{ padding: '6px 12px', background: '#ef4444', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12 }}>Yes</button>
+                    <button type="button" onClick={() => setDeleteConfirm(false)} style={{ padding: '6px 12px', background: '#333', border: 'none', borderRadius: 6, color: '#ccc', cursor: 'pointer', fontSize: 12 }}>No</button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={editorState.saving || !editorState.dirty}
+                  style={{
+                    padding: '6px 16px',
+                    background: editorState.dirty ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
+                    border: 'none', borderRadius: 6, color: '#fff',
+                    cursor: editorState.dirty ? 'pointer' : 'not-allowed',
+                    fontSize: 13, fontWeight: 600,
+                    opacity: editorState.saving ? 0.7 : 1,
+                  }}
+                >
+                  {editorState.saving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {schema && Object.entries(schema.fields).map(([fieldName, fieldDef]) => (
+                  <SmartField
+                    key={fieldName}
+                    fieldName={fieldName}
+                    fieldDef={fieldDef}
+                    value={editorState.record![fieldName]}
+                    onChange={val => dispatch({ type: 'SET_FIELD', field: fieldName, value: val })}
+                    enumOptions={enumOptions}
+                  />
+                ))}
+                {!schema && (
+                  <div style={{ color: '#555', fontSize: 13 }}>
+                    No schema defined for this table. Records can still be saved.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {isModalDefTable && (
+              <div style={{ width: 360, borderLeft: '1px solid #1a1a3e', overflowY: 'auto', padding: 16, flexShrink: 0, background: '#0d0d1e' }}>
+                <ModalPreview spec={editorState.record?.spec ?? {}} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

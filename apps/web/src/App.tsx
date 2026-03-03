@@ -21,6 +21,7 @@ import CraftingPage from './features/crafting/CraftingPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import AdminPage from './features/admin/AdminPage';
 import AdminDashboard from './features/admin/AdminDashboard';
+import SmartAdminPage from './features/admin/smart/SmartAdminPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -67,6 +68,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
+  if (location.pathname.startsWith('/admin/def2')) {
+    return <SmartAdminPage />;
+  }
   if (location.pathname.startsWith('/admin/def')) {
     return <AdminPage />;
   }
