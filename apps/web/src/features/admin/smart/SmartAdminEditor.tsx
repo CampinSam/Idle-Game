@@ -71,6 +71,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
   const [isNew, setIsNew] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [enumOptions, setEnumOptions] = useState<Record<string, string[]>>({});
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   const [editorState, dispatch] = useReducer(editorReducer, {
     record: null, original: null, dirty: false, saving: false, saveError: null,
@@ -79,6 +81,9 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
     fetch('/api/meta/enums').then(r => r.json()).then(setEnumOptions).catch(() => {});
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const activeMappedKey = useMemo(() => {
@@ -203,44 +208,139 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     return grouped;
   }, [tables]);
 
+  const sidebarWidth = sidebarCollapsed ? 44 : 220;
+
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0a1a', color: '#e0e0ff', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
-      <div style={{ width: 220, borderRight: '1px solid #1a1a3e', overflowY: 'auto', flexShrink: 0, background: '#0d0d20' }}>
-        <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #1a1a3e' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>Def Editor</div>
-          <a href="/admin/def" style={{ fontSize: 11, color: '#555', textDecoration: 'none', display: 'block', marginTop: 4 }}>
-            ← Classic Editor
-          </a>
-        </div>
-        {tableGroupsForSidebar.map(({ group, items }) => (
-          <div key={group}>
-            <div style={{ padding: '10px 16px 4px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
-              {group}
-            </div>
-            {items.map(t => (
-              <div
-                key={t.key}
-                onClick={() => handleSelectTable(t.key)}
-                style={{
-                  padding: '8px 16px',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  background: activeTable === t.key ? 'rgba(167,139,250,0.15)' : 'transparent',
-                  color: activeTable === t.key ? '#a78bfa' : '#bbb',
-                  borderLeft: activeTable === t.key ? '3px solid #a78bfa' : '3px solid transparent',
-                  transition: 'all 0.1s',
-                }}
-                onMouseEnter={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                onMouseLeave={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'transparent'; }}
-              >
-                {t.name}
+
+      {!isMobile && (
+        <div style={{
+          width: sidebarWidth,
+          borderRight: '1px solid #1a1a3e',
+          overflowY: sidebarCollapsed ? 'hidden' : 'auto',
+          overflowX: 'hidden',
+          flexShrink: 0,
+          background: '#0d0d20',
+          transition: 'width 0.2s ease',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          <div style={{
+            padding: sidebarCollapsed ? '12px 0' : '14px 16px 10px',
+            borderBottom: '1px solid #1a1a3e',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: sidebarCollapsed ? 'center' : 'space-between',
+            flexShrink: 0,
+          }}>
+            {!sidebarCollapsed && (
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>Def Editor</div>
+                <a href="/admin/def" style={{ fontSize: 11, color: '#555', textDecoration: 'none', display: 'block', marginTop: 4 }}>
+                  ← Classic Editor
+                </a>
               </div>
-            ))}
+            )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(c => !c)}
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              style={{
+                background: 'none',
+                border: '1px solid #2a2a4e',
+                borderRadius: 6,
+                color: '#666',
+                cursor: 'pointer',
+                fontSize: 14,
+                width: 28,
+                height: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = '#a78bfa'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2a2a4e'; }}
+            >
+              {sidebarCollapsed ? '›' : '‹'}
+            </button>
           </div>
-        ))}
-      </div>
+
+          {!sidebarCollapsed && tableGroupsForSidebar.map(({ group, items }) => (
+            <div key={group}>
+              <div style={{ padding: '10px 16px 4px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+                {group}
+              </div>
+              {items.map(t => (
+                <div
+                  key={t.key}
+                  onClick={() => handleSelectTable(t.key)}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    background: activeTable === t.key ? 'rgba(167,139,250,0.15)' : 'transparent',
+                    color: activeTable === t.key ? '#a78bfa' : '#bbb',
+                    borderLeft: activeTable === t.key ? '3px solid #a78bfa' : '3px solid transparent',
+                    transition: 'all 0.1s',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                  }}
+                  onMouseEnter={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                  onMouseLeave={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {t.name}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ width: 260, borderRight: '1px solid #1a1a3e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+
+        {isMobile && (
+          <div style={{
+            padding: '8px 12px',
+            borderBottom: '1px solid #1a1a3e',
+            background: '#0d0d20',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <select
+              value={activeTable}
+              onChange={e => handleSelectTable(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '7px 10px',
+                background: '#1a1a2e',
+                border: '1px solid #333',
+                borderRadius: 6,
+                color: '#e0e0ff',
+                fontSize: 13,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="">— Select table —</option>
+              {tableGroupsForSidebar.map(({ group, items }) => (
+                <optgroup key={group} label={group}>
+                  {items.map(t => (
+                    <option key={t.key} value={t.key}>{t.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <a
+              href="/admin/def"
+              style={{ fontSize: 11, color: '#555', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+            >
+              ← Classic
+            </a>
+          </div>
+        )}
         <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
             type="text"
@@ -265,7 +365,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {!activeTable && (
             <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
-              Select a table from the sidebar
+              {isMobile ? 'Select a table from the dropdown above' : 'Select a table from the sidebar'}
             </div>
           )}
           {activeTable && recordsLoading && (
