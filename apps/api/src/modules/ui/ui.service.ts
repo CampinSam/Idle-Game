@@ -19,23 +19,37 @@ export class UiService {
     });
     if (!job) throw new NotFoundException('Job not found');
 
-    const defName = await this.resolveDefName(job);
-    const tickInfo = await this.tickService.getTickInfo();
+    const [def, tickInfo] = await Promise.all([
+      this.fetchJobDef(job),
+      this.tickService.getTickInfo(),
+    ]);
+
+    const defName = def?.name || job.defId || 'Unknown';
     const isFinished = job.status === 'completed' || job.status === 'failed' || job.status === 'collected';
     const isActive = job.status === 'active' || job.status === 'ready_notified';
 
     const typeLabel = this.getJobTypeLabel(job.type);
     const results = job.results as any;
 
+    let generated: any;
+    let modalDefId: string | null = null;
+
     if (isFinished) {
-      return this.buildCompletedJobModal(job, defName, typeLabel, results);
+      generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
+      modalDefId = def?.completedModalDefId ?? null;
+    } else if (isActive) {
+      generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+      modalDefId = def?.activeModalDefId ?? null;
+    } else {
+      generated = this.buildGenericJobModal(job, defName, typeLabel);
     }
 
-    if (isActive) {
-      return this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+    if (modalDefId) {
+      const spec = await this.resolveModalDef(modalDefId);
+      if (spec) return this.mergeModalDefSpec(generated, spec);
     }
 
-    return this.buildGenericJobModal(job, defName, typeLabel);
+    return generated;
   }
 
   async buildModalForNotification(userId: string, notificationId: string): Promise<any> {
@@ -119,7 +133,7 @@ export class UiService {
       action: { type: 'CLOSE_MODAL' },
     });
 
-    return {
+    const generated = {
       version: 1,
       id: `gift_${giftId}`,
       kind: 'gift',
@@ -131,6 +145,19 @@ export class UiService {
       body,
       buttons,
     };
+
+    const giftDefId = snapshot?.giftDefId;
+    if (giftDefId) {
+      try {
+        const giftDef = await (this.prisma as any).giftDef.findUnique({ where: { id: giftDefId }, select: { modalDefId: true } });
+        if (giftDef?.modalDefId) {
+          const spec = await this.resolveModalDef(giftDef.modalDefId);
+          if (spec) return this.mergeModalDefSpec(generated, spec);
+        }
+      } catch {}
+    }
+
+    return generated;
   }
 
   private buildCompletedJobModal(job: any, defName: string, typeLabel: string, results: any): any {
@@ -342,23 +369,51 @@ export class UiService {
   }
 
   private async resolveDefName(job: any): Promise<string> {
-    const defId = job.defId;
-    if (!defId) return 'Unknown';
+    const def = await this.fetchJobDef(job);
+    if (def?.name) return def.name;
+    return job.defId || 'Unknown';
+  }
 
+  private async fetchJobDef(job: any): Promise<any | null> {
+    const defId = job.defId;
+    if (!defId) return null;
     try {
       if (job.type === 'MissionJob') {
-        const def = await this.prisma.missionDef.findFirst({ where: { id: defId } });
-        return def?.name || defId;
+        return await this.prisma.missionDef.findFirst({ where: { id: defId } });
       } else if (job.type === 'CraftingJob') {
-        const def = await this.prisma.recipeDef.findFirst({ where: { id: defId } });
-        return def?.name || defId;
+        return await this.prisma.recipeDef.findFirst({ where: { id: defId } });
       } else if (job.type === 'BuildingJob') {
-        const def = await this.prisma.buildingDef.findFirst({ where: { id: defId } });
-        return def?.name || defId;
+        return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId } });
       }
     } catch {}
+    return null;
+  }
 
-    return defId;
+  private async resolveModalDef(id: string | null | undefined): Promise<any | null> {
+    if (!id) return null;
+    try {
+      const modalDef = await (this.prisma as any).modalDef.findUnique({ where: { id } });
+      if (!modalDef || !modalDef.enabled) return null;
+      return modalDef.spec && typeof modalDef.spec === 'object' ? modalDef.spec : null;
+    } catch {}
+    return null;
+  }
+
+  private mergeModalDefSpec(generated: any, spec: any): any {
+    if (!spec || typeof spec !== 'object') return generated;
+    const merged = { ...generated };
+    if (spec.header && typeof spec.header === 'object') {
+      merged.header = { ...generated.header, ...spec.header };
+    }
+    if (spec.replaceBody === true && Array.isArray(spec.body)) {
+      merged.body = spec.body;
+    } else if (Array.isArray(spec.body) && spec.body.length > 0) {
+      merged.body = [...spec.body, ...(generated.body || [])];
+    }
+    if (Array.isArray(spec.buttons) && spec.buttons.length > 0) {
+      merged.buttons = spec.buttons;
+    }
+    return merged;
   }
 
   private buildSkipInfo(job: any): any | null {

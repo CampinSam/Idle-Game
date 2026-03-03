@@ -46,6 +46,7 @@ export class AdminController {
       { key: 'lootboxDef', name: 'Lootbox Definitions', table: 'lootbox_defs' },
       { key: 'checkInDef', name: 'Check-In Definitions', table: 'checkin_defs' },
       { key: 'questDef', name: 'Quest Definitions', table: 'quest_defs' },
+      { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },
     ];
   }
 

@@ -293,6 +293,8 @@ model BuildingDef {
   data                     Json     @default("{}")
   requirements             Json     @default("[]")
   visibilityRequirements   Json     @default("[]")
+  activeModalDefId         String?
+  completedModalDefId      String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -513,6 +515,8 @@ model MissionDef {
   displayDef               DisplayDef?        @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
   missionCategoryDefId     String?
   missionCategoryDef       MissionCategoryDef? @relation(fields: [missionCategoryDefId], references: [id], onDelete: SetNull)
+  activeModalDefId         String?
+  completedModalDefId      String?
   data                     Json               @default("{}")
 
   createdAt                DateTime           @default(now())
@@ -535,6 +539,8 @@ model RecipeDef {
   requirements             Json     @default("[]")
   effects                  Json     @default("[]")
   visibilityRequirements   Json     @default("[]")
+  activeModalDefId         String?
+  completedModalDefId      String?
   data                     Json     @default("{}")
 
   createdAt                DateTime @default(now())
@@ -782,6 +788,19 @@ model EventDefinition {
   @@map("event_definitions")
 }
 
+model ModalDef {
+  id          String   @id
+  name        String
+  description String?
+  version     Int      @default(1)
+  spec        Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("modal_defs")
+}
+
 model GiftDef {
   id              String   @id
   name            String
@@ -791,6 +810,7 @@ model GiftDef {
   rewardSpec      Json     @default("{}")
   instant         Boolean  @default(true)
   enabled         Boolean  @default(true)
+  modalDefId      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -284,6 +284,7 @@ export class AdminService {
       lootboxDef: (this.prisma as any).lootboxDef,
       checkInDef: (this.prisma as any).checkInDef,
       questDef: (this.prisma as any).questDef,
+      modalDef: (this.prisma as any).modalDef,
     };
 
     if (!models[table]) {

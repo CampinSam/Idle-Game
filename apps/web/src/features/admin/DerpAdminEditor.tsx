@@ -21,6 +21,7 @@ const TABLE_API_KEYS: Record<string, string> = {
   RecipeDef: 'recipeDef',
   EventDefinition: 'eventDefinition',
   GiftDef: 'giftDef',
+  ModalDef: 'modalDef',
 };
 
 const FALLBACK_ENUMS: Record<string, string[]> = {
@@ -198,6 +199,8 @@ const TABLE_SCHEMAS: Record<string, any> = {
       rules: { type: 'levelRules', default: {}, description: 'Level-based rules' },
       requirements: { type: 'requirements', default: [], description: 'Construction conditions' },
       visibilityRequirements: { type: 'requirements', default: [], description: 'Visibility conditions' },
+      activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while building is under construction' },
+      completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when construction completes' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -266,6 +269,8 @@ const TABLE_SCHEMAS: Record<string, any> = {
       enabled: { type: 'boolean', default: true, description: 'Is active?' },
       displayDefId: { type: 'ref', refTable: 'DisplayDef', description: 'Visual styling' },
       missionCategoryDefId: { type: 'ref', refTable: 'MissionCategoryDef', description: 'Category grouping' },
+      activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while mission is active/in-progress' },
+      completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown after mission completes' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -284,6 +289,8 @@ const TABLE_SCHEMAS: Record<string, any> = {
       rewards: { type: 'json', default: {}, description: 'Crafting output' },
       requirements: { type: 'requirements', default: [], description: 'Crafting conditions' },
       visibilityRequirements: { type: 'requirements', default: [], description: 'Visibility conditions' },
+      activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while recipe is crafting' },
+      completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when crafting is collected' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -312,6 +319,19 @@ const TABLE_SCHEMAS: Record<string, any> = {
       claimRules: { type: 'giftClaimRules', default: {}, description: 'Claiming behavior' },
       rewardSpec: { type: 'giftRewardSpec', default: {}, description: 'Reward on claim' },
       enabled: { type: 'boolean', default: true, description: 'Can create instances?' },
+      modalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when this gift is opened' },
+    }
+  },
+  ModalDef: {
+    icon: FileText,
+    color: '#607D8B',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. modal_mission_complete)' },
+      name: { type: 'string', required: true, description: 'Admin-facing name' },
+      description: { type: 'string', description: 'Notes on what this modal is for' },
+      version: { type: 'number', default: 1, description: 'Schema version' },
+      spec: { type: 'json', default: {}, description: 'ModalSpecV1 overrides: { header?, body?, buttons?, replaceBody? }' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
     }
   },
 };
