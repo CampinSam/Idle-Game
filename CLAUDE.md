@@ -1,479 +1,428 @@
-# CLAUDE.md — Derp Universe Development Guide
+# CLAUDE.md — Derp Universe Implementation Reference
 
-> **Project**: Derp Universe - Season-based Idle Strategy RPG
-> **Platform**: Cross-platform (Web, Mobile, Desktop)
-> **Blockchain**: Cardano-native with optional NFT integration
-> **Phase**: MVP Development
+> This document describes the **actual implemented state** of the project as of the most recent development session.
+> For high-level game design intent, see `replit.md`.
 
 ---
 
-## 🎯 Project Overview
+## Environment & Commands
 
-Derp Universe is a casual-friendly idle RPG where players manage Outposts, send Birds on missions, craft relics, and participate in seasonal events. The game is fully playable without NFTs or blockchain interaction.
+| Thing | Detail |
+|---|---|
+| Frontend | `http://localhost:5000` (Vite + React) |
+| Backend | `http://localhost:3001` (NestJS) |
+| API proxy | Vite forwards `/api/*` → strips `/api` → NestJS |
+| Package manager | `pnpm` (monorepo) |
+| Database | PostgreSQL via Prisma ORM |
+| Schema push | `cd apps/api && npx prisma db push` |
+| Start | `bash /home/runner/workspace/start.sh` |
 
-### Core Loop
-```
-Check Outposts → Send Missions → Craft Items → Collect Rewards → Repeat
-```
+**Test accounts:** `test@derp.dev` / `test123456`, `test2@derp.dev` / `test123456`
 
-### Design Litmus Tests
-Before implementing any feature, verify:
-1. **Is it Derpy?** — Has personality and humor
-2. **Is it fair?** — Free players enjoy it equally
-3. **Is it engaging?** — Respects player time
-4. **Is it sustainable?** — Works for years, not months
-5. **Is it balanced?** — No unfair whale advantages
+**JWT secret:** `replit-dev-jwt-secret-change-in-production`
 
----
+**Admin key header:** `x-admin-key: derp-admin-2026`
 
-## 🏗️ Architecture Principles
-
-### Non-Negotiables
-- **Server authoritative** — Client sends intent, server calculates everything
-- **Off-chain gameplay, on-chain ownership** — PostgreSQL for gameplay, Cardano for NFTs
-- **Deterministic math, stochastic outcomes** — RNG never affects validation, only outcomes
-- **Feature-gated systems** — Gates enforced server-side, client receives visibility hints
-- **Horizontal scalability first** — Monolith → Modular → Microservices
-
-### Security Rules
-- Client NEVER calculates Mission Power (MP)
-- Client NEVER determines success/failure
-- Client NEVER generates rewards
-- All rolls are server-seeded and replayable for audit
+**Never clear** `apps/web/node_modules/.vite` — causes >120s cold start timeout.
 
 ---
 
-## 🛠️ Technology Stack
-
-### Backend
-| Component | Technology | Notes |
-|-----------|------------|-------|
-| API Framework | NestJS (TypeScript) | Modular architecture |
-| Runtime | Node.js 20+ | LTS version |
-| Database | PostgreSQL 15+ | Primary data store |
-| Cache | Redis 7+ | Session, rate limiting |
-| Message Queue | RabbitMQ | Async job processing |
-| File Storage | AWS S3 / MinIO | Assets, exports |
-
-### Frontend
-| Platform | Technology |
-|----------|------------|
-| Web | React 18+ (TypeScript) |
-| Mobile | React Native or Unity |
-| State | Redux Toolkit |
-
-### Blockchain
-| Component | Technology |
-|-----------|------------|
-| Network | Cardano |
-| Indexer | Koios / Maestro / Blockfrost |
-| Wallet | CIP-30 (Nami, Eternl, Lace, Flint, Typhon) |
-
----
-
-## 📁 Recommended Project Structure
+## Monorepo Layout
 
 ```
-derp-universe/
-├── apps/
-│   ├── api/                    # NestJS backend
-│   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   │   ├── player/     # Player profiles, keeper progression
-│   │   │   │   ├── bird/       # Birds, stats, traits, archetypes
-│   │   │   │   ├── mission/    # Mission definitions, resolution
-│   │   │   │   ├── outpost/    # Outposts, buildings, workers
-│   │   │   │   ├── crafting/   # Recipes, jobs, results
-│   │   │   │   ├── economy/    # Currencies, resources, sinks
-│   │   │   │   ├── relic/      # Relics, effects, leveling
-│   │   │   │   ├── season/     # Seasons, events, battle pass
-│   │   │   │   └── synergy/    # Synergy engine (pure functions)
-│   │   │   ├── common/
-│   │   │   │   ├── guards/
-│   │   │   │   ├── decorators/
-│   │   │   │   ├── filters/
-│   │   │   │   └── interceptors/
-│   │   │   └── config/
-│   │   └── test/
-│   └── web/                    # React frontend
-│       ├── src/
-│       │   ├── components/
-│       │   ├── features/
-│       │   ├── hooks/
-│       │   ├── services/
-│       │   ├── store/
-│       │   └── utils/
-│       └── public/
-├── packages/
-│   ├── shared/                 # Shared types, constants, utilities
-│   │   ├── src/
-│   │   │   ├── types/
-│   │   │   ├── constants/
-│   │   │   └── utils/
-│   └── math/                   # Deterministic math library
-│       ├── src/
-│       │   ├── mission-power.ts
-│       │   ├── synergy.ts
-│       │   ├── crafting-luck.ts
-│       │   └── success-probability.ts
-│       └── test/
-├── prisma/                     # Database schema
-│   └── schema.prisma
-├── docker/
-│   ├── docker-compose.yml
-│   └── Dockerfile
-└── docs/
-    ├── api/
-    └── design/
+apps/
+  api/          NestJS backend (port 3001)
+  web/          React + Vite frontend (port 5000)
+packages/
+  shared/       Shared TypeScript types and constants (pre-built to JS)
+  math/         Deterministic math utilities (pre-built to JS)
+prisma/
+  schema.prisma Single source of truth for the database schema
 ```
 
 ---
 
-## 🎮 Core Game Systems
+## Critical Rules (Read First)
 
-### 1. Birds (Primary Characters)
+1. **All command handlers must use `ctx.tx`, never `this.prisma` directly.** Never pass `this.prisma` to `creditTx`, `addItemTx`, or any transactional helper.
+2. **Prisma schema changes require a push.** Run `cd apps/api && npx prisma db push` after any `schema.prisma` change. Never change primary key ID column types — this breaks existing data.
+3. **Notification updates inside transactions.** Service methods that update notifications must do so inside the `externalTx` path; handlers include them in patches via `pb.upsertNotification()`.
+4. **Shared packages must be pre-built.** After editing `packages/shared` or `packages/math`, run `pnpm build` inside that package before the backend will pick up changes.
+5. **Server-authoritative.** Client sends intent, server calculates everything. Client never determines success, rewards, or mission power.
 
-**Stats**: ATK, DEF, SPD, FOC, LCK, VIT
+---
 
-**Archetypes** (14 total):
-Dave, Astro, Magician, Ninja, Redneck, Stoner, DJ, Viking, Monk, Corpo, Cyborg, Buff, Mad Scientist, Deity
+## Command / Delta / SSE Pipeline
 
-**Progression Chain**:
+All player writes go through a single endpoint: `POST /v1/commands`.
+
+### Flow
+
 ```
-Leveling (1-50) → Ascension (T1-T5) → Mastery → Prestige (optional reset)
+Client → POST /v1/commands
+  → IdempotencyService (SHA-256 hash, replay detection)
+  → PlayerLockService (per-player SELECT FOR UPDATE row lock)
+  → CommandRouter (maps type → handler)
+  → Handler executes inside a single Prisma transaction (ctx.tx)
+  → PatchBuilder generates delta patches
+  → PlayerDelta row appended (append-only log)
+  → SSE stream pushes delta.available event
+  → Client fetches GET /v1/delta?since=<cursor>
+  → Redux syncSlice applies upsert/delete patches
 ```
 
-**Perfect Specimen**: All 7 traits share same archetype = +10% stats, +5% synergy, +20% Crafting Luck
+### Registered Command Handlers (18 total)
 
-### 2. Mission Power Formula
+`ExampleTestCommand`, `ClaimReward`, `StartMission`, `CompleteMission`, `StartCrafting`, `CollectCrafting`, `ClaimLocation`, `BuildBuilding`, `CompleteBuilding`, `UpgradeBuilding`, `AssignWorker`, `RemoveWorker`, `ToggleLocation`, `ToggleBuilding`, `ToggleRoom`, `OpenGiftPackage`, `OpenLootBox`, `ClaimQuestReward`
+
+### Patch Format
 
 ```typescript
-// Base MP (all server-side)
-const calculateMP = (stats: BirdStats): number => {
-  return (stats.ATK * 0.40) +
-         (stats.DEF * 0.30) +
-         (stats.SPD * 0.20) +
-         (stats.FOC * 0.10) +
-         (stats.LCK * 0.05) +
-         (stats.VIT * 0.05);
-};
-
-// Team MP with synergy
-const calculateTeamMP = (birds: Bird[]): number => {
-  const individualMPs = birds.map(b => calculateMP(b.stats));
-  const synergyBonus = calculateSynergyBonus(birds); // Max +30%
-  return individualMPs.reduce((a, b) => a + b, 0) * (1 + synergyBonus);
-};
-
-// Success probability
-// minSuccessChance and maxSuccessChance (integers 0–100) are set per MissionDef,
-// allowing each mission to define its own floor and ceiling — do NOT hardcode
-// global bounds here. Configure them via the admin panel on each MissionDef.
-const calculateSuccessChance = (
-  mp: number,
-  difficulty: number,
-  minSuccessChance: number, // from MissionDef.minSuccessChance
-  maxSuccessChance: number, // from MissionDef.maxSuccessChance
-): number => {
-  const raw = mp / (mp + difficulty);
-  return Math.min(Math.max(raw, minSuccessChance / 100), maxSuccessChance / 100);
-};
+{ op: "upsert" | "delete", entity: string, id: string, data?: any }
 ```
 
-### 3. Synergy System
-
-| Synergy Score | MP Bonus |
-|---------------|----------|
-| 0-5 | +0% |
-| 6-10 | +5% |
-| 11-15 | +10% |
-| 16-20 | +15% |
-| 21-25 | +20% |
-| 26-30 | +25% |
-| 31+ | +30% (CAPPED) |
-
-### 4. Crafting Luck Formula
+### UiIntent Format
 
 ```typescript
-const calculateCraftingLuck = (bird: Bird, bonuses: Bonuses): number => {
-  const cl = (bird.stats.FOC * 0.5) +
-             (bird.stats.LCK * 0.3) +
-             bonuses.relic +
-             bonuses.worker +
-             bonuses.room;
-  return Math.min(cl, 150); // Hard cap at 150
-};
+{ type: "modal" | "toast" | "navigate", key: string, title: string, body: any, buttons: any[] }
 ```
 
-### 5. Outpost System
+Note: UiIntents from command responses use this flat shape — **not** the full ModalSpecV1 shape. The ModalSpecV1 shape is only used by `GET /ui/modal` and the server-driven modal system.
 
-**Regions** (7 fungible): Derpshire Valley, Chillartica Drifts, Sandcrypt Badlands, Chillvine Jungle, Pinnacle Perch, Baldo's Bog, LavaLode Peaks
+### Bootstrap / Delta Endpoints
 
-**Unique 1-of-1 Outposts** (7): Farmland Hatchery, Deity Temple, Tree of Death, Moon Base, Mothership, Pred Cave, The Mega Crystal
-
-**Worker Slots by Level**:
-| Level | Slots |
-|-------|-------|
-| 1-9 | 2 |
-| 10-19 | 3 |
-| 20-29 | 4 |
-| 30-39 | 5 |
-| 40-49 | 6 |
-| 50 | 7 |
+- `GET /v1/bootstrap` — full player snapshot with cursor
+- `GET /v1/delta?since=<cursor>` — incremental patches, or `{ resetRequired: true }` if cursor is stale
+- `GET /v1/stream?token=<jwt>` — SSE; heartbeat every 15s; replays missed deltas on connect
 
 ---
 
-## 🚫 Anti-Whale Mechanisms
+## Frontend Sync Layer
 
-Implement ALL of these constraints:
+**SyncEngine** (`apps/web/src/services/SyncEngine.ts`) manages the full lifecycle: bootstrap on login, SSE stream with heartbeat monitoring, delta fetching, and patch application to Redux.
 
-```typescript
-const ANTI_WHALE_CAPS = {
-  // Progression caps
-  maxActiveOutposts: (keeperLevel: number) => Math.floor(keeperLevel / 20) + 1, // Max 6
-  maxActiveMissions: (keeperLevel: number) => Math.floor(keeperLevel / 20) + 2, // Max 6
-  
-  // Stat caps
-  mpEffectivenessCap: 500,        // Diminishing returns above this
-  synergyStackingCap: 0.30,       // Max +30% from synergy
-  craftingLuckCap: 150,           // Max CL
-  
-  // Daily caps
-  dailyPotionCap: (keeperLevel: number) => 15 + (keeperLevel * 0.5),
-  
-  // Threat scaling
-  threatScaling: (outpostCount: number) => outpostCount * 0.1, // More outposts = more threat
-};
-```
+**syncSlice** (`apps/web/src/store/syncSlice.ts`) holds entity tables as key-value maps:
+`player`, `entities`, `locations`, `buildings`, `rooms`, `items`, `jobs`, `notifications`, `currencies`, `missions`, `quests`, `checkins`
+
+**useSyncSelectors** (`apps/web/src/hooks/useSyncSelectors.ts`) — memoized hooks for reading sync data. Use these; do not read from syncSlice directly in components.
+
+**useCommand** hook — sends commands via `POST /v1/commands`, applies response patches, dispatches UI intents (toasts, modals, navigation).
+
+**Definition data** (missionDefs, recipeDefs, itemDefs) stays in gameSlice as read-only REST fetches — it does not flow through the delta pipeline.
 
 ---
 
-## 💾 Database Schema (Prisma)
+## Rewards / Outcomes System
+
+All reward resolution goes through `GameRulesService.resolveOutcomes()`.
+
+### Return Shape
+
+```typescript
+{
+  resolved: { entry: any; amount?: number }[],
+  texts:    string[],
+  flags:    { entry: any }[]
+}
+```
+
+### Caller Contract
+
+After calling `resolveOutcomes`, callers must:
+1. Credit resolved rewards (currencies, items, XP) using their transactional helpers
+2. If `flags.length > 0`, persist a **single** `prisma.user.update({ data: { flags: reqContext.userFlags } })` — do not re-fetch the user or apply flags entry-by-entry
+
+The three callers that follow this pattern: mission completion, crafting collection, and lootbox opening handlers.
+
+### Bundle Modes
+
+**Standard bundle** — all children are resolved (subject to per-entry `odds`):
+```json
+{ "bundle": [ ... ] }
+```
+
+**X-of-Y bundle** — pick N items by weight without replacement. Triggered by the **presence** of `minChoices` or `maxChoices` (not their value):
+```json
+{
+  "bundle": [ ... ],
+  "minChoices": 1,
+  "maxChoices": 3,
+  "odds": 100
+}
+```
+Count is rolled `rng.nextInt(minChoices, maxChoices)`, clamped to the pool size after requirement filtering. Weighted by each entry's `odds` field.
+
+### Flag Entries
+
+Flag operations are applied **in-place to `reqContext.userFlags`** during recursion so that subsequent requirements within the same resolution pass can see the updated value. They are collected separately in the `flags` array and must **not** be double-applied by callers.
+
+```json
+{ "type": "flag", "key": "myFlag", "operation": "increment", "value": 1, "odds": 50 }
+```
+
+Valid operations: `set`, `increment`, `decrement`, `invert`, `remove`.
+
+---
+
+## Server-Driven Modal System (ModalSpecV1)
+
+Modals are constructed server-side and rendered declaratively by the frontend.
+
+### Entry Point
+
+`GET /ui/modal?type=<job|gift|notification>&id=<id>` → `UiService`
+
+### ModalSpecV1 Shape
+
+```typescript
+{
+  version:  1,
+  id:       string,
+  kind:     'mission' | 'crafting' | 'building' | 'gift' | 'notification',
+  dismiss:  { backdrop: boolean, x: boolean, escape: boolean },
+  header:   { title: string, subtitle?: string, icon?: { assetKey: string } },
+  body:     ModalBlock[],
+  buttons:  ModalButton[]
+}
+```
+
+### Body Block Types
+
+`richText`, `timer`, `progress`, `rewardsList`, `giftReveal`
+
+### Button Action Types
+
+`COMPLETE_JOB`, `CLAIM_GIFT`, `ACK_NOTIFICATION`, `NAVIGATE`, `API_CALL`, `CLOSE_MODAL`
+
+### Frontend Rendering
+
+`GameModal` + `GameModalHost` + `ModalContext`. All call sites use `api.getModalSpec()` + `pushModal()`.
+
+---
+
+## ModalDef System (Admin-Authored Modal Overrides)
+
+`ModalDef` is a database-backed definition that allows admins to author custom modal content that overrides or augments the auto-generated modals for specific definitions.
+
+### Database Model
 
 ```prisma
-// Core entities - expand as needed
+model ModalDef {
+  id          String   @id
+  name        String
+  description String?
+  version     Int      @default(1)
+  spec        Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-model User {
-  id              String    @id @default(uuid())
-  username        String    @unique
-  email           String?   @unique
-  walletAddress   String?
-  keeperLevel     Int       @default(1)
-  keeperXp        BigInt    @default(0)
-  prestigeTokens  Int       @default(0)
-  createdAt       DateTime  @default(now())
-  
-  birds           Bird[]
-  outposts        Outpost[]
-  missions        Mission[]
-}
-
-model Bird {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id])
-  nftAssetId      String?   @unique
-  
-  level           Int       @default(1)
-  xp              BigInt    @default(0)
-  ascensionTier   Int       @default(0)
-  
-  stats           Json      // { ATK, DEF, SPD, FOC, LCK, VIT }
-  traits          Json      // { head, ears, beak, eyes, body, back, tail }
-  mastery         Json?
-  relics          Json      @default("[]")
-  
-  status          String    @default("idle") // idle, mission, working, injured
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-}
-
-model Outpost {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id])
-  nftAssetId      String?   @unique
-  
-  region          String
-  isUnique        Boolean   @default(false)
-  level           Int       @default(1)
-  
-  threatLevel     Float     @default(0)
-  corruptionLevel Float     @default(0)
-  
-  buildings       Json      @default("[]")
-  rooms           Json      @default("[]")
-  workers         Json      @default("[]")
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-}
-
-model Mission {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id])
-  
-  missionType     String
-  difficulty      Int
-  team            Json      // Bird IDs
-  
-  status          String    @default("active") // active, completed, failed
-  startedAt       DateTime  @default(now())
-  completesAt     DateTime
-  
-  result          Json?     // Populated on completion
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  @@map("modal_defs")
 }
 ```
 
----
-
-## 🎨 UI/UX Guidelines
-
-### Visual Identity (from Art Bible)
-- **Lines**: Thick, bold outlines with consistent stroke weight
-- **Shapes**: Rounded, chunky silhouettes
-- **Colors**: Flat, high-saturation digital colors (max 2 shadow tones)
-- **Characters**: Oversized heads, compact bodies, short limbs, large eyes
-
-### Color Palette
-| Name | Hex | Usage |
-|------|-----|-------|
-| Derp Blue | #3A7BD5 | Primary actions, headers |
-| Derp Purple | #8B5CF6 | Secondary actions |
-| Success Green | #10B981 | Confirmations |
-| Warning Orange | #F59E0B | Alerts |
-| Error Red | #EF4444 | Errors |
-
-### Faction Colors
-| Faction | Colors |
-|---------|--------|
-| Derps | Cyan/Teal |
-| Vamps | Purple/Magenta |
-| Preds | Red/Orange |
-
-### Design Rules
-- Mobile-first: Large tap targets (min 44×44 pts)
-- Dark-mode native
-- Chunky arcade-style UI
-- All key actions within 2 taps
-- Accessible: Color-blind modes, text scaling, screen reader support
-
-### Tone
-```
-✅ DO: Comedic mission names, silly flavor text, self-aware humor
-❌ DON'T: Generic "Quest 47", corporate jargon, taking itself seriously
-```
-
----
-
-## 🧪 Testing Strategy
+### `spec` JSON Shape
 
 ```typescript
-// Required test coverage
+{
+  header?:      { title?: string, subtitle?: string },
+  body?:        ModalBlock[],   // prepended before generated body
+  replaceBody?: boolean,        // if true, replaces generated body entirely
+  buttons?:     ModalButton[]   // if non-empty, replaces generated buttons entirely
+}
+```
 
-// 1. Unit tests for math (packages/math/)
-describe('MissionPower', () => {
-  it('calculates base MP correctly');
-  it('applies synergy bonus with cap');
-  it('enforces anti-whale caps');
-});
+All fields are optional. Omitted fields fall back to generated values.
 
-// 2. Snapshot tests for missions
-describe('MissionResolution', () => {
-  it('produces deterministic results from same seed');
-  it('respects success probability bounds (5%-95%)');
-});
+### Reference Fields Added to Definitions
 
-// 3. Economy simulations
-describe('Economy', () => {
-  it('maintains sink/source balance');
-  it('prevents currency inflation');
-});
+| Model | Field | When applied |
+|---|---|---|
+| `MissionDef` | `activeModalDefId` | While mission job is active / ready |
+| `MissionDef` | `completedModalDefId` | After mission is finished / collected |
+| `RecipeDef` | `activeModalDefId` | While crafting job is active |
+| `RecipeDef` | `completedModalDefId` | When crafting is collected |
+| `BuildingDef` | `activeModalDefId` | While construction job is active |
+| `BuildingDef` | `completedModalDefId` | When construction completes |
+| `GiftDef` | `modalDefId` | Always (both unclaimed and claimed states) |
 
-// 4. Integration tests
-describe('MissionFlow', () => {
-  it('validates team ownership server-side');
-  it('rejects client-calculated MP');
-});
+### Merge Logic (`UiService.mergeModalDefSpec`)
+
+```typescript
+// header fields are shallow-merged (spec wins per-field)
+merged.header = { ...generated.header, ...spec.header };
+
+// body: spec.body prepended before generated body by default
+// spec.replaceBody === true replaces generated body entirely
+merged.body = spec.replaceBody ? spec.body : [...spec.body, ...generated.body];
+
+// buttons: spec.buttons replaces entirely if non-empty array
+merged.buttons = (spec.buttons?.length > 0) ? spec.buttons : generated.buttons;
+```
+
+### UiService Helpers (private)
+
+- `fetchJobDef(job)` — queries `missionDef`, `recipeDef`, or `buildingDef` based on `job.type`
+- `resolveModalDef(id)` — fetches `modalDef`, checks `enabled`, returns `spec` or `null`
+- `mergeModalDefSpec(generated, spec)` — applies the merge logic above
+
+For gifts: `buildModalForGift` reads `snapshot.giftDefId` → fetches `GiftDef.modalDefId` → resolves and merges.
+
+---
+
+## Admin System
+
+### Backend
+
+`GET /admin/tables` — returns list of all editable tables (includes `modalDef`)
+
+Generic CRUD routes for all definition tables:
+- `GET /admin/:table` — list all
+- `GET /admin/:table/:id` — get one
+- `POST /admin/:table` — create
+- `PUT /admin/:table/:id` — update
+- `DELETE /admin/:table/:id` — delete
+
+`admin.service.ts → getModel()` maps table names to Prisma model references. Any new definition table must be added here.
+
+### Frontend Editor (`apps/web/src/features/admin/DerpAdminEditor.tsx`)
+
+Two registries to keep in sync for any new table:
+1. `TABLE_API_KEYS` — maps display name to Prisma model key (e.g. `ModalDef: 'modalDef'`)
+2. `TABLE_SCHEMAS` — field definitions driving the editor form
+
+Field types in schemas: `string`, `number`, `boolean`, `json`, `enum`, `ref`, `stringArray`, `levelRules`, `requirements`, `costObject`, `timer`, `giftPresentation`, `giftClaimRules`, `giftRewardSpec`
+
+The `ref` field type takes a `refTable` property and renders a dropdown populated from that table. Example:
+```typescript
+modalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal' }
 ```
 
 ---
 
-## 📋 MVP Scope (Phase 1)
+## Definition Tables (20 total)
 
-### Include
-- [ ] Player registration (email + optional wallet)
-- [ ] 1 starter Bird per player
-- [ ] 1 starter Outpost (Derpshire Valley)
-- [ ] Basic missions (Quick, Standard)
-- [ ] Core stats and leveling (1-50)
-- [ ] Basic crafting (potions)
-- [ ] Arcanium economy
-- [ ] Basic UI (Home, Outposts, Missions, Birds)
+`Currency`, `ItemDef`, `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, `TraitDefinition`, `EntityDefinition`, `RegionDefinition`, `LocationDefinition`, `BuildingDef`, `RoomDef`, `DisplayDef`, `MissionCategoryDef`, `MissionDef`, `RecipeDef`, `EventDefinition`, `GiftDef`, `CheckInDef`, `QuestDef`, `ModalDef`
 
-### Exclude for MVP
-- Ascension system
-- Mastery trees
-- Prestige system
-- Seasonal content
-- Battle Pass
-- NFT integration
-- $DERP token
-- Dark Forge
-- Unique 1-of-1 Outposts
+All definitions follow the pattern: admin CRUD via `/admin/:table`, JSON fields for data-driven config, `id` as a human-readable string key (not UUID), `enabled` boolean for soft-disabling.
 
 ---
 
-## ⚠️ Critical DON'Ts
+## Major Feature Modules
 
-```
-❌ Do NOT client-calculate Mission Power
-❌ Do NOT expose raw formulas to client early
-❌ Do NOT allow currency minting without sinks
-❌ Do NOT entangle blockchain with gameplay loops
-❌ Do NOT allow client-trusted timers
-❌ Do NOT create any P2W mechanics
-❌ Do NOT use NFTs for power (only capacity)
-```
+### Entity System
+Definition/instance architecture. 7 body slots with distinct trait archetypes. Code uses `Entity` naming throughout (`EntityStats`, `EntityArchetype`, `EntityTraits`, etc.).
+
+### Location / Building / Room System
+Nested: Locations contain Buildings contain Rooms. All instances have `enabled` toggle. All definitions use a unified `rules` JSON structure for level-based configurations (workers, storage, production, costs, effects, timers).
+
+### Notification System
+Server-authoritative, Postgres-persisted. Grouping, pagination, pruning. Mission readiness and completion trigger server-side notifications. Frontend derives notification state from syncSlice (no REST polling).
+
+### Gift System
+`GiftDef` defines presentation, claim rules, and reward spec. `GiftService.createGiftForPlayer` issues instances with idempotency keys. `instant: false` on a gift's reward spec creates a `GIFT_PACKAGE` item instead of resolving rewards immediately. Opened via `OpenGiftPackage` command.
+
+Gift `rewardSpec` supports:
+- `lootTable` variant — issues a lootbox item
+- `entity` variant — supports `overrides: { name?, level?, traits?, stats? }` deep-merged after entity generation
+
+### Lootbox System
+`LootboxDef` defines weighted outcome pools. Items with `type=LOOTBOX` reference a `LootboxDef` via `data.lootboxDefId`. `OpenLootBox` command rolls outcomes using seeded RNG (seed = `itemInstanceId + userId`), grants rewards, removes item, returns a modal.
+
+### Daily Check-In System
+`CheckInModule` / `CheckInService.autoCheck(userId)`. Auto-fires on login and bootstrap. Each track independently computes windows elapsed since `lastClaimedAt`. Configurable `frequency` (`daily`, `every_x_days`, `weekly`, `monthly`). `requireStreak: true` resets on missed windows. Issues gifts via `GiftService.createGiftForPlayer` with idempotency keys. Instances sync to frontend via `checkins` entity table.
+
+### Quest System
+`QuestModule` implements `TelemetrySubscriber`. Objectives: `{ eventType, key?, target, description, dataFilter? }`. `dataFilter` shallow-matches `PlayerEvent.data`. Auto-completes quests on objective completion, fires a notification. `ClaimQuestReward` command delivers rewards and handles repeatable quest reset. Instances sync via `quests` entity table.
+
+### Telemetry System
+`TelemetryService.record(userId, eventType, key?, amount, data?, tx)` writes `PlayerEvent` rows and calls all registered `TelemetrySubscriber` implementations synchronously. Subscribers register via `registerSubscriber()` in `onModuleInit`. Event types in `packages/shared/src/constants/telemetry.ts`.
+
+Currently wired: mission completion (`mission_complete`, `{outcome}`), gift claims (`gift_claimed`), lootbox opens (`lootbox_opened`), check-in completions (`checkin_completed`).
+
+### Location Production System
+Level-based production with lazy settlement, dynamic storage capacity computation, and atomic resource claims. Login triggers recalculation of all user location production rates. Admin backfill: `POST /admin/backfill/production-rates`.
+
+### Currency System
+Data-driven currencies with BigInt balances and audit trails via `CurrencyModule`.
+
+### Tick System
+Global tick system for game timers. Frontend React context-based tick engine for UI updates (`getTickInfo` endpoint, `TickContext`).
 
 ---
 
-## 🔗 Reference Documents
+## Requirement System
 
-- `Derp_Universe_GDD_Consolidated.md` — Complete game design
-- `TECH_FULL.md` — Full technical architecture
-- `Derp_IP_Art_Bible_v1_1.pdf` — Visual design guidelines
-
----
-
-## 💡 Development Commands
-
-```bash
-# Start development
-pnpm dev
-
-# Run tests
-pnpm test
-pnpm test:e2e
-
-# Database
-pnpm prisma:migrate
-pnpm prisma:generate
-pnpm prisma:studio
-
-# Build
-pnpm build
-
-# Lint
-pnpm lint
-pnpm lint:fix
+All requirements follow a unified format:
+```json
+{ "type": "keeper_level", "value": 5, "operator": "gte" }
 ```
 
+Valid `type` values: `keeper_level`, `team_size`, `trait`, `has_building`, `flag`, and others. The `operator` field enables flexible comparisons: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `exists`. Defaults to `gte` for numeric types, `eq` for flags.
+
 ---
 
-*"Check in. Send missions. Craft chaos. Repeat."*
+## Flag System
+
+`User.flags` is a `Json` field (key-value store) for dynamic game state per player.
+
+`RequirementContext` carries a live `userFlags` reference that is mutated in-place by `resolveOutcomes` during reward resolution. This allows later entries in the same resolution pass to see flag changes made by earlier entries. Callers persist the final state with a single `user.update`.
+
+---
+
+## MetaModule
+
+`GET /meta/enums` — all game enums  
+`GET /meta/rules` — all game rules
+
+Frontend `EnumsContext` fetches these on load. Admin editor uses them for enum dropdowns.
+
+---
+
+## App Storage (Media)
+
+Replit Object Storage integration (`javascript_object_storage`). Backend serves stored files via `GET /media/*`. Art and icon assets live in object storage, referenced by `assetKey` strings in definition data.
+
+---
+
+## Prisma Conventions
+
+- Definition tables: `id String @id` (human-readable slug, e.g. `"mission_patrol_basic"`)
+- Instance tables: `id String @id @default(uuid())`
+- JSON columns for flexible data: `data Json @default("{}")`, `rules Json @default("{}")`
+- All models have `createdAt DateTime @default(now())` and `updatedAt DateTime @updatedAt`
+- New Prisma models accessed in NestJS before client regeneration should use `(this.prisma as any).modelName` until `npx prisma generate` is run
+
+---
+
+## Adding a New Definition Table — Checklist
+
+1. Add model to `prisma/schema.prisma`
+2. Run `cd apps/api && npx prisma db push`
+3. Add to `admin.service.ts → getModel()`
+4. Add name to the tables array in `admin.controller.ts`
+5. Add `TableName: 'tableName'` to `TABLE_API_KEYS` in `DerpAdminEditor.tsx`
+6. Add schema entry to `TABLE_SCHEMAS` in `DerpAdminEditor.tsx`
+7. Update `replit.md` definition tables list
+
+---
+
+## Adding a New Command Handler — Checklist
+
+1. Create handler file in `apps/api/src/modules/commands/handlers/`
+2. Handler class implements the handler interface, uses `ctx.tx` exclusively (never `this.prisma`)
+3. Register in `CommandRouter` (`commands.module.ts`)
+4. Add command type string to `packages/shared`
+5. Add `useCommand` call on the frontend with the command type
+
+---
+
+## Known Justified REST Calls (Not in Command Pipeline)
+
+These REST calls remain intentional and are not migration targets:
+- `GET /locations/:id/available-buildings` — server-computed requirement check
+- `GET /tick/boosts` (active boosts) — not yet in sync pipeline
+- `GET /tick/current` — infra state for frontend tick engine
+- All definition fetches (gameSlice) — read-only, infrequently changing
+
+Legacy write endpoints still exist on the backend for backward compatibility but are deprecated in favor of commands.
