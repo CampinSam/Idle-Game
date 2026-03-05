@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useSyncItems } from '../../hooks/useSyncSelectors';
+import { useSyncItems, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { formatCompact } from '../../utils/formatNumber';
 import './InventoryPage.css';
 
@@ -37,10 +37,36 @@ function MissingIcon() {
   );
 }
 
+function InventoryPageSkeleton() {
+  return (
+    <div className="inventory-page">
+      <div className="inv-category-bar" style={{ display: 'flex', gap: 8, padding: '8px 16px' }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="skeleton" style={{ width: 76, height: 30, borderRadius: 20, flexShrink: 0 }} />
+        ))}
+      </div>
+      <div className="inv-grid-wrap">
+        <div className="inv-grid">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="inv-card" style={{ animation: 'none', opacity: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <div className="skeleton" style={{ width: 60, height: 60, borderRadius: 8 }} />
+              <div className="skeleton" style={{ width: '80%', height: 11, borderRadius: 4 }} />
+              <div className="skeleton" style={{ width: '40%', height: 10, borderRadius: 4 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   const items = useSyncItems();
+  const syncStatus = useSyncStatus();
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
   const allItems = useMemo(() => {
     return items.map((i: any) => ({

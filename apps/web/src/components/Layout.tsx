@@ -130,8 +130,10 @@ export default function Layout() {
         <NotificationCenter onClose={() => setShowNotifCenter(false)} boostInfo={boostInfo} />
       )}
 
-      <main className="content">
-        <Outlet />
+      <main className="content page-outlet">
+        <div className="page-transition-wrapper">
+          <Outlet />
+        </div>
       </main>
 
       <nav className="bottom-nav">

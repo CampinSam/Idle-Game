@@ -1,7 +1,7 @@
 import { useState, useRef, TouchEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store';
-import { useSyncLocations } from '../../hooks/useSyncSelectors';
+import { useSyncLocations, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { getRegionImagePath, slugifyRegion } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
 import { useTickRate } from '../../tick';
@@ -18,18 +18,43 @@ import './LocationsPage.css';
 
 const MAX_OUTPOST_SLOTS = 5;
 
+function LocationsPageSkeleton() {
+  return (
+    <div className="outposts-page">
+      <div className="outpost-carousel">
+        <div className="outpost-cards-row">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="outpost-card-v2" style={{ animation: 'none', opacity: 1, flex: 1, minHeight: 220 }}>
+              <div className="skeleton" style={{ width: '100%', height: 100, borderRadius: 8, marginBottom: 12 }} />
+              <div className="skeleton" style={{ width: '60%', height: 16, borderRadius: 4, marginBottom: 8 }} />
+              <div className="skeleton" style={{ width: '80%', height: 12, borderRadius: 4, marginBottom: 8 }} />
+              <div className="skeleton" style={{ width: '40%', height: 12, borderRadius: 4 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+        <div className="skeleton" style={{ width: '100%', height: 80, borderRadius: 10 }} />
+        <div className="skeleton" style={{ width: '100%', height: 80, borderRadius: 10 }} />
+      </div>
+    </div>
+  );
+}
+
 export default function LocationsPage() {
   const navigate = useNavigate();
   const locations = useSyncLocations();
+  const syncStatus = useSyncStatus();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const [currentPage, setCurrentPage] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
   const touchDeltaX = useRef(0);
-
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
+
+  if (syncStatus === 'disconnected') return <LocationsPageSkeleton />;
 
   const totalPages = Math.max(1, Math.ceil(locations.length / 2));
   const vacantSlots = MAX_OUTPOST_SLOTS - locations.length;

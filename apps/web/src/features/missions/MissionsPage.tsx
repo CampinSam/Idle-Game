@@ -11,6 +11,7 @@ import {
   useSyncEntities,
   useSyncActiveMissions,
   useSyncMissionHistory,
+  useSyncStatus,
 } from '../../hooks/useSyncSelectors';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
@@ -101,6 +102,34 @@ function renderTags(tags: any[]) {
   );
 }
 
+function MissionsPageSkeleton() {
+  return (
+    <div className="missions-page" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="skeleton" style={{ width: '50%', height: 18, borderRadius: 6 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ width: '100%', height: 56, borderRadius: 10 }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="skeleton" style={{ width: '40%', height: 18, borderRadius: 6 }} />
+        <div className="mp-categories">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ flex: 1, height: 80, borderRadius: 12 }} />
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="skeleton" style={{ width: '100%', height: 70, borderRadius: 10 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function MissionsPage() {
   const dispatch = useAppDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +138,7 @@ export default function MissionsPage() {
   const { collectJob } = useCollectJob();
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
+  const syncStatus = useSyncStatus();
   const now = Date.now();
 
   const openModalSpec = useCallback(async (params: { jobId?: string }) => {
@@ -167,6 +197,8 @@ export default function MissionsPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEntityPicker]);
+
+  if (syncStatus === 'disconnected') return <MissionsPageSkeleton />;
 
   const idleEntities = entities.filter((b: any) => b.status === 'idle');
 

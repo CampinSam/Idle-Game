@@ -1,10 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSyncEntities } from '../../hooks/useSyncSelectors';
+import { useSyncEntities, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
 import { getArchetypeDisplay, getStatusDisplay } from '@derp/shared';
 import './EntitiesPage.css';
+
+function EntitiesPageSkeleton() {
+  return (
+    <div className="entities-page">
+      <div className="entities-filter-tabs" style={{ marginBottom: 12 }}>
+        {['ALL', 'DERPS', 'VAMPS', 'PREDS'].map((t) => (
+          <div key={t} className="skeleton" style={{ width: 56, height: 32, borderRadius: 20, display: 'inline-block' }} />
+        ))}
+      </div>
+      <div className="entities-search-bar" style={{ marginBottom: 16 }}>
+        <div className="skeleton" style={{ width: '100%', height: 40, borderRadius: 10 }} />
+      </div>
+      <div className="entities-card-grid">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="entity-card-v2" style={{ animation: 'none', opacity: 1 }}>
+            <div className="skeleton" style={{ width: '100%', height: 140, borderRadius: 8, marginBottom: 8 }} />
+            <div className="skeleton" style={{ width: '70%', height: 14, borderRadius: 4, marginBottom: 6 }} />
+            <div className="skeleton" style={{ width: '50%', height: 11, borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const FILTER_TABS = ['ALL', 'DERPS', 'VAMPS', 'PREDS'];
 
@@ -48,8 +72,11 @@ function StarRating({ rating }: { rating: number }) {
 export default function EntitiesPage() {
   const navigate = useNavigate();
   const entities = useSyncEntities();
+  const syncStatus = useSyncStatus();
   const [activeFilter, setActiveFilter] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+
+  if (syncStatus === 'disconnected') return <EntitiesPageSkeleton />;
 
   const filteredEntities = entities.filter((entity: any) => {
     if (searchQuery) {

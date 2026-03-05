@@ -367,3 +367,17 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* Card stagger animations */
+.inv-card {
+  animation: card-enter 0.25s ease-out both;
+}
+.inv-card:nth-child(1)  { animation-delay: 0ms; }
+.inv-card:nth-child(2)  { animation-delay: 30ms; }
+.inv-card:nth-child(3)  { animation-delay: 60ms; }
+.inv-card:nth-child(4)  { animation-delay: 90ms; }
+.inv-card:nth-child(5)  { animation-delay: 120ms; }
+.inv-card:nth-child(6)  { animation-delay: 150ms; }
+.inv-card:nth-child(7)  { animation-delay: 180ms; }
+.inv-card:nth-child(8)  { animation-delay: 210ms; }
+.inv-card:nth-child(n+9) { animation-delay: 210ms; }

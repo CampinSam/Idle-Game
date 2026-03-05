@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from './store';
 import { restoreSession } from './store/authSlice';
@@ -11,18 +11,27 @@ import { TickEngineProvider } from './tick';
 import Layout from './components/Layout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
-import HomePage from './features/home/HomePage';
-import EntitiesPage from './features/entities/EntitiesPage';
-import EntityDetailPage from './features/entities/EntityDetailPage';
-import LocationsPage from './features/locations/LocationsPage';
-import LocationDetailPage from './features/locations/LocationDetailPage';
-import MissionsPage from './features/missions/MissionsPage';
-import CraftingPage from './features/crafting/CraftingPage';
-import InventoryPage from './features/inventory/InventoryPage';
-import AdminPage from './features/admin/AdminPage';
-import AdminDashboard from './features/admin/AdminDashboard';
-import SmartAdminPage from './features/admin/smart/SmartAdminPage';
 import ErrorBoundary from './components/ErrorBoundary';
+
+const HomePage = lazy(() => import('./features/home/HomePage'));
+const EntitiesPage = lazy(() => import('./features/entities/EntitiesPage'));
+const EntityDetailPage = lazy(() => import('./features/entities/EntityDetailPage'));
+const LocationsPage = lazy(() => import('./features/locations/LocationsPage'));
+const LocationDetailPage = lazy(() => import('./features/locations/LocationDetailPage'));
+const MissionsPage = lazy(() => import('./features/missions/MissionsPage'));
+const CraftingPage = lazy(() => import('./features/crafting/CraftingPage'));
+const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
+const AdminPage = lazy(() => import('./features/admin/AdminPage'));
+const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
+const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
+
+function PageLoader() {
+  return (
+    <div className="auth-loading">
+      <div className="auth-loading-spinner" />
+    </div>
+  );
+}
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { token, initializing } = useAppSelector((s) => s.auth);
@@ -38,7 +47,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (token && !initializing) {
-      // locations, entities, and other instance data are served by the sync bootstrap
       dispatch(fetchCurrencyDefs());
       dispatch(fetchItemDefs());
     }
@@ -69,13 +77,25 @@ export default function App() {
   const location = useLocation();
 
   if (location.pathname.startsWith('/admin/def2')) {
-    return <SmartAdminPage />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <SmartAdminPage />
+      </Suspense>
+    );
   }
   if (location.pathname.startsWith('/admin/def')) {
-    return <AdminPage />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminPage />
+      </Suspense>
+    );
   }
   if (location.pathname.startsWith('/admin')) {
-    return <AdminDashboard />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminDashboard />
+      </Suspense>
+    );
   }
 
   return (
@@ -83,7 +103,8 @@ export default function App() {
       <TickEngineProvider>
       <NotificationProvider>
       <ModalProvider>
-      <Routes>
+      <Suspense fallback={<PageLoader />}>
+      <Routes location={location} key={location.key}>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/" element={<Layout />}>
@@ -97,6 +118,7 @@ export default function App() {
           <Route path="crafting" element={<ErrorBoundary fallbackTitle="Crafting page error"><CraftingPage /></ErrorBoundary>} />
         </Route>
       </Routes>
+      </Suspense>
       <GameModalHost />
       </ModalProvider>
       </NotificationProvider>
