@@ -8,12 +8,20 @@ interface Props {
   path?: string;
 }
 
+const TIMER_DEFAULTS = {
+  duration: 0,
+  boostable: true,
+  skipable: false,
+  skip_cost: [],
+  skip_type: 'absolute',
+};
+
 function isPrimitive(v: any) {
   return v === null || v === undefined || typeof v !== 'object';
 }
 
 function isArrayOfObjects(v: any): boolean {
-  return Array.isArray(v) && v.length > 0 && v.every(item => typeof item === 'object' && item !== null && !Array.isArray(item));
+  return Array.isArray(v) && v.every(item => typeof item === 'object' && item !== null && !Array.isArray(item));
 }
 
 function PrimitiveValue({ value, onChange }: { value: any; onChange: (v: any) => void }) {
@@ -50,10 +58,13 @@ function PrimitiveValue({ value, onChange }: { value: any; onChange: (v: any) =>
   );
 }
 
-function ObjectNode({ obj, onChange, depth }: { obj: Record<string, any>; onChange: (v: any) => void; depth: number }) {
+function ObjectNode({ obj, onChange, depth, path }: { obj: Record<string, any>; onChange: (v: any) => void; depth: number; path?: string }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(Object.keys(obj)));
   const [addingKey, setAddingKey] = useState(false);
   const [newKey, setNewKey] = useState('');
+
+  const isTimerNode = path?.split('.').pop() === 'timer' || path?.split('.').pop() === 'skip_cost';
+  const isEmptyTimerNode = path?.split('.').pop() === 'timer' && Object.keys(obj).length === 0;
 
   const setField = (key: string, val: any) => {
     onChange({ ...obj, [key]: val });
@@ -86,6 +97,7 @@ function ObjectNode({ obj, onChange, depth }: { obj: Record<string, any>; onChan
       {Object.entries(obj).map(([key, val]) => {
         const isComplex = !isPrimitive(val);
         const isCollapsed = collapsed.has(key) && isComplex;
+        const childPath = path ? `${path}.${key}` : key;
 
         const valuePreview = () => {
           if (Array.isArray(val)) return `[ ${val.length} items ]`;
@@ -137,14 +149,42 @@ function ObjectNode({ obj, onChange, depth }: { obj: Record<string, any>; onChan
             </div>
             {!isCollapsed && isComplex && (
               <div style={{ marginLeft: 20, borderLeft: '1px solid #2a2a3e', paddingLeft: 10 }}>
-                <CollapsibleObject value={val} onChange={v => setField(key, v)} depth={depth + 1} />
+                <CollapsibleObject value={val} onChange={v => setField(key, v)} depth={depth + 1} path={childPath} />
               </div>
             )}
           </div>
         );
       })}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-        {addingKey ? (
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+        {isEmptyTimerNode ? (
+          <button
+            type="button"
+            onClick={() => onChange(TIMER_DEFAULTS)}
+            style={{
+              padding: '4px 12px',
+              background: 'rgba(251,146,60,0.1)',
+              border: '1px solid #fb923c55',
+              borderRadius: 6,
+              color: '#fb923c',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontFamily: 'inherit',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(251,146,60,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(251,146,60,0.1)'; }}
+            title="Pre-fill all timer fields with defaults"
+          >
+            <span>⚡</span>
+            <span>Fill timer defaults</span>
+          </button>
+        ) : addingKey ? (
           <>
             <input
               autoFocus
@@ -172,10 +212,10 @@ function ObjectNode({ obj, onChange, depth }: { obj: Record<string, any>; onChan
   );
 }
 
-export default function CollapsibleObject({ value, onChange, depth = 0 }: Props) {
+export default function CollapsibleObject({ value, onChange, depth = 0, path }: Props) {
   if (Array.isArray(value)) {
     if (isArrayOfObjects(value) || value.length === 0) {
-      return <DraggableList items={value} onChange={onChange} depth={depth} />;
+      return <DraggableList items={value} onChange={onChange} depth={depth} path={path} />;
     }
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -189,7 +229,7 @@ export default function CollapsibleObject({ value, onChange, depth = 0 }: Props)
   }
 
   if (typeof value === 'object' && value !== null) {
-    return <ObjectNode obj={value} onChange={onChange} depth={depth} />;
+    return <ObjectNode obj={value} onChange={onChange} depth={depth} path={path} />;
   }
 
   return <PrimitiveValue value={value} onChange={onChange} />;

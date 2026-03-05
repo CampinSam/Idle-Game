@@ -23,8 +23,8 @@ const FALLBACK_ENUMS: Record<string, string[]> = {
   checkInFrequency: ['daily', 'every_x_days', 'weekly', 'monthly'],
 };
 
-function JSONField({ value, onChange, onBlur, touched, error }: {
-  value: any; onChange: (v: any) => void; onBlur: () => void; touched: boolean; error: string | null;
+function JSONField({ value, onChange, onBlur, touched, error, path }: {
+  value: any; onChange: (v: any) => void; onBlur: () => void; touched: boolean; error: string | null; path?: string;
 }) {
   const [mode, setMode] = useState<'tree' | 'raw'>('tree');
   const [rawText, setRawText] = useState(() => JSON.stringify(value, null, 2));
@@ -83,7 +83,7 @@ function JSONField({ value, onChange, onBlur, touched, error }: {
           background: '#0f0f2e', border: `1px solid ${showError ? '#ef4444' : '#333'}`,
           borderRadius: 6, padding: 10,
         }}>
-          <CollapsibleObject value={value} onChange={onChange} />
+          <CollapsibleObject value={value} onChange={onChange} path={path} />
         </div>
       ) : (
         <textarea
@@ -268,6 +268,7 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
           onBlur={touch}
           touched={touched}
           error={error}
+          path={fieldName}
         />
       );
     }

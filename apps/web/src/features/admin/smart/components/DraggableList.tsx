@@ -1,15 +1,18 @@
 import { useState, useRef } from 'react';
 import CollapsibleObject from './CollapsibleObject';
+import { resolveTemplates, hexToRgb } from './jsonTemplates';
 
 interface Props {
   items: any[];
   onChange: (items: any[]) => void;
   depth?: number;
+  path?: string;
 }
 
 function getItemSummary(item: any, index: number): string {
   if (typeof item !== 'object' || item === null) return String(item);
-  const keys = ['type', 'id', 'name', 'key', 'label'];
+  if ('bundle' in item && Array.isArray(item.bundle)) return `bundle { ${item.bundle.length} items }`;
+  const keys = ['type', 'id', 'name', 'key', 'label', 'eventType'];
   for (const k of keys) {
     if (item[k] !== undefined) return `${k}: ${item[k]}`;
   }
@@ -18,11 +21,14 @@ function getItemSummary(item: any, index: number): string {
   return `Item ${index + 1}`;
 }
 
-export default function DraggableList({ items, onChange, depth = 0 }: Props) {
+export default function DraggableList({ items, onChange, depth = 0, path }: Props) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set(items.map((_, i) => i)));
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const dragNode = useRef<HTMLDivElement | null>(null);
+
+  const templates = resolveTemplates(path ?? '');
 
   const handleDragStart = (e: React.DragEvent, idx: number) => {
     setDragIdx(idx);
@@ -80,10 +86,19 @@ export default function DraggableList({ items, onChange, depth = 0 }: Props) {
     onChange(next);
   };
 
-  const addItem = () => {
-    const next = [...items, {}];
+  const insertItem = (newItem: Record<string, any>) => {
+    const next = [...items, newItem];
+    const newIdx = next.length - 1;
+    setCollapsed(prev => {
+      const s = new Set(prev);
+      s.delete(newIdx);
+      return s;
+    });
     onChange(next);
+    setPickerOpen(false);
   };
+
+  const addBlank = () => insertItem({});
 
   const toggleCollapse = (idx: number) => {
     setCollapsed(prev => {
@@ -93,8 +108,17 @@ export default function DraggableList({ items, onChange, depth = 0 }: Props) {
     });
   };
 
+  const hasTemplates = templates !== null && templates.length > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <style>{`
+        @keyframes _dl_fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {items.map((item, idx) => {
         const isCollapsed = collapsed.has(idx);
         const isDragging = dragIdx === idx;
@@ -145,6 +169,7 @@ export default function DraggableList({ items, onChange, depth = 0 }: Props) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
+                  fontFamily: 'inherit',
                 }}
               >
                 <span style={{ color: '#666', fontSize: 10 }}>{isCollapsed ? '▶' : '▼'}</span>
@@ -153,7 +178,7 @@ export default function DraggableList({ items, onChange, depth = 0 }: Props) {
                 </span>
                 {isCollapsed && typeof item === 'object' && item !== null && (
                   <span style={{ color: '#555', fontSize: 11 }}>
-                    {`{ ${Object.keys(item).length} keys }`}
+                    {'bundle' in item ? '' : `{ ${Object.keys(item).length} keys }`}
                   </span>
                 )}
               </button>
@@ -180,28 +205,143 @@ export default function DraggableList({ items, onChange, depth = 0 }: Props) {
                   value={item}
                   onChange={val => updateItem(idx, val)}
                   depth={depth + 1}
+                  path={path ? `${path}[${idx}]` : `[${idx}]`}
                 />
               </div>
             )}
           </div>
         );
       })}
-      <button
-        type="button"
-        onClick={addItem}
-        style={{
-          padding: '6px 12px',
-          background: 'rgba(167,139,250,0.1)',
-          border: '1px dashed #a78bfa',
-          borderRadius: 6,
-          color: '#a78bfa',
-          cursor: 'pointer',
-          fontSize: 12,
-          textAlign: 'center',
-        }}
-      >
-        + Add item
-      </button>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (hasTemplates) {
+              setPickerOpen(p => !p);
+            } else {
+              addBlank();
+            }
+          }}
+          style={{
+            padding: '6px 12px',
+            background: 'rgba(167,139,250,0.08)',
+            border: '1px dashed #a78bfa',
+            borderRadius: pickerOpen ? '6px 6px 0 0' : 6,
+            borderBottom: pickerOpen ? '1px solid #2a2a4e' : '1px dashed #a78bfa',
+            color: '#a78bfa',
+            cursor: 'pointer',
+            fontSize: 12,
+            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontFamily: 'inherit',
+            transition: 'background 0.1s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.15)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(167,139,250,0.08)'; }}
+        >
+          <span>+ Add item</span>
+          {hasTemplates && (
+            <span style={{
+              marginLeft: 'auto',
+              fontSize: 10,
+              color: '#6b5fa0',
+              transform: pickerOpen ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.15s',
+            }}>▾</span>
+          )}
+        </button>
+
+        {pickerOpen && hasTemplates && (
+          <div style={{
+            background: '#0d0d1e',
+            border: '1px dashed #a78bfa',
+            borderTop: 'none',
+            borderRadius: '0 0 8px 8px',
+            padding: '8px 10px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 5,
+            alignItems: 'center',
+            animation: '_dl_fadeIn 0.12s ease',
+          }}>
+            {templates!.map(tpl => (
+              <button
+                key={tpl.label}
+                type="button"
+                title={tpl.description}
+                onClick={() => insertItem(tpl.template())}
+                style={{
+                  height: 26,
+                  padding: '0 10px',
+                  borderRadius: 13,
+                  background: `rgba(${hexToRgb(tpl.color)}, 0.12)`,
+                  border: `1px solid ${tpl.color}55`,
+                  color: tpl.color,
+                  fontSize: 10,
+                  fontFamily: 'inherit',
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'background 0.1s, box-shadow 0.1s',
+                  lineHeight: 1,
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = `rgba(${hexToRgb(tpl.color)}, 0.25)`;
+                  e.currentTarget.style.boxShadow = `0 0 8px rgba(${hexToRgb(tpl.color)}, 0.3)`;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = `rgba(${hexToRgb(tpl.color)}, 0.12)`;
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                + {tpl.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              title="Insert empty object"
+              onClick={addBlank}
+              style={{
+                height: 26,
+                padding: '0 10px',
+                borderRadius: 13,
+                background: 'rgba(148,163,184,0.08)',
+                border: '1px solid #333',
+                color: '#64748b',
+                fontSize: 10,
+                fontFamily: 'inherit',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              + blank
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(false)}
+              style={{
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                color: '#444',
+                cursor: 'pointer',
+                fontSize: 14,
+                padding: '0 4px',
+                lineHeight: 1,
+              }}
+              title="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
