@@ -219,11 +219,18 @@
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(90deg, rgba(15,10,40,0.7) 0%, rgba(15,10,40,0.3) 60%, rgba(15,10,40,0.1) 100%),
-    var(--card-bg-image) center / cover no-repeat;
+  background: var(--card-bg-image, none) center / cover no-repeat;
   opacity: 1;
   z-index: 0;
+}
+
+.mp-mission-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .mp-active-card {

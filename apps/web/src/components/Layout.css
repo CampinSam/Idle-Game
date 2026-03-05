@@ -239,13 +239,12 @@
   right: 0;
   display: flex;
   justify-content: space-around;
-  align-items: center;
-  height: 64px;
+  align-items: flex-start;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(15, 10, 35, 0.95) 0%, rgba(10, 8, 25, 0.98) 100%);
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(139, 92, 246, 0.2);
-  padding: 0 8px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 8px 8px env(safe-area-inset-bottom, 0px);
   z-index: 100;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
 }
