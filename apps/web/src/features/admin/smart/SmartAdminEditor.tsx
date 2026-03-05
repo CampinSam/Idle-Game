@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useReducer, useCallback, useMemo } from 'react';
 import { adminApi } from '../adminApi';
 import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
 import SmartField from './components/SmartField';
@@ -210,9 +210,105 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
 
   const sidebarWidth = sidebarCollapsed ? 44 : 220;
 
-  return (
-    <div style={{ display: 'flex', height: '100vh', background: '#0a0a1a', color: '#e0e0ff', fontFamily: 'system-ui, sans-serif', overflow: 'hidden' }}>
+  const controlStyle: React.CSSProperties = {
+    height: 40,
+    padding: '0 12px',
+    background: '#111128',
+    border: '1px solid #2a2a4e',
+    borderRadius: 6,
+    color: '#e0e0ff',
+    fontSize: 13,
+    cursor: 'pointer',
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.15s',
+  };
 
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      height: '100vh',
+      background: '#0a0a1a',
+      color: '#e0e0ff',
+      fontFamily: "'ui-monospace', 'SFMono-Regular', 'Fira Code', monospace",
+      overflow: 'hidden',
+    }}>
+
+      {/* ── MOBILE: two-row command bar ── */}
+      {isMobile && (
+        <div style={{ flexShrink: 0, background: '#08081a' }}>
+
+          {/* Row 1 — identity strip */}
+          <div style={{
+            height: 36,
+            padding: '0 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid #1a1a3e',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{
+                display: 'inline-block',
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#a78bfa',
+                boxShadow: '0 0 6px #a78bfa',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em' }}>
+                DEF EDITOR
+              </span>
+            </div>
+            <a
+              href="/admin/def"
+              style={{ fontSize: 11, color: '#3a3a5e', textDecoration: 'none', letterSpacing: '0.03em' }}
+            >
+              ← CLASSIC
+            </a>
+          </div>
+
+          {/* Row 2 — controls strip */}
+          <div style={{
+            height: 48,
+            padding: '0 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            borderBottom: '1px solid #1a1a3e',
+          }}>
+            <select
+              value={activeTable}
+              onChange={e => handleSelectTable(e.target.value)}
+              style={{ ...controlStyle, flex: 1 }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; e.currentTarget.style.outline = '2px solid rgba(167,139,250,0.2)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; e.currentTarget.style.outline = 'none'; }}
+            >
+              <option value="">— table —</option>
+              {tableGroupsForSidebar.map(({ group, items }) => (
+                <optgroup key={group} label={group}>
+                  {items.map(t => (
+                    <option key={t.key} value={t.key}>{t.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="filter..."
+              style={{ ...controlStyle, width: 100, cursor: 'text' }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; e.currentTarget.style.outline = '2px solid rgba(167,139,250,0.2)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; e.currentTarget.style.outline = 'none'; }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── DESKTOP: collapsible sidebar ── */}
       {!isMobile && (
         <div style={{
           width: sidebarWidth,
@@ -246,19 +342,10 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               onClick={() => setSidebarCollapsed(c => !c)}
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               style={{
-                background: 'none',
-                border: '1px solid #2a2a4e',
-                borderRadius: 6,
-                color: '#666',
-                cursor: 'pointer',
-                fontSize: 14,
-                width: 28,
-                height: 28,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                transition: 'color 0.15s, border-color 0.15s',
+                background: 'none', border: '1px solid #2a2a4e', borderRadius: 6,
+                color: '#666', cursor: 'pointer', fontSize: 14,
+                width: 28, height: 28, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexShrink: 0, transition: 'color 0.15s, border-color 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = '#a78bfa'; }}
               onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2a2a4e'; }}
@@ -277,15 +364,11 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   key={t.key}
                   onClick={() => handleSelectTable(t.key)}
                   style={{
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    fontSize: 13,
+                    padding: '8px 16px', cursor: 'pointer', fontSize: 13,
                     background: activeTable === t.key ? 'rgba(167,139,250,0.15)' : 'transparent',
                     color: activeTable === t.key ? '#a78bfa' : '#bbb',
                     borderLeft: activeTable === t.key ? '3px solid #a78bfa' : '3px solid transparent',
-                    transition: 'all 0.1s',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
+                    transition: 'all 0.1s', whiteSpace: 'nowrap', overflow: 'hidden',
                   }}
                   onMouseEnter={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                   onMouseLeave={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'transparent'; }}
@@ -298,135 +381,170 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         </div>
       )}
 
-      <div style={{ width: 260, borderRight: '1px solid #1a1a3e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      {/* ── DESKTOP: 260px record list panel ── */}
+      {!isMobile && (
+        <div style={{ width: 260, borderRight: '1px solid #1a1a3e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search..."
+              style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box' }}
+            />
+            <button
+              type="button"
+              disabled={!activeTable}
+              onClick={handleNewRecord}
+              style={{
+                padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
+                borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
+              }}
+              title="New record"
+            >
+              +
+            </button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {!activeTable && (
+              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+                Select a table from the sidebar
+              </div>
+            )}
+            {activeTable && recordsLoading && (
+              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>Loading...</div>
+            )}
+            {activeTable && !recordsLoading && filteredRecords.length === 0 && (
+              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+                {search ? 'No matches' : 'No records yet'}
+              </div>
+            )}
+            {filteredRecords.map(r => (
+              <div
+                key={r.id}
+                onClick={() => handleSelectRecord(r)}
+                style={{
+                  padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
+                  background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
+                  borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
+                }}
+                onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.id}
+                </div>
+                {r.name && (
+                  <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.name}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {activeTable && !recordsLoading && (
+            <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11 }}>
+              {records.length} record{records.length !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* ── Form column (always rendered, full-width on mobile) ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+        {/* MOBILE: record picker strip */}
         {isMobile && (
           <div style={{
-            padding: '8px 12px',
-            borderBottom: '1px solid #1a1a3e',
-            background: '#0d0d20',
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 8,
+            padding: '8px 10px',
+            background: '#0d0d1e',
+            borderBottom: '1px solid #1a1a3e',
+            flexShrink: 0,
           }}>
             <select
-              value={activeTable}
-              onChange={e => handleSelectTable(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '7px 10px',
-                background: '#1a1a2e',
-                border: '1px solid #333',
-                borderRadius: 6,
-                color: '#e0e0ff',
-                fontSize: 13,
-                cursor: 'pointer',
-                outline: 'none',
+              value={selectedId ?? ''}
+              disabled={!activeTable || recordsLoading}
+              onChange={e => {
+                const rec = records.find(r => r.id === e.target.value);
+                if (rec) handleSelectRecord(rec);
               }}
+              style={{
+                ...controlStyle,
+                flex: 1,
+                opacity: !activeTable ? 0.4 : 1,
+                cursor: !activeTable ? 'not-allowed' : 'pointer',
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; e.currentTarget.style.outline = '2px solid rgba(167,139,250,0.2)'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; e.currentTarget.style.outline = 'none'; }}
             >
-              <option value="">— Select table —</option>
-              {tableGroupsForSidebar.map(({ group, items }) => (
-                <optgroup key={group} label={group}>
-                  {items.map(t => (
-                    <option key={t.key} value={t.key}>{t.name}</option>
-                  ))}
-                </optgroup>
+              <option value="">
+                {!activeTable ? '— select a table first —' : recordsLoading ? 'Loading...' : filteredRecords.length === 0 ? '— no records —' : '— select record —'}
+              </option>
+              {filteredRecords.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.id}{r.name ? ` — ${r.name}` : ''}
+                </option>
               ))}
             </select>
-            <a
-              href="/admin/def"
-              style={{ fontSize: 11, color: '#555', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              ← Classic
-            </a>
-          </div>
-        )}
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search..."
-            style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box' }}
-          />
-          <button
-            type="button"
-            disabled={!activeTable}
-            onClick={handleNewRecord}
-            style={{
-              padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
-              borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
-            }}
-            title="New record"
-          >
-            +
-          </button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {!activeTable && (
-            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
-              {isMobile ? 'Select a table from the dropdown above' : 'Select a table from the sidebar'}
-            </div>
-          )}
-          {activeTable && recordsLoading && (
-            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>Loading...</div>
-          )}
-          {activeTable && !recordsLoading && filteredRecords.length === 0 && (
-            <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
-              {search ? 'No matches' : 'No records yet'}
-            </div>
-          )}
-          {filteredRecords.map(r => (
-            <div
-              key={r.id}
-              onClick={() => handleSelectRecord(r)}
+            <button
+              type="button"
+              disabled={!activeTable}
+              onClick={handleNewRecord}
+              title="New record"
               style={{
-                padding: '10px 14px',
-                cursor: 'pointer',
-                borderBottom: '1px solid #1a1a3e',
-                background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
-                borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
+                width: 44,
+                height: 40,
+                flexShrink: 0,
+                background: activeTable ? 'linear-gradient(135deg, #6d28d9, #a78bfa)' : '#1a1a2e',
+                border: 'none',
+                borderRadius: 6,
+                color: '#fff',
+                fontSize: 22,
+                lineHeight: 1,
+                cursor: activeTable ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: activeTable ? 1 : 0.3,
+                transition: 'background 0.15s, opacity 0.15s',
               }}
-              onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-              onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {r.id}
-              </div>
-              {r.name && (
-                <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {r.name}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        {activeTable && !recordsLoading && (
-          <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11 }}>
-            {records.length} record{records.length !== 1 ? 's' : ''}
+              +
+            </button>
           </div>
         )}
-      </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Form content */}
         {!editorState.record ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 14 }}>
-            {activeTable ? 'Select a record or create a new one' : 'Select a table to begin'}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#555', fontSize: 14 }}>
+            {isMobile ? (
+              <>
+                <span style={{ fontSize: 28, opacity: 0.3 }}>◆</span>
+                <span style={{ fontSize: 13, color: '#3a3a5e', letterSpacing: '0.05em' }}>
+                  {!activeTable ? 'CHOOSE A TABLE FIRST' : 'PICK A RECORD ABOVE'}
+                </span>
+              </>
+            ) : (
+              <span>{activeTable ? 'Select a record or create a new one' : 'Select a table to begin'}</span>
+            )}
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {isNew ? 'New Record' : (editorState.record.id || 'Record')}
                   </span>
                   {editorState.dirty && (
-                    <span style={{ marginLeft: 8, color: '#f59e0b', fontSize: 12 }}>● Unsaved</span>
+                    <span style={{ color: '#f59e0b', fontSize: 11, letterSpacing: '0.04em' }}>● UNSAVED</span>
                   )}
                 </div>
                 {editorState.saveError && (
-                  <span style={{ color: '#ef4444', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ color: '#ef4444', fontSize: 12, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     {editorState.saveError}
                   </span>
                 )}
@@ -434,16 +552,16 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   <button
                     type="button"
                     onClick={() => setDeleteConfirm(true)}
-                    style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', cursor: 'pointer', fontSize: 12 }}
+                    style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}
                   >
                     Delete
                   </button>
                 )}
                 {deleteConfirm && (
                   <>
-                    <span style={{ color: '#ef4444', fontSize: 12 }}>Confirm delete?</span>
-                    <button type="button" onClick={handleDelete} style={{ padding: '6px 12px', background: '#ef4444', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12 }}>Yes</button>
-                    <button type="button" onClick={() => setDeleteConfirm(false)} style={{ padding: '6px 12px', background: '#333', border: 'none', borderRadius: 6, color: '#ccc', cursor: 'pointer', fontSize: 12 }}>No</button>
+                    <span style={{ color: '#ef4444', fontSize: 12, flexShrink: 0 }}>Confirm?</span>
+                    <button type="button" onClick={handleDelete} style={{ padding: '6px 10px', background: '#ef4444', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>Yes</button>
+                    <button type="button" onClick={() => setDeleteConfirm(false)} style={{ padding: '6px 10px', background: '#333', border: 'none', borderRadius: 6, color: '#ccc', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>No</button>
                   </>
                 )}
                 <button
@@ -451,7 +569,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   onClick={handleSave}
                   disabled={editorState.saving || !editorState.dirty}
                   style={{
-                    padding: '6px 16px',
+                    padding: '6px 16px', flexShrink: 0,
                     background: editorState.dirty ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
                     border: 'none', borderRadius: 6, color: '#fff',
                     cursor: editorState.dirty ? 'pointer' : 'not-allowed',
@@ -482,7 +600,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               </div>
             </div>
 
-            {isModalDefTable && (
+            {isModalDefTable && !isMobile && (
               <div style={{ width: 360, borderLeft: '1px solid #1a1a3e', overflowY: 'auto', padding: 16, flexShrink: 0, background: '#0d0d1e' }}>
                 <ModalPreview spec={editorState.record?.spec ?? {}} />
               </div>
