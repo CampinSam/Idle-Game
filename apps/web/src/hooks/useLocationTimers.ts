@@ -20,7 +20,6 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
 
     for (const op of locations) {
       const storage = (op as any).storage || {};
-      const effectiveRates: Record<string, number> = storage.effectiveProductionRates || {};
       const storedAmounts: Record<string, number> = storage.stored || {};
       const capacities: Record<string, number> = storage.capacity || {};
       const lastSettledAt: string | null = storage.lastSettledAt ?? null;
@@ -29,43 +28,23 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
         ? Math.max(0, (now - Date.parse(lastSettledAt)) / 1000)
         : 0;
 
-      const buildings: any[] = (op as any).buildings || [];
-
-      const resourceTypeMap = new Map<string, string>();
-      for (const b of buildings) {
-        if (b.outputRefId && b.outputRefId !== 'null' && b.outputType) {
-          resourceTypeMap.set(b.outputRefId, b.outputType);
-        }
-      }
-
       const generators = computeGeneratorProduction(op);
+      const rawSummaries = aggregateByResource(op, generators);
 
-      let resourceSummaries: ResourceSummary[];
+      const resourceSummaries: ResourceSummary[] = rawSummaries.map((summary) => {
+        const stored = storedAmounts[summary.outputRefId] ?? 0;
+        const capacity = capacities[summary.outputRefId] ?? summary.capacity;
+        const accrued = (summary.totalRatePerHour / 3600) * elapsedSeconds;
+        const currentAmount = capacity > 0
+          ? Math.min(stored + accrued, capacity)
+          : stored + accrued;
 
-      if (Object.keys(effectiveRates).length > 0) {
-        resourceSummaries = Object.entries(effectiveRates).map(([resourceId, rate]) => {
-          const outputType = resourceTypeMap.get(resourceId) ?? 'CURRENCY';
-          const key = `${outputType}:${resourceId}`;
-          const stored = storedAmounts[resourceId] ?? 0;
-          const capacity = capacities[resourceId] ?? 0;
-          const accrued = (rate / 3600) * elapsedSeconds;
-          const currentAmount = Math.min(stored + accrued, capacity);
-          const buildingGenerators = generators.filter((g) => g.outputRefId === resourceId);
-
-          return {
-            key,
-            outputType,
-            outputRefId: resourceId,
-            totalRatePerHour: rate,
-            currentAmount,
-            capacity,
-            generators: buildingGenerators,
-          };
-        });
-      } else {
-        const rawSummaries = aggregateByResource(op, generators);
-        resourceSummaries = rawSummaries;
-      }
+        return {
+          ...summary,
+          currentAmount,
+          capacity,
+        };
+      });
 
       map.set(op.id, { resourceSummaries });
     }

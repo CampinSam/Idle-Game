@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { computeGeneratorProduction } from '../../utils/locationProduction';
 import {
   useSyncPlayer,
   useSyncEntities,
@@ -52,12 +53,10 @@ export default function HomePage() {
 
   if (!profile) return <HomePageSkeleton />;
 
-  // Sum effective production rates (with worker + threat multipliers applied server-side)
-  // Falls back to base productionRates for locations not yet backfilled
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
-    const rates: Record<string, number> = loc?.storage?.effectiveProductionRates ?? loc?.storage?.productionRates ?? {};
-    for (const [resourceId, rate] of Object.entries(rates)) {
-      acc[resourceId] = (acc[resourceId] ?? 0) + rate;
+    const generators = computeGeneratorProduction(loc);
+    for (const gen of generators) {
+      acc[gen.outputRefId] = (acc[gen.outputRefId] ?? 0) + gen.ratePerHour;
     }
     return acc;
   }, {});

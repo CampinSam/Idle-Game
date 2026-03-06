@@ -821,9 +821,9 @@ export class LocationService {
         where: { id: locationId },
         data: {
           storage: {
-            capacity: capacityAmounts,
+            ...storage,
             stored: zeroedStored,
-            productionRates: storage.productionRates || {},
+            lastSettledAt: new Date().toISOString(),
           },
         },
       });
