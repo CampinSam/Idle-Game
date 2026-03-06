@@ -14,6 +14,9 @@ export class UiController {
     @Query('jobId') jobId?: string,
     @Query('notificationId') notificationId?: string,
     @Query('giftId') giftId?: string,
+    @Query('buildingDefId') buildingDefId?: string,
+    @Query('locationId') locationId?: string,
+    @Query('buildingId') buildingId?: string,
   ) {
     const userId = user.id || user.userId;
 
@@ -29,6 +32,14 @@ export class UiController {
       return this.uiService.buildModalForGift(userId, giftId);
     }
 
-    throw new BadRequestException('One of jobId, notificationId, or giftId is required');
+    if (buildingDefId && locationId && buildingId) {
+      return this.uiService.buildModalForUpgradeBuilding(userId, locationId, buildingId, buildingDefId);
+    }
+
+    if (buildingDefId && locationId) {
+      return this.uiService.buildModalForBuildBuilding(userId, locationId, buildingDefId);
+    }
+
+    throw new BadRequestException('One of jobId, notificationId, giftId, or buildingDefId is required');
   }
 }

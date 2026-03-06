@@ -131,6 +131,26 @@ export default function GameModalHost() {
           dismissModal();
           return;
 
+        case 'BUILD_BUILDING': {
+          try {
+            await execute('BuildBuilding', { locationId: action.locationId, buildingDefId: action.buildingDefId });
+            dismissModal();
+          } catch (err: any) {
+            console.warn('[GameModalHost] BuildBuilding failed:', err?.message);
+          }
+          return;
+        }
+
+        case 'UPGRADE_BUILDING': {
+          try {
+            await execute('UpgradeBuilding', { locationId: action.locationId, buildingId: action.buildingId });
+            dismissModal();
+          } catch (err: any) {
+            console.warn('[GameModalHost] UpgradeBuilding failed:', err?.message);
+          }
+          return;
+        }
+
         case 'API_CALL': {
           const { apiKey, payload } = action;
 

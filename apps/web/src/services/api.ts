@@ -255,11 +255,14 @@ class ApiClient {
     return this.request<Record<string, any>>('/meta/rules');
   }
 
-  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string }) {
+  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string; buildingDefId?: string; locationId?: string; buildingId?: string }) {
     const q = new URLSearchParams();
     if (params.jobId) q.set('jobId', params.jobId);
     if (params.notificationId) q.set('notificationId', params.notificationId);
     if (params.giftId) q.set('giftId', params.giftId);
+    if (params.buildingDefId) q.set('buildingDefId', params.buildingDefId);
+    if (params.locationId) q.set('locationId', params.locationId);
+    if (params.buildingId) q.set('buildingId', params.buildingId);
     return this.request<any>(`/ui/modal?${q.toString()}`);
   }
 

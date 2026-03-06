@@ -1,13 +1,10 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../store/gameSlice';
 import {
-  useSyncPlayer,
   useSyncEntities,
   useSyncLocations,
-  useSyncCurrencyBalances,
-  useSyncItems,
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
@@ -20,8 +17,8 @@ import {
 } from '../../utils/locationProduction';
 import LootPop, { type LootPopItem } from '../../components/LootPop';
 import FacilitiesTab from './FacilitiesTab';
-import BuildBuildingModal from './BuildBuildingModal';
-import UpgradeBuildingModal from './UpgradeBuildingModal';
+import { useModal } from '../../context/ModalContext';
+import { api } from '../../services/api';
 import { getRegionDisplay } from '@derp/shared';
 import './LocationDetailPage.css';
 
@@ -45,34 +42,18 @@ function getDefenseBoost(level: number): number {
 
 export default function LocationDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
+  const { pushModal } = useModal();
   const entities = useSyncEntities();
   const locations = useSyncLocations();
-  const syncItems = useSyncItems();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const [activeTab, setActiveTabRaw] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
-  const setActiveTab = (tab: number) => {
-    setLootPopItems([]);
-    setActiveTabRaw(tab);
-  };
   const lootPopKey = useRef(0);
-  const [buildModalDef, setBuildModalDef] = useState<any>(null);
-  const [upgradeBuildingId, setUpgradeBuildingId] = useState<string | null>(null);
-  const itemBalances = useMemo(() => {
-    const balances: Record<string, number> = {};
-    for (const item of syncItems) {
-      balances[(item as any).definitionId] = (balances[(item as any).definitionId] || 0) + Number((item as any).quantity || 0);
-    }
-    return balances;
-  }, [syncItems]);
-  const currencyBalances = useSyncCurrencyBalances();
-  const profile = useSyncPlayer();
-
+  const setActiveTab = (tab: number) => { setLootPopItems([]); setActiveTabRaw(tab); };
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
@@ -124,6 +105,27 @@ export default function LocationDetailPage() {
     }
   };
 
+  const openBuildModal = async (def: any) => {
+    if (!id) return;
+    try {
+      const spec = await api.getModalSpec({ buildingDefId: def.id, locationId: id });
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err: any) {
+      console.error('[LocationDetailPage] Failed to load build modal:', err);
+    }
+  };
+
+  const openUpgradeModal = async (building: any) => {
+    if (!id) return;
+    try {
+      const buildingDefId = building.buildingDefId || building.defId || building.definitionId;
+      const spec = await api.getModalSpec({ buildingDefId, locationId: id, buildingId: building.id });
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err: any) {
+      console.error('[LocationDetailPage] Failed to load upgrade modal:', err);
+    }
+  };
+
   if (!outpost) {
     return (
       <div className="outpost-detail-page">
@@ -150,9 +152,6 @@ export default function LocationDetailPage() {
   );
 
   const buildingsData: any[] = outpost.buildings || [];
-  const upgradeBuildingData = upgradeBuildingId
-    ? buildingsData.find((b: any) => b.id === upgradeBuildingId) ?? null
-    : null;
   const workersData: any[] = outpost.workers || [];
   const storageBalances = Object.entries((outpost.storage?.stored as Record<string, number>) || {}).map(([key, amount]) => ({
     outputRefId: key,
@@ -369,9 +368,9 @@ export default function LocationDetailPage() {
             currencyDefs={currencyDefs}
             itemDefs={itemDefs}
             tickRate={tickRate}
-            onBuildClick={(def: any) => setBuildModalDef(def)}
+            onBuildClick={(def: any) => openBuildModal(def)}
             onCompleteBuilding={handleCompleteBuilding}
-            onUpgradeClick={(b: any) => setUpgradeBuildingId(b.id)}
+            onUpgradeClick={(b: any) => openUpgradeModal(b)}
           />
         )}
 
@@ -458,36 +457,6 @@ export default function LocationDetailPage() {
         )}
       </div>
 
-      {buildModalDef && (
-        <BuildBuildingModal
-          def={buildModalDef}
-          outpostId={outpost.id}
-          currencyDefs={currencyDefs}
-          itemDefs={itemDefs}
-          currencyBalances={currencyBalances}
-          itemBalances={itemBalances}
-          keeperLevel={profile?.keeperLevel ?? 1}
-          onClose={() => setBuildModalDef(null)}
-          onBuilt={() => {
-            setBuildModalDef(null);
-          }}
-        />
-      )}
-
-      {upgradeBuildingData && (
-        <UpgradeBuildingModal
-          building={upgradeBuildingData}
-          outpostId={outpost.id}
-          currencyDefs={currencyDefs}
-          itemDefs={itemDefs}
-          currencyBalances={currencyBalances}
-          itemBalances={itemBalances}
-          onClose={() => setUpgradeBuildingId(null)}
-          onUpgraded={() => {
-            setUpgradeBuildingId(null);
-          }}
-        />
-      )}
     </div>
   );
 }
