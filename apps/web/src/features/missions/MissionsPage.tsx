@@ -619,7 +619,6 @@ export default function MissionsPage() {
 
           {error && <div className="mp-error" style={{ marginTop: 12 }}>{error}</div>}
         </div>
-        </div>
 
         <div className="md-launch-bar">
           {selectedEntities.length === 0 ? (
@@ -648,6 +647,7 @@ export default function MissionsPage() {
               START MISSION
             </button>
           )}
+        </div>
         </div>
       </div>
     );
