@@ -496,7 +496,7 @@
 
 .md-inline {
   padding: 0;
-  padding-bottom: 110px;
+  padding-bottom: 0;
 }
 
 .md-unified-card {
@@ -505,6 +505,9 @@
   border-radius: 16px;
   overflow: hidden;
   animation: card-enter 0.2s ease-out both;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 240px);
 }
 
 .md-hero-back-pos {
@@ -576,6 +579,9 @@
   padding: 12px;
   padding-bottom: 16px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 8px;
