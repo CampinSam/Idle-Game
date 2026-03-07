@@ -8,23 +8,29 @@ import './EntitiesPage.css';
 
 function EntitiesPageSkeleton() {
   return (
-    <div className="entities-page">
-      <div className="entities-filter-tabs" style={{ marginBottom: 12 }}>
-        {['ALL', 'DERPS', 'VAMPS', 'PREDS'].map((t) => (
-          <div key={t} className="skeleton" style={{ width: 56, height: 32, borderRadius: 20, display: 'inline-block' }} />
-        ))}
-      </div>
-      <div className="entities-search-bar" style={{ marginBottom: 16 }}>
-        <div className="skeleton" style={{ width: '100%', height: 40, borderRadius: 10 }} />
-      </div>
-      <div className="entities-card-grid">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="entity-card-v2" style={{ animation: 'none', opacity: 1 }}>
-            <div className="skeleton" style={{ width: '100%', height: 140, borderRadius: 8, marginBottom: 8 }} />
-            <div className="skeleton" style={{ width: '70%', height: 14, borderRadius: 4, marginBottom: 6 }} />
-            <div className="skeleton" style={{ width: '50%', height: 11, borderRadius: 4 }} />
+    <div className="entities-page page-transition-wrapper">
+      <div className="entities-wrapper-card">
+        <div className="entities-filter-strip">
+          {['ALL', 'DERPS', 'VAMPS', 'PREDS'].map((t) => (
+            <div key={t} className="entities-filter-tab" />
+          ))}
+        </div>
+        <div className="entities-search-row">
+          <div className="skeleton" style={{ flex: 1, height: 36, borderRadius: 8 }} />
+        </div>
+        <div className="entities-grid-section">
+          <div className="entities-card-grid">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="entity-card-v2" style={{ animation: 'none', opacity: 1 }}>
+                <div className="skeleton" style={{ width: '100%', height: 120, borderRadius: 0 }} />
+                <div className="entity-card-info">
+                  <div className="skeleton" style={{ width: '70%', height: 12, borderRadius: 4, marginBottom: 6 }} />
+                  <div className="skeleton" style={{ width: '50%', height: 10, borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -87,77 +93,86 @@ export default function EntitiesPage() {
   });
 
   return (
-    <div className="entities-page">
-      <div className="entities-filter-tabs">
-        {FILTER_TABS.map((tab, i) => (
-          <button
-            key={tab}
-            className={`entities-filter-tab ${i === activeFilter ? 'active' : ''}`}
-            onClick={() => setActiveFilter(i)}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+    <div className="entities-page page-transition-wrapper">
+      <div className="entities-wrapper-card">
 
-      <div className="entities-search-bar">
-        <span className="entities-search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Search Derp Entities..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="entities-search-input"
-        />
-        <button className="entities-sort-btn">ALL ▼</button>
-      </div>
+        <div className="entities-filter-strip">
+          {FILTER_TABS.map((tab, i) => (
+            <button
+              key={tab}
+              className={`entities-filter-tab ${i === activeFilter ? 'active' : ''}`}
+              onClick={() => setActiveFilter(i)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-      <div className="entities-card-grid">
-        {filteredEntities.map((entity: any) => {
-          const archetype: string = entity.traits?.body || entity.traits?.head || '';
-          const archetypeDisplay = getArchetypeDisplay(archetype);
-          const statusDisplay = getStatusDisplay(entity.status);
-          const power = getPowerScore(entity);
-          const stars = getStarRating(entity);
+        <div className="entities-search-row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search entities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="entities-search-input"
+          />
+          <button className="entities-sort-btn">ALL ▼</button>
+        </div>
 
-          return (
-            <div key={entity.id} className="entity-card-v2" onClick={() => navigate(`/entities/${entity.id}`)}>
-              <div className="entity-card-art" style={{ background: archetypeDisplay.gradient }}>
-                <div className="entity-card-status">{statusDisplay.icon}</div>
-                <div className="entity-card-level">
-                  <span className="entity-lv-num">{entity.level}</span>
-                  <span className="entity-lv-icon">🏆</span>
-                </div>
-                <GameImage
-                  src={getEntityImagePath(entity.id, archetype)}
-                  category="entities"
-                  alt={entity.name}
-                  fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-                  className="entity-card-portrait"
-                />
-              </div>
-              <div className="entity-card-info">
-                <div className="entity-card-name-row">
-                  <span className="entity-card-name">{entity.name}</span>
-                  <span className="entity-card-check">✅</span>
-                </div>
-                <div className="entity-card-class-row">
-                  <span className="entity-class-badge" style={{ backgroundColor: archetypeDisplay.color }}>
-                    {archetype.toUpperCase() || 'UNKNOWN'}
-                  </span>
-                </div>
-                <div className="entity-card-bottom">
-                  <StarRating rating={stars} />
-                  <span className="entity-power-score">{power.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        <div className="entities-grid-section">
+          <div className="entities-card-grid">
+            {filteredEntities.map((entity: any) => {
+              const archetype: string = entity.traits?.body || entity.traits?.head || '';
+              const archetypeDisplay = getArchetypeDisplay(archetype);
+              const statusDisplay = getStatusDisplay(entity.status);
+              const power = getPowerScore(entity);
+              const stars = getStarRating(entity);
 
-        {filteredEntities.length === 0 && (
-          <div className="entities-empty">No entities found.</div>
-        )}
+              return (
+                <div key={entity.id} className="entity-card-v2" onClick={() => navigate(`/entities/${entity.id}`)}>
+                  <div className="entity-card-art" style={{ background: archetypeDisplay.gradient }}>
+                    <div className="entity-card-status">{statusDisplay.icon}</div>
+                    <div className="entity-card-level">
+                      <span className="entity-lv-num">{entity.level}</span>
+                      <span className="entity-lv-icon">🏆</span>
+                    </div>
+                    <GameImage
+                      src={getEntityImagePath(entity.id, archetype)}
+                      category="entities"
+                      alt={entity.name}
+                      fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+                      className="entity-card-portrait"
+                    />
+                  </div>
+                  <div className="entity-card-info">
+                    <div className="entity-card-name-row">
+                      <span className="entity-card-name">{entity.name}</span>
+                      <span className="entity-card-check">✅</span>
+                    </div>
+                    <div className="entity-card-class-row">
+                      <span className="entity-class-badge" style={{ backgroundColor: archetypeDisplay.color }}>
+                        {archetype.toUpperCase() || 'UNKNOWN'}
+                      </span>
+                    </div>
+                    <div className="entity-card-bottom">
+                      <StarRating rating={stars} />
+                      <span className="entity-power-score">{power.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredEntities.length === 0 && (
+              <div className="entities-empty">No entities found.</div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
