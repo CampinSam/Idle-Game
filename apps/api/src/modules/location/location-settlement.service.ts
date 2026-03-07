@@ -21,10 +21,8 @@ function getThreatMultBps(threat: number): bigint {
   return BigInt(5000);
 }
 
-function getWorkerMultBps(workerCount: number, maxWorkers: number): bigint {
-  if (maxWorkers === 0) return BPS_BASE;
-  const ratio = workerCount / maxWorkers;
-  return BigInt(Math.floor(5000 + ratio * 5000));
+function getWorkerMultBps(workerCount: number): bigint {
+  return BigInt(10000 + workerCount * 2000);
 }
 
 export interface SettlementResult {
@@ -111,15 +109,8 @@ export class LocationSettlementService {
       };
     }
 
-    const locationDef = await (tx as any).locationDefinition.findUnique({
-      where: { id: location.definitionId },
-    });
-    const locRules = (locationDef?.rules as LevelRules) || {};
-    const locConfig = resolveLevelConfig(locRules, location.level);
-
-    const locWorkerSlots = locConfig.workers?.slots ?? 2;
     const workerCount = location.workerAssignments.length;
-    const workerMultBps = getWorkerMultBps(workerCount, locWorkerSlots);
+    const workerMultBps = getWorkerMultBps(workerCount);
     const threatMultBps = getThreatMultBps(location.threatLevel);
 
     const storedAmounts: Record<string, number> = { ...(existingStorage.stored || {}) };
@@ -265,11 +256,8 @@ export class LocationSettlementService {
 
     const { capacity, productionRates } = this.computeLocationMeta(location, buildingIdsUnderConstruction);
 
-    const locRules = (location.definition?.rules as LevelRules) || {};
-    const locConfig = resolveLevelConfig(locRules, location.level);
-    const maxWorkers: number = locConfig.workers?.slots ?? 2;
     const workerCount: number = (location.workerAssignments || []).length;
-    const workerMultBps = getWorkerMultBps(workerCount, maxWorkers);
+    const workerMultBps = getWorkerMultBps(workerCount);
     const threatMultBps = getThreatMultBps(location.threatLevel || 0);
 
     const effectiveProductionRates: Record<string, number> = {};

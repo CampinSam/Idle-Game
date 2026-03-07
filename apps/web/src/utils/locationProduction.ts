@@ -1,17 +1,3 @@
-const BPS_BASE = 10000;
-
-function getThreatMult(threat: number): number {
-  if (threat <= 20) return 10000;
-  if (threat <= 40) return 9500;
-  if (threat <= 60) return 8500;
-  if (threat <= 80) return 7000;
-  return 5000;
-}
-
-function getWorkerMult(workerCount: number): number {
-  return 10000 + workerCount * 2000;
-}
-
 function getCapacityForKey(location: any, key: string): number {
   const storageCapacity = location.storage?.capacity || {};
   const [, resourceId] = key.split(':');
@@ -68,33 +54,17 @@ export function computeGeneratorProduction(
     (b: any) => b.enabled && b.status !== 'building',
   );
 
-  const workerCount = (location.workers || []).length;
-  const workerMultBps = getWorkerMult(workerCount);
-  const threatMultBps = getThreatMult(location.threatLevel || 0);
-
-  const results: GeneratorProduction[] = [];
-
-  for (const building of generators) {
-    if (!building.outputRefId || building.outputRefId === 'null') continue;
-    const resourcePerHour = Number(building.resourcePerHour || 0);
-    const key = `${building.outputType}:${building.outputRefId}`;
-
-    let output = resourcePerHour;
-    output = (output * workerMultBps) / BPS_BASE;
-    output = (output * threatMultBps) / BPS_BASE;
-
-    results.push({
+  return generators
+    .filter((b: any) => b.outputRefId && b.outputRefId !== 'null')
+    .map((building: any) => ({
       buildingId: building.id,
-      buildingName: building.name || building.refId || building.id,
+      buildingName: building.name || building.id,
       buildingLevel: building.level,
-      resourceKey: key,
+      resourceKey: `${building.outputType}:${building.outputRefId}`,
       outputType: building.outputType,
       outputRefId: building.outputRefId,
-      ratePerHour: output,
-    });
-  }
-
-  return results;
+      ratePerHour: Number(building.effectiveResourcePerHour ?? building.resourcePerHour ?? 0),
+    }));
 }
 
 export function aggregateByResource(

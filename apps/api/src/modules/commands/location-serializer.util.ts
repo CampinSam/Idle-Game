@@ -7,6 +7,14 @@ import {
   LevelRules,
 } from '../game-rules/level-config.util';
 
+function getThreatMult(threat: number): number {
+  if (threat <= 20) return 10000;
+  if (threat <= 40) return 9500;
+  if (threat <= 60) return 8500;
+  if (threat <= 80) return 7000;
+  return 5000;
+}
+
 export function serializeLocation(
   location: any,
   buildingJobs: any[] = [],
@@ -21,6 +29,9 @@ export function serializeLocation(
   }
 
   const storage = (location.storage as any) || {};
+  const workerCount = (location.workerAssignments || []).length;
+  const workerMult = 10000 + workerCount * 2000;
+  const threatMult = getThreatMult(location.threatLevel || 0);
 
   return {
     id: location.id,
@@ -90,6 +101,7 @@ export function serializeLocation(
         outputType: resolved.outputType,
         outputRefId: resolved.outputRefId,
         resourcePerHour: String(rph),
+        effectiveResourcePerHour: String(Math.floor(Math.floor(rph * workerMult / 10000) * threatMult / 10000)),
         storageContributions: bStorageContributions,
         upgradeCosts,
         upgradeTimer,
