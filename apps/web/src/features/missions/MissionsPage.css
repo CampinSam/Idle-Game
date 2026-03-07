@@ -2,6 +2,17 @@
   padding-bottom: 100px;
 }
 
+.missions-wrapper-card {
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: card-enter 0.2s ease-out both;
+}
+
 .mp-tags {
   display: flex;
   flex-wrap: wrap;
@@ -68,11 +79,12 @@
 
 .mp-list-wrapper {
   position: relative;
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: 14px;
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
   padding: 10px 10px;
   margin-bottom: 14px;
+  animation: card-enter 0.2s ease-out both;
 }
 
 .mp-list-header {
@@ -346,10 +358,11 @@
 
 .mp-activity-box {
   margin-top: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
   padding: 16px;
+  animation: card-enter 0.2s ease-out both;
 }
 
 .mp-activity-title {
@@ -487,10 +500,11 @@
 }
 
 .md-unified-card {
-  background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: 14px;
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
   overflow: hidden;
+  animation: card-enter 0.2s ease-out both;
 }
 
 .md-hero-back-pos {

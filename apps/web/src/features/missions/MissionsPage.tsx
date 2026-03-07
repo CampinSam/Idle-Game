@@ -104,27 +104,13 @@ function renderTags(tags: any[]) {
 
 function MissionsPageSkeleton() {
   return (
-    <div className="missions-page" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="skeleton" style={{ width: '50%', height: 18, borderRadius: 6 }} />
+    <div className="missions-page page-transition-wrapper">
+      <div className="missions-wrapper-card">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ width: '100%', height: 56, borderRadius: 10 }} />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ width: '100%', height: 110, borderRadius: 12 }} />
           ))}
         </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="skeleton" style={{ width: '40%', height: 18, borderRadius: 6 }} />
-        <div className="mp-categories">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ flex: 1, height: 80, borderRadius: 12 }} />
-          ))}
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="skeleton" style={{ width: '100%', height: 70, borderRadius: 10 }} />
-        ))}
       </div>
     </div>
   );
@@ -382,7 +368,7 @@ export default function MissionsPage() {
 
   if (selectedCategory && !selectedMission) {
     return (
-      <div className="missions-page">
+      <div className="missions-page page-transition-wrapper">
         <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
           <div className="mp-list-header">
             <button className="mp-back-pill" onClick={handleBackToCategories}>← Back</button>
@@ -441,7 +427,7 @@ export default function MissionsPage() {
     const missionTags = selectedDef.tags || [];
 
     return (
-      <div className="missions-page md-inline">
+      <div className="missions-page md-inline page-transition-wrapper">
         <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
         <div className="md-hero" style={{ backgroundImage: `url(${display.backgroundImage})` }}>
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackToMissionList}>← Back</button>
@@ -665,10 +651,11 @@ export default function MissionsPage() {
   }
 
   return (
-    <div className="missions-page">
+    <div className="missions-page page-transition-wrapper">
       {error && <div className="mp-error">{error}</div>}
 
-      <div className="mp-categories">
+      <div className="missions-wrapper-card">
+        <div className="mp-categories">
         {categories.map((cat) => {
           const display = cat.display;
           const unavailable = cat.locked || !cat.enabled;
@@ -698,6 +685,7 @@ export default function MissionsPage() {
             </div>
           );
         })}
+        </div>
       </div>
 
       {(activeMissions.length > 0 || missionHistory.length > 0) && renderActivity()}
