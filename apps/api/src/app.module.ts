@@ -33,6 +33,7 @@ import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { NftModule } from './modules/nft/nft.module';
+import { ShopModule } from './modules/shop/shop.module';
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -69,6 +70,7 @@ const imports: any[] = [
   CheckInModule,
   QuestModule,
   NftModule,
+  ShopModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

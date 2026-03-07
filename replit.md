@@ -24,7 +24,7 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 - A `start.sh` script orchestrates build and startup.
 
 **UI/UX Design:**
-- **Navigation**: Floating bottom navigation bar with SVG icons (Home, Missions, Entities, Items, Outpost), active item indicator with glow and tap scale micro-interaction.
+- **Navigation**: Floating bottom navigation bar with SVG icons (Home, Missions, Entities, Items, Outpost, Store), active item indicator with glow and tap scale micro-interaction.
 - **Theme**: Dark purple RPG style with gradients and glowing accents, radial gradient depth layer, and SVG noise texture overlay.
 - **Typography**: Cinzel (serif) for headings, Exo 2 (sans-serif) for body text.
 - **Styling**: TailwindCSS removed, replaced with plain CSS utility shim.
@@ -65,6 +65,7 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 - **Lootbox System**: Defines weighted outcome pools and manages item-based lootbox openings with deterministic seeded RNG.
 - **Daily Check-In System**: Processes daily check-in tracks with configurable frequencies, streaks, and reward mechanisms.
 - **Quest System**: Defines objectives based on player telemetry events, tracks progress, and manages reward claims.
+- **Store System**: `ShopItemDef` DB model (tab, cost array, originalCost, contents, badge, limitedUntil). Costs and contents are arrays of `{ type: "currency"|"item", id, amount }` — supports mixed currency+item costs. `GET /shop/items` (JWT), admin CRUD at `/admin/shop/*`. `ShopPurchase` command handler in v1 pipeline. Frontend at `/store` with Featured/Currencies/Bundles/Items tabs, countdown timers for limited offers, GameIcon currency display, and a slide-up confirm bar. Seed data auto-created on first boot.
 
 **Command/Delta/SSE Pipeline (v1 API):**
 - **Infrastructure**: PubSubService, PlayerLockService, IdempotencyService for scalable and consistent command processing.

@@ -1045,6 +1045,29 @@ model Season {
 }
 
 // ═══════════════════════════════════════════════════
+// SHOP
+// ═══════════════════════════════════════════════════
+
+model ShopItemDef {
+  id           String    @id @default(cuid())
+  name         String
+  description  String    @default("")
+  tab          String    @default("featured")
+  cost         Json
+  originalCost Json?
+  contents     Json
+  badge        String?
+  badgeColor   String?
+  imageUrl     String?
+  displayOrder Int       @default(0)
+  enabled      Boolean   @default(true)
+  limitedUntil DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@map("shop_item_defs")
+}
+
+// ═══════════════════════════════════════════════════
 // OUTBOX (reliable event publishing)
 // ═══════════════════════════════════════════════════
 

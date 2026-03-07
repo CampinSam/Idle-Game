@@ -158,6 +158,10 @@ export default function Layout() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="12" rx="1"/><path d="M12 2l8 8H4z"/><rect x="9" y="15" width="6" height="7"/></svg>
           <span>Outpost</span>
         </NavLink>
+        <NavLink to="/store" className={({ isActive }) => `bnav-link ${isActive ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          <span>Store</span>
+        </NavLink>
       </nav>
     </div>
   );
