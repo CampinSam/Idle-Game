@@ -133,7 +133,7 @@ export class AuthService {
       kind: 'outpost_fungible',
       level: 1,
       lastCollectionTick: BigInt(Math.floor(currentTick)),
-      storage: { capacity: {}, stored: {} },
+      storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
       state: {},
     };
   }

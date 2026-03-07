@@ -11,11 +11,10 @@ import { InventoryService } from "../inventory/inventory.service";
 import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
 import { ANTI_WHALE_CAPS } from "@derp/shared";
+import { serializeLocation } from "../commands/location-serializer.util";
 import {
   resolveLevelConfig,
   resolveConstructionCosts,
-  resolveProductionRates,
-  resolveStorageCapacity,
   resolveAllowedBuildings,
   calcGrowth,
   LevelRules,
@@ -90,7 +89,7 @@ export class LocationService {
     ]);
 
     return locations.map((loc: any) =>
-      this.serializeLocation(loc, buildingJobs, currencyIds),
+      serializeLocation(loc, buildingJobs, currencyIds),
     );
   }
 
@@ -139,7 +138,7 @@ export class LocationService {
     ]);
 
     return {
-      ...this.serializeLocation(result, buildingJobs, currencyIds),
+      ...serializeLocation(result, buildingJobs, currencyIds),
       storage: storageInfo,
     };
   }
@@ -956,151 +955,6 @@ export class LocationService {
     }
 
     return { success: true };
-  }
-
-  private resolveResourceType(
-    resourceId: string,
-    currencyIds: Set<string>,
-  ): { outputType: string; outputRefId: string } {
-    if (currencyIds.has(resourceId)) {
-      return { outputType: "CURRENCY", outputRefId: resourceId };
-    }
-    return { outputType: "ITEM", outputRefId: resourceId };
-  }
-
-  private serializeLocation(
-    location: any,
-    buildingJobs: any[] = [],
-    currencyIds: Set<string> = new Set(),
-  ) {
-    const jobsByBuildingId = new Map<string, any>();
-    for (const job of buildingJobs) {
-      const jobData = job.data as any;
-      if (jobData?.buildingId) {
-        jobsByBuildingId.set(jobData.buildingId, job);
-      }
-    }
-
-    const storage = (location.storage as any) || {};
-    const storedMap: Record<string, number> = storage.stored || {};
-    const storageBalances = Object.entries(storedMap).map(([key, amount]) => {
-      const resolved = this.resolveResourceType(key, currencyIds);
-      return {
-        outputType: resolved.outputType,
-        outputRefId: resolved.outputRefId,
-        amount: Number(amount),
-      };
-    });
-
-    return {
-      id: location.id,
-      ownerUserId: location.ownerUserId,
-      definitionId: location.definitionId,
-      regionId: location.regionId,
-      name: location.definitionId || location.regionId || "Location",
-      region: location.regionId || "",
-      isUnique: location.isUnique,
-      level: location.level,
-      xp: location.xp.toString(),
-      threatLevel: location.threatLevel,
-      corruptionLevel: location.corruptionLevel,
-      enabled: location.enabled !== false,
-      lastCollectionTick: location.lastCollectionTick.toString(),
-      storage: {
-        capacity: storage.capacity || {},
-        stored: storage.stored || {},
-        productionRates: storage.productionRates || {},
-      },
-      lastAccruedTick: location.lastCollectionTick.toString(),
-      storageBalances,
-      buildings: (location.buildings ?? []).map((b: any) => {
-        const job = jobsByBuildingId.get(b.id);
-        const jobTimer = job?.timer as any;
-        const bState = (b.state as any) || {};
-        const bRules = (b.buildingDef?.rules as LevelRules) || {};
-        const bConfig = resolveLevelConfig(bRules, b.level);
-        const defTags: string[] = Array.isArray(b.buildingDef?.tags)
-          ? b.buildingDef.tags
-          : [];
-        const isEnabled = b.enabled !== false;
-        const status = job ? "building" : isEnabled ? "active" : "disabled";
-
-        let category = "GENERATOR";
-        if (defTags.includes("storage")) category = "STORAGE";
-        else if (defTags.includes("defense")) category = "DEFENSE";
-
-        const bProduction = resolveProductionRates(bConfig.production, b.level);
-        const primaryResource = Object.keys(bProduction)[0] || null;
-        const resolved = primaryResource
-          ? this.resolveResourceType(primaryResource, currencyIds)
-          : { outputType: null, outputRefId: null };
-        const rph = primaryResource ? bProduction[primaryResource] : 0;
-
-        const nextLevel = b.level + 1;
-        const nextConfig = resolveLevelConfig(bRules, nextLevel);
-        const nextCosts = resolveConstructionCosts(
-          nextConfig.constructionCost,
-          nextLevel,
-        );
-
-        return {
-          id: b.id,
-          buildingDefId: b.buildingDefId,
-          name: b.buildingDef.name,
-          category,
-          level: b.level,
-          isEnabled,
-          status,
-          jobId: job?.id ?? null,
-          jobStatus: job?.status ?? null,
-          startTick: jobTimer?.startTick ?? 0,
-          durationTicks: jobTimer?.durationTicks ?? 0,
-          jobData: job?.data ?? null,
-          outputType: resolved.outputType,
-          outputRefId: resolved.outputRefId,
-          resourcePerHour: String(rph),
-          maxLevel: bRules.maxLevel ?? 10,
-          upgradeCosts: nextCosts,
-          upgradeTimer: nextConfig.timer || null,
-          timer: bConfig.timer || null,
-          effects: bConfig.effects || {},
-          data: b.state || {},
-          rooms: (b.rooms ?? []).map((r: any) => {
-            const rRules = (r.roomDef?.rules as LevelRules) || {};
-            const rConfig = resolveLevelConfig(rRules, r.level);
-            const rStorage = resolveStorageCapacity(rConfig.storage, r.level);
-            const nextLevel = r.level + 1;
-            const nextConfig = resolveLevelConfig(rRules, nextLevel);
-            const nextCosts = resolveConstructionCosts(
-              nextConfig.constructionCost,
-              nextLevel,
-            );
-            return {
-              id: r.id,
-              roomDefId: r.roomDefId,
-              name: r.roomDef.name,
-              level: r.level,
-              enabled: r.enabled !== false,
-              maxLevel: rRules.maxLevel ?? 5,
-              storage: rStorage,
-              effects: rConfig.effects || {},
-              upgradeCosts: nextCosts,
-              timer: rConfig.timer || null,
-              state: r.state,
-            };
-          }),
-        };
-      }),
-      workers: (location.workerAssignments ?? []).map((w: any, i: number) => ({
-        id: w.id,
-        entityId: w.entityId,
-        slotIndex: i,
-        roleTag: w.roleTag,
-        bonus: w.bonus,
-      })),
-      createdAt: location.createdAt.toISOString(),
-      updatedAt: location.updatedAt.toISOString(),
-    };
   }
 
   async toggleLocationEnabled(

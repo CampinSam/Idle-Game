@@ -161,7 +161,7 @@ export class AdminService {
         const capacity = resolveStorageCapacity(config.storage, loc.level);
         await (this.prisma as any).locationInstance.update({
           where: { id: loc.id },
-          data: { storage: { capacity, stored: {} } },
+          data: { storage: { capacity, stored: {}, lastSettledAt: new Date().toISOString() } },
         });
       }
     } catch (err) {
@@ -189,7 +189,7 @@ export class AdminService {
       kind: 'outpost_fungible',
       level: 1,
       lastCollectionTick: BigInt(Math.floor(currentTick)),
-      storage: { capacity: {}, stored: {} },
+      storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
       state: {},
     };
   }
