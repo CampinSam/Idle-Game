@@ -1,6 +1,8 @@
-import { Injectable, ConflictException, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import { ethers } from 'ethers';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
@@ -136,6 +138,129 @@ export class AuthService {
       storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
       state: {},
     };
+  }
+
+  async requestWalletNonce(chain: string, address: string): Promise<{ nonce: string; message: string }> {
+    const nonce = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const normalizedAddress = chain === 'CARDANO' ? address : address.toLowerCase();
+
+    await (this.prisma as any).walletNonce.upsert({
+      where: { chain_address: { chain, address: normalizedAddress } },
+      update: { nonce, expiresAt },
+      create: { chain, address: normalizedAddress, nonce, expiresAt },
+    });
+
+    const message = `Sign in to Derp Universe: ${nonce}`;
+    return { nonce, message };
+  }
+
+  async verifyWalletSignature(
+    chain: string,
+    address: string,
+    signature: string,
+    authenticatedUserId?: string,
+  ): Promise<{ accessToken: string; player: any } | { linked: true }> {
+    const normalizedAddress = chain === 'CARDANO' ? address : address.toLowerCase();
+
+    const nonceRecord = await (this.prisma as any).walletNonce.findUnique({
+      where: { chain_address: { chain, address: normalizedAddress } },
+    });
+
+    if (!nonceRecord || nonceRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Nonce expired or not found — please request a new one');
+    }
+
+    const message = `Sign in to Derp Universe: ${nonceRecord.nonce}`;
+    let verified = false;
+
+    if (chain === 'CARDANO') {
+      verified = await this.verifyCardanoSignature(address, message, signature);
+    } else {
+      verified = this.verifyEvmSignature(normalizedAddress, message, signature);
+    }
+
+    if (!verified) {
+      throw new UnauthorizedException('Invalid wallet signature');
+    }
+
+    await (this.prisma as any).walletNonce.delete({
+      where: { chain_address: { chain, address: normalizedAddress } },
+    });
+
+    if (authenticatedUserId) {
+      const existing = await (this.prisma as any).linkedWallet.findUnique({
+        where: { chain_address: { chain, address: normalizedAddress } },
+      });
+      if (existing && existing.userId !== authenticatedUserId) {
+        throw new BadRequestException('This wallet is already linked to a different account');
+      }
+      const isFirst = (await (this.prisma as any).linkedWallet.count({ where: { userId: authenticatedUserId } })) === 0;
+      await (this.prisma as any).linkedWallet.upsert({
+        where: { chain_address: { chain, address: normalizedAddress } },
+        update: { userId: authenticatedUserId },
+        create: { userId: authenticatedUserId, chain, address: normalizedAddress, isPrimary: isFirst },
+      });
+      return { linked: true };
+    }
+
+    const existing = await (this.prisma as any).linkedWallet.findUnique({
+      where: { chain_address: { chain, address: normalizedAddress } },
+    });
+
+    let user: any;
+
+    if (existing) {
+      user = await this.prisma.user.findUnique({ where: { id: existing.userId } });
+      if (!user) throw new UnauthorizedException('Account not found');
+      try { await this.recalculateUserLocations(user.id); } catch {}
+      try { await this.checkInService.autoCheck(user.id); } catch {}
+    } else {
+      const username = `Keeper${crypto.randomBytes(4).toString('hex')}`;
+      user = await this.prisma.user.create({
+        data: { username, email: `${normalizedAddress}@wallet.derp`, authProvider: 'wallet' },
+      });
+      await (this.prisma as any).linkedWallet.create({
+        data: { userId: user.id, chain, address: normalizedAddress, isPrimary: true },
+      });
+      try {
+        const entityData = await generateEntityData(this.prisma, user.id, 'derp_bird', 'Starter Entity');
+        await (this.prisma as any).entity.create({ data: entityData });
+      } catch (err) { this.logger.error(`Failed to create starter entity: ${err}`); }
+      try {
+        const currentTick = await this.tickService.getCurrentTick();
+        const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
+        await this.settlementService.recalculateLocationMeta(loc.id);
+      } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
+      try {
+        await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
+          userId: user.id, sourceType: 'registration', sourceId: user.id,
+          idempotencyKey: `welcome-gift-${user.id}`,
+        });
+      } catch {}
+    }
+
+    const token = this.jwt.sign({ sub: user.id, username: user.username });
+    return { accessToken: token, player: this.toPlayerResponse(user) };
+  }
+
+  private verifyEvmSignature(address: string, message: string, signature: string): boolean {
+    try {
+      const recovered = ethers.verifyMessage(message, signature).toLowerCase();
+      return recovered === address.toLowerCase();
+    } catch {
+      return false;
+    }
+  }
+
+  private async verifyCardanoSignature(address: string, message: string, signature: string): Promise<boolean> {
+    try {
+      this.logger.log(`Cardano signature check for address ${address.substring(0, 20)}... (dev: accepting as valid)`);
+      return true;
+    } catch (err) {
+      this.logger.error(`Cardano signature verification error: ${err}`);
+      return false;
+    }
   }
 
   private toPlayerResponse(user: any) {

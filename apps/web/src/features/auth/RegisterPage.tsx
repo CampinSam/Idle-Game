@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { register, clearError } from '../../store/authSlice';
+import { register, clearError, setAuth } from '../../store/authSlice';
+import { useWalletConnect } from '../../hooks/useWalletConnect';
 import './Auth.css';
 
 export default function RegisterPage() {
@@ -12,6 +13,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const { connecting, error: walletError, detectedCardanoWallets, hasEvm, connectEvm, connectCardano, clearError: clearWalletError } = useWalletConnect();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await dispatch(register({ username, email, password }));
@@ -19,6 +22,26 @@ export default function RegisterPage() {
       navigate('/');
     }
   };
+
+  const handleEvmConnect = async () => {
+    clearWalletError();
+    const result = await connectEvm();
+    if (result) {
+      dispatch(setAuth({ token: result.accessToken, player: result.player }));
+      navigate('/');
+    }
+  };
+
+  const handleCardanoConnect = async (walletKey: string) => {
+    clearWalletError();
+    const result = await connectCardano(walletKey);
+    if (result) {
+      dispatch(setAuth({ token: result.accessToken, player: result.player }));
+      navigate('/');
+    }
+  };
+
+  const showWalletSection = hasEvm || detectedCardanoWallets.length > 0;
 
   return (
     <div className="auth-page">
@@ -74,6 +97,46 @@ export default function RegisterPage() {
             {loading ? 'Creating account...' : 'Start Your Adventure'}
           </button>
         </form>
+
+        {showWalletSection && (
+          <>
+            <div className="auth-divider">or start with a wallet</div>
+            {walletError && <div className="auth-error">{walletError}</div>}
+            <div className="wallet-btn-group">
+              {hasEvm && (
+                <button
+                  className="wallet-btn wallet-btn-evm"
+                  onClick={handleEvmConnect}
+                  disabled={connecting}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="4" width="22" height="16" rx="2"/>
+                    <line x1="1" y1="10" x2="23" y2="10"/>
+                  </svg>
+                  {connecting ? 'Connecting...' : 'MetaMask / EVM Wallet'}
+                </button>
+              )}
+              {detectedCardanoWallets.map((w) => (
+                <button
+                  key={w.key}
+                  className="wallet-btn wallet-btn-cardano"
+                  onClick={() => handleCardanoConnect(w.key)}
+                  disabled={connecting}
+                >
+                  {w.icon ? (
+                    <img src={w.icon} alt={w.name} width="18" height="18" style={{ borderRadius: 4 }} />
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 6v6l4 2"/>
+                    </svg>
+                  )}
+                  {connecting ? 'Connecting...' : w.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <p className="auth-link">
           Already a Keeper? <Link to="/login">Sign in</Link>

@@ -312,6 +312,48 @@ class ApiClient {
 
     return res.json();
   }
+
+  // Wallet auth
+  walletNonce(chain: string, address: string) {
+    return this.request<{ nonce: string; message: string }>('/auth/wallet/nonce', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
+  walletVerify(chain: string, address: string, signature: string) {
+    return this.request<{ accessToken: string; player: any } | { linked: true }>('/auth/wallet/verify', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address, signature }),
+    });
+  }
+
+  walletNonceAuthed(chain: string, address: string, _token: string) {
+    return this.request<{ nonce: string; message: string }>('/auth/wallet/nonce', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
+  walletVerifyAuthed(chain: string, address: string, signature: string, _token: string) {
+    return this.request<{ linked: true }>('/auth/wallet/link', {
+      method: 'POST',
+      body: JSON.stringify({ chain, address, signature }),
+    });
+  }
+
+  // Linked wallets
+  getLinkedWallets() {
+    return this.request<any[]>('/player/wallets');
+  }
+
+  removeLinkedWallet(id: string) {
+    return this.request<{ success: true }>(`/player/wallets/${id}`, { method: 'DELETE' });
+  }
+
+  setWalletPrimary(id: string) {
+    return this.request<{ success: true }>(`/player/wallets/${id}/primary`, { method: 'POST' });
+  }
 }
 
 export interface BootstrapResponse {

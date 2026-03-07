@@ -32,6 +32,7 @@ import { ObjectStorageModule } from './integrations/object-storage/object-storag
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
+import { NftModule } from './modules/nft/nft.module';
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -67,6 +68,7 @@ const imports: any[] = [
   TelemetryModule,
   CheckInModule,
   QuestModule,
+  NftModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

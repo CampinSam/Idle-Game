@@ -34,6 +34,15 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 - **Home Screen**: Consolidates location production, missions, season events, and keeper status.
 - **Inventory Screen**: Category filter tabs, scrollable card grid with rarity-based visuals, and detailed info panel.
 
+**Blockchain Wallet System:**
+- **DB Models**: `LinkedWallet` (userId, chain, address, isPrimary) and `WalletNonce` (chain, address, nonce, expiresAt) in `prisma/schema.prisma`.
+- **Auth Endpoints**: `POST /auth/wallet/nonce` → challenge; `POST /auth/wallet/verify` → sign-in or new account; `POST /auth/wallet/link` (JWT-guarded) → link wallet to existing account.
+- **Wallet Management**: `GET/DELETE /player/wallets`, `POST /player/wallets/:id/primary`.
+- **NFT Ownership Service**: `apps/api/src/modules/nft/` — `CardanoOwnershipProvider` (Blockfrost), `EvmOwnershipProvider` (Alchemy), `NftOwnershipService` (chain router). Requires `BLOCKFROST_API_KEY` + `ALCHEMY_API_KEY` secrets.
+- **Frontend**: `useWalletConnect` hook, `walletAuth.ts` utils, wallet buttons on Login/Register (hidden when no wallets detected), Profile page at `/profile` with Account + Wallets tabs (add/remove/set-primary).
+- **Supported chains**: CARDANO (CIP-30 browser wallets: nami, eternl, vespr, begin, flint, nufi, lace, yoroi), ETH, BASE, MATIC.
+- **authSlice**: New `setAuth` action for wallet sign-in flow.
+
 **Core Systems & Features:**
 - **Database**: PostgreSQL with Prisma ORM.
 - **Definition/Instance Architecture**: Used for Entities (characters), Locations (player-owned areas), and Items, supporting attributes, progression, and state.

@@ -1,5 +1,6 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { IsString, IsEmail, MinLength } from 'class-validator';
+import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 
 class RegisterDto {
@@ -23,6 +24,29 @@ class LoginDto {
   password: string;
 }
 
+class WalletNonceDto {
+  @IsString()
+  chain: string;
+
+  @IsString()
+  address: string;
+}
+
+class WalletVerifyDto {
+  @IsString()
+  chain: string;
+
+  @IsString()
+  address: string;
+
+  @IsString()
+  signature: string;
+
+  @IsOptional()
+  @IsString()
+  linkMode?: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -35,5 +59,21 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('wallet/nonce')
+  walletNonce(@Body() dto: WalletNonceDto) {
+    return this.authService.requestWalletNonce(dto.chain, dto.address);
+  }
+
+  @Post('wallet/verify')
+  walletVerify(@Body() dto: WalletVerifyDto) {
+    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature);
+  }
+
+  @Post('wallet/link')
+  @UseGuards(AuthGuard('jwt'))
+  walletLink(@Body() dto: WalletVerifyDto, @Request() req: any) {
+    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.sub);
   }
 }

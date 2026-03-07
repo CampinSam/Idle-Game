@@ -89,6 +89,7 @@ export default function Layout() {
                 <div className="top-bar-menu">
                   <div className="top-bar-menu-name">{profile.username}</div>
                   <div className="top-bar-menu-info">Keeper Lvl {profile.keeperLevel}</div>
+                  <button className="top-bar-menu-profile" onClick={() => { navigate('/profile'); setShowMenu(false); }}>Profile & Wallets</button>
                   <button className="top-bar-menu-logout" onClick={handleLogout}>Logout</button>
                 </div>
               )}

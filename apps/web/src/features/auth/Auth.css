@@ -184,3 +184,54 @@
 @keyframes auth-spin {
   to { transform: rotate(360deg); }
 }
+
+.wallet-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.wallet-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wallet-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.wallet-btn-evm {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+}
+
+.wallet-btn-evm:not(:disabled):hover {
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);
+}
+
+.wallet-btn-cardano {
+  background: rgba(0, 51, 173, 0.1);
+  border-color: rgba(0, 102, 255, 0.3);
+  color: #93c5fd;
+}
+
+.wallet-btn-cardano:not(:disabled):hover {
+  box-shadow: 0 4px 14px rgba(0, 100, 255, 0.15);
+}

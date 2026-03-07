@@ -45,10 +45,37 @@ model User {
   playerEvents       PlayerEvent[]
   checkInInstances   CheckInInstance[]
   questInstances     QuestInstance[]
+  linkedWallets      LinkedWallet[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
   @@map("users")
+}
+
+model LinkedWallet {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chain     String
+  address   String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([chain, address])
+  @@index([userId])
+  @@map("linked_wallets")
+}
+
+model WalletNonce {
+  id        String   @id @default(uuid())
+  address   String
+  chain     String
+  nonce     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([chain, address])
+  @@map("wallet_nonces")
 }
 
 model Currency {
