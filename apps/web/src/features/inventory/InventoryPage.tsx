@@ -39,7 +39,7 @@ function MissingIcon() {
 
 function InventoryPageSkeleton() {
   return (
-    <div className="inventory-page">
+    <div className="inventory-page page-transition-wrapper">
       <div className="inv-category-bar" style={{ display: 'flex', gap: 8, padding: '8px 16px' }}>
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="skeleton" style={{ width: 76, height: 30, borderRadius: 20, flexShrink: 0 }} />
@@ -103,7 +103,7 @@ export default function InventoryPage() {
   const getItemKey = (item: any) => item.kind === 'gear' ? item.instanceId : item.itemId || item.id;
 
   return (
-    <div className="inventory-page">
+    <div className="inventory-page page-transition-wrapper">
       <div className="inv-container">
         <div className="inv-category-bar">
           {CATEGORY_TABS.map((tab) => (
