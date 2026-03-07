@@ -8,34 +8,8 @@ function getThreatMult(threat: number): number {
   return 5000;
 }
 
-function getBuildingLevelMult(level: number): number {
-  return 10000 + (level - 1) * 500;
-}
-
-function getMaxWorkers(locationLevel: number): number {
-  if (locationLevel >= 50) return 7;
-  if (locationLevel >= 40) return 6;
-  if (locationLevel >= 30) return 5;
-  if (locationLevel >= 20) return 4;
-  if (locationLevel >= 10) return 3;
-  return 2;
-}
-
-function getWorkerMult(workerCount: number, maxWorkers: number): number {
-  if (maxWorkers === 0) return BPS_BASE;
-  const ratio = workerCount / maxWorkers;
-  return Math.floor(5000 + ratio * 5000);
-}
-
-function getRoomProductionMult(rooms: any[], outputKey: string): number {
-  let mult = BPS_BASE;
-  for (const room of rooms) {
-    const roomData = room.data as any;
-    if (roomData?.productionMultBps && roomData.productionMultBps[outputKey]) {
-      mult = Math.floor((mult * Number(roomData.productionMultBps[outputKey])) / BPS_BASE);
-    }
-  }
-  return mult;
+function getWorkerMult(workerCount: number): number {
+  return 10000 + workerCount * 2000;
 }
 
 function getCapacityForKey(location: any, key: string): number {
@@ -94,9 +68,8 @@ export function computeGeneratorProduction(
     (b: any) => b.enabled && b.status !== 'building',
   );
 
-  const maxWorkers = getMaxWorkers(location.level);
   const workerCount = (location.workers || []).length;
-  const workerMultBps = getWorkerMult(workerCount, maxWorkers);
+  const workerMultBps = getWorkerMult(workerCount);
   const threatMultBps = getThreatMult(location.threatLevel || 0);
 
   const results: GeneratorProduction[] = [];
@@ -104,16 +77,10 @@ export function computeGeneratorProduction(
   for (const building of generators) {
     if (!building.outputRefId || building.outputRefId === 'null') continue;
     const resourcePerHour = Number(building.resourcePerHour || 0);
-    const buildingMultBps = getBuildingLevelMult(building.level);
     const key = `${building.outputType}:${building.outputRefId}`;
 
-    const allRooms = (location.buildings || []).flatMap((b: any) => b.rooms || []);
-    const roomMultBps = getRoomProductionMult(allRooms, key);
-
     let output = resourcePerHour;
-    output = (output * buildingMultBps) / BPS_BASE;
     output = (output * workerMultBps) / BPS_BASE;
-    output = (output * roomMultBps) / BPS_BASE;
     output = (output * threatMultBps) / BPS_BASE;
 
     results.push({
