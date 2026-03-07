@@ -1,61 +1,133 @@
 .profile-page {
-  padding: 20px 16px 100px;
-  max-width: 600px;
+  padding: 4px 0 100px;
+  max-width: 520px;
   margin: 0 auto;
 }
 
-.profile-header {
-  margin-bottom: 20px;
+/* ── Wrapper card ── */
+.profile-wrapper-card {
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: card-enter 0.2s ease-out both;
 }
 
-.profile-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.profile-tabs {
+/* ── Banner ── */
+.profile-banner {
   display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 20px 18px;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.profile-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6D28D9, #4C1D95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #e2d9ff;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4), 0 0 16px rgba(139, 92, 246, 0.2);
+  flex-shrink: 0;
+}
+
+.profile-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.profile-username {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #e2d9ff;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-banner-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-keeper-badge {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+
+.profile-since {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ── Tab strip ── */
+.profile-tab-strip {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
 }
 
 .profile-tab {
   flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
+  padding: 11px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
   color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: 'Exo 2', system-ui, sans-serif;
 }
 
-.profile-tab.active {
-  background: rgba(139, 92, 246, 0.25);
+.profile-tab:hover {
   color: #c4b5fd;
 }
 
-.profile-card {
-  background: linear-gradient(145deg, rgba(26, 22, 64, 0.85), rgba(12, 10, 26, 0.85));
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 16px;
-  padding: 4px 0;
-  overflow: hidden;
+.profile-tab.active {
+  color: #c4b5fd;
+  border-bottom-color: var(--derp-purple);
 }
 
+/* ── Tab content ── */
+.profile-tab-content {
+  padding: 4px 20px 20px;
+}
+
+/* ── Account fields ── */
 .profile-field {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 20px;
+  padding: 13px 0;
   border-bottom: 1px solid rgba(139, 92, 246, 0.1);
 }
 
@@ -64,9 +136,11 @@
 }
 
 .profile-field-label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .profile-field-value {
@@ -82,16 +156,17 @@
 
 .profile-highlight {
   color: #c4b5fd;
-  font-weight: 600;
+  font-weight: 700;
 }
 
+/* ── Shared utility states ── */
 .profile-error {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
   padding: 10px 14px;
   border-radius: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   font-size: 13px;
 }
 
@@ -105,15 +180,16 @@
 .profile-empty {
   text-align: center;
   color: var(--text-secondary);
-  padding: 32px 16px;
+  padding: 28px 16px;
   font-size: 14px;
 }
 
+/* ── Wallet list ── */
 .wallet-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .wallet-item {
@@ -121,10 +197,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(26, 22, 64, 0.7);
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  border-radius: 12px;
-  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.14);
+  border-radius: 11px;
+  padding: 11px 14px;
 }
 
 .wallet-item-left {
@@ -140,7 +216,7 @@
   font-weight: 700;
   color: white;
   padding: 3px 7px;
-  border-radius: 6px;
+  border-radius: 5px;
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.3px;
@@ -160,7 +236,7 @@
   font-size: 10px;
   font-weight: 600;
   color: #a78bfa;
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.14);
   border: 1px solid rgba(139, 92, 246, 0.3);
   padding: 2px 7px;
   border-radius: 5px;
@@ -181,8 +257,9 @@
   border-radius: 7px;
   border: 1px solid;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, background 0.15s;
   white-space: nowrap;
+  font-family: 'Exo 2', system-ui, sans-serif;
 }
 
 .wallet-action-btn:disabled {
@@ -191,36 +268,36 @@
 }
 
 .wallet-action-primary {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.35);
   color: #c4b5fd;
 }
 
 .wallet-action-primary:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.22);
 }
 
 .wallet-action-remove {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.28);
   color: #f87171;
 }
 
 .wallet-action-remove:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.18);
 }
 
 .wallet-add-section {
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 .wallet-add-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-secondary);
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
 .wallet-btn-group {
@@ -235,13 +312,14 @@
   gap: 10px;
   width: 100%;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 11px;
   border: 1px solid;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
   text-align: left;
+  font-family: 'Exo 2', system-ui, sans-serif;
 }
 
 .wallet-btn:disabled {
@@ -254,51 +332,36 @@
 }
 
 .wallet-btn-evm {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.28);
   color: #a5b4fc;
 }
 
 .wallet-btn-evm:not(:disabled):hover {
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.18);
 }
 
 .wallet-btn-cardano {
-  background: rgba(0, 51, 173, 0.12);
-  border-color: rgba(0, 102, 255, 0.3);
+  background: rgba(0, 51, 173, 0.1);
+  border-color: rgba(0, 102, 255, 0.28);
   color: #93c5fd;
 }
 
 .wallet-btn-cardano:not(:disabled):hover {
-  box-shadow: 0 4px 12px rgba(0, 100, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 100, 255, 0.14);
 }
 
-.profile-wallets {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-nft {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
+/* ── NFT tab ── */
 .nft-sync-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: rgba(26, 22, 64, 0.7);
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  border-radius: 12px;
-  padding: 14px 16px;
-}
-
-.nft-sync-bar-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.14);
+  border-radius: 11px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
 }
 
 .nft-sync-label {
@@ -307,22 +370,24 @@
 }
 
 .nft-sync-btn {
-  padding: 9px 18px;
+  padding: 8px 16px;
   background: linear-gradient(135deg, #8B5CF6, #6D28D9);
   border: none;
-  border-radius: 9px;
+  border-radius: 8px;
   color: white;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
   cursor: pointer;
   white-space: nowrap;
   transition: opacity 0.15s, transform 0.15s;
-  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.22);
+  font-family: 'Exo 2', system-ui, sans-serif;
 }
 
 .nft-sync-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 5px 15px rgba(139, 92, 246, 0.35);
+  box-shadow: 0 5px 14px rgba(139, 92, 246, 0.32);
 }
 
 .nft-sync-btn:disabled {
@@ -335,17 +400,18 @@
   border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
+  margin-bottom: 14px;
 }
 
 .nft-sync-result-new {
-  background: rgba(52, 211, 153, 0.1);
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.28);
   color: #6ee7b7;
 }
 
 .nft-sync-result-ok {
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.07);
+  border: 1px solid rgba(139, 92, 246, 0.18);
   color: var(--text-secondary);
 }
 
@@ -356,10 +422,10 @@
 }
 
 .nft-entity-item {
-  background: rgba(26, 22, 64, 0.7);
-  border: 1px solid rgba(139, 92, 246, 0.15);
-  border-radius: 12px;
-  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.14);
+  border-radius: 11px;
+  padding: 11px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -397,10 +463,10 @@
 }
 
 .nft-entity-level {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: #c4b5fd;
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.14);
   border: 1px solid rgba(139, 92, 246, 0.25);
   padding: 2px 7px;
   border-radius: 5px;
@@ -420,6 +486,7 @@
 
 .nft-empty-hint {
   font-size: 12px;
-  color: rgba(156, 163, 175, 0.5);
+  color: rgba(156, 163, 175, 0.45);
   margin-top: 4px;
+  line-height: 1.5;
 }
