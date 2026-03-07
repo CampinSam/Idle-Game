@@ -573,18 +573,22 @@
 }
 
 .md-body {
-  padding: 16px;
+  padding: 12px;
   padding-bottom: 80px;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .md-description {
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  line-height: 1.6;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 
 .md-mission-tabs {
@@ -616,9 +620,10 @@
 }
 
 .md-stats-card {
-  padding: 14px 0;
-  margin-bottom: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
 }
 
 .md-stats-header {
@@ -694,9 +699,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 0;
-  margin-bottom: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
 }
 
 .md-success-label {
@@ -749,9 +755,10 @@
 }
 
 .md-rewards-section {
-  margin-bottom: 0;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
+  padding: 14px;
 }
 
 .md-section-header {
@@ -762,9 +769,11 @@
 }
 
 .md-section-title {
-  font-size: 16px;
+  font-size: 11px;
   font-weight: 800;
-  color: var(--text-primary);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .md-auto-assign {
@@ -795,10 +804,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 7px 12px;
 }
 
 .md-reward-icon {
@@ -812,8 +821,25 @@
 }
 
 .md-team-section {
-  margin-bottom: 0;
-  padding-top: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.08);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.md-team-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.md-team-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
 }
 
 .md-team-grid {
@@ -945,20 +971,19 @@
 }
 
 .md-entity-picker {
-  margin-top: 14px;
-  background: linear-gradient(135deg, rgba(25, 15, 55, 0.95) 0%, rgba(15, 10, 40, 0.95) 100%);
-  border: 2px solid rgba(139, 92, 246, 0.3);
-  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
   padding: 14px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .md-picker-label {
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
-  color: var(--text-primary);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
   margin-bottom: 10px;
-  letter-spacing: 0.5px;
 }
 
 .md-picker-grid {

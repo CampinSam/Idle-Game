@@ -534,6 +534,9 @@ export default function MissionsPage() {
           </div>
 
           <div className="md-team-section" ref={teamGridRef}>
+            <div className="md-team-section-header">
+              <span className="md-team-label">SELECT YOUR TEAM</span>
+            </div>
             <div className="md-team-grid">
               {selectedEntities.map((entityId, slotIndex) => {
                 const entity = entities.find((b: any) => b.id === entityId);
