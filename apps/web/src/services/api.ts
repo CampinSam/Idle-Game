@@ -354,6 +354,17 @@ class ApiClient {
   setWalletPrimary(id: string) {
     return this.request<{ success: true }>(`/player/wallets/${id}/primary`, { method: 'POST' });
   }
+
+  // NFT collections
+  syncNftCollections() {
+    return this.request<{ created: number; alreadyClaimed: number; entities: any[] }>('/nft/collections/sync', {
+      method: 'POST',
+    });
+  }
+
+  getNftEntities() {
+    return this.request<any[]>('/nft/collections/entities');
+  }
 }
 
 export interface BootstrapResponse {

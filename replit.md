@@ -42,6 +42,7 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 - **Frontend**: `useWalletConnect` hook, `walletAuth.ts` utils, wallet buttons on Login/Register (hidden when no wallets detected), Profile page at `/profile` with Account + Wallets tabs (add/remove/set-primary).
 - **Supported chains**: CARDANO (CIP-30 browser wallets: nami, eternl, vespr, begin, flint, nufi, lace, yoroi), ETH, BASE, MATIC.
 - **authSlice**: New `setAuth` action for wallet sign-in flow.
+- **NFT Collection System**: `NftCollectionDef` DB model (chain + collectionId + entityDefinitionId); claim tracking via `Entity.nftAssetId` (format: `{chain}:{collectionId}:{assetId}`) + `Entity.nftCollectionDefId` — no separate claim table. Admin endpoints `GET/POST/PUT/DELETE /nft/collections`; player endpoints `POST /nft/collections/sync` and `GET /nft/collections/entities`. Profile page has "NFT Entities" tab with Sync button.
 
 **Core Systems & Features:**
 - **Database**: PostgreSQL with Prisma ORM.

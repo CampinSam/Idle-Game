@@ -277,3 +277,149 @@
   display: flex;
   flex-direction: column;
 }
+
+.profile-nft {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nft-sync-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(26, 22, 64, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.nft-sync-bar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nft-sync-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.nft-sync-btn {
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  border: none;
+  border-radius: 9px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 3px 10px rgba(139, 92, 246, 0.25);
+}
+
+.nft-sync-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 15px rgba(139, 92, 246, 0.35);
+}
+
+.nft-sync-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nft-sync-result {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.nft-sync-result-new {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+}
+
+.nft-sync-result-ok {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: var(--text-secondary);
+}
+
+.nft-entity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nft-entity-item {
+  background: rgba(26, 22, 64, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nft-entity-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nft-collection-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.nft-entity-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nft-entity-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nft-entity-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nft-entity-level {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.nft-token-id {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'Fira Code', monospace;
+}
+
+.nft-empty-icon {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.nft-empty-hint {
+  font-size: 12px;
+  color: rgba(156, 163, 175, 0.5);
+  margin-top: 4px;
+}

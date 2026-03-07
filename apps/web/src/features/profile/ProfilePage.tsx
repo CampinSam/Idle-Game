@@ -4,7 +4,7 @@ import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
 import './Profile.css';
 
-type Tab = 'account' | 'wallets';
+type Tab = 'account' | 'wallets' | 'nft';
 
 const CHAIN_LABELS: Record<string, string> = {
   ETH: 'Ethereum',
@@ -25,6 +25,11 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 8)}...${address.slice(-6)}`;
 }
 
+function truncateId(id: string): string {
+  if (!id || id.length <= 12) return id;
+  return `${id.slice(0, 6)}...${id.slice(-4)}`;
+}
+
 export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>('account');
   const player = useAppSelector((s) => s.auth.player);
@@ -33,6 +38,12 @@ export default function ProfilePage() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
   const [walletOpError, setWalletOpError] = useState<string | null>(null);
+
+  const [nftEntities, setNftEntities] = useState<any[]>([]);
+  const [nftLoading, setNftLoading] = useState(false);
+  const [nftSyncing, setNftSyncing] = useState(false);
+  const [nftError, setNftError] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{ created: number; alreadyClaimed: number } | null>(null);
 
   const {
     connecting,
@@ -56,9 +67,23 @@ export default function ProfilePage() {
     }
   }, []);
 
+  const loadNftEntities = useCallback(async () => {
+    setNftLoading(true);
+    setNftError(null);
+    try {
+      const list = await api.getNftEntities();
+      setNftEntities(list);
+    } catch (err: any) {
+      setNftError(err?.message || 'Failed to load NFT entities');
+    } finally {
+      setNftLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (tab === 'wallets') loadWallets();
-  }, [tab, loadWallets]);
+    if (tab === 'nft') loadNftEntities();
+  }, [tab, loadWallets, loadNftEntities]);
 
   const handleRemove = async (id: string) => {
     setWalletOpError(null);
@@ -96,6 +121,21 @@ export default function ProfilePage() {
     if (ok) await loadWallets();
   };
 
+  const handleSyncNfts = async () => {
+    setNftSyncing(true);
+    setNftError(null);
+    setSyncResult(null);
+    try {
+      const result = await api.syncNftCollections();
+      setSyncResult({ created: result.created, alreadyClaimed: result.alreadyClaimed });
+      if (result.created > 0) await loadNftEntities();
+    } catch (err: any) {
+      setNftError(err?.message || 'Sync failed');
+    } finally {
+      setNftSyncing(false);
+    }
+  };
+
   return (
     <div className="profile-page">
       <div className="profile-header">
@@ -103,17 +143,14 @@ export default function ProfilePage() {
       </div>
 
       <div className="profile-tabs">
-        <button
-          className={`profile-tab ${tab === 'account' ? 'active' : ''}`}
-          onClick={() => setTab('account')}
-        >
+        <button className={`profile-tab ${tab === 'account' ? 'active' : ''}`} onClick={() => setTab('account')}>
           Account
         </button>
-        <button
-          className={`profile-tab ${tab === 'wallets' ? 'active' : ''}`}
-          onClick={() => setTab('wallets')}
-        >
+        <button className={`profile-tab ${tab === 'wallets' ? 'active' : ''}`} onClick={() => setTab('wallets')}>
           Wallets
+        </button>
+        <button className={`profile-tab ${tab === 'nft' ? 'active' : ''}`} onClick={() => setTab('nft')}>
+          NFT Entities
         </button>
       </div>
 
@@ -134,7 +171,9 @@ export default function ProfilePage() {
           <div className="profile-field">
             <span className="profile-field-label">Member Since</span>
             <span className="profile-field-value">
-              {player?.createdAt ? new Date(player.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+              {player?.createdAt
+                ? new Date(player.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+                : '—'}
             </span>
           </div>
         </div>
@@ -157,10 +196,7 @@ export default function ProfilePage() {
                   {wallets.map((w) => (
                     <div key={w.id} className="wallet-item">
                       <div className="wallet-item-left">
-                        <span
-                          className="wallet-chain-badge"
-                          style={{ background: CHAIN_COLORS[w.chain] || '#555' }}
-                        >
+                        <span className="wallet-chain-badge" style={{ background: CHAIN_COLORS[w.chain] || '#555' }}>
                           {CHAIN_LABELS[w.chain] || w.chain}
                         </span>
                         <span className="wallet-address" title={w.address}>
@@ -170,17 +206,11 @@ export default function ProfilePage() {
                       </div>
                       <div className="wallet-item-actions">
                         {!w.isPrimary && (
-                          <button
-                            className="wallet-action-btn wallet-action-primary"
-                            onClick={() => handleSetPrimary(w.id)}
-                          >
+                          <button className="wallet-action-btn wallet-action-primary" onClick={() => handleSetPrimary(w.id)}>
                             Set Primary
                           </button>
                         )}
-                        <button
-                          className="wallet-action-btn wallet-action-remove"
-                          onClick={() => handleRemove(w.id)}
-                        >
+                        <button className="wallet-action-btn wallet-action-remove" onClick={() => handleRemove(w.id)}>
                           Remove
                         </button>
                       </div>
@@ -194,11 +224,7 @@ export default function ProfilePage() {
                   <h3 className="wallet-add-title">Add a wallet</h3>
                   <div className="wallet-btn-group">
                     {hasEvm && (
-                      <button
-                        className="wallet-btn wallet-btn-evm"
-                        onClick={handleLinkEvm}
-                        disabled={connecting}
-                      >
+                      <button className="wallet-btn wallet-btn-evm" onClick={handleLinkEvm} disabled={connecting}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="1" y="4" width="22" height="16" rx="2"/>
                           <line x1="1" y1="10" x2="23" y2="10"/>
@@ -207,12 +233,7 @@ export default function ProfilePage() {
                       </button>
                     )}
                     {detectedCardanoWallets.map((cw) => (
-                      <button
-                        key={cw.key}
-                        className="wallet-btn wallet-btn-cardano"
-                        onClick={() => handleLinkCardano(cw.key)}
-                        disabled={connecting}
-                      >
+                      <button key={cw.key} className="wallet-btn wallet-btn-cardano" onClick={() => handleLinkCardano(cw.key)} disabled={connecting}>
                         {cw.icon ? (
                           <img src={cw.icon} alt={cw.name} width="16" height="16" style={{ borderRadius: 3 }} />
                         ) : (
@@ -227,6 +248,71 @@ export default function ProfilePage() {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {tab === 'nft' && (
+        <div className="profile-nft">
+          <div className="nft-sync-bar">
+            <div className="nft-sync-bar-left">
+              <span className="nft-sync-label">Scan your linked wallets for NFTs</span>
+            </div>
+            <button className="nft-sync-btn" onClick={handleSyncNfts} disabled={nftSyncing || nftLoading}>
+              {nftSyncing ? 'Syncing...' : 'Sync NFTs'}
+            </button>
+          </div>
+
+          {syncResult && (
+            <div className={`nft-sync-result ${syncResult.created > 0 ? 'nft-sync-result-new' : 'nft-sync-result-ok'}`}>
+              {syncResult.created > 0
+                ? `${syncResult.created} new ${syncResult.created === 1 ? 'entity' : 'entities'} discovered!`
+                : 'All up to date — no new NFTs found.'}
+              {syncResult.alreadyClaimed > 0 && ` (${syncResult.alreadyClaimed} already claimed)`}
+            </div>
+          )}
+
+          {nftError && <div className="profile-error">{nftError}</div>}
+
+          {nftLoading ? (
+            <div className="profile-loading">Loading NFT entities...</div>
+          ) : nftEntities.length === 0 ? (
+            <div className="profile-empty">
+              <div className="nft-empty-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                  <path d="M2 17l10 5 10-5"/>
+                  <path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <p>No NFT entities yet.</p>
+              <p className="nft-empty-hint">Link wallets and sync to discover entities from registered NFT collections.</p>
+            </div>
+          ) : (
+            <div className="nft-entity-list">
+              {nftEntities.map((e) => (
+                <div key={e.id} className="nft-entity-item">
+                  <div className="nft-entity-header">
+                    <span
+                      className="wallet-chain-badge"
+                      style={{ background: CHAIN_COLORS[e.chain] || '#555' }}
+                    >
+                      {CHAIN_LABELS[e.chain] || e.chain || '?'}
+                    </span>
+                    {e.collectionName && (
+                      <span className="nft-collection-name">{e.collectionName}</span>
+                    )}
+                  </div>
+                  <div className="nft-entity-body">
+                    <div className="nft-entity-name">{(e.display as any)?.name || 'Unnamed Entity'}</div>
+                    <div className="nft-entity-meta">
+                      <span className="nft-entity-level">Lv {(e.progression as any)?.level ?? 1}</span>
+                      <span className="nft-token-id" title={e.assetId}>#{truncateId(e.assetId || '')}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

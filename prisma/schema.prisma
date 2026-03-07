@@ -78,6 +78,22 @@ model WalletNonce {
   @@map("wallet_nonces")
 }
 
+model NftCollectionDef {
+  id                 String   @id
+  name               String
+  chain              String
+  collectionId       String
+  entityDefinitionId String
+  mintMode           String   @default("one_per_token")
+  active             Boolean  @default(true)
+  data               Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([chain, collectionId])
+  @@map("nft_collection_defs")
+}
+
 model Currency {
   id          String       @id
   name        String
@@ -226,10 +242,11 @@ model TraitDefinition {
 // ═══════════════════════════════════════════════════
 
 model Entity {
-  id              String   @id @default(uuid())
-  ownerUserId     String
-  ecosystemId     String?
-  nftAssetId      String?  @unique
+  id                 String   @id @default(uuid())
+  ownerUserId        String
+  ecosystemId        String?
+  nftAssetId         String?  @unique
+  nftCollectionDefId String?
 
   definitionId    String
   speciesId       String
