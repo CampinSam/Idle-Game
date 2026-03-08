@@ -65,20 +65,33 @@ export class NotificationService {
     };
 
     if (data.sourceType && data.sourceId) {
-      const result = await this.notification.upsert({
+      const existing = await this.notification.findFirst({
         where: {
-          notifications_source_unique: {
-            userId: data.userId,
-            sourceType: data.sourceType,
-            sourceId: data.sourceId,
-            type: data.type,
-          },
+          userId: data.userId,
+          sourceType: data.sourceType,
+          sourceId: data.sourceId,
+          type: data.type,
         },
-        create: payload,
-        update: {},
       });
-      await this.pruneOld(data.userId);
-      return result;
+      if (existing) return existing;
+
+      try {
+        const created = await this.notification.create({ data: payload });
+        await this.pruneOld(data.userId);
+        return created;
+      } catch (e: any) {
+        if (e?.code === 'P2002') {
+          return await this.notification.findFirst({
+            where: {
+              userId: data.userId,
+              sourceType: data.sourceType,
+              sourceId: data.sourceId,
+              type: data.type,
+            },
+          });
+        }
+        throw e;
+      }
     }
 
     const created = await this.notification.create({ data: payload });

@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
+import { PubSubService } from '../infrastructure/pubsub.service';
 
 const JOB_TYPE_CONFIG: Record<string, { defTable: string; category: string; label: string; screen: string }> = {
   MissionJob: { defTable: 'missionDef', category: 'missions', label: 'Mission', screen: '/missions' },
@@ -22,6 +23,7 @@ export class JobController {
     private tickService: TickService,
     private notificationService: NotificationService,
     private currencyService: CurrencyService,
+    private pubsub: PubSubService,
   ) {}
 
   private async getDefForJob(job: any): Promise<any> {
@@ -167,6 +169,8 @@ export class JobController {
       where: { id: { in: jobIds }, userId: user.id, status: 'active' },
     });
 
+    const createdNotifs: any[] = [];
+
     if (jobs.length > 0) {
       const byType = new Map<string, any[]>();
       for (const job of jobs) {
@@ -189,7 +193,7 @@ export class JobController {
           try {
             const def = defMap.get(job.defId);
             const defName = def?.name || config.label;
-            await this.notificationService.createNotification({
+            const notif = await this.notificationService.createNotification({
               userId: user.id,
               type: 'job_ready',
               category: config.category,
@@ -200,6 +204,7 @@ export class JobController {
               sourceType: 'job_ready',
               sourceId: job.id,
             });
+            if (notif) createdNotifs.push(notif);
           } catch (err) {
             this.logger.warn(`Failed to create job_ready notification for ${job.id}: ${err}`);
           }
@@ -215,6 +220,57 @@ export class JobController {
       },
       data: { status: 'ready_notified' },
     });
+
+    if (createdNotifs.length > 0) {
+      try {
+        const notifPatches = createdNotifs.map((n: any) => ({
+          op: 'upsert' as const,
+          entity: 'notification',
+          id: n.id,
+          data: n,
+        }));
+
+        const updatedJobs = await (this.prisma as any).job.findMany({
+          where: { id: { in: jobIds }, userId: user.id },
+        });
+        const jobPatches = updatedJobs.map((j: any) => {
+          const timer = j.timer as any;
+          return {
+            op: 'upsert' as const,
+            entity: 'job',
+            id: j.id,
+            data: {
+              id: j.id,
+              type: j.type,
+              defId: j.defId,
+              status: j.status,
+              timer: j.timer,
+              team: j.team,
+              data: j.data,
+              results: j.results,
+              startTick: timer?.startTick ?? null,
+              durationTicks: timer?.durationTicks ?? null,
+            },
+          };
+        });
+
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: {
+            userId: user.id,
+            patches: [...notifPatches, ...jobPatches] as any,
+            ui: [] as any,
+          },
+        });
+
+        this.pubsub.publish(`player:${user.id}`, {
+          userId: user.id,
+          deltaId: delta.id.toString(),
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to push notification delta for user ${user.id}: ${err}`);
+      }
+    }
+
     return { updated: result.count };
   }
 }
