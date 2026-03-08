@@ -334,16 +334,29 @@ export default function StorePage() {
       </div>
 
       {selectedItem && (
-        <div className="store-confirm-bar">
-          <div className="store-confirm-info">
-            <span className="store-confirm-name">{selectedItem.name}</span>
+        <div
+          className="store-confirm-overlay"
+          onClick={() => { setSelectedItem(null); setConfirmError(''); }}
+          role="presentation"
+        >
+          <div
+            className="store-confirm-popup"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="store-confirm-header">
+              <span className="store-confirm-subtitle">Confirm Purchase</span>
+              <span className="store-confirm-name">{selectedItem.name}</span>
+            </div>
+
             <div className="store-confirm-costs">
               {selectedItem.cost.map((c, i) => {
                 const balance = getBalanceForCost(c);
                 const enough = balance >= c.amount;
                 return (
                   <div key={i} className={`store-confirm-cost-row ${!enough ? 'insufficient' : ''}`}>
-                    <GameIcon src={c.id} size={15} />
+                    <GameIcon src={c.id} size={16} />
                     <span className="store-confirm-cost-label">
                       {resolveName(c.type === 'currency' ? 'CURRENCY' : 'ITEM', c.id, currencyDefs, itemDefs)}
                     </span>
@@ -355,19 +368,21 @@ export default function StorePage() {
                 );
               })}
             </div>
+
             {confirmError && <div className="store-confirm-error">{confirmError}</div>}
-          </div>
-          <div className="store-confirm-actions">
-            <button className="store-confirm-cancel" onClick={() => { setSelectedItem(null); setConfirmError(''); }}>
-              Cancel
-            </button>
-            <button
-              className="store-confirm-buy"
-              disabled={!canAfford || confirming}
-              onClick={handleConfirm}
-            >
-              {confirming ? 'Buying...' : canAfford ? 'Confirm' : 'Can\'t Afford'}
-            </button>
+
+            <div className="store-confirm-actions">
+              <button className="store-confirm-cancel" onClick={() => { setSelectedItem(null); setConfirmError(''); }}>
+                Cancel
+              </button>
+              <button
+                className="store-confirm-buy"
+                disabled={!canAfford || confirming}
+                onClick={handleConfirm}
+              >
+                {confirming ? 'Buying...' : canAfford ? 'Confirm' : 'Can\'t Afford'}
+              </button>
+            </div>
           </div>
         </div>
       )}
