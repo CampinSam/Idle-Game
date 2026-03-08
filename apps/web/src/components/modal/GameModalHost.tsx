@@ -151,6 +151,21 @@ export default function GameModalHost() {
           return;
         }
 
+        case 'SHOP_PURCHASE': {
+          try {
+            const response = await execute('ShopPurchase', { shopItemDefId: action.shopItemDefId });
+            const modalIntent = response.ui.find((i) => i.type === 'modal');
+            if (modalIntent && modalIntent.type === 'modal') {
+              replaceModal(modalIntent.spec);
+            } else {
+              dismissModal();
+            }
+          } catch (err: any) {
+            console.warn('[GameModalHost] ShopPurchase failed:', err?.message);
+          }
+          return;
+        }
+
         case 'API_CALL': {
           const { apiKey, payload } = action;
 

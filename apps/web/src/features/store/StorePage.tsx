@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
-import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import GameIcon from '../../components/GameIcon';
 import { resolveName } from '../../utils/iconResolver';
@@ -71,14 +71,14 @@ function SkeletonCard({ wide }: { wide?: boolean }) {
   return <div className={`store-skeleton ${wide ? 'store-skeleton-wide' : ''}`} />;
 }
 
-function FeaturedCard({ item, onSelect, selected }: { item: ShopItem; onSelect: (item: ShopItem) => void; selected: boolean }) {
+function FeaturedCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   const countdown = useCountdown(item.limitedUntil);
   const accentColor = item.badgeColor || '#8b5cf6';
   return (
     <div
-      className={`store-featured-card ${selected ? 'selected' : ''}`}
+      className="store-featured-card"
       style={{ '--accent': accentColor } as React.CSSProperties}
-      onClick={() => onSelect(item)}
+      onClick={() => onOpen(item)}
     >
       <div className="store-featured-shimmer" />
       {item.badge && (
@@ -108,13 +108,13 @@ function FeaturedCard({ item, onSelect, selected }: { item: ShopItem; onSelect: 
   );
 }
 
-function CurrencyCard({ item, onSelect, selected }: { item: ShopItem; onSelect: (item: ShopItem) => void; selected: boolean }) {
+function CurrencyCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   const mainContent = item.contents[0];
   const isBestValue = item.badge === 'BEST VALUE';
   return (
     <div
-      className={`store-currency-card ${isBestValue ? 'best-value' : ''} ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(item)}
+      className={`store-currency-card ${isBestValue ? 'best-value' : ''}`}
+      onClick={() => onOpen(item)}
     >
       {item.badge && (
         <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
@@ -138,11 +138,11 @@ function CurrencyCard({ item, onSelect, selected }: { item: ShopItem; onSelect: 
   );
 }
 
-function BundleCard({ item, onSelect, selected }: { item: ShopItem; onSelect: (item: ShopItem) => void; selected: boolean }) {
+function BundleCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   return (
     <div
-      className={`store-bundle-card ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(item)}
+      className="store-bundle-card"
+      onClick={() => onOpen(item)}
     >
       {item.badge && (
         <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
@@ -164,11 +164,11 @@ function BundleCard({ item, onSelect, selected }: { item: ShopItem; onSelect: (i
   );
 }
 
-function ItemCard({ item, onSelect, selected }: { item: ShopItem; onSelect: (item: ShopItem) => void; selected: boolean }) {
+function ItemCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   return (
     <div
-      className={`store-item-card ${selected ? 'selected' : ''}`}
-      onClick={() => onSelect(item)}
+      className="store-item-card"
+      onClick={() => onOpen(item)}
     >
       {item.badge && (
         <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
@@ -196,22 +196,12 @@ export default function StorePage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('featured');
-  const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
-  const [confirming, setConfirming] = useState(false);
-  const [confirmError, setConfirmError] = useState('');
 
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
   const { pushModal } = useModal();
-  const { execute } = useCommand({
-    onUiIntent: (intent) => {
-      if (intent.type === 'modal' && intent.spec?.version === 1) {
-        pushModal(intent.spec);
-      }
-    },
-  });
 
   useEffect(() => {
     fetch('/api/shop/items', {
@@ -229,35 +219,57 @@ export default function StorePage() {
 
   const tabItems = items.filter((i) => i.tab === activeTab);
 
-  const handleSelect = useCallback((item: ShopItem) => {
-    setSelectedItem((prev) => (prev?.id === item.id ? null : item));
-    setConfirmError('');
-  }, []);
+  const handleOpenModal = useCallback((item: ShopItem) => {
+    const body: ModalSpecV1['body'] = [];
 
-  const handleConfirm = useCallback(async () => {
-    if (!selectedItem || confirming) return;
-    setConfirming(true);
-    setConfirmError('');
-    try {
-      await execute('ShopPurchase', { shopItemDefId: selectedItem.id });
-      setSelectedItem(null);
-    } catch (err: any) {
-      setConfirmError(err?.message || 'Purchase failed');
-    } finally {
-      setConfirming(false);
+    if (item.description) {
+      body.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: item.description }] }],
+      });
     }
-  }, [selectedItem, confirming, execute]);
 
-  const getBalanceForCost = (costEntry: CostEntry) => {
-    if (costEntry.type === 'currency') {
-      return currencyBalances[costEntry.id] ?? 0;
+    if (item.contents.length > 0) {
+      body.push({
+        type: 'rewardsList',
+        title: "You'll Receive",
+        items: item.contents.map((c) => ({
+          name: resolveName(c.type === 'currency' ? 'CURRENCY' : 'ITEM', c.id, currencyDefs, itemDefs),
+          qty: c.amount,
+          assetKey: c.id,
+        })),
+      });
     }
-    return 0;
-  };
 
-  const canAfford = selectedItem
-    ? selectedItem.cost.every((c) => getBalanceForCost(c) >= c.amount)
-    : true;
+    if (item.cost.length > 0) {
+      body.push({
+        type: 'metaRows',
+        rows: item.cost.map((c) => {
+          const balance = c.type === 'currency' ? (currencyBalances[c.id] ?? 0) : 0;
+          const name = resolveName(c.type === 'currency' ? 'CURRENCY' : 'ITEM', c.id, currencyDefs, itemDefs);
+          return {
+            label: `${name} (have: ${balance.toLocaleString()})`,
+            value: c.amount.toLocaleString(),
+          };
+        }),
+      });
+    }
+
+    const spec: ModalSpecV1 = {
+      version: 1,
+      id: `shop-item-${item.id}`,
+      kind: 'shop_item_detail',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: { title: item.name },
+      body,
+      buttons: [
+        { id: 'cancel', label: 'Cancel', variant: 'ghost', action: { type: 'CLOSE_MODAL' } },
+        { id: 'buy', label: 'Buy Now', variant: 'primary', action: { type: 'SHOP_PURCHASE', shopItemDefId: item.id } },
+      ],
+    };
+
+    pushModal(spec);
+  }, [pushModal, currencyDefs, itemDefs, currencyBalances]);
 
   const mainCurrencies = ['soft_arcanium', 'hard_essence', 'premium_gems'];
 
@@ -278,7 +290,7 @@ export default function StorePage() {
           <button
             key={tab}
             className={`store-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => { setActiveTab(tab); setSelectedItem(null); setConfirmError(''); }}
+            onClick={() => setActiveTab(tab)}
           >
             {TAB_LABELS[tab]}
           </button>
@@ -308,84 +320,31 @@ export default function StorePage() {
         ) : activeTab === 'featured' ? (
           <div className="store-featured-list">
             {tabItems.map((item) => (
-              <FeaturedCard key={item.id} item={item} onSelect={handleSelect} selected={selectedItem?.id === item.id} />
+              <FeaturedCard key={item.id} item={item} onOpen={handleOpenModal} />
             ))}
           </div>
         ) : activeTab === 'currency' ? (
           <div className="store-currency-grid">
             {tabItems.map((item) => (
-              <CurrencyCard key={item.id} item={item} onSelect={handleSelect} selected={selectedItem?.id === item.id} />
+              <CurrencyCard key={item.id} item={item} onOpen={handleOpenModal} />
             ))}
           </div>
         ) : activeTab === 'bundle' ? (
           <div className="store-bundle-grid">
             {tabItems.map((item) => (
-              <BundleCard key={item.id} item={item} onSelect={handleSelect} selected={selectedItem?.id === item.id} />
+              <BundleCard key={item.id} item={item} onOpen={handleOpenModal} />
             ))}
           </div>
         ) : (
           <div className="store-item-grid">
             {tabItems.map((item) => (
-              <ItemCard key={item.id} item={item} onSelect={handleSelect} selected={selectedItem?.id === item.id} />
+              <ItemCard key={item.id} item={item} onOpen={handleOpenModal} />
             ))}
           </div>
         )}
       </div>
       </div>
 
-      {selectedItem && (
-        <div
-          className="store-confirm-overlay"
-          onClick={() => { setSelectedItem(null); setConfirmError(''); }}
-          role="presentation"
-        >
-          <div
-            className="store-confirm-popup"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="store-confirm-header">
-              <span className="store-confirm-subtitle">Confirm Purchase</span>
-              <span className="store-confirm-name">{selectedItem.name}</span>
-            </div>
-
-            <div className="store-confirm-costs">
-              {selectedItem.cost.map((c, i) => {
-                const balance = getBalanceForCost(c);
-                const enough = balance >= c.amount;
-                return (
-                  <div key={i} className={`store-confirm-cost-row ${!enough ? 'insufficient' : ''}`}>
-                    <GameIcon src={c.id} size={16} />
-                    <span className="store-confirm-cost-label">
-                      {resolveName(c.type === 'currency' ? 'CURRENCY' : 'ITEM', c.id, currencyDefs, itemDefs)}
-                    </span>
-                    <span className="store-confirm-balance">
-                      {balance.toLocaleString()} / {c.amount.toLocaleString()}
-                    </span>
-                    {!enough && <span className="store-confirm-insufficient">✗</span>}
-                  </div>
-                );
-              })}
-            </div>
-
-            {confirmError && <div className="store-confirm-error">{confirmError}</div>}
-
-            <div className="store-confirm-actions">
-              <button className="store-confirm-cancel" onClick={() => { setSelectedItem(null); setConfirmError(''); }}>
-                Cancel
-              </button>
-              <button
-                className="store-confirm-buy"
-                disabled={!canAfford || confirming}
-                onClick={handleConfirm}
-              >
-                {confirming ? 'Buying...' : canAfford ? 'Confirm' : 'Can\'t Afford'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
