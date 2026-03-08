@@ -118,6 +118,16 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
       <div className="nc-panel" onClick={(e) => e.stopPropagation()}>
         <div className="nc-header">
           <h2 className="nc-title">Notifications</h2>
+          <div className="nc-header-actions">
+            {unreadCount > 0 && (
+              <button className="nc-header-action" onClick={() => markAllRead()}>
+                Mark all read
+              </button>
+            )}
+            <button className="nc-header-action" onClick={() => clearRead()}>
+              Clear read
+            </button>
+          </div>
           <button className="nc-close" onClick={onClose}>×</button>
         </div>
 
@@ -131,17 +141,6 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
               {f}
             </button>
           ))}
-        </div>
-
-        <div className="nc-actions">
-          {unreadCount > 0 && (
-            <button className="nc-action-btn" onClick={() => markAllRead()}>
-              Mark all read
-            </button>
-          )}
-          <button className="nc-action-btn" onClick={() => clearRead()}>
-            Clear read
-          </button>
         </div>
 
         <div className="nc-list">
