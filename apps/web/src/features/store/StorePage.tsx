@@ -263,6 +263,7 @@ export default function StorePage() {
 
   return (
     <div className="store-wrapper page-transition-wrapper">
+      <div className="store-card">
       <div className="store-balance-bar">
         {mainCurrencies.map((id) => (
           <div key={id} className="store-balance-chip">
@@ -329,6 +330,7 @@ export default function StorePage() {
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {selectedItem && (
