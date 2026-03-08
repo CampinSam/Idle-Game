@@ -57,15 +57,29 @@ export class OpenGiftPackageHandler implements CommandHandler {
       .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
       .join(', ');
 
+    const giftBodyText = rewardSummary || 'Your rewards have been added.';
+
     return {
       patches: pb.build(),
       ui: [
         {
           type: 'modal' as const,
-          key: `gift-opened-${itemInstanceId}`,
-          title: 'Gift Opened!',
-          body: rewardSummary || 'Your rewards have been added.',
-          buttons: [{ label: 'Collect', action: 'close' }],
+          spec: {
+            version: 1,
+            id: `gift-opened-${itemInstanceId}`,
+            kind: 'gift_opened',
+            dismiss: { backdrop: true, x: true, escape: true },
+            header: { title: 'Gift Opened!' },
+            body: [
+              {
+                type: 'richText',
+                doc: [{ t: 'p', c: [{ t: 'text', v: giftBodyText }] }],
+              },
+            ],
+            buttons: [
+              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+            ],
+          },
         },
       ],
     };

@@ -85,15 +85,29 @@ export class ShopPurchaseHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
+    const bodyText = grants.length > 0 ? `You received: ${grants.join(', ')}` : 'Purchase complete.';
+
     return {
       patches: pb.build(),
       ui: [
         {
           type: 'modal' as const,
-          key: `shop-purchase-${shopItemDefId}-${Date.now()}`,
-          title: `${item.name} Purchased!`,
-          body: grants.length > 0 ? `You received: ${grants.join(', ')}` : 'Purchase complete.',
-          buttons: [{ label: 'Collect', action: 'close' }],
+          spec: {
+            version: 1,
+            id: `shop-purchase-${shopItemDefId}-${Date.now()}`,
+            kind: 'shop_purchase',
+            dismiss: { backdrop: true, x: true, escape: true },
+            header: { title: `${item.name} Purchased!` },
+            body: [
+              {
+                type: 'richText',
+                doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+              },
+            ],
+            buttons: [
+              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+            ],
+          },
         },
       ],
     };

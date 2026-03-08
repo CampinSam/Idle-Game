@@ -408,7 +408,7 @@ export type Patch =
   | { op: 'delete'; entity: string; id: string };
 
 export type UiIntent =
-  | { type: 'modal'; key: string; title: string; body: any; buttons: any[] }
+  | { type: 'modal'; spec: import('@derp/shared').ModalSpecV1 }
   | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
   | { type: 'navigate'; deepLink: string };
 

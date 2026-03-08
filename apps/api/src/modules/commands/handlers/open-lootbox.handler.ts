@@ -121,15 +121,29 @@ export class OpenLootBoxHandler implements CommandHandler {
       .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.type}`)
       .join(', ');
 
+    const lootboxBodyText = rewardSummary || 'No rewards this time.';
+
     return {
       patches: pb.build(),
       ui: [
         {
           type: 'modal' as const,
-          key: `lootbox-opened-${itemInstanceId}`,
-          title: `${lootboxDef.name} Opened!`,
-          body: rewardSummary || 'No rewards this time.',
-          buttons: [{ label: 'Collect', action: 'close' }],
+          spec: {
+            version: 1,
+            id: `lootbox-opened-${itemInstanceId}`,
+            kind: 'lootbox_opened',
+            dismiss: { backdrop: true, x: true, escape: true },
+            header: { title: `${lootboxDef.name} Opened!` },
+            body: [
+              {
+                type: 'richText',
+                doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
+              },
+            ],
+            buttons: [
+              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+            ],
+          },
         },
       ],
     };

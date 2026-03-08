@@ -207,7 +207,9 @@ export default function StorePage() {
   const { pushModal } = useModal();
   const { execute } = useCommand({
     onUiIntent: (intent) => {
-      if (intent.type === 'modal') pushModal(intent as any);
+      if (intent.type === 'modal' && intent.spec?.version === 1) {
+        pushModal(intent.spec);
+      }
     },
   });
 

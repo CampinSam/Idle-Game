@@ -27,15 +27,29 @@ export class ClaimQuestRewardHandler implements CommandHandler {
       .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.type}`)
       .join(', ');
 
+    const questBodyText = rewardSummary || 'Rewards collected.';
+
     return {
       patches: pb.build(),
       ui: [
         {
           type: 'modal' as const,
-          key: `quest-reward-${questInstanceId}`,
-          title: 'Quest Reward Claimed!',
-          body: rewardSummary || 'Rewards collected.',
-          buttons: [{ label: 'Collect', action: 'close' }],
+          spec: {
+            version: 1,
+            id: `quest-reward-${questInstanceId}`,
+            kind: 'quest_reward',
+            dismiss: { backdrop: true, x: true, escape: true },
+            header: { title: 'Quest Reward Claimed!' },
+            body: [
+              {
+                type: 'richText',
+                doc: [{ t: 'p', c: [{ t: 'text', v: questBodyText }] }],
+              },
+            ],
+            buttons: [
+              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+            ],
+          },
         },
       ],
     };

@@ -1,11 +1,12 @@
 import { Prisma } from '@prisma/client';
+import type { ModalSpecV1 } from '@derp/shared';
 
 export type Patch =
   | { op: 'upsert'; entity: string; id: string; data: any }
   | { op: 'delete'; entity: string; id: string };
 
 export type UiIntent =
-  | { type: 'modal'; key: string; title: string; body: any; buttons: any[] }
+  | { type: 'modal'; spec: ModalSpecV1 }
   | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
   | { type: 'navigate'; deepLink: string };
 
