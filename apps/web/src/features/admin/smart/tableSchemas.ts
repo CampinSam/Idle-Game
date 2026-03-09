@@ -20,6 +20,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   CheckInDef: 'checkInDef',
   QuestDef: 'questDef',
   LootboxDef: 'lootboxDef',
+  ShopItemDef: 'shopItemDef',
 };
 
 export interface FieldDef {
@@ -294,6 +295,25 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       sortOrder: { type: 'number', default: 0, description: 'Display sort order' },
     },
   },
+  ShopItemDef: {
+    color: '#F97316',
+    group: 'Store',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. gems_100)' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', default: '', description: 'Short description shown on the card' },
+      tab: { type: 'options', options: ['featured', 'currencies', 'bundles', 'items'], default: 'featured', description: 'Which store tab this appears on' },
+      cost: { type: 'json', default: [], description: 'Array of {type, id, amount} cost entries (mix of currency/item)' },
+      originalCost: { type: 'json', description: 'Original price for strikethrough display (same format as cost)' },
+      contents: { type: 'json', default: [], description: 'Array of {type, id, amount} entries granted on purchase' },
+      badge: { type: 'string', description: 'Optional badge label (e.g. HOT, NEW, SALE)' },
+      badgeColor: { type: 'color', description: 'CSS color for the badge background' },
+      imageUrl: { type: 'assetKey', description: 'URL or asset key for the card image' },
+      displayOrder: { type: 'number', default: 0, description: 'Sort order within the tab (lower = first)' },
+      enabled: { type: 'boolean', default: true, description: 'Whether the item appears in the store' },
+      limitedUntil: { type: 'string', description: 'ISO datetime — item shows countdown and hides after this time' },
+    },
+  },
   EventDefinition: {
     color: '#009688',
     group: 'System',
@@ -376,6 +396,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Locations: ['BuildingDef', 'RoomDef', 'LocationDefinition', 'RegionDefinition'],
   Economy: ['Currency', 'ItemDef'],
   Rewards: ['GiftDef', 'LootboxDef', 'CheckInDef', 'QuestDef'],
+  Store: ['ShopItemDef'],
   Entities: ['EntityDefinition', 'BodySchema', 'EquipmentSchema', 'ProgressionProfile', 'TraitDefinition'],
   System: ['EventDefinition'],
 };

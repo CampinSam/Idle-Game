@@ -24,38 +24,43 @@ This document describes each definition table editable through the Admin Panel, 
 15. [RecipeDef (Crafting Recipes)](#recipedef)
 16. [EventDefinition](#eventdefinition)
 17. [GiftDef](#giftdef)
+18. [ModalDef](#modaldef)
+19. [LootboxDef](#lootboxdef)
+20. [CheckInDef](#checkindef)
+21. [QuestDef](#questdef)
+22. [ShopItemDef](#shopitemdef)
 
 ### Runtime Tables
-18. [Job (Unified Job System)](#job)
-19. [Notification](#notification)
-20. [TickRateInterval](#tickrateinterval)
-21. [BoostEvent](#boostevent)
+23. [Job (Unified Job System)](#job)
+24. [Notification](#notification)
+25. [TickRateInterval](#tickrateinterval)
+26. [BoostEvent](#boostevent)
 
 ### Instance Tables
-22. [Entity (Instance)](#entity-instance)
-23. [EntityEquipment](#entityequipment)
-24. [LocationInstance](#locationinstance)
-25. [LocationBuildingInstance](#locationbuildinginstance)
-26. [LocationRoomInstance](#locationroominstance)
-27. [LocationWorkerAssignment](#locationworkerassignment)
-28. [ItemInstance](#iteminstance)
-29. [GiftInstance](#giftinstance)
-30. [GiftClaimTx](#giftclaimtx)
+27. [Entity (Instance)](#entity-instance)
+28. [EntityEquipment](#entityequipment)
+29. [LocationInstance](#locationinstance)
+30. [LocationBuildingInstance](#locationbuildinginstance)
+31. [LocationRoomInstance](#locationroominstance)
+32. [LocationWorkerAssignment](#locationworkerassignment)
+33. [ItemInstance](#iteminstance)
+34. [GiftInstance](#giftinstance)
+35. [GiftClaimTx](#giftclaimtx)
 
 ### Shared JSON Formats
-31. [Unified Level-Based Rules System](#unified-level-based-rules-system)
-32. [Timer](#timer)
-33. [Cost Objects](#cost-objects)
-34. [Outcome Blocks](#outcome-blocks)
-35. [Rewards](#rewards)
-36. [Requirements](#requirements)
-37. [Visibility Requirements](#visibility-requirements)
-38. [Effects](#effects)
-39. [Extra Data](#extra-data)
-40. [Gift Reward Spec](#gift-reward-spec)
-41. [Event → Gift Flow](#event--gift-flow)
-42. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
-43. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
+36. [Unified Level-Based Rules System](#unified-level-based-rules-system)
+37. [Timer](#timer)
+38. [Cost Objects](#cost-objects)
+39. [Outcome Blocks](#outcome-blocks)
+40. [Rewards](#rewards)
+41. [Requirements](#requirements)
+42. [Visibility Requirements](#visibility-requirements)
+43. [Effects](#effects)
+44. [Extra Data](#extra-data)
+45. [Gift Reward Spec](#gift-reward-spec)
+46. [Event → Gift Flow](#event--gift-flow)
+47. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
+48. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
 
 ---
 
@@ -675,6 +680,218 @@ Controls claiming behavior such as expiration and per-player limits.
     ]
   },
   "enabled": true
+}
+```
+
+---
+
+## ModalDef
+
+Defines a server-driven modal template. Modals are constructed by the backend and delivered to the client via the `UiIntent` system. The `spec` field provides overrides applied on top of any default modal structure.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier (e.g. `modal_mission_complete`) |
+| `name` | string | Yes | — | Admin-facing display name |
+| `description` | string | No | — | Notes on what this modal is for |
+| `version` | number | No | 1 | Schema version |
+| `spec` | JSON | No | `{}` | ModalSpecV1 overrides: `{ header?, body?, buttons?, replaceBody? }` |
+| `enabled` | boolean | No | true | Whether this modal is active |
+
+---
+
+## LootboxDef
+
+Defines a lootbox with a weighted outcome pool. Items of type `LOOTBOX` reference a `LootboxDef` via `data.lootboxDefId`. When a player opens a lootbox item, the server performs `rollCount` independent rolls against the `outcomes` pool using deterministic seeded RNG.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier |
+| `name` | string | Yes | — | Display name |
+| `description` | string | No | — | Optional flavor description |
+| `version` | number | No | 1 | Schema version |
+| `iconKey` | string | No | — | Asset key for the lootbox icon |
+| `outcomes` | JSON array | No | `[]` | Weighted outcome pool — same `RewardEntry` format as MissionDef rewards |
+| `rollCount` | number | No | 1 | Number of independent rolls per open |
+| `enabled` | boolean | No | true | Whether this lootbox can be opened |
+
+### Lootbox Outcomes Format
+
+The `outcomes` array uses the same weighted `RewardEntry` format as MissionDef reward entries. Each entry has a `type`, optional `key`, min/max range, and an `odds` field (percentage chance per roll):
+
+```json
+[
+  { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 500, "odds": 70 },
+  { "type": "currency", "key": "premium_gems", "min": 10, "max": 25, "odds": 20 },
+  { "type": "item", "key": "mat_rare_gem", "min": 1, "max": 1, "odds": 5 },
+  { "type": "item", "key": "mat_legendary_shard", "min": 1, "max": 1, "odds": 1 }
+]
+```
+
+Each roll independently evaluates all entries. With `rollCount: 3`, the player gets three separate draws from the pool.
+
+---
+
+## CheckInDef
+
+Defines a daily check-in track. Multiple tracks can run independently per player. Each track has a configurable cycle of rewards, frequency rules, and streak behavior.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier |
+| `name` | string | Yes | — | Display name |
+| `description` | string | No | — | Optional description |
+| `rewards` | JSON array | No | `[]` | Per-day reward entries (see [CheckInDayReward](#checkindayreward)) |
+| `cycleLength` | number | No | 7 | Streak wraps after this many days |
+| `requireStreak` | boolean | No | false | If true, missing a window resets the streak to 0 |
+| `allowReclaim` | boolean | No | false | If `requireStreak: true` and streak resets, allow re-claiming the day-0 gift |
+| `frequency` | JSON | No | `{ "type": "daily" }` | How often a check-in window opens (see [CheckInFrequency](#checkinfrequency)) |
+| `enabled` | boolean | No | true | Whether this check-in track is active |
+
+### CheckInDayReward
+
+Each entry in `rewards` maps a cycle day to a gift:
+
+```json
+[
+  { "day": 0, "giftDefId": "gift_checkin_day1" },
+  { "day": 1, "giftDefId": "gift_checkin_day2" },
+  { "day": 2, "giftDefId": "gift_checkin_day3" },
+  { "day": 6, "giftDefId": "gift_checkin_day7_bonus" }
+]
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `day` | number | Zero-indexed day within the cycle (0 = first day) |
+| `giftDefId` | string | References a [GiftDef](#giftdef) to award on this day |
+
+### CheckInFrequency
+
+Controls how often the check-in window opens:
+
+```json
+{ "type": "daily" }
+```
+
+```json
+{ "type": "interval", "seconds": 86400 }
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `type` | string | `"daily"` (resets at midnight UTC) or `"interval"` (fixed seconds since last claim) |
+| `seconds` | number | Only used when `type: "interval"` — number of seconds between windows |
+
+---
+
+## QuestDef
+
+Defines a quest with one or more objectives tracked against player telemetry events. All objectives must complete before the player can claim the reward. Quests can be one-time or repeatable.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier |
+| `name` | string | Yes | — | Display name |
+| `description` | string | No | — | Flavor text |
+| `category` | string | No | — | Optional grouping category for the UI |
+| `objectives` | JSON array | No | `[]` | List of objectives; all must complete to finish the quest (see [QuestObjective](#questobjective)) |
+| `rewardSpec` | JSON | No | `{}` | Reward granted on claim (uses [Gift Reward Spec](#gift-reward-spec) format) |
+| `requirements` | JSON array | No | `[]` | Conditions to unlock the quest (uses [Requirements](#requirements) format) |
+| `repeatable` | boolean | No | false | If true, quest resets after claim and can be completed again |
+| `enabled` | boolean | No | true | Whether the quest is active |
+| `sortOrder` | number | No | 0 | Display sort order (lower = first) |
+
+### QuestObjective
+
+Each entry in `objectives` describes one trackable goal. Objectives are matched against player telemetry events:
+
+```json
+[
+  {
+    "id": "obj_complete_missions",
+    "label": "Complete 5 missions",
+    "eventType": "mission_completed",
+    "targetCount": 5,
+    "filters": { "missionType": "exploration" }
+  },
+  {
+    "id": "obj_craft_items",
+    "label": "Craft 3 items",
+    "eventType": "crafting_completed",
+    "targetCount": 3
+  }
+]
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | string | Unique objective ID within the quest |
+| `label` | string | Human-readable description shown in the UI |
+| `eventType` | string | Telemetry event type to track (e.g. `mission_completed`, `lootbox_opened`, `checkin_completed`) |
+| `targetCount` | number | How many matching events are required to complete this objective |
+| `filters` | object | Optional key-value pairs that the telemetry event payload must match for the event to count |
+
+---
+
+## ShopItemDef
+
+Defines a purchasable item in the game store. Supports mixed currency/item costs, sale pricing with strikethrough, limited-time availability with countdown, and badge labels.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier (e.g. `gems_100`, `bundle_starter`) |
+| `name` | string | Yes | — | Display name |
+| `description` | string | No | `""` | Short description shown on the card |
+| `tab` | string | No | `"featured"` | Store tab: `featured`, `currencies`, `bundles`, or `items` |
+| `cost` | JSON array | No | `[]` | What the player pays (see [ShopCostEntry](#shopcostentry)) |
+| `originalCost` | JSON array | No | — | Original price for strikethrough sale display (same format as `cost`) |
+| `contents` | JSON array | No | `[]` | What the player receives (same format as `cost`) |
+| `badge` | string | No | — | Optional badge label (e.g. `HOT`, `NEW`, `SALE`, `BEST VALUE`) |
+| `badgeColor` | string | No | — | CSS color for the badge background (e.g. `#ef4444`) |
+| `imageUrl` | string | No | — | URL or asset key for the card image |
+| `displayOrder` | number | No | 0 | Sort order within the tab (lower = first) |
+| `enabled` | boolean | No | true | Whether the item appears in the store |
+| `limitedUntil` | string | No | — | ISO 8601 datetime; item shows a countdown and hides after this time |
+
+### ShopCostEntry
+
+The `cost`, `originalCost`, and `contents` arrays all use the same `ShopCostEntry` format. You can freely mix currency and item entries in the same array:
+
+```json
+[
+  { "type": "currency", "id": "premium_gems", "amount": 500 },
+  { "type": "item", "id": "mat_rare_gem", "amount": 3 }
+]
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `type` | string | `"currency"` or `"item"` |
+| `id` | string | Currency ID (for `currency`) or ItemDef ID (for `item`) |
+| `amount` | number | Quantity |
+
+### ShopItemDef Example
+
+```json
+{
+  "id": "bundle_starter_pack",
+  "name": "Starter Pack",
+  "description": "Everything a new adventurer needs to get started!",
+  "tab": "bundles",
+  "cost": [{ "type": "currency", "id": "premium_gems", "amount": 299 }],
+  "originalCost": [{ "type": "currency", "id": "premium_gems", "amount": 499 }],
+  "contents": [
+    { "type": "currency", "id": "soft_arcanium", "amount": 5000 },
+    { "type": "item", "id": "mat_iron_ore", "amount": 50 },
+    { "type": "item", "id": "consumable_boost_small", "amount": 5 }
+  ],
+  "badge": "SALE",
+  "badgeColor": "#ef4444",
+  "imageUrl": "bundles/starter_pack.png",
+  "displayOrder": 1,
+  "enabled": true,
+  "limitedUntil": "2026-04-01T00:00:00Z"
 }
 ```
 
