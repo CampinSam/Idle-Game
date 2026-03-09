@@ -2911,6 +2911,56 @@
           "description": "ISO 8601 datetime; item hides after this time and shows a countdown"
         }
       }
+    },
+    "NftCollectionDef": {
+      "description": "Links an on-chain NFT collection to an entity definition, enabling NFT-gated entity claims. Players sync their wallet's NFT holdings against active collections; each matched token that has not been claimed creates a new entity.",
+      "prismaModel": "NftCollectionDef",
+      "tableName": "nft_collection_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing display name"
+        },
+        "chain": {
+          "type": "enum",
+          "enum": ["CARDANO", "ETH", "BASE", "MATIC"],
+          "required": true,
+          "description": "Blockchain this collection lives on"
+        },
+        "collectionId": {
+          "type": "string",
+          "required": true,
+          "description": "On-chain collection or policy ID used to look up tokens"
+        },
+        "entityDefinitionId": {
+          "type": "string",
+          "required": true,
+          "description": "References an EntityDefinition — the entity type created when a token is claimed"
+        },
+        "mintMode": {
+          "type": "enum",
+          "enum": ["one_per_token"],
+          "default": "one_per_token",
+          "description": "How many entity instances one token can claim (currently only one_per_token is supported)"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this collection is currently active for wallet syncing and claiming"
+        },
+        "data": {
+          "type": "json",
+          "default": {},
+          "description": "Freeform extra configuration data"
+        }
+      }
     }
   },
   "tableList": [
@@ -2934,7 +2984,8 @@
     "LootboxDef",
     "CheckInDef",
     "QuestDef",
-    "ShopItemDef"
+    "ShopItemDef",
+    "NftCollectionDef"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",

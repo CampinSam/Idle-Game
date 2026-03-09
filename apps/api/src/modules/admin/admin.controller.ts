@@ -48,6 +48,8 @@ export class AdminController {
       { key: 'lootboxDef', name: 'Lootbox Definitions', table: 'lootbox_defs' },
       { key: 'checkInDef', name: 'Check-In Definitions', table: 'checkin_defs' },
       { key: 'questDef', name: 'Quest Definitions', table: 'quest_defs' },
+      { key: 'shopItemDef', name: 'Shop Item Definitions', table: 'shop_item_defs' },
+      { key: 'nftCollectionDef', name: 'NFT Collection Definitions', table: 'nft_collection_defs' },
       { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },
     ];
   }

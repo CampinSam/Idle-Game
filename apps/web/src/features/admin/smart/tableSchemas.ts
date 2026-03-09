@@ -21,6 +21,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   QuestDef: 'questDef',
   LootboxDef: 'lootboxDef',
   ShopItemDef: 'shopItemDef',
+  NftCollectionDef: 'nftCollectionDef',
 };
 
 export interface FieldDef {
@@ -295,6 +296,20 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       sortOrder: { type: 'number', default: 0, description: 'Display sort order' },
     },
   },
+  NftCollectionDef: {
+    color: '#06B6D4',
+    group: 'NFT',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Admin-facing display name' },
+      chain: { type: 'options', options: ['CARDANO', 'ETH', 'BASE', 'MATIC'], required: true, description: 'Blockchain this collection lives on' },
+      collectionId: { type: 'string', required: true, description: 'On-chain collection or policy ID' },
+      entityDefinitionId: { type: 'ref', refTable: 'EntityDefinition', required: true, description: 'Entity definition to create when an NFT is claimed' },
+      mintMode: { type: 'options', options: ['one_per_token'], default: 'one_per_token', description: 'How many entities one token can claim' },
+      active: { type: 'boolean', default: true, description: 'Whether this collection is active for syncing and claiming' },
+      data: { type: 'json', default: {}, description: 'Extra configuration data' },
+    },
+  },
   ShopItemDef: {
     color: '#F97316',
     group: 'Store',
@@ -397,6 +412,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Economy: ['Currency', 'ItemDef'],
   Rewards: ['GiftDef', 'LootboxDef', 'CheckInDef', 'QuestDef'],
   Store: ['ShopItemDef'],
+  NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition', 'BodySchema', 'EquipmentSchema', 'ProgressionProfile', 'TraitDefinition'],
   System: ['EventDefinition'],
 };

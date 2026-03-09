@@ -29,38 +29,39 @@ This document describes each definition table editable through the Admin Panel, 
 20. [CheckInDef](#checkindef)
 21. [QuestDef](#questdef)
 22. [ShopItemDef](#shopitemdef)
+23. [NftCollectionDef](#nftcollectiondef)
 
 ### Runtime Tables
-23. [Job (Unified Job System)](#job)
-24. [Notification](#notification)
-25. [TickRateInterval](#tickrateinterval)
-26. [BoostEvent](#boostevent)
+24. [Job (Unified Job System)](#job)
+25. [Notification](#notification)
+26. [TickRateInterval](#tickrateinterval)
+27. [BoostEvent](#boostevent)
 
 ### Instance Tables
-27. [Entity (Instance)](#entity-instance)
-28. [EntityEquipment](#entityequipment)
-29. [LocationInstance](#locationinstance)
-30. [LocationBuildingInstance](#locationbuildinginstance)
-31. [LocationRoomInstance](#locationroominstance)
-32. [LocationWorkerAssignment](#locationworkerassignment)
-33. [ItemInstance](#iteminstance)
-34. [GiftInstance](#giftinstance)
-35. [GiftClaimTx](#giftclaimtx)
+28. [Entity (Instance)](#entity-instance)
+29. [EntityEquipment](#entityequipment)
+30. [LocationInstance](#locationinstance)
+31. [LocationBuildingInstance](#locationbuildinginstance)
+32. [LocationRoomInstance](#locationroominstance)
+33. [LocationWorkerAssignment](#locationworkerassignment)
+34. [ItemInstance](#iteminstance)
+35. [GiftInstance](#giftinstance)
+36. [GiftClaimTx](#giftclaimtx)
 
 ### Shared JSON Formats
-36. [Unified Level-Based Rules System](#unified-level-based-rules-system)
-37. [Timer](#timer)
-38. [Cost Objects](#cost-objects)
-39. [Outcome Blocks](#outcome-blocks)
-40. [Rewards](#rewards)
-41. [Requirements](#requirements)
-42. [Visibility Requirements](#visibility-requirements)
-43. [Effects](#effects)
-44. [Extra Data](#extra-data)
-45. [Gift Reward Spec](#gift-reward-spec)
-46. [Event → Gift Flow](#event--gift-flow)
-47. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
-48. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
+37. [Unified Level-Based Rules System](#unified-level-based-rules-system)
+38. [Timer](#timer)
+39. [Cost Objects](#cost-objects)
+40. [Outcome Blocks](#outcome-blocks)
+41. [Rewards](#rewards)
+42. [Requirements](#requirements)
+43. [Visibility Requirements](#visibility-requirements)
+44. [Effects](#effects)
+45. [Extra Data](#extra-data)
+46. [Gift Reward Spec](#gift-reward-spec)
+47. [Event → Gift Flow](#event--gift-flow)
+48. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
+49. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
 
 ---
 
@@ -892,6 +893,46 @@ The `cost`, `originalCost`, and `contents` arrays all use the same `ShopCostEntr
   "displayOrder": 1,
   "enabled": true,
   "limitedUntil": "2026-04-01T00:00:00Z"
+}
+```
+
+---
+
+## NftCollectionDef
+
+Links an on-chain NFT collection to an entity definition, enabling NFT-gated entity claims. When a player syncs their connected wallet, the server checks their NFT holdings against all active collections. Each matched token that has not yet been claimed creates a new entity instance from the linked `entityDefinitionId`.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier |
+| `name` | string | Yes | — | Admin-facing display name |
+| `chain` | string | Yes | — | Blockchain: `CARDANO`, `ETH`, `BASE`, or `MATIC` |
+| `collectionId` | string | Yes | — | On-chain collection or policy ID used to look up tokens |
+| `entityDefinitionId` | string | Yes | — | References an [EntityDefinition](#entitydefinition) — the entity type created when a token is claimed |
+| `mintMode` | string | No | `one_per_token` | How many entity instances one token can claim (only `one_per_token` supported) |
+| `active` | boolean | No | true | Whether this collection is active for wallet syncing and claiming |
+| `data` | JSON | No | `{}` | Freeform extra configuration data |
+
+> **Unique constraint:** `[chain, collectionId]` — each on-chain collection can only be registered once per chain.
+
+**Supported chains:**
+- `CARDANO` — uses Blockfrost to verify CIP-30 wallet assets against the policy ID
+- `ETH`, `BASE`, `MATIC` — uses Alchemy to verify EVM wallet token ownership
+
+**Claim tracking:** Once a token is claimed, the resulting `Entity` record stores `nftAssetId` (format: `{chain}:{collectionId}:{assetId}`) and `nftCollectionDefId`, preventing duplicate claims for the same token.
+
+**Example:**
+
+```json
+{
+  "id": "nft_derp_birds_cardano",
+  "name": "Derp Birds (Cardano)",
+  "chain": "CARDANO",
+  "collectionId": "a1b2c3d4e5f6...",
+  "entityDefinitionId": "derp_bird",
+  "mintMode": "one_per_token",
+  "active": true,
+  "data": {}
 }
 ```
 

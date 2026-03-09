@@ -285,6 +285,7 @@ export class AdminService {
       checkInDef: (this.prisma as any).checkInDef,
       questDef: (this.prisma as any).questDef,
       shopItemDef: (this.prisma as any).shopItemDef,
+      nftCollectionDef: (this.prisma as any).nftCollectionDef,
       modalDef: (this.prisma as any).modalDef,
     };
 
