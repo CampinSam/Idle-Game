@@ -9,6 +9,7 @@ export class BootstrapService implements OnModuleInit {
 
   async onModuleInit() {
     await this.seedTickRateIntervals();
+    await this.seedNftCollections();
   }
 
   private async seedTickRateIntervals() {
@@ -24,5 +25,26 @@ export class BootstrapService implements OnModuleInit {
       },
     });
     this.logger.log('Seeded initial tick rate interval');
+  }
+
+  private async seedNftCollections() {
+    const result = await (this.prisma as any).nftCollectionDef.upsert({
+      where: { id: 'nft_cardano_dp' },
+      update: {},
+      create: {
+        id: 'nft_cardano_dp',
+        name: 'Derp Birds (Cardano)',
+        chain: 'CARDANO',
+        collectionId: 'e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0',
+        entityDefinitionId: 'derp_bird',
+        mintMode: 'one_per_token',
+        active: true,
+        data: {},
+      },
+    });
+
+    if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+      this.logger.log('Seeded Derp Birds Cardano NFT collection');
+    }
   }
 }

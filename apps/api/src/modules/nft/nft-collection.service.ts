@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftOwnershipService, SupportedChain } from './nft-ownership.service';
-import { generateEntityData } from '../entity/entity-generator.util';
+import { CardanoOwnershipProvider } from './cardano-ownership.provider';
+import { buildEntityDataFromNftMetadata } from './nft-entity-builder';
 
 export interface CreateCollectionDto {
   id: string;
@@ -22,8 +23,9 @@ export interface UpdateCollectionDto {
 }
 
 export interface SyncResult {
-  created: number;
+  claimed: number;
   alreadyClaimed: number;
+  notImported: number;
   entities: any[];
 }
 
@@ -34,6 +36,7 @@ export class NftCollectionService {
   constructor(
     private prisma: PrismaService,
     private nftOwnership: NftOwnershipService,
+    private cardanoProvider: CardanoOwnershipProvider,
   ) {}
 
   async listCollections() {
@@ -74,12 +77,88 @@ export class NftCollectionService {
     });
   }
 
+  async importCollection(id: string): Promise<{ started: true; total: number }> {
+    const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
+    if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
+    if (collection.chain !== 'CARDANO') {
+      throw new BadRequestException(`Import is only supported for CARDANO collections`);
+    }
+
+    const allAssetIds = await this.cardanoProvider.getAllPolicyAssets(collection.collectionId);
+    const total = allAssetIds.length;
+
+    this.logger.log(`Starting background import of ${total} tokens for collection "${id}"`);
+
+    this.runImport(collection, allAssetIds).catch((err) =>
+      this.logger.error(`Background import failed for collection "${id}": ${err}`),
+    );
+
+    return { started: true, total };
+  }
+
+  private async runImport(collection: any, assetIds: string[]) {
+    const BATCH_SIZE = 10;
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (let i = 0; i < assetIds.length; i += BATCH_SIZE) {
+      const batch = assetIds.slice(i, i + BATCH_SIZE);
+
+      await Promise.all(
+        batch.map(async (assetId) => {
+          const nftAssetId = `${collection.chain}:${collection.collectionId}:${assetId}`;
+          try {
+            const existing = await (this.prisma as any).entity.findFirst({ where: { nftAssetId } });
+            if (existing) {
+              skipped++;
+              return;
+            }
+
+            const meta = await this.cardanoProvider.getAssetMetadata(collection.collectionId, assetId);
+            if (!meta) {
+              failed++;
+              return;
+            }
+
+            const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
+
+            await (this.prisma as any).entity.create({
+              data: {
+                ...entityData,
+                nftAssetId,
+                nftCollectionDefId: collection.id,
+              },
+            });
+
+            created++;
+          } catch (err) {
+            this.logger.error(`Failed to import NFT ${nftAssetId}: ${err}`);
+            failed++;
+          }
+        }),
+      );
+
+      const processed = Math.min(i + BATCH_SIZE, assetIds.length);
+      if (processed % 100 === 0 || processed === assetIds.length) {
+        this.logger.log(
+          `Import progress [${collection.id}]: ${processed}/${assetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Import complete [${collection.id}]: created=${created}, skipped=${skipped}, failed=${failed}`,
+    );
+  }
+
   async syncUserCollections(userId: string): Promise<SyncResult> {
     const wallets = await (this.prisma as any).linkedWallet.findMany({ where: { userId } });
     const collections = await (this.prisma as any).nftCollectionDef.findMany({ where: { active: true } });
 
-    let created = 0;
+    let claimed = 0;
     let alreadyClaimed = 0;
+    let notImported = 0;
     const newEntities: any[] = [];
 
     for (const collection of collections) {
@@ -105,45 +184,40 @@ export class NftCollectionService {
             where: { nftAssetId },
           });
 
-          if (existingEntity) {
+          if (!existingEntity) {
+            notImported++;
+            continue;
+          }
+
+          if (existingEntity.ownerUserId !== null) {
             alreadyClaimed++;
             continue;
           }
 
           try {
-            const entityData = await generateEntityData(
-              this.prisma,
-              userId,
-              collection.entityDefinitionId,
-              `${collection.name} #${asset.assetId.slice(-6)}`,
-            );
-
-            const entity = await (this.prisma as any).entity.create({
-              data: {
-                ...entityData,
-                nftAssetId,
-                nftCollectionDefId: collection.id,
-              },
+            const updated = await (this.prisma as any).entity.update({
+              where: { id: existingEntity.id },
+              data: { ownerUserId: userId },
             });
 
-            created++;
+            claimed++;
             newEntities.push({
-              id: entity.id,
+              id: updated.id,
               nftAssetId,
               collectionName: collection.name,
               chain: collection.chain,
               assetId: asset.assetId,
-              display: entity.display,
-              progression: entity.progression,
+              display: updated.display,
+              progression: updated.progression,
             });
           } catch (err) {
-            this.logger.error(`Failed to create entity for NFT ${nftAssetId}: ${err}`);
+            this.logger.error(`Failed to claim entity for NFT ${nftAssetId}: ${err}`);
           }
         }
       }
     }
 
-    return { created, alreadyClaimed, entities: newEntities };
+    return { claimed, alreadyClaimed, notImported, entities: newEntities };
   }
 
   async getUserNftEntities(userId: string) {

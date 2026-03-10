@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NftOwnershipProvider, OwnedAsset } from './nft-ownership.interface';
+import { NftOwnershipProvider, OwnedAsset, NftMetadata } from './nft-ownership.interface';
 
 @Injectable()
 export class CardanoOwnershipProvider implements NftOwnershipProvider {
@@ -42,5 +42,57 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
   async ownsAsset(address: string, policyId: string, assetId: string): Promise<boolean> {
     const owned = await this.getOwnedAssets(address, policyId);
     return owned.some((a) => a.assetId === assetId && a.quantity > 0);
+  }
+
+  async getAllPolicyAssets(policyId: string): Promise<string[]> {
+    if (!this.apiKey) return [];
+    const allAssets: string[] = [];
+    let page = 1;
+    while (true) {
+      try {
+        const url = `${this.baseUrl}/assets/policy/${policyId}?count=100&page=${page}`;
+        const res = await fetch(url, { headers: { project_id: this.apiKey } });
+        if (!res.ok) {
+          this.logger.warn(`Blockfrost getAllPolicyAssets failed on page ${page}: ${res.status}`);
+          break;
+        }
+        const data = (await res.json()) as Array<{ asset: string; quantity: string }>;
+        for (const item of data) {
+          const assetId = item.asset.slice(policyId.length);
+          if (assetId) allAssets.push(assetId);
+        }
+        if (data.length < 100) break;
+        page++;
+      } catch (err) {
+        this.logger.error(`Blockfrost getAllPolicyAssets error on page ${page}: ${err}`);
+        break;
+      }
+    }
+    return allAssets;
+  }
+
+  async getAssetMetadata(policyId: string, assetId: string): Promise<NftMetadata | null> {
+    if (!this.apiKey) return null;
+    try {
+      const unit = `${policyId}${assetId}`;
+      const url = `${this.baseUrl}/assets/${unit}`;
+      const res = await fetch(url, { headers: { project_id: this.apiKey } });
+      if (!res.ok) {
+        this.logger.warn(`Blockfrost getAssetMetadata failed for ${unit}: ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as any;
+      const meta = data.onchain_metadata ?? {};
+      return {
+        assetId,
+        name: meta.name ?? assetId,
+        imageUrl: meta.image ?? '',
+        attributes: meta.attributes ?? {},
+        rawMeta: meta,
+      };
+    } catch (err) {
+      this.logger.error(`Blockfrost getAssetMetadata error for ${assetId}: ${err}`);
+      return null;
+    }
   }
 }

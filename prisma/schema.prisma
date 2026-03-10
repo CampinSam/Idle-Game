@@ -243,7 +243,7 @@ model TraitDefinition {
 
 model Entity {
   id                 String   @id @default(uuid())
-  ownerUserId        String
+  ownerUserId        String?
   ecosystemId        String?
   nftAssetId         String?  @unique
   nftCollectionDefId String?
@@ -264,7 +264,7 @@ model Entity {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  owner           User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  owner           User?            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   definition      EntityDefinition @relation(fields: [definitionId], references: [id])
 
   equipment       EntityEquipment[]

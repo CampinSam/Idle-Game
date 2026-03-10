@@ -31,6 +31,12 @@ export class NftCollectionController {
     return this.nftCollectionService.deactivateCollection(id);
   }
 
+  @Post(':id/import')
+  @UseGuards(AdminGuard)
+  importCollection(@Param('id') id: string) {
+    return this.nftCollectionService.importCollection(id);
+  }
+
   @Post('sync')
   @UseGuards(AuthGuard('jwt'))
   syncCollections(@Request() req: any) {

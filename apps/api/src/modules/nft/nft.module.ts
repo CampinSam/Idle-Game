@@ -8,6 +8,6 @@ import { NftCollectionController } from './nft-collection.controller';
 @Module({
   providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService],
   controllers: [NftCollectionController],
-  exports: [NftOwnershipService, NftCollectionService],
+  exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider],
 })
 export class NftModule {}
