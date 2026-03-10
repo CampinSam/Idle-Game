@@ -123,18 +123,20 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
     const results: OwnedAsset[] = [];
     let page = 1;
     while (true) {
-      const url = `${this.baseUrl}/accounts/${stakeAddress}/assets?count=100&page=${page}`;
+      const url = `${this.baseUrl}/accounts/${stakeAddress}/utxos?count=100&page=${page}`;
       const res = await fetch(url, { headers: { project_id: this.apiKey! } });
       if (res.status === 404) return null;
       if (!res.ok) {
-        this.logger.warn(`Blockfrost stake assets failed: ${res.status} for ${stakeAddress}`);
+        this.logger.warn(`Blockfrost stake UTXOs failed: ${res.status} for ${stakeAddress}`);
         return null;
       }
-      const data = (await res.json()) as Array<{ unit: string; quantity: string }>;
-      for (const a of data) {
-        if (a.unit.startsWith(policyId)) {
-          const assetId = a.unit.slice(policyId.length);
-          if (assetId) results.push({ assetId, quantity: parseInt(a.quantity, 10) });
+      const data = (await res.json()) as Array<{ amount: Array<{ unit: string; quantity: string }> }>;
+      for (const utxo of data) {
+        for (const a of utxo.amount ?? []) {
+          if (a.unit.startsWith(policyId)) {
+            const assetId = a.unit.slice(policyId.length);
+            if (assetId) results.push({ assetId, quantity: parseInt(a.quantity, 10) });
+          }
         }
       }
       if (data.length < 100) break;
@@ -145,21 +147,30 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
 
   private async getAssetsByAddress(address: string, policyId: string): Promise<OwnedAsset[]> {
     try {
-      const url = `${this.baseUrl}/addresses/${address}/assets`;
-      const res = await fetch(url, { headers: { project_id: this.apiKey! } });
-      if (!res.ok) {
-        this.logger.warn(`Blockfrost getOwnedAssets failed: ${res.status} for address ${address}`);
-        return [];
+      const results: OwnedAsset[] = [];
+      let page = 1;
+      while (true) {
+        const url = `${this.baseUrl}/addresses/${address}/utxos?count=100&page=${page}`;
+        const res = await fetch(url, { headers: { project_id: this.apiKey! } });
+        if (!res.ok) {
+          this.logger.warn(`Blockfrost address UTXOs failed: ${res.status} for ${address}`);
+          return results;
+        }
+        const data = (await res.json()) as Array<{ amount: Array<{ unit: string; quantity: string }> }>;
+        for (const utxo of data) {
+          for (const a of utxo.amount ?? []) {
+            if (a.unit.startsWith(policyId)) {
+              const assetId = a.unit.slice(policyId.length);
+              if (assetId) results.push({ assetId, quantity: parseInt(a.quantity, 10) });
+            }
+          }
+        }
+        if (data.length < 100) break;
+        page++;
       }
-      const data = (await res.json()) as Array<{ unit: string; quantity: string }>;
-      return data
-        .filter((a) => a.unit.startsWith(policyId))
-        .map((a) => ({
-          assetId: a.unit.slice(policyId.length),
-          quantity: parseInt(a.quantity, 10),
-        }));
+      return results;
     } catch (err) {
-      this.logger.error(`Blockfrost getOwnedAssets error: ${err}`);
+      this.logger.error(`Blockfrost address UTXOs error: ${err}`);
       return [];
     }
   }
