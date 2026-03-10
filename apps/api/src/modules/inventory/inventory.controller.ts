@@ -14,7 +14,7 @@ export class InventoryController {
 
   @Get()
   async getInventory(@Req() req: any) {
-    return this.inventoryService.getInventory(req.user.userId);
+    return this.inventoryService.getInventory(req.user.id);
   }
 
   @Get('ledger')
@@ -25,7 +25,7 @@ export class InventoryController {
     @Query('offset') offset?: string,
   ) {
     return this.inventoryService.getLedger(
-      req.user.userId,
+      req.user.id,
       itemId,
       limit ? parseInt(limit, 10) : 50,
       offset ? parseInt(offset, 10) : 0,

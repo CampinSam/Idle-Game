@@ -74,6 +74,6 @@ export class AuthController {
   @Post('wallet/link')
   @UseGuards(AuthGuard('jwt'))
   walletLink(@Body() dto: WalletVerifyDto, @Request() req: any) {
-    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.sub);
+    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.id);
   }
 }

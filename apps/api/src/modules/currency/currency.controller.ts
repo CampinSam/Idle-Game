@@ -25,7 +25,7 @@ export class CurrencyController {
 
   @Get('balances')
   async getBalances(@Req() req: any) {
-    return this.currencyService.getBalances(req.user.sub);
+    return this.currencyService.getBalances(req.user.id);
   }
 
   @Get(':id/ledger')
@@ -36,7 +36,7 @@ export class CurrencyController {
     @Query('offset') offset?: string,
   ) {
     return this.currencyService.getLedger(
-      req.user.sub,
+      req.user.id,
       currencyId,
       limit ? parseInt(limit, 10) : 50,
       offset ? parseInt(offset, 10) : 0,

@@ -9,16 +9,16 @@ export class WalletController {
 
   @Get()
   listWallets(@Request() req: any) {
-    return this.walletService.listWallets(req.user.sub);
+    return this.walletService.listWallets(req.user.id);
   }
 
   @Delete(':id')
   removeWallet(@Request() req: any, @Param('id') id: string) {
-    return this.walletService.removeWallet(req.user.sub, id);
+    return this.walletService.removeWallet(req.user.id, id);
   }
 
   @Post(':id/primary')
   setPrimary(@Request() req: any, @Param('id') id: string) {
-    return this.walletService.setPrimary(req.user.sub, id);
+    return this.walletService.setPrimary(req.user.id, id);
   }
 }

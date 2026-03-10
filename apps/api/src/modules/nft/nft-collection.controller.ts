@@ -40,12 +40,12 @@ export class NftCollectionController {
   @Post('sync')
   @UseGuards(AuthGuard('jwt'))
   syncCollections(@Request() req: any) {
-    return this.nftCollectionService.syncUserCollections(req.user.sub);
+    return this.nftCollectionService.syncUserCollections(req.user.id);
   }
 
   @Get('entities')
   @UseGuards(AuthGuard('jwt'))
   getNftEntities(@Request() req: any) {
-    return this.nftCollectionService.getUserNftEntities(req.user.sub);
+    return this.nftCollectionService.getUserNftEntities(req.user.id);
   }
 }
