@@ -357,7 +357,7 @@ class ApiClient {
 
   // NFT collections
   syncNftCollections() {
-    return this.request<{ created: number; alreadyClaimed: number; entities: any[] }>('/nft/collections/sync', {
+    return this.request<{ claimed: number; alreadyClaimed: number; notImported: number; entities: any[] }>('/nft/collections/sync', {
       method: 'POST',
     });
   }

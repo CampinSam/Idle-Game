@@ -48,7 +48,7 @@ export default function ProfilePage() {
   const [nftLoading, setNftLoading] = useState(false);
   const [nftSyncing, setNftSyncing] = useState(false);
   const [nftError, setNftError] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<{ created: number; alreadyClaimed: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ claimed: number; alreadyClaimed: number } | null>(null);
 
   const {
     connecting,
@@ -132,8 +132,8 @@ export default function ProfilePage() {
     setSyncResult(null);
     try {
       const result = await api.syncNftCollections();
-      setSyncResult({ created: result.created, alreadyClaimed: result.alreadyClaimed });
-      if (result.created > 0) await loadNftEntities();
+      setSyncResult({ claimed: result.claimed, alreadyClaimed: result.alreadyClaimed });
+      if (result.claimed > 0) await loadNftEntities();
     } catch (err: any) {
       setNftError(err?.message || 'Sync failed');
     } finally {
@@ -287,9 +287,9 @@ export default function ProfilePage() {
               </div>
 
               {syncResult && (
-                <div className={`nft-sync-result ${syncResult.created > 0 ? 'nft-sync-result-new' : 'nft-sync-result-ok'}`}>
-                  {syncResult.created > 0
-                    ? `${syncResult.created} new ${syncResult.created === 1 ? 'entity' : 'entities'} discovered!`
+                <div className={`nft-sync-result ${syncResult.claimed > 0 ? 'nft-sync-result-new' : 'nft-sync-result-ok'}`}>
+                  {syncResult.claimed > 0
+                    ? `${syncResult.claimed} new ${syncResult.claimed === 1 ? 'entity' : 'entities'} discovered!`
                     : 'All up to date — no new NFTs found.'}
                   {syncResult.alreadyClaimed > 0 && ` (${syncResult.alreadyClaimed} already claimed)`}
                 </div>

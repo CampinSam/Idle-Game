@@ -226,6 +226,7 @@ export class NftCollectionService {
   }
 
   async getUserNftEntities(userId: string) {
+    if (!userId) return [];
     const entities = await (this.prisma as any).entity.findMany({
       where: {
         ownerUserId: userId,
