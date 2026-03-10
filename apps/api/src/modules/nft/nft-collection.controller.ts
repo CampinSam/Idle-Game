@@ -2,10 +2,14 @@ import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request } f
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../admin/admin.guard';
 import { NftCollectionService, CreateCollectionDto, UpdateCollectionDto } from './nft-collection.service';
+import { NftImageImportService } from './nft-image-import.service';
 
 @Controller('nft/collections')
 export class NftCollectionController {
-  constructor(private nftCollectionService: NftCollectionService) {}
+  constructor(
+    private nftCollectionService: NftCollectionService,
+    private nftImageImportService: NftImageImportService,
+  ) {}
 
   @Get()
   @UseGuards(AdminGuard)
@@ -17,6 +21,35 @@ export class NftCollectionController {
   @UseGuards(AdminGuard)
   createCollection(@Body() dto: CreateCollectionDto) {
     return this.nftCollectionService.createCollection(dto);
+  }
+
+  @Post('sync')
+  @UseGuards(AuthGuard('jwt'))
+  syncCollections(@Request() req: any) {
+    return this.nftCollectionService.syncUserCollections(req.user.id);
+  }
+
+  @Get('entities')
+  @UseGuards(AuthGuard('jwt'))
+  getNftEntities(@Request() req: any) {
+    return this.nftCollectionService.getUserNftEntities(req.user.id);
+  }
+
+  @Post('images/import')
+  @UseGuards(AdminGuard)
+  startImageImport() {
+    const status = this.nftImageImportService.getStatus();
+    if (status.status === 'running') {
+      return { status: 'already_running', progress: status };
+    }
+    this.nftImageImportService.importAllImages();
+    return { status: 'started' };
+  }
+
+  @Get('images/import/status')
+  @UseGuards(AdminGuard)
+  getImageImportStatus() {
+    return this.nftImageImportService.getStatus();
   }
 
   @Put(':id')
@@ -35,17 +68,5 @@ export class NftCollectionController {
   @UseGuards(AdminGuard)
   importCollection(@Param('id') id: string) {
     return this.nftCollectionService.importCollection(id);
-  }
-
-  @Post('sync')
-  @UseGuards(AuthGuard('jwt'))
-  syncCollections(@Request() req: any) {
-    return this.nftCollectionService.syncUserCollections(req.user.id);
-  }
-
-  @Get('entities')
-  @UseGuards(AuthGuard('jwt'))
-  getNftEntities(@Request() req: any) {
-    return this.nftCollectionService.getUserNftEntities(req.user.id);
   }
 }
