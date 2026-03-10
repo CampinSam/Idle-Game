@@ -252,7 +252,7 @@ export class NftCollectionService {
 
         const patches = fullEntities.map((e: any) => ({
           op: 'upsert',
-          entity: 'entities',
+          entity: 'entity',
           id: e.id,
           data: serializeEntity(e),
         }));
