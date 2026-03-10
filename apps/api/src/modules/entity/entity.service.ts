@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAX_ENTITY_LEVEL, XP_PER_LEVEL } from '@derp/shared';
-import { applyWeightedLevelUp } from './entity-generator.util';
+import { applyWeightedLevelUp, type LevelUpResult } from './entity-generator.util';
 
 function serializeEntity(entity: any) {
   const progression = (entity.progression as any) || {};
@@ -85,17 +85,19 @@ export class EntityService {
 
     let newXp = currentXp + xp;
     let newLevel = currentLevel;
+    let currentStats = (entity.stats as any) || {};
+    const levelHistory: any[] = Array.isArray(progression.levelHistory) ? [...progression.levelHistory] : [];
 
     while (newLevel < MAX_ENTITY_LEVEL && newXp >= XP_PER_LEVEL(newLevel)) {
       newXp -= XP_PER_LEVEL(newLevel);
       newLevel++;
 
-      if (newLevel > currentLevel) {
-        await this.applyLevelUpStats(entityId, (entity.stats as any) || {});
-      }
+      const result = await this.applyLevelUpStats(entityId, currentStats, newLevel);
+      currentStats = result.stats;
+      levelHistory.push({ level: newLevel, gains: result.gains });
     }
 
-    const updatedProgression = { ...progression, level: newLevel, xp: newXp };
+    const updatedProgression = { ...progression, level: newLevel, xp: newXp, levelHistory };
     const updated = await (this.prisma as any).entity.update({
       where: { id: entityId },
       data: { progression: updatedProgression },
@@ -104,12 +106,17 @@ export class EntityService {
     return serializeEntity(updated);
   }
 
-  private async applyLevelUpStats(entityId: string, currentStats: Record<string, any>) {
-    const boosted = applyWeightedLevelUp(currentStats);
+  private async applyLevelUpStats(
+    entityId: string,
+    currentStats: Record<string, any>,
+    _targetLevel: number,
+  ): Promise<LevelUpResult> {
+    const result = applyWeightedLevelUp(currentStats);
     await (this.prisma as any).entity.update({
       where: { id: entityId },
-      data: { stats: boosted },
+      data: { stats: result.stats },
     });
+    return result;
   }
 
   async setEntityStatus(entityId: string, userId: string, status: string) {

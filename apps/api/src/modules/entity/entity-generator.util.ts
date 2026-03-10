@@ -1,11 +1,40 @@
 import { PrismaService } from '../../prisma/prisma.service';
 
-const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
+export const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
 
-function defaultScaling(): Record<string, number> {
-  const s: Record<string, number> = {};
-  for (const k of STAT_KEYS) s[k] = 1.0;
-  return s;
+export interface ScalingContribution {
+  statScaling: Record<string, number>;
+  rarityMultiplier: number;
+}
+
+export function computeScaling(contributions: ScalingContribution[]): Record<string, number> {
+  const n = contributions.length;
+  const scaling: Record<string, number> = {};
+
+  if (n === 0) {
+    for (const k of STAT_KEYS) scaling[k] = 1.0;
+    return scaling;
+  }
+
+  for (const k of STAT_KEYS) {
+    const product = contributions.reduce((acc, c) => {
+      const v = c.statScaling[k];
+      return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
+    }, 1.0);
+    scaling[k] = Math.pow(product, 1 / n);
+  }
+
+  const rarityProduct = contributions.reduce((acc, c) => {
+    const v = c.rarityMultiplier;
+    return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
+  }, 1.0);
+  const rarityGeoMean = Math.pow(rarityProduct, 1 / n);
+
+  for (const k of STAT_KEYS) {
+    scaling[k] *= rarityGeoMean;
+  }
+
+  return scaling;
 }
 
 export interface GeneratedEntityData {
@@ -15,7 +44,7 @@ export interface GeneratedEntityData {
   display: { name: string };
   stats: Record<string, any>;
   traits: Record<string, string>;
-  progression: { level: number; xp: number; ascension: number };
+  progression: { level: number; xp: number; ascension: number; levelHistory: any[] };
   state: { status: string };
 }
 
@@ -35,7 +64,6 @@ export async function generateEntityData(
   }
 
   const resolvedName = displayName || (entityDef.data as any)?.name || entityDef.id;
-
   const slots: Record<string, string[]> = (entityDef.bodySchema?.slots as any) || {};
 
   const allTraitDefs = await (prisma as any).traitDefinition.findMany();
@@ -47,7 +75,7 @@ export async function generateEntityData(
   const baseStats: Record<string, number> = {};
   for (const k of STAT_KEYS) baseStats[k] = 0;
 
-  const scaling = defaultScaling();
+  const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, string> = {};
 
   for (const [slotName, allowedArchetypes] of Object.entries(slots)) {
@@ -68,15 +96,18 @@ export async function generateEntityData(
       }
     }
 
-    const traitScaling = (traitDef.data as any)?.scaling;
-    if (traitScaling && typeof traitScaling === 'object') {
-      for (const k of STAT_KEYS) {
-        if (typeof traitScaling[k] === 'number') {
-          scaling[k] *= traitScaling[k];
-        }
-      }
+    const traitData = (traitDef.data as any) || {};
+    const statScaling: Record<string, number> = {};
+    for (const k of STAT_KEYS) {
+      statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
     }
+    scalingContributions.push({
+      statScaling,
+      rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+    });
   }
+
+  const scaling = computeScaling(scalingContributions);
 
   return {
     ownerUserId: userId,
@@ -85,17 +116,26 @@ export async function generateEntityData(
     display: { name: resolvedName },
     stats: { ...baseStats, scaling },
     traits,
-    progression: { level: 1, xp: 0, ascension: 0 },
+    progression: { level: 1, xp: 0, ascension: 0, levelHistory: [] },
     state: { status: 'idle' },
   };
 }
 
-export function applyWeightedLevelUp(currentStats: Record<string, any>): Record<string, any> {
+export interface LevelUpResult {
+  stats: Record<string, any>;
+  gains: Record<string, number>;
+}
+
+export function applyWeightedLevelUp(currentStats: Record<string, any>): LevelUpResult {
   const boosted = { ...currentStats };
-  const scaling: Record<string, number> = boosted.scaling || defaultScaling();
+  const scaling: Record<string, number> = (boosted.scaling as any) || {};
+
+  const gains: Record<string, number> = {};
+  for (const k of STAT_KEYS) gains[k] = 0;
 
   for (const k of STAT_KEYS) {
     boosted[k] = (boosted[k] || 0) + 1;
+    gains[k] += 1;
   }
 
   const totalWeight = STAT_KEYS.reduce((sum, k) => sum + (scaling[k] || 1), 0);
@@ -106,11 +146,12 @@ export function applyWeightedLevelUp(currentStats: Record<string, any>): Record<
       roll -= (scaling[k] || 1);
       if (roll <= 0) {
         boosted[k] = (boosted[k] || 0) + 1;
+        gains[k] += 1;
         break;
       }
     }
   }
 
   boosted.scaling = scaling;
-  return boosted;
+  return { stats: boosted, gains };
 }

@@ -1,13 +1,6 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftMetadata } from './nft-ownership.interface';
-
-const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
-
-function defaultScaling(): Record<string, number> {
-  const s: Record<string, number> = {};
-  for (const k of STAT_KEYS) s[k] = 1.0;
-  return s;
-}
+import { STAT_KEYS, ScalingContribution, computeScaling } from '../entity/entity-generator.util';
 
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,
@@ -40,7 +33,7 @@ export async function buildEntityDataFromNftMetadata(
   const baseStats: Record<string, number> = {};
   for (const k of STAT_KEYS) baseStats[k] = 0;
 
-  const scaling = defaultScaling();
+  const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, string> = {};
 
   const normalizedAttributes: Record<string, string> = {};
@@ -67,15 +60,18 @@ export async function buildEntityDataFromNftMetadata(
       }
     }
 
-    const traitScaling = (traitDef.data as any)?.scaling;
-    if (traitScaling && typeof traitScaling === 'object') {
-      for (const k of STAT_KEYS) {
-        if (typeof traitScaling[k] === 'number') {
-          scaling[k] *= traitScaling[k];
-        }
-      }
+    const traitData = (traitDef.data as any) || {};
+    const statScaling: Record<string, number> = {};
+    for (const k of STAT_KEYS) {
+      statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
     }
+    scalingContributions.push({
+      statScaling,
+      rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+    });
   }
+
+  const scaling = computeScaling(scalingContributions);
 
   return {
     ownerUserId: null,
@@ -89,7 +85,7 @@ export async function buildEntityDataFromNftMetadata(
     traits,
     archetypeVector: {},
     affinities: {},
-    progression: { level: 1, xp: 0, ascension: 0 },
+    progression: { level: 1, xp: 0, ascension: 0, levelHistory: [] },
     state: { status: 'idle' },
   };
 }
