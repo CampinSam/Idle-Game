@@ -97,7 +97,8 @@ export class NftCollectionService {
   }
 
   private async runImport(collection: any, assetIds: string[]) {
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY_MS = 300;
     let created = 0;
     let skipped = 0;
     let failed = 0;
@@ -144,6 +145,10 @@ export class NftCollectionService {
         this.logger.log(
           `Import progress [${collection.id}]: ${processed}/${assetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
         );
+      }
+
+      if (i + BATCH_SIZE < assetIds.length) {
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
       }
     }
 

@@ -73,26 +73,44 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
 
   async getAssetMetadata(policyId: string, assetId: string): Promise<NftMetadata | null> {
     if (!this.apiKey) return null;
-    try {
-      const unit = `${policyId}${assetId}`;
-      const url = `${this.baseUrl}/assets/${unit}`;
-      const res = await fetch(url, { headers: { project_id: this.apiKey } });
-      if (!res.ok) {
-        this.logger.warn(`Blockfrost getAssetMetadata failed for ${unit}: ${res.status}`);
-        return null;
+    const unit = `${policyId}${assetId}`;
+    const url = `${this.baseUrl}/assets/${unit}`;
+    const maxRetries = 5;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, { headers: { project_id: this.apiKey } });
+
+        if (res.status === 429) {
+          const retryAfter = parseInt(res.headers.get('Retry-After') ?? '5', 10);
+          const waitMs = (retryAfter * 1000) || Math.min(1000 * 2 ** attempt, 30000);
+          this.logger.warn(`Blockfrost rate limited on ${unit}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue;
+        }
+
+        if (!res.ok) {
+          this.logger.warn(`Blockfrost getAssetMetadata failed for ${unit}: ${res.status}`);
+          return null;
+        }
+
+        const data = (await res.json()) as any;
+        const meta = data.onchain_metadata ?? {};
+        return {
+          assetId,
+          name: meta.name ?? assetId,
+          imageUrl: meta.image ?? '',
+          attributes: meta.attributes ?? {},
+          rawMeta: meta,
+        };
+      } catch (err) {
+        this.logger.error(`Blockfrost getAssetMetadata error for ${assetId} (attempt ${attempt + 1}): ${err}`);
+        if (attempt < maxRetries - 1) {
+          await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        }
       }
-      const data = (await res.json()) as any;
-      const meta = data.onchain_metadata ?? {};
-      return {
-        assetId,
-        name: meta.name ?? assetId,
-        imageUrl: meta.image ?? '',
-        attributes: meta.attributes ?? {},
-        rawMeta: meta,
-      };
-    } catch (err) {
-      this.logger.error(`Blockfrost getAssetMetadata error for ${assetId}: ${err}`);
-      return null;
     }
+
+    return null;
   }
 }
