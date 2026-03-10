@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NftOwnershipService, SupportedChain } from './nft-ownership.service';
 import { CardanoOwnershipProvider } from './cardano-ownership.provider';
 import { buildEntityDataFromNftMetadata } from './nft-entity-builder';
+import { PubSubService } from '../infrastructure/pubsub.service';
 
 export interface CreateCollectionDto {
   id: string;
@@ -29,6 +30,23 @@ export interface SyncResult {
   entities: any[];
 }
 
+function serializeEntity(entity: any) {
+  const progression = (entity.progression as any) || {};
+  if (progression && typeof progression.xp === 'bigint') {
+    progression.xp = Number(progression.xp);
+  }
+  const display = (entity.display as any) || {};
+  const state = (entity.state as any) || {};
+  return {
+    ...entity,
+    progression,
+    name: display.name || entity.speciesId || 'Entity',
+    level: progression.level || 1,
+    xp: Number(progression.xp || 0),
+    status: state.status || 'idle',
+  };
+}
+
 @Injectable()
 export class NftCollectionService {
   private readonly logger = new Logger(NftCollectionService.name);
@@ -37,6 +55,7 @@ export class NftCollectionService {
     private prisma: PrismaService,
     private nftOwnership: NftOwnershipService,
     private cardanoProvider: CardanoOwnershipProvider,
+    private pubsub: PubSubService,
   ) {}
 
   async listCollections() {
@@ -164,6 +183,7 @@ export class NftCollectionService {
     let claimed = 0;
     let alreadyClaimed = 0;
     let notImported = 0;
+    const claimedEntityIds: string[] = [];
     const newEntities: any[] = [];
 
     for (const collection of collections) {
@@ -206,6 +226,7 @@ export class NftCollectionService {
             });
 
             claimed++;
+            claimedEntityIds.push(updated.id);
             newEntities.push({
               id: updated.id,
               nftAssetId,
@@ -219,6 +240,39 @@ export class NftCollectionService {
             this.logger.error(`Failed to claim entity for NFT ${nftAssetId}: ${err}`);
           }
         }
+      }
+    }
+
+    if (claimedEntityIds.length > 0) {
+      try {
+        const fullEntities = await (this.prisma as any).entity.findMany({
+          where: { id: { in: claimedEntityIds } },
+          include: { equipment: true },
+        });
+
+        const patches = fullEntities.map((e: any) => ({
+          op: 'upsert',
+          entity: 'entities',
+          id: e.id,
+          data: serializeEntity(e),
+        }));
+
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: {
+            userId,
+            patches: patches as any,
+            ui: [] as any,
+          },
+        });
+
+        this.pubsub.publish(`player:${userId}`, {
+          userId,
+          deltaId: delta.id.toString(),
+        });
+
+        this.logger.log(`Pushed ${patches.length} entity upsert deltas for user ${userId}`);
+      } catch (err) {
+        this.logger.error(`Failed to push entity deltas after NFT sync: ${err}`);
       }
     }
 

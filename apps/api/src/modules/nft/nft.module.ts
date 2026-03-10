@@ -4,8 +4,10 @@ import { EvmOwnershipProvider } from './evm-ownership.provider';
 import { NftOwnershipService } from './nft-ownership.service';
 import { NftCollectionService } from './nft-collection.service';
 import { NftCollectionController } from './nft-collection.controller';
+import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 
 @Module({
+  imports: [InfrastructureModule],
   providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService],
   controllers: [NftCollectionController],
   exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider],
