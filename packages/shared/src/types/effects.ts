@@ -28,6 +28,7 @@ export enum EffectValueMode {
   FLAT_SET = 'flat_set',
   BPS = 'bps',
   FLAT_GRANT = 'flat_grant',
+  RANDOM_RANGE = 'random_range',
 }
 
 export enum EffectDurationModel {
@@ -53,6 +54,7 @@ export enum EffectTargetType {
   ENTITY = 'entity',
   PLAYER = 'player',
   LOCATION = 'location',
+  TEAM = 'team',
   JOB = 'job',
   GLOBAL = 'global',
 }
@@ -142,6 +144,14 @@ export interface ConsumableEffectSpec {
 export interface ConsumableData {
   effects: ConsumableEffectSpec[];
   targetType: EffectTargetType;
+}
+
+export interface PassiveEffectSpec {
+  category: EffectCategory;
+  valueMode: EffectValueMode;
+  value?: number;
+  stats?: EffectStatMap;
+  trait?: string;
 }
 
 export function emptyResolvedModifier(): ResolvedModifier {

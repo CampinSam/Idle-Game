@@ -7,7 +7,7 @@ import {
 } from '@derp/shared';
 
 export interface ActiveEffectRow {
-  id: string;
+  id?: string;
   effectDefId: string;
   category: string;
   valueMode: string;
@@ -31,7 +31,9 @@ export function resolveEffects(
     const stacks = effect.currentStacks;
     const statMap: EffectStatMap = (effect.stats && typeof effect.stats === 'object') ? effect.stats : {};
 
-    mod.sources.push({ effectDefId: effect.effectDefId, activeEffectId: effect.id });
+    if (effect.id) {
+      mod.sources.push({ effectDefId: effect.effectDefId, activeEffectId: effect.id });
+    }
 
     switch (effect.valueMode) {
       case EffectValueMode.FLAT_ADD:
@@ -54,6 +56,9 @@ export function resolveEffects(
         break;
       case EffectValueMode.FLAT_GRANT:
         mod.grants.push({ type: category, id: effect.effectDefId, amount: effect.value * stacks });
+        break;
+      case EffectValueMode.RANDOM_RANGE:
+        mod.flatAdd += effect.value * stacks;
         break;
     }
 

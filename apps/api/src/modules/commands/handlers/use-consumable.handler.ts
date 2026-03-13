@@ -18,6 +18,10 @@ import {
   EffectSourceType,
 } from '@derp/shared';
 
+function txDb(tx: unknown) {
+  return tx as any;
+}
+
 @Injectable()
 export class UseConsumableHandler implements CommandHandler {
   constructor(
@@ -31,7 +35,7 @@ export class UseConsumableHandler implements CommandHandler {
     const { itemInstanceId, targetId } = payload;
     if (!itemInstanceId) throw new BadRequestException('itemInstanceId is required');
 
-    const item = await (ctx.tx as any).itemInstance.findUnique({
+    const item = await txDb(ctx.tx).itemInstance.findUnique({
       where: { id: itemInstanceId },
       include: { definition: true },
     });
@@ -49,8 +53,6 @@ export class UseConsumableHandler implements CommandHandler {
 
     const effects: Array<{ effectDefId: string; targetType?: string }> = consumableData.effects;
     const pb = new PatchBuilder();
-    const appliedEffects: any[] = [];
-    const instantResults: string[] = [];
 
     for (const effectSpec of effects) {
       const def = await this.effectService.getEffectDef(effectSpec.effectDefId);
@@ -59,14 +61,14 @@ export class UseConsumableHandler implements CommandHandler {
       let resolvedTargetId = ctx.userId;
       if (effectTargetType === EffectTargetType.ENTITY) {
         if (!targetId) throw new BadRequestException('targetId is required for entity effects');
-        const entity = await (ctx.tx as any).entity.findFirst({
+        const entity = await txDb(ctx.tx).entity.findFirst({
           where: { id: targetId, ownerUserId: ctx.userId },
         });
         if (!entity) throw new NotFoundException('Target entity not found');
         resolvedTargetId = targetId;
       } else if (effectTargetType === EffectTargetType.LOCATION) {
         if (!targetId) throw new BadRequestException('targetId is required for location effects');
-        const location = await (ctx.tx as any).locationInstance.findFirst({
+        const location = await txDb(ctx.tx).locationInstance.findFirst({
           where: { id: targetId, ownerUserId: ctx.userId },
         });
         if (!location) throw new NotFoundException('Target location not found');
@@ -79,7 +81,6 @@ export class UseConsumableHandler implements CommandHandler {
 
       if (def.durationModel === EffectDurationModel.INSTANT) {
         await this.applyInstantEffect(ctx, def, resolvedTargetId, effectTargetType);
-        instantResults.push(`${def.name} applied`);
       } else {
         const active = await this.effectService.applyEffect(
           {
@@ -92,10 +93,15 @@ export class UseConsumableHandler implements CommandHandler {
           },
           ctx.tx,
         );
-        appliedEffects.push(active);
         pb.upsertActiveEffect(active);
       }
     }
+
+    const preConsumeSnapshot = await txDb(ctx.tx).itemInstance.findMany({
+      where: { userId: ctx.userId },
+      select: { id: true },
+    });
+    const preIds = new Set<string>(preConsumeSnapshot.map((i: { id: string }) => i.id));
 
     if (item.definition.stackable) {
       await this.inventoryService.removeItemTx(ctx.tx, {
@@ -107,13 +113,24 @@ export class UseConsumableHandler implements CommandHandler {
         sourceId: item.definitionId,
       });
     } else {
-      await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
+      await txDb(ctx.tx).itemInstance.delete({ where: { id: itemInstanceId } });
     }
 
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
+    const postConsumeItems = await txDb(ctx.tx).itemInstance.findMany({
+      where: { userId: ctx.userId },
+      select: { id: true },
+    });
+    const postIds = new Set(postConsumeItems.map((i: { id: string }) => i.id));
+    for (const oldId of preIds) {
+      if (!postIds.has(oldId)) {
+        pb.delete('item', oldId);
+      }
+    }
+
     if (targetId) {
-      const entity = await (ctx.tx as any).entity.findFirst({
+      const entity = await txDb(ctx.tx).entity.findFirst({
         where: { id: targetId, ownerUserId: ctx.userId },
         include: { equipment: true },
       });
@@ -146,7 +163,7 @@ export class UseConsumableHandler implements CommandHandler {
 
   private async applyInstantEffect(
     ctx: CommandContext,
-    def: any,
+    def: { id: string; name: string; category: string; value: number | null; stats: Record<string, number> | null; resourceId?: string },
     targetId: string,
     targetType: EffectTargetType,
   ): Promise<void> {
@@ -157,14 +174,14 @@ export class UseConsumableHandler implements CommandHandler {
       case EffectCategory.XP_MULTIPLIER:
       case EffectCategory.STAT_BOOST: {
         if (targetType === EffectTargetType.ENTITY && Object.keys(stats).length > 0) {
-          const entity = await (ctx.tx as any).entity.findUnique({ where: { id: targetId } });
+          const entity = await txDb(ctx.tx).entity.findUnique({ where: { id: targetId } });
           if (!entity) break;
-          const currentStats = (entity.stats as any) || {};
+          const currentStats = (entity.stats as Record<string, number>) || {};
           const newStats = { ...currentStats };
           for (const [key, val] of Object.entries(stats)) {
             newStats[key] = (newStats[key] ?? 0) + val;
           }
-          await (ctx.tx as any).entity.update({
+          await txDb(ctx.tx).entity.update({
             where: { id: targetId },
             data: { stats: newStats },
           });
@@ -178,10 +195,10 @@ export class UseConsumableHandler implements CommandHandler {
 
       case EffectCategory.KEEPER_XP_MULTIPLIER: {
         if (value > 0) {
-          const user = await (ctx.tx as any).user.findUnique({ where: { id: ctx.userId } });
+          const user = await txDb(ctx.tx).user.findUnique({ where: { id: ctx.userId } });
           if (user) {
             const newXp = BigInt(user.keeperXp) + BigInt(Math.floor(value));
-            await (ctx.tx as any).user.update({
+            await txDb(ctx.tx).user.update({
               where: { id: ctx.userId },
               data: { keeperXp: newXp },
             });

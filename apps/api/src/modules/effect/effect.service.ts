@@ -334,8 +334,50 @@ export class EffectService {
       ? await this.getActiveEffects(userId, EffectTargetType.PLAYER, userId, tx)
       : [];
 
-    const allEffects = [...effects, ...playerEffects];
+    const passiveRows = await this.getPassiveEffectsFromEquipment(userId, targetType, targetId, tx);
+
+    const allEffects = [...effects, ...playerEffects, ...passiveRows];
     return resolveEffects(allEffects, category);
+  }
+
+  async getPassiveEffectsFromEquipment(
+    userId: string,
+    targetType: EffectTargetType,
+    targetId: string,
+    tx?: PrismaTx,
+  ): Promise<ActiveEffectRow[]> {
+    const db: DbClient = tx || this.prisma;
+    if (targetType !== EffectTargetType.ENTITY) return [];
+
+    const equipSlots = await (db as any).entityEquipment.findMany({
+      where: { entityId: targetId, entity: { ownerUserId: userId } },
+      select: { itemInstanceId: true },
+    });
+    if (equipSlots.length === 0) return [];
+
+    const itemInstances = await (db as any).itemInstance.findMany({
+      where: { id: { in: equipSlots.map((e: { itemInstanceId: string }) => e.itemInstanceId) } },
+      include: { definition: { select: { id: true, passiveEffects: true } } },
+    });
+
+    const rows: ActiveEffectRow[] = [];
+    for (const inst of itemInstances) {
+      const passiveEffects = inst.definition?.passiveEffects;
+      if (!passiveEffects || !Array.isArray(passiveEffects)) continue;
+      for (const pe of passiveEffects) {
+        if (!pe.category || !pe.valueMode) continue;
+        rows.push({
+          effectDefId: `passive:${inst.definition.id}:${pe.category}`,
+          category: pe.category,
+          valueMode: pe.valueMode,
+          value: pe.value ?? 0,
+          stats: pe.stats ?? null,
+          trait: pe.trait ?? null,
+          currentStacks: 1,
+        });
+      }
+    }
+    return rows;
   }
 
   async cleanupExpired(): Promise<number> {
