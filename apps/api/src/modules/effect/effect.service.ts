@@ -110,7 +110,7 @@ export class EffectService {
     return def;
   }
 
-  async applyEffect(params: ApplyEffectParams, tx?: PrismaTx): Promise<ActiveEffectRecord | { instant: true; def: EffectDefRecord }> {
+  async applyEffect(params: ApplyEffectParams, tx?: PrismaTx): Promise<{ active: ActiveEffectRecord; removedIds: string[] } | { instant: true; def: EffectDefRecord }> {
     const db: DbClient = tx || this.prisma;
     const def = await this.getEffectDef(params.effectDefId);
 
@@ -135,6 +135,7 @@ export class EffectService {
     });
 
     const stackingRule = def.stackingRule as EffectStackingRule;
+    const removedIds: string[] = [];
 
     if (existing.length > 0) {
       const first = existing[0];
@@ -143,8 +144,9 @@ export class EffectService {
           throw new BadRequestException(`Effect "${def.name}" is already active and cannot stack`);
 
         case EffectStackingRule.REPLACE:
+          removedIds.push(...existing.map((e) => e.id));
           await this.activeEffectModel(db).deleteMany({
-            where: { id: { in: existing.map((e) => e.id) } },
+            where: { id: { in: removedIds } },
           });
           break;
 
@@ -154,7 +156,7 @@ export class EffectService {
             where: { id: first.id },
             data: { expiresAt, ...(def.maxUses ? { remainingUses: def.maxUses } : {}) },
           });
-          return updated;
+          return { active: updated, removedIds };
         }
 
         case EffectStackingRule.STACK_ADDITIVE:
@@ -167,7 +169,7 @@ export class EffectService {
             where: { id: first.id },
             data: { currentStacks: first.currentStacks + 1 },
           });
-          return updated;
+          return { active: updated, removedIds };
         }
 
         case EffectStackingRule.STACK_CAPPED: {
@@ -179,7 +181,7 @@ export class EffectService {
             where: { id: first.id },
             data: { currentStacks: first.currentStacks + 1 },
           });
-          return updated;
+          return { active: updated, removedIds };
         }
       }
     }
@@ -213,7 +215,7 @@ export class EffectService {
       },
     });
 
-    return created;
+    return { active: created, removedIds };
   }
 
   async removeEffect(activeEffectId: string, tx?: PrismaTx): Promise<void> {

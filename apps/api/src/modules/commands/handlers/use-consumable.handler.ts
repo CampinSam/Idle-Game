@@ -82,7 +82,7 @@ export class UseConsumableHandler implements CommandHandler {
       if (def.durationModel === EffectDurationModel.INSTANT) {
         await this.applyInstantEffect(ctx, def, resolvedTargetId, effectTargetType);
       } else {
-        const active = await this.effectService.applyEffect(
+        const result = await this.effectService.applyEffect(
           {
             effectDefId: def.id,
             userId: ctx.userId,
@@ -93,7 +93,12 @@ export class UseConsumableHandler implements CommandHandler {
           },
           ctx.tx,
         );
-        pb.upsertActiveEffect(active);
+        if ('active' in result) {
+          pb.upsertActiveEffect(result.active);
+          for (const removedId of result.removedIds) {
+            pb.delete('activeEffect', removedId);
+          }
+        }
       }
     }
 
