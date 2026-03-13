@@ -12,7 +12,7 @@ export interface ActiveEffectRow {
   category: string;
   valueMode: string;
   value: number;
-  stats?: any;
+  stats?: EffectStatMap | Record<string, number> | null;
   trait?: string | null;
   currentStacks: number;
 }
@@ -28,32 +28,32 @@ export function resolveEffects(
   if (matching.length === 0) return mod;
 
   for (const effect of matching) {
-    const effectiveValue = effect.value * effect.currentStacks;
+    const stacks = effect.currentStacks;
     const statMap: EffectStatMap = (effect.stats && typeof effect.stats === 'object') ? effect.stats : {};
 
     mod.sources.push({ effectDefId: effect.effectDefId, activeEffectId: effect.id });
 
     switch (effect.valueMode) {
       case EffectValueMode.FLAT_ADD:
-        mod.flatAdd += effectiveValue;
-        applyStatAdd(mod.statFlatAdds, statMap, effect.currentStacks);
+        mod.flatAdd += effect.value * stacks;
+        applyStatAdd(mod.statFlatAdds, statMap, stacks);
         break;
       case EffectValueMode.PERCENT_ADD:
-        mod.percentAdd += effectiveValue;
-        applyStatAdd(mod.statPercentAdds, statMap, effect.currentStacks);
+        mod.percentAdd += effect.value * stacks;
+        applyStatAdd(mod.statPercentAdds, statMap, stacks);
         break;
       case EffectValueMode.MULTIPLIER:
-        mod.multiplier *= effectiveValue || 1;
-        applyStatMultiply(mod.statMultipliers, statMap, effect.currentStacks);
+        mod.multiplier *= Math.pow(effect.value || 1, stacks);
+        applyStatMultiply(mod.statMultipliers, statMap, stacks);
         break;
       case EffectValueMode.FLAT_SET:
-        mod.flatAdd = effectiveValue;
+        mod.flatAdd = effect.value * stacks;
         break;
       case EffectValueMode.BPS:
-        mod.percentAdd += effectiveValue / 100;
+        mod.percentAdd += (effect.value * stacks) / 100;
         break;
       case EffectValueMode.FLAT_GRANT:
-        mod.grants.push({ type: category, id: effect.effectDefId, amount: effectiveValue });
+        mod.grants.push({ type: category, id: effect.effectDefId, amount: effect.value * stacks });
         break;
     }
 

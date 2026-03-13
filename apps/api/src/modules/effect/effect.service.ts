@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { TickService } from '../tick/tick.service';
 import {
   EffectCategory,
   EffectDurationModel,
@@ -11,7 +12,49 @@ import {
 } from '@derp/shared';
 import { resolveEffects, ActiveEffectRow } from './effect-resolver';
 
-type TxClient = any;
+type PrismaTx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
+type DbClient = PrismaService | PrismaTx;
+
+interface EffectDefRecord {
+  id: string;
+  name: string;
+  category: string;
+  durationModel: string;
+  durationSec: number | null;
+  durationTicks: number | null;
+  valueMode: string;
+  value: number | null;
+  stats: Record<string, number> | null;
+  trait: string | null;
+  targetType: string;
+  stackingRule: string;
+  maxStacks: number | null;
+  maxUses: number | null;
+  sessionType: string | null;
+  enabled: boolean;
+}
+
+interface ActiveEffectRecord {
+  id: string;
+  effectDefId: string;
+  userId: string;
+  targetType: string;
+  targetId: string;
+  sourceType: string;
+  sourceId: string;
+  category: string;
+  valueMode: string;
+  value: number;
+  stats: Record<string, number> | null;
+  trait: string | null;
+  currentStacks: number;
+  remainingUses: number | null;
+  sessionType: string | null;
+  sessionId: string | null;
+  expiresAt: Date | null;
+  expiresAtTick: number | null;
+  createdAt: Date;
+}
 
 export interface ApplyEffectParams {
   effectDefId: string;
@@ -26,27 +69,30 @@ export interface ApplyEffectParams {
 @Injectable()
 export class EffectService {
   private readonly logger = new Logger(EffectService.name);
-  private defCache: Map<string, any> | null = null;
+  private defCache: Map<string, EffectDefRecord> | null = null;
   private defCacheTime = 0;
   private readonly CACHE_TTL = 60_000;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private tickService: TickService,
+  ) {}
 
-  private get effectDef() {
-    return (this.prisma as any).effectDef;
+  private effectDefModel(db: DbClient) {
+    return (db as any).effectDef;
   }
 
-  private get activeEffect() {
-    return (this.prisma as any).activeEffect;
+  private activeEffectModel(db: DbClient) {
+    return (db as any).activeEffect;
   }
 
-  async getEffectDefs(): Promise<Map<string, any>> {
+  async getEffectDefs(): Promise<Map<string, EffectDefRecord>> {
     const now = Date.now();
     if (this.defCache && now - this.defCacheTime < this.CACHE_TTL) {
       return this.defCache;
     }
-    const defs = await this.effectDef.findMany({ where: { enabled: true } });
-    const map = new Map<string, any>();
+    const defs: EffectDefRecord[] = await this.effectDefModel(this.prisma).findMany({ where: { enabled: true } });
+    const map = new Map<string, EffectDefRecord>();
     for (const d of defs) map.set(d.id, d);
     this.defCache = map;
     this.defCacheTime = now;
@@ -57,15 +103,15 @@ export class EffectService {
     this.defCache = null;
   }
 
-  async getEffectDef(defId: string): Promise<any> {
+  async getEffectDef(defId: string): Promise<EffectDefRecord> {
     const defs = await this.getEffectDefs();
     const def = defs.get(defId);
     if (!def) throw new NotFoundException(`Effect definition "${defId}" not found`);
     return def;
   }
 
-  async applyEffect(params: ApplyEffectParams, tx?: TxClient): Promise<any> {
-    const db = tx || this.prisma;
+  async applyEffect(params: ApplyEffectParams, tx?: PrismaTx): Promise<ActiveEffectRecord | { instant: true; def: EffectDefRecord }> {
+    const db: DbClient = tx || this.prisma;
     const def = await this.getEffectDef(params.effectDefId);
 
     if (def.durationModel === EffectDurationModel.INSTANT) {
@@ -73,7 +119,7 @@ export class EffectService {
     }
 
     const now = new Date();
-    const existing = await (db as any).activeEffect.findMany({
+    const existing: ActiveEffectRecord[] = await this.activeEffectModel(db).findMany({
       where: {
         userId: params.userId,
         effectDefId: def.id,
@@ -95,14 +141,14 @@ export class EffectService {
           throw new BadRequestException(`Effect "${def.name}" is already active and cannot stack`);
 
         case EffectStackingRule.REPLACE:
-          await (db as any).activeEffect.deleteMany({
-            where: { id: { in: existing.map((e: any) => e.id) } },
+          await this.activeEffectModel(db).deleteMany({
+            where: { id: { in: existing.map((e) => e.id) } },
           });
           break;
 
         case EffectStackingRule.REFRESH: {
           const expiresAt = this.computeExpiry(def);
-          const updated = await (db as any).activeEffect.update({
+          const updated: ActiveEffectRecord = await this.activeEffectModel(db).update({
             where: { id: first.id },
             data: { expiresAt, ...(def.maxUses ? { remainingUses: def.maxUses } : {}) },
           });
@@ -115,7 +161,7 @@ export class EffectService {
           if (first.currentStacks >= maxStacks) {
             throw new BadRequestException(`Effect "${def.name}" is at max stacks (${maxStacks})`);
           }
-          const updated = await (db as any).activeEffect.update({
+          const updated: ActiveEffectRecord = await this.activeEffectModel(db).update({
             where: { id: first.id },
             data: { currentStacks: first.currentStacks + 1 },
           });
@@ -127,7 +173,7 @@ export class EffectService {
           if (first.currentStacks >= cap) {
             throw new BadRequestException(`Effect "${def.name}" is at max stacks (${cap})`);
           }
-          const updated = await (db as any).activeEffect.update({
+          const updated: ActiveEffectRecord = await this.activeEffectModel(db).update({
             where: { id: first.id },
             data: { currentStacks: first.currentStacks + 1 },
           });
@@ -137,11 +183,13 @@ export class EffectService {
     }
 
     const expiresAt = this.computeExpiry(def);
-    const expiresAtTick = def.durationModel === EffectDurationModel.TICK_BASED && def.durationTicks
-      ? def.durationTicks
-      : null;
+    let expiresAtTick: number | null = null;
+    if (def.durationModel === EffectDurationModel.TICK_BASED && def.durationTicks) {
+      const currentTick = await this.tickService.getCurrentTick(new Date());
+      expiresAtTick = currentTick + def.durationTicks;
+    }
 
-    const created = await (db as any).activeEffect.create({
+    const created: ActiveEffectRecord = await this.activeEffectModel(db).create({
       data: {
         effectDefId: def.id,
         userId: params.userId,
@@ -166,38 +214,38 @@ export class EffectService {
     return created;
   }
 
-  async removeEffect(activeEffectId: string, tx?: TxClient): Promise<void> {
-    const db = tx || this.prisma;
-    await (db as any).activeEffect.delete({ where: { id: activeEffectId } }).catch(() => {});
+  async removeEffect(activeEffectId: string, tx?: PrismaTx): Promise<void> {
+    const db: DbClient = tx || this.prisma;
+    await this.activeEffectModel(db).delete({ where: { id: activeEffectId } }).catch(() => {});
   }
 
-  async removeEffectsBySource(userId: string, sourceType: string, sourceId: string, tx?: TxClient): Promise<number> {
-    const db = tx || this.prisma;
-    const result = await (db as any).activeEffect.deleteMany({
+  async removeEffectsBySource(userId: string, sourceType: string, sourceId: string, tx?: PrismaTx): Promise<number> {
+    const db: DbClient = tx || this.prisma;
+    const result = await this.activeEffectModel(db).deleteMany({
       where: { userId, sourceType, sourceId },
     });
     return result.count;
   }
 
-  async removeEffectsBySession(sessionType: string, sessionId: string, tx?: TxClient): Promise<number> {
-    const db = tx || this.prisma;
-    const result = await (db as any).activeEffect.deleteMany({
+  async removeEffectsBySession(sessionType: string, sessionId: string, tx?: PrismaTx): Promise<number> {
+    const db: DbClient = tx || this.prisma;
+    const result = await this.activeEffectModel(db).deleteMany({
       where: { sessionType, sessionId },
     });
     return result.count;
   }
 
-  async decrementUse(activeEffectId: string, tx?: TxClient): Promise<any | null> {
-    const db = tx || this.prisma;
-    const effect = await (db as any).activeEffect.findUnique({ where: { id: activeEffectId } });
+  async decrementUse(activeEffectId: string, tx?: PrismaTx): Promise<ActiveEffectRecord | null> {
+    const db: DbClient = tx || this.prisma;
+    const effect: ActiveEffectRecord | null = await this.activeEffectModel(db).findUnique({ where: { id: activeEffectId } });
     if (!effect || effect.remainingUses === null) return effect;
 
     if (effect.remainingUses <= 1) {
-      await (db as any).activeEffect.delete({ where: { id: activeEffectId } });
+      await this.activeEffectModel(db).delete({ where: { id: activeEffectId } });
       return null;
     }
 
-    return (db as any).activeEffect.update({
+    return this.activeEffectModel(db).update({
       where: { id: activeEffectId },
       data: { remainingUses: effect.remainingUses - 1 },
     });
@@ -207,39 +255,39 @@ export class EffectService {
     userId: string,
     targetType: EffectTargetType,
     targetId: string,
-    tx?: TxClient,
-  ): Promise<any[]> {
-    const db = tx || this.prisma;
+    tx?: PrismaTx,
+  ): Promise<ActiveEffectRecord[]> {
+    const db: DbClient = tx || this.prisma;
     const now = new Date();
-    const effects = await (db as any).activeEffect.findMany({
+    return this.activeEffectModel(db).findMany({
       where: {
         userId,
         targetType,
         targetId,
         OR: [
-          { expiresAt: null },
+          { expiresAt: null, expiresAtTick: null },
           { expiresAt: { gt: now } },
+          { expiresAtTick: { gt: await this.tickService.getCurrentTick(now) } },
         ],
       },
       orderBy: { createdAt: 'asc' },
     });
-    return effects;
   }
 
-  async getActiveEffectsForUser(userId: string, tx?: TxClient): Promise<any[]> {
-    const db = tx || this.prisma;
+  async getActiveEffectsForUser(userId: string, tx?: PrismaTx): Promise<ActiveEffectRecord[]> {
+    const db: DbClient = tx || this.prisma;
     const now = new Date();
-    const effects = await (db as any).activeEffect.findMany({
+    return this.activeEffectModel(db).findMany({
       where: {
         userId,
         OR: [
-          { expiresAt: null },
+          { expiresAt: null, expiresAtTick: null },
           { expiresAt: { gt: now } },
+          { expiresAtTick: { gt: await this.tickService.getCurrentTick(now) } },
         ],
       },
       orderBy: { createdAt: 'asc' },
     });
-    return effects;
   }
 
   async getActiveEffectsByCategory(
@@ -247,19 +295,20 @@ export class EffectService {
     targetType: EffectTargetType,
     targetId: string,
     category: EffectCategory,
-    tx?: TxClient,
-  ): Promise<any[]> {
-    const db = tx || this.prisma;
+    tx?: PrismaTx,
+  ): Promise<ActiveEffectRecord[]> {
+    const db: DbClient = tx || this.prisma;
     const now = new Date();
-    return (db as any).activeEffect.findMany({
+    return this.activeEffectModel(db).findMany({
       where: {
         userId,
         targetType,
         targetId,
         category,
         OR: [
-          { expiresAt: null },
+          { expiresAt: null, expiresAtTick: null },
           { expiresAt: { gt: now } },
+          { expiresAtTick: { gt: await this.tickService.getCurrentTick(now) } },
         ],
       },
       orderBy: { createdAt: 'asc' },
@@ -275,7 +324,7 @@ export class EffectService {
     targetType: EffectTargetType,
     targetId: string,
     category: EffectCategory,
-    tx?: TxClient,
+    tx?: PrismaTx,
   ): Promise<ResolvedModifier> {
     const effects = await this.getActiveEffects(userId, targetType, targetId, tx);
 
@@ -289,9 +338,13 @@ export class EffectService {
 
   async cleanupExpired(): Promise<number> {
     const now = new Date();
-    const result = await this.activeEffect.deleteMany({
+    const currentTick = await this.tickService.getCurrentTick(now);
+    const result = await this.activeEffectModel(this.prisma).deleteMany({
       where: {
-        expiresAt: { lte: now },
+        OR: [
+          { expiresAt: { lte: now } },
+          { expiresAtTick: { lte: currentTick } },
+        ],
       },
     });
     if (result.count > 0) {
@@ -300,21 +353,14 @@ export class EffectService {
     return result.count;
   }
 
-  private computeExpiry(def: any): Date | null {
+  private computeExpiry(def: EffectDefRecord): Date | null {
     if (def.durationModel === EffectDurationModel.TIMED && def.durationSec) {
       return new Date(Date.now() + def.durationSec * 1000);
-    }
-    if (def.durationModel === EffectDurationModel.PERMANENT ||
-        def.durationModel === EffectDurationModel.UNTIL_REMOVED ||
-        def.durationModel === EffectDurationModel.SESSION ||
-        def.durationModel === EffectDurationModel.COUNT_BASED ||
-        def.durationModel === EffectDurationModel.TICK_BASED) {
-      return null;
     }
     return null;
   }
 
-  serializeActiveEffect(effect: any) {
+  serializeActiveEffect(effect: ActiveEffectRecord) {
     return {
       id: effect.id,
       effectDefId: effect.effectDefId,
@@ -331,7 +377,7 @@ export class EffectService {
       remainingUses: effect.remainingUses,
       sessionType: effect.sessionType,
       sessionId: effect.sessionId,
-      expiresAt: effect.expiresAt?.toISOString?.() ?? effect.expiresAt ?? null,
+      expiresAt: effect.expiresAt?.toISOString?.() ?? null,
       expiresAtTick: effect.expiresAtTick,
       createdAt: effect.createdAt?.toISOString?.() ?? effect.createdAt,
     };
