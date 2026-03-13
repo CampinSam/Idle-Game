@@ -550,7 +550,7 @@ export default function MissionsPage() {
                       <div className="md-entity-remove" onClick={(e) => { e.stopPropagation(); removeEntityFromSlot(slotIndex); }}>✕</div>
                       <span className="md-entity-power-badge">⚡{mp}</span>
                       <GameImage
-                        src={getEntityImagePath(entity.id, archetype)}
+                        src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
                         category="entities"
                         alt={(entity as any).name}
                         fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
@@ -599,7 +599,7 @@ export default function MissionsPage() {
                     >
                       <div className="md-select-entity-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
                         <GameImage
-                          src={getEntityImagePath(entity.id, archetype)}
+                          src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
                           category="entities"
                           alt={entity.name}
                           fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}

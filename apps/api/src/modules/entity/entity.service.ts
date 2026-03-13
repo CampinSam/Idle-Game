@@ -17,6 +17,7 @@ function serializeEntity(entity: any) {
     level: progression.level || 1,
     xp: Number(progression.xp || 0),
     status: state.status || 'idle',
+    ...(display.imageUrl ? { imageUrl: display.imageUrl } : {}),
   };
 }
 

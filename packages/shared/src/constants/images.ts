@@ -46,7 +46,8 @@ export function getImagePath(category: ImageCategory, id?: string): string {
   return `/images/${category}/${id}.png`;
 }
 
-export function getEntityImagePath(entityId?: string, archetype?: string): string {
+export function getEntityImagePath(entityId?: string, archetype?: string, imageUrl?: string): string {
+  if (imageUrl) return imageUrl;
   if (entityId) {
     return `/images/entities/${entityId}.png`;
   }

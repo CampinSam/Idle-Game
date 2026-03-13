@@ -46,6 +46,7 @@ export interface Entity {
   stats: EntityStats;
   traits: EntityTraits;
   status: EntityStatus;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -69,7 +69,7 @@ export default function EntityDetailPage() {
 
       <div className="bd-hero" style={{ background: archetypeDisplay.gradient }}>
         <GameImage
-          src={getEntityImagePath(entity.id, archetype)}
+          src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
           category="entities"
           alt={entity.name}
           fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
