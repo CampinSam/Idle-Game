@@ -7,6 +7,8 @@ import {
   resolveStorageCapacity,
   LevelRules,
 } from '../game-rules/level-config.util';
+import { EffectService } from '../effect/effect.service';
+import { EffectCategory, EffectTargetType } from '@derp/shared';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
@@ -41,7 +43,10 @@ export interface StorageInfo {
 export class LocationSettlementService {
   private readonly logger = new Logger(LocationSettlementService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private effectService: EffectService,
+  ) {}
 
   async settleLocationTx(
     tx: TxClient,
@@ -113,9 +118,17 @@ export class LocationSettlementService {
     const workerMultBps = getWorkerMultBps(workerCount);
     const threatMultBps = getThreatMultBps(location.threatLevel);
 
+    let effectProductionBps = BigInt(10000);
+    try {
+      const prodMod = await this.effectService.resolveForTarget(
+        userId, EffectTargetType.LOCATION, locationId, EffectCategory.PRODUCTION_RATE, tx,
+      );
+      const effectMultiplier = 1 + prodMod.flatAdd / 100 + prodMod.percentAdd / 100;
+      effectProductionBps = BigInt(Math.round(effectMultiplier * Number(BPS_BASE) * prodMod.multiplier));
+    } catch {}
+
     const storedAmounts: Record<string, number> = { ...(existingStorage.stored || {}) };
 
-    // Clamp stored amounts to current capacity to handle cases where capacity decreased
     for (const resourceId of Object.keys(storedAmounts)) {
       const cap = locStorageCapacity[resourceId] ?? 0;
       if (cap > 0 && storedAmounts[resourceId] > cap) {
@@ -129,6 +142,7 @@ export class LocationSettlementService {
       let output = BigInt(Math.floor(ratePerHour * Number(elapsedTicks))) / BigInt(3600);
       output = output * workerMultBps / BPS_BASE;
       output = output * threatMultBps / BPS_BASE;
+      output = output * effectProductionBps / BPS_BASE;
 
       if (output > BigInt(0)) {
         const capacity = locStorageCapacity[resourceId] ?? 0;

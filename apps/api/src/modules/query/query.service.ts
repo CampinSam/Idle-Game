@@ -15,6 +15,7 @@ export interface BootstrapResult {
     jobs?: any;
     notifications?: any;
     currencies?: any;
+    activeEffects?: any;
   };
   cursor: { delta: string };
 }
@@ -68,6 +69,7 @@ export class QueryService {
       missionHistory,
       questInstances,
       checkInInstances,
+      activeEffects,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -145,6 +147,13 @@ export class QueryService {
       }),
       (this.prisma as any).checkInInstance.findMany({
         where: { userId },
+      }),
+      (this.prisma as any).activeEffect.findMany({
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        orderBy: { createdAt: 'asc' },
       }),
     ]);
 
@@ -245,6 +254,26 @@ export class QueryService {
           dismissedAt: n.dismissedAt ? n.dismissedAt.toISOString() : null,
         })),
         currencies: currencyMap,
+        activeEffects: (activeEffects as any[]).map((e: any) => ({
+          id: e.id,
+          effectDefId: e.effectDefId,
+          targetType: e.targetType,
+          targetId: e.targetId,
+          sourceType: e.sourceType,
+          sourceId: e.sourceId,
+          category: e.category,
+          valueMode: e.valueMode,
+          value: e.value,
+          stats: e.stats,
+          trait: e.trait,
+          currentStacks: e.currentStacks,
+          remainingUses: e.remainingUses,
+          sessionType: e.sessionType,
+          sessionId: e.sessionId,
+          expiresAt: e.expiresAt?.toISOString?.() ?? null,
+          expiresAtTick: e.expiresAtTick,
+          createdAt: e.createdAt?.toISOString?.() ?? e.createdAt,
+        })),
       },
       cursor: { delta: cursorId.toString() },
     };

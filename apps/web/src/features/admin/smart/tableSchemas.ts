@@ -22,6 +22,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   LootboxDef: 'lootboxDef',
   ShopItemDef: 'shopItemDef',
   NftCollectionDef: 'nftCollectionDef',
+  EffectDef: 'effectDef',
 };
 
 export interface FieldDef {
@@ -402,6 +403,46 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       data: { type: 'json', default: {}, description: 'Extra data' },
     },
   },
+  EffectDef: {
+    color: '#7C3AED',
+    group: 'Effects',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. eff_xp_boost_timed)' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'What this effect does' },
+      iconKey: { type: 'assetKey', description: 'Icon asset key' },
+      category: { type: 'options', options: [
+        'stat_boost', 'mission_power', 'success_chance', 'reward_multiplier',
+        'xp_multiplier', 'keeper_xp_multiplier', 'currency_multiplier',
+        'production_rate', 'storage_capacity', 'timer_speed',
+        'cooldown_reduction', 'craft_luck', 'worker_efficiency',
+        'trait_grant', 'cost_discount', 'slot_unlock',
+        'protection', 'reveal', 'threat_reduction', 'level_up_bonus',
+      ], required: true, description: 'What this effect modifies' },
+      valueMode: { type: 'options', options: [
+        'flat_add', 'percent_add', 'multiplier', 'flat_set', 'bps', 'flat_grant',
+      ], required: true, description: 'How the value is applied' },
+      durationModel: { type: 'options', options: [
+        'instant', 'timed', 'permanent', 'session', 'until_removed', 'count_based', 'tick_based',
+      ], required: true, description: 'When the effect expires' },
+      stackingRule: { type: 'options', options: [
+        'no_stack', 'replace', 'refresh', 'stack_additive', 'stack_multiplicative', 'stack_capped',
+      ], default: 'no_stack', description: 'What happens when applied again' },
+      targetType: { type: 'options', options: ['player', 'entity', 'location', 'job', 'global'], required: true, description: 'What this effect targets' },
+      value: { type: 'number', description: 'Primary numeric value' },
+      stats: { type: 'json', description: 'Stat map: { ATK?, DEF?, SPD?, FOC?, LCK?, VIT? }' },
+      trait: { type: 'string', description: 'Trait to add while active' },
+      durationSec: { type: 'number', description: 'Duration in seconds (TIMED model)' },
+      durationTicks: { type: 'number', description: 'Duration in ticks (TICK_BASED model)' },
+      maxStacks: { type: 'number', description: 'Max stack count' },
+      maxUses: { type: 'number', description: 'Uses before removal (COUNT_BASED)' },
+      cap: { type: 'number', description: 'Maximum cumulative value cap' },
+      resourceId: { type: 'string', description: 'Resource/currency ID for instant grants' },
+      sessionType: { type: 'string', description: 'Session type for SESSION duration (e.g. mission)' },
+      meta: { type: 'json', default: {}, description: 'Extra metadata' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -414,6 +455,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Store: ['ShopItemDef'],
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition', 'BodySchema', 'EquipmentSchema', 'ProgressionProfile', 'TraitDefinition'],
+  Effects: ['EffectDef'],
   System: ['EventDefinition'],
 };
 

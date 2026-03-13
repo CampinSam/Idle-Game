@@ -93,3 +93,8 @@ export function useSyncCheckIns() {
   const table = useAppSelector((s) => s.sync.checkins);
   return useMemo(() => Object.values(table), [table]);
 }
+
+export function useSyncActiveEffects() {
+  const table = useAppSelector((s) => s.sync.activeEffects);
+  return useMemo(() => Object.values(table), [table]);
+}

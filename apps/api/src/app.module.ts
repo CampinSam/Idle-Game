@@ -34,6 +34,7 @@ import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { NftModule } from './modules/nft/nft.module';
 import { ShopModule } from './modules/shop/shop.module';
+import { EffectModule } from './modules/effect/effect.module';
 
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
@@ -71,6 +72,7 @@ const imports: any[] = [
   QuestModule,
   NftModule,
   ShopModule,
+  EffectModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

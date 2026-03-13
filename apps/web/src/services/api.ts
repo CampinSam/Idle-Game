@@ -376,6 +376,7 @@ export interface BootstrapResponse {
     jobs?: any;
     notifications?: any;
     currencies?: any;
+    activeEffects?: any;
   };
   cursor: { delta: string };
 }

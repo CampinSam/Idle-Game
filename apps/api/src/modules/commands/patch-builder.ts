@@ -127,6 +127,40 @@ export class PatchBuilder {
     return this;
   }
 
+  upsertActiveEffect(effect: any): this {
+    this.patches.push({
+      op: 'upsert',
+      entity: 'activeEffect',
+      id: effect.id,
+      data: {
+        id: effect.id,
+        effectDefId: effect.effectDefId,
+        targetType: effect.targetType,
+        targetId: effect.targetId,
+        sourceType: effect.sourceType,
+        sourceId: effect.sourceId,
+        category: effect.category,
+        valueMode: effect.valueMode,
+        value: effect.value,
+        stats: effect.stats,
+        trait: effect.trait,
+        currentStacks: effect.currentStacks,
+        remainingUses: effect.remainingUses,
+        sessionType: effect.sessionType,
+        sessionId: effect.sessionId,
+        expiresAt: effect.expiresAt instanceof Date ? effect.expiresAt.toISOString() : (effect.expiresAt ?? null),
+        expiresAtTick: effect.expiresAtTick,
+        createdAt: effect.createdAt instanceof Date ? effect.createdAt.toISOString() : effect.createdAt,
+      },
+    });
+    return this;
+  }
+
+  deleteActiveEffect(id: string): this {
+    this.patches.push({ op: 'delete', entity: 'activeEffect', id });
+    return this;
+  }
+
   upsert(entity: string, id: string, data: any): this {
     this.patches.push({ op: 'upsert', entity, id, data });
     return this;
@@ -234,4 +268,20 @@ export async function buildEntityPatch(pb: PatchBuilder, tx: any, entityId: stri
 export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string) {
   const user = await tx.user.findUnique({ where: { id: userId } });
   if (user) pb.upsertPlayer(user);
+}
+
+export async function fetchActiveEffects(tx: any, userId: string) {
+  const now = new Date();
+  return tx.activeEffect.findMany({
+    where: {
+      userId,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+export async function buildActiveEffectPatches(pb: PatchBuilder, tx: any, userId: string) {
+  const effects = await fetchActiveEffects(tx, userId);
+  for (const effect of effects) pb.upsertActiveEffect(effect);
 }

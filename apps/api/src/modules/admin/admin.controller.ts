@@ -51,6 +51,7 @@ export class AdminController {
       { key: 'shopItemDef', name: 'Shop Item Definitions', table: 'shop_item_defs' },
       { key: 'nftCollectionDef', name: 'NFT Collection Definitions', table: 'nft_collection_defs' },
       { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },
+      { key: 'effectDef', name: 'Effect Definitions', table: 'effect_defs' },
     ];
   }
 

@@ -26,6 +26,11 @@ export class CompleteMissionHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
+    const removedEffectIds: string[] = result.missionResult?.removedEffectIds || [];
+    for (const effectId of removedEffectIds) {
+      pb.deleteActiveEffect(effectId);
+    }
+
     const updatedNotif = await (ctx.tx as any).notification.findFirst({
       where: { userId: ctx.userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
     });

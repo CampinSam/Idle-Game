@@ -287,6 +287,7 @@ export class AdminService {
       shopItemDef: (this.prisma as any).shopItemDef,
       nftCollectionDef: (this.prisma as any).nftCollectionDef,
       modalDef: (this.prisma as any).modalDef,
+      effectDef: (this.prisma as any).effectDef,
     };
 
     if (!models[table]) {

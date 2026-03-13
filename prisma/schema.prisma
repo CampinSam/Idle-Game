@@ -46,6 +46,7 @@ model User {
   checkInInstances   CheckInInstance[]
   questInstances     QuestInstance[]
   linkedWallets      LinkedWallet[]
+  activeEffects      ActiveEffect[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
@@ -1065,6 +1066,73 @@ model ShopItemDef {
   createdAt    DateTime  @default(now())
 
   @@map("shop_item_defs")
+}
+
+// ═══════════════════════════════════════════════════
+// EFFECTS SYSTEM
+// ═══════════════════════════════════════════════════
+
+model EffectDef {
+  id              String   @id
+  name            String
+  description     String?
+  iconKey         String?
+  category        String
+  valueMode       String
+  durationModel   String
+  stackingRule    String   @default("no_stack")
+  targetType      String
+  value           Float?
+  stats           Json?
+  trait           String?
+  durationSec     Int?
+  durationTicks   Int?
+  maxStacks       Int?
+  maxUses         Int?
+  cap             Float?
+  resourceId      String?
+  sessionType     String?
+  meta            Json     @default("{}")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  activeEffects   ActiveEffect[]
+
+  @@index([category])
+  @@index([targetType])
+  @@map("effect_defs")
+}
+
+model ActiveEffect {
+  id              String   @id @default(uuid())
+  effectDefId     String
+  effectDef       EffectDef @relation(fields: [effectDefId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType      String
+  targetId        String
+  sourceType      String
+  sourceId        String
+  category        String
+  valueMode       String
+  value           Float    @default(0)
+  stats           Json?
+  trait           String?
+  currentStacks   Int      @default(1)
+  remainingUses   Int?
+  sessionType     String?
+  sessionId       String?
+  expiresAt       DateTime?
+  expiresAtTick   Float?
+  createdAt       DateTime @default(now())
+
+  @@index([userId, targetType, targetId])
+  @@index([userId, category])
+  @@index([targetType, targetId])
+  @@index([expiresAt])
+  @@index([sessionType, sessionId])
+  @@map("active_effects")
 }
 
 // ═══════════════════════════════════════════════════

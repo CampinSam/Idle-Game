@@ -15,9 +15,10 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
-import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL } from '@derp/shared';
+import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, applyModifier, applyStatModifiers } from '@derp/shared';
 import { calculateTeamMP, calculateSuccessChance, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
+import { EffectService } from '../effect/effect.service';
 
 @Injectable()
 export class MissionService {
@@ -34,6 +35,7 @@ export class MissionService {
     private notificationService: NotificationService,
     private eventService: EventService,
     private telemetryService: TelemetryService,
+    private effectService: EffectService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -310,6 +312,15 @@ export class MissionService {
       },
     });
 
+    await (db as any).activeEffect.updateMany({
+      where: {
+        userId,
+        sessionType: 'mission',
+        sessionId: null,
+      },
+      data: { sessionId: job.id },
+    });
+
     return this.mapJobToMissionResponse(job);
   }
 
@@ -383,22 +394,33 @@ export class MissionService {
       where: { id: { in: entityIds } },
     });
 
-    const teamForMP: EntityForMP[] = entities.map((b: any) => ({
-      stats: b.stats as any,
-      traits: b.traits as any,
-    }));
+    const allEffects = await this.effectService.getActiveEffectsForUser(userId, db);
+    const playerEffects = allEffects.filter((e: any) =>
+      !e.sessionType || (e.sessionType === 'mission' && e.sessionId === missionId)
+    );
 
-    const rawTeamMP = calculateTeamMP(teamForMP);
-    // Apply diminishing returns above mpEffectivenessCap (anti-whale constraint)
+    const statMod = this.effectService.resolve(playerEffects, EffectCategory.STAT_BOOST);
+    const teamForMP: EntityForMP[] = entities.map((b: any) => {
+      const boostedStats = applyStatModifiers(b.stats as any, statMod);
+      return { stats: boostedStats, traits: b.traits as any };
+    });
+
+    let rawTeamMP = calculateTeamMP(teamForMP);
+    const mpMod = this.effectService.resolve(playerEffects, EffectCategory.MISSION_POWER);
+    rawTeamMP = applyModifier(rawTeamMP, mpMod);
+
     const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
     const teamMP = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
     const difficulty = mission.data.difficulty;
-    const successChance = calculateSuccessChance(
+    let successChance = calculateSuccessChance(
       teamMP,
       difficulty,
       def.minSuccessChance ?? 0,
       def.maxSuccessChance ?? 100,
     );
+
+    const scMod = this.effectService.resolve(playerEffects, EffectCategory.SUCCESS_CHANCE);
+    successChance = Math.min(100, Math.max(0, successChance + scMod.flatAdd + scMod.percentAdd));
 
     const missionSeed = mission.data.seed;
     const rng = new SeededRng(missionSeed);
@@ -411,7 +433,24 @@ export class MissionService {
 
     const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
-    for (const { entry, amount } of resolved) {
+    const rewardMod = this.effectService.resolve(playerEffects, EffectCategory.REWARD_MULTIPLIER);
+    const xpMod = this.effectService.resolve(playerEffects, EffectCategory.XP_MULTIPLIER);
+    const keeperXpMod = this.effectService.resolve(playerEffects, EffectCategory.KEEPER_XP_MULTIPLIER);
+    const currencyMod = this.effectService.resolve(playerEffects, EffectCategory.CURRENCY_MULTIPLIER);
+
+    for (const { entry, amount: rawAmount } of resolved) {
+      let amount = rawAmount;
+      if (amount && amount > 0) {
+        if (entry.type === 'entity_xp') {
+          amount = Math.floor(applyModifier(amount, xpMod));
+        } else if (entry.type === 'keeper_xp') {
+          amount = Math.floor(applyModifier(amount, keeperXpMod));
+        } else if (entry.type === 'currency') {
+          amount = Math.floor(applyModifier(amount, currencyMod));
+        } else if (entry.type === 'item') {
+          amount = Math.max(1, Math.floor(applyModifier(amount, rewardMod)));
+        }
+      }
       if (entry.type === 'emitEvent') {
         try {
           const idempotencyKey = entry.idempotencyKey
@@ -514,6 +553,15 @@ export class MissionService {
       }
     }
 
+    const sessionEffects = await (db as any).activeEffect.findMany({
+      where: { sessionType: 'mission', sessionId: missionId },
+    });
+    if (sessionEffects.length > 0) {
+      await (db as any).activeEffect.deleteMany({
+        where: { sessionType: 'mission', sessionId: missionId },
+      });
+    }
+
     const updated = await (db as any).job.update({
       where: { id: missionId },
       data: {
@@ -578,6 +626,7 @@ export class MissionService {
         defId: def.id,
         entityIds,
         rewards: grantedRewards,
+        removedEffectIds: sessionEffects.map((e: any) => e.id),
       },
     };
   }

@@ -24,6 +24,7 @@ interface SyncState {
   missions: EntityTable;
   quests: EntityTable;
   checkins: EntityTable;
+  activeEffects: EntityTable;
   currencyBalances: Record<string, number>;
 
   lastError: string | null;
@@ -46,6 +47,7 @@ const initialState: SyncState = {
   missions: {},
   quests: {},
   checkins: {},
+  activeEffects: {},
   currencyBalances: {},
 
   lastError: null,
@@ -53,7 +55,7 @@ const initialState: SyncState = {
 
 const ENTITY_KEY_MAP: Record<string, keyof Pick<SyncState,
   'entities' | 'locations' | 'buildings' | 'rooms' | 'items' |
-  'jobs' | 'notifications' | 'currencies' | 'missions' | 'quests' | 'checkins'
+  'jobs' | 'notifications' | 'currencies' | 'missions' | 'quests' | 'checkins' | 'activeEffects'
 >> = {
   entity: 'entities',
   location: 'locations',
@@ -66,6 +68,7 @@ const ENTITY_KEY_MAP: Record<string, keyof Pick<SyncState,
   mission: 'missions',
   quest: 'quests',
   checkin: 'checkins',
+  activeEffect: 'activeEffects',
 };
 
 const syncSlice = createSlice({
@@ -93,6 +96,7 @@ const syncSlice = createSlice({
       state.missions = {};
       state.quests = {};
       state.checkins = {};
+      state.activeEffects = {};
       state.currencyBalances = {};
 
       if (snapshot.state) {
@@ -104,6 +108,10 @@ const syncSlice = createSlice({
         if (s.missions) for (const m of s.missions) state.missions[m.id] = m;
         if (s.quests) for (const q of s.quests) state.quests[q.id] = q;
         if (s.checkins) for (const ci of s.checkins) state.checkins[ci.id] = ci;
+      }
+
+      if (snapshot.activeEffects) {
+        for (const ae of snapshot.activeEffects) state.activeEffects[ae.id] = ae;
       }
 
       if (snapshot.inventory) {
