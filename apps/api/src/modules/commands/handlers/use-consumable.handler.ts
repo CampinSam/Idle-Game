@@ -73,6 +73,8 @@ export class UseConsumableHandler implements CommandHandler {
         resolvedTargetId = targetId;
       } else if (effectTargetType === EffectTargetType.PLAYER) {
         resolvedTargetId = ctx.userId;
+      } else {
+        throw new BadRequestException(`Unsupported effect target type: ${effectTargetType}`);
       }
 
       if (def.durationModel === EffectDurationModel.INSTANT) {
@@ -169,7 +171,7 @@ export class UseConsumableHandler implements CommandHandler {
         }
         if (targetType === EffectTargetType.ENTITY && value > 0 &&
             def.category === EffectCategory.XP_MULTIPLIER) {
-          await this.entityService.addEntityXp(targetId, ctx.userId, value);
+          await this.entityService.addEntityXp(targetId, ctx.userId, value, ctx.tx);
         }
         break;
       }
