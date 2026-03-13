@@ -297,7 +297,15 @@ export class MissionService {
     const timer = dbDef.timer as any;
     const durationSeconds = timer?.duration ?? 0;
     const boostable = timer?.boostable ?? true;
-    const durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
+    let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
+
+    const timerMod = await this.effectService.resolveForTarget(
+      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED, db,
+    );
+    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
+    }
+
     const seed = randomUUID();
 
     const job = await (db as any).job.create({

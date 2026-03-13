@@ -270,18 +270,22 @@ export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string
   if (user) pb.upsertPlayer(user);
 }
 
-export async function fetchActiveEffects(tx: any, userId: string) {
+export async function fetchActiveEffects(tx: any, userId: string, currentTick?: number) {
   const now = new Date();
+  const orClauses: any[] = [
+    { expiresAt: null, expiresAtTick: null },
+    { expiresAt: { gt: now } },
+  ];
+  if (currentTick !== undefined) {
+    orClauses.push({ expiresAtTick: { gt: currentTick } });
+  }
   return tx.activeEffect.findMany({
-    where: {
-      userId,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
+    where: { userId, OR: orClauses },
     orderBy: { createdAt: 'asc' },
   });
 }
 
-export async function buildActiveEffectPatches(pb: PatchBuilder, tx: any, userId: string) {
-  const effects = await fetchActiveEffects(tx, userId);
+export async function buildActiveEffectPatches(pb: PatchBuilder, tx: any, userId: string, currentTick?: number) {
+  const effects = await fetchActiveEffects(tx, userId, currentTick);
   for (const effect of effects) pb.upsertActiveEffect(effect);
 }

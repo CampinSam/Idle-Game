@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CheckInService } from '../checkin/checkin.service';
+import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
@@ -52,6 +53,7 @@ export class QueryService {
   constructor(
     private prisma: PrismaService,
     private checkInService: CheckInService,
+    private tickService: TickService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -148,13 +150,7 @@ export class QueryService {
       (this.prisma as any).checkInInstance.findMany({
         where: { userId },
       }),
-      (this.prisma as any).activeEffect.findMany({
-        where: {
-          userId,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
-        orderBy: { createdAt: 'asc' },
-      }),
+      this.findActiveEffectsForUser(userId),
     ]);
 
     // Auto check-in on bootstrap (fire-and-forget so fresh gifts appear next bootstrap)
@@ -323,5 +319,21 @@ export class QueryService {
       patches,
       ui,
     };
+  }
+
+  private async findActiveEffectsForUser(userId: string) {
+    const now = new Date();
+    const currentTick = await this.tickService.getCurrentTick(now);
+    return (this.prisma as any).activeEffect.findMany({
+      where: {
+        userId,
+        OR: [
+          { expiresAt: null, expiresAtTick: null },
+          { expiresAt: { gt: now } },
+          { expiresAtTick: { gt: currentTick } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+    });
   }
 }

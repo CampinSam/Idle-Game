@@ -119,6 +119,7 @@ export class EffectService {
     }
 
     const now = new Date();
+    const currentTick = await this.tickService.getCurrentTick(now);
     const existing: ActiveEffectRecord[] = await this.activeEffectModel(db).findMany({
       where: {
         userId: params.userId,
@@ -126,8 +127,9 @@ export class EffectService {
         targetType: params.targetType,
         targetId: params.targetId,
         OR: [
-          { expiresAt: null },
+          { expiresAt: null, expiresAtTick: null },
           { expiresAt: { gt: now } },
+          { expiresAtTick: { gt: currentTick } },
         ],
       },
     });

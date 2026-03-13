@@ -10,7 +10,8 @@ import { CurrencyService } from "../currency/currency.service";
 import { InventoryService } from "../inventory/inventory.service";
 import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
-import { ANTI_WHALE_CAPS } from "@derp/shared";
+import { EffectService } from "../effect/effect.service";
+import { ANTI_WHALE_CAPS, EffectCategory, EffectTargetType, applyModifier } from "@derp/shared";
 import { serializeLocation } from "../commands/location-serializer.util";
 import {
   resolveLevelConfig,
@@ -30,6 +31,7 @@ export class LocationService {
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
+    private effectService: EffectService,
   ) {}
 
   /**
@@ -348,7 +350,13 @@ export class LocationService {
       timer.growthScalar,
       buildLevel,
     );
-    const durationTicks = durationSeconds;
+    let durationTicks = durationSeconds;
+    const buildTimerMod = await this.effectService.resolveForTarget(
+      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
+    );
+    if (buildTimerMod.flatAdd !== 0 || buildTimerMod.percentAdd !== 0 || buildTimerMod.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, buildTimerMod)));
+    }
     const isInstant = durationTicks <= 0;
 
     const doWork = async (tx: any) => {
@@ -661,7 +669,13 @@ export class LocationService {
       timer.growthScalar,
       nextLevel,
     );
-    const durationTicks = durationSeconds;
+    let durationTicks = durationSeconds;
+    const upgradeTimerMod = await this.effectService.resolveForTarget(
+      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
+    );
+    if (upgradeTimerMod.flatAdd !== 0 || upgradeTimerMod.percentAdd !== 0 || upgradeTimerMod.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, upgradeTimerMod)));
+    }
     const isInstant = durationTicks <= 0;
 
     const doWork = async (tx: any) => {

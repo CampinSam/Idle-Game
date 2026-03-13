@@ -9,6 +9,8 @@ import { InventoryService } from '../inventory/inventory.service';
 import { PlayerService } from '../player/player.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
+import { EffectService } from '../effect/effect.service';
+import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import { calculateCraftingLuck, durationSecondsToTicks, SeededRng } from '@derp/math';
 
 @Injectable()
@@ -25,6 +27,7 @@ export class CraftingService {
     private playerService: PlayerService,
     private gameRules: GameRulesService,
     private eventService: EventService,
+    private effectService: EffectService,
   ) {}
 
   private mapJobToCraftingResponse(job: any) {
@@ -129,7 +132,14 @@ export class CraftingService {
     const timer = recipe.timer as any;
     const durationSeconds = timer?.duration ?? 0;
     const boostable = timer?.boostable ?? true;
-    const durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
+    let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
+
+    const timerMod = await this.effectService.resolveForTarget(
+      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
+    );
+    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
+    }
 
     const job = await (this.prisma as any).job.create({
       data: {
