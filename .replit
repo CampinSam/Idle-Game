@@ -74,3 +74,7 @@ build = ["bash", "-c", "cd /home/runner/workspace && pnpm --filter @derp/shared 
 
 [objectStorage]
 defaultBucketID = "replit-objstore-44cea7bf-f16f-4c36-8afe-2b93174a0589"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
