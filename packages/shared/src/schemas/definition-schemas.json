@@ -2017,9 +2017,12 @@
           "description": "Passive stat modifiers"
         },
         "passiveEffects": {
-          "type": "json",
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/PassiveEffectSpec"
+          },
           "nullable": true,
-          "description": "Passive effects"
+          "description": "Passive effects applied while the item is equipped (resolved at query time, no ActiveEffect records)"
         },
         "consumableData": {
           "$ref": "#/complexTypes/ConsumableData",
@@ -3327,11 +3330,6 @@
           "type": "number",
           "nullable": true,
           "description": "Tick-based expiry (for tick_based duration model)"
-        },
-        "createdAt": {
-          "type": "datetime",
-          "default": "now()",
-          "description": "When this active effect was created"
         }
       },
       "relations": {
