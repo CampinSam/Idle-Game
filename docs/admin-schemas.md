@@ -599,6 +599,7 @@ Defines a named event that can be dispatched by outcome processing (via `emitEve
 | `kind` | string | No | `system` | Event kind (e.g. `system`, `seasonal`, `promotional`) |
 | `handlerKey` | string | Yes | — | Identifies the server-side handler to invoke (see Handler Keys below) |
 | `security` | JSON | No | `{}` | Access control rules (see Security below) |
+| `inputSchema` | JSON | No | `{}` | JSON Schema for validating event payloads |
 | `enabled` | boolean | No | true | Whether this event is active. Disabled events throw an error if dispatched. |
 
 > **Note:** Payload validation is handled directly in each handler. For example, the `createGiftForPlayer` handler validates that `giftDefId` is present in the payload.
@@ -650,6 +651,7 @@ Defines a gift template that can be instantiated for players. Contains presentat
 | `presentation` | JSON | No | `{}` | Visual properties for the gift UI (see [Presentation](#gift-presentation)) |
 | `claimRules` | JSON | No | `{}` | Rules governing how/when the gift can be claimed (see [Claim Rules](#gift-claim-rules)) |
 | `rewardSpec` | JSON | No | `{}` | What the player receives on claim (see [Gift Reward Spec](#gift-reward-spec)) |
+| `instant` | boolean | No | true | If true, gift is claimed immediately on creation (no inbox step) |
 | `enabled` | boolean | No | true | Whether new instances of this gift can be created |
 
 ### Gift Presentation
@@ -804,13 +806,28 @@ Controls how often the check-in window opens:
 ```
 
 ```json
-{ "type": "interval", "seconds": 86400 }
+{ "type": "every_x_days", "interval": 3 }
+```
+
+```json
+{ "type": "weekly" }
+```
+
+```json
+{ "type": "monthly" }
 ```
 
 | Property | Type | Description |
 |---|---|---|
-| `type` | string | `"daily"` (resets at midnight UTC) or `"interval"` (fixed seconds since last claim) |
-| `seconds` | number | Only used when `type: "interval"` — number of seconds between windows |
+| `type` | string | One of: `daily`, `every_x_days`, `weekly`, `monthly` (see below) |
+| `interval` | number | Only used when `type: "every_x_days"` — number of days between windows |
+
+| Type Value | Reset Behavior |
+|---|---|
+| `daily` | Resets at 00:00 UTC every day |
+| `every_x_days` | Uses `interval` (integer) to calculate fixed windows from epoch |
+| `weekly` | Resets every Monday at 00:00 UTC |
+| `monthly` | Resets on the 1st of every month at 00:00 UTC |
 
 ---
 
@@ -833,33 +850,32 @@ Defines a quest with one or more objectives tracked against player telemetry eve
 
 ### QuestObjective
 
-Each entry in `objectives` describes one trackable goal. Objectives are matched against player telemetry events:
+Each entry in `objectives` describes one trackable goal. Objectives are tracked by array index (no `id` field) and matched against player telemetry events:
 
 ```json
 [
   {
-    "id": "obj_complete_missions",
-    "label": "Complete 5 missions",
-    "eventType": "mission_completed",
-    "targetCount": 5,
-    "filters": { "missionType": "exploration" }
+    "eventType": "mission_complete",
+    "key": "exploration",
+    "target": 5,
+    "description": "Complete 5 exploration missions",
+    "dataFilter": { "missionType": "exploration" }
   },
   {
-    "id": "obj_craft_items",
-    "label": "Craft 3 items",
-    "eventType": "crafting_completed",
-    "targetCount": 3
+    "eventType": "crafting_complete",
+    "target": 3,
+    "description": "Craft 3 items"
   }
 ]
 ```
 
-| Property | Type | Description |
-|---|---|---|
-| `id` | string | Unique objective ID within the quest |
-| `label` | string | Human-readable description shown in the UI |
-| `eventType` | string | Telemetry event type to track (e.g. `mission_completed`, `lootbox_opened`, `checkin_completed`) |
-| `targetCount` | number | How many matching events are required to complete this objective |
-| `filters` | object | Optional key-value pairs that the telemetry event payload must match for the event to count |
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `eventType` | string | Yes | Telemetry event type to track (e.g. `mission_complete`, `lootbox_opened`, `checkin_complete`) |
+| `target` | number | No | How many matching events are required to complete this objective (defaults to `1` if omitted) |
+| `description` | string | No | Human-readable description shown in the UI |
+| `key` | string | No | Optional key that must match `PlayerEvent.key` for the event to count |
+| `dataFilter` | object | No | Optional shallow key-value pairs that the telemetry event data must match for the event to count |
 
 ---
 
@@ -1275,8 +1291,9 @@ A player-owned entity instance (e.g. a bird character). Created from an EntityDe
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `id` | string (UUID) | Auto | — | Unique identifier |
-| `ownerUserId` | string | Yes | — | Player who owns this entity |
-| `nftAssetId` | string | No | — | Optional NFT asset link (unique) |
+| `ownerUserId` | string | No | — | Player who owns this entity (null = unclaimed NFT-imported entity) |
+| `nftAssetId` | string | No | — | Optional NFT asset link (unique, format: `{chain}:{collectionId}:{assetId}`) |
+| `nftCollectionDefId` | string | No | — | References an [NftCollectionDef](#nftcollectiondef) if this entity was claimed from an NFT |
 | `definitionId` | string | Yes | — | References an [EntityDefinition](#entitydefinition) |
 | `speciesId` | string | Yes | — | Species ID (denormalized for querying) |
 | `role` | string | No | `player_unit` | Entity role |
