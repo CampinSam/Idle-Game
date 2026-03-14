@@ -7,7 +7,7 @@ Derp Universe is a season-based idle strategy RPG designed for a persistent worl
 - Frontend on port 5000, backend on port 3001
 - Development workflow with hot reload (Vite HMR + NestJS watch mode)
 - Mobile-first RPG game UI style inspired by idle strategy games
-- Always update admin-schemas.md and definition-schemas.json when there are data structure updates or additions.
+- Always update admin-schemas.md and definition-schemas.json to document changes
 - Always prefer to combine and update existing code and functions over create mostly duplicate code
 - Always use the sever for data authority while the frontend simply displays data or does very minor calculations. All formulaic updates should only exist server side
 - Always remove legacy code instead of creating fallbacks. When you do this, make sure to implement proper error handling
