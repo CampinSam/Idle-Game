@@ -116,7 +116,11 @@ export class CraftingService {
       throw new BadRequestException(`Entity is currently ${entityStatus}`);
     }
 
-    const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(recipe.cost) ? recipe.cost : [];
+    const rawCost = recipe.cost;
+    if (rawCost && !Array.isArray(rawCost)) {
+      this.logger.warn(`Recipe ${recipe.id} has non-array cost — expected [{type,id,amount}] array`);
+    }
+    const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(rawCost) ? rawCost : [];
     for (const cost of costEntries) {
       if (cost.amount <= 0) continue;
       if (cost.type === 'currency') {

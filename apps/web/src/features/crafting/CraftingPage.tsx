@@ -98,7 +98,7 @@ export default function CraftingPage() {
         <h2>Recipes</h2>
         <div className="recipes-grid">
           {craftingRecipes.map((r: any) => {
-            const recipeCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(r.cost) ? r.cost : [];
+            const recipeCost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
             const canAfford = recipeCost.every((c: any) => {
               if (c.type === 'currency') return (currencyBalances[c.id] ?? 0) >= c.amount;
               return true;
@@ -144,7 +144,7 @@ export default function CraftingPage() {
             disabled={!selectedEntity}
             onClick={handleStart}
           >
-            Start Crafting ({Array.isArray((recipe as any).cost) ? (recipe as any).cost.map((c: any) => `${c.amount} ${c.id.replace('soft_', '')}`).join(', ') : 'Free'})
+            Start Crafting ({((recipe as any).cost ?? []).map((c: any) => `${c.amount} ${c.id.replace('soft_', '')}`).join(', ') || 'Free'})
           </button>
         </div>
       )}

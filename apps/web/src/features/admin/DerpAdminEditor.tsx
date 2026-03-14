@@ -283,7 +283,7 @@ const TABLE_SCHEMAS: Record<string, any> = {
       description: { type: 'string', description: 'Flavor text' },
       category: { type: 'string', description: 'Grouping category' },
       group: { type: 'string', description: 'Sub-group' },
-      cost: { type: 'costObject', default: {}, description: 'Crafting cost' },
+      cost: { type: 'costArray', default: [], description: 'Crafting cost (array of {type, id, amount})' },
       timer: { type: 'timer', description: 'Duration and skip settings' },
       requiredKeeperLevel: { type: 'number', default: 1, description: 'Min keeper level' },
       rewards: { type: 'json', default: {}, description: 'Crafting output' },
@@ -1200,6 +1200,66 @@ const CostObjectField: React.FC<{ value?: any; onChange: (v: any) => void }> = (
   );
 };
 
+const CostArrayField: React.FC<{ value?: any[]; onChange: (v: any) => void }> = ({ value = [], onChange }) => {
+  const entries = Array.isArray(value) ? value : [];
+
+  return (
+    <div className="space-y-2">
+      {entries.map((entry: any, i: number) => (
+        <div key={i} className="flex items-center gap-2">
+          <select
+            value={entry.type || 'currency'}
+            onChange={(e) => {
+              const newEntries = [...entries];
+              newEntries[i] = { ...entry, type: e.target.value };
+              onChange(newEntries);
+            }}
+            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          >
+            <option value="currency">currency</option>
+            <option value="item">item</option>
+          </select>
+          <input
+            type="text"
+            value={entry.id || ''}
+            onChange={(e) => {
+              const newEntries = [...entries];
+              newEntries[i] = { ...entry, id: e.target.value };
+              onChange(newEntries);
+            }}
+            placeholder="ID"
+            className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          />
+          <input
+            type="number"
+            value={entry.amount ?? 0}
+            onChange={(e) => {
+              const newEntries = [...entries];
+              newEntries[i] = { ...entry, amount: Number(e.target.value) };
+              onChange(newEntries);
+            }}
+            placeholder="Amount"
+            className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          />
+          <button onClick={() => {
+            const newEntries = [...entries];
+            newEntries.splice(i, 1);
+            onChange(newEntries);
+          }} className="text-red-400 hover:text-red-300">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={() => onChange([...entries, { type: 'currency', id: '', amount: 0 }])}
+        className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 text-sm"
+      >
+        <Plus size={14} /> Add Cost Entry
+      </button>
+    </div>
+  );
+};
+
 const EffectsField: React.FC<{ value?: any[]; onChange: (v: any) => void }> = ({ value = [], onChange }) => {
   const enums = useEnums();
   return (
@@ -1554,6 +1614,8 @@ const FieldEditor: React.FC<{ fieldName: string; fieldDef: any; value: any; onCh
         return <SlotStatsField value={value} onChange={onChange} />;
       case 'costObject':
         return <CostObjectField value={value} onChange={onChange} />;
+      case 'costArray':
+        return <CostArrayField value={value} onChange={onChange} />;
       case 'effects':
         return <EffectsField value={value} onChange={onChange} />;
       case 'eventSecurity':

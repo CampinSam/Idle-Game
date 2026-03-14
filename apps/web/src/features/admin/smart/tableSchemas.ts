@@ -168,7 +168,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       description: { type: 'string', description: 'Flavor text' },
       category: { type: 'string', description: 'Grouping category' },
       group: { type: 'string', description: 'Sub-group' },
-      cost: { type: 'json', default: {}, description: 'Crafting cost' },
+      cost: { type: 'json', default: [], description: 'Crafting cost (array of {type, id, amount})' },
       timer: { type: 'json', description: 'Duration and skip settings' },
       requiredKeeperLevel: { type: 'number', default: 1, description: 'Min keeper level' },
       rewards: { type: 'json', default: {}, description: 'Crafting output' },

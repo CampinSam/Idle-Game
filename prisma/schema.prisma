@@ -555,7 +555,7 @@ model MissionDef {
   difficulty               Int                @default(0)
   minSuccessChance         Int                @default(0)
   maxSuccessChance         Int                @default(100)
-  timer                    Json               @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
+  timer                    Json               @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":[],\"skip_type\":\"absolute\"}")
   success                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
   failure                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
   requirements             Json               @default("[]")
@@ -584,8 +584,8 @@ model RecipeDef {
   description              String?
   category                 String?
   group                    String?
-  cost                     Json     @default("{}")
-  timer                    Json     @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":{},\"skip_type\":\"absolute\"}")
+  cost                     Json     @default("[]")
+  timer                    Json     @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":[],\"skip_type\":\"absolute\"}")
   requiredKeeperLevel      Int      @default(1)
   rewards                  Json     @default("{}")
   requirements             Json     @default("[]")

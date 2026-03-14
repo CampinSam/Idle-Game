@@ -1,12 +1,15 @@
 import type { Requirement, RewardOrBundle, EffectOrBundle } from './mission';
+import type { SkipCostEntry } from './timer';
 
 export type CraftingRecipeId = string;
+
+export type CostEntry = SkipCostEntry;
 
 export interface CraftingRecipe {
   id: CraftingRecipeId;
   name: string;
   description: string;
-  cost: Record<string, number>;
+  cost: CostEntry[];
   timer: import('./timer').Timer;
   requiredKeeperLevel: number;
   rewards?: RewardOrBundle[];

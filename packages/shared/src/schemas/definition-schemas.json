@@ -406,16 +406,17 @@
           "description": "How skip cost scales"
         },
         "skip_cost": {
-          "type": "CostObject",
-          "default": {},
-          "description": "Cost to skip (only if skipable=true)"
+          "type": "array",
+          "items": { "$ref": "#/complexTypes/CostEntry" },
+          "default": [],
+          "description": "Cost entries to skip (only if skipable=true)"
         }
       },
       "defaults": {
         "duration": 0,
         "boostable": true,
         "skipable": false,
-        "skip_cost": {},
+        "skip_cost": [],
         "skip_type": "absolute"
       }
     },
@@ -636,7 +637,7 @@
       }
     },
     "CostObject": {
-      "description": "Map of resource ID to amount. Used for crafting costs and skip costs.",
+      "description": "DEPRECATED — Legacy map format. All costs now use the CostEntry array format [{type, id, amount}]. Kept for reference only.",
       "type": "object",
       "additionalProperties": {
         "type": "number",
@@ -2698,9 +2699,10 @@
           "description": "Sub-group"
         },
         "cost": {
-          "$ref": "#/complexTypes/CostObject",
-          "default": {},
-          "description": "Crafting cost (map of resourceId to amount)"
+          "type": "array",
+          "items": { "$ref": "#/complexTypes/CostEntry" },
+          "default": [],
+          "description": "Crafting cost entries (array of {type, id, amount})"
         },
         "timer": {
           "$ref": "#/complexTypes/Timer",
