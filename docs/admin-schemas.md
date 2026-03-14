@@ -30,38 +30,41 @@ This document describes each definition table editable through the Admin Panel, 
 21. [QuestDef](#questdef)
 22. [ShopItemDef](#shopitemdef)
 23. [NftCollectionDef](#nftcollectiondef)
+24. [EffectDef](#effectdef)
 
 ### Runtime Tables
-24. [Job (Unified Job System)](#job)
-25. [Notification](#notification)
-26. [TickRateInterval](#tickrateinterval)
-27. [BoostEvent](#boostevent)
+25. [Job (Unified Job System)](#job)
+26. [Notification](#notification)
+27. [TickRateInterval](#tickrateinterval)
+28. [BoostEvent](#boostevent)
+29. [ActiveEffect](#activeeffect)
 
 ### Instance Tables
-28. [Entity (Instance)](#entity-instance)
-29. [EntityEquipment](#entityequipment)
-30. [LocationInstance](#locationinstance)
-31. [LocationBuildingInstance](#locationbuildinginstance)
-32. [LocationRoomInstance](#locationroominstance)
-33. [LocationWorkerAssignment](#locationworkerassignment)
-34. [ItemInstance](#iteminstance)
-35. [GiftInstance](#giftinstance)
-36. [GiftClaimTx](#giftclaimtx)
+30. [Entity (Instance)](#entity-instance)
+31. [EntityEquipment](#entityequipment)
+32. [LocationInstance](#locationinstance)
+33. [LocationBuildingInstance](#locationbuildinginstance)
+34. [LocationRoomInstance](#locationroominstance)
+35. [LocationWorkerAssignment](#locationworkerassignment)
+36. [ItemInstance](#iteminstance)
+37. [GiftInstance](#giftinstance)
+38. [GiftClaimTx](#giftclaimtx)
 
 ### Shared JSON Formats
-37. [Unified Level-Based Rules System](#unified-level-based-rules-system)
-38. [Timer](#timer)
-39. [Cost Objects](#cost-objects)
-40. [Outcome Blocks](#outcome-blocks)
-41. [Rewards](#rewards)
-42. [Requirements](#requirements)
-43. [Visibility Requirements](#visibility-requirements)
-44. [Effects](#effects)
-45. [Extra Data](#extra-data)
-46. [Gift Reward Spec](#gift-reward-spec)
-47. [Event → Gift Flow](#event--gift-flow)
-48. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
-49. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
+39. [Unified Level-Based Rules System](#unified-level-based-rules-system)
+40. [Timer](#timer)
+41. [Cost Objects](#cost-objects)
+42. [Outcome Blocks](#outcome-blocks)
+43. [Rewards](#rewards)
+44. [Requirements](#requirements)
+45. [Visibility Requirements](#visibility-requirements)
+46. [Effects (Flag)](#effects)
+47. [Effect System Enums](#effect-system-enums)
+48. [Extra Data](#extra-data)
+49. [Gift Reward Spec](#gift-reward-spec)
+50. [Event → Gift Flow](#event--gift-flow)
+51. [Example Flow 1: Welcome Gems](#example-flow-1-welcome-gems-registration--currency-gift)
+52. [Example Flow 2: New Guest Arrived](#example-flow-2-new-guest-arrived-missioncrafting--entity-gift)
 
 ---
 
@@ -152,28 +155,53 @@ Used in the `equipData` field on gear-type items:
 
 ### ConsumableData
 
-Used in the `consumableData` field on potion/consumable items:
+Used in the `consumableData` field on consumable items. Consumables apply one or more effects from the [EffectDef](#effectdef) table when used via the `UseConsumable` command.
 
 ```json
 {
-  "effect": "heal",
-  "amount": 50
+  "effects": [
+    { "effectDefId": "eff_xp_boost_30m", "targetType": "player" },
+    { "effectDefId": "eff_stat_boost_atk", "targetType": "entity" }
+  ],
+  "targetType": "player"
 }
 ```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `effects` | array | Yes | Array of `ConsumableEffectSpec` entries (see below) |
+| `targetType` | EffectTargetType enum | Yes | Default target type for resolution |
+
+#### ConsumableEffectSpec
+
+Each entry in the `effects` array:
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `effectDefId` | string | Yes | References an [EffectDef](#effectdef) `id` |
+| `targetType` | EffectTargetType enum | Yes | One of: `entity`, `player`, `location`, `team`, `job`, `global` |
+
+When the consumable is used, each effect spec is resolved: the referenced `EffectDef` is looked up and applied via the effect system. Instant effects (`durationModel: "instant"`) fire immediately with no persistent record. All other duration models (`timed`, `tick_based`, `count_based`, `session`, `permanent`, `until_removed`) create an `ActiveEffect` record. If the effect's `stackingRule` is `replace`, the previous active effect from the same definition is removed and a delete patch is emitted.
+
+### PassiveEffectSpec
+
+Used in the `passiveEffects` JSON array field on items. Passive effects are resolved at query time from equipped items — they do not create `ActiveEffect` records.
 
 ```json
-{
-  "effect": "speed_boost",
-  "duration": 60
-}
+[
+  { "category": "stat_boost", "valueMode": "flat_add", "stats": { "ATK": 5, "DEF": 3 } },
+  { "category": "mission_power", "valueMode": "percent_add", "value": 10 },
+  { "category": "trait_grant", "valueMode": "flat_grant", "trait": "ninja" }
+]
 ```
 
-| Property | Type | Description |
-|---|---|---|
-| `effect` | string | Effect type (e.g. `heal`, `speed_boost`, `luck_boost`, `xp_boost`) |
-| `amount` | number | Magnitude of the effect (for instant effects like healing) |
-| `duration` | number | Duration in seconds (for timed buffs) |
-| `multiplier` | number | Multiplier value (for XP scrolls, etc.) |
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `category` | EffectCategory enum | Yes | Effect category (see [Effect System Enums](#effect-system-enums)) |
+| `valueMode` | EffectValueMode enum | Yes | How the value is applied (see [Effect System Enums](#effect-system-enums)) |
+| `value` | number | No | Scalar value (used by most value modes) |
+| `stats` | EffectStatMap | No | Per-stat values `{ ATK?, DEF?, SPD?, FOC?, LCK?, VIT? }` (for `stat_boost` category) |
+| `trait` | string | No | Trait archetype name (for `trait_grant` category) |
 
 ---
 
@@ -938,6 +966,71 @@ Links an on-chain NFT collection to an entity definition, enabling NFT-gated ent
 
 ---
 
+## EffectDef
+
+Defines a reusable effect blueprint in the Generic Effects System. Effects are universal modifiers that can boost stats, multiply rewards, speed up timers, grant traits, and more. EffectDefs are referenced by consumable items (via `consumableData.effects[].effectDefId`), and can be applied from missions, quests, check-ins, shops, buildings, or admin actions.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier (e.g. `eff_xp_boost_30m`, `eff_stat_atk_flat`) |
+| `name` | string | Yes | — | Display name |
+| `description` | string | No | — | Flavor text describing the effect |
+| `iconKey` | string | No | — | Key used to resolve the display icon |
+| `category` | EffectCategory enum | Yes | — | What the effect modifies (see [Effect System Enums](#effect-system-enums)) |
+| `valueMode` | EffectValueMode enum | Yes | — | How the value is applied (see [Effect System Enums](#effect-system-enums)) |
+| `durationModel` | EffectDurationModel enum | Yes | — | How the effect expires (see [Effect System Enums](#effect-system-enums)) |
+| `stackingRule` | EffectStackingRule enum | No | `no_stack` | Behavior when the same effect is applied again (see [Effect System Enums](#effect-system-enums)) |
+| `targetType` | EffectTargetType enum | Yes | — | What the effect targets (see [Effect System Enums](#effect-system-enums)) |
+| `value` | float | No | — | Scalar value for the effect (interpretation depends on `valueMode`) |
+| `stats` | JSON | No | — | Per-stat values `{ ATK?, DEF?, SPD?, FOC?, LCK?, VIT? }` (for `stat_boost` category) |
+| `trait` | string | No | — | Trait archetype name (for `trait_grant` category) |
+| `durationSec` | integer | No | — | Duration in seconds (for `timed` duration model) |
+| `durationTicks` | integer | No | — | Duration in game ticks (for `tick_based` duration model) |
+| `maxStacks` | integer | No | — | Maximum stack count (for `stack_capped` stacking rule) |
+| `maxUses` | integer | No | — | Number of uses before the effect expires (for `count_based` duration model) |
+| `cap` | float | No | — | Maximum total value when stacking |
+| `resourceId` | string | No | — | Associated resource ID (for `production_rate`, `storage_capacity`, `currency_multiplier`, `cost_discount`) |
+| `sessionType` | string | No | — | Session scope key (for `session` duration model, e.g. `"mission"`) |
+| `meta` | JSON | No | `{}` | Freeform metadata for custom logic |
+| `enabled` | boolean | No | true | Whether this effect definition is active |
+
+**Example — XP boost for 30 minutes:**
+
+```json
+{
+  "id": "eff_xp_boost_30m",
+  "name": "XP Scroll (30m)",
+  "description": "Boosts all XP earned by 50% for 30 minutes",
+  "iconKey": "scroll_xp",
+  "category": "xp_multiplier",
+  "valueMode": "percent_add",
+  "durationModel": "timed",
+  "stackingRule": "replace",
+  "targetType": "player",
+  "value": 50,
+  "durationSec": 1800,
+  "enabled": true
+}
+```
+
+**Example — flat ATK stat boost (permanent until removed):**
+
+```json
+{
+  "id": "eff_stat_atk_flat_10",
+  "name": "ATK +10",
+  "category": "stat_boost",
+  "valueMode": "flat_add",
+  "durationModel": "until_removed",
+  "stackingRule": "stack_additive",
+  "targetType": "entity",
+  "stats": { "ATK": 10 },
+  "enabled": true
+}
+```
+
+---
+
 ## Job
 
 The unified Job table stores all timer-based player activities: missions, crafting, and building construction. Unlike the definition tables above (which are game design data), Jobs are runtime records created when a player starts an activity.
@@ -1138,6 +1231,40 @@ Defines a time-limited boost event that temporarily increases the global tick ra
 | `startTime` | datetime | Yes | — | When the boost begins |
 | `endTime` | datetime | Yes | — | When the boost ends |
 | `status` | string | No | `scheduled` | One of: `scheduled`, `active`, `ended` |
+
+---
+
+## ActiveEffect
+
+A runtime record representing an effect currently applied to a target. Created when a non-instant effect is applied via the effect system (e.g. from a consumable, mission reward, or admin action). Active effects are queried by `EffectResolver` to compute `ResolvedModifier` aggregates. Expired effects are cleaned up by a 60-second periodic task.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string (UUID) | Auto | — | Unique identifier |
+| `effectDefId` | string | Yes | — | References an [EffectDef](#effectdef) `id` |
+| `userId` | string (UUID) | Yes | — | The player who owns this active effect |
+| `targetType` | EffectTargetType enum | Yes | — | What this effect targets (e.g. `player`, `entity`, `location`) |
+| `targetId` | string | Yes | — | ID of the target (player ID, entity ID, etc.) |
+| `sourceType` | EffectSourceType enum | Yes | — | Where this effect came from (see [Effect System Enums](#effect-system-enums)) |
+| `sourceId` | string | Yes | — | ID of the source (item instance ID, mission def ID, etc.) |
+| `category` | EffectCategory enum | Yes | — | Copied from the EffectDef at apply time |
+| `valueMode` | EffectValueMode enum | Yes | — | Copied from the EffectDef at apply time |
+| `value` | float | No | 0 | Current effect value |
+| `stats` | JSON | No | — | Per-stat values (copied from EffectDef) |
+| `trait` | string | No | — | Trait name (copied from EffectDef) |
+| `currentStacks` | integer | No | 1 | Current stack count |
+| `remainingUses` | integer | No | — | Remaining uses (for `count_based` duration model) |
+| `sessionType` | string | No | — | Session scope key (for `session` duration model) |
+| `sessionId` | string | No | — | Current session ID (cleared on session end) |
+| `expiresAt` | datetime | No | — | Wall-clock expiry (for `timed` duration model) |
+| `expiresAtTick` | float | No | — | Tick-based expiry (for `tick_based` duration model) |
+| `createdAt` | datetime | Auto | now | When this active effect was created |
+
+> **Indexes:** `[userId, targetType, targetId]`, `[userId, category]`, `[targetType, targetId]`
+
+> **Cascade:** Deleting an `EffectDef` or `User` cascades to delete related `ActiveEffect` records.
+
+> **Expiry filtering:** All queries for active effects must include the three-way OR filter: `expiresAt IS NULL AND expiresAtTick IS NULL` (permanent), `expiresAt > now()` (wall-clock), or `expiresAtTick > currentTick` (tick-based).
 
 ---
 
@@ -1831,6 +1958,123 @@ Effects can be mixed freely with reward and text entries in outcome blocks, and 
 | `remove` | flag name | — (ignored) | Deletes the flag key entirely from the player's flags object. After removal, `exists` operator checks will correctly return false. |
 
 **Odds** is a percentage value from 0-100. Default is `100` (guaranteed). Use lower values for random effects (e.g., `odds: 25` = 25% chance of applying).
+
+### Effect System Enums
+
+The Generic Effects System uses six enums to classify effect definitions and active effects. All enum values are **lowercase strings**.
+
+#### EffectCategory
+
+Determines what game mechanic the effect modifies.
+
+| Value | Description |
+|---|---|
+| `stat_boost` | Modifies entity stats (ATK, DEF, SPD, FOC, LCK, VIT) |
+| `mission_power` | Modifies mission power calculation |
+| `success_chance` | Modifies mission success probability |
+| `reward_multiplier` | Multiplies reward quantities |
+| `xp_multiplier` | Multiplies entity XP gains |
+| `keeper_xp_multiplier` | Multiplies keeper XP gains |
+| `production_rate` | Modifies location/building production rate |
+| `storage_capacity` | Modifies location/building storage capacity |
+| `timer_speed` | Modifies job timer speed |
+| `trait_grant` | Grants a trait archetype to an entity |
+| `currency_multiplier` | Multiplies currency earnings |
+| `cost_discount` | Reduces costs |
+| `slot_unlock` | Unlocks equipment/building slots |
+| `protection` | Provides damage protection |
+| `reveal` | Reveals hidden content |
+| `threat_reduction` | Reduces threat/aggro |
+| `craft_luck` | Improves crafting success/bonus chances |
+| `worker_efficiency` | Improves worker output |
+| `cooldown_reduction` | Reduces cooldown timers |
+| `level_up_bonus` | Provides bonuses on level up |
+
+#### EffectValueMode
+
+How the effect's `value` field is applied to the base value.
+
+| Value | Description |
+|---|---|
+| `flat_add` | Adds a flat amount to the base (`base + value`) |
+| `percent_add` | Adds a percentage (`base * (1 + value/100)`) |
+| `multiplier` | Multiplies the result (`result * value`) |
+| `flat_set` | Overrides to a fixed value |
+| `bps` | Basis points (10000 = 1.0x, 11000 = 1.1x) |
+| `flat_grant` | Grants a flat resource/trait (no base interaction) |
+| `random_range` | Picks a random value in a range |
+
+#### EffectDurationModel
+
+How the effect expires.
+
+| Value | Description |
+|---|---|
+| `instant` | Applied immediately, no ActiveEffect record created |
+| `timed` | Expires after `durationSec` seconds (wall-clock, stored in `expiresAt`) |
+| `tick_based` | Expires after `durationTicks` game ticks (stored in `expiresAtTick`) |
+| `count_based` | Expires after `maxUses` uses (tracked in `remainingUses`) |
+| `session` | Lasts until the session ends (scoped by `sessionType` + `sessionId`) |
+| `permanent` | Lasts forever (no expiry fields set) |
+| `until_removed` | Lasts until explicitly removed by game logic |
+
+#### EffectStackingRule
+
+What happens when the same `EffectDef` is applied again to the same target.
+
+| Value | Description |
+|---|---|
+| `replace` | Removes the existing active effect and creates a new one |
+| `refresh` | Resets the duration of the existing active effect |
+| `stack_additive` | Increases `currentStacks` by 1, value adds linearly |
+| `stack_multiplicative` | Increases `currentStacks` by 1, value multiplies |
+| `stack_capped` | Like `stack_additive` but capped at `maxStacks` |
+| `no_stack` | Ignores the new application if already active |
+
+#### EffectTargetType
+
+What the effect targets.
+
+| Value | Description |
+|---|---|
+| `entity` | Targets a specific entity (bird/character) |
+| `player` | Targets the player account globally |
+| `location` | Targets a specific location instance |
+| `team` | Targets all entities in the player's team |
+| `job` | Targets a specific job (mission/crafting) |
+| `global` | Affects all players (admin-only) |
+
+#### EffectSourceType
+
+Where the effect originated from.
+
+| Value | Description |
+|---|---|
+| `consumable` | Applied by using a consumable item |
+| `equipment` | Applied by equipping an item |
+| `trait` | Applied by a trait archetype |
+| `building` | Applied by a building |
+| `room` | Applied by a room |
+| `mission_reward` | Granted as a mission reward |
+| `season_event` | Applied by a season event |
+| `admin` | Applied by an admin action |
+| `quest_reward` | Granted as a quest reward |
+| `checkin` | Granted by the check-in system |
+| `shop` | Granted by a shop purchase |
+| `flag` | Applied by a flag trigger |
+| `ascension` | Granted by entity ascension |
+
+#### Resolution Order
+
+When multiple effects target the same category, `EffectResolver` aggregates them into a `ResolvedModifier`:
+
+1. **flatAdd** — Sum of all `flat_add` values
+2. **percentAdd** — Sum of all `percent_add` values
+3. **multiplier** — Product of all `multiplier` values (starts at 1.0)
+
+Final value: `(base + flatAdd) × (1 + percentAdd/100) × multiplier`
+
+For stat-based effects, per-stat maps (`statFlatAdds`, `statPercentAdds`, `statMultipliers`) are aggregated independently for each stat key.
 
 ### Extra Data
 

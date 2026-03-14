@@ -290,6 +290,95 @@
         "monthly"
       ],
       "description": "How often a check-in window opens"
+    },
+    "EffectCategory": {
+      "values": [
+        "stat_boost",
+        "mission_power",
+        "success_chance",
+        "reward_multiplier",
+        "xp_multiplier",
+        "keeper_xp_multiplier",
+        "production_rate",
+        "storage_capacity",
+        "timer_speed",
+        "trait_grant",
+        "currency_multiplier",
+        "cost_discount",
+        "slot_unlock",
+        "protection",
+        "reveal",
+        "threat_reduction",
+        "craft_luck",
+        "worker_efficiency",
+        "cooldown_reduction",
+        "level_up_bonus"
+      ],
+      "description": "What game mechanic the effect modifies (20 categories)"
+    },
+    "EffectValueMode": {
+      "values": [
+        "flat_add",
+        "percent_add",
+        "multiplier",
+        "flat_set",
+        "bps",
+        "flat_grant",
+        "random_range"
+      ],
+      "description": "How the effect value is applied to the base value"
+    },
+    "EffectDurationModel": {
+      "values": [
+        "instant",
+        "timed",
+        "tick_based",
+        "count_based",
+        "session",
+        "permanent",
+        "until_removed"
+      ],
+      "description": "How the effect expires"
+    },
+    "EffectStackingRule": {
+      "values": [
+        "replace",
+        "refresh",
+        "stack_additive",
+        "stack_multiplicative",
+        "stack_capped",
+        "no_stack"
+      ],
+      "description": "Behavior when the same EffectDef is applied again to the same target"
+    },
+    "EffectTargetType": {
+      "values": [
+        "entity",
+        "player",
+        "location",
+        "team",
+        "job",
+        "global"
+      ],
+      "description": "What the effect targets"
+    },
+    "EffectSourceType": {
+      "values": [
+        "consumable",
+        "equipment",
+        "trait",
+        "building",
+        "room",
+        "mission_reward",
+        "season_event",
+        "admin",
+        "quest_reward",
+        "checkin",
+        "shop",
+        "flag",
+        "ascension"
+      ],
+      "description": "Where the effect originated from"
     }
   },
   "complexTypes": {
@@ -762,27 +851,6 @@
           "keys": {
             "enum": "Stats"
           }
-        }
-      }
-    },
-    "ConsumableData": {
-      "description": "Consumable behavior configuration",
-      "properties": {
-        "effect": {
-          "type": "string",
-          "description": "Effect type (e.g. heal, speed_boost)"
-        },
-        "amount": {
-          "type": "number",
-          "description": "Effect magnitude"
-        },
-        "duration": {
-          "type": "number",
-          "description": "Duration in seconds (0 = instant)"
-        },
-        "multiplier": {
-          "type": "number",
-          "description": "Effect multiplier"
         }
       }
     },
@@ -1690,6 +1758,81 @@
           "type": "object",
           "description": "Optional shallow key-value match against PlayerEvent.data (e.g. {outcome:\"success\"})"
         }
+      }
+    },
+    "ConsumableEffectSpec": {
+      "description": "A single effect entry in a consumable item's consumableData.effects array",
+      "properties": {
+        "effectDefId": {
+          "type": "string",
+          "required": true,
+          "description": "References an EffectDef id"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What the effect targets when consumed"
+        }
+      }
+    },
+    "ConsumableData": {
+      "description": "Consumable behavior for items with type CONSUMABLE. References EffectDef records for the actual effects.",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/complexTypes/ConsumableEffectSpec"
+          },
+          "required": true,
+          "description": "Array of effect specs applied when the item is consumed"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "Default target type for resolution"
+        }
+      }
+    },
+    "PassiveEffectSpec": {
+      "description": "An inline passive effect entry used in the passiveEffects array on items. Resolved at query time from equipped items — does not create ActiveEffect records.",
+      "properties": {
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "Effect category"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "How the value is applied"
+        },
+        "value": {
+          "type": "number",
+          "description": "Scalar value (used by most value modes)"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "description": "Per-stat values (for stat_boost category)"
+        },
+        "trait": {
+          "type": "string",
+          "description": "Trait archetype name (for trait_grant category)"
+        }
+      }
+    },
+    "EffectStatMap": {
+      "description": "Per-stat modifier values. Keys are stat IDs, values are numbers.",
+      "properties": {
+        "ATK": { "type": "number", "description": "Attack modifier" },
+        "DEF": { "type": "number", "description": "Defense modifier" },
+        "SPD": { "type": "number", "description": "Speed modifier" },
+        "FOC": { "type": "number", "description": "Focus modifier" },
+        "LCK": { "type": "number", "description": "Luck modifier" },
+        "VIT": { "type": "number", "description": "Vitality modifier" }
       }
     }
   },
@@ -2961,6 +3104,253 @@
           "description": "Freeform extra configuration data"
         }
       }
+    },
+    "EffectDef": {
+      "description": "Reusable effect blueprints for the Generic Effects System. Effects are universal modifiers that can boost stats, multiply rewards, speed up timers, grant traits, and more.",
+      "prismaModel": "EffectDef",
+      "tableName": "effect_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier (e.g. eff_xp_boost_30m)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Flavor text describing the effect"
+        },
+        "iconKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Key used to resolve the display icon"
+        },
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "What the effect modifies"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "How the value is applied"
+        },
+        "durationModel": {
+          "type": "enum",
+          "enum": "EffectDurationModel",
+          "required": true,
+          "description": "How the effect expires"
+        },
+        "stackingRule": {
+          "type": "enum",
+          "enum": "EffectStackingRule",
+          "default": "no_stack",
+          "description": "Behavior when re-applied to the same target"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What the effect targets"
+        },
+        "value": {
+          "type": "number",
+          "nullable": true,
+          "description": "Scalar value (interpretation depends on valueMode)"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "nullable": true,
+          "description": "Per-stat values for stat_boost category"
+        },
+        "trait": {
+          "type": "string",
+          "nullable": true,
+          "description": "Trait archetype name for trait_grant category"
+        },
+        "durationSec": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Duration in seconds (for timed duration model)"
+        },
+        "durationTicks": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Duration in game ticks (for tick_based duration model)"
+        },
+        "maxStacks": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Maximum stack count (for stack_capped stacking rule)"
+        },
+        "maxUses": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Number of uses before expiry (for count_based duration model)"
+        },
+        "cap": {
+          "type": "number",
+          "nullable": true,
+          "description": "Maximum total value when stacking"
+        },
+        "resourceId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Associated resource ID (for production_rate, storage_capacity, currency_multiplier, cost_discount)"
+        },
+        "sessionType": {
+          "type": "string",
+          "nullable": true,
+          "description": "Session scope key (for session duration model)"
+        },
+        "meta": {
+          "type": "json",
+          "default": {},
+          "description": "Freeform metadata"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this effect definition is active"
+        }
+      },
+      "indexes": [
+        "category",
+        "targetType"
+      ]
+    },
+    "ActiveEffect": {
+      "description": "Runtime records for currently-active effects applied to targets. Created when a non-instant effect is applied. Not a definition table — this is a runtime/instance table.",
+      "prismaModel": "ActiveEffect",
+      "tableName": "active_effects",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "default": "uuid()",
+          "description": "Unique identifier (auto-generated UUID)"
+        },
+        "effectDefId": {
+          "type": "ref",
+          "refTable": "EffectDef",
+          "required": true,
+          "description": "References an EffectDef id"
+        },
+        "userId": {
+          "type": "string",
+          "required": true,
+          "description": "The player who owns this active effect"
+        },
+        "targetType": {
+          "type": "enum",
+          "enum": "EffectTargetType",
+          "required": true,
+          "description": "What this effect targets"
+        },
+        "targetId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the target (player ID, entity ID, etc.)"
+        },
+        "sourceType": {
+          "type": "enum",
+          "enum": "EffectSourceType",
+          "required": true,
+          "description": "Where this effect originated from"
+        },
+        "sourceId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the source (item instance ID, mission def ID, etc.)"
+        },
+        "category": {
+          "type": "enum",
+          "enum": "EffectCategory",
+          "required": true,
+          "description": "Copied from EffectDef at apply time"
+        },
+        "valueMode": {
+          "type": "enum",
+          "enum": "EffectValueMode",
+          "required": true,
+          "description": "Copied from EffectDef at apply time"
+        },
+        "value": {
+          "type": "number",
+          "default": 0,
+          "description": "Current effect value"
+        },
+        "stats": {
+          "$ref": "#/complexTypes/EffectStatMap",
+          "nullable": true,
+          "description": "Per-stat values (copied from EffectDef)"
+        },
+        "trait": {
+          "type": "string",
+          "nullable": true,
+          "description": "Trait name (copied from EffectDef)"
+        },
+        "currentStacks": {
+          "type": "integer",
+          "default": 1,
+          "description": "Current stack count"
+        },
+        "remainingUses": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Remaining uses (for count_based duration model)"
+        },
+        "sessionType": {
+          "type": "string",
+          "nullable": true,
+          "description": "Session scope key (for session duration model)"
+        },
+        "sessionId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Current session ID"
+        },
+        "expiresAt": {
+          "type": "datetime",
+          "nullable": true,
+          "description": "Wall-clock expiry (for timed duration model)"
+        },
+        "expiresAtTick": {
+          "type": "number",
+          "nullable": true,
+          "description": "Tick-based expiry (for tick_based duration model)"
+        },
+        "createdAt": {
+          "type": "datetime",
+          "default": "now()",
+          "description": "When this active effect was created"
+        }
+      },
+      "relations": {
+        "effectDef": {
+          "model": "EffectDef",
+          "field": "effectDefId",
+          "onDelete": "Cascade"
+        },
+        "user": {
+          "model": "User",
+          "field": "userId",
+          "onDelete": "Cascade"
+        }
+      },
+      "indexes": [
+        ["userId", "targetType", "targetId"],
+        ["userId", "category"],
+        ["targetType", "targetId"]
+      ]
     }
   },
   "tableList": [
@@ -2985,7 +3375,8 @@
     "CheckInDef",
     "QuestDef",
     "ShopItemDef",
-    "NftCollectionDef"
+    "NftCollectionDef",
+    "EffectDef"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
@@ -3021,6 +3412,10 @@
       {
         "from": "MissionDef.missionCategoryDefId",
         "to": "MissionCategoryDef.id"
+      },
+      {
+        "from": "ActiveEffect.effectDefId",
+        "to": "EffectDef.id"
       }
     ]
   }
