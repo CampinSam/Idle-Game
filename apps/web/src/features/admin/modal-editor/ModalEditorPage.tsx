@@ -199,14 +199,20 @@ function resolveSpecClient(spec: ModalSpecV1, ctx: Record<string, any>): ModalSp
 
 // ─── Flatten payload JSON to dot-notation paths ──────────────────────────────
 
-function flattenPaths(obj: any, prefix: string = '', maxDepth: number = 4): string[] {
-  if (maxDepth <= 0 || obj == null) return [];
+function flattenPaths(obj: any, prefix: string = '', depth: number = 0): string[] {
+  const MAX_DEPTH = 8;
+  const MAX_ARRAY_INDICES = 3;
+  if (depth >= MAX_DEPTH || obj == null) return [];
   const paths: string[] = [];
   if (Array.isArray(obj)) {
     paths.push(prefix ? `${prefix}.length` : 'length');
-    if (obj.length > 0) {
-      const childPaths = flattenPaths(obj[0], prefix ? `${prefix}.0` : '0', maxDepth - 1);
-      paths.push(...childPaths);
+    const limit = Math.min(obj.length, MAX_ARRAY_INDICES);
+    for (let i = 0; i < limit; i++) {
+      const idxPath = prefix ? `${prefix}.${i}` : String(i);
+      paths.push(idxPath);
+      if (obj[i] != null && typeof obj[i] === 'object') {
+        paths.push(...flattenPaths(obj[i], idxPath, depth + 1));
+      }
     }
     return paths;
   }
@@ -216,7 +222,7 @@ function flattenPaths(obj: any, prefix: string = '', maxDepth: number = 4): stri
       const val = obj[key];
       paths.push(fullPath);
       if (val != null && typeof val === 'object') {
-        paths.push(...flattenPaths(val, fullPath, maxDepth - 1));
+        paths.push(...flattenPaths(val, fullPath, depth + 1));
       }
     }
   }
@@ -941,7 +947,7 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
       <div style={{ width: '100%' }}>
         {payloadJson && (
           <div style={{ textAlign: 'center', fontSize: 10, color: '#7c3aed', marginBottom: 8, opacity: 0.7 }}>
-            Preview resolves tokens from payload above
+            Client-side preview only — tokens resolved from payload above
           </div>
         )}
         <div className="gm-modal me-preview-modal">

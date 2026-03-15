@@ -3,6 +3,30 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
+import type { ModalSpecV1 } from '@derp/shared';
+
+interface JobContext {
+  job: { id: string; type: string; defId: string; status: string };
+  results: Record<string, unknown>;
+  data: Record<string, unknown>;
+  def: Record<string, unknown>;
+  timer: Record<string, unknown>;
+}
+
+interface GiftContext {
+  gift: { id: string; status: string };
+  snapshot: Record<string, unknown>;
+  presentation: Record<string, unknown>;
+}
+
+interface BuildingContext {
+  building: { id: string; name: string; description: string };
+  def: Record<string, unknown>;
+  costs: Array<{ id?: string; amount?: number; baseAmount?: number }>;
+  currentLevel: number;
+  nextLevel: number;
+  timerDuration: number;
+}
 
 @Injectable()
 export class UiService {
@@ -533,26 +557,26 @@ export class UiService {
     return null;
   }
 
-  private async resolveModalDef(id: string | null | undefined): Promise<any | null> {
+  private async resolveModalDef(id: string | null | undefined): Promise<ModalSpecV1 | null> {
     if (!id) return null;
     try {
       const modalDef = await (this.prisma as any).modalDef.findUnique({ where: { id } });
       if (!modalDef || !modalDef.enabled) return null;
-      return modalDef.spec && typeof modalDef.spec === 'object' ? modalDef.spec : null;
+      return modalDef.spec && typeof modalDef.spec === 'object' ? (modalDef.spec as ModalSpecV1) : null;
     } catch {}
     return null;
   }
 
-  private mergeModalDefSpec(generated: any, spec: any, ctx?: Record<string, any>): any {
+  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | BuildingContext): any {
     if (!spec || typeof spec !== 'object') return generated;
 
-    const resolved = ctx ? resolveSpec(spec, ctx) : spec;
+    const resolved = ctx ? resolveSpec(spec, ctx as Record<string, any>) : spec;
 
     const merged = { ...generated };
     if (resolved.header && typeof resolved.header === 'object') {
       merged.header = { ...generated.header, ...resolved.header };
     }
-    if (resolved.replaceBody === true && Array.isArray(resolved.body)) {
+    if ((resolved as any).replaceBody === true && Array.isArray(resolved.body)) {
       merged.body = resolved.body;
     } else if (Array.isArray(resolved.body) && resolved.body.length > 0) {
       merged.body = [...resolved.body, ...(generated.body || [])];
@@ -573,7 +597,7 @@ export class UiService {
     };
   }
 
-  private buildJobContext(job: any, def: any): Record<string, any> {
+  private buildJobContext(job: any, def: any): JobContext {
     return {
       job: {
         id: job.id,
@@ -581,14 +605,14 @@ export class UiService {
         defId: job.defId,
         status: job.status,
       },
-      results: job.results || {},
-      data: job.data || {},
+      results: (job.results as Record<string, unknown>) || {},
+      data: (job.data as Record<string, unknown>) || {},
       def: def || {},
-      timer: job.timer || {},
+      timer: (job.timer as Record<string, unknown>) || {},
     };
   }
 
-  private buildGiftContext(gift: any, snapshot: any): Record<string, any> {
+  private buildGiftContext(gift: any, snapshot: any): GiftContext {
     return {
       gift: {
         id: gift.id,
@@ -599,7 +623,7 @@ export class UiService {
     };
   }
 
-  private buildBuildingContext(def: any, costs: any[], currentLevel: number, nextLevel: number, timerDuration: number): Record<string, any> {
+  private buildBuildingContext(def: any, costs: Array<{ id?: string; amount?: number; baseAmount?: number }>, currentLevel: number, nextLevel: number, timerDuration: number): BuildingContext {
     return {
       building: {
         id: def.id,
