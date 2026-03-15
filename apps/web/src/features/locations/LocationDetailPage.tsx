@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../store/gameSlice';
@@ -171,7 +171,48 @@ export default function LocationDetailPage() {
   const circumference = 2 * Math.PI * 38;
   const strokeDashoffset = circumference - (fortPercent / 100) * circumference;
 
-  const hasStorageData = resourceSummaries.length > 0 || storageBalances.some(s => s.amount >= 1);
+  const allStorageItems = useMemo(() => {
+    const capacityMap = (outpost?.storage?.capacity as Record<string, number>) || {};
+    const storedMap = (outpost?.storage?.stored as Record<string, number>) || {};
+    const currencyIdSet = new Set(currencyDefs.map((c: any) => c.id));
+
+    const seen = new Set<string>();
+    const items: Array<{
+      key: string;
+      outputType: string;
+      outputRefId: string;
+      current: number;
+      capacity: number;
+    }> = [];
+
+    for (const res of resourceSummaries) {
+      seen.add(res.outputRefId);
+      items.push({
+        key: res.key,
+        outputType: res.outputType,
+        outputRefId: res.outputRefId,
+        current: res.currentAmount,
+        capacity: res.capacity,
+      });
+    }
+
+    for (const [resId, cap] of Object.entries(capacityMap)) {
+      if (!seen.has(resId) && Number(cap) > 0) {
+        const outputType = currencyIdSet.has(resId) ? 'CURRENCY' : 'ITEM';
+        items.push({
+          key: `${outputType}:${resId}`,
+          outputType,
+          outputRefId: resId,
+          current: Number(storedMap[resId] ?? 0),
+          capacity: Number(cap),
+        });
+      }
+    }
+
+    return items;
+  }, [outpost, resourceSummaries, currencyDefs]);
+
+  const hasStorageData = allStorageItems.length > 0;
 
   return (
     <div className="outpost-detail-page">
@@ -406,51 +447,25 @@ export default function LocationDetailPage() {
               <h3 className="od-card-title">STORAGE</h3>
               {hasStorageData ? (
                 <div className="od-storage-list">
-                  {resourceSummaries.length > 0 ? (
-                    resourceSummaries.map((res) => {
-                      const current = res.currentAmount;
-                      const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
-                      const isFull = pct >= 99.5;
-
-                      return (
-                        <div key={res.key} className="od-storage-item">
-                          <span className="od-storage-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
-                          <div className="od-storage-info">
-                            <div className="od-storage-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
-                            <div className="od-storage-bar-wrap">
-                              <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                            </div>
+                  {allStorageItems.map((res) => {
+                    const pct = res.capacity > 0 ? Math.min((res.current / res.capacity) * 100, 100) : 0;
+                    const isFull = pct >= 99.5;
+                    return (
+                      <div key={res.key} className="od-storage-item">
+                        <span className="od-storage-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
+                        <div className="od-storage-info">
+                          <div className="od-storage-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
+                          <div className="od-storage-bar-wrap">
+                            <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
-                          <span className="od-storage-amount">{formatAmount(current)} / {formatAmount(res.capacity)}</span>
                         </div>
-                      );
-                    })
-                  ) : (
-                    storageBalances.filter(s => s.amount >= 1).map((s) => {
-                      const resId = s.outputRefId;
-                      const outputType = s.outputType;
-                      const current = s.amount;
-                      const capacity = (outpost.storage?.capacity as any)?.[resId] || 0;
-                      const pct = capacity > 0 ? Math.min((current / capacity) * 100, 100) : 0;
-                      const isFull = pct >= 99.5;
-
-                      return (
-                        <div key={resId} className="od-storage-item">
-                          <span className="od-storage-icon"><GameIcon src={resolveIcon(outputType, resId, currencyDefs, itemDefs)} size={16} /></span>
-                          <div className="od-storage-info">
-                            <div className="od-storage-name">{resolveName(outputType, resId, currencyDefs, itemDefs)}</div>
-                            <div className="od-storage-bar-wrap">
-                              <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                            </div>
-                          </div>
-                          <span className="od-storage-amount">{formatAmount(current)} / {formatAmount(capacity)}</span>
-                        </div>
-                      );
-                    })
-                  )}
+                        <span className="od-storage-amount">{formatAmount(res.current)} / {formatAmount(res.capacity)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="od-empty-tasks">No storage data. Build generators to start producing resources.</div>
+                <div className="od-empty-tasks">No storage configured. Build generators or storage facilities to get started.</div>
               )}
             </div>
           </div>
