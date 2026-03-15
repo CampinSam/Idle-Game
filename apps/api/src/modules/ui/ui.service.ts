@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
+import { resolveSpec } from './modal-def-resolver.util';
 
 @Injectable()
 export class UiService {
@@ -44,9 +45,11 @@ export class UiService {
       generated = this.buildGenericJobModal(job, defName, typeLabel);
     }
 
+    const ctx = this.buildJobContext(job, def);
+
     if (modalDefId) {
       const spec = await this.resolveModalDef(modalDefId);
-      if (spec) return this.mergeModalDefSpec(generated, spec);
+      if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     }
 
     return generated;
@@ -146,13 +149,15 @@ export class UiService {
       buttons,
     };
 
+    const ctx = this.buildGiftContext(gift, snapshot);
+
     const giftDefId = snapshot?.giftDefId;
     if (giftDefId) {
       try {
         const giftDef = await (this.prisma as any).giftDef.findUnique({ where: { id: giftDefId }, select: { modalDefId: true } });
         if (giftDef?.modalDefId) {
           const spec = await this.resolveModalDef(giftDef.modalDefId);
-          if (spec) return this.mergeModalDefSpec(generated, spec);
+          if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
         }
       } catch {}
     }
@@ -392,8 +397,9 @@ export class UiService {
       ],
     };
 
+    const ctx = this.buildBuildingContext(def, constructionCost, 0, 1, timerDuration);
     const spec = await this.resolveModalDef('modal_build_confirm');
-    if (spec) return this.mergeModalDefSpec(generated, spec);
+    if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     return generated;
   }
 
@@ -456,8 +462,9 @@ export class UiService {
           ],
     };
 
+    const ctx = this.buildBuildingContext(def, upgradeCosts, currentLevel, nextLevel, timerDuration);
     const spec = await this.resolveModalDef('modal_upgrade_confirm');
-    if (spec) return this.mergeModalDefSpec(generated, spec);
+    if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     return generated;
   }
 
@@ -536,19 +543,22 @@ export class UiService {
     return null;
   }
 
-  private mergeModalDefSpec(generated: any, spec: any): any {
+  private mergeModalDefSpec(generated: any, spec: any, ctx?: Record<string, any>): any {
     if (!spec || typeof spec !== 'object') return generated;
+
+    const resolved = ctx ? resolveSpec(spec, ctx) : spec;
+
     const merged = { ...generated };
-    if (spec.header && typeof spec.header === 'object') {
-      merged.header = { ...generated.header, ...spec.header };
+    if (resolved.header && typeof resolved.header === 'object') {
+      merged.header = { ...generated.header, ...resolved.header };
     }
-    if (spec.replaceBody === true && Array.isArray(spec.body)) {
-      merged.body = spec.body;
-    } else if (Array.isArray(spec.body) && spec.body.length > 0) {
-      merged.body = [...spec.body, ...(generated.body || [])];
+    if (resolved.replaceBody === true && Array.isArray(resolved.body)) {
+      merged.body = resolved.body;
+    } else if (Array.isArray(resolved.body) && resolved.body.length > 0) {
+      merged.body = [...resolved.body, ...(generated.body || [])];
     }
-    if (Array.isArray(spec.buttons) && spec.buttons.length > 0) {
-      merged.buttons = spec.buttons;
+    if (Array.isArray(resolved.buttons) && resolved.buttons.length > 0) {
+      merged.buttons = resolved.buttons;
     }
     return merged;
   }
@@ -560,6 +570,47 @@ export class UiService {
       skipable: true,
       skipCost: data.skipCost,
       skipType: data.skipType || 'scaling',
+    };
+  }
+
+  private buildJobContext(job: any, def: any): Record<string, any> {
+    return {
+      job: {
+        id: job.id,
+        type: job.type,
+        defId: job.defId,
+        status: job.status,
+      },
+      results: job.results || {},
+      data: job.data || {},
+      def: def || {},
+      timer: job.timer || {},
+    };
+  }
+
+  private buildGiftContext(gift: any, snapshot: any): Record<string, any> {
+    return {
+      gift: {
+        id: gift.id,
+        status: gift.status,
+      },
+      snapshot: snapshot || {},
+      presentation: snapshot?.presentation || {},
+    };
+  }
+
+  private buildBuildingContext(def: any, costs: any[], currentLevel: number, nextLevel: number, timerDuration: number): Record<string, any> {
+    return {
+      building: {
+        id: def.id,
+        name: def.name,
+        description: def.description,
+      },
+      def: def || {},
+      costs,
+      currentLevel,
+      nextLevel,
+      timerDuration,
     };
   }
 }

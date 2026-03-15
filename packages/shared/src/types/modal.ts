@@ -76,6 +76,7 @@ export type ModalBlock =
 export interface ModalBlockRichText {
   type: 'richText';
   doc: RichTextDoc;
+  from?: string;
 }
 
 export interface ModalBlockDivider {
@@ -86,17 +87,20 @@ export interface ModalBlockImage {
   type: 'image';
   image: AssetRef;
   caption?: string;
+  from?: string;
 }
 
 export interface ModalBlockMetaRows {
   type: 'metaRows';
   rows: { label: string; value: string }[];
+  from?: string;
 }
 
 export interface ModalBlockTimer {
   type: 'timer';
   endsAt: string;
   label?: string;
+  from?: string;
 }
 
 export interface ModalBlockProgress {
@@ -104,33 +108,39 @@ export interface ModalBlockProgress {
   label?: string;
   current: number;
   max: number;
+  from?: string;
 }
 
 export interface ModalBlockRewardsPreview {
   type: 'rewardsPreview';
   items: RewardItem[];
+  from?: string;
 }
 
 export interface ModalBlockRewardsList {
   type: 'rewardsList';
   title?: string;
   items: RewardItem[];
+  from?: string;
 }
 
 export interface ModalBlockInventoryDelta {
   type: 'inventoryDelta';
   items: { assetKey?: string; name: string; qtyDelta: number }[];
+  from?: string;
 }
 
 export interface ModalBlockGiftReveal {
   type: 'giftReveal';
   gift: { giftId: string; title: string; image?: AssetRef };
   rewards?: RewardItem[];
+  from?: string;
 }
 
 export interface ModalBlockError {
   type: 'error';
   message: string;
+  from?: string;
 }
 
 export interface RewardItem {

@@ -265,3 +265,28 @@
   max-height: none !important;
   overflow: visible !important;
 }
+
+/* ── From field ── */
+.me-from-field {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #2a2a4e;
+}
+
+/* ── Token path chips ── */
+.me-token-chip {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-family: monospace;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.me-token-chip:hover {
+  background: #7c3aed22 !important;
+  color: #a78bfa !important;
+  border-color: #7c3aed !important;
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type {
   ModalSpecV1,
   ModalBlock,
@@ -46,13 +46,181 @@ function htmlToRichTextDoc(html: string): RichTextDoc {
 function nodeToHtml(n: RichTextNode): string {
   if (n.t === 'text') return n.v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   if (n.t === 'br') return '<br>';
-  if (n.t === 'token') return `{{${n.key}}}`;
+  if (n.t === 'token') return `\${${n.key}}`;
   if (n.t === 'link') return `<a href="${n.href}">${n.c.map(nodeToHtml).join('')}</a>`;
   return `<${n.t}>${n.c.map(nodeToHtml).join('')}</${n.t}>`;
 }
 
 function richTextDocToHtml(doc: RichTextDoc): string {
   return doc.map(nodeToHtml).join('');
+}
+
+// ─── Client-side token resolver (for preview only) ───────────────────────────
+
+function getByPath(obj: any, dotPath: string): any {
+  if (obj == null || !dotPath) return undefined;
+  const parts = dotPath.split('.');
+  let cur = obj;
+  for (const part of parts) {
+    if (cur == null) return undefined;
+    if (part === 'length' && Array.isArray(cur)) return cur.length;
+    const idx = Number(part);
+    if (Array.isArray(cur) && !isNaN(idx)) {
+      cur = cur[idx];
+    } else {
+      cur = cur[part];
+    }
+  }
+  return cur;
+}
+
+function resolveTokensClient(str: string, ctx: Record<string, any>): string {
+  if (!str || typeof str !== 'string') return str;
+  return str.replace(/\$\{([^}]+)\}/g, (_match, path: string) => {
+    const val = getByPath(ctx, path.trim());
+    if (val === undefined || val === null) return _match;
+    return String(val);
+  });
+}
+
+function resolveRichTextNodeClient(node: RichTextNode, ctx: Record<string, any>): RichTextNode {
+  if (node.t === 'token') {
+    const val = getByPath(ctx, node.key);
+    if (val !== undefined && val !== null) return { t: 'text', v: String(val) };
+    return node;
+  }
+  if (node.t === 'text') return { t: 'text', v: resolveTokensClient(node.v, ctx) };
+  if (node.t === 'br') return node;
+  if (node.t === 'link') return { t: 'link', href: resolveTokensClient(node.href, ctx), c: node.c.map(c => resolveRichTextNodeClient(c, ctx)) };
+  return { t: node.t, c: node.c.map(c => resolveRichTextNodeClient(c, ctx)) } as RichTextNode;
+}
+
+function mapRewardItemClient(r: any): any {
+  return {
+    name: r.name || r.type || r.key || 'Reward',
+    qty: r.qty ?? r.amount ?? 1,
+    assetKey: r.assetKey || (r.key ? `icons/${r.key}` : undefined),
+    rarity: r.rarity,
+    note: r.note,
+  };
+}
+
+function resolveBlockClient(block: any, ctx: Record<string, any>): any {
+  const resolved = { ...block };
+  const fromPath = resolved.from;
+
+  if (fromPath) {
+    const data = getByPath(ctx, fromPath);
+    if (data !== undefined && data !== null) {
+      switch (block.type) {
+        case 'rewardsList':
+        case 'rewardsPreview':
+          if (Array.isArray(data)) resolved.items = data.map(mapRewardItemClient);
+          break;
+        case 'metaRows':
+          if (Array.isArray(data)) resolved.rows = data.map((r: any) => ({ label: String(r.label ?? ''), value: String(r.value ?? '') }));
+          else if (typeof data === 'object') resolved.rows = Object.entries(data).map(([k, v]) => ({ label: k, value: String(v) }));
+          break;
+        case 'inventoryDelta':
+          if (Array.isArray(data)) resolved.items = data.map((it: any) => ({ name: it.name || 'Item', qtyDelta: it.qtyDelta ?? it.amount ?? 0, assetKey: it.assetKey }));
+          break;
+        case 'timer':
+          if (typeof data === 'string') resolved.endsAt = data;
+          else if (typeof data === 'object' && data.endsAt) { resolved.endsAt = data.endsAt; if (data.label) resolved.label = data.label; }
+          break;
+        case 'progress':
+          if (typeof data === 'object') { if (data.current !== undefined) resolved.current = Number(data.current); if (data.max !== undefined) resolved.max = Number(data.max); }
+          break;
+        case 'richText':
+          if (typeof data === 'string') resolved.doc = [{ t: 'p', c: [{ t: 'text', v: data }] }];
+          else if (Array.isArray(data)) resolved.doc = data;
+          break;
+        case 'image':
+          if (typeof data === 'object') { resolved.image = { assetKey: data.assetKey || data.url || '', alt: data.alt || '' }; if (data.caption) resolved.caption = data.caption; }
+          else if (typeof data === 'string') resolved.image = { assetKey: data };
+          break;
+        case 'giftReveal':
+          if (typeof data === 'object') resolved.gift = { ...(resolved.gift || {}), ...data };
+          break;
+        case 'error':
+          if (typeof data === 'string') resolved.message = data;
+          else if (typeof data === 'object' && data.message) resolved.message = data.message;
+          break;
+      }
+    }
+    delete resolved.from;
+  }
+
+  switch (resolved.type) {
+    case 'richText':
+      if (Array.isArray(resolved.doc)) resolved.doc = resolved.doc.map((n: RichTextNode) => resolveRichTextNodeClient(n, ctx));
+      break;
+    case 'metaRows':
+      if (Array.isArray(resolved.rows)) resolved.rows = resolved.rows.map((r: any) => ({ label: resolveTokensClient(String(r.label ?? ''), ctx), value: resolveTokensClient(String(r.value ?? ''), ctx) }));
+      break;
+    case 'timer':
+      if (resolved.label) resolved.label = resolveTokensClient(resolved.label, ctx);
+      break;
+    case 'progress':
+      if (resolved.label) resolved.label = resolveTokensClient(resolved.label, ctx);
+      break;
+    case 'error':
+      if (resolved.message) resolved.message = resolveTokensClient(resolved.message, ctx);
+      break;
+    case 'image':
+      if (resolved.caption) resolved.caption = resolveTokensClient(resolved.caption, ctx);
+      break;
+    case 'rewardsList':
+      if (resolved.title) resolved.title = resolveTokensClient(resolved.title, ctx);
+      break;
+    case 'giftReveal':
+      if (resolved.gift?.title) resolved.gift.title = resolveTokensClient(resolved.gift.title, ctx);
+      break;
+  }
+
+  return resolved;
+}
+
+function resolveSpecClient(spec: ModalSpecV1, ctx: Record<string, any>): ModalSpecV1 {
+  const resolved: any = { ...spec };
+  if (resolved.header) {
+    resolved.header = { ...resolved.header };
+    if (resolved.header.title) resolved.header.title = resolveTokensClient(resolved.header.title, ctx);
+    if (resolved.header.subtitle) resolved.header.subtitle = resolveTokensClient(resolved.header.subtitle, ctx);
+  }
+  if (Array.isArray(resolved.body)) {
+    resolved.body = resolved.body.map((b: any) => resolveBlockClient(b, ctx));
+  }
+  if (Array.isArray(resolved.buttons)) {
+    resolved.buttons = resolved.buttons.map((btn: any) => ({ ...btn, label: btn.label ? resolveTokensClient(btn.label, ctx) : btn.label }));
+  }
+  return resolved;
+}
+
+// ─── Flatten payload JSON to dot-notation paths ──────────────────────────────
+
+function flattenPaths(obj: any, prefix: string = '', maxDepth: number = 4): string[] {
+  if (maxDepth <= 0 || obj == null) return [];
+  const paths: string[] = [];
+  if (Array.isArray(obj)) {
+    paths.push(prefix ? `${prefix}.length` : 'length');
+    if (obj.length > 0) {
+      const childPaths = flattenPaths(obj[0], prefix ? `${prefix}.0` : '0', maxDepth - 1);
+      paths.push(...childPaths);
+    }
+    return paths;
+  }
+  if (typeof obj === 'object') {
+    for (const key of Object.keys(obj)) {
+      const fullPath = prefix ? `${prefix}.${key}` : key;
+      const val = obj[key];
+      paths.push(fullPath);
+      if (val != null && typeof val === 'object') {
+        paths.push(...flattenPaths(val, fullPath, maxDepth - 1));
+      }
+    }
+  }
+  return paths;
 }
 
 // ─── Block defaults ───────────────────────────────────────────────────────────
@@ -90,6 +258,19 @@ const DEFAULT_SPEC: ModalSpecV1 = {
 };
 
 const DEFAULT_DB = { id: '', name: '', description: '', enabled: true, version: 1 };
+
+const FROM_HINTS: Record<string, string> = {
+  richText: 'e.g. results.message',
+  metaRows: 'e.g. results.stats',
+  rewardsList: 'e.g. results.rewards',
+  rewardsPreview: 'e.g. results.rewards',
+  inventoryDelta: 'e.g. results.delta',
+  timer: 'e.g. timer.endsAt',
+  progress: 'e.g. timer.progress',
+  image: 'e.g. results.image',
+  giftReveal: 'e.g. gift',
+  error: 'e.g. results.errorMessage',
+};
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
 
@@ -134,6 +315,24 @@ function Section({ title, open, onToggle, badge, children }: {
   );
 }
 
+// ─── From Field ───────────────────────────────────────────────────────────────
+
+function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: ModalBlock) => void }) {
+  if (block.type === 'divider') return null;
+  const hint = FROM_HINTS[block.type] || '';
+  return (
+    <div className="me-from-field">
+      <label style={{ ...lbl, fontSize: 10, color: '#7c3aed', marginBottom: 2 }}>FROM (payload path)</label>
+      <input
+        style={{ ...inp, borderColor: '#3d2a6e', fontSize: 12 }}
+        value={(block as any).from || ''}
+        onChange={e => onChange({ ...block, from: e.target.value || undefined } as any)}
+        placeholder={hint}
+      />
+    </div>
+  );
+}
+
 // ─── Block Editor ─────────────────────────────────────────────────────────────
 
 function RewardItemsEditor({ items, onChange }: { items: any[]; onChange: (v: any[]) => void }) {
@@ -167,7 +366,7 @@ function BlockEditor({ block, onChange }: { block: ModalBlock; onChange: (b: Mod
     case 'richText': {
       const html = richTextDocToHtml(block.doc || []);
       return (
-        <Field label="HTML content (supports <p> <strong> <em> <h1> <h2> <ul> <li> <code> <a> <br>)">
+        <Field label="HTML content (supports <p> <strong> <em> <h1> <h2> <ul> <li> <code> <a> <br> and ${token} syntax)">
           <textarea
             style={{ ...inp, height: 100, resize: 'vertical' }}
             value={html}
@@ -392,6 +591,7 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
         const isCollapsed = collapsed.has(i);
         const isDragging = dragIdx === i;
         const isDropTarget = dropIdx === i && dragIdx !== null && dragIdx !== i;
+        const hasFrom = !!(block as any).from;
         return (
           <div
             key={i}
@@ -412,6 +612,11 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
               <span style={{ fontSize: 11, fontWeight: 700, color, background: `${color}22`, border: `1px solid ${color}44`, borderRadius: 4, padding: '1px 6px', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
                 {block.type}
               </span>
+              {hasFrom && (
+                <span style={{ fontSize: 10, color: '#7c3aed', background: '#7c3aed18', border: '1px solid #7c3aed33', borderRadius: 4, padding: '1px 5px', fontFamily: 'monospace', flexShrink: 0 }}>
+                  ← {(block as any).from}
+                </span>
+              )}
               <button type="button" onClick={() => toggleCollapse(i)} style={{ flex: 1, background: 'none', border: 'none', color: '#888', cursor: 'pointer', textAlign: 'left', fontSize: 11, padding: '2px 0', fontFamily: 'inherit' }}>
                 <span style={{ color: '#444', fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
                 {isCollapsed && <span style={{ marginLeft: 6, color: '#555' }}>{block.type === 'richText' ? richTextDocToHtml((block as any).doc || []).replace(/<[^>]+>/g, '').slice(0, 40) || '…' : ''}</span>}
@@ -420,6 +625,7 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
             </div>
             {!isCollapsed && (
               <div style={{ padding: '10px 12px' }}>
+                <FromField block={block} onChange={b => updateBlock(i, b)} />
                 <BlockEditor block={block} onChange={b => updateBlock(i, b)} />
               </div>
             )}
@@ -672,39 +878,101 @@ function ButtonList({ buttons, onChange }: { buttons: ModalButton[]; onChange: (
   );
 }
 
+// ─── Token Path Chips ─────────────────────────────────────────────────────────
+
+function TokenPathChips({ payloadJson }: { payloadJson: string }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const paths = useMemo(() => {
+    try {
+      const obj = JSON.parse(payloadJson);
+      return flattenPaths(obj);
+    } catch {
+      return [];
+    }
+  }, [payloadJson]);
+
+  if (paths.length === 0) return null;
+
+  const handleCopy = (path: string) => {
+    navigator.clipboard.writeText(`\${${path}}`).catch(() => {});
+    setCopied(path);
+    setTimeout(() => setCopied(null), 1200);
+  };
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <label style={{ ...lbl, color: '#7c3aed' }}>Available Token Paths (click to copy)</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: '6px 0' }}>
+        {paths.map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => handleCopy(p)}
+            className="me-token-chip"
+            style={{
+              background: copied === p ? '#7c3aed33' : '#7c3aed0d',
+              borderColor: copied === p ? '#7c3aed' : '#7c3aed33',
+              color: copied === p ? '#a78bfa' : '#8b7cc8',
+            }}
+          >
+            {copied === p ? 'Copied!' : `\${${p}}`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
-function LivePreview({ spec }: { spec: ModalSpecV1 }) {
+function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: string }) {
+  const resolvedSpec = useMemo(() => {
+    let ctx: Record<string, any> | null = null;
+    if (payloadJson) {
+      try { ctx = JSON.parse(payloadJson); } catch {}
+    }
+    if (ctx) return resolveSpecClient(spec, ctx);
+    return spec;
+  }, [spec, payloadJson]);
+
   return (
     <div className="me-preview-outer">
-      <div className="gm-modal me-preview-modal">
-        {spec.dismiss.x && (
-          <button className="gm-close-btn" style={{ cursor: 'default' }} aria-label="Close">✕</button>
-        )}
-        <div className="gm-header">
-          {spec.header.title ? (
-            <h2 className="gm-title">{spec.header.title}</h2>
-          ) : (
-            <h2 className="gm-title" style={{ color: '#333', fontStyle: 'italic' }}>(no title)</h2>
-          )}
-          {spec.header.subtitle && <p className="gm-subtitle">{spec.header.subtitle}</p>}
-        </div>
-        <div className="gm-body">
-          {spec.body.length === 0 ? (
-            <div style={{ color: '#333', fontSize: 12, textAlign: 'center', padding: '20px 0', fontStyle: 'italic' }}>(no body blocks)</div>
-          ) : (
-            spec.body.map((block, idx) => <BlockRenderer key={idx} block={block} />)
-          )}
-        </div>
-        {spec.buttons.length > 0 && (
-          <div className="gm-footer">
-            {spec.buttons.map(btn => (
-              <button key={btn.id} className={`gm-btn gm-btn-${btn.variant}`} style={{ cursor: 'default' }} disabled={btn.disabled}>
-                {btn.label}
-              </button>
-            ))}
+      <div style={{ width: '100%' }}>
+        {payloadJson && (
+          <div style={{ textAlign: 'center', fontSize: 10, color: '#7c3aed', marginBottom: 8, opacity: 0.7 }}>
+            Preview resolves tokens from payload above
           </div>
         )}
+        <div className="gm-modal me-preview-modal">
+          {resolvedSpec.dismiss.x && (
+            <button className="gm-close-btn" style={{ cursor: 'default' }} aria-label="Close">✕</button>
+          )}
+          <div className="gm-header">
+            {resolvedSpec.header.title ? (
+              <h2 className="gm-title">{resolvedSpec.header.title}</h2>
+            ) : (
+              <h2 className="gm-title" style={{ color: '#333', fontStyle: 'italic' }}>(no title)</h2>
+            )}
+            {resolvedSpec.header.subtitle && <p className="gm-subtitle">{resolvedSpec.header.subtitle}</p>}
+          </div>
+          <div className="gm-body">
+            {resolvedSpec.body.length === 0 ? (
+              <div style={{ color: '#333', fontSize: 12, textAlign: 'center', padding: '20px 0', fontStyle: 'italic' }}>(no body blocks)</div>
+            ) : (
+              resolvedSpec.body.map((block, idx) => <BlockRenderer key={idx} block={block} />)
+            )}
+          </div>
+          {resolvedSpec.buttons.length > 0 && (
+            <div className="gm-footer">
+              {resolvedSpec.buttons.map(btn => (
+                <button key={btn.id} className={`gm-btn gm-btn-${btn.variant}`} style={{ cursor: 'default' }} disabled={btn.disabled}>
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -975,7 +1243,7 @@ export default function ModalEditorPage() {
             <div className="me-group-title">Header</div>
             <Row>
               <div style={{ flex: 2 }}>
-                <Field label="Title"><input style={inp} value={spec.header.title} onChange={e => updateHeader({ title: e.target.value })} /></Field>
+                <Field label="Title (supports ${token} syntax)"><input style={inp} value={spec.header.title} onChange={e => updateHeader({ title: e.target.value })} /></Field>
               </div>
               <div style={{ flex: 2 }}>
                 <Field label="Subtitle"><input style={inp} value={spec.header.subtitle || ''} onChange={e => updateHeader({ subtitle: e.target.value })} /></Field>
@@ -1013,7 +1281,7 @@ export default function ModalEditorPage() {
           <div className="me-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ color: '#64748b', fontSize: 12, flex: 1 }}>
-                Paste sample JSON to simulate dynamic data (e.g. job results). Used for reference when designing blocks.
+                Paste sample JSON or load a recent job. Token paths (e.g. <code style={{ color: '#7c3aed', fontSize: 11 }}>${'${results.rewards}'}</code>) in headers, blocks, and buttons will resolve against this data in the preview.
               </span>
               <button type="button" onClick={loadRecentJobs} disabled={jobsLoading} className="me-btn-ghost" style={{ flexShrink: 0 }}>
                 {jobsLoading ? '…' : 'Load recent jobs'}
@@ -1055,6 +1323,9 @@ export default function ModalEditorPage() {
               try { JSON.parse(payloadJson); return null; }
               catch (e: any) { return <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>Invalid JSON: {e.message}</div>; }
             })()}
+
+            <TokenPathChips payloadJson={payloadJson} />
+
             {payloadJson && (
               <button type="button" onClick={() => setPayloadJson('')} className="me-btn-ghost" style={{ marginTop: 8 }}>Clear</button>
             )}
@@ -1064,7 +1335,7 @@ export default function ModalEditorPage() {
         {/* ── Section 3: Preview ── */}
         <Section title="Preview" open={previewOpen} onToggle={() => setPreviewOpen(v => !v)}>
           <div className="me-card" style={{ background: 'rgba(0,0,0,0.4)' }}>
-            <LivePreview spec={spec} />
+            <LivePreview spec={spec} payloadJson={payloadJson} />
           </div>
         </Section>
       </div>
