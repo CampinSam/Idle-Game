@@ -54,24 +54,24 @@
   min-width: 0;
 }
 
-.od-header-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .od-name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: 1.2px;
   color: var(--text-primary);
-  white-space: nowrap;
+}
+
+.od-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  letter-spacing: 0.3px;
 }
 
 .od-badges {
   display: flex;
   gap: 6px;
+  margin-top: 6px;
 }
 
 .od-level-badge {
@@ -91,12 +91,6 @@
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 6px;
-}
-
-.od-subtitle {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
 }
 
 .od-settings-btn {

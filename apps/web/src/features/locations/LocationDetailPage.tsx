@@ -220,14 +220,12 @@ export default function LocationDetailPage() {
       <div className="od-container">
         <div className="od-header">
           <div className="od-header-info">
-            <div className="od-header-top">
-              <h1 className="od-name">{regionName.toUpperCase()}</h1>
-              <div className="od-badges">
-                <span className="od-level-badge">Level {outpost.level}</span>
-                <span className="od-size-badge">{size}</span>
-              </div>
+            <h1 className="od-name">Outpost {idLabel}</h1>
+            <div className="od-subtitle">{regionName}</div>
+            <div className="od-badges">
+              <span className="od-level-badge">Level {outpost.level}</span>
+              <span className="od-size-badge">{size}</span>
             </div>
-            <div className="od-subtitle">{outpost.name} &middot; Outpost {idLabel}</div>
           </div>
           <button className="od-settings-btn">⚙️</button>
         </div>
