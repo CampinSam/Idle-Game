@@ -102,8 +102,8 @@ export default function FacilitiesTab({
         const isMaxLevel = b.level >= (b.maxLevel ?? 50);
 
         return (
-          <div className={`facility-building-card ${isBuilding ? 'under-construction' : ''}`}>
-            <div className="facility-card-header">
+          <>
+            <div className={`facility-card-header ${isBuilding ? 'under-construction' : ''}`}>
               <span className="facility-card-icon">{catIcon}</span>
               <div className="facility-card-info">
                 <div className="facility-card-name">{b.name}</div>
@@ -177,7 +177,7 @@ export default function FacilitiesTab({
                 )}
               </div>
             )}
-          </div>
+          </>
         );
       })()}
 

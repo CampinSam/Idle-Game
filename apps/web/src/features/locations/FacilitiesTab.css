@@ -1,14 +1,14 @@
 .facilities-sub-tabs {
   display: flex;
   gap: 0;
-  background: rgba(255, 255, 255, 0.03);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   margin: -12px -12px 0 -12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .facilities-sub-tabs::-webkit-scrollbar {
@@ -17,14 +17,14 @@
 
 .facility-sub-tab {
   flex-shrink: 0;
-  padding: 12px 14px;
-  font-size: 11px;
+  padding: 9px 12px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
   background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -37,19 +37,19 @@
 }
 
 .facility-sub-tab.active {
-  color: var(--text-primary);
-  background: rgba(139, 92, 246, 0.1);
-  border-bottom-color: var(--derp-purple);
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.08);
+  border-bottom-color: #c4b5fd;
 }
 
 .facility-sub-tab.add-tab {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
-  padding: 10px 16px;
+  padding: 7px 14px;
 }
 
 .facility-sub-tab.add-tab.active {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.08);
   border-bottom-color: #10B981;
   color: #10B981;
 }
@@ -59,18 +59,17 @@
   cursor: not-allowed;
 }
 
-.facility-building-card {
-  background: linear-gradient(180deg, #221858 0%, #1a1040 100%);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
-
 .facility-card-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 4px;
+}
+
+.facility-card-header.under-construction {
+  border-bottom-color: rgba(245, 158, 11, 0.2);
 }
 
 .facility-card-icon {
@@ -454,9 +453,6 @@
   border-bottom-color: #f59e0b;
 }
 
-.facility-building-card.under-construction {
-  border-color: rgba(245, 158, 11, 0.4);
-}
 
 .facility-slot-warning {
   background: rgba(245, 158, 11, 0.15);
