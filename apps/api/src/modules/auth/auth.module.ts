@@ -7,7 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { TickModule } from '../tick/tick.module';
 import { EventModule } from '../event/event.module';
-import { LocationSettlementService } from '../location/location-settlement.service';
+import { LocationModule } from '../location/location.module';
 import { CheckInModule } from '../checkin/checkin.module';
 
 @Module({
@@ -23,9 +23,10 @@ import { CheckInModule } from '../checkin/checkin.module';
     }),
     TickModule,
     EventModule,
+    LocationModule,
     CheckInModule,
   ],
-  providers: [AuthService, JwtStrategy, LocationSettlementService],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })
