@@ -1,10 +1,14 @@
 .facilities-sub-tabs {
   display: flex;
-  gap: 8px;
-  padding: 0 0 12px;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  margin: -12px -12px 0 -12px;
+  margin-bottom: 12px;
 }
 
 .facilities-sub-tabs::-webkit-scrollbar {
@@ -13,37 +17,41 @@
 
 .facility-sub-tab {
   flex-shrink: 0;
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 12px 14px;
+  font-size: 11px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
   background: transparent;
-  border: 1px solid var(--border);
+  border: none;
+  border-bottom: 3px solid transparent;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  text-align: center;
 }
 
 .facility-sub-tab:hover:not(.active):not(.disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .facility-sub-tab.active {
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  color: white;
-  border-color: #7c3aed;
+  color: var(--text-primary);
+  background: rgba(139, 92, 246, 0.1);
+  border-bottom-color: var(--derp-purple);
 }
 
 .facility-sub-tab.add-tab {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
-  padding: 4px 14px;
+  padding: 10px 16px;
 }
 
 .facility-sub-tab.add-tab.active {
-  background: linear-gradient(135deg, #10B981, #059669);
-  border-color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom-color: #10B981;
+  color: #10B981;
 }
 
 .facility-sub-tab.disabled {
@@ -437,14 +445,13 @@
 }
 
 .facility-sub-tab.constructing {
-  border-color: #f59e0b;
   color: #f59e0b;
 }
 
 .facility-sub-tab.constructing.active {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
-  border-color: #f59e0b;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border-bottom-color: #f59e0b;
 }
 
 .facility-building-card.under-construction {
