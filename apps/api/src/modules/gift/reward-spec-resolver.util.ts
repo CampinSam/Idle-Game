@@ -89,6 +89,8 @@ export function resolveTokens(str: string, ctx: Record<string, any>): string {
   });
 }
 
+const SINGLE_TOKEN_RE = /^\$\{[^}]+\}$/;
+
 function coerceNumericString(val: string): string | number {
   if (/^\d+$/.test(val)) return parseInt(val, 10);
   if (/^\d+\.\d+$/.test(val)) return parseFloat(val);
@@ -99,11 +101,12 @@ export function resolveAllTokens(obj: any, ctx: Record<string, any>): any {
   if (obj == null) return obj;
 
   if (typeof obj === 'string') {
+    const isSingleToken = SINGLE_TOKEN_RE.test(obj.trim());
     const resolved = resolveTokens(obj, ctx);
-    if (resolved !== obj) {
+    if (resolved !== obj && isSingleToken) {
       return coerceNumericString(resolved);
     }
-    return obj;
+    return resolved;
   }
 
   if (Array.isArray(obj)) return obj.map(item => resolveAllTokens(item, ctx));
