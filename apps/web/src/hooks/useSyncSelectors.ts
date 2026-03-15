@@ -61,6 +61,33 @@ export function useSyncActiveMissions() {
   );
 }
 
+export function useAllActiveJobs() {
+  const jobs = useSyncJobs();
+  const locations = useSyncLocations();
+  return useMemo(() => {
+    const activeStatuses = new Set(['active', 'ready_notified']);
+    const missionAndCraftingJobs = jobs
+      .filter((j: any) => activeStatuses.has(j.status) && (j.type === 'MissionJob' || j.type === 'CraftingJob'))
+      .map((j: any) => ({
+        ...j,
+        name: (j.defId || '').replace(/_/g, ' '),
+      }));
+    const buildingJobs = (locations as any[]).flatMap((op: any) =>
+      (op.buildings || [])
+        .filter((b: any) => b.status === 'building' && b.jobId && b.startTick != null)
+        .map((b: any) => ({
+          id: b.jobId,
+          type: 'BuildingJob',
+          status: 'active',
+          startTick: b.startTick,
+          durationTicks: b.durationTicks,
+          name: (b.buildingDefId || '').replace(/_/g, ' '),
+        }))
+    );
+    return [...missionAndCraftingJobs, ...buildingJobs];
+  }, [jobs, locations]);
+}
+
 export function useSyncMissionHistory() {
   const jobs = useSyncJobs();
   return useMemo(

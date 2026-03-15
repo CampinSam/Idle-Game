@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../store';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchCurrencyDefs } from '../store/gameSlice';
 import { logout } from '../store/authSlice';
 import { useNotifications } from '../context/NotificationContext';
@@ -9,9 +9,7 @@ import { useJobReadinessTimers } from '../hooks/useJobReadinessTimers';
 import {
   useSyncPlayer,
   useSyncCurrencyBalances,
-  useSyncActiveMissions,
-  useSyncActiveCraftingJobs,
-  useSyncLocations,
+  useAllActiveJobs,
 } from '../hooks/useSyncSelectors';
 import { useAppSelector } from '../store';
 import ToastOverlay from './ToastOverlay';
@@ -27,22 +25,12 @@ export default function Layout() {
   const navigate = useNavigate();
   const profile = useSyncPlayer();
   const currencyBalances = useSyncCurrencyBalances();
-  const activeMissions = useSyncActiveMissions();
-  const activeCraftingJobs = useSyncActiveCraftingJobs();
-  const locations = useSyncLocations();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const syncStatus = useAppSelector((s) => s.sync.status) as SyncStatus;
   const { unreadCount } = useNotifications();
   const boostInfo = useActiveBoosts();
 
-  const allActiveJobs = useMemo(() => {
-    const buildingJobs = (locations || []).flatMap((op: any) =>
-      (op.buildings || [])
-        .filter((b: any) => b.status === 'building' && b.jobId && b.startTick != null)
-        .map((b: any) => ({ id: b.jobId, startTick: b.startTick, durationTicks: b.durationTicks, status: 'active' }))
-    );
-    return [...activeMissions, ...activeCraftingJobs, ...buildingJobs];
-  }, [activeMissions, activeCraftingJobs, locations]);
+  const allActiveJobs = useAllActiveJobs();
 
   useJobReadinessTimers(allActiveJobs);
   const [showMenu, setShowMenu] = useState(false);

@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { computeGeneratorProduction } from '../../utils/locationProduction';
 import {
   useSyncPlayer,
   useSyncEntities,
-  useSyncActiveMissions,
   useSyncLocations,
+  useAllActiveJobs,
 } from '../../hooks/useSyncSelectors';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
@@ -31,11 +31,11 @@ export default function HomePage() {
   const { pushModal } = useModal();
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
-  const activeMissions = useSyncActiveMissions();
   const locations = useSyncLocations();
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
 
+  const allActiveJobs = useAllActiveJobs();
   const { collectJob } = useCollectJob();
   const [claimError, setClaimError] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -67,14 +67,26 @@ export default function HomePage() {
 
   const idleEntities = entities.filter((b: any) => b.status === 'idle').length;
   const busyEntities = entities.length - idleEntities;
-  const getMissionRemaining = (m: any): number => {
-    if (m.startTick == null || m.durationTicks == null) return Infinity;
-    const timer = createCountdownTimer({ startTick: m.startTick, durationTicks: m.durationTicks });
+
+  const getJobRemaining = (j: any): number => {
+    if (j.startTick == null || j.durationTicks == null) return Infinity;
+    const timer = createCountdownTimer({ startTick: j.startTick, durationTicks: j.durationTicks });
     const remainingTicks = timer.getValue(currentTick);
     return tickRate > 0 ? (remainingTicks / tickRate) * 1000 : Infinity;
   };
-  const completedMissions = activeMissions.filter((m: any) => getMissionRemaining(m) <= 0);
-  const inProgressMissions = activeMissions.filter((m: any) => getMissionRemaining(m) > 0);
+
+  const getJobIcon = (type: string) => {
+    if (type === 'MissionJob') return '🗺️';
+    if (type === 'CraftingJob') return '⚒️';
+    if (type === 'BuildingJob') return '🏗️';
+    return '⏱️';
+  };
+
+  const { completedJobs, inProgressJobs } = useMemo(() => ({
+    completedJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) <= 0),
+    inProgressJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) > 0),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [allActiveJobs, currentTick, tickRate]);
 
   const handleClaim = async (missionId: string) => {
     setClaimError('');
@@ -141,41 +153,32 @@ export default function HomePage() {
         <div className="hp-combined-divider" />
 
         <div className="hp-combined-bottom">
-          <div className="hp-combined-bottom-header">
-            <span className="hp-section-label">MISSIONS</span>
-            <button className="hp-section-link" onClick={() => navigate('/missions')}>›</button>
-          </div>
-
           {claimError && (
             <div style={{ color: '#ef4444', fontSize: '0.75rem', padding: '4px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6, margin: '0 8px 8px' }}>{claimError}</div>
           )}
 
-          {completedMissions.length > 0 && (
-            <>
-              {completedMissions.map((m: any) => (
-                <div key={m.id} className="hp-mission-row hp-mission-ready" onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
-                  <div className="hp-mission-icon hp-mission-icon-done">✅</div>
-                  <div className="hp-mission-info">
-                    <span className="hp-mission-name">{(m.defId || '').replace(/_/g, ' ')}</span>
-                    <span className="hp-mission-status-text">Ready to claim!</span>
-                  </div>
-                  <button className="hp-claim-btn" onClick={(e) => { e.stopPropagation(); handleClaim(m.id); }} disabled={claimingId === m.id}>
-                    {claimingId === m.id ? '...' : 'CLAIM'}
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
+          {completedJobs.map((j: any) => (
+            <div key={j.id} className="hp-mission-row hp-mission-ready" onClick={() => openModalSpec({ jobId: j.id })} style={{ cursor: 'pointer' }}>
+              <div className="hp-mission-icon hp-mission-icon-done">✅</div>
+              <div className="hp-mission-info">
+                <span className="hp-mission-name">{j.name}</span>
+                <span className="hp-mission-status-text">Ready to claim!</span>
+              </div>
+              {j.type === 'MissionJob' && (
+                <button className="hp-claim-btn" onClick={(e) => { e.stopPropagation(); handleClaim(j.id); }} disabled={claimingId === j.id}>
+                  {claimingId === j.id ? '...' : 'CLAIM'}
+                </button>
+              )}
+            </div>
+          ))}
 
-          {inProgressMissions.map((m: any) => {
-            const remaining = getMissionRemaining(m);
-            const timeStr = formatTime(remaining);
+          {inProgressJobs.map((j: any) => {
+            const timeStr = formatTime(getJobRemaining(j));
             return (
-              <div key={m.id} className="hp-mission-row" onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
-                <div className="hp-mission-icon">🗺️</div>
+              <div key={j.id} className="hp-mission-row" onClick={() => openModalSpec({ jobId: j.id })} style={{ cursor: 'pointer' }}>
+                <div className="hp-mission-icon">{getJobIcon(j.type)}</div>
                 <div className="hp-mission-info">
-                  <span className="hp-mission-name">{(m.defId || '').replace(/_/g, ' ')}</span>
-                  <span className="hp-mission-reward">💎 {m.arcaniumReward || '?'}</span>
+                  <span className="hp-mission-name">{j.name}</span>
                 </div>
                 <div className="hp-mission-timer">
                   <span className="hp-timer-badge">{timeStr}</span>
@@ -184,9 +187,9 @@ export default function HomePage() {
             );
           })}
 
-          {activeMissions.length === 0 && (
+          {allActiveJobs.length === 0 && (
             <div className="hp-empty-state">
-              <span>No active missions</span>
+              <span>No active jobs</span>
               <button className="hp-start-btn" onClick={() => navigate('/missions')}>START A MISSION</button>
             </div>
           )}
