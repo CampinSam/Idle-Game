@@ -112,9 +112,16 @@ export class AdminController {
 
   @Post('gifts/send')
   sendGift(
-    @Body() body: { userId: string; giftDefId: string },
+    @Body() body: { userId: string; giftDefId: string; contextData?: Record<string, unknown> },
   ) {
-    return this.giftService.createGiftForPlayer(body.userId, body.giftDefId, 'admin');
+    return this.giftService.createGiftForPlayer(
+      body.userId,
+      body.giftDefId,
+      'admin',
+      undefined,
+      undefined,
+      body.contextData,
+    );
   }
 
   @Get('boosts/list')

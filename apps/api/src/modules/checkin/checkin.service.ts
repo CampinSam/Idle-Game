@@ -141,6 +141,7 @@ export class CheckInService {
           'checkin',
           def.id,
           `checkin-${def.id}-${userId}-${streak}`,
+          { checkin: { streak, trackId: def.id, day: dayIndex } },
         );
         giftId = gift.id;
       } catch (err: any) {

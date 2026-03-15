@@ -11,6 +11,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { resolveRewardSpec } from './reward-resolver.util';
+import { resolveRewardSpecContext } from './reward-spec-resolver.util';
 
 @Injectable()
 export class GiftService {
@@ -40,6 +41,7 @@ export class GiftService {
     sourceType?: string,
     sourceId?: string,
     idempotencyKey?: string,
+    contextData?: Record<string, unknown>,
   ) {
     if (idempotencyKey) {
       const existing = await this.giftInstance.findUnique({
@@ -87,6 +89,7 @@ export class GiftService {
           presentation: def.presentation,
           rewardSpec: def.rewardSpec,
           instant: def.instant ?? true,
+          ...(contextData && Object.keys(contextData).length > 0 ? { contextData } : {}),
         },
       },
     });
@@ -143,7 +146,8 @@ export class GiftService {
       .digest('hex');
 
     const snapshot = (gift.snapshot as any) || {};
-    const rewardSpec = snapshot.rewardSpec || {};
+    const rawRewardSpec = snapshot.rewardSpec || {};
+    const rewardSpec = resolveRewardSpecContext(rawRewardSpec, snapshot.contextData);
     const instant: boolean = snapshot.instant !== false;
     const giftDefId = gift.giftDefId;
 

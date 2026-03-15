@@ -2,6 +2,8 @@ import { Injectable, Inject, forwardRef, BadRequestException, Logger, NotFoundEx
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
 
+const JOB_SOURCE_TYPES = new Set(['MissionJob', 'CraftingJob', 'BuildingJob']);
+
 @Injectable()
 export class EventService {
   private readonly logger = new Logger(EventService.name);
@@ -11,6 +13,43 @@ export class EventService {
     @Inject(forwardRef(() => GiftService))
     private giftService: GiftService,
   ) {}
+
+  private async buildContextData(
+    payload: Record<string, any>,
+    sourceType?: string,
+    sourceId?: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const parts: Record<string, unknown> = {};
+
+    if (sourceType && JOB_SOURCE_TYPES.has(sourceType) && sourceId) {
+      try {
+        const job = await (this.prisma as any).job.findUnique({
+          where: { id: sourceId },
+          select: {
+            id: true,
+            type: true,
+            defId: true,
+            status: true,
+            team: true,
+            results: true,
+            data: true,
+            timer: true,
+          },
+        });
+        if (job) {
+          parts.job = job;
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to look up job ${sourceId} for context enrichment: ${err}`);
+      }
+    }
+
+    if (payload.contextData && typeof payload.contextData === 'object') {
+      Object.assign(parts, payload.contextData);
+    }
+
+    return Object.keys(parts).length > 0 ? parts : undefined;
+  }
 
   async dispatch(
     defId: string,
@@ -52,12 +91,18 @@ export class EventService {
             `Event "${defId}" requires payload.giftDefId but it was not provided`,
           );
         }
+        const contextData = await this.buildContextData(
+          safePayload,
+          context.sourceType,
+          context.sourceId,
+        );
         return this.giftService.createGiftForPlayer(
           context.userId,
           safePayload.giftDefId,
           context.sourceType,
           context.sourceId,
           context.idempotencyKey,
+          contextData,
         );
       }
 
