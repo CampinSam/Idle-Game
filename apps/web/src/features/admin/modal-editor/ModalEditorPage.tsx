@@ -105,8 +105,22 @@ function mapRewardItemClient(r: any): any {
   };
 }
 
+function resolveAllStringsClient(obj: any, ctx: Record<string, any>): any {
+  if (obj == null) return obj;
+  if (typeof obj === 'string') return resolveTokensClient(obj, ctx);
+  if (Array.isArray(obj)) return obj.map(item => resolveAllStringsClient(item, ctx));
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = resolveAllStringsClient(obj[key], ctx);
+    }
+    return result;
+  }
+  return obj;
+}
+
 function resolveBlockClient(block: any, ctx: Record<string, any>): any {
-  const resolved = { ...block };
+  let resolved = { ...block };
   const fromPath = resolved.from;
 
   if (fromPath) {
@@ -129,7 +143,7 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
           else if (typeof data === 'object' && data.endsAt) { resolved.endsAt = data.endsAt; if (data.label) resolved.label = data.label; }
           break;
         case 'progress':
-          if (typeof data === 'object') { if (data.current !== undefined) resolved.current = Number(data.current); if (data.max !== undefined) resolved.max = Number(data.max); }
+          if (typeof data === 'object') { if (data.current !== undefined) resolved.current = Number(data.current); if (data.max !== undefined) resolved.max = Number(data.max); if (data.label) resolved.label = data.label; }
           break;
         case 'richText':
           if (typeof data === 'string') resolved.doc = [{ t: 'p', c: [{ t: 'text', v: data }] }];
@@ -140,7 +154,16 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
           else if (typeof data === 'string') resolved.image = { assetKey: data };
           break;
         case 'giftReveal':
-          if (typeof data === 'object') resolved.gift = { ...(resolved.gift || {}), ...data };
+          if (typeof data === 'object') {
+            if (data.gift) {
+              resolved.gift = { ...(resolved.gift || {}), ...data.gift };
+            } else if (data.giftId || data.title) {
+              resolved.gift = { ...(resolved.gift || {}), ...data };
+            }
+            if (Array.isArray(data.rewards)) {
+              resolved.rewards = data.rewards.map(mapRewardItemClient);
+            }
+          }
           break;
         case 'error':
           if (typeof data === 'string') resolved.message = data;
@@ -151,48 +174,25 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
     delete resolved.from;
   }
 
-  switch (resolved.type) {
-    case 'richText':
-      if (Array.isArray(resolved.doc)) resolved.doc = resolved.doc.map((n: RichTextNode) => resolveRichTextNodeClient(n, ctx));
-      break;
-    case 'metaRows':
-      if (Array.isArray(resolved.rows)) resolved.rows = resolved.rows.map((r: any) => ({ label: resolveTokensClient(String(r.label ?? ''), ctx), value: resolveTokensClient(String(r.value ?? ''), ctx) }));
-      break;
-    case 'timer':
-      if (resolved.label) resolved.label = resolveTokensClient(resolved.label, ctx);
-      break;
-    case 'progress':
-      if (resolved.label) resolved.label = resolveTokensClient(resolved.label, ctx);
-      break;
-    case 'error':
-      if (resolved.message) resolved.message = resolveTokensClient(resolved.message, ctx);
-      break;
-    case 'image':
-      if (resolved.caption) resolved.caption = resolveTokensClient(resolved.caption, ctx);
-      break;
-    case 'rewardsList':
-      if (resolved.title) resolved.title = resolveTokensClient(resolved.title, ctx);
-      break;
-    case 'giftReveal':
-      if (resolved.gift?.title) resolved.gift.title = resolveTokensClient(resolved.gift.title, ctx);
-      break;
+  if (resolved.type === 'richText' && Array.isArray(resolved.doc)) {
+    resolved.doc = resolved.doc.map((n: RichTextNode) => resolveRichTextNodeClient(n, ctx));
+  } else {
+    resolved = resolveAllStringsClient(resolved, ctx);
   }
 
   return resolved;
 }
 
 function resolveSpecClient(spec: ModalSpecV1, ctx: Record<string, any>): ModalSpecV1 {
-  const resolved: any = { ...spec };
+  const resolved: ModalSpecV1 = { ...spec };
   if (resolved.header) {
-    resolved.header = { ...resolved.header };
-    if (resolved.header.title) resolved.header.title = resolveTokensClient(resolved.header.title, ctx);
-    if (resolved.header.subtitle) resolved.header.subtitle = resolveTokensClient(resolved.header.subtitle, ctx);
+    resolved.header = resolveAllStringsClient({ ...resolved.header }, ctx);
   }
   if (Array.isArray(resolved.body)) {
     resolved.body = resolved.body.map((b: any) => resolveBlockClient(b, ctx));
   }
   if (Array.isArray(resolved.buttons)) {
-    resolved.buttons = resolved.buttons.map((btn: any) => ({ ...btn, label: btn.label ? resolveTokensClient(btn.label, ctx) : btn.label }));
+    resolved.buttons = resolved.buttons.map((btn: any) => resolveAllStringsClient({ ...btn }, ctx));
   }
   return resolved;
 }

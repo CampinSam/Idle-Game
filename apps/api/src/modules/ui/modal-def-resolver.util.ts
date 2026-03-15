@@ -26,6 +26,20 @@ export function resolveTokens(str: string, ctx: Record<string, any>): string {
   });
 }
 
+function resolveAllStrings(obj: any, ctx: Record<string, any>): any {
+  if (obj == null) return obj;
+  if (typeof obj === 'string') return resolveTokens(obj, ctx);
+  if (Array.isArray(obj)) return obj.map(item => resolveAllStrings(item, ctx));
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const key of Object.keys(obj)) {
+      result[key] = resolveAllStrings(obj[key], ctx);
+    }
+    return result;
+  }
+  return obj;
+}
+
 function resolveRichTextNode(node: RichTextNode, ctx: Record<string, any>): RichTextNode {
   if (node.t === 'token') {
     const val = getByPath(ctx, node.key);
@@ -138,7 +152,14 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
 
         case 'giftReveal':
           if (typeof data === 'object') {
-            resolved.gift = { ...(resolved.gift || {}), ...data };
+            if (data.gift) {
+              resolved.gift = { ...(resolved.gift || {}), ...data.gift };
+            } else if (data.giftId || data.title) {
+              resolved.gift = { ...(resolved.gift || {}), ...data };
+            }
+            if (Array.isArray(data.rewards)) {
+              resolved.rewards = data.rewards.map(mapRewardItem);
+            }
           }
           break;
 
@@ -154,52 +175,23 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
     delete resolved.from;
   }
 
-  switch (resolved.type) {
-    case 'richText':
-      resolved.doc = resolveRichTextDoc(resolved.doc || [], ctx);
-      break;
-    case 'metaRows':
-      if (Array.isArray(resolved.rows)) {
-        resolved.rows = resolved.rows.map((r: any) => ({
-          label: resolveTokens(String(r.label ?? ''), ctx),
-          value: resolveTokens(String(r.value ?? ''), ctx),
-        }));
-      }
-      break;
-    case 'timer':
-      if (resolved.label) resolved.label = resolveTokens(resolved.label, ctx);
-      if (resolved.endsAt) resolved.endsAt = resolveTokens(resolved.endsAt, ctx);
-      break;
-    case 'progress':
-      if (resolved.label) resolved.label = resolveTokens(resolved.label, ctx);
-      break;
-    case 'error':
-      if (resolved.message) resolved.message = resolveTokens(resolved.message, ctx);
-      break;
-    case 'image':
-      if (resolved.caption) resolved.caption = resolveTokens(resolved.caption, ctx);
-      break;
-    case 'giftReveal':
-      if (resolved.gift?.title) resolved.gift.title = resolveTokens(resolved.gift.title, ctx);
-      break;
-    case 'rewardsList':
-      if (resolved.title) resolved.title = resolveTokens(resolved.title, ctx);
-      break;
+  if (resolved.type === 'richText' && Array.isArray(resolved.doc)) {
+    resolved.doc = resolveRichTextDoc(resolved.doc, ctx);
+  } else {
+    resolved = resolveAllStrings(resolved, ctx);
   }
 
   return resolved as ModalBlock;
 }
 
-export function resolveSpec(spec: any, ctx: Record<string, any>): any {
+export function resolveSpec(spec: ModalSpecV1, ctx: Record<string, any>): ModalSpecV1 {
   if (!spec || typeof spec !== 'object') return spec;
   if (!ctx || typeof ctx !== 'object') return spec;
 
-  const resolved: any = { ...spec };
+  const resolved: ModalSpecV1 = { ...spec };
 
   if (resolved.header) {
-    resolved.header = { ...resolved.header };
-    if (resolved.header.title) resolved.header.title = resolveTokens(resolved.header.title, ctx);
-    if (resolved.header.subtitle) resolved.header.subtitle = resolveTokens(resolved.header.subtitle, ctx);
+    resolved.header = resolveAllStrings({ ...resolved.header }, ctx);
   }
 
   if (Array.isArray(resolved.body)) {
@@ -207,10 +199,7 @@ export function resolveSpec(spec: any, ctx: Record<string, any>): any {
   }
 
   if (Array.isArray(resolved.buttons)) {
-    resolved.buttons = resolved.buttons.map((btn: any) => ({
-      ...btn,
-      label: btn.label ? resolveTokens(btn.label, ctx) : btn.label,
-    }));
+    resolved.buttons = resolved.buttons.map((btn: any) => resolveAllStrings({ ...btn }, ctx));
   }
 
   return resolved;
