@@ -39,7 +39,7 @@ export function serializeLocation(
     definitionId: location.definitionId,
     regionId: location.regionId,
     name: location.definitionId || location.regionId || 'Location',
-    region: location.regionId || '',
+    region: location.definition?.kind || '',
     isUnique: location.isUnique,
     level: location.level,
     xp: location.xp?.toString?.() ?? '0',
