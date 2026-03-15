@@ -24,6 +24,8 @@ export interface AllowedRoomEntry {
   minCount?: number;
 }
 
+export type OnStarveBehavior = 'starved' | 'paused';
+
 export interface LevelBlock {
   xpThreshold?: number;
   workers?: { slots: number; rules?: Record<string, any> };
@@ -31,8 +33,10 @@ export interface LevelBlock {
   rooms?: { allowed?: AllowedRoomEntry[] };
   storage?: ResourceEntry[];
   production?: ResourceEntry[];
+  consumption?: ResourceEntry[];
   constructionCost?: ResourceEntry[];
   effects?: Record<string, any>;
+  onStarve?: OnStarveBehavior;
   timer?: { duration: number };
   [key: string]: any;
 }
@@ -152,6 +156,24 @@ export function resolveStorageCapacity(
 }
 
 export function resolveProductionRates(
+  entries: ResourceEntry[] | undefined,
+  level: number,
+): Record<string, number> {
+  if (!entries || entries.length === 0) return {};
+  const result: Record<string, number> = {};
+  for (const entry of entries) {
+    const rate = calcGrowth(
+      entry.ratePerHour ?? 0,
+      entry.growthRate,
+      entry.growthScalar,
+      level,
+    );
+    result[entry.id] = rate;
+  }
+  return result;
+}
+
+export function resolveConsumptionRates(
   entries: ResourceEntry[] | undefined,
   level: number,
 ): Record<string, number> {

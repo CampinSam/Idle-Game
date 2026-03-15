@@ -52,6 +52,7 @@ This document describes each definition table editable through the Admin Panel, 
 
 ### Shared JSON Formats
 39. [Unified Level-Based Rules System](#unified-level-based-rules-system)
+39a. [Settlement Storage JSON](#settlement-storage-json)
 40. [Timer](#timer)
 41. [Cost Objects](#cost-objects)
 42. [Outcome Blocks](#outcome-blocks)
@@ -454,6 +455,29 @@ Defines a building that can be constructed inside outposts. Buildings are classi
   }
 }
 ```
+
+**Example rules (building with consumption — generator that consumes Arcanium to produce iron ore):**
+
+```json
+{
+  "level": {
+    "1": {
+      "production": [
+        { "type": "item", "id": "mat_iron_ore", "ratePerHour": 30 }
+      ],
+      "consumption": [
+        { "type": "currency", "id": "soft_arcanium", "ratePerHour": 20 }
+      ],
+      "onStarve": "starved",
+      "constructionCost": [
+        { "type": "currency", "id": "soft_arcanium", "amount": 200 }
+      ]
+    }
+  }
+}
+```
+
+When this building's Arcanium supply runs out (from both the location's local storage and net flow from other buildings), it stops producing iron ore. With `onStarve: "starved"`, it automatically restarts during the same settlement if other buildings produce enough Arcanium. Use `"paused"` for expensive buildings that should stay stopped until manually re-enabled.
 
 ---
 
@@ -1342,8 +1366,8 @@ A player-owned instance of a location definition (outpost). Tracks level, XP, pr
 | `threatLevel` | number | No | 0 | Current threat level |
 | `corruptionLevel` | number | No | 0 | Current corruption level |
 | `lastCollectionTick` | bigint | No | 0 | Last tick when resources were collected |
-| `storage` | JSON | No | `{}` | Current resource storage state |
-| `state` | JSON | No | `{}` | Dynamic runtime state |
+| `storage` | JSON | No | `{}` | Current resource storage state (see [Settlement Storage JSON](#settlement-storage-json)) |
+| `state` | JSON | No | `{}` | Dynamic runtime state. May contain `onStarve` override (`"starved"` or `"paused"`) that takes precedence over the definition default. |
 | `enabled` | boolean | No | true | Whether this location participates in resource generation |
 | `version` | number | No | 1 | Schema version |
 
@@ -1361,7 +1385,7 @@ An instance of a building constructed within a location.
 | `locationId` | string | Yes | — | References a [LocationInstance](#locationinstance) |
 | `buildingDefId` | string | Yes | — | References a [BuildingDef](#buildingdef) |
 | `level` | number | No | 1 | Current building level |
-| `state` | JSON | No | `{}` | Dynamic runtime state |
+| `state` | JSON | No | `{}` | Dynamic runtime state. May contain `onStarve` override (`"starved"` or `"paused"`) that takes precedence over the definition default. Operational status (`"operational"`, `"starved"`, or `"paused"`) is tracked in the location's `storage.productionBundles` array, not in this field. |
 | `enabled` | boolean | No | true | Whether this building participates in production |
 
 **Toggle endpoint:** `POST /locations/:id/buildings/:buildingId/toggle`
@@ -1379,7 +1403,7 @@ An instance of a room built within a location or building.
 | `roomDefId` | string | Yes | — | References a [RoomDef](#roomdef) |
 | `buildingInstanceId` | string | No | — | References a LocationBuildingInstance (if room is inside a specific building) |
 | `level` | number | No | 1 | Current room level |
-| `state` | JSON | No | `{}` | Dynamic runtime state |
+| `state` | JSON | No | `{}` | Dynamic runtime state. May contain `onStarve` override (`"starved"` or `"paused"`) that takes precedence over the definition default. |
 | `enabled` | boolean | No | true | Whether this room is active |
 
 **Toggle endpoint:** `POST /locations/:id/rooms/:roomId/toggle`
@@ -1560,9 +1584,13 @@ Each level entry can define any combination of:
   "production": [
     { "type": "currency", "id": "soft_arcanium", "ratePerHour": 3600, "growthRate": "linear", "growthScalar": 360 }
   ],
+  "consumption": [
+    { "type": "currency", "id": "soft_arcanium", "ratePerHour": 1800, "growthRate": "linear", "growthScalar": 180 }
+  ],
   "constructionCost": [
     { "type": "currency", "id": "soft_arcanium", "baseAmount": 50, "growthRate": "exp", "growthScalar": 1.5 }
   ],
+  "onStarve": "starved",
   "effects": [
     { "type": "production_multiplier_bps", "amount": 11000 }
   ],
@@ -1578,13 +1606,15 @@ Each level entry can define any combination of:
 | `rooms` | object | Allowed room list |
 | `storage` | ResourceEntry[] | Storage capacity definitions |
 | `production` | ResourceEntry[] | Production rate definitions |
+| `consumption` | ResourceEntry[] | Consumption rate definitions — resources this building/room/location requires to operate. Uses the same `ResourceEntry` format as `production`. When consumed resources are exhausted, the building's `onStarve` behavior is applied. |
 | `constructionCost` | ResourceEntry[] | Construction cost definitions |
+| `onStarve` | string | Default starvation behavior when consumed resources run out: `"starved"` (auto-restarts when resources become available) or `"paused"` (stays stopped until manually re-enabled). Defaults to `"starved"` if omitted. Can be overridden at the building instance level via the `state.onStarve` JSON field. |
 | `effects` | array | Effects active at this level (e.g. `[{ "type": "production_multiplier_bps", "amount": 11000 }]`) |
 | `timer` | object | Timer configuration (e.g. construction time) |
 
 ### ResourceEntry
 
-Used in `storage`, `production`, and `constructionCost` arrays:
+Used in `storage`, `production`, `consumption`, and `constructionCost` arrays:
 
 | Property | Type | Description |
 |---|---|---|
@@ -1636,6 +1666,76 @@ Same pattern as buildings, accumulated via `resolveAllowedRooms()`:
 ```json
 { "roomDefId": "room_storage_vault", "maxCount": 1, "minCount": 0 }
 ```
+
+---
+
+## Settlement Storage JSON
+
+The `storage` JSON field on `LocationInstance` holds the settlement state, computed by `recalculateLocationMeta` and updated during settlement. It contains the following top-level keys:
+
+```json
+{
+  "capacity": { "soft_arcanium": 1200, "mat_iron_ore": 500 },
+  "stored": { "soft_arcanium": 450, "mat_iron_ore": 120 },
+  "productionRates": { "soft_arcanium": 3600, "mat_iron_ore": 30 },
+  "consumptionRates": { "soft_arcanium": 1800 },
+  "effectiveProductionRates": { "soft_arcanium": 4320, "mat_iron_ore": 36 },
+  "netFlows": { "soft_arcanium": 1800, "mat_iron_ore": 30 },
+  "productionBundles": [
+    {
+      "buildingId": "uuid-of-building",
+      "buildingDefId": "gen_arcanium_mine",
+      "produces": { "soft_arcanium": 3600 },
+      "consumes": { "mat_iron_ore": 10 },
+      "resourceTypes": { "soft_arcanium": "currency", "mat_iron_ore": "item" },
+      "onStarve": "starved",
+      "status": "operational"
+    }
+  ],
+  "lastSettledAt": "2026-03-14T00:00:00.000Z"
+}
+```
+
+| Property | Type | Description |
+|---|---|---|
+| `capacity` | `Record<string, number>` | Per-resource storage capacity aggregated from location, buildings, and rooms |
+| `stored` | `Record<string, number>` | Current stored amounts per resource |
+| `productionRates` | `Record<string, number>` | Aggregated base production rates per hour (before worker/threat/effect multipliers) |
+| `consumptionRates` | `Record<string, number>` | Aggregated base consumption rates per hour (before multipliers) |
+| `effectiveProductionRates` | `Record<string, number>` | Production rates after applying worker, threat, and effect multipliers |
+| `netFlows` | `Record<string, number>` | Per-resource net rate per hour (`productionRates - consumptionRates`). Positive = accumulating, negative = draining. |
+| `productionBundles` | `ProductionBundle[]` | Per-building/room breakdown of production and consumption (see below) |
+| `lastSettledAt` | string (ISO date) | Timestamp of last settlement |
+
+### ProductionBundle
+
+Each entry in `productionBundles` represents one building or room:
+
+| Property | Type | Description |
+|---|---|---|
+| `buildingId` | string | Instance ID of the building (prefixed with `location:` for location-level production, `room:` for rooms) |
+| `buildingDefId` | string | Definition ID of the building/room/location |
+| `produces` | `Record<string, number>` | Resources produced per hour by this building |
+| `consumes` | `Record<string, number>` | Resources consumed per hour by this building |
+| `resourceTypes` | `Record<string, string>` | Maps resource IDs to their type (`"currency"` or `"item"`). Used by settlement to route overflow consumption to the correct player wallet (currency) or inventory (item). |
+| `onStarve` | string | Starvation behavior: `"starved"` (auto-restart when resources available) or `"paused"` (stays stopped) |
+| `status` | string | Current operational status: `"operational"`, `"starved"`, or `"paused"` |
+
+### Settlement Phased Simulation
+
+During settlement, the system uses **net-flow simulation** rather than per-building sequential processing. All active buildings operate simultaneously:
+
+1. **Net flows** are computed across all currently-active buildings (production minus consumption per resource)
+2. For each resource with negative net flow, the **exhaustion time** is calculated from current stored amounts
+3. Time advances to the earliest event point (either resource exhaustion or starved building restart); all production and consumption are applied for that phase using integer accounting (`Math.floor(rate * phaseSeconds / 3600)`)
+4. Buildings whose consumed resources are exhausted follow their `onStarve` behavior:
+   - `"starved"`: the system computes exact restart time — how long until active buildings produce enough of every consumed resource to reach at least 1 unit available. If achievable within remaining time, a phase advances to that point and the building reactivates. It may then re-starve in a later phase if resources are consumed faster than produced, creating natural phase-by-phase cycles bounded by the 50-iteration safety cap.
+   - `"paused"`: removed from the active set for the remainder of settlement. The building stays paused across subsequent settlements and meta recalculations. To re-enable, the player can: (a) toggle the building off (`enabled: false`) and back on (`enabled: true`), which creates a fresh bundle with `operational` status, or (b) change the instance `state.onStarve` to `"starved"`, which on the next meta recalculation transitions the bundle from `paused` to `starved` so it becomes eligible for auto-restart.
+5. Phases repeat until the full elapsed time window is covered, capped at **50 iterations** as a safety guard. If the cap is reached, only the simulated portion of elapsed time is advanced (the `lastCollectionTick` is set to `lastCollectionTick + simulatedSeconds`), ensuring no unprocessed time is dropped.
+
+**Resource pool for consumption:** Consumed resources are drawn from a combined pool of location storage + player wallet (currency balances) / item inventory. Local storage is consumed first; any overflow is tracked separately and deducted atomically from the player's wallet via `CurrencyService.spendTx` or `InventoryService.removeItemTx` at the end of settlement. If any wallet deduction fails, the entire settlement transaction is rolled back. The `resourceTypes` field in each bundle determines whether each resource is a currency or item for correct routing.
+
+**Integer accounting:** All resource deltas within a phase use `Math.floor(ratePerHour * phaseSeconds / 3600)` to produce whole-number amounts. This prevents fractional leakage across frequent settlements. At exhaustion boundaries, any remaining fractional amounts in local storage and wallet are force-consumed to zero, ensuring starvation triggers correctly even when floored deltas would leave tiny remainders.
 
 ---
 

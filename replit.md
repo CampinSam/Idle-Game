@@ -55,7 +55,7 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 - **Tick-Based Timing System**: Global tick system for game timers and a frontend React context-based tick engine.
 - **Server-Authoritative Notifications**: Postgres-persisted notifications with grouping, pagination, and pruning.
 - **Server-Driven Modal System (ModalSpecV1)**: Universal system for displaying dynamic modals constructed by the backend, supporting various content types and interactive actions.
-- **Location Production System**: Level-based production with dynamic storage and atomic resource claims.
+- **Location Production & Consumption System**: Level-based production with dynamic storage and atomic resource claims. Buildings/rooms/locations can declare `consumption` entries in their level rules (same `ResourceEntry` format as `production`) and an `onStarve` behavior (`"starved"` for auto-restart, `"paused"` for manual re-enable). Settlement uses phased net-flow simulation: all buildings operate simultaneously, net flows offset, and exhaustion triggers starvation phases (capped at 50 iterations). The `storage` JSON on `LocationInstance` includes `productionBundles` (per-building breakdown with status), `consumptionRates`, and `netFlows`. Instance-level `onStarve` overrides in the `state` JSON take precedence over definition defaults.
 - **Currency System**: Data-driven currencies with BigInt balances and audit trails.
 - **Editor-Ready Balance System**: Extensive use of JSON fields in definitions for data-driven game balancing.
 - **Unified Job System**: Single `Job` table for all timer-based activities.
