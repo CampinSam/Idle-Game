@@ -1,3 +1,5 @@
+const BPS_BASE = 10000;
+
 function getCapacityForKey(location: any, key: string): number {
   const storageCapacity = location.storage?.capacity || {};
   const [, resourceId] = key.split(':');
