@@ -147,9 +147,10 @@ export default function LocationDetailPage() {
   const timerData = locationTimerMap.get(outpost.id);
   const resourceSummaries = timerData?.resourceSummaries || [];
 
-  const totalRatePerHour = resourceSummaries.reduce(
-    (s, r) => s + r.totalRatePerHour, 0,
-  );
+  const effectiveRatePerHour = resourceSummaries.reduce((s, r) => {
+    const isFull = r.capacity > 0 && r.currentAmount / r.capacity >= 0.995;
+    return isFull ? s : s + r.totalRatePerHour;
+  }, 0);
 
   const buildingsData: any[] = outpost.buildings || [];
   const workersData: any[] = outpost.workers || [];
@@ -285,17 +286,28 @@ export default function LocationDetailPage() {
                 <h3 className="od-card-title">PRODUCTION</h3>
                 {resourceSummaries.length > 0 ? (
                   <>
-                    <div className="od-prod-rate">
-                      <span className="od-prod-value">+{formatRate(totalRatePerHour)}/h</span>
-                    </div>
+                    {effectiveRatePerHour > 0 ? (
+                      <div className="od-prod-rate">
+                        <span className="od-prod-value">+{formatRate(effectiveRatePerHour)}/h</span>
+                      </div>
+                    ) : (
+                      <div className="od-empty-tasks">No active generators.</div>
+                    )}
                     <div className="od-prod-resources">
-                      {resourceSummaries.map((res) => (
-                        <div key={res.key} className="od-prod-res">
-                          <span className="od-prod-res-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
-                          <span className="od-prod-res-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
-                          <span className="od-prod-res-amount">+{formatRate(res.totalRatePerHour)}/h</span>
-                        </div>
-                      ))}
+                      {resourceSummaries.map((res) => {
+                        const isFull = res.capacity > 0 && res.currentAmount / res.capacity >= 0.995;
+                        return (
+                          <div key={res.key} className="od-prod-res">
+                            <span className="od-prod-res-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
+                            <span className="od-prod-res-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
+                            {isFull ? (
+                              <span className="od-prod-res-full">Full</span>
+                            ) : (
+                              <span className="od-prod-res-amount">+{formatRate(res.totalRatePerHour)}/h</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 ) : (
