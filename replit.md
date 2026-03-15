@@ -91,6 +91,7 @@ The project is structured as a pnpm monorepo, comprising a React+Vite frontend, 
 **Admin Panel:**
 - **Dashboard**: Provides tools for player editing, game state manipulation, and testing.
 - **Definition Editor**: Schema-aware editor for all definition tables, supporting CRUD, validation, and data management.
+- **Modal Editor** (`/admin/modal-editor`): Dedicated editor for `modal_defs` — three collapsible stacked sections: (1) Editor with DB metadata, dismiss options, header, drag/drop body blocks (all 11 block types with per-type form fields; richText uses HTML textarea → `RichTextDoc` via DOMParser), and drag/drop buttons with full action editors; (2) Payload panel with JSON textarea and "Load recent jobs" (10 most recent via `GET /admin/jobs/recent`); (3) Live Preview using actual `GameModal.css` + `BlockRenderer` components for pixel-accurate rendering.
 
 **App Storage:**
 - Replit App Storage for hosting art and media assets, served by the backend via `GET /media/*`.

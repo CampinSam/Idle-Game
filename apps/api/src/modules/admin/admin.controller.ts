@@ -200,6 +200,11 @@ export class AdminController {
     }).filter(f => f.name);
   }
 
+  @Get('jobs/recent')
+  getRecentJobs(@Query('limit') limit?: string) {
+    return this.adminService.getRecentJobs(Math.min(parseInt(limit || '10', 10) || 10, 50));
+  }
+
   @Get(':table')
   list(@Param('table') table: string) {
     return this.adminService.listTable(table);

@@ -24,6 +24,7 @@ const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
 const AdminPage = lazy(() => import('./features/admin/AdminPage'));
 const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
 const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
+const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
 
@@ -78,6 +79,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
+  if (location.pathname.startsWith('/admin/modal-editor')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <ModalEditorPage />
+      </Suspense>
+    );
+  }
   if (location.pathname.startsWith('/admin/def2')) {
     return (
       <Suspense fallback={<PageLoader />}>

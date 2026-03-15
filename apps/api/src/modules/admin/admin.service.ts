@@ -262,6 +262,15 @@ export class AdminService {
     }
   }
 
+  async getRecentJobs(limit: number) {
+    const jobs = await (this.prisma as any).job.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      select: { id: true, type: true, defId: true, status: true, data: true, results: true, updatedAt: true },
+    });
+    return serializeBigInts(jobs);
+  }
+
   private getModel(table: string): any {
     const models: Record<string, any> = {
       missionDef: (this.prisma as any).missionDef,

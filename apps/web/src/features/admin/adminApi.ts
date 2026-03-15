@@ -58,6 +58,8 @@ export const adminApi = {
   sendNotification: (data: { userId: string; type: string; category: string; priority: string; title: string; body: string }) =>
     adminRequest<any>('/notifications/send', { method: 'POST', body: JSON.stringify(data) }),
 
+  listRecentJobs: (limit = 10) => adminRequest<any[]>(`/jobs/recent?limit=${limit}`),
+
   dispatchEvent: (data: { userId: string; defId: string; payload: any }) =>
     adminRequest<any>('/events/dispatch', { method: 'POST', body: JSON.stringify(data) }),
   sendGift: (data: { userId: string; giftDefId: string }) =>
