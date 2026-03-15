@@ -220,8 +220,10 @@ export default function LocationDetailPage() {
       <div className="od-container">
         <div className="od-header">
           <div className="od-header-info">
-            <h1 className="od-name">Outpost {idLabel}</h1>
-            <div className="od-subtitle">{regionName}</div>
+            <h1 className="od-name">
+              Outpost {idLabel}
+              <span className="od-name-region"> &bull; {regionName}</span>
+            </h1>
             <div className="od-badges">
               <span className="od-level-badge">Level {outpost.level}</span>
               <span className="od-size-badge">{size}</span>
