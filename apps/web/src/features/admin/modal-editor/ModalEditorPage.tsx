@@ -171,8 +171,9 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
           break;
       }
     }
-    delete resolved.from;
   }
+
+  if ('from' in resolved) delete resolved.from;
 
   if (resolved.type === 'richText' && Array.isArray(resolved.doc)) {
     resolved.doc = resolved.doc.map((n: RichTextNode) => resolveRichTextNodeClient(n, ctx));

@@ -172,8 +172,9 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
           break;
       }
     }
-    delete resolved.from;
   }
+
+  if ('from' in resolved) delete resolved.from;
 
   if (resolved.type === 'richText' && Array.isArray(resolved.doc)) {
     resolved.doc = resolveRichTextDoc(resolved.doc, ctx);
