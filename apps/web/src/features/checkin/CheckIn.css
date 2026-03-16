@@ -1,0 +1,190 @@
+.checkin-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkin-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2d9ff;
+}
+
+.checkin-timer {
+  font-size: 12px;
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.reward-track-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 8px 0 4px;
+}
+
+.reward-track-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.reward-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  min-width: max-content;
+}
+
+.reward-node-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.reward-node-connector {
+  width: 20px;
+  height: 3px;
+  background: rgba(139, 92, 246, 0.2);
+  flex-shrink: 0;
+}
+
+.reward-node-connector.filled {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+  box-shadow: 0 0 4px rgba(139, 92, 246, 0.4);
+}
+
+.reward-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid rgba(139, 92, 246, 0.2);
+  background: rgba(15, 10, 35, 0.6);
+  min-width: 56px;
+  cursor: default;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.reward-node.locked {
+  opacity: 0.45;
+  border-color: rgba(100, 80, 160, 0.15);
+}
+
+.reward-node.claimed {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.reward-node.claimable {
+  border-color: #a78bfa;
+  background: rgba(139, 92, 246, 0.12);
+  cursor: pointer;
+  animation: node-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.reward-node.claimable:active {
+  transform: scale(0.93);
+}
+
+.reward-node.current {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(139, 92, 246, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(139, 92, 246, 0.5); }
+}
+
+.reward-node-day {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary, #9ca3af);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.reward-node.claimed .reward-node-day {
+  color: #4ade80;
+}
+
+.reward-node.claimable .reward-node-day {
+  color: #c4b5fd;
+}
+
+.reward-node-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.reward-node-check {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.reward-node-milestone {
+  border-width: 2px;
+  min-width: 64px;
+}
+
+.reward-node-milestone .reward-node-icon {
+  font-size: 26px;
+}
+
+.reward-claim-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.reward-claim-footer.claimed-state {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.reward-claim-footer.waiting-state {
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.claiming-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  border-top-color: #a78bfa;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

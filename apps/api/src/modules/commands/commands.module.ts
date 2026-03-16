@@ -22,6 +22,7 @@ import { OpenLootBoxHandler } from './handlers/open-lootbox.handler';
 import { ClaimQuestRewardHandler } from './handlers/claim-quest-reward.handler';
 import { ShopPurchaseHandler } from './handlers/shop-purchase.handler';
 import { UseConsumableHandler } from './handlers/use-consumable.handler';
+import { ClaimGiftHandler } from './handlers/claim-gift.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -31,6 +32,7 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { GameRulesModule } from '../game-rules/game-rules.module';
 import { QuestModule } from '../quest/quest.module';
 import { EntityModule } from '../entity/entity.module';
+import { GiftModule } from '../gift/gift.module';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { EntityModule } from '../entity/entity.module';
     GameRulesModule,
     QuestModule,
     EntityModule,
+    GiftModule,
   ],
   controllers: [CommandController],
   providers: [
@@ -68,6 +71,7 @@ import { EntityModule } from '../entity/entity.module';
     ClaimQuestRewardHandler,
     ShopPurchaseHandler,
     UseConsumableHandler,
+    ClaimGiftHandler,
   ],
   exports: [CommandService],
 })

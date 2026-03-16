@@ -335,3 +335,38 @@
     font-size: 11px;
   }
 }
+
+.reward-badge-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 80px;
+  z-index: 80;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, #2a1f4e 0%, #1e1b3a 100%);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.35), 0 4px 12px rgba(0,0,0,0.5);
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: gift-shake 1.5s ease-in-out infinite;
+  transition: transform 0.15s;
+  padding: 0;
+}
+
+.reward-badge-fab:active {
+  transform: scale(0.9);
+}
+
+@keyframes gift-shake {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-4deg); }
+  75% { transform: rotate(0deg); }
+}

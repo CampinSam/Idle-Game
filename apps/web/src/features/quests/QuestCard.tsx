@@ -1,0 +1,98 @@
+import { memo, useState, useCallback } from 'react';
+import { useCommand } from '../../hooks/useCommand';
+import { useModal } from '../../context/ModalContext';
+import GameIcon from '../../components/GameIcon';
+
+interface QuestCardProps {
+  quest: any;
+}
+
+function QuestCardInner({ quest }: QuestCardProps) {
+  const { pushModal } = useModal();
+  const { execute } = useCommand({
+    onUiIntent: (intent) => {
+      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
+    },
+  });
+  const [claiming, setClaiming] = useState(false);
+
+  const def = quest.questDef ?? {};
+  const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
+  const progress: any[] = Array.isArray(quest.progress) ? quest.progress : [];
+  const rewardSpec = def.rewardSpec ?? {};
+  const rewards: any[] = Array.isArray(rewardSpec.rewards) ? rewardSpec.rewards : [];
+  const status: string = quest.status ?? 'active';
+
+  const handleClaim = useCallback(async () => {
+    if (claiming || status !== 'completed') return;
+    setClaiming(true);
+    try {
+      await execute('ClaimQuestReward', { questInstanceId: quest.id });
+    } catch (err) {
+      console.error('[QuestCard] Claim failed:', err);
+    } finally {
+      setClaiming(false);
+    }
+  }, [claiming, status, quest.id, execute]);
+
+  const visibleRewards = rewards.slice(0, 3);
+  const overflowCount = rewards.length - 3;
+
+  return (
+    <div className={`quest-card ${status}`}>
+      <div className="quest-card-header">
+        <span className="quest-card-name">{def.name || 'Quest'}</span>
+        <span className={`quest-card-badge ${status}`}>
+          {status === 'active' ? 'In Progress' : status === 'completed' ? 'Complete' : 'Claimed'}
+        </span>
+      </div>
+
+      <div className="quest-objectives">
+        {objectives.map((obj: any, i: number) => {
+          const prog = progress[i] ?? { current: 0, target: obj.target ?? 1, completed: false };
+          const pct = prog.target > 0 ? Math.min(100, (prog.current / prog.target) * 100) : 0;
+          return (
+            <div key={i} className="quest-objective-row">
+              <div className="quest-objective-info">
+                <span className="quest-objective-label">{obj.description || obj.eventType || `Objective ${i + 1}`}</span>
+                <span className="quest-objective-progress-text">{prog.current} / {prog.target}</span>
+              </div>
+              <div className="quest-progress-bar">
+                <div
+                  className={`quest-progress-bar-fill ${prog.completed ? 'done' : 'active'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="quest-card-footer">
+        <div className="quest-reward-chips">
+          {visibleRewards.map((r: any, i: number) => (
+            <span key={i} className="quest-reward-chip">
+              <GameIcon src={r.currencyId ?? r.itemDefId ?? r.type ?? ''} size={14} />
+              <span>{r.amount ?? r.qty ?? 1}</span>
+            </span>
+          ))}
+          {overflowCount > 0 && (
+            <span className="quest-reward-overflow">+{overflowCount} more</span>
+          )}
+        </div>
+
+        {status === 'completed' && (
+          <button
+            className="quest-claim-btn ready"
+            onClick={handleClaim}
+            disabled={claiming}
+          >
+            {claiming ? 'Claiming...' : 'Claim'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export const QuestCard = memo(QuestCardInner);

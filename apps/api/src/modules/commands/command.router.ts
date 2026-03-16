@@ -20,6 +20,7 @@ import { OpenLootBoxHandler } from './handlers/open-lootbox.handler';
 import { ClaimQuestRewardHandler } from './handlers/claim-quest-reward.handler';
 import { ShopPurchaseHandler } from './handlers/shop-purchase.handler';
 import { UseConsumableHandler } from './handlers/use-consumable.handler';
+import { ClaimGiftHandler } from './handlers/claim-gift.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -46,6 +47,7 @@ export class CommandRouter {
     private claimQuestReward: ClaimQuestRewardHandler,
     private shopPurchase: ShopPurchaseHandler,
     private useConsumable: UseConsumableHandler,
+    private claimGift: ClaimGiftHandler,
   ) {
     this.handlers.set('ExampleTestCommand', this.exampleTest);
     this.handlers.set('StartMission', this.startMission);
@@ -67,6 +69,7 @@ export class CommandRouter {
     this.handlers.set('ClaimQuestReward', this.claimQuestReward);
     this.handlers.set('ShopPurchase', this.shopPurchase);
     this.handlers.set('UseConsumable', this.useConsumable);
+    this.handlers.set('ClaimGift', this.claimGift);
   }
 
   resolve(commandType: string): CommandHandler {

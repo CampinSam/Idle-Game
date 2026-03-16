@@ -121,6 +121,11 @@ export function useSyncCheckIns() {
   return useMemo(() => Object.values(table), [table]);
 }
 
+export function useSyncGifts() {
+  const table = useAppSelector((s) => s.sync.gifts);
+  return useMemo(() => Object.values(table), [table]);
+}
+
 export function useSyncActiveEffects() {
   const table = useAppSelector((s) => s.sync.activeEffects);
   return useMemo(() => Object.values(table), [table]);

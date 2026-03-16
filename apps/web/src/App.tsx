@@ -26,6 +26,7 @@ const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'
 const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
+const RewardsPage = lazy(() => import('./features/rewards/RewardsPage'));
 
 function PageLoader() {
   return (
@@ -120,6 +121,7 @@ export default function App() {
           <Route path="crafting" element={<ErrorBoundary fallbackTitle="Crafting page error"><CraftingPage /></ErrorBoundary>} />
           <Route path="profile" element={<ErrorBoundary fallbackTitle="Profile page error"><ProfilePage /></ErrorBoundary>} />
           <Route path="store" element={<ErrorBoundary fallbackTitle="Store page error"><StorePage /></ErrorBoundary>} />
+          <Route path="rewards" element={<ErrorBoundary fallbackTitle="Rewards page error"><RewardsPage /></ErrorBoundary>} />
         </Route>
       </Routes>
       </Suspense>

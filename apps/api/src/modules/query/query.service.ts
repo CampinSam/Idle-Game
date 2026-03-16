@@ -72,6 +72,7 @@ export class QueryService {
       questInstances,
       checkInInstances,
       activeEffects,
+      unclaimedGifts,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -145,12 +146,18 @@ export class QueryService {
       }),
       (this.prisma as any).questInstance.findMany({
         where: { userId },
+        include: { questDef: true },
         orderBy: { startedAt: 'desc' },
       }),
       (this.prisma as any).checkInInstance.findMany({
         where: { userId },
+        include: { checkInDef: true },
       }),
       this.findActiveEffectsForUser(userId),
+      (this.prisma as any).giftInstance.findMany({
+        where: { userId, status: 'UNCLAIMED' },
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     // Auto check-in on bootstrap (fire-and-forget so fresh gifts appear next bootstrap)
@@ -195,6 +202,7 @@ export class QueryService {
           ),
           quests: questInstances,
           checkins: checkInInstances,
+          gifts: unclaimedGifts,
           missions: jobs
             .filter((j: any) => j.type === 'MissionJob')
             .map((j: any) => {

@@ -10,6 +10,8 @@ import {
   useSyncPlayer,
   useSyncCurrencyBalances,
   useAllActiveJobs,
+  useSyncGifts,
+  useSyncQuests,
 } from '../hooks/useSyncSelectors';
 import { useAppSelector } from '../store';
 import ToastOverlay from './ToastOverlay';
@@ -31,10 +33,14 @@ export default function Layout() {
   const boostInfo = useActiveBoosts();
 
   const allActiveJobs = useAllActiveJobs();
+  const gifts = useSyncGifts();
+  const quests = useSyncQuests();
 
   useJobReadinessTimers(allActiveJobs);
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifCenter, setShowNotifCenter] = useState(false);
+
+  const hasClaimableRewards = gifts.some((g: any) => g.status === 'UNCLAIMED') || quests.some((q: any) => q.status === 'completed');
 
   useEffect(() => {
     if (currencyDefs.length === 0) dispatch(fetchCurrencyDefs());
@@ -78,6 +84,7 @@ export default function Layout() {
                   <div className="top-bar-menu-name">{profile.username}</div>
                   <div className="top-bar-menu-info">Keeper Lvl {profile.keeperLevel}</div>
                   <button className="top-bar-menu-profile" onClick={() => { navigate('/profile'); setShowMenu(false); }}>Profile & Wallets</button>
+                  <button className="top-bar-menu-profile" onClick={() => { navigate('/rewards'); setShowMenu(false); }}>Rewards</button>
                   <button className="top-bar-menu-logout" onClick={handleLogout}>Logout</button>
                 </div>
               )}
@@ -124,6 +131,16 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      {hasClaimableRewards && (
+        <button
+          className="reward-badge-fab"
+          onClick={() => navigate('/rewards')}
+          aria-label="Claimable rewards"
+        >
+          🎁
+        </button>
+      )}
 
       <nav className="bottom-nav">
         <NavLink to="/" end className={({ isActive }) => `bnav-link ${isActive ? 'active' : ''}`}>
