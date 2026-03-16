@@ -95,6 +95,13 @@ class ApiClient {
     });
   }
 
+  toggleBuilding(locationId: string, buildingId: string, enabled: boolean) {
+    return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
   // Missions
   getMissionCategoryDefs() {
     return this.request<any[]>('/missions/categories');

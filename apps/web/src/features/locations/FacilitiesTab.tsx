@@ -38,6 +38,31 @@ export default function FacilitiesTab({
   const [availableData, setAvailableData] = useState<any>(null);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
   const [slotWarning, setSlotWarning] = useState<string | null>(null);
+  const [enabledOverrides, setEnabledOverrides] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setEnabledOverrides({});
+  }, [outpostId]);
+
+  const hasOperationalRates = (b: any): boolean => {
+    if (b.resourcePerHour && b.resourcePerHour !== 0) return true;
+    if (b.consumptionRates) {
+      const vals = Object.values(b.consumptionRates as Record<string, number>);
+      if (vals.some((v) => v !== 0)) return true;
+    }
+    return false;
+  };
+
+  const handleToggleBuilding = async (b: any) => {
+    const currentEnabled = enabledOverrides[b.id] ?? (b.enabled ?? b.isEnabled);
+    const newEnabled = !currentEnabled;
+    setEnabledOverrides((prev) => ({ ...prev, [b.id]: newEnabled }));
+    try {
+      await api.toggleBuilding(outpostId, b.id, newEnabled);
+    } catch {
+      setEnabledOverrides((prev) => ({ ...prev, [b.id]: currentEnabled }));
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +125,8 @@ export default function FacilitiesTab({
           .flatMap((r: any) => r.generators)
           .find((g: any) => g.buildingId === b.id);
         const isMaxLevel = b.level >= (b.maxLevel ?? 50);
+        const isEnabled = enabledOverrides[b.id] ?? (b.enabled ?? b.isEnabled);
+        const showToggle = !isBuilding && hasOperationalRates(b);
 
         return (
           <>
@@ -111,10 +138,22 @@ export default function FacilitiesTab({
                   {isBuilding ? (
                     'Under Construction'
                   ) : (
-                    <>Level {b.level}{b.maxLevel ? ` / ${b.maxLevel}` : ''} &middot; {(b.enabled ?? b.isEnabled) ? 'Active' : 'Disabled'}</>
+                    <>Level {b.level}{b.maxLevel ? ` / ${b.maxLevel}` : ''} &middot; {isEnabled ? 'Active' : 'Disabled'}</>
                   )}
                 </div>
               </div>
+              {showToggle && (
+                <button
+                  type="button"
+                  className={`facility-toggle ${isEnabled ? 'enabled' : 'disabled'}`}
+                  onClick={() => handleToggleBuilding(b)}
+                  title={isEnabled ? 'Disable building' : 'Enable building'}
+                >
+                  <span className="facility-toggle-track">
+                    <span className="facility-toggle-thumb" />
+                  </span>
+                </button>
+              )}
               {!isBuilding && !isMaxLevel && (
                 <button className="facility-upgrade-pill" onClick={() => onUpgradeClick(b)}>
                   Upgrade
