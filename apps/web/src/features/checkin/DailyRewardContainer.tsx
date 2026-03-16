@@ -131,7 +131,7 @@ export default function DailyRewardContainer() {
       />
       <RewardClaimButton
         claimedToday={claimedToday}
-        nextWindowLabel={claimedToday ? countdown : null}
+        nextWindowLabel={!hasClaimable ? countdown : null}
       />
     </div>
   );

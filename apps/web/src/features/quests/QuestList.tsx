@@ -16,7 +16,7 @@ const TAB_FILTER: Record<Tab, (q: any) => boolean> = {
 
 export default function QuestList() {
   const quests = useSyncQuests();
-  const [tab, setTab] = useState<Tab>('All');
+  const [tab, setTab] = useState<Tab>('Active');
 
   const filtered = useMemo(() => {
     const fn = TAB_FILTER[tab];
