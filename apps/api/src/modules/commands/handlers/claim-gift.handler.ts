@@ -11,7 +11,7 @@ export class ClaimGiftHandler implements CommandHandler {
     const { giftId } = payload;
     if (!giftId) throw new BadRequestException('giftId is required');
 
-    const { gift, claimTx } = await this.giftService.claimGift(ctx.userId, giftId);
+    const { gift, claimTx } = await this.giftService.claimGift(ctx.userId, giftId, ctx.tx);
 
     const pb = new PatchBuilder();
     pb.delete('gift', giftId);

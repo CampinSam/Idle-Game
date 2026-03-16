@@ -109,8 +109,12 @@ export class GiftService {
     return gift;
   }
 
-  async claimGift(userId: string, giftId: string) {
-    const gift = await this.giftInstance.findUnique({ where: { id: giftId } });
+  async claimGift(userId: string, giftId: string, tx?: any) {
+    const db = tx || this.prisma;
+    const giftModel = (db as any).giftInstance ?? this.giftInstance;
+    const claimTxModel = (db as any).giftClaimTx ?? this.giftClaimTx;
+
+    const gift = await giftModel.findUnique({ where: { id: giftId } });
     if (!gift) {
       throw new NotFoundException('Gift not found');
     }
@@ -120,7 +124,7 @@ export class GiftService {
     }
 
     if (gift.status === 'CLAIMED') {
-      const existingTx = await this.giftClaimTx.findUnique({
+      const existingTx = await claimTxModel.findUnique({
         where: { giftId },
       });
       return { gift, claimTx: existingTx };
@@ -133,7 +137,7 @@ export class GiftService {
     }
 
     if (gift.expiresAt && gift.expiresAt < new Date()) {
-      await this.giftInstance.update({
+      await giftModel.update({
         where: { id: giftId },
         data: { status: 'EXPIRED' },
       });
@@ -155,7 +159,7 @@ export class GiftService {
     let claimTx: any;
 
     if (!instant) {
-      const packageItemDef = await (this.prisma as any).itemDefinition.findFirst({
+      const packageItemDef = await (db as any).itemDefinition.findFirst({
         where: { type: 'GIFT_PACKAGE' },
       });
 
@@ -163,18 +167,18 @@ export class GiftService {
         throw new BadRequestException('No GIFT_PACKAGE item definition found in the system');
       }
 
-      const existing = await this.prisma.itemInstance.findFirst({
+      const existing = await db.itemInstance.findFirst({
         where: { userId, definitionId: packageItemDef.id },
       });
 
       let itemInstance: any;
       if (existing && packageItemDef.stackable) {
-        itemInstance = await this.prisma.itemInstance.update({
+        itemInstance = await db.itemInstance.update({
           where: { id: existing.id },
           data: { quantity: { increment: 1 }, state: { rewardSpec } },
         });
       } else {
-        itemInstance = await this.prisma.itemInstance.create({
+        itemInstance = await db.itemInstance.create({
           data: {
             userId,
             definitionId: packageItemDef.id,
@@ -186,7 +190,7 @@ export class GiftService {
 
       grants = [{ type: 'gift_package', itemInstanceId: itemInstance.id }];
 
-      claimTx = await this.giftClaimTx.create({
+      claimTx = await claimTxModel.create({
         data: {
           giftId,
           userId,
@@ -196,10 +200,10 @@ export class GiftService {
         },
       });
     } else {
-      grants = await this.resolveRewards(userId, rewardSpec, giftId);
+      grants = await this.resolveRewards(userId, rewardSpec, giftId, db);
 
       try {
-        claimTx = await this.giftClaimTx.create({
+        claimTx = await claimTxModel.create({
           data: {
             giftId,
             userId,
@@ -210,15 +214,15 @@ export class GiftService {
         });
       } catch (err: any) {
         if (err.code === 'P2002') {
-          const existingTx = await this.giftClaimTx.findUnique({ where: { giftId } });
-          const currentGift = await this.giftInstance.findUnique({ where: { id: giftId } });
+          const existingTx = await claimTxModel.findUnique({ where: { giftId } });
+          const currentGift = await giftModel.findUnique({ where: { id: giftId } });
           return { gift: currentGift, claimTx: existingTx };
         }
         throw err;
       }
     }
 
-    const updatedGift = await this.giftInstance.update({
+    const updatedGift = await giftModel.update({
       where: { id: giftId },
       data: {
         status: 'CLAIMED',
@@ -238,9 +242,10 @@ export class GiftService {
     userId: string,
     spec: any,
     giftId: string,
+    db?: any,
   ): Promise<any[]> {
     return resolveRewardSpec(
-      this.prisma,
+      db || this.prisma,
       this.currencyService,
       this.inventoryService,
       userId,
