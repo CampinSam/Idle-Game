@@ -1001,10 +1001,19 @@ Used for mission, crafting, and building job completion modals.
 ```json
 {
   "job": { "id": "<UUID>", "type": "MissionJob", "defId": "<def ID>", "status": "COMPLETED" },
-  "results": {},
+  "results": {
+    "success": true,
+    "rewards": [],
+    "entityResults": [
+      { "id": "<UUID>", "name": "Dave", "oldLevel": 3, "newLevel": 4, "xpGained": 25, "leveledUp": true, "injured": false }
+    ]
+  },
   "data": {},
   "def": {},
-  "timer": {}
+  "timer": {},
+  "team": [
+    { "id": "<UUID>", "name": "Dave", "level": 4, "xp": 10, "stats": { "ATK": 5 }, "traits": { "head": "Ninja" } }
+  ]
 }
 ```
 
@@ -1015,9 +1024,29 @@ Used for mission, crafting, and building job completion modals.
 | `job.defId` | The definition ID (MissionDef, RecipeDef, etc.) |
 | `job.status` | Job status (e.g. `COMPLETED`, `FAILED`) |
 | `results.*` | Full job results JSON (rewards, difficulty, rolls, etc.) |
+| `results.entityResults` | Array of per-entity outcomes from mission completion (MissionJob only) |
+| `results.entityResults.N.id` | Entity UUID |
+| `results.entityResults.N.name` | Entity display name |
+| `results.entityResults.N.oldLevel` | Level before XP was applied |
+| `results.entityResults.N.newLevel` | Level after XP was applied |
+| `results.entityResults.N.xpGained` | Amount of XP gained |
+| `results.entityResults.N.leveledUp` | `true` if `newLevel > oldLevel` |
+| `results.entityResults.N.injured` | Reserved for future injury system (always `false`) |
 | `data.*` | Full job data JSON (skip cost, assigned entities, etc.) |
 | `def.*` | The full definition record (name, description, rules, etc.) |
 | `timer.*` | Timer JSON (startedAt, endsAt, duration, etc.) |
+| `team` | Array of entity snapshots (current state at modal-build time). Empty for CraftingJob/BuildingJob |
+| `team.N.id` | Entity UUID |
+| `team.N.name` | Entity display name |
+| `team.N.level` | Current entity level |
+| `team.N.xp` | Current XP within level |
+| `team.N.stats` | Entity stats object (`ATK`, `DEF`, `SPD`, `FOC`, `LCK`, `VIT`) |
+| `team.N.traits` | Entity traits object (slot → archetype map) |
+
+**Examples:**
+- `${team.0.name}` → first entity's name (e.g. `"Dave"`)
+- `${results.entityResults.0.leveledUp}` → whether the first entity leveled up (e.g. `"true"`)
+- `${results.entityResults.0.newLevel}` → first entity's new level (e.g. `"4"`)
 
 #### GiftContext
 

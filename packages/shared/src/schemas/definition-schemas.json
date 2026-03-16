@@ -1810,6 +1810,31 @@
         }
       }
     },
+    "EntityResult": {
+      "type": "object",
+      "description": "Per-entity outcome recorded in job results after mission completion. Present in results.entityResults[] on MissionJob jobs.",
+      "properties": {
+        "id": { "type": "string", "description": "Entity UUID" },
+        "name": { "type": "string", "description": "Entity display name" },
+        "oldLevel": { "type": "number", "description": "Level before XP was applied" },
+        "newLevel": { "type": "number", "description": "Level after XP was applied" },
+        "xpGained": { "type": "number", "description": "Amount of XP gained" },
+        "leveledUp": { "type": "boolean", "description": "true if newLevel > oldLevel" },
+        "injured": { "type": "boolean", "description": "Reserved for future injury system (always false)" }
+      }
+    },
+    "TeamEntitySnapshot": {
+      "type": "object",
+      "description": "Entity snapshot included in the JobContext team array for modal template resolution. Fetched at modal-build time from the database.",
+      "properties": {
+        "id": { "type": "string", "description": "Entity UUID" },
+        "name": { "type": "string", "description": "Entity display name (display.name || speciesId)" },
+        "level": { "type": "number", "description": "Current entity level" },
+        "xp": { "type": "number", "description": "Current XP within level" },
+        "stats": { "type": "object", "description": "Entity stats object (ATK, DEF, SPD, FOC, LCK, VIT)" },
+        "traits": { "type": "object", "description": "Entity traits object (slot → archetype map)" }
+      }
+    },
     "CheckInFrequency": {
       "type": "object",
       "description": "Controls how often a check-in window opens",

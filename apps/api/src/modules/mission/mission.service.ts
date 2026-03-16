@@ -438,6 +438,7 @@ export class MissionService {
     const outcomeItems: any[] = Array.isArray(outcome?.rewards) ? outcome.rewards : [];
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
+    const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
 
     const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
 
@@ -486,7 +487,21 @@ export class MissionService {
             const progression = (ent.progression as any) || {};
             let currentLevel = progression.level || 1;
             let currentXp = Number(progression.xp || 0);
-            if (currentLevel >= MAX_ENTITY_LEVEL) continue;
+            const oldLevel = currentLevel;
+            if (currentLevel >= MAX_ENTITY_LEVEL) {
+              if (!entityResultsMap.has(entity.id)) {
+                entityResultsMap.set(entity.id, {
+                  id: entity.id,
+                  name: (ent.display as any)?.name || ent.speciesId || 'Entity',
+                  oldLevel,
+                  newLevel: oldLevel,
+                  xpGained: 0,
+                  leveledUp: false,
+                  injured: false,
+                });
+              }
+              continue;
+            }
             let newXp = currentXp + perEntity;
             let newLevel = currentLevel;
             while (newLevel < MAX_ENTITY_LEVEL && newXp >= XP_PER_LEVEL(newLevel)) {
@@ -494,6 +509,22 @@ export class MissionService {
               newLevel++;
             }
             await (db as any).entity.update({ where: { id: entity.id }, data: { progression: { ...progression, level: newLevel, xp: newXp } } });
+            const existing = entityResultsMap.get(entity.id);
+            if (existing) {
+              existing.xpGained += perEntity;
+              existing.newLevel = newLevel;
+              existing.leveledUp = newLevel > existing.oldLevel;
+            } else {
+              entityResultsMap.set(entity.id, {
+                id: entity.id,
+                name: (ent.display as any)?.name || ent.speciesId || 'Entity',
+                oldLevel,
+                newLevel,
+                xpGained: perEntity,
+                leveledUp: newLevel > oldLevel,
+                injured: false,
+              });
+            }
           }
           grantedRewards.push({ type: 'entity_xp', amount: perEntity });
           break;
@@ -546,11 +577,16 @@ export class MissionService {
       await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
     }
 
+    const entityResults = entityIds
+      .map((id: string) => entityResultsMap.get(id))
+      .filter((r): r is NonNullable<typeof r> => r != null);
+
     const results = {
       success,
       rewards: grantedRewards,
       seed: mission.data.seed,
       ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
+      ...(entityResults.length > 0 ? { entityResults } : {}),
     };
 
     for (const entityId of entityIds) {

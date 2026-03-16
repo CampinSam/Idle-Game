@@ -5,12 +5,22 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
 import type { ModalSpecV1 } from '@derp/shared';
 
+interface TeamEntitySnapshot {
+  id: string;
+  name: string;
+  level: number;
+  xp: number;
+  stats: Record<string, unknown>;
+  traits: Record<string, unknown>;
+}
+
 interface JobContext {
   job: { id: string; type: string; defId: string; status: string };
   results: Record<string, unknown>;
   data: Record<string, unknown>;
   def: Record<string, unknown>;
   timer: Record<string, unknown>;
+  team: TeamEntitySnapshot[];
 }
 
 interface GiftContext {
@@ -69,7 +79,7 @@ export class UiService {
       generated = this.buildGenericJobModal(job, defName, typeLabel);
     }
 
-    const ctx = this.buildJobContext(job, def);
+    const ctx = await this.buildJobContext(job, def);
 
     if (modalDefId) {
       const spec = await this.resolveModalDef(modalDefId);
@@ -597,7 +607,35 @@ export class UiService {
     };
   }
 
-  private buildJobContext(job: any, def: any): JobContext {
+  private async buildJobContext(job: any, def: any): Promise<JobContext> {
+    const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
+    let team: TeamEntitySnapshot[] = [];
+
+    if (teamIds.length > 0) {
+      try {
+        const entities = await (this.prisma as any).entity.findMany({
+          where: { id: { in: teamIds } },
+        });
+        const entityMap = new Map<string, any>();
+        for (const e of entities) {
+          entityMap.set(e.id, e);
+        }
+        for (const id of teamIds) {
+          const e = entityMap.get(id);
+          if (!e) continue;
+          const progression = (e.progression as any) || {};
+          team.push({
+            id: e.id,
+            name: (e.display as any)?.name || e.speciesId || 'Entity',
+            level: progression.level || 1,
+            xp: Number(progression.xp || 0),
+            stats: (e.stats as Record<string, unknown>) || {},
+            traits: (e.traits as Record<string, unknown>) || {},
+          });
+        }
+      } catch {}
+    }
+
     return {
       job: {
         id: job.id,
@@ -609,6 +647,7 @@ export class UiService {
       data: (job.data as Record<string, unknown>) || {},
       def: def || {},
       timer: (job.timer as Record<string, unknown>) || {},
+      team,
     };
   }
 
