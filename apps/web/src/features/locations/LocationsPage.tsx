@@ -96,7 +96,7 @@ export default function LocationsPage() {
             const resourceSummaries = timerData?.resourceSummaries || [];
 
             const totalRatePerHour = resourceSummaries.reduce(
-              (s, r) => s + r.totalRatePerHour, 0,
+              (s, r) => s + r.netRatePerHour, 0,
             );
 
             return (
@@ -152,7 +152,7 @@ export default function LocationsPage() {
                           <div className="storage-bar-label">
                             <span className="storage-bar-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={14} /></span>
                             <span className="storage-bar-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
-                            <span className="storage-bar-rate">+{formatRate(res.totalRatePerHour)}/hr</span>
+                            <span className="storage-bar-rate">{res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/hr</span>
                           </div>
                           <div className="storage-bar-track">
                             <div

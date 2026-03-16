@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { computeGeneratorProduction } from '../../utils/locationProduction';
+import { computeGeneratorProduction, aggregateByResource } from '../../utils/locationProduction';
 import {
   useSyncPlayer,
   useSyncEntities,
@@ -55,8 +55,10 @@ export default function HomePage() {
 
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
     const generators = computeGeneratorProduction(loc);
-    for (const gen of generators) {
-      acc[gen.outputRefId] = (acc[gen.outputRefId] ?? 0) + gen.ratePerHour;
+    const consumptionRates: Record<string, number> = (loc as any).storage?.consumptionRates || {};
+    const summaries = aggregateByResource(loc, generators, consumptionRates);
+    for (const summary of summaries) {
+      acc[summary.outputRefId] = (acc[summary.outputRefId] ?? 0) + summary.netRatePerHour;
     }
     return acc;
   }, {});
