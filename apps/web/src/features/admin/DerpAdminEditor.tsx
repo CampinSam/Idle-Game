@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, useId, createContext, useContext } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2, AlertTriangle, Check, Upload, Download, Copy, Search, X, Edit3, Save, FileText, Database, Zap, Package, Users, Map, Building, Layers, Palette, Target, Gift, Calendar, Settings, AlertCircle, Info, ChevronUp, ArrowLeft, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { adminApi, setAdminKey } from './adminApi';
 import { api } from '../../services/api';
@@ -646,9 +646,8 @@ const RefField: React.FC<{ value: any; onChange: (v: any) => void; refTable: str
   );
 };
 
-let _comboIdCounter = 0;
 const ComboRefField: React.FC<{ value: any; onChange: (v: any) => void; refTable: string; allData: any; placeholder?: string; className?: string }> = ({ value, onChange, refTable, allData, placeholder, className }) => {
-  const listId = useMemo(() => `combo-${refTable}-${++_comboIdCounter}`, [refTable]);
+  const listId = useId();
   const records = allData[refTable] || [];
   return (
     <>
@@ -670,7 +669,7 @@ const ComboRefField: React.FC<{ value: any; onChange: (v: any) => void; refTable
 
 const IdsRefField: React.FC<{ value?: string[]; onChange: (v: string[]) => void; refTable: string; allData: any }> = ({ value = [], onChange, refTable, allData }) => {
   const [inputValue, setInputValue] = useState('');
-  const listId = useMemo(() => `ids-${refTable}-${++_comboIdCounter}`, [refTable]);
+  const listId = useId();
   const records = allData[refTable] || [];
 
   const addId = (id: string) => {
