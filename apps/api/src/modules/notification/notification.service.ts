@@ -21,10 +21,12 @@ export class NotificationService {
     groupKey?: string;
     sourceType?: string;
     sourceId?: string;
-  }) {
+  }, tx?: any) {
+    const notif = tx ? (tx as any).notification : this.notification;
+
     if (data.groupKey) {
       const cutoff = new Date(Date.now() - 90 * 1000);
-      const existing = await this.notification.findFirst({
+      const existing = await notif.findFirst({
         where: {
           userId: data.userId,
           groupKey: data.groupKey,
@@ -38,7 +40,7 @@ export class NotificationService {
       if (existing) {
         const currentMeta = (existing.meta as any) || {};
         const newCount = (currentMeta.count || 1) + 1;
-        return this.notification.update({
+        return notif.update({
           where: { id: existing.id },
           data: {
             title: data.title,
@@ -65,7 +67,7 @@ export class NotificationService {
     };
 
     if (data.sourceType && data.sourceId) {
-      const existing = await this.notification.findFirst({
+      const existing = await notif.findFirst({
         where: {
           userId: data.userId,
           sourceType: data.sourceType,
@@ -76,12 +78,12 @@ export class NotificationService {
       if (existing) return existing;
 
       try {
-        const created = await this.notification.create({ data: payload });
-        await this.pruneOld(data.userId);
+        const created = await notif.create({ data: payload });
+        if (!tx) await this.pruneOld(data.userId);
         return created;
       } catch (e: any) {
         if (e?.code === 'P2002') {
-          return await this.notification.findFirst({
+          return await notif.findFirst({
             where: {
               userId: data.userId,
               sourceType: data.sourceType,
@@ -94,8 +96,8 @@ export class NotificationService {
       }
     }
 
-    const created = await this.notification.create({ data: payload });
-    await this.pruneOld(data.userId);
+    const created = await notif.create({ data: payload });
+    if (!tx) await this.pruneOld(data.userId);
     return created;
   }
 

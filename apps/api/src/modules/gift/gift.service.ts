@@ -232,7 +232,7 @@ export class GiftService {
     });
 
     try {
-      await this.telemetryService.record(userId, 'gift_claimed', giftDefId, 1, {});
+      await this.telemetryService.record(userId, 'gift_claimed', giftDefId, 1, {}, db);
     } catch (_) {}
 
     return { gift: updatedGift, claimTx };

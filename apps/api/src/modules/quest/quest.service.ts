@@ -92,7 +92,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
             meta: { type: 'quest', questInstanceId: instance.id, questDefId: def.id },
             sourceType: 'quest',
             sourceId: instance.id,
-          });
+          }, tx);
         } catch (err) {
           this.logger.warn(`Failed to send quest complete notification: ${err}`);
         }
