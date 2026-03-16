@@ -83,16 +83,17 @@ export async function resolveRewardSpec(
     }
 
     case 'lootTable': {
-      if (spec.lootboxDefId && spec.qty) {
+      if (spec.lootboxDefId) {
+        const qty = spec.qty ?? 1;
         await inventoryService.addItemTx(prisma, {
           userId,
           itemId: spec.lootboxDefId,
-          quantity: spec.qty ?? 1,
+          quantity: qty,
           reason: 'Reward (lootbox)',
           sourceType: 'reward',
           sourceId,
         });
-        grants.push({ type: 'lootTable', lootboxDefId: spec.lootboxDefId, qty: spec.qty ?? 1 });
+        grants.push({ type: 'lootTable', lootboxDefId: spec.lootboxDefId, qty });
       }
       break;
     }
