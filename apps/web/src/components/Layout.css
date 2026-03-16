@@ -339,7 +339,7 @@
 .reward-badge-fab {
   position: fixed;
   right: 18px;
-  bottom: 80px;
+  top: 60px;
   z-index: 80;
   width: 48px;
   height: 48px;

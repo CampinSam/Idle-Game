@@ -24,10 +24,10 @@ function RewardTrackInner({ cycleLength, streak, claimableDay, onClaimDay, claim
     const result: { day: number; state: NodeState; milestone: boolean }[] = [];
     for (let i = 0; i < cycleLength; i++) {
       let state: NodeState;
-      if (i < currentDay) {
-        state = 'claimed';
-      } else if (i === currentDay && claimableDay === i) {
+      if (claimableDay === i) {
         state = 'claimable';
+      } else if (i < currentDay) {
+        state = 'claimed';
       } else if (i === currentDay) {
         state = 'current';
       } else {

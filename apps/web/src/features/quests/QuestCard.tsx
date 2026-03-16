@@ -20,7 +20,24 @@ function QuestCardInner({ quest }: QuestCardProps) {
   const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
   const progress: any[] = Array.isArray(quest.progress) ? quest.progress : [];
   const rewardSpec = def.rewardSpec ?? {};
-  const rewards: any[] = Array.isArray(rewardSpec.rewards) ? rewardSpec.rewards : [];
+
+  const rewards: any[] = (() => {
+    if (rewardSpec.type === 'currency' && rewardSpec.currencyId) {
+      return [{ type: 'currency', currencyId: rewardSpec.currencyId, amount: rewardSpec.amount ?? 1 }];
+    }
+    if (rewardSpec.type === 'item' && rewardSpec.itemDefId) {
+      return [{ type: 'item', itemDefId: rewardSpec.itemDefId, amount: rewardSpec.qty ?? 1 }];
+    }
+    if (rewardSpec.type === 'bundle' && Array.isArray(rewardSpec.entries)) {
+      return rewardSpec.entries.map((e: any) => ({
+        type: e.type,
+        currencyId: e.currencyId,
+        itemDefId: e.itemDefId,
+        amount: e.amount ?? e.qty ?? 1,
+      }));
+    }
+    return [];
+  })();
   const status: string = quest.status ?? 'active';
 
   const handleClaim = useCallback(async () => {
@@ -72,8 +89,8 @@ function QuestCardInner({ quest }: QuestCardProps) {
         <div className="quest-reward-chips">
           {visibleRewards.map((r: any, i: number) => (
             <span key={i} className="quest-reward-chip">
-              <GameIcon src={r.currencyId ?? r.itemDefId ?? r.type ?? ''} size={14} />
-              <span>{r.amount ?? r.qty ?? 1}</span>
+              <GameIcon src={r.currencyId ?? r.itemDefId ?? r.type} size={14} />
+              <span>{r.amount}</span>
             </span>
           ))}
           {overflowCount > 0 && (
