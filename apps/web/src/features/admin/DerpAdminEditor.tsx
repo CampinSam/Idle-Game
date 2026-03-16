@@ -22,6 +22,12 @@ const TABLE_API_KEYS: Record<string, string> = {
   EventDefinition: 'eventDefinition',
   GiftDef: 'giftDef',
   ModalDef: 'modalDef',
+  EffectDef: 'effectDef',
+  LootboxDef: 'lootboxDef',
+  CheckInDef: 'checkInDef',
+  QuestDef: 'questDef',
+  ShopItemDef: 'shopItemDef',
+  NftCollectionDef: 'nftCollectionDef',
 };
 
 const FALLBACK_ENUMS: Record<string, string[]> = {
@@ -44,6 +50,13 @@ const FALLBACK_ENUMS: Record<string, string[]> = {
   archetypes: ['Dave', 'Astro', 'Magician', 'Ninja', 'Redneck', 'Stoner', 'DJ', 'Viking', 'Monk', 'Corpo', 'Cyborg', 'Buff', 'MadScientist', 'Deity'],
   bodySlots: ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'],
   equipmentSlots: ['weapon', 'armor', 'accessory'],
+  effectCategory: ['stat_boost', 'mission_power', 'success_chance', 'reward_multiplier', 'xp_multiplier', 'keeper_xp_multiplier', 'production_rate', 'storage_capacity', 'timer_speed', 'trait_grant', 'currency_multiplier', 'cost_discount', 'slot_unlock', 'protection', 'reveal', 'threat_reduction', 'craft_luck', 'worker_efficiency', 'cooldown_reduction', 'level_up_bonus'],
+  effectValueMode: ['flat_add', 'percent_add', 'multiplier', 'flat_set', 'bps', 'flat_grant', 'random_range'],
+  effectDurationModel: ['instant', 'timed', 'tick_based', 'count_based', 'session', 'permanent', 'until_removed'],
+  effectStackingRule: ['replace', 'refresh', 'stack_additive', 'stack_multiplicative', 'stack_capped', 'no_stack'],
+  effectTargetType: ['entity', 'player', 'location', 'team', 'job', 'global'],
+  effectSourceType: ['consumable', 'equipment', 'trait', 'building', 'room', 'mission_reward', 'season_event', 'admin'],
+  shopTab: ['featured', 'currencies', 'bundles', 'items'],
 };
 
 const EnumsContext = createContext<Record<string, string[]>>(FALLBACK_ENUMS);
@@ -200,7 +213,9 @@ const TABLE_SCHEMAS: Record<string, any> = {
       requirements: { type: 'requirements', default: [], description: 'Construction conditions' },
       visibilityRequirements: { type: 'requirements', default: [], description: 'Visibility conditions' },
       activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while building is under construction' },
+      readyModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown when ready to claim (falls back to active)' },
       completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when construction completes' },
+      failedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown on failure (falls back to completed)' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -270,7 +285,9 @@ const TABLE_SCHEMAS: Record<string, any> = {
       displayDefId: { type: 'ref', refTable: 'DisplayDef', description: 'Visual styling' },
       missionCategoryDefId: { type: 'ref', refTable: 'MissionCategoryDef', description: 'Category grouping' },
       activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while mission is active/in-progress' },
+      readyModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown when ready to claim (falls back to active)' },
       completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown after mission completes' },
+      failedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown on failure (falls back to completed)' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -290,7 +307,9 @@ const TABLE_SCHEMAS: Record<string, any> = {
       requirements: { type: 'requirements', default: [], description: 'Crafting conditions' },
       visibilityRequirements: { type: 'requirements', default: [], description: 'Visibility conditions' },
       activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown while recipe is crafting' },
+      readyModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown when ready to claim (falls back to active)' },
       completedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when crafting is collected' },
+      failedModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Modal shown on failure (falls back to completed)' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
@@ -332,6 +351,111 @@ const TABLE_SCHEMAS: Record<string, any> = {
       version: { type: 'number', default: 1, description: 'Schema version' },
       spec: { type: 'json', default: {}, description: 'ModalSpecV1 overrides: { header?, body?, buttons?, replaceBody? }' },
       enabled: { type: 'boolean', default: true, description: 'Active?' },
+    }
+  },
+  EffectDef: {
+    icon: Zap,
+    color: '#FF9800',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. eff_speed_boost)' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Flavor text' },
+      iconKey: { type: 'string', description: 'Icon key for display' },
+      category: { type: 'enum', enum: 'effectCategory', required: true, description: 'Effect category' },
+      valueMode: { type: 'enum', enum: 'effectValueMode', required: true, description: 'How the value is applied' },
+      durationModel: { type: 'enum', enum: 'effectDurationModel', required: true, description: 'Duration behavior' },
+      stackingRule: { type: 'enum', enum: 'effectStackingRule', default: 'no_stack', description: 'Stacking behavior' },
+      targetType: { type: 'enum', enum: 'effectTargetType', required: true, description: 'What the effect targets' },
+      value: { type: 'number', description: 'Numeric value (meaning depends on valueMode)' },
+      stats: { type: 'json', description: 'Stat modifier map' },
+      trait: { type: 'string', description: 'Trait key (for trait_grant category)' },
+      durationSec: { type: 'number', description: 'Duration in seconds (for timed)' },
+      durationTicks: { type: 'number', description: 'Duration in ticks (for tick_based)' },
+      maxStacks: { type: 'number', description: 'Max stacks (for stack_capped)' },
+      maxUses: { type: 'number', description: 'Max uses (for count_based)' },
+      cap: { type: 'number', description: 'Value cap' },
+      resourceId: { type: 'string', description: 'Currency/resource ID this affects' },
+      sessionType: { type: 'string', description: 'Session type (for session duration)' },
+      meta: { type: 'json', default: {}, description: 'Extra metadata' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+    }
+  },
+  LootboxDef: {
+    icon: Gift,
+    color: '#AB47BC',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Flavor text' },
+      iconKey: { type: 'string', description: 'Icon key' },
+      outcomes: { type: 'json', default: [], description: 'Weighted outcome pools [{weight, rewards}]' },
+      rollCount: { type: 'number', default: 1, description: 'Number of rolls per open' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+    }
+  },
+  CheckInDef: {
+    icon: Calendar,
+    color: '#26A69A',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Flavor text' },
+      rewards: { type: 'json', default: [], description: 'Daily reward schedule array' },
+      cycleLength: { type: 'number', default: 7, description: 'Days per cycle' },
+      requireStreak: { type: 'boolean', default: false, description: 'Must maintain streak?' },
+      allowReclaim: { type: 'boolean', default: false, description: 'Allow reclaiming missed days?' },
+      frequency: { type: 'json', default: { type: 'daily' }, description: 'Frequency config' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+    }
+  },
+  QuestDef: {
+    icon: Target,
+    color: '#5C6BC0',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Flavor text' },
+      category: { type: 'string', description: 'Grouping category' },
+      objectives: { type: 'json', default: [], description: 'Quest objectives array' },
+      rewardSpec: { type: 'json', default: {}, description: 'Reward specification' },
+      requirements: { type: 'requirements', default: [], description: 'Unlock conditions' },
+      repeatable: { type: 'boolean', default: false, description: 'Can repeat?' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+      sortOrder: { type: 'number', default: 0, description: 'Display order' },
+      version: { type: 'number', default: 1, description: 'Schema version' },
+    }
+  },
+  ShopItemDef: {
+    icon: Package,
+    color: '#EF5350',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Description text' },
+      tab: { type: 'enum', enum: 'shopTab', default: 'featured', description: 'Store tab' },
+      cost: { type: 'costArray', default: [], description: 'Purchase cost array' },
+      originalCost: { type: 'costArray', description: 'Original cost (for sale display)' },
+      contents: { type: 'costArray', default: [], description: 'What the player receives' },
+      badge: { type: 'string', description: 'Badge label (e.g. SALE, NEW)' },
+      badgeColor: { type: 'color', description: 'Badge accent color' },
+      imageUrl: { type: 'string', description: 'Product image URL' },
+      displayOrder: { type: 'number', default: 0, description: 'Sort order' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+      limitedUntil: { type: 'string', description: 'ISO date for limited-time offers' },
+    }
+  },
+  NftCollectionDef: {
+    icon: Layers,
+    color: '#7E57C2',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier' },
+      name: { type: 'string', required: true, description: 'Collection name' },
+      chain: { type: 'string', required: true, description: 'Blockchain (e.g. CARDANO, ETH)' },
+      collectionId: { type: 'string', required: true, description: 'On-chain collection/policy ID' },
+      entityDefinitionId: { type: 'ref', refTable: 'EntityDefinition', required: true, description: 'Maps to this entity definition' },
+      mintMode: { type: 'string', default: 'one_per_token', description: 'Mint mode' },
+      active: { type: 'boolean', default: true, description: 'Active for sync?' },
+      data: { type: 'json', default: {}, description: 'Extra data' },
     }
   },
 };
@@ -507,7 +631,7 @@ const StringArrayField: React.FC<{ value?: string[]; onChange: (v: string[]) => 
 };
 
 const RefField: React.FC<{ value: any; onChange: (v: any) => void; refTable: string; allData: any; error?: any }> = ({ value, onChange, refTable, allData, error }) => {
-  const options = (allData[refTable] || []).map((r: any) => r.id);
+  const records = allData[refTable] || [];
   return (
     <select
       value={value || ''}
@@ -515,10 +639,79 @@ const RefField: React.FC<{ value: any; onChange: (v: any) => void; refTable: str
       className={`w-full bg-gray-800 border ${error ? 'border-red-500' : 'border-gray-600'} rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors`}
     >
       <option value="">-- None --</option>
-      {options.map((opt: string) => (
-        <option key={opt} value={opt}>{opt}</option>
+      {records.map((r: any) => (
+        <option key={r.id} value={r.id}>{r.name ? `${r.name} (${r.id})` : r.id}</option>
       ))}
     </select>
+  );
+};
+
+let _comboIdCounter = 0;
+const ComboRefField: React.FC<{ value: any; onChange: (v: any) => void; refTable: string; allData: any; placeholder?: string; className?: string }> = ({ value, onChange, refTable, allData, placeholder, className }) => {
+  const listId = useMemo(() => `combo-${refTable}-${++_comboIdCounter}`, [refTable]);
+  const records = allData[refTable] || [];
+  return (
+    <>
+      <input
+        list={listId}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        placeholder={placeholder || `Select ${refTable}...`}
+        className={className || 'w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500'}
+      />
+      <datalist id={listId}>
+        {records.map((r: any) => (
+          <option key={r.id} value={r.id}>{r.name ? `${r.name} (${r.id})` : r.id}</option>
+        ))}
+      </datalist>
+    </>
+  );
+};
+
+const IdsRefField: React.FC<{ value?: string[]; onChange: (v: string[]) => void; refTable: string; allData: any }> = ({ value = [], onChange, refTable, allData }) => {
+  const [inputValue, setInputValue] = useState('');
+  const listId = useMemo(() => `ids-${refTable}-${++_comboIdCounter}`, [refTable]);
+  const records = allData[refTable] || [];
+
+  const addId = (id: string) => {
+    const trimmed = id.trim();
+    if (trimmed && !value.includes(trimmed)) {
+      onChange([...value, trimmed]);
+    }
+    setInputValue('');
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {value.map((id, i) => {
+          const rec = records.find((r: any) => r.id === id);
+          return (
+            <span key={i} className="inline-flex items-center gap-1 bg-cyan-900/50 text-cyan-300 px-2 py-0.5 rounded text-xs">
+              {rec?.name ? `${rec.name} (${id})` : id}
+              <button onClick={() => onChange(value.filter((_, j) => j !== i))} className="hover:text-red-400"><X size={12} /></button>
+            </span>
+          );
+        })}
+      </div>
+      <div className="flex gap-2">
+        <input
+          list={listId}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addId(inputValue); } }}
+          placeholder={`Add ${refTable} ID...`}
+          className="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-cyan-500"
+        />
+        <datalist id={listId}>
+          {records.filter((r: any) => !value.includes(r.id)).map((r: any) => (
+            <option key={r.id} value={r.id}>{r.name ? `${r.name} (${r.id})` : r.id}</option>
+          ))}
+        </datalist>
+        <button onClick={() => addId(inputValue)} className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 rounded text-white text-sm"><Plus size={14} /></button>
+      </div>
+    </div>
   );
 };
 
@@ -554,11 +747,28 @@ const JsonField: React.FC<{ value: any; onChange: (v: any) => void; error?: any 
   );
 };
 
-const RequirementEditor: React.FC<{ requirement: any; onChange: (v: any) => void; onRemove: () => void; allData: any }> = ({ requirement, onChange, onRemove }) => {
+const REQ_KEY_REF_TABLE: Record<string, string> = {
+  currency: 'Currency',
+  item: 'ItemDef',
+  building: 'BuildingDef',
+  trait: 'TraitDefinition',
+};
+
+const REQ_IDS_REF_TABLE: Record<string, string> = {
+  has_building: 'BuildingDef',
+  parent_has_building: 'BuildingDef',
+  has_room: 'RoomDef',
+  parent_has_room: 'RoomDef',
+  in_region: 'RegionDefinition',
+};
+
+const RequirementEditor: React.FC<{ requirement: any; onChange: (v: any) => void; onRemove: () => void; allData: any }> = ({ requirement, onChange, onRemove, allData }) => {
   const enums = useEnums();
   const reqType = requirement.type || 'keeper_level';
   const needsKey = ['flag', 'trait', 'building', 'currency', 'item'].includes(reqType);
   const needsIds = ['has_building', 'has_room', 'parent_has_building', 'parent_has_room', 'in_region'].includes(reqType);
+  const keyRefTable = REQ_KEY_REF_TABLE[reqType];
+  const idsRefTable = REQ_IDS_REF_TABLE[reqType];
 
   return (
     <div className="bg-gray-800/50 rounded p-3 space-y-2">
@@ -577,22 +787,34 @@ const RequirementEditor: React.FC<{ requirement: any; onChange: (v: any) => void
 
       <div className="grid grid-cols-3 gap-2">
         {needsKey && (
-          <input
-            type="text"
-            value={requirement.key || ''}
-            onChange={(e) => onChange({ ...requirement, key: e.target.value })}
-            placeholder="Key"
-            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-          />
+          keyRefTable ? (
+            <ComboRefField
+              value={requirement.key}
+              onChange={(v) => onChange({ ...requirement, key: v })}
+              refTable={keyRefTable}
+              allData={allData}
+              placeholder="Key"
+              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+            />
+          ) : (
+            <input
+              type="text"
+              value={requirement.key || ''}
+              onChange={(e) => onChange({ ...requirement, key: e.target.value })}
+              placeholder="Key"
+              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+            />
+          )
         )}
         {needsIds ? (
-          <input
-            type="text"
-            value={(requirement.ids || []).join(', ')}
-            onChange={(e) => onChange({ ...requirement, ids: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) })}
-            placeholder="IDs (comma-separated)"
-            className="col-span-2 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-          />
+          <div className="col-span-3">
+            <IdsRefField
+              value={requirement.ids || []}
+              onChange={(v) => onChange({ ...requirement, ids: v })}
+              refTable={idsRefTable || 'BuildingDef'}
+              allData={allData}
+            />
+          </div>
         ) : (
           <>
             <input
@@ -649,7 +871,7 @@ const RequirementsField: React.FC<{ value?: any[]; onChange: (v: any) => void; a
   </div>
 );
 
-const TimerField: React.FC<{ value?: any; onChange: (v: any) => void }> = ({ value = {}, onChange }) => {
+const TimerField: React.FC<{ value?: any; onChange: (v: any) => void; allData?: any }> = ({ value = {}, onChange, allData = {} }) => {
   const enums = useEnums();
   return (
   <div className="space-y-3 bg-gray-800/50 rounded p-3">
@@ -683,7 +905,16 @@ const TimerField: React.FC<{ value?: any; onChange: (v: any) => void }> = ({ val
                 <option value="currency">Currency</option>
                 <option value="item">Item</option>
               </select>
-              <input className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white flex-1" placeholder="ID" value={entry.id || ''} onChange={(e) => { const arr = [...(value.skip_cost || [])]; arr[idx] = { ...entry, id: e.target.value }; onChange({ ...value, skip_cost: arr }); }} />
+              <div className="flex-1">
+                <ComboRefField
+                  value={entry.id}
+                  onChange={(v) => { const arr = [...(value.skip_cost || [])]; arr[idx] = { ...entry, id: v }; onChange({ ...value, skip_cost: arr }); }}
+                  refTable={entry.type === 'item' ? 'ItemDef' : 'Currency'}
+                  allData={allData}
+                  placeholder="ID"
+                  className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white w-full"
+                />
+              </div>
               <input className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white w-20" type="number" placeholder="Amount" value={entry.amount ?? ''} onChange={(e) => { const arr = [...(value.skip_cost || [])]; arr[idx] = { ...entry, amount: Number(e.target.value) }; onChange({ ...value, skip_cost: arr }); }} />
               <button className="text-red-400 hover:text-red-300 text-sm" onClick={() => { const arr = [...(value.skip_cost || [])]; arr.splice(idx, 1); onChange({ ...value, skip_cost: arr }); }}>✕</button>
             </div>
@@ -778,10 +1009,11 @@ const RewardEntryEditor: React.FC<{ entry: any; onChange: (v: any) => void; onRe
 
       <div className="grid grid-cols-4 gap-2">
         {['currency', 'item'].includes(entryType) && (
-          <input
-            type="text"
-            value={entry.key || ''}
-            onChange={(e) => onChange({ ...entry, key: e.target.value })}
+          <ComboRefField
+            value={entry.key}
+            onChange={(v) => onChange({ ...entry, key: v })}
+            refTable={entryType === 'currency' ? 'Currency' : 'ItemDef'}
+            allData={allData}
             placeholder="Key/ID"
             className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
           />
@@ -843,10 +1075,11 @@ const RewardEntryEditor: React.FC<{ entry: any; onChange: (v: any) => void; onRe
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Event Def ID</label>
-                <input
-                  type="text"
-                  value={entry.defId || ''}
-                  onChange={(e) => onChange({ ...entry, defId: e.target.value })}
+                <ComboRefField
+                  value={entry.defId}
+                  onChange={(v) => onChange({ ...entry, defId: v })}
+                  refTable="EventDefinition"
+                  allData={allData}
                   placeholder="e.g. evt_new_guest_arrived"
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-white text-sm"
                 />
@@ -1029,27 +1262,69 @@ const EquipDataField: React.FC<{ value?: any; onChange: (v: any) => void }> = ({
   );
 };
 
-const ConsumableDataField: React.FC<{ value?: any; onChange: (v: any) => void }> = ({ value: rawValue, onChange }) => {
+const ConsumableDataField: React.FC<{ value?: any; onChange: (v: any) => void; allData?: any }> = ({ value: rawValue, onChange, allData = {} }) => {
+  const enums = useEnums();
   const value = rawValue || {};
+  const effects = Array.isArray(value.effects) ? value.effects : [];
+
   return (
   <div className="space-y-3 bg-gray-800/50 rounded p-3">
     <div>
-      <FieldLabel label="Effect Type" />
-      <StringField value={value.effect} onChange={(v: any) => onChange({ ...value, effect: v })} placeholder="heal, speed_boost, etc." />
+      <FieldLabel label="Default Target Type" description="Default target for all effects in this consumable" />
+      <EnumField value={value.targetType} onChange={(v: any) => onChange({ ...value, targetType: v })} options={enums.effectTargetType} />
     </div>
-    <div className="grid grid-cols-3 gap-2">
-      <div>
-        <FieldLabel label="Amount" />
-        <NumberField value={value.amount} onChange={(v: any) => onChange({ ...value, amount: v })} />
-      </div>
-      <div>
-        <FieldLabel label="Duration (s)" />
-        <NumberField value={value.duration} onChange={(v: any) => onChange({ ...value, duration: v })} />
-      </div>
-      <div>
-        <FieldLabel label="Multiplier" />
-        <NumberField value={value.multiplier} onChange={(v: any) => onChange({ ...value, multiplier: v })} step={0.1} />
-      </div>
+    <div>
+      <FieldLabel label="Effects" />
+      {effects.map((eff: any, i: number) => (
+        <div key={i} className="flex items-center gap-2 mb-2 bg-gray-900/50 rounded p-2">
+          <div className="flex-1">
+            <label className="text-[10px] text-gray-500 block">Effect Def</label>
+            <ComboRefField
+              value={eff.effectDefId}
+              onChange={(v) => {
+                const newEffects = [...effects];
+                newEffects[i] = { ...eff, effectDefId: v };
+                onChange({ ...value, effects: newEffects });
+              }}
+              refTable="EffectDef"
+              allData={allData}
+              placeholder="Select effect..."
+              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+            />
+          </div>
+          <div className="w-32">
+            <label className="text-[10px] text-gray-500 block">Target Override</label>
+            <select
+              value={eff.targetType || ''}
+              onChange={(e) => {
+                const newEffects = [...effects];
+                newEffects[i] = { ...eff, targetType: e.target.value || undefined };
+                onChange({ ...value, effects: newEffects });
+              }}
+              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+            >
+              <option value="">Default</option>
+              {enums.effectTargetType.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={() => {
+              const newEffects = [...effects];
+              newEffects.splice(i, 1);
+              onChange({ ...value, effects: newEffects });
+            }}
+            className="text-red-400 hover:text-red-300 mt-3"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ))}
+      <button
+        onClick={() => onChange({ ...value, effects: [...effects, { effectDefId: '', targetType: '' }] })}
+        className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 text-sm"
+      >
+        <Plus size={14} /> Add Effect
+      </button>
     </div>
   </div>
   );
@@ -1200,7 +1475,7 @@ const CostObjectField: React.FC<{ value?: any; onChange: (v: any) => void }> = (
   );
 };
 
-const CostArrayField: React.FC<{ value?: any[]; onChange: (v: any) => void }> = ({ value = [], onChange }) => {
+const CostArrayField: React.FC<{ value?: any[]; onChange: (v: any) => void; allData?: any }> = ({ value = [], onChange, allData = {} }) => {
   const entries = Array.isArray(value) ? value : [];
 
   return (
@@ -1219,17 +1494,20 @@ const CostArrayField: React.FC<{ value?: any[]; onChange: (v: any) => void }> = 
             <option value="currency">currency</option>
             <option value="item">item</option>
           </select>
-          <input
-            type="text"
-            value={entry.id || ''}
-            onChange={(e) => {
-              const newEntries = [...entries];
-              newEntries[i] = { ...entry, id: e.target.value };
-              onChange(newEntries);
-            }}
-            placeholder="ID"
-            className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-          />
+          <div className="flex-1">
+            <ComboRefField
+              value={entry.id}
+              onChange={(v) => {
+                const newEntries = [...entries];
+                newEntries[i] = { ...entry, id: v };
+                onChange(newEntries);
+              }}
+              refTable={entry.type === 'item' ? 'ItemDef' : 'Currency'}
+              allData={allData}
+              placeholder="ID"
+              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+            />
+          </div>
           <input
             type="number"
             value={entry.amount ?? 0}
@@ -1599,13 +1877,13 @@ const FieldEditor: React.FC<{ fieldName: string; fieldDef: any; value: any; onCh
       case 'requirements':
         return <RequirementsField value={value} onChange={onChange} allData={allData} />;
       case 'timer':
-        return <TimerField value={value} onChange={onChange} />;
+        return <TimerField value={value} onChange={onChange} allData={allData} />;
       case 'outcomeBlock':
         return <OutcomeBlockField value={value} onChange={onChange} allData={allData} />;
       case 'equipData':
         return <EquipDataField value={value} onChange={onChange} />;
       case 'consumableData':
-        return <ConsumableDataField value={value} onChange={onChange} />;
+        return <ConsumableDataField value={value} onChange={onChange} allData={allData} />;
       case 'bodySlots':
         return <BodySlotsField value={value} onChange={onChange} />;
       case 'equipmentSlots':
@@ -1615,7 +1893,7 @@ const FieldEditor: React.FC<{ fieldName: string; fieldDef: any; value: any; onCh
       case 'costObject':
         return <CostObjectField value={value} onChange={onChange} />;
       case 'costArray':
-        return <CostArrayField value={value} onChange={onChange} />;
+        return <CostArrayField value={value} onChange={onChange} allData={allData} />;
       case 'effects':
         return <EffectsField value={value} onChange={onChange} />;
       case 'eventSecurity':

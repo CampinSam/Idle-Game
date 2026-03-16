@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import DraggableList from './DraggableList';
+import RefSelect from './RefSelect';
+import { TABLE_API_KEYS } from '../tableSchemas';
 
 interface Props {
   value: any;
@@ -16,6 +18,33 @@ const TIMER_DEFAULTS = {
   skip_type: 'absolute',
 };
 
+const TYPE_TO_REF_TABLE: Record<string, string> = {
+  currency: 'Currency',
+  item: 'ItemDef',
+  entity: 'EntityDefinition',
+  building: 'BuildingDef',
+  trait: 'TraitDefinition',
+};
+
+const DIRECT_REF_FIELDS: Record<string, string> = {
+  effectDefId: 'EffectDef',
+  giftDefId: 'GiftDef',
+  definitionId: 'EntityDefinition',
+  displayDefId: 'DisplayDef',
+  modalDefId: 'ModalDef',
+  missionCategoryDefId: 'MissionCategoryDef',
+  entityDefinitionId: 'EntityDefinition',
+  lootboxDefId: 'LootboxDef',
+  bodySchemaId: 'BodySchema',
+  equipmentSchemaId: 'EquipmentSchema',
+  progressionProfileId: 'ProgressionProfile',
+  regionId: 'RegionDefinition',
+};
+
+const TARGET_TYPE_OPTIONS = ['player', 'entity', 'location', 'team', 'job', 'global'];
+
+const REQUIREMENT_OPERATOR_OPTIONS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists', 'dne'];
+
 function isPrimitive(v: any) {
   return v === null || v === undefined || typeof v !== 'object';
 }
@@ -24,7 +53,65 @@ function isArrayOfObjects(v: any): boolean {
   return Array.isArray(v) && v.every(item => typeof item === 'object' && item !== null && !Array.isArray(item));
 }
 
-function PrimitiveValue({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+function getRefTableForField(key: string, siblingObj?: Record<string, any>): string | null {
+  if (key in DIRECT_REF_FIELDS) return DIRECT_REF_FIELDS[key];
+
+  if ((key === 'id' || key === 'key') && siblingObj) {
+    const typeVal = siblingObj.type;
+    if (typeof typeVal === 'string' && typeVal in TYPE_TO_REF_TABLE) {
+      return TYPE_TO_REF_TABLE[typeVal];
+    }
+  }
+
+  return null;
+}
+
+function getOptionsForField(key: string, _siblingObj?: Record<string, any>): string[] | null {
+  if (key === 'targetType') return TARGET_TYPE_OPTIONS;
+  if (key === 'operator') return REQUIREMENT_OPERATOR_OPTIONS;
+  return null;
+}
+
+function SmartPrimitiveValue({ value, onChange, fieldKey, siblingObj }: {
+  value: any;
+  onChange: (v: any) => void;
+  fieldKey?: string;
+  siblingObj?: Record<string, any>;
+}) {
+  const refTable = fieldKey ? getRefTableForField(fieldKey, siblingObj) : null;
+  const options = fieldKey ? getOptionsForField(fieldKey, siblingObj) : null;
+
+  if (refTable) {
+    const apiKey = TABLE_API_KEYS[refTable];
+    if (apiKey) {
+      return (
+        <RefSelect
+          refTable={apiKey}
+          value={value ?? null}
+          onChange={(v) => onChange(v ?? '')}
+          placeholder={`Select ${refTable}...`}
+        />
+      );
+    }
+  }
+
+  if (options) {
+    return (
+      <select
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || '')}
+        style={{
+          padding: '2px 6px', background: '#0f0f2e', border: '1px solid #333',
+          borderRadius: 4, color: '#e0e0ff', fontSize: 12, width: '100%',
+          boxSizing: 'border-box' as const, cursor: 'pointer',
+        }}
+      >
+        <option value="">— select —</option>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  }
+
   if (typeof value === 'boolean') {
     return (
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -56,6 +143,10 @@ function PrimitiveValue({ value, onChange }: { value: any; onChange: (v: any) =>
       style={{ padding: '2px 6px', background: '#0f0f2e', border: '1px solid #333', borderRadius: 4, color: '#e0e0ff', fontSize: 12, width: '100%', boxSizing: 'border-box' as const }}
     />
   );
+}
+
+function PrimitiveValue({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+  return <SmartPrimitiveValue value={value} onChange={onChange} />;
 }
 
 function ObjectNode({ obj, onChange, depth, path }: { obj: Record<string, any>; onChange: (v: any) => void; depth: number; path?: string }) {
@@ -135,7 +226,7 @@ function ObjectNode({ obj, onChange, depth, path }: { obj: Record<string, any>; 
                 </button>
               ) : isPrimitive(val) ? (
                 <div style={{ flex: 1 }}>
-                  <PrimitiveValue value={val} onChange={v => setField(key, v)} />
+                  <SmartPrimitiveValue value={val} onChange={v => setField(key, v)} fieldKey={key} siblingObj={obj} />
                 </div>
               ) : null}
               <button

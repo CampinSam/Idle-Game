@@ -57,9 +57,29 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'entity_xp', description: 'Entity XP', color: ORANGE, template: () => ({ type: 'entity_xp', min: 10, max: 50 }) },
     { label: 'keeper_xp', description: 'Keeper XP', color: ORANGE, template: () => ({ type: 'keeper_xp', min: 10, max: 50 }) },
   ],
+  cost: [
+    { label: 'currency', description: 'Currency cost entry', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },
+    { label: 'item', description: 'Item cost entry', color: ORANGE, template: () => ({ type: 'item', id: '', amount: 1 }) },
+  ],
+  originalCost: [
+    { label: 'currency', description: 'Original currency cost', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },
+    { label: 'item', description: 'Original item cost', color: ORANGE, template: () => ({ type: 'item', id: '', amount: 1 }) },
+  ],
+  contents: [
+    { label: 'currency', description: 'Currency grant', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },
+    { label: 'item', description: 'Item grant', color: ORANGE, template: () => ({ type: 'item', id: '', amount: 1 }) },
+    { label: 'entity', description: 'Entity grant', color: PURPLE, template: () => ({ type: 'entity', definitionId: '', amount: 1 }) },
+  ],
   skip_cost: [
     { label: 'currency', description: 'Pay currency to skip', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },
     { label: 'item', description: 'Spend item to skip', color: EMERALD, template: () => ({ type: 'item', id: '', amount: 1 }) },
+  ],
+  rewardPreview: [
+    { label: 'currency', description: 'Currency reward preview', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },
+    { label: 'item', description: 'Item reward preview', color: ORANGE, template: () => ({ type: 'item', id: '', amount: 1 }) },
+  ],
+  effects: [
+    { label: 'effect', description: 'Effect entry for consumable', color: PURPLE, template: () => ({ effectDefId: '', targetType: 'player' }) },
   ],
   body: [
     { label: 'richText', description: 'Formatted text block', color: AMBER, template: () => ({ type: 'richText', text: '' }) },
