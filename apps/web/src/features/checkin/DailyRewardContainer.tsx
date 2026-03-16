@@ -65,30 +65,27 @@ export default function DailyRewardContainer() {
   const frequency = def?.frequency ?? { type: 'daily' };
   const streak = instance?.streak ?? 0;
 
-  const claimableGift = useMemo(() => {
-    if (!instance || !def) return null;
-    return gifts.find(
-      (g: any) =>
-        g.sourceType === 'checkin' &&
-        g.sourceId === def.id &&
-        g.status === 'UNCLAIMED',
-    ) ?? null;
-  }, [instance, def, gifts]);
+  const claimableGiftsByDay = useMemo(() => {
+    if (!instance || !def) return {};
+    const map: Record<number, any> = {};
+    for (const g of gifts) {
+      if ((g as any).sourceType !== 'checkin' || (g as any).sourceId !== def.id || (g as any).status !== 'UNCLAIMED') continue;
+      const ctx = (g as any).snapshot?.contextData?.checkin;
+      const day = ctx && typeof ctx.day === 'number' ? ctx.day : streak % cycleLength;
+      map[day] = g;
+    }
+    return map;
+  }, [instance, def, gifts, streak, cycleLength]);
 
-  const claimableDay = useMemo(() => {
-    if (!claimableGift) return null;
-    const ctx = (claimableGift as any).snapshot?.contextData?.checkin;
-    if (ctx && typeof ctx.day === 'number') return ctx.day;
-    return streak % cycleLength;
-  }, [claimableGift, streak, cycleLength]);
+  const hasClaimable = Object.keys(claimableGiftsByDay).length > 0;
 
   const claimedToday = useMemo(() => {
     if (!instance?.lastClaimedAt) return false;
     const lastClaimed = new Date(instance.lastClaimedAt);
     const now = new Date();
     const windowStart = getWindowStart(frequency, now);
-    return lastClaimed >= windowStart && !claimableGift;
-  }, [instance, frequency, claimableGift]);
+    return lastClaimed >= windowStart && !hasClaimable;
+  }, [instance, frequency, hasClaimable]);
 
   useEffect(() => {
     const tick = () => {
@@ -105,16 +102,17 @@ export default function DailyRewardContainer() {
   }, [frequency]);
 
   const handleClaimDay = useCallback(async (dayIndex: number) => {
-    if (!claimableGift || claimingDay !== null) return;
+    const gift = claimableGiftsByDay[dayIndex];
+    if (!gift || claimingDay !== null) return;
     setClaimingDay(dayIndex);
     try {
-      await execute('ClaimGift', { giftId: (claimableGift as any).id });
+      await execute('ClaimGift', { giftId: (gift as any).id });
     } catch (err) {
       console.error('[DailyRewardContainer] Claim failed:', err);
     } finally {
       setClaimingDay(null);
     }
-  }, [claimableGift, claimingDay, execute]);
+  }, [claimableGiftsByDay, claimingDay, execute]);
 
   if (!instance || !def) return null;
 
@@ -127,7 +125,7 @@ export default function DailyRewardContainer() {
       <RewardTrack
         cycleLength={cycleLength}
         streak={streak}
-        claimableDay={claimableDay}
+        claimableDays={claimableGiftsByDay}
         onClaimDay={handleClaimDay}
         claimingDay={claimingDay}
       />

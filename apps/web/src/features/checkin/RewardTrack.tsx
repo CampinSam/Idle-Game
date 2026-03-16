@@ -4,7 +4,7 @@ import { RewardNode, type NodeState } from './RewardNode';
 interface RewardTrackProps {
   cycleLength: number;
   streak: number;
-  claimableDay: number | null;
+  claimableDays: Record<number, any>;
   onClaimDay: (dayIndex: number) => void;
   claimingDay: number | null;
 }
@@ -17,14 +17,14 @@ function isMilestoneDay(day: number, cycleLength: number): boolean {
   return false;
 }
 
-function RewardTrackInner({ cycleLength, streak, claimableDay, onClaimDay, claimingDay }: RewardTrackProps) {
+function RewardTrackInner({ cycleLength, streak, claimableDays, onClaimDay, claimingDay }: RewardTrackProps) {
   const currentDay = streak % cycleLength;
 
   const nodes = useMemo(() => {
     const result: { day: number; state: NodeState; milestone: boolean }[] = [];
     for (let i = 0; i < cycleLength; i++) {
       let state: NodeState;
-      if (claimableDay === i) {
+      if (claimableDays[i]) {
         state = 'claimable';
       } else if (i < currentDay) {
         state = 'claimed';
@@ -36,7 +36,7 @@ function RewardTrackInner({ cycleLength, streak, claimableDay, onClaimDay, claim
       result.push({ day: i, state, milestone: isMilestoneDay(i, cycleLength) });
     }
     return result;
-  }, [cycleLength, currentDay, claimableDay]);
+  }, [cycleLength, currentDay, claimableDays]);
 
   return (
     <div className="reward-track-scroll">

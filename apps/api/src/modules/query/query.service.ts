@@ -57,6 +57,12 @@ export class QueryService {
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
+    try {
+      await this.checkInService.autoCheck(userId);
+    } catch (err) {
+      this.logger.warn(`Failed to auto check-in on bootstrap for ${userId}: ${err}`);
+    }
+
     const [
       user,
       entities,
@@ -159,13 +165,6 @@ export class QueryService {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-
-    // Auto check-in on bootstrap (fire-and-forget so fresh gifts appear next bootstrap)
-    try {
-      await this.checkInService.autoCheck(userId);
-    } catch (err) {
-      this.logger.warn(`Failed to auto check-in on bootstrap for ${userId}: ${err}`);
-    }
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
