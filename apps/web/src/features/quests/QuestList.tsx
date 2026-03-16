@@ -30,8 +30,6 @@ export default function QuestList() {
 
   return (
     <div className="quest-section">
-      <span className="quest-section-title">Quests</span>
-
       <QuestMetaProgress quests={quests} />
 
       <div className="quest-tab-bar">

@@ -118,10 +118,11 @@ export default function DailyRewardContainer() {
 
   return (
     <div className="checkin-container">
-      <div className="checkin-header">
-        <span className="checkin-title">{def.name || 'Daily Check-In'}</span>
-        {countdown && <span className="checkin-timer">Resets in {countdown}</span>}
-      </div>
+      {countdown && (
+        <div className="checkin-header">
+          <span className="checkin-timer">Resets in {countdown}</span>
+        </div>
+      )}
       <RewardTrack
         cycleLength={cycleLength}
         streak={streak}

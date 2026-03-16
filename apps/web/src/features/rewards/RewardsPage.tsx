@@ -6,8 +6,20 @@ import DailyRewardContainer from '../checkin/DailyRewardContainer';
 import QuestList from '../quests/QuestList';
 import './RewardsPage.css';
 
+interface SyncGift {
+  id: string;
+  status: string;
+  sourceType?: string;
+  snapshot?: {
+    presentation?: {
+      title?: string;
+      body?: string;
+    };
+  };
+}
+
 function PendingGiftsCard() {
-  const gifts = useSyncGifts();
+  const gifts = useSyncGifts() as SyncGift[];
   const { pushModal } = useModal();
   const { execute } = useCommand({
     onUiIntent: (intent) => {
@@ -17,7 +29,7 @@ function PendingGiftsCard() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
 
   const pendingGifts = useMemo(
-    () => gifts.filter((g: any) => g.status === 'UNCLAIMED' && g.sourceType !== 'checkin'),
+    () => gifts.filter((g) => g.status === 'UNCLAIMED' && g.sourceType !== 'checkin'),
     [gifts],
   );
 
@@ -39,7 +51,7 @@ function PendingGiftsCard() {
     <div className="rewards-card">
       <span className="rewards-card-title">Pending Gifts</span>
       <div className="pending-gifts-list">
-        {pendingGifts.map((g: any) => {
+        {pendingGifts.map((g) => {
           const pres = g.snapshot?.presentation;
           const title = pres?.title || 'Gift';
           const body = pres?.body || '';
@@ -69,10 +81,12 @@ export default function RewardsPage() {
   return (
     <div className="rewards-page">
       <div className="rewards-card">
+        <span className="rewards-card-title">Daily Check-In</span>
         <DailyRewardContainer />
       </div>
       <PendingGiftsCard />
       <div className="rewards-card">
+        <span className="rewards-card-title">Quests</span>
         <QuestList />
       </div>
     </div>
