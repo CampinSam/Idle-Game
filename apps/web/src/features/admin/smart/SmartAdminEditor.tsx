@@ -262,12 +262,6 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                 DEF EDITOR
               </span>
             </div>
-            <a
-              href="/admin/def"
-              style={{ fontSize: 11, color: '#3a3a5e', textDecoration: 'none', letterSpacing: '0.03em' }}
-            >
-              ← CLASSIC
-            </a>
           </div>
 
           {/* Row 2 — controls strip */}
@@ -332,9 +326,6 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
             {!sidebarCollapsed && (
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>Def Editor</div>
-                <a href="/admin/def" style={{ fontSize: 11, color: '#555', textDecoration: 'none', display: 'block', marginTop: 4 }}>
-                  ← Classic Editor
-                </a>
               </div>
             )}
             <button

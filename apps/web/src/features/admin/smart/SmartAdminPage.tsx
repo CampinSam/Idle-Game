@@ -53,9 +53,6 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
           {loading ? 'Verifying...' : 'Enter'}
         </button>
         {error && <div className="admin-error">{error}</div>}
-        <a href="/admin/def" style={{ display: 'block', marginTop: 16, color: '#555', fontSize: 12, textDecoration: 'none' }}>
-          ← Classic Editor
-        </a>
       </form>
     </div>
   );

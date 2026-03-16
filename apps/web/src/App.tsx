@@ -21,7 +21,6 @@ const LocationDetailPage = lazy(() => import('./features/locations/LocationDetai
 const MissionsPage = lazy(() => import('./features/missions/MissionsPage'));
 const CraftingPage = lazy(() => import('./features/crafting/CraftingPage'));
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
-const AdminPage = lazy(() => import('./features/admin/AdminPage'));
 const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
 const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
 const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
@@ -86,17 +85,10 @@ export default function App() {
       </Suspense>
     );
   }
-  if (location.pathname.startsWith('/admin/def2')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <SmartAdminPage />
-      </Suspense>
-    );
-  }
   if (location.pathname.startsWith('/admin/def')) {
     return (
       <Suspense fallback={<PageLoader />}>
-        <AdminPage />
+        <SmartAdminPage />
       </Suspense>
     );
   }
