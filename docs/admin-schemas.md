@@ -408,6 +408,10 @@ Defines a building that can be constructed inside outposts. Buildings are classi
 | `rules` | JSON | No | `{}` | Level-based rules (see [Unified Level-Based Rules System](#unified-level-based-rules-system)) |
 | `requirements` | JSON | No | `[]` | Conditions to construct (see [Requirements](#requirements)) |
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for the building to appear in available buildings list (see [Visibility Requirements](#visibility-requirements)) |
+| `activeModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display while the building job is running |
+| `readyModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the building is ready to claim (falls back to `activeModalDefId`) |
+| `completedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the building succeeded |
+| `failedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the building failed (falls back to `completedModalDefId`) |
 | `data` | JSON | No | `{}` | Freeform extra data |
 
 **Notes:**
@@ -586,6 +590,10 @@ Defines a mission or quest that players can send their entities (birds) on.
 | `enabled` | boolean | No | true | Whether this mission is currently active |
 | `displayDefId` | string | No | — | References a [DisplayDef](#displaydef) for card visual styling |
 | `missionCategoryDefId` | string | No | — | References a [MissionCategoryDef](#missioncategorydef) for grouping |
+| `activeModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display while the mission job is running |
+| `readyModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the mission is ready to claim (falls back to `activeModalDefId`) |
+| `completedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the mission succeeded |
+| `failedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the mission failed (falls back to `completedModalDefId`) |
 | `data` | JSON | No | `{}` | Freeform extra data for custom logic |
 
 ---
@@ -607,6 +615,10 @@ Defines a crafting recipe that players can execute.
 | `rewards` | JSON | No | `{}` | What the player receives on completion (see [Rewards](#rewards)). All effects (flag mutations, events, text) are included as entries in the rewards array, same as MissionDef outcome blocks. |
 | `requirements` | JSON | No | `[]` | Conditions to start crafting (see [Requirements](#requirements)) |
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for the recipe to appear (see [Visibility Requirements](#visibility-requirements)) |
+| `activeModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display while the crafting job is running |
+| `readyModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the craft is ready to claim (falls back to `activeModalDefId`) |
+| `completedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the craft succeeded |
+| `failedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the craft failed (falls back to `completedModalDefId`) |
 | `data` | JSON | No | `{}` | Freeform extra data |
 
 ---

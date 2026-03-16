@@ -2507,6 +2507,30 @@
           "default": [],
           "description": "Visibility conditions"
         },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the building job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the building failed (falls back to completedModalDefId)"
+        },
         "data": {
           "type": "json",
           "default": {},
@@ -2773,6 +2797,30 @@
           "nullable": true,
           "description": "Category grouping"
         },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the mission job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the mission failed (falls back to completedModalDefId)"
+        },
         "data": {
           "type": "json",
           "default": {},
@@ -2855,6 +2903,30 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "activeModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown while the crafting job is running"
+        },
+        "readyModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft is ready to claim (falls back to activeModalDefId)"
+        },
+        "completedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft succeeded"
+        },
+        "failedModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "ModalDef shown when the craft failed (falls back to completedModalDefId)"
         },
         "data": {
           "type": "json",

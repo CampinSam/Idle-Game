@@ -346,7 +346,9 @@ model BuildingDef {
   requirements             Json     @default("[]")
   visibilityRequirements   Json     @default("[]")
   activeModalDefId         String?
+  readyModalDefId          String?
   completedModalDefId      String?
+  failedModalDefId         String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -568,7 +570,9 @@ model MissionDef {
   missionCategoryDefId     String?
   missionCategoryDef       MissionCategoryDef? @relation(fields: [missionCategoryDefId], references: [id], onDelete: SetNull)
   activeModalDefId         String?
+  readyModalDefId          String?
   completedModalDefId      String?
+  failedModalDefId         String?
   data                     Json               @default("{}")
 
   createdAt                DateTime           @default(now())
@@ -592,7 +596,9 @@ model RecipeDef {
   effects                  Json     @default("[]")
   visibilityRequirements   Json     @default("[]")
   activeModalDefId         String?
+  readyModalDefId          String?
   completedModalDefId      String?
+  failedModalDefId         String?
   data                     Json     @default("{}")
 
   createdAt                DateTime @default(now())

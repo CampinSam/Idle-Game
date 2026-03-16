@@ -268,7 +268,42 @@ export class AdminService {
       take: limit,
       select: { id: true, type: true, defId: true, status: true, data: true, results: true, updatedAt: true },
     });
-    return serializeBigInts(jobs);
+
+    const defIds: Record<string, Set<string>> = {};
+    for (const job of jobs) {
+      if (!job.defId) continue;
+      const model = this.jobTypeToModel(job.type);
+      if (!model) continue;
+      if (!defIds[model]) defIds[model] = new Set();
+      defIds[model].add(job.defId);
+    }
+
+    const defMap: Record<string, any> = {};
+    for (const [model, ids] of Object.entries(defIds)) {
+      const prismaModel = (this.prisma as any)[model];
+      if (!prismaModel) continue;
+      const defs = await prismaModel.findMany({ where: { id: { in: [...ids] } } });
+      for (const def of defs) {
+        defMap[`${model}:${def.id}`] = def;
+      }
+    }
+
+    const enriched = jobs.map((job: any) => {
+      const model = this.jobTypeToModel(job.type);
+      const def = model ? defMap[`${model}:${job.defId}`] ?? null : null;
+      return { ...job, def };
+    });
+
+    return serializeBigInts(enriched);
+  }
+
+  private jobTypeToModel(type: string): string | null {
+    switch (type) {
+      case 'MissionJob': return 'missionDef';
+      case 'CraftingJob': return 'recipeDef';
+      case 'BuildingJob': return 'buildingDef';
+      default: return null;
+    }
   }
 
   private getModel(table: string): any {

@@ -60,23 +60,34 @@ export class UiService {
     ]);
 
     const defName = def?.name || job.defId || 'Unknown';
-    const isFinished = job.status === 'completed' || job.status === 'failed' || job.status === 'collected';
-    const isActive = job.status === 'active' || job.status === 'ready_notified';
-
     const typeLabel = this.getJobTypeLabel(job.type);
     const results = job.results as any;
 
     let generated: any;
     let modalDefId: string | null = null;
 
-    if (isFinished) {
-      generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
-      modalDefId = def?.completedModalDefId ?? null;
-    } else if (isActive) {
-      generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
-      modalDefId = def?.activeModalDefId ?? null;
-    } else {
-      generated = this.buildGenericJobModal(job, defName, typeLabel);
+    switch (job.status) {
+      case 'active':
+        generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        modalDefId = def?.activeModalDefId ?? null;
+        break;
+      case 'ready_notified':
+        generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        modalDefId = def?.readyModalDefId ?? def?.activeModalDefId ?? null;
+        break;
+      case 'completed':
+        generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
+        modalDefId = def?.completedModalDefId ?? null;
+        break;
+      case 'failed':
+        generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
+        modalDefId = def?.failedModalDefId ?? def?.completedModalDefId ?? null;
+        break;
+      default:
+        generated = job.status === 'collected'
+          ? this.buildCompletedJobModal(job, defName, typeLabel, results)
+          : this.buildGenericJobModal(job, defName, typeLabel);
+        modalDefId = def?.completedModalDefId ?? null;
     }
 
     const ctx = await this.buildJobContext(job, def);
