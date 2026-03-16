@@ -85,8 +85,8 @@ export class CommandService {
       },
       {
         maxWait: 10000,
-        timeout: 30000,
-        isolationLevel: 'Serializable',
+        timeout: 60000,
+        isolationLevel: 'ReadCommitted',
       },
     );
 

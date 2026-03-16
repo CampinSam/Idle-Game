@@ -27,6 +27,7 @@ function PendingGiftsCard() {
     },
   });
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [errorId, setErrorId] = useState<string | null>(null);
 
   const pendingGifts = useMemo(
     () => gifts.filter((g) => g.status === 'UNCLAIMED' && g.sourceType !== 'checkin'),
@@ -36,10 +37,12 @@ function PendingGiftsCard() {
   const handleClaim = useCallback(async (giftId: string) => {
     if (claimingId) return;
     setClaimingId(giftId);
+    setErrorId(null);
     try {
       await execute('ClaimGift', { giftId });
     } catch (err) {
       console.error('[PendingGiftsCard] Claim failed:', err);
+      setErrorId(giftId);
     } finally {
       setClaimingId(null);
     }
@@ -56,11 +59,17 @@ function PendingGiftsCard() {
           const title = pres?.title || 'Gift';
           const body = pres?.body || '';
           const isClaiming = claimingId === g.id;
+          const hasError = errorId === g.id;
           return (
             <div key={g.id} className="pending-gift-row">
               <div className="pending-gift-info">
                 <span className="pending-gift-title">{title}</span>
                 {body && <span className="pending-gift-body">{body}</span>}
+                {hasError && (
+                  <span style={{ color: '#f87171', fontSize: '0.8rem', marginTop: 4 }}>
+                    Claim failed — please try again.
+                  </span>
+                )}
               </div>
               <button
                 className="pending-gift-claim-btn"
