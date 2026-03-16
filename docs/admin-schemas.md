@@ -632,7 +632,42 @@ Defines a named event that can be dispatched by outcome processing (via `emitEve
 
 | Key | Description | Expected Payload |
 |---|---|---|
-| `createGiftForPlayer` | Creates a GiftInstance for the triggering player | `{ "giftDefId": "<GiftDef ID>" }` |
+| `createGiftForPlayer` | Creates a GiftInstance for the triggering player | `{ "giftDefId": "<GiftDef ID>", "contextData?": { ... } }` |
+
+### Context Enrichment
+
+When `createGiftForPlayer` is called, the gift system automatically enriches the `contextData` that is snapshotted alongside the reward spec. This context is available for `${path}` token resolution at claim time (see [Token Resolution in rewardSpec](#token-resolution-in-rewardspec)).
+
+**Automatic job context** — When `sourceType` is a known job type (`MissionJob`, `CraftingJob`, `BuildingJob`), `EventService` looks up the job by `sourceId` and attaches:
+
+```json
+{
+  "job": {
+    "id": "<job UUID>",
+    "type": "MissionJob",
+    "defId": "<definition ID>",
+    "status": "COMPLETED",
+    "team": ["<entity ID>", "..."],
+    "results": { "difficulty": "hard", "rewards": [...] },
+    "data": { "skipCost": [...] },
+    "timer": { "startedAt": "...", "endsAt": "..." }
+  }
+}
+```
+
+**Manual contextData** — The `payload.contextData` field can supply additional context for non-job sources. If both auto-built and manual context exist, they are merged (manual fields override auto-built on conflict).
+
+**Check-in context** — The daily check-in system automatically passes:
+
+```json
+{
+  "checkin": {
+    "streak": 3,
+    "trackId": "daily_login",
+    "day": 2
+  }
+}
+```
 
 ### Security
 
@@ -674,7 +709,7 @@ Defines a gift template that can be instantiated for players. Contains presentat
 | `version` | number | No | 1 | Schema version |
 | `presentation` | JSON | No | `{}` | Visual properties for the gift UI (see [Presentation](#gift-presentation)) |
 | `claimRules` | JSON | No | `{}` | Rules governing how/when the gift can be claimed (see [Claim Rules](#gift-claim-rules)) |
-| `rewardSpec` | JSON | No | `{}` | What the player receives on claim (see [Gift Reward Spec](#gift-reward-spec)) |
+| `rewardSpec` | JSON | No | `{}` | What the player receives on claim (see [Gift Reward Spec](#gift-reward-spec)). String values support `${path}` token resolution and `${random("a","b")}` scripting against snapshotted `contextData` at claim time. |
 | `instant` | boolean | No | true | If true, gift is claimed immediately on creation (no inbox step) |
 | `enabled` | boolean | No | true | Whether new instances of this gift can be created |
 
@@ -742,7 +777,7 @@ Controls claiming behavior such as expiration and per-player limits.
 
 ## ModalDef
 
-Defines a server-driven modal template. Modals are constructed by the backend and delivered to the client via the `UiIntent` system. The `spec` field provides overrides applied on top of any default modal structure.
+Defines a server-driven modal template. Modals are constructed by the backend and delivered to the client via the `UiIntent` system. The `spec` field provides overrides applied on top of any default modal structure. All string values in the spec support `${path.to.value}` token resolution against the server context.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -752,6 +787,311 @@ Defines a server-driven modal template. Modals are constructed by the backend an
 | `version` | number | No | 1 | Schema version |
 | `spec` | JSON | No | `{}` | ModalSpecV1 overrides: `{ header?, body?, buttons?, replaceBody? }` |
 | `enabled` | boolean | No | true | Whether this modal is active |
+
+### ModalSpecV1 Structure
+
+The `spec` field is a `ModalSpecV1` object — the server-authoritative modal specification. The backend constructs a base modal from code, then optionally merges a ModalDef spec on top, giving admins the ability to customize modals without code changes.
+
+| Property | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `version` | number | Yes | `1` | Always `1` |
+| `id` | string | Yes | — | Stable modal ID used for deduplication in the modal stack |
+| `kind` | string | Yes | — | Semantic kind for telemetry and styling (e.g. `mission_complete`, `gift_reveal`, `generic_info`) |
+| `dismiss` | object | Yes | — | Controls which gestures can dismiss the modal (see below) |
+| `header` | ModalHeader | Yes | — | Header with title, optional subtitle, icon, and banner image |
+| `body` | ModalBlock[] | No | `[]` | Ordered list of content blocks rendered between header and buttons |
+| `buttons` | ModalButton[] | No | `[]` | Action buttons at the bottom (typically 1–2) |
+| `replaceBody` | boolean | No | `false` | When `true` in a spec overlay, replaces the server-generated body entirely. When `false` (default), the spec body is **prepended** before the server body. |
+| `telemetry` | object | No | — | Analytics metadata: `sourceType`, `sourceId`, `notificationId`, `jobId`, `templateId`, `experiment` |
+
+**Dismiss options:**
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `backdrop` | boolean | `true` | Tap outside to close |
+| `x` | boolean | `true` | Show close (×) button |
+| `escape` | boolean | `true` | Keyboard Escape to close |
+
+**ModalHeader:**
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | Yes | Modal title text |
+| `subtitle` | string | No | Subtitle below the title |
+| `icon` | AssetRef | No | Small icon shown beside the title |
+| `banner` | AssetRef | No | Full-width banner image above the title |
+
+### ModalDef Merge Behavior
+
+When a ModalDef is associated with a game event (e.g. mission completion, gift reveal, building confirmation), the server first generates a base modal from code, then merges the ModalDef's `spec` on top:
+
+1. **Header**: Shallow-merged per-key — spec fields override the server-generated header fields individually.
+2. **Body**: If `replaceBody: true`, the spec body replaces the server body entirely. Otherwise, the spec body blocks are **prepended** before the server-generated body blocks.
+3. **Buttons**: If the spec has any buttons, they **replace** the server-generated buttons entirely.
+4. **Token resolution** runs before the merge — so `${path}` tokens in the spec are resolved against the server context first.
+
+### Block Types
+
+Modal body blocks are discriminated by the `type` field. All block types support an optional `from` field (see [The `from` Field](#the-from-field)).
+
+#### richText
+
+Formatted rich text content using the `RichTextDoc` structure. Tokens inside RichTextDoc use `{ t: "token", key: "path" }` nodes instead of `${path}` string syntax.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"richText"` | Yes | Block type |
+| `doc` | RichTextDoc | Yes | Rich text document (array of paragraph/heading/link nodes) |
+
+**`from` behavior:** String → wraps as single paragraph. RichTextDoc array → used directly as `doc`.
+
+#### divider
+
+Horizontal rule separator. No additional fields.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"divider"` | Yes | Block type |
+
+#### image
+
+A full-width image with optional caption.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"image"` | Yes | Block type |
+| `image` | AssetRef | Yes | Image reference (`{ assetKey, alt? }`) |
+| `caption` | string | No | Caption text below the image |
+
+**`from` behavior:** Object → extracts `{ assetKey, alt?, caption? }`. String → used as `assetKey`.
+
+#### metaRows
+
+A table of label/value pairs (e.g. mission stats, item properties).
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"metaRows"` | Yes | Block type |
+| `rows` | array | Yes | Array of `{ label: string, value: string }` pairs |
+
+**`from` behavior:** Array → used as rows directly. Object → entries converted to `{ label: key, value: String(val) }`.
+
+#### timer
+
+Countdown timer block that ticks in real time.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"timer"` | Yes | Block type |
+| `endsAt` | string | Yes | ISO 8601 timestamp when the timer expires |
+| `label` | string | No | Label text beside the timer |
+
+**`from` behavior:** String → used as `endsAt`. Object → extracts `{ endsAt, label? }`.
+
+#### progress
+
+A labeled progress bar.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"progress"` | Yes | Block type |
+| `current` | number | Yes | Current value |
+| `max` | number | Yes | Maximum value |
+| `label` | string | No | Label text |
+
+**`from` behavior:** Object → extracts `{ current, max, label? }`.
+
+#### rewardsPreview
+
+Read-only preview of potential rewards (shown before an action).
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"rewardsPreview"` | Yes | Block type |
+| `items` | RewardItem[] | Yes | Array of reward items (`{ name, qty?, assetKey?, rarity?, note? }`) |
+
+**`from` behavior:** Array → each entry mapped via `mapRewardItem` (extracts `name`, `qty`, `assetKey`, `rarity`, `note`).
+
+#### rewardsList
+
+Claimed rewards list (shown after a completed action).
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"rewardsList"` | Yes | Block type |
+| `title` | string | No | Section title |
+| `items` | RewardItem[] | Yes | Array of reward items |
+
+**`from` behavior:** Array → each entry mapped via `mapRewardItem`.
+
+#### inventoryDelta
+
+Shows inventory changes (items added or removed with signed quantities).
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"inventoryDelta"` | Yes | Block type |
+| `items` | array | Yes | Array of `{ name: string, qtyDelta: number, assetKey?: string }` |
+
+**`from` behavior:** Array → each entry extracts `{ name, qtyDelta, assetKey? }`.
+
+#### giftReveal
+
+Animated gift reveal block showing a gift and its contents.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"giftReveal"` | Yes | Block type |
+| `gift` | object | Yes | `{ giftId: string, title: string, image?: AssetRef }` |
+| `rewards` | RewardItem[] | No | Rewards to display inside the reveal |
+
+**`from` behavior:** Object with `gift` key → merges into `gift` field and maps `rewards`. Object with `giftId`/`title` at root → merges directly.
+
+#### error
+
+Inline error message block.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `type` | `"error"` | Yes | Block type |
+| `message` | string | Yes | Error message text |
+
+**`from` behavior:** String → used as `message`. Object → extracts `message` field.
+
+### The `from` Field
+
+Every block type supports an optional `from` string property. This is the primary mechanism for connecting dynamic server data to modal blocks without hardcoding values in the spec.
+
+- **Value:** A dot-path into the resolved server context (e.g. `"results.rewards"`, `"def.name"`, `"costs"`)
+- **Evaluation order:** `from` is resolved first, populating the block's data fields from the context path. Then `${path}` token resolution runs on all resulting string values.
+- **Stripping:** The `from` field is always deleted before the block is sent to the client — the client never sees it.
+
+**Example spec body using `from`:**
+
+```json
+{
+  "body": [
+    { "type": "richText", "doc": [{ "t": "p", "c": [{ "t": "text", "v": "Mission: ${def.name}" }] }] },
+    { "type": "rewardsList", "title": "Rewards", "from": "results.rewards" },
+    { "type": "metaRows", "from": "results.stats" }
+  ]
+}
+```
+
+In this example, the `rewardsList` block's `items` are populated from `ctx.results.rewards`, and the `metaRows` block's `rows` are populated from `ctx.results.stats`. The richText block uses inline `${def.name}` token resolution.
+
+### Token Resolution in Modals
+
+All string fields in a ModalSpecV1 (header, body blocks, buttons) support `${path.to.value}` token syntax, resolved against the server context before the modal is sent to the client.
+
+**Rules:**
+- Works recursively in header fields, block properties, and button labels.
+- Unresolved tokens (no matching path in context) are left as-is — they are **not** collapsed to empty string.
+- Numeric coercion is not applied — all substitutions produce strings.
+- **RichTextDoc exception:** Inside `richText` blocks, use the `{ t: "token", key: "path.to.value" }` node type instead of `${path}` string syntax. Text nodes within RichTextDoc still support `${path}` in the `v` field.
+
+### Server Context Shapes
+
+The context object passed to the resolver depends on what triggered the modal. ModalDef specs can reference any of these paths via `from` or `${path}`.
+
+#### JobContext
+
+Used for mission, crafting, and building job completion modals.
+
+```json
+{
+  "job": { "id": "<UUID>", "type": "MissionJob", "defId": "<def ID>", "status": "COMPLETED" },
+  "results": {},
+  "data": {},
+  "def": {},
+  "timer": {}
+}
+```
+
+| Path | Description |
+|---|---|
+| `job.id` | Job UUID |
+| `job.type` | `MissionJob`, `CraftingJob`, or `BuildingJob` |
+| `job.defId` | The definition ID (MissionDef, RecipeDef, etc.) |
+| `job.status` | Job status (e.g. `COMPLETED`, `FAILED`) |
+| `results.*` | Full job results JSON (rewards, difficulty, rolls, etc.) |
+| `data.*` | Full job data JSON (skip cost, assigned entities, etc.) |
+| `def.*` | The full definition record (name, description, rules, etc.) |
+| `timer.*` | Timer JSON (startedAt, endsAt, duration, etc.) |
+
+#### GiftContext
+
+Used for gift reveal modals.
+
+```json
+{
+  "gift": { "id": "<UUID>", "status": "UNCLAIMED" },
+  "snapshot": {},
+  "presentation": {}
+}
+```
+
+| Path | Description |
+|---|---|
+| `gift.id` | GiftInstance UUID |
+| `gift.status` | Current gift status |
+| `snapshot.*` | Full snapshotted gift data (rewardSpec, presentation, contextData) |
+| `presentation.*` | Shortcut for `snapshot.presentation` |
+
+#### BuildingContext
+
+Used for build-confirm and upgrade-confirm modals.
+
+```json
+{
+  "building": { "id": "<def ID>", "name": "Workshop", "description": "..." },
+  "def": {},
+  "costs": [{ "id": "soft_arcanium", "amount": 500, "baseAmount": 500 }],
+  "currentLevel": 0,
+  "nextLevel": 1,
+  "timerDuration": 3600
+}
+```
+
+| Path | Description |
+|---|---|
+| `building.id` | Definition ID |
+| `building.name` | Definition display name |
+| `building.description` | Definition description |
+| `def.*` | Full building/room definition |
+| `costs` | Array of resource costs for the action |
+| `currentLevel` | Current building level |
+| `nextLevel` | Target level after upgrade |
+| `timerDuration` | Construction/upgrade duration in seconds |
+
+### ModalButton
+
+Buttons rendered at the bottom of the modal.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | Yes | Stable button ID for deduplication and telemetry |
+| `label` | string | Yes | Button label text (supports `${path}` tokens) |
+| `variant` | ButtonVariant | Yes | Visual style (`primary`, `secondary`, `danger`, etc.) |
+| `disabled` | boolean | No | Whether the button is disabled |
+| `action` | ModalAction | Yes | Action to execute on press (see below) |
+| `requiresConfirm` | object | No | If set, shows an inline confirmation prompt before executing: `{ title, body (RichTextDoc), confirmLabel?, cancelLabel? }` |
+
+**ModalAction types:**
+
+| Action Type | Description | Key Fields |
+|---|---|---|
+| `CLOSE_MODAL` | Dismiss the modal | — |
+| `NAVIGATE` | Push a client-side route | `route`, `params?` |
+| `ACK_NOTIFICATION` | Mark a notification as read | `notificationId` |
+| `COMPLETE_JOB` | Complete a job and collect rewards | `jobId` |
+| `CLAIM_GIFT` | Claim a gift for the player | `giftId` |
+| `OPEN_INVENTORY` | Navigate to inventory screen | — |
+| `OPEN_MISSIONS` | Navigate to missions screen | — |
+| `OPEN_CRAFTING` | Navigate to crafting screen | — |
+| `REPEAT_MISSION` | Re-launch a mission | `defId`, `entityIds?` |
+| `CRAFT_AGAIN` | Re-submit a crafting job | `recipeDefId` |
+| `API_CALL` | Arbitrary API call by key | `apiKey`, `payload?` |
 
 ---
 
@@ -1476,7 +1816,7 @@ A player-owned gift created by the event/gift system. Each instance is a snapsho
 
 ### Snapshot Format
 
-The `snapshot` JSON preserves the GiftDef state at creation time so the gift is immune to later definition changes:
+The `snapshot` JSON preserves the GiftDef state at creation time so the gift is immune to later definition changes. It also optionally includes `contextData` — a frozen copy of the context available for `${path}` token resolution in the reward spec at claim time.
 
 ```json
 {
@@ -1492,9 +1832,23 @@ The `snapshot` JSON preserves the GiftDef state at creation time so the gift is 
       { "type": "currency", "currencyId": "soft_arcanium", "amount": 100 },
       { "type": "item", "itemDefId": "mat_iron_ore", "qty": 5 }
     ]
+  },
+  "contextData": {
+    "job": {
+      "id": "abc-123",
+      "type": "MissionJob",
+      "defId": "mission_cave_explore",
+      "status": "COMPLETED",
+      "team": ["entity-1"],
+      "results": { "difficulty": "hard" },
+      "data": {},
+      "timer": {}
+    }
   }
 }
 ```
+
+> **Note:** `contextData` is absent (not an empty object) when no context was provided at gift creation time. The token resolver is a no-op when `contextData` is absent — fully backward-compatible.
 
 ---
 
@@ -2210,7 +2564,7 @@ There is no enforced schema for `data` -- it's entirely up to your game logic to
 
 ### Gift Reward Spec
 
-Used in the `rewardSpec` field on [GiftDef](#giftdef). Defines what a player receives when they claim a gift. Supports single rewards and bundles of multiple rewards.
+Used in the `rewardSpec` field on [GiftDef](#giftdef). Defines what a player receives when they claim a gift. Supports single rewards, bundles of multiple rewards, and `${path}` token resolution against snapshotted `contextData` (see [Token Resolution in rewardSpec](#token-resolution-in-rewardspec)).
 
 **Single reward:**
 
@@ -2237,11 +2591,51 @@ Used in the `rewardSpec` field on [GiftDef](#giftdef). Defines what a player rec
 |---|---|---|
 | `currency` | `currencyId` (currency ID), `amount` | Grants currency to the player |
 | `item` | `itemDefId` (item def ID), `qty` (quantity) | Grants items to the player's inventory |
-| `entity` | `definitionId` (entity definition ID) | Creates a new entity with randomized stats |
+| `entity` | `definitionId` (entity definition ID), `overrides?` | Creates a new entity (see below) |
+| `lootTable` | `lootboxDefId` (LootboxDef ID), `qty` (default 1) | Grants a lootbox item to the player's inventory |
 | `cosmetic` | — | Not yet implemented |
-| `lootTable` | — | Not yet implemented |
 
-Entity rewards create a new entity instance using the same random stat generation as initial character creation (stats randomly assigned in the 8-15 range per stat: ATK, DEF, SPD, FOC, LCK, VIT).
+**Entity rewards** create a new entity instance using the same random stat generation as initial character creation (stats randomly assigned in the 8-15 range per stat: ATK, DEF, SPD, FOC, LCK, VIT). The optional `overrides` object can customize the created entity:
+
+| Override | Type | Description |
+|---|---|---|
+| `name` | string | Override the entity's display name. Supports `${path}` tokens. |
+| `level` | number | Override the starting level |
+| `stats` | object | Override individual stat values (e.g. `{ "ATK": 20, "DEF": 15 }`) |
+| `traits` | string[] | Override the entity's trait list |
+
+**Example with overrides:**
+
+```json
+{
+  "type": "entity",
+  "definitionId": "${job.defId}",
+  "overrides": {
+    "name": "${random(\"Dave\",\"DJ\",\"Dirty\")}"
+  }
+}
+```
+
+**lootTable rewards** grant a lootbox item to the player's inventory. The player must then open the lootbox via the standard lootbox flow to receive its contents.
+
+#### Token Resolution in rewardSpec
+
+String values in `rewardSpec` support `${path.to.value}` token syntax, resolved against the `contextData` snapshotted at gift creation time. This allows a single GiftDef to produce different rewards depending on the triggering context (e.g. which mission completed, check-in streak day).
+
+**Syntax:**
+- `${path.to.value}` — Resolves a dot-path against `contextData`. Example: `${job.defId}` → `"mission_cave_explore"`.
+- `${random("a","b","c")}` — Randomly selects one of the quoted values. Example: `${random("Dave","DJ","Dirty")}` → `"DJ"`.
+
+**Context shapes** (see [Context Enrichment](#context-enrichment) for how these are built):
+- `${job.id}`, `${job.type}`, `${job.defId}`, `${job.status}` — Job fields (auto-built for MissionJob/CraftingJob/BuildingJob sources).
+- `${job.results.difficulty}`, `${job.data.someField}` — Nested job data.
+- `${checkin.streak}`, `${checkin.trackId}`, `${checkin.day}` — Check-in fields.
+- Any custom key passed via `contextData` in the event payload.
+
+**Behavior:**
+- **Numeric coercion:** When a field's entire value is a single token (e.g. `"amount": "${checkin.streak}"`), the result is coerced to a number if the resolved value is numeric. This allows dynamic amounts.
+- **Unresolved tokens:** Tokens that don't match any path in `contextData` resolve to an empty string (not left as-is). This prevents broken data but means missing context is silent.
+- **No-op when absent:** If `contextData` is absent from the snapshot, the resolver does nothing — all values pass through unchanged. Fully backward-compatible.
 
 ### emitEvent Entry Type
 
@@ -2262,7 +2656,7 @@ Used inside [Outcome Blocks](#outcome-blocks) to dispatch a server event during 
 |---|---|---|---|
 | `type` | `"emitEvent"` | Yes | Entry type identifier |
 | `defId` | string | Yes | References an [EventDefinition](#eventdefinition) ID |
-| `payload` | object | No | Data passed to the event handler (e.g. `{ "giftDefId": "..." }` for gift creation) |
+| `payload` | object | No | Data passed to the event handler (e.g. `{ "giftDefId": "..." }` for gift creation). May include an optional `contextData` object for token resolution. |
 | `idempotencyKey` | string | No | Prevents duplicate events. Supports `${jobId}` template which is replaced with the actual job ID at runtime. |
 | `odds` | number | No | Percentage chance (0-100, default 100 = guaranteed) |
 | `requirements` | array | No | Requirement conditions that must be met before odds are rolled |
@@ -2282,19 +2676,26 @@ Mission/Crafting completes
     → EventDefinition looked up by defId
     → Security.allowedEmitters validated against sourceType (MissionJob/CraftingJob)
     → Handler key routes to GiftService.createGiftForPlayer()
-      → GiftDef looked up, snapshot created (presentation + rewardSpec frozen)
+      → Context enrichment:
+        → If sourceType is MissionJob/CraftingJob/BuildingJob → job looked up by sourceId
+        → Auto-built context: { job: { id, type, defId, status, team, results, data, timer } }
+        → payload.contextData merged (manual fields override auto-built on conflict)
+      → GiftDef looked up, snapshot created (presentation + rewardSpec + contextData frozen)
       → GiftInstance created with UNCLAIMED status
       → Idempotency key prevents duplicates (unique constraint)
       → Notification sent to player ("You received a gift!")
   → Player opens gift inbox (GET /gifts)
   → Player claims gift (POST /gifts/:id/claim)
     → GiftClaimTx created with RNG seed
+    → Token resolution: ${path} tokens in rewardSpec resolved against snapshotted contextData
     → RewardSpec resolved: currencies credited, items added, entities created
     → GiftInstance status → CLAIMED
 ```
 
 **Key design properties:**
-- **Snapshot pattern:** Gift rewards are frozen at creation time. Changing a GiftDef later does not affect already-created gifts.
+- **Snapshot pattern:** Gift rewards and `contextData` are frozen at creation time. Changing a GiftDef later does not affect already-created gifts.
+- **Context enrichment:** Job context is auto-built from DB lookups — the emitEvent entry only needs to supply `giftDefId` in the payload. The mission service does not inject context manually.
+- **Token resolution at claim time:** `${path}` tokens in the snapshotted `rewardSpec` are resolved against snapshotted `contextData` when the player claims, not when the gift is created.
 - **Idempotent creation:** The `idempotencyKey` (unique constraint) prevents the same job from creating duplicate gifts, even if outcome processing runs multiple times.
 - **Atomic claiming:** Each claim creates a GiftClaimTx with an RNG seed, making results deterministic and auditable. The `claimTxId` unique constraint on GiftInstance prevents double-claiming.
 
@@ -2385,16 +2786,16 @@ Player registers
 
 ---
 
-### Example Flow 2: New Guest Arrived (Mission/Crafting → Entity Gift)
+### Example Flow 2: New Guest Arrived (Mission → Context-Seeded Entity Gift)
 
-Players can receive a new bird entity as a gift triggered by mission or crafting outcomes.
+Players can receive a new bird entity as a gift triggered by mission outcomes. The gift uses token resolution to dynamically determine the entity definition and name based on the triggering mission context.
 
 **GiftDef record:**
 
 ```json
 {
-  "id": "gift_starter_bird",
-  "name": "Starter Bird",
+  "id": "gift_mission_bird",
+  "name": "Mission Bird Reward",
   "version": 1,
   "presentation": {
     "title": "A New Guest Has Arrived!",
@@ -2405,11 +2806,16 @@ Players can receive a new bird entity as a gift triggered by mission or crafting
   "claimRules": {},
   "rewardSpec": {
     "type": "entity",
-    "definitionId": "derp_bird"
+    "definitionId": "${job.defId}",
+    "overrides": {
+      "name": "${random(\"Dave\",\"DJ\",\"Dirty\")}"
+    }
   },
   "enabled": true
 }
 ```
+
+> Note how `definitionId` uses `${job.defId}` — this resolves to the completing mission's definition ID at claim time. The `overrides.name` uses `${random(...)}` to randomly pick a name.
 
 **EventDefinition record:**
 
@@ -2438,7 +2844,7 @@ Players can receive a new bird entity as a gift triggered by mission or crafting
       {
         "type": "emitEvent",
         "defId": "evt_new_guest_arrived",
-        "payload": { "giftDefId": "gift_starter_bird" },
+        "payload": { "giftDefId": "gift_mission_bird" },
         "idempotencyKey": "bird-gift-${jobId}",
         "odds": 5,
         "requirements": [
@@ -2453,35 +2859,45 @@ Players can receive a new bird entity as a gift triggered by mission or crafting
 **Flow walkthrough:**
 
 ```
-Mission completes successfully
+Mission "mission_cave_explore" completes successfully
   → Outcome processing iterates success.rewards[]
     → entity_xp and currency granted normally
     → emitEvent entry found:
       → Requirements checked: keeper_level >= 3? If not met → skip silently
       → Odds rolled: 5% chance → if roll fails → skip
-      → If both pass: EventService.dispatch('evt_new_guest_arrived', { giftDefId: 'gift_starter_bird' }, {
+      → If both pass: EventService.dispatch('evt_new_guest_arrived', { giftDefId: 'gift_mission_bird' }, {
           userId, sourceType: 'MissionJob', sourceId: jobId,
           idempotencyKey: 'bird-gift-{jobId}'
         })
         → EventDefinition looked up: handlerKey = "createGiftForPlayer"
         → Security: allowedEmitters includes "MissionJob" → passes
+        → Context enrichment:
+          → sourceType is MissionJob → job looked up by sourceId
+          → Auto-built: { job: { id, type: "MissionJob", defId: "mission_cave_explore", ... } }
         → GiftService.createGiftForPlayer() called
-          → GiftDef "gift_starter_bird" looked up
-          → Snapshot frozen: presentation + rewardSpec
-          → GiftInstance created: status=UNCLAIMED, no expiry (claimRules is empty)
-          → Idempotency key "bird-gift-{jobId}" prevents duplicates if job re-processes
+          → GiftDef "gift_mission_bird" looked up
+          → Snapshot frozen: presentation + rewardSpec + contextData
+          → GiftInstance created: status=UNCLAIMED, no expiry
+          → Idempotency key "bird-gift-{jobId}" prevents duplicates
           → Notification sent: type=gift, priority=high
   → Player sees notification toast
   → Player claims gift (POST /gifts/:id/claim)
     → GiftClaimTx created
-    → New Entity created from "derp_bird" definition with random traits
+    → Token resolution against snapshotted contextData:
+      → "${job.defId}" resolves to "mission_cave_explore"
+      → "${random("Dave","DJ","Dirty")}" resolves to "DJ" (randomly selected)
+    → Resolved rewardSpec: { type: "entity", definitionId: "mission_cave_explore", overrides: { name: "DJ" } }
+    → New Entity created from "mission_cave_explore" definition, named "DJ", with random stats
     → GiftInstance status → CLAIMED
 ```
 
 **Key points:**
 - `allowedEmitters: ["MissionJob", "CraftingJob"]` restricts this event to only fire from mission/crafting outcomes (registration or other sources would be rejected)
-- `claimRules: {}` means no per-player limit and no expiration — once created, the gift lives forever until claimed
+- **Context enrichment is automatic** — the emitEvent entry only passes `giftDefId` in the payload. The job context (`{ job: { ... } }`) is built automatically by `EventService` via DB lookup of the source job.
+- `${job.defId}` in `definitionId` means different missions can produce different entity types from the same GiftDef
+- `${random("Dave","DJ","Dirty")}` randomly names the entity at claim time — the randomness happens per-claim, not per-gift-creation
+- Token resolution happens **at claim time** against the **snapshotted** `contextData`, not against live data
+- `claimRules: {}` means no per-player limit and no expiration
 - `odds: 5` gives a 5% chance per eligible mission completion
-- `requirements` gate the roll behind keeper level 3+, so new players don't get overwhelmed
+- `requirements` gate the roll behind keeper level 3+
 - `idempotencyKey: "bird-gift-${jobId}"` uses the job ID template variable, replaced at runtime with the actual mission job UUID
-- The entity reward type creates a brand new Entity instance from the `derp_bird` EntityDefinition, complete with random trait assignments

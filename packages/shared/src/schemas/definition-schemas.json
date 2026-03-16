@@ -960,7 +960,7 @@
       }
     },
     "GiftRewardSpec": {
-      "description": "Reward specification for gifts. Structure varies by type.",
+      "description": "Reward specification for gifts. Structure varies by type. String values in the spec support ${path.to.value} token syntax and ${random(\"a\",\"b\",\"c\")} scripting, resolved against snapshotted contextData at claim time.",
       "commonProperties": {
         "type": {
           "type": "enum",
@@ -995,9 +995,51 @@
         },
         "entity": {
           "properties": {
-            "entityDefId": {
+            "definitionId": {
               "type": "string",
-              "description": "Entity definition ID (ref: EntityDefinition)"
+              "description": "Entity definition ID (ref: EntityDefinition). Supports ${path} token syntax."
+            },
+            "overrides": {
+              "type": "object",
+              "nullable": true,
+              "description": "Optional overrides applied to the created entity",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Override the entity's display name. Supports ${path} tokens and ${random(...)}."
+                },
+                "level": {
+                  "type": "number",
+                  "nullable": true,
+                  "description": "Override the entity's starting level"
+                },
+                "stats": {
+                  "type": "object",
+                  "nullable": true,
+                  "description": "Override individual stat values (e.g. { \"ATK\": 20, \"DEF\": 15 })"
+                },
+                "traits": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "nullable": true,
+                  "description": "Override the entity's trait list"
+                }
+              }
+            }
+          }
+        },
+        "lootTable": {
+          "description": "Grants a lootbox item to the player's inventory",
+          "properties": {
+            "lootboxDefId": {
+              "type": "string",
+              "description": "Lootbox definition ID (ref: LootboxDef)"
+            },
+            "qty": {
+              "type": "number",
+              "default": 1,
+              "description": "Number of lootbox items to grant"
             }
           }
         },
@@ -1396,7 +1438,7 @@
       }
     },
     "ModalBlock": {
-      "description": "A single content block rendered in the modal body. Discriminated by the 'type' field.",
+      "description": "A single content block rendered in the modal body. Discriminated by the 'type' field. Every block type supports an optional 'from' string property — a dot-path into the server context that auto-populates the block's data fields (e.g. 'results.rewards'). The 'from' field is stripped before the block is sent to the client. All string fields support ${path.to.value} token resolution against the modal context.",
       "variants": {
         "richText": {
           "description": "Formatted rich text content",
@@ -1642,7 +1684,7 @@
       }
     },
     "ModalSpecV1": {
-      "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup.",
+      "description": "Server-authoritative modal specification (version 1). The backend constructs this object; the frontend renders it declaratively via GameModal. Used for mission results, gift reveals, crafting completion, notifications, and any other game event that requires a rich popup. When used as a ModalDef spec overlay, all string fields support ${path.to.value} token resolution against the server context. The optional 'replaceBody' boolean controls whether the spec body replaces (true) or prepends to (false, default) the server-generated body.",
       "properties": {
         "version": {
           "type": "number",
@@ -2776,7 +2818,7 @@
         "inputSchema": {
           "type": "json",
           "default": {},
-          "description": "Expected payload JSON schema"
+          "description": "Expected payload JSON schema. For the createGiftForPlayer handler, the payload must include giftDefId and may include an optional contextData object. Job source types (MissionJob, CraftingJob, BuildingJob) automatically attach job context via DB lookup."
         },
         "enabled": {
           "type": "boolean",
@@ -2819,7 +2861,7 @@
         "rewardSpec": {
           "$ref": "#/complexTypes/GiftRewardSpec",
           "default": {},
-          "description": "Reward on claim"
+          "description": "Reward on claim. String values support ${path.to.value} token syntax resolved against snapshotted contextData at claim time. Supports ${random(\"a\",\"b\")} for random selection."
         },
         "instant": {
           "type": "boolean",
