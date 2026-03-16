@@ -480,6 +480,7 @@ export class MissionService {
       if (!amount || amount <= 0) continue;
       switch (entry.type) {
         case 'entity_xp': {
+          if (entities.length === 0) break;
           const perEntity = Math.max(1, Math.floor(amount / entities.length));
           for (const entity of entities) {
             const ent = await (db as any).entity.findFirst({ where: { id: entity.id, ownerUserId: userId }, include: { equipment: true } });
