@@ -132,6 +132,7 @@
         "currency",
         "item",
         "entity",
+        "lootTable",
         "bundle"
       ],
       "description": "Types of rewards in gift definitions"
@@ -1450,6 +1451,11 @@
             "doc": {
               "$ref": "#/complexTypes/RichTextDoc",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String → wraps as single paragraph. RichTextDoc array → used as doc."
             }
           }
         },
@@ -1459,6 +1465,11 @@
             "type": {
               "type": "string",
               "const": "divider"
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context (not typically used for divider)."
             }
           }
         },
@@ -1476,6 +1487,11 @@
             "caption": {
               "type": "string",
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object → extracts assetKey/alt/caption. String → used as assetKey."
             }
           }
         },
@@ -1502,6 +1518,11 @@
                 }
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array → used as rows. Object → entries converted to {label: key, value: String(val)}."
             }
           }
         },
@@ -1520,6 +1541,11 @@
             "label": {
               "type": "string",
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String → used as endsAt. Object → extracts {endsAt, label?}."
             }
           }
         },
@@ -1541,6 +1567,11 @@
             "max": {
               "type": "number",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object → extracts {current, max, label?}."
             }
           }
         },
@@ -1557,6 +1588,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array → each entry mapped via mapRewardItem to populate items."
             }
           }
         },
@@ -1577,6 +1613,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array → each entry mapped via mapRewardItem to populate items."
             }
           }
         },
@@ -1608,6 +1649,11 @@
                 }
               },
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Array → each entry extracts {name, qtyDelta, assetKey?}."
             }
           }
         },
@@ -1642,6 +1688,11 @@
                 "$ref": "#/complexTypes/RewardItem"
               },
               "nullable": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. Object with gift key → merges into gift field and maps rewards. Object with giftId/title → merges directly."
             }
           }
         },
@@ -1655,6 +1706,11 @@
             "message": {
               "type": "string",
               "required": true
+            },
+            "from": {
+              "type": "string",
+              "nullable": true,
+              "description": "Dot-path into server context. String → used as message. Object → extracts message field."
             }
           }
         }
@@ -1742,6 +1798,11 @@
           },
           "default": [],
           "description": "Action buttons rendered at the bottom of the modal (typically 1–2)"
+        },
+        "replaceBody": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true in a ModalDef spec overlay, the spec body replaces the server-generated body entirely. When false (default), the spec body is prepended before the server body."
         },
         "telemetry": {
           "$ref": "#/complexTypes/ModalTelemetry",
