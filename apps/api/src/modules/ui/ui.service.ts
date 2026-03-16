@@ -383,18 +383,53 @@ export class UiService {
   }
 
   async buildModalForBuildBuilding(userId: string, locationId: string, buildingDefId: string): Promise<any> {
-    const [def, user] = await Promise.all([
+    const [def, user, location, allLocations] = await Promise.all([
       (this.prisma as any).buildingDef.findFirst({ where: { id: buildingDefId } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { keeperLevel: true } }),
+      this.prisma.user.findUnique({ where: { id: userId } }),
+      (this.prisma as any).locationInstance.findFirst({
+        where: { id: locationId, ownerUserId: userId },
+        include: {
+          definition: true,
+          buildings: { include: { rooms: true } },
+        },
+      }),
+      (this.prisma as any).locationInstance.findMany({
+        where: { ownerUserId: userId },
+        include: {
+          definition: true,
+          buildings: { include: { rooms: true } },
+        },
+      }),
     ]);
     if (!def) throw new NotFoundException('Building definition not found');
+    if (!location) throw new NotFoundException('Location not found');
 
     const levelMap = def.rules?.level || {};
     const level1 = levelMap['1'] || {};
     const constructionCost: any[] = level1.constructionCost || [];
     const timerDuration: number = level1.timer?.duration ?? 0;
     const requirements: any[] = def.requirements || [];
-    const keeperLevel = user?.keeperLevel ?? 1;
+
+    const allPlayerLocations = (allLocations as any[]).map((loc: any) => ({
+      buildings: (loc.buildings ?? []).map((b: any) => ({
+        buildingDefId: b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
+      })),
+      regionId: loc.definition?.regionId ?? null,
+    }));
+    const currentLocationCtx = {
+      buildings: (location.buildings ?? []).map((b: any) => ({
+        buildingDefId: b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
+      })),
+      regionId: location.definition?.regionId ?? null,
+    };
+    const reqContext = this.gameRulesService.buildRequirementContext(user as any, {
+      allPlayerLocations,
+      currentLocation: currentLocationCtx,
+    });
+
+    const allReqsMet = this.gameRulesService.checkRequirements(requirements, reqContext);
 
     const metaRows: { label: string; value: string }[] = [];
     if (timerDuration > 0) {
@@ -404,16 +439,18 @@ export class UiService {
       metaRows.push({ label: `Cost`, value: `${cost.amount ?? cost.baseAmount ?? 0}× ${cost.id}` });
     }
     for (const req of requirements) {
+      const met = this.gameRulesService.checkRequirement(req, reqContext);
+      const status = met ? ' ✓' : ' ✗';
       if (req.type === 'keeper_level') {
-        const met = keeperLevel >= (req.value ?? 0);
-        metaRows.push({ label: 'Requires Keeper Lv', value: `${req.value}${met ? ' ✓' : ' ✗'}` });
+        metaRows.push({ label: 'Requires Keeper Lv', value: `${req.value}${status}` });
+      } else if (req.type === 'has_building') {
+        metaRows.push({ label: 'Requires Building', value: `${(req.ids as string[])?.join(' or ') ?? '?'}${status}` });
+      } else if (req.type === 'in_region') {
+        metaRows.push({ label: 'Region Required', value: `${(req.ids as string[])?.join(' or ') ?? '?'}${status}` });
+      } else if (req.type === 'flag') {
+        metaRows.push({ label: `Requires ${req.key}`, value: `${req.value ?? ''}${status}` });
       }
     }
-
-    const allReqsMet = requirements.every((req: any) => {
-      if (req.type === 'keeper_level') return keeperLevel >= (req.value ?? 0);
-      return true;
-    });
 
     const body: any[] = [];
     if (def.description) {

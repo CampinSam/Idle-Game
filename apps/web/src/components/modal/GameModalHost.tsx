@@ -136,7 +136,7 @@ export default function GameModalHost() {
             await execute('BuildBuilding', { locationId: action.locationId, buildingDefId: action.buildingDefId });
             dismissModal();
           } catch (err: any) {
-            console.warn('[GameModalHost] BuildBuilding failed:', err?.message);
+            alert(err?.message || 'Build failed. Please try again.');
           }
           return;
         }

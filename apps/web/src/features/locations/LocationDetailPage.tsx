@@ -109,9 +109,13 @@ export default function LocationDetailPage() {
     if (!id) return;
     try {
       const spec = await api.getModalSpec({ buildingDefId: def.id, locationId: id });
-      if (spec?.version === 1) pushModal(spec);
+      if (spec?.version === 1) {
+        pushModal(spec);
+      } else {
+        alert('Could not load build details. Please try again.');
+      }
     } catch (err: any) {
-      console.error('[LocationDetailPage] Failed to load build modal:', err);
+      alert(err.message || 'Could not load build details. Please try again.');
     }
   };
 
