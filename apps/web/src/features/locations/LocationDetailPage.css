@@ -587,3 +587,37 @@
   color: var(--text-secondary);
   white-space: nowrap;
 }
+
+.od-prod-value.negative {
+  color: #EF4444;
+}
+
+.od-prod-res.depleting {
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.od-prod-res-negative {
+  font-size: 11px;
+  font-weight: 700;
+  color: #EF4444;
+}
+
+.od-storage-bar.depleting {
+  background: linear-gradient(90deg, #EF4444, #DC2626);
+  animation: deplete-pulse 2s ease-in-out infinite;
+}
+
+@keyframes deplete-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.od-storage-depletion-timer {
+  font-size: 9px;
+  font-weight: 700;
+  color: #F59E0B;
+  margin-top: 2px;
+}

@@ -147,3 +147,45 @@ export function formatAmount(amount: number): string {
   if (amount >= 10000) return `${(amount / 1000).toFixed(1)}k`;
   return `${Math.floor(amount)}`;
 }
+
+export function formatTimeRemaining(hours: number): string {
+  if (!isFinite(hours) || hours <= 0) return '0m';
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const h = Math.floor(hours % 24);
+    return h > 0 ? `${days}d ${h}h` : `${days}d`;
+  }
+  if (hours >= 1) {
+    let h = Math.floor(hours);
+    let m = Math.round((hours - h) * 60);
+    if (m >= 60) {
+      h += 1;
+      m = 0;
+    }
+    if (h >= 24) {
+      const days = Math.floor(h / 24);
+      const rh = h % 24;
+      return rh > 0 ? `${days}d ${rh}h` : `${days}d`;
+    }
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  return `${Math.max(1, Math.round(hours * 60))}m`;
+}
+
+export function computeInventoryAmount(
+  outputType: string,
+  outputRefId: string,
+  items: Record<string, any>,
+  currencyBalances: Record<string, number>,
+): number {
+  if (outputType === 'CURRENCY') {
+    return Number(currencyBalances[outputRefId] ?? 0);
+  }
+  let total = 0;
+  for (const item of Object.values(items)) {
+    if ((item.definitionId || item.itemDefId) === outputRefId) {
+      total += Number(item.amount ?? item.quantity ?? 1);
+    }
+  }
+  return total;
+}

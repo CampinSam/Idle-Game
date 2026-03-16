@@ -12,6 +12,8 @@ import BuildingProgressBar from '../../components/BuildingProgressBar';
 import {
   formatRate,
   formatAmount,
+  formatTimeRemaining,
+  computeInventoryAmount,
 } from '../../utils/locationProduction';
 import { getRegionDisplay } from '@derp/shared';
 import './LocationsPage.css';
@@ -47,6 +49,8 @@ export default function LocationsPage() {
   const syncStatus = useSyncStatus();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
+  const syncItems = useAppSelector((s) => s.sync.items);
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
   const [currentPage, setCurrentPage] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
@@ -146,17 +150,25 @@ export default function LocationsPage() {
                         ? Math.min(100, (current / res.capacity) * 100)
                         : 0;
                       const isFull = pct >= 99.5;
+                      const isDepleting = res.netRatePerHour < 0;
+                      let depletionLabel = '';
+                      if (isDepleting) {
+                        const invAmount = computeInventoryAmount(res.outputType, res.outputRefId, syncItems, currencyBalances);
+                        const totalAvailable = current + invAmount;
+                        const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
+                        depletionLabel = formatTimeRemaining(hoursLeft);
+                      }
 
                       return (
                         <div key={res.key} className="storage-bar-row">
                           <div className="storage-bar-label">
                             <span className="storage-bar-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={14} /></span>
                             <span className="storage-bar-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
-                            <span className="storage-bar-rate">{res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/hr</span>
+                            <span className={`storage-bar-rate ${isDepleting ? 'rate-negative' : ''}`}>{res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/hr</span>
                           </div>
                           <div className="storage-bar-track">
                             <div
-                              className={`storage-bar-fill ${isFull ? 'full' : ''}`}
+                              className={`storage-bar-fill ${isFull ? 'full' : ''} ${isDepleting ? 'depleting' : ''}`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
@@ -164,6 +176,9 @@ export default function LocationsPage() {
                             <span className="storage-current">{formatAmount(current)}</span>
                             <span className="storage-sep">/</span>
                             <span className="storage-cap">{formatAmount(res.capacity)}</span>
+                            {isDepleting && (
+                              <span className="storage-depletion-badge">⚠ {depletionLabel}</span>
+                            )}
                           </div>
                         </div>
                       );

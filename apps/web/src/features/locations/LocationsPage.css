@@ -269,6 +269,28 @@
 }
 
 /* Card stagger animations */
+.storage-bar-rate.rate-negative {
+  color: #EF4444;
+}
+
+.storage-bar-fill.depleting {
+  background: linear-gradient(90deg, #EF4444, #DC2626);
+  animation: deplete-pulse 2s ease-in-out infinite;
+}
+
+@keyframes deplete-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.storage-depletion-badge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #F59E0B;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 .outpost-card-v2 {
   animation: card-enter 0.25s ease-out both;
 }

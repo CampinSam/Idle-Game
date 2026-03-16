@@ -14,6 +14,8 @@ import { useLocationTimers } from '../../hooks/useLocationTimers';
 import {
   formatRate,
   formatAmount,
+  formatTimeRemaining,
+  computeInventoryAmount,
 } from '../../utils/locationProduction';
 import LootPop, { type LootPopItem } from '../../components/LootPop';
 import FacilitiesTab from './FacilitiesTab';
@@ -49,6 +51,8 @@ export default function LocationDetailPage() {
   const locations = useSyncLocations();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
+  const syncItems = useAppSelector((s) => s.sync.items);
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
   const [activeTab, setActiveTabRaw] = useState(0);
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
@@ -292,7 +296,7 @@ export default function LocationDetailPage() {
                   <>
                     {effectiveRatePerHour !== 0 ? (
                       <div className="od-prod-rate">
-                        <span className="od-prod-value">{effectiveRatePerHour >= 0 ? '+' : ''}{formatRate(effectiveRatePerHour)}/h</span>
+                        <span className={`od-prod-value ${effectiveRatePerHour < 0 ? 'negative' : ''}`}>{effectiveRatePerHour >= 0 ? '+' : ''}{formatRate(effectiveRatePerHour)}/h</span>
                       </div>
                     ) : (
                       <div className="od-empty-tasks">No active generators.</div>
@@ -300,14 +304,17 @@ export default function LocationDetailPage() {
                     <div className="od-prod-resources">
                       {resourceSummaries.map((res) => {
                         const isFull = res.capacity > 0 && res.currentAmount / res.capacity >= 0.995;
+                        const isDepleting = res.netRatePerHour < 0;
                         return (
-                          <div key={res.key} className="od-prod-res">
+                          <div key={res.key} className={`od-prod-res ${isDepleting ? 'depleting' : ''}`}>
                             <span className="od-prod-res-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
                             <span className="od-prod-res-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</span>
                             {isFull ? (
                               <span className="od-prod-res-full">Full</span>
+                            ) : isDepleting ? (
+                              <span className="od-prod-res-negative">{formatRate(res.netRatePerHour)}/h</span>
                             ) : (
-                              <span className="od-prod-res-amount">{res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/h</span>
+                              <span className="od-prod-res-amount">+{formatRate(res.netRatePerHour)}/h</span>
                             )}
                           </div>
                         );
@@ -345,6 +352,14 @@ export default function LocationDetailPage() {
                         const current = res.currentAmount;
                         const pct = res.capacity > 0 ? Math.min((current / res.capacity) * 100, 100) : 0;
                         const isFull = pct >= 99.5;
+                        const isDepleting = res.netRatePerHour < 0;
+                        let depletionLabel = '';
+                        if (isDepleting) {
+                          const invAmount = computeInventoryAmount(res.outputType, res.outputRefId, syncItems, currencyBalances);
+                          const totalAvailable = current + invAmount;
+                          const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
+                          depletionLabel = formatTimeRemaining(hoursLeft);
+                        }
 
                         return (
                           <div key={res.key} className="od-storage-mini-item">
@@ -352,8 +367,11 @@ export default function LocationDetailPage() {
                             <div className="od-storage-mini-info">
                               <div className="od-storage-mini-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
                               <div className="od-storage-bar-wrap">
-                                <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div className={`od-storage-bar ${isFull ? 'full' : ''} ${isDepleting ? 'depleting' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
+                              {isDepleting && (
+                                <div className="od-storage-depletion-timer">⚠ {depletionLabel} left</div>
+                              )}
                             </div>
                             <span className="od-storage-mini-amount">{formatAmount(current)}/{formatAmount(res.capacity)}</span>
                           </div>
@@ -466,14 +484,27 @@ export default function LocationDetailPage() {
                   {allStorageItems.map((res) => {
                     const pct = res.capacity > 0 ? Math.min((res.current / res.capacity) * 100, 100) : 0;
                     const isFull = pct >= 99.5;
+                    const resSummary = resourceSummaries.find((s) => s.outputRefId === res.outputRefId && s.outputType === res.outputType);
+                    const netRate = resSummary?.netRatePerHour ?? 0;
+                    const isDepleting = netRate < 0;
+                    let depletionLabel = '';
+                    if (isDepleting) {
+                      const invAmount = computeInventoryAmount(res.outputType, res.outputRefId, syncItems, currencyBalances);
+                      const totalAvailable = res.current + invAmount;
+                      const hoursLeft = totalAvailable / Math.abs(netRate);
+                      depletionLabel = formatTimeRemaining(hoursLeft);
+                    }
                     return (
                       <div key={res.key} className="od-storage-item">
                         <span className="od-storage-icon"><GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} /></span>
                         <div className="od-storage-info">
                           <div className="od-storage-name">{resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}</div>
                           <div className="od-storage-bar-wrap">
-                            <div className={`od-storage-bar ${isFull ? 'full' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            <div className={`od-storage-bar ${isFull ? 'full' : ''} ${isDepleting ? 'depleting' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
+                          {isDepleting && (
+                            <div className="od-storage-depletion-timer">⚠ {depletionLabel} left</div>
+                          )}
                         </div>
                         <span className="od-storage-amount">{formatAmount(res.current)} / {formatAmount(res.capacity)}</span>
                       </div>

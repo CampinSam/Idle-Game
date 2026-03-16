@@ -188,11 +188,25 @@ const syncSlice = createSlice({
       state.lastError = action.payload;
     },
 
+    patchBuildingEnabled(state, action: PayloadAction<{ locationId: string; buildingId: string; enabled: boolean }>) {
+      const { locationId, buildingId, enabled } = action.payload;
+      if (state.buildings[buildingId]) {
+        state.buildings[buildingId] = { ...state.buildings[buildingId], enabled };
+      }
+      const loc = state.locations[locationId];
+      if (loc && Array.isArray(loc.buildings)) {
+        const idx = loc.buildings.findIndex((b: any) => b.id === buildingId);
+        if (idx !== -1) {
+          loc.buildings[idx] = { ...loc.buildings[idx], enabled };
+        }
+      }
+    },
+
     resetSync() {
       return initialState;
     },
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled } = syncSlice.actions;
 export default syncSlice.reducer;

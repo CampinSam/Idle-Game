@@ -547,3 +547,30 @@
 .facility-toggle.enabled:hover .facility-toggle-track {
   background: rgba(16, 185, 129, 0.65);
 }
+
+.facility-sub-tab.tab-disabled {
+  opacity: 0.5;
+}
+
+.facility-sub-tab.tab-disabled.active {
+  opacity: 0.75;
+}
+
+.facility-card-meta.meta-disabled {
+  color: #EF4444;
+}
+
+.facility-card-rates.rates-disabled {
+  opacity: 0.4;
+  position: relative;
+}
+
+.facility-card-rates.rates-disabled .facility-prod-rate,
+.facility-card-rates.rates-disabled .facility-consume-rate {
+  text-decoration: line-through;
+}
+
+.facility-card-rates.rates-disabled .facility-prod-name,
+.facility-card-rates.rates-disabled .facility-consume-name {
+  text-decoration: line-through;
+}

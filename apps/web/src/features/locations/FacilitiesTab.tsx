@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
+import { useAppDispatch } from '../../store';
+import { patchBuildingEnabled } from '../../store/syncSlice';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
 import { formatRate, formatAmount } from '../../utils/locationProduction';
@@ -34,33 +36,20 @@ export default function FacilitiesTab({
   onCompleteBuilding,
   onUpgradeClick,
 }: FacilitiesTabProps) {
+  const dispatch = useAppDispatch();
   const [activeSubTab, setActiveSubTab] = useState(0);
   const [availableData, setAvailableData] = useState<any>(null);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
   const [slotWarning, setSlotWarning] = useState<string | null>(null);
-  const [enabledOverrides, setEnabledOverrides] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    setEnabledOverrides({});
-  }, [outpostId]);
-
-  const hasOperationalRates = (b: any): boolean => {
-    if (b.resourcePerHour && b.resourcePerHour !== 0) return true;
-    if (b.consumptionRates) {
-      const vals = Object.values(b.consumptionRates as Record<string, number>);
-      if (vals.some((v) => v !== 0)) return true;
-    }
-    return false;
-  };
 
   const handleToggleBuilding = async (b: any) => {
-    const currentEnabled = enabledOverrides[b.id] ?? (b.enabled ?? b.isEnabled);
+    const currentEnabled = b.enabled !== false;
     const newEnabled = !currentEnabled;
-    setEnabledOverrides((prev) => ({ ...prev, [b.id]: newEnabled }));
+    dispatch(patchBuildingEnabled({ locationId: outpostId, buildingId: b.id, enabled: newEnabled }));
     try {
       await api.toggleBuilding(outpostId, b.id, newEnabled);
     } catch {
-      setEnabledOverrides((prev) => ({ ...prev, [b.id]: currentEnabled }));
+      dispatch(patchBuildingEnabled({ locationId: outpostId, buildingId: b.id, enabled: currentEnabled }));
     }
   };
 
@@ -96,15 +85,18 @@ export default function FacilitiesTab({
   return (
     <div className="od-tab-content">
       <div className="facilities-sub-tabs">
-        {buildings.map((b: any, i: number) => (
-          <button
-            key={b.id}
-            className={`facility-sub-tab ${activeSubTab === i ? 'active' : ''} ${b.status === 'building' ? 'constructing' : ''}`}
-            onClick={() => setActiveSubTab(i)}
-          >
-            {b.status === 'building' ? '🔨 ' : ''}{b.name}
-          </button>
-        ))}
+        {buildings.map((b: any, i: number) => {
+          const tabDisabled = b.status !== 'building' && b.enabled === false;
+          return (
+            <button
+              key={b.id}
+              className={`facility-sub-tab ${activeSubTab === i ? 'active' : ''} ${b.status === 'building' ? 'constructing' : ''} ${tabDisabled ? 'tab-disabled' : ''}`}
+              onClick={() => setActiveSubTab(i)}
+            >
+              {b.status === 'building' ? '🔨 ' : ''}{b.name}
+            </button>
+          );
+        })}
         <button
           className={`facility-sub-tab add-tab ${isAddTab ? 'active' : ''} ${!slotsAvailable ? 'disabled' : ''}`}
           onClick={handleAddTabClick}
@@ -125,8 +117,8 @@ export default function FacilitiesTab({
           .flatMap((r: any) => r.generators)
           .find((g: any) => g.buildingId === b.id);
         const isMaxLevel = b.level >= (b.maxLevel ?? 50);
-        const isEnabled = enabledOverrides[b.id] ?? (b.enabled ?? b.isEnabled);
-        const showToggle = !isBuilding && hasOperationalRates(b);
+        const isEnabled = b.enabled !== false;
+        const showToggle = !isBuilding && b.category !== 'STORAGE';
 
         return (
           <>
@@ -134,7 +126,7 @@ export default function FacilitiesTab({
               <span className="facility-card-icon">{catIcon}</span>
               <div className="facility-card-info">
                 <div className="facility-card-name">{b.name}</div>
-                <div className="facility-card-meta">
+                <div className={`facility-card-meta ${!isEnabled && !isBuilding ? 'meta-disabled' : ''}`}>
                   {isBuilding ? (
                     'Under Construction'
                   ) : (
@@ -173,7 +165,7 @@ export default function FacilitiesTab({
             )}
 
             {!isBuilding && b.category === 'GENERATOR' && (
-              <div className="facility-card-rates">
+              <div className={`facility-card-rates ${!isEnabled ? 'rates-disabled' : ''}`}>
                 <div className="facility-card-production">
                   <span className="facility-prod-icon">
                     <GameIcon src={resolveIcon(b.outputType, b.outputRefId, currencyDefs, itemDefs)} size={16} />
