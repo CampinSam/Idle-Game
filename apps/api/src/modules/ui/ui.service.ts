@@ -614,7 +614,7 @@ export class UiService {
     if (teamIds.length > 0) {
       try {
         const entities = await (this.prisma as any).entity.findMany({
-          where: { id: { in: teamIds } },
+          where: { id: { in: teamIds }, ownerUserId: job.userId },
         });
         const entityMap = new Map<string, any>();
         for (const e of entities) {

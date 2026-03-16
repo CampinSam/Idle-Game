@@ -586,7 +586,7 @@ export class MissionService {
       rewards: grantedRewards,
       seed: mission.data.seed,
       ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
-      ...(entityResults.length > 0 ? { entityResults } : {}),
+      entityResults,
     };
 
     for (const entityId of entityIds) {
