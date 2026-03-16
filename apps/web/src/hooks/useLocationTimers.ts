@@ -28,16 +28,18 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
         ? Math.max(0, (now - Date.parse(lastSettledAt)) / 1000)
         : 0;
 
+      const consumptionRates: Record<string, number> = storage.consumptionRates || {};
       const generators = computeGeneratorProduction(op);
-      const rawSummaries = aggregateByResource(op, generators);
+      const rawSummaries = aggregateByResource(op, generators, consumptionRates);
 
       const resourceSummaries: ResourceSummary[] = rawSummaries.map((summary) => {
         const stored = storedAmounts[summary.outputRefId] ?? 0;
         const capacity = capacities[summary.outputRefId] ?? summary.capacity;
-        const accrued = (summary.totalRatePerHour / 3600) * elapsedSeconds;
+        const accrued = (summary.netRatePerHour / 3600) * elapsedSeconds;
+        const raw = stored + accrued;
         const currentAmount = capacity > 0
-          ? Math.min(stored + accrued, capacity)
-          : stored + accrued;
+          ? Math.min(Math.max(raw, 0), capacity)
+          : Math.max(raw, 0);
 
         return {
           ...summary,

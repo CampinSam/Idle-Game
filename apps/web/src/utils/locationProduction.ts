@@ -44,6 +44,7 @@ export interface ResourceSummary {
   outputType: string;
   outputRefId: string;
   totalRatePerHour: number;
+  netRatePerHour: number;
   currentAmount: number;
   capacity: number;
   generators: GeneratorProduction[];
@@ -72,6 +73,7 @@ export function computeGeneratorProduction(
 export function aggregateByResource(
   location: any,
   generators: GeneratorProduction[],
+  consumptionRates: Record<string, number> = {},
 ): ResourceSummary[] {
   const storageByKey = new Map<string, number>();
   for (const sb of (location.storageBalances || [])) {
@@ -110,12 +112,17 @@ export function aggregateByResource(
     const group = grouped.get(key);
     const capacity = getCapacityForKey(location, key);
     const currentAmount = storageByKey.get(key) ?? 0;
+    const totalRate = group?.totalRatePerHour ?? 0;
+    const resId = outputRefId ?? '';
+    const consumed = Number(consumptionRates[resId] || 0);
+    const netRate = totalRate - consumed;
 
     results.push({
       key,
       outputType: group?.outputType ?? outputType ?? '',
-      outputRefId: group?.outputRefId ?? outputRefId ?? '',
-      totalRatePerHour: group?.totalRatePerHour ?? 0,
+      outputRefId: group?.outputRefId ?? resId,
+      totalRatePerHour: totalRate,
+      netRatePerHour: netRate,
       currentAmount,
       capacity,
       generators: group?.generators ?? [],
@@ -126,10 +133,12 @@ export function aggregateByResource(
 }
 
 export function formatRate(ratePerHour: number): string {
-  if (!isFinite(ratePerHour) || ratePerHour < 0) return '0';
-  if (ratePerHour >= 1000) return `${(ratePerHour / 1000).toFixed(1)}k`;
-  if (ratePerHour >= 1) return `${Math.round(ratePerHour)}`;
-  if (ratePerHour > 0) return `${ratePerHour.toFixed(1)}`;
+  if (!isFinite(ratePerHour)) return '0';
+  const abs = Math.abs(ratePerHour);
+  const sign = ratePerHour < 0 ? '-' : '';
+  if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(1)}k`;
+  if (abs >= 1) return `${sign}${Math.round(abs)}`;
+  if (abs > 0) return `${sign}${abs.toFixed(1)}`;
   return '0';
 }
 

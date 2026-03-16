@@ -94,6 +94,12 @@
   margin-top: 2px;
 }
 
+.facility-card-rates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .facility-card-production {
   display: flex;
   align-items: center;
@@ -102,6 +108,36 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   padding: 10px 12px;
+}
+
+.facility-card-consumption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px solid rgba(239, 68, 68, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.facility-consume-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.facility-consume-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.facility-consume-rate {
+  font-size: 12px;
+  font-weight: 700;
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 3px 10px;
+  border-radius: 6px;
 }
 
 .facility-prod-icon {

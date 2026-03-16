@@ -153,7 +153,7 @@ export default function LocationDetailPage() {
 
   const effectiveRatePerHour = resourceSummaries.reduce((s, r) => {
     const isFull = r.capacity > 0 && r.currentAmount / r.capacity >= 0.995;
-    return isFull ? s : s + r.totalRatePerHour;
+    return isFull ? s : s + r.netRatePerHour;
   }, 0);
 
   const buildingsData: any[] = outpost.buildings || [];
@@ -290,9 +290,9 @@ export default function LocationDetailPage() {
                 <h3 className="od-card-title">PRODUCTION</h3>
                 {resourceSummaries.length > 0 ? (
                   <>
-                    {effectiveRatePerHour > 0 ? (
+                    {effectiveRatePerHour !== 0 ? (
                       <div className="od-prod-rate">
-                        <span className="od-prod-value">+{formatRate(effectiveRatePerHour)}/h</span>
+                        <span className="od-prod-value">{effectiveRatePerHour >= 0 ? '+' : ''}{formatRate(effectiveRatePerHour)}/h</span>
                       </div>
                     ) : (
                       <div className="od-empty-tasks">No active generators.</div>
@@ -307,7 +307,7 @@ export default function LocationDetailPage() {
                             {isFull ? (
                               <span className="od-prod-res-full">Full</span>
                             ) : (
-                              <span className="od-prod-res-amount">+{formatRate(res.totalRatePerHour)}/h</span>
+                              <span className="od-prod-res-amount">{res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/h</span>
                             )}
                           </div>
                         );

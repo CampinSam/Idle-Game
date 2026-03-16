@@ -134,19 +134,35 @@ export default function FacilitiesTab({
             )}
 
             {!isBuilding && b.category === 'GENERATOR' && (
-              <div className="facility-card-production">
-                <span className="facility-prod-icon">
-                  <GameIcon src={resolveIcon(b.outputType, b.outputRefId, currencyDefs, itemDefs)} size={16} />
-                </span>
-                <span className="facility-prod-name">
-                  {resolveName(b.outputType, b.outputRefId, currencyDefs, itemDefs)}
-                </span>
-                {genEntry && (
-                  <span className="facility-prod-rate">+{formatRate(genEntry.ratePerHour)}/h</span>
-                )}
-                {!genEntry && (
-                  <span className="facility-prod-rate">+{b.resourcePerHour}/h</span>
-                )}
+              <div className="facility-card-rates">
+                <div className="facility-card-production">
+                  <span className="facility-prod-icon">
+                    <GameIcon src={resolveIcon(b.outputType, b.outputRefId, currencyDefs, itemDefs)} size={16} />
+                  </span>
+                  <span className="facility-prod-name">
+                    {resolveName(b.outputType, b.outputRefId, currencyDefs, itemDefs)}
+                  </span>
+                  {genEntry && (
+                    <span className="facility-prod-rate">+{formatRate(genEntry.ratePerHour)}/h</span>
+                  )}
+                  {!genEntry && (
+                    <span className="facility-prod-rate">+{b.resourcePerHour}/h</span>
+                  )}
+                </div>
+                {b.consumptionRates && Object.entries(b.consumptionRates as Record<string, number>).map(([resourceId, rate]) => {
+                  const cOutputType = currencyIds.has(resourceId) ? 'CURRENCY' : 'ITEM';
+                  return (
+                    <div key={resourceId} className="facility-card-consumption">
+                      <span className="facility-consume-icon">
+                        <GameIcon src={resolveIcon(cOutputType, resourceId, currencyDefs, itemDefs)} size={16} />
+                      </span>
+                      <span className="facility-consume-name">
+                        {resolveName(cOutputType, resourceId, currencyDefs, itemDefs)}
+                      </span>
+                      <span className="facility-consume-rate">-{formatRate(Number(rate))}/h</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
