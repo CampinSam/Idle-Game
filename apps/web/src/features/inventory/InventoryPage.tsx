@@ -63,6 +63,7 @@ function InventoryPageSkeleton() {
 }
 
 const OPENABLE_TYPES = new Set(['LOOTBOX', 'GIFT_PACKAGE']);
+const USABLE_TYPES = new Set(['POTION']);
 
 const OPEN_COMMAND: Record<string, string> = {
   LOOTBOX: 'OpenLootBox',
@@ -75,6 +76,7 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
+  const [using, setUsing] = useState(false);
   const { pushModal } = useModal();
   const { execute } = useCommand({
     onUiIntent: (intent) => {
@@ -128,6 +130,19 @@ export default function InventoryPage() {
       setOpening(false);
     }
   }, [opening, execute]);
+
+  const handleUse = useCallback(async (item: any) => {
+    if (using) return;
+    setUsing(true);
+    try {
+      await execute('UseConsumable', { itemInstanceId: item.instanceId });
+      setSelectedId(null);
+    } catch (err) {
+      console.error('[InventoryPage] UseConsumable failed:', err);
+    } finally {
+      setUsing(false);
+    }
+  }, [using, execute]);
 
   if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
@@ -217,6 +232,14 @@ export default function InventoryPage() {
                   onClick={() => handleOpen(selectedItem)}
                 >
                   {opening ? 'Opening…' : 'Open'}
+                </button>
+              ) : USABLE_TYPES.has(selectedItem.type) ? (
+                <button
+                  className="inv-manage-btn inv-use-btn"
+                  disabled={using}
+                  onClick={() => handleUse(selectedItem)}
+                >
+                  {using ? 'Using…' : 'Use'}
                 </button>
               ) : (
                 <button className="inv-manage-btn">Manage</button>

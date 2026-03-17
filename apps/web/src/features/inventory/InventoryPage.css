@@ -370,6 +370,14 @@
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
 }
 
+.inv-use-btn {
+  background: linear-gradient(135deg, #06b6d4, #0284c7);
+}
+
+.inv-use-btn:hover:not(:disabled) {
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
 .inv-rarity-label {
   font-size: 9px;
   font-weight: 700;
