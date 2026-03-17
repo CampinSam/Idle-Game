@@ -980,10 +980,17 @@ export class LocationService {
       where: { id: locationId, ownerUserId: userId },
     });
     if (!location) throw new NotFoundException("Location not found");
-    await this.prisma.locationInstance.update({
-      where: { id: locationId },
-      data: { enabled },
+
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await (tx as any).locationInstance.update({
+        where: { id: locationId },
+        data: { enabled },
+      });
     });
+
     return { id: locationId, enabled };
   }
 
@@ -997,10 +1004,17 @@ export class LocationService {
       where: { id: buildingId, locationId, location: { ownerUserId: userId } },
     });
     if (!building) throw new NotFoundException("Building not found");
-    await this.prisma.locationBuildingInstance.update({
-      where: { id: buildingId },
-      data: { enabled },
+
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await (tx as any).locationBuildingInstance.update({
+        where: { id: buildingId },
+        data: { enabled },
+      });
     });
+
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
@@ -1024,10 +1038,17 @@ export class LocationService {
       },
     });
     if (!room) throw new NotFoundException("Room not found");
-    await (this.prisma as any).locationRoomInstance.update({
-      where: { id: roomId },
-      data: { enabled },
+
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+      await (tx as any).locationRoomInstance.update({
+        where: { id: roomId },
+        data: { enabled },
+      });
     });
+
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
