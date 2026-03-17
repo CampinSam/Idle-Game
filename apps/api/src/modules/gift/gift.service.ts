@@ -231,6 +231,8 @@ export class GiftService {
       },
     });
 
+    await this.notificationService.markReadBySource(userId, 'Gift', giftId, tx);
+
     try {
       await this.telemetryService.record(userId, 'gift_claimed', giftDefId, 1, {}, db);
     } catch (_) {}

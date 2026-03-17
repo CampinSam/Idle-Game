@@ -239,6 +239,14 @@ export class NotificationService {
     });
   }
 
+  async markReadBySource(userId: string, sourceType: string, sourceId: string, tx?: any) {
+    const notif = tx ? (tx as any).notification : this.notification;
+    return notif.updateMany({
+      where: { userId, sourceType, sourceId, readAt: null },
+      data: { readAt: new Date() },
+    });
+  }
+
   async clearRead(userId: string) {
     return this.notification.updateMany({
       where: { userId, readAt: { not: null }, archivedAt: null },
