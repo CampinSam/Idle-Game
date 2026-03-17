@@ -117,7 +117,7 @@ export default function InventoryPage() {
           ))}
         </div>
 
-        <div className="inv-grid-wrap">
+        <div className={`inv-grid-wrap${selectedItem ? ' has-detail' : ''}`}>
           <div className="inv-grid">
             {filtered.length === 0 && (
               <div className="inv-empty">
