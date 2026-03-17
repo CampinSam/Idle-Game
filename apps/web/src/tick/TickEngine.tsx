@@ -81,6 +81,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       if (tickBroadcast.receivedAt <= prev.fetchedAt) return prev;
       return {
         ...prev,
+        currentTick: interpolatedRef.current.currentTick,
         tickRate: tickBroadcast.tickRate,
         activeBoosts: tickBroadcast.boosts,
         serverTime: new Date().toISOString(),
@@ -88,7 +89,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       };
     });
     interpolatedRef.current = {
-      ...interpolatedRef.current,
+      currentTick: interpolatedRef.current.currentTick,
       tickRate: tickBroadcast.tickRate,
     };
   }, [tickBroadcast]);
