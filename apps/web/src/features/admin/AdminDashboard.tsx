@@ -149,7 +149,7 @@ function PlayerPanel() {
       {player && (
         <GodModePanel
           player={player}
-          onBack={() => { setPlayer(null); setMsg(null); setResults([]); }}
+          onBack={() => { setPlayer(null); setMsg(null); search(''); }}
           onReload={() => loadPlayer(player.id)}
         />
       )}
