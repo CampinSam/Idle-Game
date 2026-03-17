@@ -352,9 +352,22 @@
   white-space: nowrap;
 }
 
-.inv-manage-btn:hover {
+.inv-manage-btn:hover:not(:disabled) {
   transform: scale(1.05);
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.inv-manage-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inv-open-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.inv-open-btn:hover:not(:disabled) {
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
 }
 
 .inv-rarity-label {

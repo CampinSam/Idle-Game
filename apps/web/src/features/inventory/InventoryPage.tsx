@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSyncItems, useSyncStatus } from '../../hooks/useSyncSelectors';
+import { useCommand } from '../../hooks/useCommand';
+import { useModal } from '../../context/ModalContext';
 import { formatCompact } from '../../utils/formatNumber';
 import './InventoryPage.css';
 
@@ -60,18 +62,31 @@ function InventoryPageSkeleton() {
   );
 }
 
+const OPENABLE_TYPES = new Set(['LOOTBOX', 'GIFT_PACKAGE']);
+
+const OPEN_COMMAND: Record<string, string> = {
+  LOOTBOX: 'OpenLootBox',
+  GIFT_PACKAGE: 'OpenGiftPackage',
+};
+
 export default function InventoryPage() {
   const items = useSyncItems();
   const syncStatus = useSyncStatus();
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
+  const [opening, setOpening] = useState(false);
+  const { pushModal } = useModal();
+  const { execute } = useCommand({
+    onUiIntent: (intent) => {
+      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
+    },
+  });
 
   const allItems = useMemo(() => {
     return items.map((i: any) => ({
       ...i,
       ...(i.definition || {}),
+      instanceId: i.id,
       kind: i.definition?.type === 'GEAR' ? 'gear' : 'item',
     }));
   }, [items]);
@@ -92,15 +107,29 @@ export default function InventoryPage() {
 
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
-    return allItems.find((i: any) => (i.kind === 'gear' ? i.instanceId : i.itemId || i.id) === selectedId) || null;
+    return allItems.find((i: any) => i.instanceId === selectedId) || null;
   }, [selectedId, allItems]);
 
-  const handleCardClick = (item: any) => {
-    const id = item.kind === 'gear' ? item.instanceId : item.itemId || item.id;
-    setSelectedId((prev) => (prev === id ? null : id));
-  };
+  const handleCardClick = useCallback((item: any) => {
+    setSelectedId((prev) => (prev === item.instanceId ? null : item.instanceId));
+  }, []);
 
-  const getItemKey = (item: any) => item.kind === 'gear' ? item.instanceId : item.itemId || item.id;
+  const handleOpen = useCallback(async (item: any) => {
+    if (opening) return;
+    const commandType = OPEN_COMMAND[item.type];
+    if (!commandType) return;
+    setOpening(true);
+    try {
+      await execute(commandType, { itemInstanceId: item.instanceId });
+      setSelectedId(null);
+    } catch (err) {
+      console.error(`[InventoryPage] ${commandType} failed:`, err);
+    } finally {
+      setOpening(false);
+    }
+  }, [opening, execute]);
+
+  if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
   return (
     <div className="inventory-page page-transition-wrapper">
@@ -126,11 +155,10 @@ export default function InventoryPage() {
               </div>
             )}
             {filtered.map((item: any) => {
-              const key = getItemKey(item);
-              const isSelected = selectedId === key;
+              const isSelected = selectedId === item.instanceId;
               return (
                 <div
-                  key={key}
+                  key={item.instanceId}
                   className={`inv-card rarity-${item.rarity} ${isSelected ? 'selected' : ''}`}
                   onClick={() => handleCardClick(item)}
                 >
@@ -182,7 +210,17 @@ export default function InventoryPage() {
               </div>
             </div>
             <div className="inv-detail-actions">
-              <button className="inv-manage-btn">Manage</button>
+              {OPENABLE_TYPES.has(selectedItem.type) ? (
+                <button
+                  className="inv-manage-btn inv-open-btn"
+                  disabled={opening}
+                  onClick={() => handleOpen(selectedItem)}
+                >
+                  {opening ? 'Opening…' : 'Open'}
+                </button>
+              ) : (
+                <button className="inv-manage-btn">Manage</button>
+              )}
             </div>
           </div>
         )}
