@@ -106,7 +106,6 @@ export default function App() {
       <TickEngineProvider>
       <NotificationProvider>
       <ModalProvider>
-      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
@@ -124,7 +123,6 @@ export default function App() {
           <Route path="rewards" element={<ErrorBoundary fallbackTitle="Rewards page error"><RewardsPage /></ErrorBoundary>} />
         </Route>
       </Routes>
-      </Suspense>
       <GameModalHost />
       </ModalProvider>
       </NotificationProvider>

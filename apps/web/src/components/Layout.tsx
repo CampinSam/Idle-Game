@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from '../store';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { fetchCurrencyDefs } from '../store/gameSlice';
 import { logout } from '../store/authSlice';
 import { useNotifications } from '../context/NotificationContext';
@@ -129,7 +129,9 @@ export default function Layout() {
 
       <main className="content page-outlet">
         <div key={location.key} className="page-transition-wrapper">
-          <Outlet />
+          <Suspense fallback={<div className="page-content-loader"><div className="page-content-spinner" /></div>}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 
