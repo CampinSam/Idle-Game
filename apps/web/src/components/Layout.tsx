@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from '../store';
 import { useEffect, useState } from 'react';
 import { fetchCurrencyDefs } from '../store/gameSlice';
@@ -25,6 +25,7 @@ import './Layout.css';
 export default function Layout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const profile = useSyncPlayer();
   const currencyBalances = useSyncCurrencyBalances();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
@@ -127,7 +128,7 @@ export default function Layout() {
       )}
 
       <main className="content page-outlet">
-        <div className="page-transition-wrapper">
+        <div key={location.key} className="page-transition-wrapper">
           <Outlet />
         </div>
       </main>

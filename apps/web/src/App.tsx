@@ -107,7 +107,7 @@ export default function App() {
       <NotificationProvider>
       <ModalProvider>
       <Suspense fallback={<PageLoader />}>
-      <Routes location={location} key={location.key}>
+      <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/" element={<Layout />}>
