@@ -55,15 +55,7 @@ export default function HomePage() {
 
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
     const generators = computeGeneratorProduction(loc);
-    const buildingConsumption = computeConsumptionFromBuildings(loc);
-    const serverConsumption: Record<string, number> = (loc as any).storage?.consumptionRates || {};
-    const consumptionRates: Record<string, number> = { ...buildingConsumption };
-    for (const [resId, rate] of Object.entries(serverConsumption)) {
-      const serverRate = Number(rate);
-      if (serverRate > 0 && !(resId in consumptionRates)) {
-        consumptionRates[resId] = serverRate;
-      }
-    }
+    const consumptionRates = computeConsumptionFromBuildings(loc);
     const resTypes: Record<string, string> = (loc as any).storage?.resourceTypes || {};
     const summaries = aggregateByResource(loc, generators, consumptionRates, resTypes);
     for (const summary of summaries) {

@@ -29,15 +29,7 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
         ? Math.max(0, (now - Date.parse(lastSettledAt)) / 1000)
         : 0;
 
-      const buildingConsumption = computeConsumptionFromBuildings(op);
-      const serverConsumption: Record<string, number> = storage.consumptionRates || {};
-      const consumptionRates: Record<string, number> = { ...buildingConsumption };
-      for (const [resId, rate] of Object.entries(serverConsumption)) {
-        const serverRate = Number(rate);
-        if (serverRate > 0 && !(resId in consumptionRates)) {
-          consumptionRates[resId] = serverRate;
-        }
-      }
+      const consumptionRates = computeConsumptionFromBuildings(op);
       const resTypes: Record<string, string> = storage.resourceTypes || {};
       const generators = computeGeneratorProduction(op);
       const rawSummaries = aggregateByResource(op, generators, consumptionRates, resTypes);
