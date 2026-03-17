@@ -48,16 +48,30 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
   const interpolatedRef = useRef({ currentTick: 0, tickRate: 1 });
 
   const tickBroadcast = useSelector((s: RootState) => s.sync.tickBroadcast);
+  const tickBroadcastRef = useRef(tickBroadcast);
+  useEffect(() => {
+    tickBroadcastRef.current = tickBroadcast;
+  }, [tickBroadcast]);
 
   const fetchSnapshot = useCallback(async () => {
+    const fetchStartedAt = Date.now();
     try {
       const info = await api.getTickInfo();
+      let tickRate = info.currentRate > 0 ? info.currentRate : 1;
+      let activeBoosts: ActiveBoost[] = info.activeBoosts ?? [];
+
+      const pending = tickBroadcastRef.current;
+      if (pending && pending.receivedAt >= fetchStartedAt) {
+        tickRate = pending.tickRate;
+        activeBoosts = pending.boosts;
+      }
+
       const snap: TickSnapshot = {
         currentTick: info.currentTick,
-        tickRate: info.currentRate > 0 ? info.currentRate : 1,
+        tickRate,
         serverTime: info.serverTime,
         fetchedAt: Date.now(),
-        activeBoosts: info.activeBoosts ?? [],
+        activeBoosts,
       };
       setSnapshot(snap);
       interpolatedRef.current = {
