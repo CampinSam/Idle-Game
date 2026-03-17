@@ -40,9 +40,10 @@ export class OpenLootBoxHandler implements CommandHandler {
     if (!lootboxDef) throw new NotFoundException(`LootboxDef "${lootboxDefId}" not found`);
     if (!lootboxDef.enabled) throw new BadRequestException('This lootbox is currently disabled');
 
+    const openNonce = crypto.randomBytes(4).toString('hex');
     const seed = crypto
       .createHash('sha256')
-      .update(`${itemInstanceId}${ctx.userId}`)
+      .update(`${itemInstanceId}${ctx.userId}${openNonce}`)
       .digest('hex');
 
     const seedNum = parseInt(seed.slice(0, 8), 16);
@@ -50,7 +51,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     const rng = {
       chance(p: number): boolean {
         _state = (_state * 1664525 + 1013904223) & 0xffffffff;
-        return (_state >>> 0) % 100 < p;
+        return ((_state >>> 0) / 0x100000000) < p;
       },
       nextInt(min: number, max: number): number {
         _state = (_state * 1664525 + 1013904223) & 0xffffffff;
@@ -99,7 +100,14 @@ export class OpenLootBoxHandler implements CommandHandler {
       await (ctx.tx as any).user.update({ where: { id: ctx.userId }, data: { flags: reqContext.userFlags as any } });
     }
 
-    await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
+    if ((item.quantity ?? 1) > 1) {
+      await (ctx.tx as any).itemInstance.update({
+        where: { id: itemInstanceId },
+        data: { quantity: { decrement: 1 } },
+      });
+    } else {
+      await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
+    }
 
     try {
       await this.telemetryService.record(
@@ -113,7 +121,9 @@ export class OpenLootBoxHandler implements CommandHandler {
     } catch (_) {}
 
     const pb = new PatchBuilder();
-    pb.deleteItem(itemInstanceId);
+    if ((item.quantity ?? 1) <= 1) {
+      pb.deleteItem(itemInstanceId);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
