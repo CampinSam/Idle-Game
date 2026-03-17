@@ -928,7 +928,6 @@ export class LocationSettlementService {
           effectiveProductionRates,
           productionBundles,
           netFlows,
-          lastSettledAt: new Date().toISOString(),
         },
       },
     });
