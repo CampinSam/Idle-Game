@@ -81,12 +81,11 @@ function PlayerPanel() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const search = async () => {
-    if (!query.trim()) return;
+  const search = useCallback(async (q = query) => {
     setLoading(true);
     setMsg(null);
     try {
-      const r = await adminApi.searchPlayers(query);
+      const r = await adminApi.searchPlayers(q);
       setResults(r);
       if (r.length === 0) setMsg({ text: 'No players found', type: 'error' });
     } catch (e: any) {
@@ -94,7 +93,9 @@ function PlayerPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query]);
+
+  useEffect(() => { search(''); }, []);
 
   const loadPlayer = async (id: string) => {
     setLoading(true);
@@ -118,10 +119,10 @@ function PlayerPanel() {
           placeholder="Search by username or email..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && search()}
+          onKeyDown={(e) => e.key === 'Enter' && search(query)}
           style={{ flex: 1, padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem' }}
         />
-        <button onClick={search} disabled={loading} className="btn-save" style={{ padding: '0.6rem 1.25rem' }}>
+        <button onClick={() => search(query)} disabled={loading} className="btn-save" style={{ padding: '0.6rem 1.25rem' }}>
           {loading ? '...' : 'Search'}
         </button>
       </div>
@@ -281,13 +282,14 @@ function NotificationPanel() {
   const [form, setForm] = useState({ type: 'admin_test', category: 'general', priority: 'normal', title: '', body: '' });
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const searchPlayer = async () => {
-    if (!playerQuery.trim()) return;
+  const searchPlayer = async (q = playerQuery) => {
     try {
-      const r = await adminApi.searchPlayers(playerQuery);
+      const r = await adminApi.searchPlayers(q);
       setPlayers(r);
     } catch {}
   };
+
+  useEffect(() => { searchPlayer(''); }, []);
 
   const send = async () => {
     if (!selectedPlayer) return;
@@ -327,10 +329,10 @@ function NotificationPanel() {
               placeholder="Search player..."
               value={playerQuery}
               onChange={(e) => setPlayerQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchPlayer()}
+              onKeyDown={(e) => e.key === 'Enter' && searchPlayer(playerQuery)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem' }}
             />
-            <button onClick={searchPlayer} className="btn-save" style={{ padding: '0.5rem 1rem' }}>Find</button>
+            <button onClick={() => searchPlayer(playerQuery)} className="btn-save" style={{ padding: '0.5rem 1rem' }}>Find</button>
           </div>
         )}
         {players.length > 0 && !selectedPlayer && (
@@ -405,13 +407,14 @@ function EventGiftPanel() {
   const [giftForm, setGiftForm] = useState({ giftDefId: '' });
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const searchPlayer = async () => {
-    if (!playerQuery.trim()) return;
+  const searchPlayer = async (q = playerQuery) => {
     try {
-      const r = await adminApi.searchPlayers(playerQuery);
+      const r = await adminApi.searchPlayers(q);
       setPlayers(r);
     } catch {}
   };
+
+  useEffect(() => { searchPlayer(''); }, []);
 
   const dispatchEvent = async () => {
     if (!selectedPlayer) return;
@@ -465,10 +468,10 @@ function EventGiftPanel() {
               placeholder="Search player..."
               value={playerQuery}
               onChange={(e) => setPlayerQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchPlayer()}
+              onKeyDown={(e) => e.key === 'Enter' && searchPlayer(playerQuery)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem' }}
             />
-            <button onClick={searchPlayer} className="btn-save" style={{ padding: '0.5rem 1rem' }}>Find</button>
+            <button onClick={() => searchPlayer(playerQuery)} className="btn-save" style={{ padding: '0.5rem 1rem' }}>Find</button>
           </div>
         )}
         {players.length > 0 && !selectedPlayer && (
