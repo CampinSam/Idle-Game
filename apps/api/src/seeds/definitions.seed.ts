@@ -33,6 +33,25 @@ async function upsertMany(prisma: any, model: string, rows: any[], transform?: (
   }
 }
 
+async function upsertManyForce(prisma: any, model: string, rows: any[], transform?: (r: any) => any) {
+  let seeded = 0;
+  const countBefore = await prisma[model].count();
+  for (const row of rows) {
+    const data = transform ? transform(row) : row;
+    const { id, ...rest } = data;
+    await prisma[model].upsert({
+      where: { id },
+      update: rest,
+      create: data,
+    });
+  }
+  const countAfter = await prisma[model].count();
+  seeded = countAfter - countBefore;
+  if (seeded > 0) {
+    logger.log(`Seeded ${seeded} ${model} records`);
+  }
+}
+
 export async function seedDefinitions(prisma: any) {
   const defs = loadJson('definitions.json');
   const itemDefs = loadJson('item-defs.json');
@@ -118,19 +137,19 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.lootboxDefs) {
-    await upsertMany(prisma, 'lootboxDef', defs.lootboxDefs);
+    await upsertManyForce(prisma, 'lootboxDef', defs.lootboxDefs);
   }
 
   if (defs.checkInDefs) {
-    await upsertMany(prisma, 'checkInDef', defs.checkInDefs);
+    await upsertManyForce(prisma, 'checkInDef', defs.checkInDefs);
   }
 
   if (defs.questDefs) {
-    await upsertMany(prisma, 'questDef', defs.questDefs);
+    await upsertManyForce(prisma, 'questDef', defs.questDefs);
   }
 
   if (defs.modalDefs) {
-    await upsertMany(prisma, 'modalDef', defs.modalDefs);
+    await upsertManyForce(prisma, 'modalDef', defs.modalDefs);
   }
 
   logger.log('Definition seeding complete');

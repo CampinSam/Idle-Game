@@ -4164,7 +4164,7 @@
       "sortOrder": 0,
       "objectives": [
         {
-          "eventType": "mission_completed",
+          "eventType": "mission_complete",
           "target": 1,
           "label": "Complete 1 mission"
         }
@@ -4181,16 +4181,15 @@
     {
       "id": "quest_iron_collector",
       "name": "Iron Collector",
-      "description": "Gather Iron Ore from your outpost activities to stock your forge.",
+      "description": "Open lootboxes to gather rare materials and fill your stockpile.",
       "category": "gathering",
       "version": 1,
       "sortOrder": 1,
       "objectives": [
         {
-          "eventType": "item_collected",
-          "key": "mat_iron_ore",
-          "target": 10,
-          "label": "Collect 10 Iron Ore"
+          "eventType": "lootbox_opened",
+          "target": 3,
+          "label": "Open 3 lootboxes"
         }
       ],
       "rewardSpec": {
@@ -4205,20 +4204,20 @@
     {
       "id": "quest_outpost_builder",
       "name": "Outpost Builder",
-      "description": "Prove your dedication by completing missions and collecting loot. A true keeper never rests.",
+      "description": "Prove your dedication by completing missions and checking in daily. A true keeper never rests.",
       "category": "progression",
       "version": 1,
       "sortOrder": 2,
       "objectives": [
         {
-          "eventType": "mission_completed",
+          "eventType": "mission_complete",
           "target": 5,
           "label": "Complete 5 missions"
         },
         {
-          "eventType": "lootbox_opened",
-          "target": 1,
-          "label": "Open 1 lootbox"
+          "eventType": "checkin_completed",
+          "target": 3,
+          "label": "Check in 3 days"
         }
       ],
       "rewardSpec": {
@@ -4239,27 +4238,28 @@
       "version": 1,
       "spec": {
         "version": 1,
+        "id": "modal_welcome",
         "kind": "announcement",
-        "dismiss": { "backdrop": true, "x": true },
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
         "header": {
           "title": "Welcome to Derp Universe!",
           "subtitle": "Your adventure begins now."
         },
         "body": [
           {
-            "type": "text",
-            "content": "You've arrived at the edge of a strange and wondrous world. Gather resources, raise your keepers, and uncover the secrets of the Derp Universe."
-          },
-          {
-            "type": "text",
-            "content": "Start by completing your first mission and claiming your welcome gift."
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "You've arrived at the edge of a strange and wondrous world. Gather resources, raise your keepers, and uncover the secrets of the Derp Universe." }] },
+              { "t": "p", "c": [{ "t": "text", "v": "Start by completing your first mission and claiming your welcome gift." }] }
+            ]
           }
         ],
         "buttons": [
           {
+            "id": "btn_lets_go",
             "label": "Let's Go!",
-            "action": { "type": "dismiss" },
-            "style": "primary"
+            "variant": "primary",
+            "action": { "type": "CLOSE_MODAL" }
           }
         ]
       },
@@ -4272,32 +4272,34 @@
       "version": 1,
       "spec": {
         "version": 1,
+        "id": "modal_season_intro",
         "kind": "announcement",
-        "dismiss": { "backdrop": true, "x": true },
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
         "header": {
           "title": "Season 1: Frost Rising",
           "subtitle": "The cold winds bring new opportunities."
         },
         "body": [
           {
-            "type": "text",
-            "content": "A new season has begun. Earn Frost Coins through missions and events, then spend them in the seasonal store before time runs out."
-          },
-          {
-            "type": "text",
-            "content": "Complete the seasonal check-in track for exclusive rewards only available this season."
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "A new season has begun. Earn Frost Coins through missions and events, then spend them in the seasonal store before time runs out." }] },
+              { "t": "p", "c": [{ "t": "text", "v": "Complete the seasonal check-in track for exclusive rewards only available this season." }] }
+            ]
           }
         ],
         "buttons": [
           {
-            "label": "View Season Pass",
-            "action": { "type": "navigate", "route": "/store" },
-            "style": "primary"
+            "id": "btn_view_store",
+            "label": "View Season Store",
+            "variant": "primary",
+            "action": { "type": "NAVIGATE", "route": "/store" }
           },
           {
+            "id": "btn_later",
             "label": "Maybe Later",
-            "action": { "type": "dismiss" },
-            "style": "secondary"
+            "variant": "secondary",
+            "action": { "type": "CLOSE_MODAL" }
           }
         ]
       },
@@ -4310,27 +4312,33 @@
       "version": 1,
       "spec": {
         "version": 1,
+        "id": "modal_mission_complete",
         "kind": "reward",
-        "dismiss": { "backdrop": false, "x": false },
+        "dismiss": { "backdrop": false, "x": false, "escape": false },
         "header": {
           "title": "Mission Complete!",
-          "subtitle": "{{mission.name}}"
+          "subtitle": "Your keepers return victorious."
         },
         "body": [
           {
-            "type": "text",
-            "content": "Your keepers return victorious. The rewards have been added to your inventory."
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "The rewards have been added to your inventory." }] }
+            ]
           },
           {
-            "type": "rewards",
-            "source": "context.rewards"
+            "type": "rewardsList",
+            "title": "Rewards",
+            "items": [],
+            "from": "context.rewards"
           }
         ],
         "buttons": [
           {
+            "id": "btn_claim",
             "label": "Claim Rewards",
-            "action": { "type": "dismiss" },
-            "style": "primary"
+            "variant": "primary",
+            "action": { "type": "CLOSE_MODAL" }
           }
         ]
       },
