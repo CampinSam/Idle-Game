@@ -3740,6 +3740,186 @@
       "enabled": true,
       "instant": true,
       "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_daily_arcanium_sm",
+      "name": "Daily Login Reward",
+      "version": 1,
+      "presentation": {
+        "body": "A modest supply of Arcanium for your continued loyalty.",
+        "title": "Daily Check-In Reward",
+        "rarity": "COMMON",
+        "iconKey": "soft_arcanium"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 100,
+        "currencyId": "soft_arcanium"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_daily_arcanium_md",
+      "name": "Daily Login Reward",
+      "version": 1,
+      "presentation": {
+        "body": "Your streak is paying off — here's a healthy supply of Arcanium.",
+        "title": "Daily Check-In Reward",
+        "rarity": "UNCOMMON",
+        "iconKey": "soft_arcanium"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 200,
+        "currencyId": "soft_arcanium"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_daily_arcanium_lg",
+      "name": "Week Milestone Reward",
+      "version": 1,
+      "presentation": {
+        "body": "You completed a full week of daily logins! A generous cache of Arcanium is yours.",
+        "title": "7-Day Milestone!",
+        "rarity": "RARE",
+        "iconKey": "soft_arcanium"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 500,
+        "currencyId": "soft_arcanium"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_weekly_essence_sm",
+      "name": "Weekly Bonus Reward",
+      "version": 1,
+      "presentation": {
+        "body": "Essence for your dedication to the weekly track.",
+        "title": "Weekly Bonus",
+        "rarity": "UNCOMMON",
+        "iconKey": "essence"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 5,
+        "currencyId": "hard_essence"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_weekly_essence_md",
+      "name": "Weekly Bonus Reward",
+      "version": 1,
+      "presentation": {
+        "body": "Your streak is climbing — here's a solid Essence reward.",
+        "title": "Weekly Bonus",
+        "rarity": "RARE",
+        "iconKey": "essence"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 10,
+        "currencyId": "hard_essence"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_weekly_gems",
+      "name": "Weekly Completion Bonus",
+      "version": 1,
+      "presentation": {
+        "body": "You maintained a perfect 7-day streak! Gems are your reward.",
+        "title": "Weekly Streak Complete!",
+        "rarity": "EPIC",
+        "iconKey": "gems"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 20,
+        "currencyId": "premium_gems"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_seasonal_frost_sm",
+      "name": "Seasonal Check-In Reward",
+      "version": 1,
+      "presentation": {
+        "body": "Frost Coins for braving the cold and checking in today.",
+        "title": "Seasonal Reward",
+        "rarity": "UNCOMMON",
+        "iconKey": "frost_coin"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 20,
+        "currencyId": "season_frost_coin"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_seasonal_frost_md",
+      "name": "Seasonal Check-In Reward",
+      "version": 1,
+      "presentation": {
+        "body": "The frost grows deeper — so do your rewards.",
+        "title": "Seasonal Reward",
+        "rarity": "RARE",
+        "iconKey": "frost_coin"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 40,
+        "currencyId": "season_frost_coin"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
+    },
+    {
+      "id": "gift_checkin_seasonal_frost_lg",
+      "name": "Seasonal Milestone Reward",
+      "version": 1,
+      "presentation": {
+        "body": "A full cycle of seasonal check-ins complete! The season rewards your loyalty with a bounty of Frost Coins.",
+        "title": "Seasonal Milestone!",
+        "rarity": "EPIC",
+        "iconKey": "frost_coin"
+      },
+      "claimRules": {},
+      "rewardSpec": {
+        "type": "currency",
+        "amount": 100,
+        "currencyId": "season_frost_coin"
+      },
+      "enabled": true,
+      "instant": true,
+      "modalDefId": null
     }
   ],
   "shopItemDefs": [
@@ -4099,57 +4279,57 @@
     {
       "id": "checkin_daily_login",
       "name": "Daily Login Track",
-      "description": "Log in every day for 7 days to earn escalating rewards. Streaks reset on miss.",
+      "description": "Log in every day for 7 days to earn escalating Arcanium rewards. A milestone bonus awaits on day 7.",
       "cycleLength": 7,
       "frequency": { "type": "daily" },
       "requireStreak": false,
       "allowReclaim": false,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_welcome_gems" },
-        { "day": 1, "giftDefId": "gift_welcome_gems" },
-        { "day": 2, "giftDefId": "gift_welcome_gems" },
-        { "day": 3, "giftDefId": "gift_welcome_gems" },
-        { "day": 4, "giftDefId": "gift_welcome_gems" },
-        { "day": 5, "giftDefId": "gift_welcome_gems" },
-        { "day": 6, "giftDefId": "gift_welcome_gems" }
+        { "day": 0, "giftDefId": "gift_checkin_daily_arcanium_sm" },
+        { "day": 1, "giftDefId": "gift_checkin_daily_arcanium_sm" },
+        { "day": 2, "giftDefId": "gift_checkin_daily_arcanium_sm" },
+        { "day": 3, "giftDefId": "gift_checkin_daily_arcanium_md" },
+        { "day": 4, "giftDefId": "gift_checkin_daily_arcanium_md" },
+        { "day": 5, "giftDefId": "gift_checkin_daily_arcanium_md" },
+        { "day": 6, "giftDefId": "gift_checkin_daily_arcanium_lg" }
       ],
       "enabled": true
     },
     {
       "id": "checkin_weekly_bonus",
       "name": "Weekly Bonus Track",
-      "description": "Complete 7 days of weekly check-ins for a premium reward at the end of the cycle.",
+      "description": "Maintain a 7-day streak for escalating Essence rewards and a Gem bonus on the final day.",
       "cycleLength": 7,
       "frequency": { "type": "daily" },
       "requireStreak": true,
       "allowReclaim": true,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_welcome_gems" },
-        { "day": 1, "giftDefId": "gift_welcome_gems" },
-        { "day": 2, "giftDefId": "gift_welcome_gems" },
-        { "day": 3, "giftDefId": "gift_welcome_gems" },
-        { "day": 4, "giftDefId": "gift_welcome_gems" },
-        { "day": 5, "giftDefId": "gift_welcome_gems" },
-        { "day": 6, "giftDefId": "gift_welcome_gems" }
+        { "day": 0, "giftDefId": "gift_checkin_weekly_essence_sm" },
+        { "day": 1, "giftDefId": "gift_checkin_weekly_essence_sm" },
+        { "day": 2, "giftDefId": "gift_checkin_weekly_essence_sm" },
+        { "day": 3, "giftDefId": "gift_checkin_weekly_essence_md" },
+        { "day": 4, "giftDefId": "gift_checkin_weekly_essence_md" },
+        { "day": 5, "giftDefId": "gift_checkin_weekly_essence_md" },
+        { "day": 6, "giftDefId": "gift_checkin_weekly_gems" }
       ],
       "enabled": true
     },
     {
       "id": "checkin_seasonal_track",
       "name": "Seasonal Check-In",
-      "description": "A special seasonal check-in track. Complete all days before the season ends for bonus loot.",
+      "description": "A special seasonal check-in track. Earn Frost Coins daily and a milestone haul on day 7.",
       "cycleLength": 7,
       "frequency": { "type": "daily" },
       "requireStreak": false,
       "allowReclaim": false,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_welcome_gems" },
-        { "day": 1, "giftDefId": "gift_welcome_gems" },
-        { "day": 2, "giftDefId": "gift_welcome_gems" },
-        { "day": 3, "giftDefId": "gift_welcome_gems" },
-        { "day": 4, "giftDefId": "gift_welcome_gems" },
-        { "day": 5, "giftDefId": "gift_welcome_gems" },
-        { "day": 6, "giftDefId": "gift_welcome_gems" }
+        { "day": 0, "giftDefId": "gift_checkin_seasonal_frost_sm" },
+        { "day": 1, "giftDefId": "gift_checkin_seasonal_frost_sm" },
+        { "day": 2, "giftDefId": "gift_checkin_seasonal_frost_sm" },
+        { "day": 3, "giftDefId": "gift_checkin_seasonal_frost_md" },
+        { "day": 4, "giftDefId": "gift_checkin_seasonal_frost_md" },
+        { "day": 5, "giftDefId": "gift_checkin_seasonal_frost_md" },
+        { "day": 6, "giftDefId": "gift_checkin_seasonal_frost_lg" }
       ],
       "enabled": true
     }

@@ -145,9 +145,8 @@ export class CheckInService {
         );
         giftId = gift.id;
       } catch (err: any) {
-        if (!err?.message?.includes('limit')) {
-          this.logger.warn(`Failed to issue check-in gift for ${def.id}: ${err}`);
-        }
+        this.logger.warn(`Failed to issue check-in gift for track ${def.id} streak ${streak}: ${err}`);
+        return null;
       }
     }
 
