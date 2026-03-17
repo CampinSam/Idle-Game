@@ -184,6 +184,47 @@ export default function MissionsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEntityPicker]);
 
+  const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
+
+  const categories = useMemo(() => {
+    const catMap = new Map<string, { id: string; name: string; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number }>();
+
+    for (const catDef of missionCategoryDefs) {
+      const defs = missionDefs.filter((d: any) => (d.missionCategoryDefId || d.type) === catDef.id);
+      const locked = !meetsNonTeamRequirements(catDef);
+      catMap.set(catDef.id, {
+        id: catDef.id,
+        name: catDef.name,
+        display: resolveCategoryDisplay(catDef),
+        tags: catDef.tags || [],
+        sortOrder: catDef.sortOrder ?? 0,
+        locked,
+        enabled: catDef.enabled ?? true,
+        count: defs.length,
+      });
+    }
+
+    return Array.from(catMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [missionDefs, missionCategoryDefs, profile]);
+
+  const teamMP = useMemo(() => {
+    return selectedEntities.reduce((sum, id) => {
+      const entity = entities.find((b: any) => b.id === id);
+      return sum + (entity ? getEntityMP(entity) : 0);
+    }, 0);
+  }, [selectedEntities, entities]);
+
+  const successChance = useMemo(() => {
+    if (!selectedDef || selectedEntities.length === 0) return 0;
+    const difficulty = selectedDef.difficulty || 100;
+    const minChance = selectedDef.minSuccessChance ?? 0;
+    const maxChance = selectedDef.maxSuccessChance ?? 100;
+    const raw = teamMP / (teamMP + difficulty);
+    return Math.round(Math.min(Math.max(raw * 100, minChance), maxChance));
+  }, [teamMP, selectedDef, selectedEntities]);
+
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
   if (syncStatus === 'disconnected') return <MissionsPageSkeleton />;
 
   const idleEntities = entities.filter((b: any) => b.status === 'idle');
@@ -212,27 +253,6 @@ export default function MissionsPage() {
     setShowEntityPicker(false);
     setActiveSlotIndex(null);
   };
-
-  const categories = useMemo(() => {
-    const catMap = new Map<string, { id: string; name: string; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number }>();
-
-    for (const catDef of missionCategoryDefs) {
-      const defs = missionDefs.filter((d: any) => (d.missionCategoryDefId || d.type) === catDef.id);
-      const locked = !meetsNonTeamRequirements(catDef);
-      catMap.set(catDef.id, {
-        id: catDef.id,
-        name: catDef.name,
-        display: resolveCategoryDisplay(catDef),
-        tags: catDef.tags || [],
-        sortOrder: catDef.sortOrder ?? 0,
-        locked,
-        enabled: catDef.enabled ?? true,
-        count: defs.length,
-      });
-    }
-
-    return Array.from(catMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [missionDefs, missionCategoryDefs, profile]);
 
   const handleSelectCategory = (catId: string) => {
     setSelectedCategory(catId);
@@ -264,26 +284,9 @@ export default function MissionsPage() {
     setActiveSlotIndex(null);
   };
 
-  const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
   const categoryDefs = selectedCategory ? missionDefs.filter((d: any) => (d.missionCategoryDefId || d.type) === selectedCategory).sort((a: any, b: any) => (a.id || '').localeCompare(b.id || '')) : [];
   const currentCat = categories.find((c) => c.id === selectedCategory);
   const catDisplay = currentCat?.display || DEFAULT_DISPLAY;
-
-  const teamMP = useMemo(() => {
-    return selectedEntities.reduce((sum, id) => {
-      const entity = entities.find((b: any) => b.id === id);
-      return sum + (entity ? getEntityMP(entity) : 0);
-    }, 0);
-  }, [selectedEntities, entities]);
-
-  const successChance = useMemo(() => {
-    if (!selectedDef || selectedEntities.length === 0) return 0;
-    const difficulty = selectedDef.difficulty || 100;
-    const minChance = selectedDef.minSuccessChance ?? 0;
-    const maxChance = selectedDef.maxSuccessChance ?? 100;
-    const raw = teamMP / (teamMP + difficulty);
-    return Math.round(Math.min(Math.max(raw * 100, minChance), maxChance));
-  }, [teamMP, selectedDef, selectedEntities]);
 
   const handleStart = async () => {
     if (!selectedMission) return;
@@ -295,8 +298,6 @@ export default function MissionsPage() {
       setError(e.message || 'Failed to start mission');
     }
   };
-
-  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const handleComplete = async (missionId: string) => {
     setError('');

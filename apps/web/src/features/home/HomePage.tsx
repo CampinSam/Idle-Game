@@ -51,6 +51,18 @@ export default function HomePage() {
     }
   }, [pushModal]);
 
+  const getJobRemaining = useCallback((j: any): number => {
+    if (j.startTick == null || j.durationTicks == null) return Infinity;
+    const timer = createCountdownTimer({ startTick: j.startTick, durationTicks: j.durationTicks });
+    const remainingTicks = timer.getValue(currentTick);
+    return tickRate > 0 ? (remainingTicks / tickRate) * 1000 : Infinity;
+  }, [currentTick, tickRate]);
+
+  const { completedJobs, inProgressJobs } = useMemo(() => ({
+    completedJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) <= 0),
+    inProgressJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) > 0),
+  }), [allActiveJobs, getJobRemaining]);
+
   if (!profile) return <HomePageSkeleton />;
 
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
@@ -71,25 +83,12 @@ export default function HomePage() {
   const idleEntities = entities.filter((b: any) => b.status === 'idle').length;
   const busyEntities = entities.length - idleEntities;
 
-  const getJobRemaining = (j: any): number => {
-    if (j.startTick == null || j.durationTicks == null) return Infinity;
-    const timer = createCountdownTimer({ startTick: j.startTick, durationTicks: j.durationTicks });
-    const remainingTicks = timer.getValue(currentTick);
-    return tickRate > 0 ? (remainingTicks / tickRate) * 1000 : Infinity;
-  };
-
   const getJobIcon = (type: string) => {
     if (type === 'MissionJob') return '🗺️';
     if (type === 'CraftingJob') return '⚒️';
     if (type === 'BuildingJob') return '🏗️';
     return '⏱️';
   };
-
-  const { completedJobs, inProgressJobs } = useMemo(() => ({
-    completedJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) <= 0),
-    inProgressJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) > 0),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [allActiveJobs, currentTick, tickRate]);
 
   const handleClaim = async (missionId: string) => {
     setClaimError('');
