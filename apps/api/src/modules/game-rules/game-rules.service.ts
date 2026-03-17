@@ -275,7 +275,7 @@ export class GameRulesService {
               rollAmount(item.minChoices ?? 1, item.maxChoices ?? item.minChoices ?? 1),
             );
             const picks = pickWeighted(pool, count);
-            resolveItems(picks);
+            resolveItems(picks.map((p: any) => ({ ...p, odds: undefined })));
             applyText(pickWeightedText(collectTexts(picks)));
           } else {
             resolveItems(item.bundle);

@@ -4237,11 +4237,17 @@
       "description": "A sturdy chest filled with everyday supplies. Contains resources useful to any keeper.",
       "version": 1,
       "outcomes": [
-        { "type": "currency", "key": "soft_arcanium", "amount": 50, "odds": 40 },
-        { "type": "currency", "key": "soft_arcanium", "amount": 100, "odds": 25 },
-        { "type": "currency", "key": "hard_essence", "amount": 5, "odds": 20 },
-        { "type": "item", "key": "mat_iron_ore", "amount": 3, "odds": 10 },
-        { "type": "item", "key": "mat_feather_dust", "amount": 2, "odds": 5 }
+        {
+          "bundle": [
+            { "type": "currency", "key": "soft_arcanium", "amount": 50, "odds": 40 },
+            { "type": "currency", "key": "soft_arcanium", "amount": 100, "odds": 25 },
+            { "type": "currency", "key": "hard_essence", "amount": 5, "odds": 20 },
+            { "type": "item", "key": "mat_iron_ore", "amount": 3, "odds": 10 },
+            { "type": "item", "key": "mat_feather_dust", "amount": 2, "odds": 5 }
+          ],
+          "minChoices": 1,
+          "maxChoices": 1
+        }
       ],
       "enabled": true
     },
@@ -4251,11 +4257,17 @@
       "description": "A reinforced crate stamped with arcane sigils. Rare materials and premium currency await inside.",
       "version": 1,
       "outcomes": [
-        { "type": "currency", "key": "hard_essence", "amount": 15, "odds": 35 },
-        { "type": "currency", "key": "premium_gems", "amount": 5, "odds": 25 },
-        { "type": "currency", "key": "premium_gems", "amount": 15, "odds": 15 },
-        { "type": "item", "key": "mat_mana_shard", "amount": 2, "odds": 15 },
-        { "type": "item", "key": "mat_starlight_dust", "amount": 1, "odds": 10 }
+        {
+          "bundle": [
+            { "type": "currency", "key": "hard_essence", "amount": 15, "odds": 35 },
+            { "type": "currency", "key": "premium_gems", "amount": 5, "odds": 25 },
+            { "type": "currency", "key": "premium_gems", "amount": 15, "odds": 15 },
+            { "type": "item", "key": "mat_mana_shard", "amount": 2, "odds": 15 },
+            { "type": "item", "key": "mat_starlight_dust", "amount": 1, "odds": 10 }
+          ],
+          "minChoices": 1,
+          "maxChoices": 1
+        }
       ],
       "enabled": true
     },
@@ -4265,12 +4277,18 @@
       "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
       "version": 1,
       "outcomes": [
-        { "type": "currency", "key": "premium_gems", "amount": 10, "odds": 30 },
-        { "type": "currency", "key": "premium_gems", "amount": 25, "odds": 20 },
-        { "type": "currency", "key": "hard_essence", "amount": 30, "odds": 20 },
-        { "type": "item", "key": "mat_void_essence", "amount": 1, "odds": 15 },
-        { "type": "item", "key": "mat_crystal_bloom", "amount": 2, "odds": 10 },
-        { "type": "item", "key": "gear_mana_ring", "amount": 1, "odds": 5 }
+        {
+          "bundle": [
+            { "type": "currency", "key": "premium_gems", "amount": 10, "odds": 30 },
+            { "type": "currency", "key": "premium_gems", "amount": 25, "odds": 20 },
+            { "type": "currency", "key": "hard_essence", "amount": 30, "odds": 20 },
+            { "type": "item", "key": "mat_void_essence", "amount": 1, "odds": 15 },
+            { "type": "item", "key": "mat_crystal_bloom", "amount": 2, "odds": 10 },
+            { "type": "item", "key": "gear_mana_ring", "amount": 1, "odds": 5 }
+          ],
+          "minChoices": 1,
+          "maxChoices": 1
+        }
       ],
       "enabled": true
     }
