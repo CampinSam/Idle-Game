@@ -73,8 +73,8 @@ export default function LocationDetailPage() {
     setClaiming(true);
     setLootPopItems([]);
 
-    const snapshot: LootPopItem[] = resourceSummaries
-      .map((res) => {
+    const snapshot = resourceSummaries
+      .map((res): LootPopItem | null => {
         const amount = res.currentAmount;
         const floored = Math.floor(amount);
         if (floored < 1) return null;
@@ -83,7 +83,7 @@ export default function LocationDetailPage() {
           key: res.key,
           icon: <GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} />,
           label: `+${formatAmount(floored)} ${name}`,
-        } satisfies LootPopItem;
+        };
       })
       .filter((item): item is LootPopItem => item !== null);
 
