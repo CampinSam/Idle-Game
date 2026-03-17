@@ -312,4 +312,9 @@ export class NftCollectionService {
       };
     });
   }
+
+  async seedNftEntities(): Promise<{ skipped: boolean; inserted: number }> {
+    const { seedNftEntities } = await import('../../seeds/nft-entities.seed');
+    return seedNftEntities(this.prisma);
+  }
 }

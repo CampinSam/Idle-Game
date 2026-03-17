@@ -12,6 +12,15 @@ function loadNftEntities(): any[] {
 }
 
 export async function seedNftEntities(prisma: any): Promise<{ skipped: boolean; inserted: number }> {
+  const existing = await prisma.entity.count({
+    where: { nftCollectionDefId: { not: null } },
+  });
+
+  if (existing > 0) {
+    logger.log(`NFT entities already exist (${existing} found) — skipping seed`);
+    return { skipped: true, inserted: 0 };
+  }
+
   let entities: any[];
   try {
     entities = loadNftEntities();
@@ -20,7 +29,7 @@ export async function seedNftEntities(prisma: any): Promise<{ skipped: boolean; 
     return { skipped: true, inserted: 0 };
   }
 
-  logger.log(`Loading ${entities.length} NFT entities from seed data (skipDuplicates)...`);
+  logger.log(`Loading ${entities.length} NFT entities from seed data...`);
 
   let totalInserted = 0;
 
