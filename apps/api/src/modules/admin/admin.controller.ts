@@ -7,6 +7,7 @@ import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
+import { NftCollectionService } from '../nft/nft-collection.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 
@@ -22,6 +23,7 @@ export class AdminController {
     private eventService: EventService,
     private giftService: GiftService,
     private settlementService: LocationSettlementService,
+    private nftCollectionService: NftCollectionService,
     private prisma: PrismaService,
   ) {}
 
@@ -210,6 +212,11 @@ export class AdminController {
   @Get('jobs/recent')
   getRecentJobs(@Query('limit') limit?: string) {
     return this.adminService.getRecentJobs(Math.min(parseInt(limit || '10', 10) || 10, 50));
+  }
+
+  @Post('seeds/nft-entities')
+  seedNftEntities() {
+    return this.nftCollectionService.seedNftEntities();
   }
 
   @Get(':table')

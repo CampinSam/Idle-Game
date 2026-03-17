@@ -19,13 +19,10 @@ async function upsertMany(prisma: any, model: string, rows: any[], transform?: (
   for (const row of rows) {
     const data = transform ? transform(row) : row;
     const { id, ...rest } = data;
-    try {
-      await prisma[model].create({ data });
-      seeded++;
-    } catch (e: any) {
-      if (e.code === 'P2002') continue;
-      throw e;
-    }
+    const existing = await prisma[model].findUnique({ where: { id } });
+    if (existing) continue;
+    await prisma[model].create({ data });
+    seeded++;
   }
   if (seeded > 0) {
     logger.log(`Seeded ${seeded} ${model} records`);

@@ -69,3 +69,17 @@ export async function seedNftEntities(prisma: any): Promise<{ skipped: boolean; 
   logger.log(`NFT entity seeding complete: ${totalInserted} inserted`);
   return { skipped: false, inserted: totalInserted };
 }
+
+if (require.main === module) {
+  const { PrismaClient } = require('@prisma/client');
+  const prisma = new PrismaClient();
+  seedNftEntities(prisma)
+    .then((result) => {
+      console.log('Result:', JSON.stringify(result));
+      return prisma.$disconnect();
+    })
+    .catch((err: any) => {
+      console.error('Seed failed:', err);
+      return prisma.$disconnect().then(() => process.exit(1));
+    });
+}

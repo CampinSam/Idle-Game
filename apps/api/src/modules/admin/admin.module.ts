@@ -5,11 +5,12 @@ import { NotificationModule } from '../notification/notification.module';
 import { EventModule } from '../event/event.module';
 import { GiftModule } from '../gift/gift.module';
 import { LocationModule } from '../location/location.module';
+import { NftModule } from '../nft/nft.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule],
+  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule],
   controllers: [AdminController],
   providers: [AdminService],
 })
