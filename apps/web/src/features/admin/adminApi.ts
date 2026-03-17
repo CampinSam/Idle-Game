@@ -64,4 +64,26 @@ export const adminApi = {
     adminRequest<any>('/events/dispatch', { method: 'POST', body: JSON.stringify(data) }),
   sendGift: (data: { userId: string; giftDefId: string }) =>
     adminRequest<any>('/gifts/send', { method: 'POST', body: JSON.stringify(data) }),
+
+  getPlayerJobs: (id: string) => adminRequest<any[]>(`/players/${id}/jobs`),
+  forceCompleteJob: (id: string, jobId: string) =>
+    adminRequest<any>(`/players/${id}/jobs/${jobId}/force-complete`, { method: 'POST' }),
+
+  grantItems: (id: string, itemId: string, quantity: number) =>
+    adminRequest<any>(`/players/${id}/items`, { method: 'POST', body: JSON.stringify({ itemId, quantity }) }),
+  getPlayerItems: (id: string) => adminRequest<any[]>(`/players/${id}/items`),
+  listItemDefs: () => adminRequest<any[]>('/item-defs'),
+
+  updatePlayerEntity: (id: string, entityId: string, data: { stats?: any; level?: number; name?: string }) =>
+    adminRequest<any>(`/players/${id}/entities/${entityId}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  forceSettleLocation: (id: string, locationId: string) =>
+    adminRequest<any>(`/players/${id}/locations/${locationId}/settle`, { method: 'POST' }),
+
+  getPlayerEffects: (id: string) => adminRequest<any[]>(`/players/${id}/effects`),
+  deletePlayerEffect: (id: string, effectId: string) =>
+    adminRequest<any>(`/players/${id}/effects/${effectId}`, { method: 'DELETE' }),
+
+  getPlayerTelemetry: (id: string, limit = 30) =>
+    adminRequest<any[]>(`/players/${id}/telemetry?limit=${limit}`),
 };

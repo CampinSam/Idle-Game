@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
+import { GodModePanel } from './GodModePanel';
 import './admin.css';
 
 const DEV_ADMIN_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
@@ -79,8 +80,6 @@ function PlayerPanel() {
   const [player, setPlayer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [editFields, setEditFields] = useState<any>({});
-  const [currencyEdits, setCurrencyEdits] = useState<Record<string, string>>({});
 
   const search = async () => {
     if (!query.trim()) return;
@@ -103,65 +102,10 @@ function PlayerPanel() {
     try {
       const p = await adminApi.getPlayer(id);
       setPlayer(p);
-      setEditFields({
-        keeperLevel: p.keeperLevel,
-        keeperXp: String(p.keeperXp || '0'),
-        prestigeTokens: p.prestigeTokens || 0,
-        flags: JSON.stringify(p.flags || {}, null, 2),
-      });
-      const ce: Record<string, string> = {};
-      (p.currencyBalances || []).forEach((cb: any) => {
-        ce[cb.currencyId] = String(cb.balance);
-      });
-      setCurrencyEdits(ce);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const savePlayer = async () => {
-    if (!player) return;
-    setMsg(null);
-    try {
-      let flags = player.flags;
-      try { flags = JSON.parse(editFields.flags); } catch {}
-      await adminApi.updatePlayer(player.id, {
-        keeperLevel: Number(editFields.keeperLevel),
-        keeperXp: editFields.keeperXp,
-        prestigeTokens: Number(editFields.prestigeTokens),
-        flags,
-      });
-      setMsg({ text: 'Player updated', type: 'success' });
-      await loadPlayer(player.id);
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
-    }
-  };
-
-  const saveCurrency = async (currencyId: string) => {
-    if (!player) return;
-    setMsg(null);
-    try {
-      await adminApi.setPlayerCurrency(player.id, currencyId, currencyEdits[currencyId] || '0');
-      setMsg({ text: `Currency ${currencyId} updated`, type: 'success' });
-      await loadPlayer(player.id);
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
-    }
-  };
-
-  const resetPlayer = async () => {
-    if (!player) return;
-    if (!confirm(`Reset ${player.username}? This will delete ALL game data for this player (entities, locations, items, currencies, jobs, notifications). The account itself will remain.`)) return;
-    setMsg(null);
-    try {
-      await adminApi.resetPlayer(player.id);
-      setMsg({ text: 'Player reset to fresh state', type: 'success' });
-      await loadPlayer(player.id);
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
     }
   };
 
@@ -202,84 +146,14 @@ function PlayerPanel() {
       )}
 
       {player && (
-        <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ margin: 0, color: '#e0e0ff' }}>{player.username}</h3>
-              <div style={{ color: '#888', fontSize: '0.8rem' }}>{player.email} | ID: {player.id}</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setPlayer(null); setMsg(null); }} className="btn-cancel" style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>Back</button>
-              <button onClick={resetPlayer} style={{
-                padding: '0.4rem 0.75rem', border: '1px solid #ff6b6b', borderRadius: 6,
-                background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
-              }}>Reset Account</button>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div className="form-field">
-              <label>Keeper Level</label>
-              <input type="number" value={editFields.keeperLevel || ''} onChange={(e) => setEditFields({ ...editFields, keeperLevel: e.target.value })} />
-            </div>
-            <div className="form-field">
-              <label>Keeper XP</label>
-              <input type="text" value={editFields.keeperXp || ''} onChange={(e) => setEditFields({ ...editFields, keeperXp: e.target.value })} />
-            </div>
-            <div className="form-field">
-              <label>Prestige Tokens</label>
-              <input type="number" value={editFields.prestigeTokens || ''} onChange={(e) => setEditFields({ ...editFields, prestigeTokens: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="form-field" style={{ marginBottom: '1rem' }}>
-            <label>Flags (JSON)</label>
-            <textarea
-              rows={4}
-              value={editFields.flags || '{}'}
-              onChange={(e) => setEditFields({ ...editFields, flags: e.target.value })}
-              style={{ width: '100%', padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#a0e0a0', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <button onClick={savePlayer} className="btn-save" style={{ marginBottom: '1.25rem' }}>Save Player</button>
-
-          <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', borderTop: '1px solid #2a2a4e', paddingTop: '1rem' }}>Currencies</h4>
-          {(player.currencyBalances || []).length === 0 && <div style={{ color: '#666', fontStyle: 'italic' }}>No currencies</div>}
-          {(player.currencyBalances || []).map((cb: any) => (
-            <div key={cb.currencyId} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ minWidth: 160, fontSize: '0.85rem', color: '#b0b0d0' }}>{cb.currencyId}</span>
-              <input
-                type="text"
-                value={currencyEdits[cb.currencyId] || ''}
-                onChange={(e) => setCurrencyEdits({ ...currencyEdits, [cb.currencyId]: e.target.value })}
-                style={{ flex: 1, padding: '0.4rem', border: '1px solid #333', borderRadius: 4, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem' }}
-              />
-              <button onClick={() => saveCurrency(cb.currencyId)} className="btn-edit" style={{ padding: '0.35rem 0.6rem' }}>Set</button>
-            </div>
-          ))}
-
-          <h4 style={{ margin: '1rem 0 0.5rem', color: '#b8b8ff', borderTop: '1px solid #2a2a4e', paddingTop: '1rem' }}>
-            Entities ({(player.entities || []).length})
-          </h4>
-          {(player.entities || []).map((e: any) => (
-            <div key={e.id} style={{ fontSize: '0.85rem', color: '#b0b0d0', marginBottom: 4 }}>
-              {(e.display as any)?.name || e.id} <span style={{ color: '#666' }}>({e.definitionId})</span>
-            </div>
-          ))}
-
-          <h4 style={{ margin: '1rem 0 0.5rem', color: '#b8b8ff', borderTop: '1px solid #2a2a4e', paddingTop: '1rem' }}>
-            Locations ({(player.locationInstances || []).length})
-          </h4>
-          {(player.locationInstances || []).map((l: any) => (
-            <div key={l.id} style={{ fontSize: '0.85rem', color: '#b0b0d0', marginBottom: 4 }}>
-              {l.definitionId} <span style={{ color: '#666' }}>Lv.{l.level} ({l.regionId})</span>
-            </div>
-          ))}
-        </div>
+        <GodModePanel
+          player={player}
+          onBack={() => { setPlayer(null); setMsg(null); setResults([]); }}
+          onReload={() => loadPlayer(player.id)}
+        />
       )}
 
-      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+      {msg && !player && <StatusMsg msg={msg.text} type={msg.type} />}
     </div>
   );
 }

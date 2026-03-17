@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
+import { MissionService } from '../mission/mission.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { LocationSettlementService } from '../location/location-settlement.service';
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
 
@@ -27,6 +30,9 @@ export class AdminService {
     private prisma: PrismaService,
     private tickService: TickService,
     private eventService: EventService,
+    private missionService: MissionService,
+    private inventoryService: InventoryService,
+    private settlementService: LocationSettlementService,
   ) {}
 
   async searchPlayers(query: string) {
@@ -245,6 +251,121 @@ export class AdminService {
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
     const deleted = await model.delete({ where: { id } });
     return serializeBigInts(deleted);
+  }
+
+  async getPlayerJobs(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Player ${userId} not found`);
+    const jobs = await (this.prisma as any).job.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+    return serializeBigInts(jobs);
+  }
+
+  async forceCompleteJob(userId: string, jobId: string) {
+    const job = await (this.prisma as any).job.findFirst({ where: { id: jobId, userId } });
+    if (!job) throw new NotFoundException(`Job ${jobId} not found for player`);
+
+    if (job.status === 'completed' || job.status === 'failed') {
+      throw new BadRequestException(`Job is already ${job.status}`);
+    }
+
+    if (job.type === 'MissionJob') {
+      const currentTick = await this.tickService.getCurrentTick();
+      const durationTicks = Number(job.durationTicks ?? 0);
+      const adjustedStart = BigInt(Math.floor(currentTick)) - BigInt(durationTicks) - 1n;
+      await (this.prisma as any).job.update({
+        where: { id: jobId },
+        data: { startTick: adjustedStart, status: 'active' },
+      });
+      const result = await this.missionService.completeMission(userId, jobId);
+      return serializeBigInts(result ?? { forced: true, jobId });
+    }
+
+    const updated = await (this.prisma as any).job.update({
+      where: { id: jobId },
+      data: { status: 'completed' },
+    });
+    return serializeBigInts(updated);
+  }
+
+  async grantItems(userId: string, itemId: string, quantity: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Player ${userId} not found`);
+    if (!itemId) throw new BadRequestException('itemId is required');
+    if (!quantity || quantity < 1) throw new BadRequestException('quantity must be >= 1');
+    const newQty = await this.inventoryService.addItem({
+      userId,
+      itemId,
+      quantity,
+      reason: 'Admin grant',
+      sourceType: 'admin',
+      sourceId: 'admin',
+    });
+    return { userId, itemId, quantity, newQty };
+  }
+
+  async getPlayerItems(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Player ${userId} not found`);
+    return this.inventoryService.getBalances(userId);
+  }
+
+  async listItemDefs() {
+    return this.inventoryService.listItemDefs();
+  }
+
+  async updatePlayerEntity(userId: string, entityId: string, data: { stats?: any; level?: number; name?: string }) {
+    const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
+    if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player`);
+
+    const updateData: any = {};
+    if (data.stats !== undefined) updateData.stats = data.stats;
+    if (data.level !== undefined) updateData.level = data.level;
+    if (data.name !== undefined) {
+      const display = (entity.display as any) || {};
+      updateData.display = { ...display, name: data.name };
+    }
+
+    const updated = await (this.prisma as any).entity.update({ where: { id: entityId }, data: updateData });
+    return serializeBigInts(updated);
+  }
+
+  async forceSettleLocation(userId: string, locationId: string) {
+    const loc = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId, ownerUserId: userId } });
+    if (!loc) throw new NotFoundException(`Location ${locationId} not found for player`);
+    await this.settlementService.recalculateLocationMeta(locationId);
+    return { settled: true, locationId };
+  }
+
+  async getPlayerEffects(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Player ${userId} not found`);
+    const effects = await (this.prisma as any).activeEffect.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return serializeBigInts(effects);
+  }
+
+  async deletePlayerEffect(userId: string, effectId: string) {
+    const effect = await (this.prisma as any).activeEffect.findFirst({ where: { id: effectId, userId } });
+    if (!effect) throw new NotFoundException(`Effect ${effectId} not found for player`);
+    await (this.prisma as any).activeEffect.delete({ where: { id: effectId } });
+    return { deleted: true, effectId };
+  }
+
+  async getPlayerTelemetry(userId: string, limit = 30) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException(`Player ${userId} not found`);
+    const events = await (this.prisma as any).playerEvent.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 100),
+    });
+    return serializeBigInts(events);
   }
 
   private safeBigInt(value: any): bigint | null {

@@ -214,6 +214,63 @@ export class AdminController {
     return this.adminService.getRecentJobs(Math.min(parseInt(limit || '10', 10) || 10, 50));
   }
 
+  @Get('players/:id/jobs')
+  getPlayerJobs(@Param('id') id: string) {
+    return this.adminService.getPlayerJobs(id);
+  }
+
+  @Post('players/:id/jobs/:jobId/force-complete')
+  forceCompleteJob(@Param('id') id: string, @Param('jobId') jobId: string) {
+    return this.adminService.forceCompleteJob(id, jobId);
+  }
+
+  @Post('players/:id/items')
+  grantItems(
+    @Param('id') id: string,
+    @Body() body: { itemId: string; quantity: number },
+  ) {
+    return this.adminService.grantItems(id, body.itemId, body.quantity);
+  }
+
+  @Get('players/:id/items')
+  getPlayerItems(@Param('id') id: string) {
+    return this.adminService.getPlayerItems(id);
+  }
+
+  @Get('item-defs')
+  listItemDefs() {
+    return this.adminService.listItemDefs();
+  }
+
+  @Put('players/:id/entities/:entityId')
+  updatePlayerEntity(
+    @Param('id') id: string,
+    @Param('entityId') entityId: string,
+    @Body() body: { stats?: any; level?: number; name?: string },
+  ) {
+    return this.adminService.updatePlayerEntity(id, entityId, body);
+  }
+
+  @Post('players/:id/locations/:locationId/settle')
+  forceSettleLocation(@Param('id') id: string, @Param('locationId') locationId: string) {
+    return this.adminService.forceSettleLocation(id, locationId);
+  }
+
+  @Get('players/:id/effects')
+  getPlayerEffects(@Param('id') id: string) {
+    return this.adminService.getPlayerEffects(id);
+  }
+
+  @Delete('players/:id/effects/:effectId')
+  deletePlayerEffect(@Param('id') id: string, @Param('effectId') effectId: string) {
+    return this.adminService.deletePlayerEffect(id, effectId);
+  }
+
+  @Get('players/:id/telemetry')
+  getPlayerTelemetry(@Param('id') id: string, @Query('limit') limit?: string) {
+    return this.adminService.getPlayerTelemetry(id, parseInt(limit || '30', 10) || 30);
+  }
+
   @Post('seeds/nft-entities')
   seedNftEntities() {
     return this.nftCollectionService.seedNftEntities();
