@@ -141,7 +141,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
   const handleDuplicate = () => {
     if (!editorState.record) return;
     if (editorState.dirty) {
-      if (!confirm('You have unsaved changes. Discard them?')) return;
+      if (!confirm('You have unsaved changes. Duplicate your current edits as a new record?')) return;
     }
     const { id, createdAt, updatedAt, ...rest } = editorState.record;
     setSelectedId(null);
