@@ -98,6 +98,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       category: { type: 'enum', enum: 'itemCategory', default: 'MISC', description: 'Item category' },
       groups: { type: 'stringArray', default: [], description: 'Tags for filtering' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
+      isLootbox: { type: 'boolean', default: false, description: 'Is this item a lootbox?' },
+      lootboxDefId: { type: 'ref', refTable: 'LootboxDef', description: 'Lootbox definition to open when used' },
       stackable: { type: 'boolean', default: false, description: 'Can stack in inventory?' },
       maxStack: { type: 'number', description: 'Max stack size' },
       uniqueInstance: { type: 'boolean', default: false, description: 'Each item unique?' },

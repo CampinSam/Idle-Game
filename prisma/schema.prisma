@@ -726,6 +726,9 @@ model ItemDefinition {
   hasState        Boolean      @default(false)
   stateSchema     Json?
 
+  isLootbox       Boolean      @default(false)
+  lootboxDefId    String?
+
   equipData       Json?
   statModifiers   Json?
   passiveEffects  Json?

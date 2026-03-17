@@ -96,7 +96,7 @@ Defines an item that can exist in player inventories. Supports materials, potion
 |---|---|---|---|---|
 | `id` | string | Yes | — | Unique identifier (e.g. `mat_iron_ore`, `gear_iron_sword`) |
 | `version` | number | No | 1 | Schema version for forward compatibility |
-| `type` | ItemType enum | Yes | — | One of: `MATERIAL`, `POTION`, `CONSUMABLE`, `GEAR`, `QUEST` |
+| `type` | ItemType enum | Yes | — | One of: `MATERIAL`, `POTION`, `CONSUMABLE`, `GEAR`, `QUEST`, `LOOTBOX`, `GIFT_PACKAGE` |
 | `rarity` | ItemRarity enum | No | `COMMON` | Rarity tier (see [ItemRarity Enum](#itemrarity-enum)) |
 | `name` | string | Yes | — | Display name |
 | `description` | string | No | — | Flavor text |
@@ -106,6 +106,8 @@ Defines an item that can exist in player inventories. Supports materials, potion
 | `category` | ItemCategory enum | No | `MISC` | One of: `MISC`, `CRAFTING`, `COMBAT`, `EXPLORATION`, `QUEST_ITEMS`, `ENHANCEMENT` |
 | `groups` | string[] | No | `[]` | Tags for filtering/searching (e.g. `["ore", "basic"]`, `["weapon", "melee"]`) |
 | `tags` | string[] | No | `[]` | Additional classification tags |
+| `isLootbox` | boolean | No | false | Marks this item as a lootbox. When true, `lootboxDefId` must be set and the `OpenLootBox` command will be used to open it. |
+| `lootboxDefId` | string | No | — | ID of the [LootboxDef](#lootboxdef) that defines the outcome pool for this item. Required when `isLootbox` is true. |
 | `stackable` | boolean | No | false | Whether multiple units stack in one inventory slot |
 | `maxStack` | number | No | — | Maximum stack size (blank = unlimited when stackable) |
 | `uniqueInstance` | boolean | No | false | If true, each item gets its own ItemInstance (no stacking) |

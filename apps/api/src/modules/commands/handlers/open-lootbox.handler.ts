@@ -31,8 +31,9 @@ export class OpenLootBoxHandler implements CommandHandler {
       throw new BadRequestException('Item is not a lootbox');
     }
 
-    const itemData = (item.definition?.data as any) ?? (item.data as any) ?? {};
-    const lootboxDefId = itemData.lootboxDefId;
+    const lootboxDefId =
+      (item.definition as any)?.lootboxDefId ??
+      ((item.definition?.data as any) ?? (item.data as any) ?? {}).lootboxDefId;
     if (!lootboxDefId) throw new BadRequestException('Item has no lootboxDefId');
 
     const lootboxDef = await (ctx.tx as any).lootboxDef.findUnique({ where: { id: lootboxDefId } });

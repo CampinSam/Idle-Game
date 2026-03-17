@@ -2135,6 +2135,16 @@
           "nullable": true,
           "description": "JSON Schema for state validation"
         },
+        "isLootbox": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this item is a lootbox. When true, lootboxDefId must be set."
+        },
+        "lootboxDefId": {
+          "type": "string",
+          "nullable": true,
+          "description": "Reference to a LootboxDef. Required when isLootbox is true. Determines the outcome pool when the player opens this item."
+        },
         "equipData": {
           "$ref": "#/complexTypes/EquipData",
           "nullable": true,
