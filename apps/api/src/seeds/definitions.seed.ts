@@ -117,5 +117,21 @@ export async function seedDefinitions(prisma: any) {
     await upsertMany(prisma, 'eventDefinition', defs.eventDefinitions);
   }
 
+  if (defs.lootboxDefs) {
+    await upsertMany(prisma, 'lootboxDef', defs.lootboxDefs);
+  }
+
+  if (defs.checkInDefs) {
+    await upsertMany(prisma, 'checkInDef', defs.checkInDefs);
+  }
+
+  if (defs.questDefs) {
+    await upsertMany(prisma, 'questDef', defs.questDefs);
+  }
+
+  if (defs.modalDefs) {
+    await upsertMany(prisma, 'modalDef', defs.modalDefs);
+  }
+
   logger.log('Definition seeding complete');
 }

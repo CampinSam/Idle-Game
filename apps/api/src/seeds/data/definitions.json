@@ -4049,5 +4049,292 @@
       "inputSchema": {},
       "enabled": true
     }
+  ],
+  "lootboxDefs": [
+    {
+      "id": "lootbox_common_chest",
+      "name": "Common Chest",
+      "description": "A sturdy chest filled with everyday supplies. Contains resources useful to any keeper.",
+      "version": 1,
+      "outcomes": [
+        { "type": "currency", "key": "soft_arcanium", "amount": 50, "odds": 40 },
+        { "type": "currency", "key": "soft_arcanium", "amount": 100, "odds": 25 },
+        { "type": "currency", "key": "hard_essence", "amount": 5, "odds": 20 },
+        { "type": "item", "key": "mat_iron_ore", "amount": 3, "odds": 10 },
+        { "type": "item", "key": "mat_feather_dust", "amount": 2, "odds": 5 }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "lootbox_rare_crate",
+      "name": "Rare Crate",
+      "description": "A reinforced crate stamped with arcane sigils. Rare materials and premium currency await inside.",
+      "version": 1,
+      "outcomes": [
+        { "type": "currency", "key": "hard_essence", "amount": 15, "odds": 35 },
+        { "type": "currency", "key": "premium_gems", "amount": 5, "odds": 25 },
+        { "type": "currency", "key": "premium_gems", "amount": 15, "odds": 15 },
+        { "type": "item", "key": "mat_mana_shard", "amount": 2, "odds": 15 },
+        { "type": "item", "key": "mat_starlight_dust", "amount": 1, "odds": 10 }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "lootbox_mystery_egg",
+      "name": "Mystery Egg",
+      "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
+      "version": 1,
+      "outcomes": [
+        { "type": "currency", "key": "premium_gems", "amount": 10, "odds": 30 },
+        { "type": "currency", "key": "premium_gems", "amount": 25, "odds": 20 },
+        { "type": "currency", "key": "hard_essence", "amount": 30, "odds": 20 },
+        { "type": "item", "key": "mat_void_essence", "amount": 1, "odds": 15 },
+        { "type": "item", "key": "mat_crystal_bloom", "amount": 2, "odds": 10 },
+        { "type": "item", "key": "gear_mana_ring", "amount": 1, "odds": 5 }
+      ],
+      "enabled": true
+    }
+  ],
+  "checkInDefs": [
+    {
+      "id": "checkin_daily_login",
+      "name": "Daily Login Track",
+      "description": "Log in every day for 7 days to earn escalating rewards. Streaks reset on miss.",
+      "cycleLength": 7,
+      "frequency": { "type": "daily" },
+      "requireStreak": false,
+      "allowReclaim": false,
+      "rewards": [
+        { "day": 0, "giftDefId": "gift_welcome_gems" },
+        { "day": 1, "giftDefId": "gift_welcome_gems" },
+        { "day": 2, "giftDefId": "gift_welcome_gems" },
+        { "day": 3, "giftDefId": "gift_welcome_gems" },
+        { "day": 4, "giftDefId": "gift_welcome_gems" },
+        { "day": 5, "giftDefId": "gift_welcome_gems" },
+        { "day": 6, "giftDefId": "gift_welcome_gems" }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "checkin_weekly_bonus",
+      "name": "Weekly Bonus Track",
+      "description": "Complete 7 days of weekly check-ins for a premium reward at the end of the cycle.",
+      "cycleLength": 7,
+      "frequency": { "type": "daily" },
+      "requireStreak": true,
+      "allowReclaim": true,
+      "rewards": [
+        { "day": 0, "giftDefId": "gift_welcome_gems" },
+        { "day": 1, "giftDefId": "gift_welcome_gems" },
+        { "day": 2, "giftDefId": "gift_welcome_gems" },
+        { "day": 3, "giftDefId": "gift_welcome_gems" },
+        { "day": 4, "giftDefId": "gift_welcome_gems" },
+        { "day": 5, "giftDefId": "gift_welcome_gems" },
+        { "day": 6, "giftDefId": "gift_welcome_gems" }
+      ],
+      "enabled": true
+    },
+    {
+      "id": "checkin_seasonal_track",
+      "name": "Seasonal Check-In",
+      "description": "A special seasonal check-in track. Complete all days before the season ends for bonus loot.",
+      "cycleLength": 7,
+      "frequency": { "type": "daily" },
+      "requireStreak": false,
+      "allowReclaim": false,
+      "rewards": [
+        { "day": 0, "giftDefId": "gift_welcome_gems" },
+        { "day": 1, "giftDefId": "gift_welcome_gems" },
+        { "day": 2, "giftDefId": "gift_welcome_gems" },
+        { "day": 3, "giftDefId": "gift_welcome_gems" },
+        { "day": 4, "giftDefId": "gift_welcome_gems" },
+        { "day": 5, "giftDefId": "gift_welcome_gems" },
+        { "day": 6, "giftDefId": "gift_welcome_gems" }
+      ],
+      "enabled": true
+    }
+  ],
+  "questDefs": [
+    {
+      "id": "quest_first_mission",
+      "name": "First Mission",
+      "description": "Every keeper starts somewhere. Complete your very first mission to prove you're ready.",
+      "category": "tutorial",
+      "version": 1,
+      "sortOrder": 0,
+      "objectives": [
+        {
+          "eventType": "mission_completed",
+          "target": 1,
+          "label": "Complete 1 mission"
+        }
+      ],
+      "rewardSpec": {
+        "type": "currency",
+        "currencyId": "premium_gems",
+        "amount": 50
+      },
+      "requirements": [],
+      "repeatable": false,
+      "enabled": true
+    },
+    {
+      "id": "quest_iron_collector",
+      "name": "Iron Collector",
+      "description": "Gather Iron Ore from your outpost activities to stock your forge.",
+      "category": "gathering",
+      "version": 1,
+      "sortOrder": 1,
+      "objectives": [
+        {
+          "eventType": "item_collected",
+          "key": "mat_iron_ore",
+          "target": 10,
+          "label": "Collect 10 Iron Ore"
+        }
+      ],
+      "rewardSpec": {
+        "type": "currency",
+        "currencyId": "soft_arcanium",
+        "amount": 200
+      },
+      "requirements": [],
+      "repeatable": false,
+      "enabled": true
+    },
+    {
+      "id": "quest_outpost_builder",
+      "name": "Outpost Builder",
+      "description": "Prove your dedication by completing missions and collecting loot. A true keeper never rests.",
+      "category": "progression",
+      "version": 1,
+      "sortOrder": 2,
+      "objectives": [
+        {
+          "eventType": "mission_completed",
+          "target": 5,
+          "label": "Complete 5 missions"
+        },
+        {
+          "eventType": "lootbox_opened",
+          "target": 1,
+          "label": "Open 1 lootbox"
+        }
+      ],
+      "rewardSpec": {
+        "type": "currency",
+        "currencyId": "hard_essence",
+        "amount": 25
+      },
+      "requirements": [],
+      "repeatable": false,
+      "enabled": true
+    }
+  ],
+  "modalDefs": [
+    {
+      "id": "modal_welcome",
+      "name": "Welcome Modal",
+      "description": "Shown to new players on their first login. Introduces them to Derp Universe.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "kind": "announcement",
+        "dismiss": { "backdrop": true, "x": true },
+        "header": {
+          "title": "Welcome to Derp Universe!",
+          "subtitle": "Your adventure begins now."
+        },
+        "body": [
+          {
+            "type": "text",
+            "content": "You've arrived at the edge of a strange and wondrous world. Gather resources, raise your keepers, and uncover the secrets of the Derp Universe."
+          },
+          {
+            "type": "text",
+            "content": "Start by completing your first mission and claiming your welcome gift."
+          }
+        ],
+        "buttons": [
+          {
+            "label": "Let's Go!",
+            "action": { "type": "dismiss" },
+            "style": "primary"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "modal_season_intro",
+      "name": "Season Intro",
+      "description": "Displayed at the start of each new season to announce the theme and special rewards.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "kind": "announcement",
+        "dismiss": { "backdrop": true, "x": true },
+        "header": {
+          "title": "Season 1: Frost Rising",
+          "subtitle": "The cold winds bring new opportunities."
+        },
+        "body": [
+          {
+            "type": "text",
+            "content": "A new season has begun. Earn Frost Coins through missions and events, then spend them in the seasonal store before time runs out."
+          },
+          {
+            "type": "text",
+            "content": "Complete the seasonal check-in track for exclusive rewards only available this season."
+          }
+        ],
+        "buttons": [
+          {
+            "label": "View Season Pass",
+            "action": { "type": "navigate", "route": "/store" },
+            "style": "primary"
+          },
+          {
+            "label": "Maybe Later",
+            "action": { "type": "dismiss" },
+            "style": "secondary"
+          }
+        ]
+      },
+      "enabled": true
+    },
+    {
+      "id": "modal_mission_complete",
+      "name": "Mission Complete",
+      "description": "Displayed when a player successfully finishes a mission. Shows rewards earned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "kind": "reward",
+        "dismiss": { "backdrop": false, "x": false },
+        "header": {
+          "title": "Mission Complete!",
+          "subtitle": "{{mission.name}}"
+        },
+        "body": [
+          {
+            "type": "text",
+            "content": "Your keepers return victorious. The rewards have been added to your inventory."
+          },
+          {
+            "type": "rewards",
+            "source": "context.rewards"
+          }
+        ],
+        "buttons": [
+          {
+            "label": "Claim Rewards",
+            "action": { "type": "dismiss" },
+            "style": "primary"
+          }
+        ]
+      },
+      "enabled": true
+    }
   ]
 }
