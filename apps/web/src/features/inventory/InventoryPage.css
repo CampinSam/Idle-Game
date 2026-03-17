@@ -1,9 +1,10 @@
 .inventory-page {
-  padding: 12px;
+  padding: 12px 12px 72px;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .inv-container {
