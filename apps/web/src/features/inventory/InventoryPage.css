@@ -1,9 +1,9 @@
 .inventory-page {
   padding: 12px;
-  padding-bottom: 12px;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 48px - 64px);
+  flex: 1;
+  min-height: 0;
 }
 
 .inv-container {
