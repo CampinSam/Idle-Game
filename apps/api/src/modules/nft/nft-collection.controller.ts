@@ -52,12 +52,6 @@ export class NftCollectionController {
     return this.nftImageImportService.getStatus();
   }
 
-  @Post('seed/entities')
-  @UseGuards(AdminGuard)
-  async seedEntities() {
-    return this.nftCollectionService.seedNftEntities();
-  }
-
   @Put(':id')
   @UseGuards(AdminGuard)
   updateCollection(@Param('id') id: string, @Body() dto: UpdateCollectionDto) {

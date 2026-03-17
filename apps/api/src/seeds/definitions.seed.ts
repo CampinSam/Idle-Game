@@ -16,14 +16,18 @@ function loadJson(filename: string) {
 
 async function upsertMany(prisma: any, model: string, rows: any[], transform?: (r: any) => any) {
   let seeded = 0;
+  const countBefore = await prisma[model].count();
   for (const row of rows) {
     const data = transform ? transform(row) : row;
     const { id, ...rest } = data;
-    const existing = await prisma[model].findUnique({ where: { id } });
-    if (existing) continue;
-    await prisma[model].create({ data });
-    seeded++;
+    await prisma[model].upsert({
+      where: { id },
+      update: {},
+      create: data,
+    });
   }
+  const countAfter = await prisma[model].count();
+  seeded = countAfter - countBefore;
   if (seeded > 0) {
     logger.log(`Seeded ${seeded} ${model} records`);
   }
