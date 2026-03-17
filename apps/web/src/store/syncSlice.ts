@@ -7,6 +7,19 @@ interface EntityTable {
   [id: string]: any;
 }
 
+export interface ActiveBoost {
+  id: string;
+  name: string;
+  multiplier: number;
+  endTime: string;
+}
+
+export interface TickBroadcast {
+  tickRate: number;
+  boosts: ActiveBoost[];
+  receivedAt: number;
+}
+
 interface SyncState {
   status: SyncStatus;
   cursor: string | null;
@@ -28,6 +41,7 @@ interface SyncState {
   activeEffects: EntityTable;
   currencyBalances: Record<string, number>;
 
+  tickBroadcast: TickBroadcast | null;
   lastError: string | null;
 }
 
@@ -52,6 +66,7 @@ const initialState: SyncState = {
   activeEffects: {},
   currencyBalances: {},
 
+  tickBroadcast: null,
   lastError: null,
 };
 
@@ -202,11 +217,15 @@ const syncSlice = createSlice({
       }
     },
 
+    setTickBroadcast(state, action: PayloadAction<TickBroadcast>) {
+      state.tickBroadcast = action.payload;
+    },
+
     resetSync() {
       return initialState;
     },
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled, setTickBroadcast } = syncSlice.actions;
 export default syncSlice.reducer;

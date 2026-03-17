@@ -16,11 +16,6 @@ export class TickController {
     return this.tickService.getTickInfo();
   }
 
-  @Get('boosts')
-  async getActiveBoosts() {
-    return this.boostService.getActiveBoosts();
-  }
-
   @Get('boosts/all')
   @UseGuards(JwtAuthGuard)
   async getAllBoosts() {

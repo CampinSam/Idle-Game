@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from './tick.service';
 import { NotificationService } from '../notification/notification.service';
+import { PubSubService } from '../infrastructure/pubsub.service';
 
 @Injectable()
 export class BoostService {
@@ -9,6 +10,7 @@ export class BoostService {
     private prisma: PrismaService,
     private tickService: TickService,
     private notificationService: NotificationService,
+    private pubsub: PubSubService,
   ) {}
 
   private get boostEvent() {
@@ -17,18 +19,6 @@ export class BoostService {
 
   private get tickRateInterval() {
     return (this.prisma as any).tickRateInterval;
-  }
-
-  async getActiveBoosts() {
-    const now = new Date();
-    return this.boostEvent.findMany({
-      where: {
-        status: 'active',
-        startTime: { lte: now },
-        endTime: { gt: now },
-      },
-      orderBy: { endTime: 'asc' },
-    });
   }
 
   async getAllBoosts() {
@@ -53,7 +43,7 @@ export class BoostService {
       throw new BadRequestException('Duration must be between 1 and 1440 minutes');
     }
 
-    const activeBoosts = await this.getActiveBoosts();
+    const activeBoosts = await this.tickService.getActiveBoosts();
     if (activeBoosts.length > 0) {
       throw new BadRequestException(
         'A boost is already active. Cancel it first or wait for it to end.',
@@ -114,6 +104,19 @@ export class BoostService {
       });
     }
 
+    this.pubsub.publishBroadcast({
+      type: 'tick.rate.updated',
+      tickRate: boostedRate,
+      boosts: [
+        {
+          id: boost.id,
+          name: boost.name,
+          multiplier: boost.multiplier,
+          endTime: endTime.toISOString(),
+        },
+      ],
+    });
+
     return boost;
   }
 
@@ -159,6 +162,12 @@ export class BoostService {
     });
 
     this.tickService.invalidateCache();
+
+    this.pubsub.publishBroadcast({
+      type: 'tick.rate.updated',
+      tickRate: priorRate,
+      boosts: [],
+    });
 
     return { message: 'Boost cancelled' };
   }

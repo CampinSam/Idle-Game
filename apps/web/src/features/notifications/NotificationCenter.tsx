@@ -4,7 +4,7 @@ import { useNotifications, AppNotification } from '../../context/NotificationCon
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
-import type { ActiveBoostInfo } from '../../hooks/useActiveBoosts';
+import type { ActiveBoostInfo } from '../../tick';
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
 import './NotificationCenter.css';
 

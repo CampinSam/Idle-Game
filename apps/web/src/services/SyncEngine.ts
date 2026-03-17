@@ -1,7 +1,7 @@
 import { Store } from '@reduxjs/toolkit';
 import { api } from './api';
 import type { DeltaResponse } from './api';
-import { setStatus, setSnapshot, applyPatches, setError, resetSync } from '../store/syncSlice';
+import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickBroadcast } from '../store/syncSlice';
 import type { RootState } from '../store';
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -78,6 +78,19 @@ export class SyncEngine {
     es.addEventListener('delta.available', (e) => {
       this.resetHeartbeat();
       this.fetchAndApplyDelta();
+    });
+
+    es.addEventListener('tick.rate.updated', (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data);
+        this.store.dispatch(setTickBroadcast({
+          tickRate: msg.tickRate,
+          boosts: msg.boosts ?? [],
+          receivedAt: Date.now(),
+        }));
+      } catch {
+        console.warn('[SyncEngine] Failed to parse tick.rate.updated event');
+      }
     });
 
     es.addEventListener('reset.required', () => {

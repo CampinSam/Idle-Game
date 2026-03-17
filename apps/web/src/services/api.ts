@@ -182,11 +182,7 @@ class ApiClient {
   }
 
   getTickInfo() {
-    return this.request<{ currentTick: number; currentRate: number; serverTime: string }>('/tick/current');
-  }
-
-  getActiveBoosts() {
-    return this.request<any[]>('/tick/boosts');
+    return this.request<{ currentTick: number; currentRate: number; serverTime: string; activeBoosts: Array<{ id: string; name: string; multiplier: number; endTime: string }> }>('/tick/current');
   }
 
   createBoost(data: { name: string; description?: string; multiplier: number; durationMinutes: number }) {

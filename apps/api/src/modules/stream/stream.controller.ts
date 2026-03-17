@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
-import { PubSubService, PubSubMessage } from '../infrastructure/pubsub.service';
+import { PubSubService, PubSubMessage, BroadcastMessage } from '../infrastructure/pubsub.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const HEARTBEAT_INTERVAL = 15000;
@@ -73,9 +73,16 @@ export class StreamController {
       },
     );
 
+    const unsubscribeBroadcast = this.pubsub.subscribeBroadcast(
+      (msg: BroadcastMessage) => {
+        this.sendEvent(res, msg.type, msg);
+      },
+    );
+
     const cleanup = () => {
       clearInterval(heartbeat);
       unsubscribe();
+      unsubscribeBroadcast();
     };
 
     req.on('close', cleanup);

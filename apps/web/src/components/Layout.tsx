@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchCurrencyDefs } from '../store/gameSlice';
 import { logout } from '../store/authSlice';
 import { useNotifications } from '../context/NotificationContext';
-import { useActiveBoosts } from '../hooks/useActiveBoosts';
+import { useActiveBoosts } from '../tick';
 import { useJobReadinessTimers } from '../hooks/useJobReadinessTimers';
 import {
   useSyncPlayer,

@@ -5,18 +5,27 @@ export interface PubSubMessage {
   deltaId: string;
 }
 
+export interface BroadcastMessage {
+  type: 'tick.rate.updated';
+  tickRate: number;
+  boosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
+}
+
 export abstract class PubSubService {
   abstract publish(channel: string, message: PubSubMessage): void;
   abstract subscribe(
     channel: string,
     handler: (message: PubSubMessage) => void,
   ): () => void;
+  abstract publishBroadcast(message: BroadcastMessage): void;
+  abstract subscribeBroadcast(handler: (message: BroadcastMessage) => void): () => void;
 }
 
 @Injectable()
 export class InMemoryPubSubService extends PubSubService {
   private readonly logger = new Logger(InMemoryPubSubService.name);
   private listeners = new Map<string, Set<(msg: PubSubMessage) => void>>();
+  private broadcastListeners = new Set<(msg: BroadcastMessage) => void>();
 
   publish(channel: string, message: PubSubMessage): void {
     const subs = this.listeners.get(channel);
@@ -41,6 +50,23 @@ export class InMemoryPubSubService extends PubSubService {
     this.listeners.get(channel)!.add(handler);
     return () => {
       this.listeners.get(channel)?.delete(handler);
+    };
+  }
+
+  publishBroadcast(message: BroadcastMessage): void {
+    for (const handler of this.broadcastListeners) {
+      try {
+        handler(message);
+      } catch (err) {
+        this.logger.error(`Broadcast handler error`, err);
+      }
+    }
+  }
+
+  subscribeBroadcast(handler: (message: BroadcastMessage) => void): () => void {
+    this.broadcastListeners.add(handler);
+    return () => {
+      this.broadcastListeners.delete(handler);
     };
   }
 }
@@ -70,6 +96,15 @@ export class RedisPubSubService extends PubSubService {
     _handler: (message: PubSubMessage) => void,
   ): () => void {
     this.logger.warn(`RedisPubSubService.subscribe called on channel=${channel} — ioredis not yet wired`);
+    return () => {};
+  }
+
+  publishBroadcast(_message: BroadcastMessage): void {
+    this.logger.warn(`RedisPubSubService.publishBroadcast called — ioredis not yet wired`);
+  }
+
+  subscribeBroadcast(_handler: (message: BroadcastMessage) => void): () => void {
+    this.logger.warn(`RedisPubSubService.subscribeBroadcast called — ioredis not yet wired`);
     return () => {};
   }
 }
