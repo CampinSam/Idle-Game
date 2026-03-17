@@ -20,6 +20,7 @@ interface EditorState {
 
 type EditorAction =
   | { type: 'LOAD'; record: Record<string, any> }
+  | { type: 'LOAD_DIRTY'; record: Record<string, any> }
   | { type: 'SET_FIELD'; field: string; value: any }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_OK'; record: Record<string, any> }
@@ -30,6 +31,8 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'LOAD':
       return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null };
+    case 'LOAD_DIRTY':
+      return { record: { ...action.record }, original: {}, dirty: true, saving: false, saveError: null };
     case 'SET_FIELD':
       if (!state.record) return state;
       const updated = { ...state.record, [action.field]: action.value };
@@ -144,7 +147,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setSelectedId(null);
     setIsNew(true);
     setDeleteConfirm(false);
-    dispatch({ type: 'LOAD', record: rest });
+    dispatch({ type: 'LOAD_DIRTY', record: rest });
   };
 
   const getSchemaName = () => {
