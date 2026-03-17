@@ -4,16 +4,19 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  padding: 72px 0 72px 0;
 }
 
 .top-bar-container {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 90;
-  max-width: 520px;
-  margin: 0 auto;
-  width: 100%;
+  display: flex;
+  justify-content: center;
   padding: 8px 16px 0;
+  pointer-events: none;
 }
 
 .top-bar {
@@ -21,10 +24,13 @@
   align-items: center;
   gap: 10px;
   padding: 1px 14px;
+  max-width: 520px;
+  width: 100%;
   background: linear-gradient(135deg, #1e1b3a 0%, #2a1f4e 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 14px;
   backdrop-filter: blur(12px);
+  pointer-events: auto;
 }
 
 .top-bar-avatar-wrap {
