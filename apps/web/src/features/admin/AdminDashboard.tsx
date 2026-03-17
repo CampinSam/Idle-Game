@@ -320,7 +320,7 @@ function NotificationPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#e0e0ff' }}>{selectedPlayer.username}</span>
             <span style={{ color: '#666', fontSize: '0.8rem' }}>{selectedPlayer.email}</span>
-            <button onClick={() => { setSelectedPlayer(null); setPlayers([]); }} style={{ padding: '0.2rem 0.5rem', border: '1px solid #555', borderRadius: 4, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.75rem' }}>Change</button>
+            <button onClick={() => { setSelectedPlayer(null); setPlayerQuery(''); searchPlayer(''); }} style={{ padding: '0.2rem 0.5rem', border: '1px solid #555', borderRadius: 4, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.75rem' }}>Change</button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -459,7 +459,7 @@ function EventGiftPanel() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#e0e0ff' }}>{selectedPlayer.username}</span>
             <span style={{ color: '#666', fontSize: '0.8rem' }}>{selectedPlayer.email}</span>
-            <button onClick={() => { setSelectedPlayer(null); setPlayers([]); }} style={{ padding: '0.2rem 0.5rem', border: '1px solid #555', borderRadius: 4, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.75rem' }}>Change</button>
+            <button onClick={() => { setSelectedPlayer(null); setPlayerQuery(''); searchPlayer(''); }} style={{ padding: '0.2rem 0.5rem', border: '1px solid #555', borderRadius: 4, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.75rem' }}>Change</button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
