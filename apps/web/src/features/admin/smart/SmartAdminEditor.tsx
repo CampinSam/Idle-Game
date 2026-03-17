@@ -135,6 +135,18 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     dispatch({ type: 'LOAD', record: blank });
   };
 
+  const handleDuplicate = () => {
+    if (!editorState.record) return;
+    if (editorState.dirty) {
+      if (!confirm('You have unsaved changes. Discard them?')) return;
+    }
+    const { id, createdAt, updatedAt, ...rest } = editorState.record;
+    setSelectedId(null);
+    setIsNew(true);
+    setDeleteConfirm(false);
+    dispatch({ type: 'LOAD', record: rest });
+  };
+
   const getSchemaName = () => {
     const entry = Object.entries(TABLE_API_KEYS).find(([, v]) => v === activeTable);
     return entry ? entry[0] : '';
@@ -540,13 +552,25 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   </span>
                 )}
                 {!isNew && !deleteConfirm && (
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirm(true)}
-                    style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDuplicate}
+                      title="Duplicate this record as a new unsaved entry"
+                      style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #2a2a6e', borderRadius: 6, color: '#a78bfa', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#a78bfa'; e.currentTarget.style.background = 'rgba(167,139,250,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2a6e'; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(true)}
+                      style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #444', borderRadius: 6, color: '#888', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
                 {deleteConfirm && (
                   <>
