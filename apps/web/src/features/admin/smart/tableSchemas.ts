@@ -268,8 +268,10 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     fields: {
       id: { type: 'string', required: true, description: 'Unique identifier' },
       name: { type: 'string', required: true, description: 'Display name' },
+      description: { type: 'string', description: 'Optional description' },
       version: { type: 'number', default: 1, description: 'Schema version' },
-      outcomePool: { type: 'json', default: [], description: 'Weighted outcome pool' },
+      rollCount: { type: 'number', default: 1, description: 'Number of independent rolls per open' },
+      outcomes: { type: 'json', default: [], description: 'Weighted outcome pool (array of RewardEntry)' },
       enabled: { type: 'boolean', default: true, description: 'Active?' },
     },
   },
