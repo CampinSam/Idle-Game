@@ -3,6 +3,7 @@ import { useAppSelector } from '../store';
 import { useNow } from './useNow';
 import {
   computeGeneratorProduction,
+  computeConsumptionFromBuildings,
   aggregateByResource,
   ResourceSummary,
 } from '../utils/locationProduction';
@@ -28,9 +29,18 @@ export function useLocationTimers(): Map<string, LocationTimerData> {
         ? Math.max(0, (now - Date.parse(lastSettledAt)) / 1000)
         : 0;
 
-      const consumptionRates: Record<string, number> = storage.consumptionRates || {};
+      const buildingConsumption = computeConsumptionFromBuildings(op);
+      const serverConsumption: Record<string, number> = storage.consumptionRates || {};
+      const consumptionRates: Record<string, number> = { ...buildingConsumption };
+      for (const [resId, rate] of Object.entries(serverConsumption)) {
+        const serverRate = Number(rate);
+        if (serverRate > 0 && !(resId in consumptionRates)) {
+          consumptionRates[resId] = serverRate;
+        }
+      }
+      const resTypes: Record<string, string> = storage.resourceTypes || {};
       const generators = computeGeneratorProduction(op);
-      const rawSummaries = aggregateByResource(op, generators, consumptionRates);
+      const rawSummaries = aggregateByResource(op, generators, consumptionRates, resTypes);
 
       const resourceSummaries: ResourceSummary[] = rawSummaries.map((summary) => {
         const stored = storedAmounts[summary.outputRefId] ?? 0;

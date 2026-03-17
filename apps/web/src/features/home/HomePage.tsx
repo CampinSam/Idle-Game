@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { computeGeneratorProduction, aggregateByResource } from '../../utils/locationProduction';
+import { computeGeneratorProduction, computeConsumptionFromBuildings, aggregateByResource } from '../../utils/locationProduction';
 import {
   useSyncPlayer,
   useSyncEntities,
@@ -55,8 +55,17 @@ export default function HomePage() {
 
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
     const generators = computeGeneratorProduction(loc);
-    const consumptionRates: Record<string, number> = (loc as any).storage?.consumptionRates || {};
-    const summaries = aggregateByResource(loc, generators, consumptionRates);
+    const buildingConsumption = computeConsumptionFromBuildings(loc);
+    const serverConsumption: Record<string, number> = (loc as any).storage?.consumptionRates || {};
+    const consumptionRates: Record<string, number> = { ...buildingConsumption };
+    for (const [resId, rate] of Object.entries(serverConsumption)) {
+      const serverRate = Number(rate);
+      if (serverRate > 0 && !(resId in consumptionRates)) {
+        consumptionRates[resId] = serverRate;
+      }
+    }
+    const resTypes: Record<string, string> = (loc as any).storage?.resourceTypes || {};
+    const summaries = aggregateByResource(loc, generators, consumptionRates, resTypes);
     for (const summary of summaries) {
       acc[summary.outputRefId] = (acc[summary.outputRefId] ?? 0) + summary.netRatePerHour;
     }

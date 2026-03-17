@@ -34,6 +34,24 @@ export function serializeLocation(
   const workerMult = 10000 + workerCount * 2000;
   const threatMult = getThreatMult(location.threatLevel || 0);
 
+  const resourceTypes: Record<string, string> = {};
+  for (const b of (location.buildings ?? [])) {
+    const bRules = (b.buildingDef?.rules as LevelRules) || {};
+    const bConfig = resolveLevelConfig(bRules, b.level);
+    const bProd = resolveProductionRates(bConfig.production, b.level);
+    const bCons = resolveConsumptionRates(bConfig.consumption, b.level);
+    for (const resId of Object.keys(bProd)) {
+      if (!resourceTypes[resId]) {
+        resourceTypes[resId] = currencyIds.has(resId) ? 'CURRENCY' : 'ITEM';
+      }
+    }
+    for (const resId of Object.keys(bCons)) {
+      if (!resourceTypes[resId]) {
+        resourceTypes[resId] = currencyIds.has(resId) ? 'CURRENCY' : 'ITEM';
+      }
+    }
+  }
+
   return {
     id: location.id,
     ownerUserId: location.ownerUserId,
@@ -54,6 +72,7 @@ export function serializeLocation(
       productionRates: storage.productionRates || {},
       consumptionRates: storage.consumptionRates || {},
       effectiveProductionRates: storage.effectiveProductionRates || {},
+      resourceTypes,
       lastSettledAt: storage.lastSettledAt ?? location.createdAt?.toISOString() ?? null,
     },
     lastAccruedTick: location.lastCollectionTick?.toString?.() ?? '0',

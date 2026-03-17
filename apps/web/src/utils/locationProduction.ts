@@ -70,10 +70,26 @@ export function computeGeneratorProduction(
     }));
 }
 
+export function computeConsumptionFromBuildings(
+  location: any,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const b of (location.buildings || [])) {
+    if (!b.enabled || b.status === 'building') continue;
+    const rates = b.consumptionRates as Record<string, number> | undefined;
+    if (!rates) continue;
+    for (const [resId, rate] of Object.entries(rates)) {
+      result[resId] = (result[resId] || 0) + Number(rate);
+    }
+  }
+  return result;
+}
+
 export function aggregateByResource(
   location: any,
   generators: GeneratorProduction[],
   consumptionRates: Record<string, number> = {},
+  resourceTypes: Record<string, string> = {},
 ): ResourceSummary[] {
   const storageByKey = new Map<string, number>();
   for (const sb of (location.storageBalances || [])) {
@@ -105,6 +121,14 @@ export function aggregateByResource(
   const allKeys = new Set<string>();
   for (const [k] of grouped) allKeys.add(k);
   for (const [k] of storageByKey) allKeys.add(k);
+  for (const resId of Object.keys(consumptionRates)) {
+    let outType = resourceTypes[resId];
+    if (!outType) {
+      const existingKey = [...allKeys].find((k) => k.endsWith(`:${resId}`));
+      outType = existingKey ? existingKey.split(':')[0] : 'ITEM';
+    }
+    allKeys.add(`${outType}:${resId}`);
+  }
 
   const results: ResourceSummary[] = [];
   for (const key of allKeys) {
