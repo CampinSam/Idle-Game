@@ -3,12 +3,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../admin/admin.guard';
 import { NftCollectionService, CreateCollectionDto, UpdateCollectionDto } from './nft-collection.service';
 import { NftImageImportService } from './nft-image-import.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { seedNftEntities } from '../../seeds/nft-entities.seed';
 
 @Controller('nft/collections')
 export class NftCollectionController {
   constructor(
     private nftCollectionService: NftCollectionService,
     private nftImageImportService: NftImageImportService,
+    private prisma: PrismaService,
   ) {}
 
   @Get()
@@ -50,6 +53,12 @@ export class NftCollectionController {
   @UseGuards(AdminGuard)
   getImageImportStatus() {
     return this.nftImageImportService.getStatus();
+  }
+
+  @Post('seed/entities')
+  @UseGuards(AdminGuard)
+  async seedEntities() {
+    return seedNftEntities(this.prisma);
   }
 
   @Put(':id')

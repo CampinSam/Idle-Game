@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
+import { seedDefinitions } from './seeds/definitions.seed';
 
 @Injectable()
 export class BootstrapService implements OnModuleInit {
@@ -12,6 +13,7 @@ export class BootstrapService implements OnModuleInit {
     await this.seedNftCollections();
     await this.seedEffectDefinitions();
     await this.seedConsumableItems();
+    await seedDefinitions(this.prisma);
   }
 
   private async seedTickRateIntervals() {
