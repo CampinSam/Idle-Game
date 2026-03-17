@@ -1811,7 +1811,7 @@ A player-owned instance of an item definition. Supports quantity-based stacking,
 | `userId` | string | Yes | — | Player who owns this item |
 | `definitionId` | string | Yes | — | References an [ItemDef](#itemdef) |
 | `quantity` | number | No | 1 | Stack quantity |
-| `state` | JSON | No | — | Dynamic instance state (for items with `hasState: true`) |
+| `state` | JSON | No | — | Dynamic instance state for items that carry per-instance data |
 | `equippedToId` | string | No | — | Entity ID this item is equipped to |
 | `bound` | boolean | No | false | Whether this item is bound (untradeable) |
 | `tradeLocked` | boolean | No | false | Whether this item is currently locked from trading |
