@@ -160,6 +160,10 @@ export default function LocationDetailPage() {
     return isFull ? s : s + r.netRatePerHour;
   }, 0);
 
+  const hasActivity = resourceSummaries.some(
+    (r) => r.totalRatePerHour !== 0 || r.netRatePerHour < 0,
+  );
+
   const buildingsData: any[] = outpost.buildings || [];
   const workersData: any[] = outpost.workers || [];
   const storageBalances = Object.entries((outpost.storage?.stored as Record<string, number>) || {}).map(([key, amount]) => ({
@@ -294,7 +298,7 @@ export default function LocationDetailPage() {
                 <h3 className="od-card-title">PRODUCTION</h3>
                 {resourceSummaries.length > 0 ? (
                   <>
-                    {effectiveRatePerHour !== 0 ? (
+                    {hasActivity ? (
                       <div className="od-prod-rate">
                         <span className={`od-prod-value ${effectiveRatePerHour < 0 ? 'negative' : ''}`}>{effectiveRatePerHour >= 0 ? '+' : ''}{formatRate(effectiveRatePerHour)}/h</span>
                       </div>
