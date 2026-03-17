@@ -1,7 +1,6 @@
 [
   {
     "id": "consumable_lucky_charm",
-    "version": 1,
     "type": "CONSUMABLE",
     "rarity": "UNCOMMON",
     "name": "Lucky Charm",
@@ -18,23 +17,15 @@
     "stackable": true,
     "maxStack": 10,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
     "consumableData": {
       "effect": "luck_boost",
       "duration": 300
-    },
-    "craftingData": null
+    }
   },
   {
     "id": "consumable_xp_scroll",
-    "version": 1,
     "type": "CONSUMABLE",
     "rarity": "SCARCE",
     "name": "XP Scroll",
@@ -51,24 +42,16 @@
     "stackable": true,
     "maxStack": 5,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
     "consumableData": {
       "effect": "xp_boost",
       "duration": 600,
       "multiplier": 2
-    },
-    "craftingData": null
+    }
   },
   {
     "id": "gear_iron_sword",
-    "version": 1,
     "type": "GEAR",
     "rarity": "COMMON",
     "name": "Iron Sword",
@@ -85,25 +68,17 @@
     "stackable": false,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": {
       "slot": "weapon",
       "stats": {
         "ATK": 5
       }
     },
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "gear_mana_ring",
-    "version": 1,
     "type": "GEAR",
     "rarity": "UNCOMMON",
     "name": "Ring of Focus",
@@ -120,11 +95,6 @@
     "stackable": false,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": {
       "slot": "accessory",
       "stats": {
@@ -132,14 +102,11 @@
         "LCK": 1
       }
     },
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_fake_badge",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "UNCOMMON",
     "name": "Fake Security Badge",
@@ -153,20 +120,12 @@
     "stackable": true,
     "maxStack": 50,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_glitch_residue",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "COMMON",
     "name": "GL!TCH Residue",
@@ -180,20 +139,12 @@
     "stackable": true,
     "maxStack": 100,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_proto_egg",
-    "version": 1,
     "type": "QUEST",
     "rarity": "RARE",
     "name": "Prototype Egg",
@@ -207,20 +158,12 @@
     "stackable": false,
     "maxStack": null,
     "uniqueInstance": true,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_crystal_bloom",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "UNCOMMON",
     "name": "Crystal Bloom",
@@ -237,20 +180,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_feather_dust",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "COMMON",
     "name": "Feather Dust",
@@ -266,20 +201,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_iron_ore",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "COMMON",
     "name": "Iron Ore",
@@ -296,20 +223,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_mana_shard",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "UNCOMMON",
     "name": "Mana Shard",
@@ -326,20 +245,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_shadow_silk",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "SCARCE",
     "name": "Shadow Silk",
@@ -356,20 +267,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_starlight_dust",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "ADVANCED",
     "name": "Starlight Dust",
@@ -386,20 +289,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "mat_void_essence",
-    "version": 1,
     "type": "MATERIAL",
     "rarity": "RARE",
     "name": "Void Essence",
@@ -416,20 +311,12 @@
     "stackable": true,
     "maxStack": null,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "potion_heal_medium",
-    "version": 1,
     "type": "POTION",
     "rarity": "UNCOMMON",
     "name": "Healing Potion",
@@ -445,23 +332,15 @@
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
     "consumableData": {
       "amount": 50,
       "effect": "heal"
-    },
-    "craftingData": null
+    }
   },
   {
     "id": "potion_heal_small",
-    "version": 1,
     "type": "POTION",
     "rarity": "COMMON",
     "name": "Minor Healing Potion",
@@ -477,23 +356,15 @@
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
     "consumableData": {
       "amount": 20,
       "effect": "heal"
-    },
-    "craftingData": null
+    }
   },
   {
     "id": "potion_speed_small",
-    "version": 1,
     "type": "POTION",
     "rarity": "COMMON",
     "name": "Swift Draught",
@@ -510,23 +381,15 @@
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
     "consumableData": {
       "effect": "speed_boost",
       "duration": 60
-    },
-    "craftingData": null
+    }
   },
   {
     "id": "quest_ancient_map",
-    "version": 1,
     "type": "QUEST",
     "rarity": "SCARCE",
     "name": "Ancient Map Fragment",
@@ -542,20 +405,12 @@
     "stackable": true,
     "maxStack": 5,
     "uniqueInstance": false,
-    "tradable": true,
-    "bindOnEquip": false,
-    "bindOnPickup": false,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_common_chest",
-    "version": 1,
     "type": "LOOTBOX",
     "rarity": "COMMON",
     "name": "Common Chest",
@@ -566,25 +421,16 @@
     "category": "MISC",
     "groups": ["lootbox"],
     "tags": ["lootbox", "chest"],
-    "isLootbox": true,
     "lootboxDefId": "lootbox_common_chest",
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": false,
-    "bindOnEquip": false,
-    "bindOnPickup": true,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_rare_crate",
-    "version": 1,
     "type": "LOOTBOX",
     "rarity": "RARE",
     "name": "Rare Crate",
@@ -595,25 +441,16 @@
     "category": "MISC",
     "groups": ["lootbox"],
     "tags": ["lootbox", "crate"],
-    "isLootbox": true,
     "lootboxDefId": "lootbox_rare_crate",
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": false,
-    "bindOnEquip": false,
-    "bindOnPickup": true,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   },
   {
     "id": "item_mystery_egg",
-    "version": 1,
     "type": "LOOTBOX",
     "rarity": "EPIC",
     "name": "Mystery Egg",
@@ -624,20 +461,12 @@
     "category": "MISC",
     "groups": ["lootbox"],
     "tags": ["lootbox", "egg", "mystery"],
-    "isLootbox": true,
     "lootboxDefId": "lootbox_mystery_egg",
     "stackable": true,
     "maxStack": 99,
     "uniqueInstance": false,
-    "tradable": false,
-    "bindOnEquip": false,
-    "bindOnPickup": true,
-    "hasState": false,
-    "stateSchema": null,
     "equipData": null,
-    "statModifiers": null,
     "passiveEffects": null,
-    "consumableData": null,
-    "craftingData": null
+    "consumableData": null
   }
 ]

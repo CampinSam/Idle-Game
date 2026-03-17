@@ -157,6 +157,6 @@ After editing anything in `packages/shared/` or `packages/math/`:
 Creating a functional lootbox requires two definition records:
 
 1. **`LootboxDef`** — defines the outcome pool (`outcomes[]`), `rollCount`, and display.
-2. **`ItemDef`** with `type: LOOTBOX`, `isLootbox: true`, and `lootboxDefId` pointing to the `LootboxDef`.
+2. **`ItemDef`** with `type: LOOTBOX` and `lootboxDefId` pointing to the `LootboxDef`.
 
 When the player opens the item, the handler reads `lootboxDefId` from the item definition to locate the outcome pool. If `lootboxDefId` is missing, the command throws `BadRequestException`. This same two-step pattern applies to any item type that delegates behavior to a separate definition record.

@@ -2026,7 +2026,7 @@
       }
     },
     "ItemDef": {
-      "description": "Item definitions with rarity, stacking, binding, equipment, consumable, and crafting metadata",
+      "description": "Item definitions with rarity, stacking, equipment, consumable, and passive effect metadata",
       "prismaModel": "ItemDefinition",
       "tableName": "item_defs",
       "primaryKey": "id",
@@ -2035,11 +2035,6 @@
           "type": "string",
           "required": true,
           "description": "Unique identifier"
-        },
-        "version": {
-          "type": "integer",
-          "default": 1,
-          "description": "Schema version"
         },
         "type": {
           "type": "enum",
@@ -2110,50 +2105,15 @@
           "default": false,
           "description": "Each item unique?"
         },
-        "tradable": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can be traded?"
-        },
-        "bindOnEquip": {
-          "type": "boolean",
-          "default": false,
-          "description": "Binds when equipped?"
-        },
-        "bindOnPickup": {
-          "type": "boolean",
-          "default": false,
-          "description": "Binds when acquired?"
-        },
-        "hasState": {
-          "type": "boolean",
-          "default": false,
-          "description": "Has dynamic state?"
-        },
-        "stateSchema": {
-          "type": "json",
-          "nullable": true,
-          "description": "JSON Schema for state validation"
-        },
-        "isLootbox": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether this item is a lootbox. When true, lootboxDefId must be set."
-        },
         "lootboxDefId": {
           "type": "string",
           "nullable": true,
-          "description": "Reference to a LootboxDef. Required when isLootbox is true. Determines the outcome pool when the player opens this item."
+          "description": "Reference to a LootboxDef. Required when type is LOOTBOX. Determines the outcome pool when the player opens this item."
         },
         "equipData": {
           "$ref": "#/complexTypes/EquipData",
           "nullable": true,
           "description": "Equipment slot and stats"
-        },
-        "statModifiers": {
-          "type": "json",
-          "nullable": true,
-          "description": "Passive stat modifiers"
         },
         "passiveEffects": {
           "type": "array",
@@ -2167,11 +2127,6 @@
           "$ref": "#/complexTypes/ConsumableData",
           "nullable": true,
           "description": "Consumable behavior"
-        },
-        "craftingData": {
-          "type": "json",
-          "nullable": true,
-          "description": "Crafting metadata"
         },
         "data": {
           "type": "json",

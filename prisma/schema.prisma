@@ -700,7 +700,6 @@ enum ItemCategory {
 
 model ItemDefinition {
   id              String       @id
-  version         Int          @default(1)
 
   type            ItemType
   rarity          ItemRarity   @default(COMMON)
@@ -719,21 +718,12 @@ model ItemDefinition {
   maxStack        Int?
 
   uniqueInstance  Boolean      @default(false)
-  tradable        Boolean      @default(true)
-  bindOnEquip     Boolean      @default(false)
-  bindOnPickup    Boolean      @default(false)
 
-  hasState        Boolean      @default(false)
-  stateSchema     Json?
-
-  isLootbox       Boolean      @default(false)
   lootboxDefId    String?
 
   equipData       Json?
-  statModifiers   Json?
   passiveEffects  Json?
   consumableData  Json?
-  craftingData    Json?
   data            Json?
 
   seasonId        String?
