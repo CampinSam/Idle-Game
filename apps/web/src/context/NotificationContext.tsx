@@ -34,6 +34,7 @@ interface NotificationContextValue {
   markRead: (ids: string[]) => Promise<void>;
   markAllRead: () => Promise<void>;
   clearRead: () => Promise<void>;
+  dismissNotification: (id: string) => void;
   dismissToast: (toastId: string) => void;
   hideToast: (toastId: string) => void;
 }
@@ -46,6 +47,7 @@ const NotificationContext = createContext<NotificationContextValue>({
   markRead: async () => {},
   markAllRead: async () => {},
   clearRead: async () => {},
+  dismissNotification: () => {},
   dismissToast: () => {},
   hideToast: () => {},
 });
@@ -151,6 +153,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }));
   }, [dispatch, notifications]);
 
+  const dismissNotification = useCallback((id: string) => {
+    api.dismissNotification(id).catch(() => {});
+    dispatch(applyPatches({
+      patches: [{ op: 'delete', entity: 'notification', id }],
+    }));
+  }, [dispatch]);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -161,6 +170,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markRead,
         markAllRead,
         clearRead,
+        dismissNotification,
         dismissToast,
         hideToast,
       }}

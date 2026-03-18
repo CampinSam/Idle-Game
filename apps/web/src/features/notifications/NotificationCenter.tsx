@@ -36,7 +36,7 @@ function timeAgo(dateStr: string): string {
 
 export default function NotificationCenter({ onClose, boostInfo }: { onClose: () => void; boostInfo?: ActiveBoostInfo }) {
   const navigate = useNavigate();
-  const { notifications, markRead, markAllRead, clearRead, unreadCount } = useNotifications();
+  const { notifications, markRead, markAllRead, clearRead, dismissNotification, unreadCount } = useNotifications();
   const { pushModal } = useModal();
   const { collectJob } = useCollectJob();
   const [filter, setFilter] = useState<string>('All');
@@ -74,14 +74,15 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
   };
 
   const handleTap = async (n: AppNotification) => {
-    if (!n.readAt) {
-      markRead([n.id]).catch(() => {});
-    }
-
     if (n.type === 'gift' && n.meta?.giftId) {
+      dismissNotification(n.id);
       onClose();
       await openModalSpec({ giftId: n.meta.giftId });
       return;
+    }
+
+    if (!n.readAt) {
+      markRead([n.id]).catch(() => {});
     }
 
     const jobId = resolveJobId(n);
@@ -109,6 +110,7 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
     e.stopPropagation();
     const giftId = n.meta?.giftId;
     if (!giftId) return;
+    dismissNotification(n.id);
     onClose();
     await openModalSpec({ giftId });
   };
