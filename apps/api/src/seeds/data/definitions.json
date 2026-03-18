@@ -49,6 +49,44 @@
       "cap": null
     }
   ],
+  "equipmentSchemas": [
+    {
+      "id": "bird_equip_v1",
+      "schema": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "data": {}
+    }
+  ],
+  "progressionProfiles": [
+    {
+      "id": "bird_prog_v1",
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
+      "data": {}
+    }
+  ],
+  "bodySchemas": [
+    {
+      "id": "avian_7",
+      "slots": {
+        "back": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "beak": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "body": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "ears": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "eyes": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "head": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+        "tail": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"]
+      },
+      "data": {}
+    }
+  ],
   "entityDefinitions": [
     {
       "id": "derp_bird",

@@ -83,6 +83,18 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
+  if (defs.equipmentSchemas) {
+    await upsertMany(prisma, 'equipmentSchema', defs.equipmentSchemas);
+  }
+
+  if (defs.progressionProfiles) {
+    await upsertMany(prisma, 'progressionProfile', defs.progressionProfiles);
+  }
+
+  if (defs.bodySchemas) {
+    await upsertMany(prisma, 'bodySchema', defs.bodySchemas);
+  }
+
   if (defs.entityDefinitions) {
     await upsertMany(prisma, 'entityDefinition', defs.entityDefinitions);
   }
