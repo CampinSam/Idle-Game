@@ -1,7 +1,18 @@
 .checkin-container {
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+.checkin-track {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  padding: 12px 0;
+}
+
+.checkin-track + .checkin-track {
+  border-top: 1px solid rgba(139, 92, 246, 0.15);
 }
 
 .checkin-header {

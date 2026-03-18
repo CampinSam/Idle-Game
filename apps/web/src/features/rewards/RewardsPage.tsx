@@ -90,7 +90,7 @@ export default function RewardsPage() {
   return (
     <div className="rewards-page">
       <div className="rewards-card">
-        <span className="rewards-card-title">Daily Check-In</span>
+        <span className="rewards-card-title">Check-In Rewards</span>
         <DailyRewardContainer />
       </div>
       <PendingGiftsCard />
