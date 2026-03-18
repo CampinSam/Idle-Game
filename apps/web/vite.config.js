@@ -6,10 +6,9 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@derp/shared': path.resolve(__dirname, '../../packages/shared/src'),
+            '@derp/math': path.resolve(__dirname, '../../packages/math/src'),
         },
-    },
-    optimizeDeps: {
-        include: ['@derp/shared'],
     },
     server: {
         port: 5000,
