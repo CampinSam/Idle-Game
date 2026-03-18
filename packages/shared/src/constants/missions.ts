@@ -6,7 +6,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'quick_egg_hunt',
     name: 'The Great Egg Hunt',
     description: 'Scramble around Derpshire looking for shiny eggs. Try not to sit on them.',
-    type: 'quick',
     difficulty: 50,
     timer: { ...DEFAULT_TIMER, duration: 30, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 5 }] },
     success: {
@@ -32,7 +31,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'quick_mushroom_patrol',
     name: 'Suspicious Mushroom Patrol',
     description: 'Those mushrooms are looking a bit too happy. Investigate immediately.',
-    type: 'quick',
     difficulty: 75,
     timer: { ...DEFAULT_TIMER, duration: 300, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 10 }] },
     success: {
@@ -58,7 +56,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'quick_mail_run',
     name: 'Derp Mail Express',
     description: 'Deliver very important letters. Contents: mostly doodles and snack requests.',
-    type: 'quick',
     difficulty: 40,
     timer: { ...DEFAULT_TIMER, duration: 180, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 8 }] },
     success: {
@@ -84,7 +81,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'standard_cave_explore',
     name: 'The Somewhat Scary Cave',
     description: 'A cave that is definitely not haunted. Probably. Send a team to find out.',
-    type: 'standard',
     difficulty: 120,
     timer: { ...DEFAULT_TIMER, duration: 1800, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 50 }], skip_type: 'scaling' },
     success: {
@@ -111,7 +107,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'standard_bandit_camp',
     name: 'Bandit Camp Buffet Raid',
     description: 'The bandits stole the village snack supply. This cannot stand.',
-    type: 'standard',
     difficulty: 150,
     timer: { ...DEFAULT_TIMER, duration: 2700, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 75 }], skip_type: 'scaling' },
     success: {
@@ -139,7 +134,6 @@ export const MISSION_DEFINITIONS: MissionDefinition[] = [
     id: 'standard_tower_climb',
     name: 'The Leaning Tower of Derp',
     description: 'Climb a suspiciously wobbly tower. Rumor has it there\'s treasure at the top. Also vertigo.',
-    type: 'standard',
     difficulty: 200,
     timer: { ...DEFAULT_TIMER, duration: 3600 },
     success: {

@@ -164,9 +164,6 @@ export class MissionService {
       id: def.id,
       name: def.name,
       description: def.description,
-      type: def.type,
-      category: def.category,
-      group: def.group,
       difficulty: def.difficulty,
       timer: def.timer,
       success: def.success,
@@ -316,7 +313,7 @@ export class MissionService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: entityIds,
-        data: { missionType: dbDef.type, difficulty: dbDef.difficulty, seed },
+        data: { difficulty: dbDef.difficulty, seed },
       },
     });
 

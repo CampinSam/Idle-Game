@@ -2683,21 +2683,6 @@
           "nullable": true,
           "description": "Flavor text"
         },
-        "type": {
-          "type": "string",
-          "required": true,
-          "description": "Mission type"
-        },
-        "category": {
-          "type": "string",
-          "nullable": true,
-          "description": "Grouping category"
-        },
-        "group": {
-          "type": "string",
-          "nullable": true,
-          "description": "Sub-group"
-        },
         "difficulty": {
           "type": "integer",
           "default": 0,

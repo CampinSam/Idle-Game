@@ -551,9 +551,6 @@ model MissionDef {
   id                       String             @id
   name                     String
   description              String?
-  type                     String
-  category                 String?
-  group                    String?
   difficulty               Int                @default(0)
   minSuccessChance         Int                @default(0)
   maxSuccessChance         Int                @default(100)

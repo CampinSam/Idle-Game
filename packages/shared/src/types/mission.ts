@@ -1,4 +1,3 @@
-export type MissionType = 'quick' | 'standard';
 export type MissionStatus = 'active' | 'completed' | 'failed';
 
 export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
@@ -56,7 +55,6 @@ export interface MissionDefinition {
   id: string;
   name: string;
   description: string;
-  type: MissionType;
   difficulty: number;
   timer: import('./timer').Timer;
   success: OutcomeBlock;
@@ -69,7 +67,6 @@ export interface Mission {
   id: string;
   userId: string;
   defId: string;
-  missionType: MissionType;
   difficulty: number;
   team: string[];
   status: MissionStatus;

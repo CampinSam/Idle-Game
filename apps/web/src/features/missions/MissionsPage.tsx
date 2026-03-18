@@ -26,7 +26,7 @@ const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/miss
 
 function resolveDisplay(def: any, categoryDefs: any[]) {
   const missionDisplay = def.display || {};
-  const catDef = categoryDefs.find((c: any) => c.id === (def.missionCategoryDefId || def.type));
+  const catDef = categoryDefs.find((c: any) => c.id === def.missionCategoryDefId);
   const catDisplay = catDef?.displayDef || {};
 
   return {
@@ -162,7 +162,7 @@ export default function MissionsPage() {
     if (!repeatMissionDefId || missionDefs.length === 0) return;
     const def = missionDefs.find((d: any) => d.id === repeatMissionDefId);
     if (!def) return;
-    const catId = def.missionCategoryDefId || def.type;
+    const catId = def.missionCategoryDefId;
     if (catId) setSelectedCategory(catId);
     setSelectedMission(def.id);
     setSelectedEntities([]);
@@ -190,7 +190,7 @@ export default function MissionsPage() {
     const catMap = new Map<string, { id: string; name: string; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number }>();
 
     for (const catDef of missionCategoryDefs) {
-      const defs = missionDefs.filter((d: any) => (d.missionCategoryDefId || d.type) === catDef.id);
+      const defs = missionDefs.filter((d: any) => d.missionCategoryDefId === catDef.id);
       const locked = !meetsNonTeamRequirements(catDef);
       catMap.set(catDef.id, {
         id: catDef.id,
@@ -284,7 +284,7 @@ export default function MissionsPage() {
     setActiveSlotIndex(null);
   };
 
-  const categoryDefs = selectedCategory ? missionDefs.filter((d: any) => (d.missionCategoryDefId || d.type) === selectedCategory).sort((a: any, b: any) => (a.id || '').localeCompare(b.id || '')) : [];
+  const categoryDefs = selectedCategory ? missionDefs.filter((d: any) => d.missionCategoryDefId === selectedCategory).sort((a: any, b: any) => (a.id || '').localeCompare(b.id || '')) : [];
   const currentCat = categories.find((c) => c.id === selectedCategory);
   const catDisplay = currentCat?.display || DEFAULT_DISPLAY;
 

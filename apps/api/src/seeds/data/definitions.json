@@ -76,13 +76,118 @@
     {
       "id": "avian_7",
       "slots": {
-        "back": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "beak": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "body": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "ears": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "eyes": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "head": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-        "tail": ["Dave", "Astro", "magic", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"]
+        "back": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "beak": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "body": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "ears": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "eyes": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "head": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "tail": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ]
       },
       "data": {}
     }
@@ -1869,9 +1974,6 @@
       "id": "mission_iron_run",
       "name": "Iron Mining Run",
       "description": "Venture into the caves to mine iron ore.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 10,
       "minSuccessChance": 5,
       "maxSuccessChance": 95,
@@ -1970,9 +2072,6 @@
       "id": "mission_mana_expedition",
       "name": "Mana Expedition",
       "description": "Explore ley line convergences to collect mana shards.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 3,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2054,9 +2153,6 @@
       "id": "mission_perp_1_data_sweep",
       "name": "Data Recovery Sweep",
       "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
-      "type": "quick",
-      "category": null,
-      "group": null,
       "difficulty": 1,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2101,9 +2197,6 @@
       "id": "mission_perp_2_incubator_extraction",
       "name": "Incubator Extraction",
       "description": null,
-      "type": "standard",
-      "category": null,
-      "group": null,
       "difficulty": 2,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2154,9 +2247,6 @@
       "id": "mission_perp_3_glitch_calibration",
       "name": "GL!TCH-BIO Calibration",
       "description": null,
-      "type": "standard",
-      "category": null,
-      "group": null,
       "difficulty": 3,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2215,9 +2305,6 @@
       "id": "mission_perp_4_first_prank",
       "name": "The First Prank",
       "description": null,
-      "type": "quick",
-      "category": null,
-      "group": null,
       "difficulty": 2,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2272,9 +2359,6 @@
       "id": "mission_quick_gather",
       "name": "Quick Gather",
       "description": "Send your birds on a short foraging trip.",
-      "type": "quick",
-      "category": "cat_quick",
-      "group": null,
       "difficulty": 5,
       "minSuccessChance": 100,
       "maxSuccessChance": 100,
@@ -2388,9 +2472,6 @@
       "id": "mission_test_flags",
       "name": "Test Flags",
       "description": "A mission to test flags.",
-      "type": "quick",
-      "category": null,
-      "group": null,
       "difficulty": 0,
       "minSuccessChance": 100,
       "maxSuccessChance": 100,
@@ -2522,9 +2603,6 @@
       "id": "mission_void_rift",
       "name": "Void Rift Exploration",
       "description": "Brave the dangerous void rifts for rare materials.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 5,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2605,9 +2683,6 @@
       "id": "quick_egg_hunt",
       "name": "The Great Egg Hunt",
       "description": "Scramble around Derpshire looking for shiny eggs. Try not to sit on them.",
-      "type": "quick",
-      "category": "cat_quick",
-      "group": null,
       "difficulty": 5,
       "minSuccessChance": 100,
       "maxSuccessChance": 100,
@@ -2715,9 +2790,6 @@
       "id": "quick_mail_run",
       "name": "Derp Mail Express",
       "description": "Deliver very important letters. Contents: mostly doodles and snack requests.",
-      "type": "quick",
-      "category": "cat_quick",
-      "group": null,
       "difficulty": 40,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2825,9 +2897,6 @@
       "id": "quick_mushroom_patrol",
       "name": "Suspicious Mushroom Patrol",
       "description": "Those mushrooms are looking a bit too happy. Investigate immediately.",
-      "type": "quick",
-      "category": "cat_quick",
-      "group": null,
       "difficulty": 75,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2935,9 +3004,6 @@
       "id": "standard_bandit_camp",
       "name": "Bandit Camp Buffet Raid",
       "description": "The bandits stole the village snack supply. This cannot stand.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 150,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -3069,9 +3135,6 @@
       "id": "standard_cave_explore",
       "name": "The Somewhat Scary Cave",
       "description": "A cave that is definitely not haunted. Probably. Send a team to find out.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 120,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -3196,9 +3259,6 @@
       "id": "standard_tower_climb",
       "name": "The Leaning Tower of Derp",
       "description": "Climb a suspiciously wobbly tower. Rumor has it there's treasure at the top. Also vertigo.",
-      "type": "standard",
-      "category": "cat_standard",
-      "group": null,
       "difficulty": 200,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -4277,11 +4337,36 @@
       "outcomes": [
         {
           "bundle": [
-            { "type": "currency", "key": "soft_arcanium", "amount": 50, "odds": 40 },
-            { "type": "currency", "key": "soft_arcanium", "amount": 100, "odds": 25 },
-            { "type": "currency", "key": "hard_essence", "amount": 5, "odds": 20 },
-            { "type": "item", "key": "mat_iron_ore", "amount": 3, "odds": 10 },
-            { "type": "item", "key": "mat_feather_dust", "amount": 2, "odds": 5 }
+            {
+              "type": "currency",
+              "key": "soft_arcanium",
+              "amount": 50,
+              "odds": 40
+            },
+            {
+              "type": "currency",
+              "key": "soft_arcanium",
+              "amount": 100,
+              "odds": 25
+            },
+            {
+              "type": "currency",
+              "key": "hard_essence",
+              "amount": 5,
+              "odds": 20
+            },
+            {
+              "type": "item",
+              "key": "mat_iron_ore",
+              "amount": 3,
+              "odds": 10
+            },
+            {
+              "type": "item",
+              "key": "mat_feather_dust",
+              "amount": 2,
+              "odds": 5
+            }
           ],
           "minChoices": 1,
           "maxChoices": 1
@@ -4297,11 +4382,36 @@
       "outcomes": [
         {
           "bundle": [
-            { "type": "currency", "key": "hard_essence", "amount": 15, "odds": 35 },
-            { "type": "currency", "key": "premium_gems", "amount": 5, "odds": 25 },
-            { "type": "currency", "key": "premium_gems", "amount": 15, "odds": 15 },
-            { "type": "item", "key": "mat_mana_shard", "amount": 2, "odds": 15 },
-            { "type": "item", "key": "mat_starlight_dust", "amount": 1, "odds": 10 }
+            {
+              "type": "currency",
+              "key": "hard_essence",
+              "amount": 15,
+              "odds": 35
+            },
+            {
+              "type": "currency",
+              "key": "premium_gems",
+              "amount": 5,
+              "odds": 25
+            },
+            {
+              "type": "currency",
+              "key": "premium_gems",
+              "amount": 15,
+              "odds": 15
+            },
+            {
+              "type": "item",
+              "key": "mat_mana_shard",
+              "amount": 2,
+              "odds": 15
+            },
+            {
+              "type": "item",
+              "key": "mat_starlight_dust",
+              "amount": 1,
+              "odds": 10
+            }
           ],
           "minChoices": 1,
           "maxChoices": 1
@@ -4317,12 +4427,42 @@
       "outcomes": [
         {
           "bundle": [
-            { "type": "currency", "key": "premium_gems", "amount": 10, "odds": 30 },
-            { "type": "currency", "key": "premium_gems", "amount": 25, "odds": 20 },
-            { "type": "currency", "key": "hard_essence", "amount": 30, "odds": 20 },
-            { "type": "item", "key": "mat_void_essence", "amount": 1, "odds": 15 },
-            { "type": "item", "key": "mat_crystal_bloom", "amount": 2, "odds": 10 },
-            { "type": "item", "key": "gear_mana_ring", "amount": 1, "odds": 5 }
+            {
+              "type": "currency",
+              "key": "premium_gems",
+              "amount": 10,
+              "odds": 30
+            },
+            {
+              "type": "currency",
+              "key": "premium_gems",
+              "amount": 25,
+              "odds": 20
+            },
+            {
+              "type": "currency",
+              "key": "hard_essence",
+              "amount": 30,
+              "odds": 20
+            },
+            {
+              "type": "item",
+              "key": "mat_void_essence",
+              "amount": 1,
+              "odds": 15
+            },
+            {
+              "type": "item",
+              "key": "mat_crystal_bloom",
+              "amount": 2,
+              "odds": 10
+            },
+            {
+              "type": "item",
+              "key": "gear_mana_ring",
+              "amount": 1,
+              "odds": 5
+            }
           ],
           "minChoices": 1,
           "maxChoices": 1
@@ -4337,17 +4477,40 @@
       "name": "Daily Login Track",
       "description": "Log in every day for 7 days to earn escalating Arcanium rewards. A milestone bonus awaits on day 7.",
       "cycleLength": 7,
-      "frequency": { "type": "daily" },
+      "frequency": {
+        "type": "daily"
+      },
       "requireStreak": false,
       "allowReclaim": false,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_checkin_daily_arcanium_sm" },
-        { "day": 1, "giftDefId": "gift_checkin_daily_arcanium_sm" },
-        { "day": 2, "giftDefId": "gift_checkin_daily_arcanium_sm" },
-        { "day": 3, "giftDefId": "gift_checkin_daily_arcanium_md" },
-        { "day": 4, "giftDefId": "gift_checkin_daily_arcanium_md" },
-        { "day": 5, "giftDefId": "gift_checkin_daily_arcanium_md" },
-        { "day": 6, "giftDefId": "gift_checkin_daily_arcanium_lg" }
+        {
+          "day": 0,
+          "giftDefId": "gift_checkin_daily_arcanium_sm"
+        },
+        {
+          "day": 1,
+          "giftDefId": "gift_checkin_daily_arcanium_sm"
+        },
+        {
+          "day": 2,
+          "giftDefId": "gift_checkin_daily_arcanium_sm"
+        },
+        {
+          "day": 3,
+          "giftDefId": "gift_checkin_daily_arcanium_md"
+        },
+        {
+          "day": 4,
+          "giftDefId": "gift_checkin_daily_arcanium_md"
+        },
+        {
+          "day": 5,
+          "giftDefId": "gift_checkin_daily_arcanium_md"
+        },
+        {
+          "day": 6,
+          "giftDefId": "gift_checkin_daily_arcanium_lg"
+        }
       ],
       "enabled": true
     },
@@ -4356,17 +4519,40 @@
       "name": "Weekly Bonus Track",
       "description": "Maintain a 7-day streak for escalating Essence rewards and a Gem bonus on the final day.",
       "cycleLength": 7,
-      "frequency": { "type": "daily" },
+      "frequency": {
+        "type": "daily"
+      },
       "requireStreak": true,
       "allowReclaim": true,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_checkin_weekly_essence_sm" },
-        { "day": 1, "giftDefId": "gift_checkin_weekly_essence_sm" },
-        { "day": 2, "giftDefId": "gift_checkin_weekly_essence_sm" },
-        { "day": 3, "giftDefId": "gift_checkin_weekly_essence_md" },
-        { "day": 4, "giftDefId": "gift_checkin_weekly_essence_md" },
-        { "day": 5, "giftDefId": "gift_checkin_weekly_essence_md" },
-        { "day": 6, "giftDefId": "gift_checkin_weekly_gems" }
+        {
+          "day": 0,
+          "giftDefId": "gift_checkin_weekly_essence_sm"
+        },
+        {
+          "day": 1,
+          "giftDefId": "gift_checkin_weekly_essence_sm"
+        },
+        {
+          "day": 2,
+          "giftDefId": "gift_checkin_weekly_essence_sm"
+        },
+        {
+          "day": 3,
+          "giftDefId": "gift_checkin_weekly_essence_md"
+        },
+        {
+          "day": 4,
+          "giftDefId": "gift_checkin_weekly_essence_md"
+        },
+        {
+          "day": 5,
+          "giftDefId": "gift_checkin_weekly_essence_md"
+        },
+        {
+          "day": 6,
+          "giftDefId": "gift_checkin_weekly_gems"
+        }
       ],
       "enabled": true
     },
@@ -4375,17 +4561,40 @@
       "name": "Seasonal Check-In",
       "description": "A special seasonal check-in track. Earn Frost Coins daily and a milestone haul on day 7.",
       "cycleLength": 7,
-      "frequency": { "type": "daily" },
+      "frequency": {
+        "type": "daily"
+      },
       "requireStreak": false,
       "allowReclaim": false,
       "rewards": [
-        { "day": 0, "giftDefId": "gift_checkin_seasonal_frost_sm" },
-        { "day": 1, "giftDefId": "gift_checkin_seasonal_frost_sm" },
-        { "day": 2, "giftDefId": "gift_checkin_seasonal_frost_sm" },
-        { "day": 3, "giftDefId": "gift_checkin_seasonal_frost_md" },
-        { "day": 4, "giftDefId": "gift_checkin_seasonal_frost_md" },
-        { "day": 5, "giftDefId": "gift_checkin_seasonal_frost_md" },
-        { "day": 6, "giftDefId": "gift_checkin_seasonal_frost_lg" }
+        {
+          "day": 0,
+          "giftDefId": "gift_checkin_seasonal_frost_sm"
+        },
+        {
+          "day": 1,
+          "giftDefId": "gift_checkin_seasonal_frost_sm"
+        },
+        {
+          "day": 2,
+          "giftDefId": "gift_checkin_seasonal_frost_sm"
+        },
+        {
+          "day": 3,
+          "giftDefId": "gift_checkin_seasonal_frost_md"
+        },
+        {
+          "day": 4,
+          "giftDefId": "gift_checkin_seasonal_frost_md"
+        },
+        {
+          "day": 5,
+          "giftDefId": "gift_checkin_seasonal_frost_md"
+        },
+        {
+          "day": 6,
+          "giftDefId": "gift_checkin_seasonal_frost_lg"
+        }
       ],
       "enabled": true
     }
@@ -4476,7 +4685,11 @@
         "version": 1,
         "id": "modal_welcome",
         "kind": "announcement",
-        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "dismiss": {
+          "backdrop": true,
+          "x": true,
+          "escape": true
+        },
         "header": {
           "title": "Welcome to Derp Universe!",
           "subtitle": "Your adventure begins now."
@@ -4485,8 +4698,24 @@
           {
             "type": "richText",
             "doc": [
-              { "t": "p", "c": [{ "t": "text", "v": "You've arrived at the edge of a strange and wondrous world. Gather resources, raise your keepers, and uncover the secrets of the Derp Universe." }] },
-              { "t": "p", "c": [{ "t": "text", "v": "Start by completing your first mission and claiming your welcome gift." }] }
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "You've arrived at the edge of a strange and wondrous world. Gather resources, raise your keepers, and uncover the secrets of the Derp Universe."
+                  }
+                ]
+              },
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "Start by completing your first mission and claiming your welcome gift."
+                  }
+                ]
+              }
             ]
           }
         ],
@@ -4495,7 +4724,9 @@
             "id": "btn_lets_go",
             "label": "Let's Go!",
             "variant": "primary",
-            "action": { "type": "CLOSE_MODAL" }
+            "action": {
+              "type": "CLOSE_MODAL"
+            }
           }
         ]
       },
@@ -4510,7 +4741,11 @@
         "version": 1,
         "id": "modal_season_intro",
         "kind": "announcement",
-        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "dismiss": {
+          "backdrop": true,
+          "x": true,
+          "escape": true
+        },
         "header": {
           "title": "Season 1: Frost Rising",
           "subtitle": "The cold winds bring new opportunities."
@@ -4519,8 +4754,24 @@
           {
             "type": "richText",
             "doc": [
-              { "t": "p", "c": [{ "t": "text", "v": "A new season has begun. Earn Frost Coins through missions and events, then spend them in the seasonal store before time runs out." }] },
-              { "t": "p", "c": [{ "t": "text", "v": "Complete the seasonal check-in track for exclusive rewards only available this season." }] }
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "A new season has begun. Earn Frost Coins through missions and events, then spend them in the seasonal store before time runs out."
+                  }
+                ]
+              },
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "Complete the seasonal check-in track for exclusive rewards only available this season."
+                  }
+                ]
+              }
             ]
           }
         ],
@@ -4529,13 +4780,18 @@
             "id": "btn_view_store",
             "label": "View Season Store",
             "variant": "primary",
-            "action": { "type": "NAVIGATE", "route": "/store" }
+            "action": {
+              "type": "NAVIGATE",
+              "route": "/store"
+            }
           },
           {
             "id": "btn_later",
             "label": "Maybe Later",
             "variant": "secondary",
-            "action": { "type": "CLOSE_MODAL" }
+            "action": {
+              "type": "CLOSE_MODAL"
+            }
           }
         ]
       },
@@ -4550,7 +4806,11 @@
         "version": 1,
         "id": "modal_mission_complete",
         "kind": "reward",
-        "dismiss": { "backdrop": false, "x": false, "escape": false },
+        "dismiss": {
+          "backdrop": false,
+          "x": false,
+          "escape": false
+        },
         "header": {
           "title": "Mission Complete!",
           "subtitle": "Your keepers return victorious."
@@ -4559,7 +4819,15 @@
           {
             "type": "richText",
             "doc": [
-              { "t": "p", "c": [{ "t": "text", "v": "The rewards have been added to your inventory." }] }
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "The rewards have been added to your inventory."
+                  }
+                ]
+              }
             ]
           },
           {
@@ -4574,7 +4842,9 @@
             "id": "btn_claim",
             "label": "Claim Rewards",
             "variant": "primary",
-            "action": { "type": "CLOSE_MODAL" }
+            "action": {
+              "type": "CLOSE_MODAL"
+            }
           }
         ]
       },
