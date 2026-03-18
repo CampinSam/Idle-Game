@@ -40,6 +40,47 @@ export class NftImageImportService {
     return { ...this.state };
   }
 
+  ensureEntityImageHosted(entityId: string): void {
+    this.fetchAndHostEntityImage(entityId).catch((err) =>
+      this.logger.warn(`Lazy image fetch failed for entity ${entityId}: ${err?.message || err}`),
+    );
+  }
+
+  private async fetchAndHostEntityImage(entityId: string): Promise<void> {
+    const entity = await this.prisma.entity.findUnique({
+      where: { id: entityId },
+      select: { display: true },
+    });
+    if (!entity) return;
+
+    const display = (entity.display as any) || {};
+    const imageUrl: string = display.imageUrl || '';
+    if (!imageUrl.startsWith('ipfs://')) return;
+
+    const cid = imageUrl.replace('ipfs://', '');
+    const hostedUrl = `/media/nft/cardano/${cid}`;
+
+    try {
+      const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const gcsFile = bucket.file(objectName);
+      const [exists] = await gcsFile.exists();
+
+      if (!exists) {
+        const { buffer, contentType } = await this.downloadFromIpfs(cid);
+        await gcsFile.save(buffer, { contentType, resumable: false });
+        this.logger.log(`Lazy-loaded image for entity ${entityId} (CID: ${cid})`);
+      }
+
+      await this.prisma.entity.update({
+        where: { id: entityId },
+        data: { display: { ...display, imageUrl: hostedUrl } },
+      });
+    } catch (err: any) {
+      throw new Error(`CID ${cid}: ${err?.message || err}`);
+    }
+  }
+
   async importAllImages(): Promise<void> {
     if (this.state.status === 'running') return;
 
@@ -54,14 +95,6 @@ export class NftImageImportService {
     };
 
     try {
-      const publicSearchPaths = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
-      const firstPath = publicSearchPaths.split(',').map(p => p.trim()).filter(Boolean)[0];
-      if (!firstPath) throw new Error('PUBLIC_OBJECT_SEARCH_PATHS not configured');
-      const pathParts = firstPath.slice(1).split('/');
-      const bucketName = pathParts[0];
-      const prefix = pathParts.slice(1).join('/');
-      const bucket = objectStorageClient.bucket(bucketName);
-
       const entities = await this.prisma.entity.findMany({
         where: { nftAssetId: { not: null } },
         select: { id: true, display: true },
@@ -79,7 +112,7 @@ export class NftImageImportService {
 
       this.state.total = cidToEntityIds.size;
       this.logger.log(
-        `Starting IPFS image import: ${cidToEntityIds.size} unique CIDs for ${entities.length} entities`
+        `Starting IPFS image import: ${cidToEntityIds.size} unique CIDs for ${entities.length} entities`,
       );
 
       const entries = Array.from(cidToEntityIds.entries());
@@ -90,10 +123,11 @@ export class NftImageImportService {
           const current = idx++;
           if (current >= entries.length) break;
           const [cid, entityIds] = entries[current];
-          const objectName = prefix ? `${prefix}/nft/cardano/${cid}` : `nft/cardano/${cid}`;
           const hostedUrl = `/media/nft/cardano/${cid}`;
 
           try {
+            const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
+            const bucket = objectStorageClient.bucket(bucketName);
             const gcsFile = bucket.file(objectName);
             const [exists] = await gcsFile.exists();
 
@@ -114,7 +148,7 @@ export class NftImageImportService {
             if (progress % 100 === 0) {
               this.logger.log(
                 `Progress: ${this.state.done} downloaded, ${this.state.skipped} skipped, ` +
-                `${this.state.failed} failed / ${this.state.total} total`
+                  `${this.state.failed} failed / ${this.state.total} total`,
               );
             }
           } catch (err: any) {
@@ -131,7 +165,7 @@ export class NftImageImportService {
       this.state.status = 'done';
       this.state.finishedAt = new Date().toISOString();
       this.logger.log(
-        `Import complete: ${this.state.done} downloaded, ${this.state.skipped} skipped, ${this.state.failed} failed`
+        `Import complete: ${this.state.done} downloaded, ${this.state.skipped} skipped, ${this.state.failed} failed`,
       );
     } catch (err: any) {
       this.state.status = 'error';
@@ -139,6 +173,17 @@ export class NftImageImportService {
       this.state.errors.push(err?.message || String(err));
       this.logger.error(`Import failed: ${err?.message || err}`);
     }
+  }
+
+  private resolveObjectPath(path: string): { bucketName: string; objectName: string } {
+    const publicSearchPaths = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const firstPath = publicSearchPaths.split(',').map((p) => p.trim()).filter(Boolean)[0];
+    if (!firstPath) throw new Error('PUBLIC_OBJECT_SEARCH_PATHS not configured');
+    const pathParts = firstPath.slice(1).split('/');
+    const bucketName = pathParts[0];
+    const prefix = pathParts.slice(1).join('/');
+    const objectName = prefix ? `${prefix}/${path}` : path;
+    return { bucketName, objectName };
   }
 
   private async downloadFromIpfs(cid: string): Promise<{ buffer: Buffer; contentType: string }> {

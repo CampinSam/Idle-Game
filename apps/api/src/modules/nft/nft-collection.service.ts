@@ -4,6 +4,7 @@ import { NftOwnershipService, SupportedChain } from './nft-ownership.service';
 import { CardanoOwnershipProvider } from './cardano-ownership.provider';
 import { buildEntityDataFromNftMetadata } from './nft-entity-builder';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { NftImageImportService } from './nft-image-import.service';
 
 export interface CreateCollectionDto {
   id: string;
@@ -56,6 +57,7 @@ export class NftCollectionService {
     private nftOwnership: NftOwnershipService,
     private cardanoProvider: CardanoOwnershipProvider,
     private pubsub: PubSubService,
+    private nftImageImport: NftImageImportService,
   ) {}
 
   async listCollections() {
@@ -224,6 +226,8 @@ export class NftCollectionService {
               where: { id: existingEntity.id },
               data: { ownerUserId: userId },
             });
+
+            this.nftImageImport.ensureEntityImageHosted(updated.id);
 
             claimed++;
             claimedEntityIds.push(updated.id);
