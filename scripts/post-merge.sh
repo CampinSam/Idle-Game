@@ -6,4 +6,5 @@ pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 cd packages/shared && pnpm run build && cd ../..
 cd packages/math && pnpm run build && cd ../..
 
+npx prisma migrate deploy --schema=prisma/schema.prisma
 npx prisma generate --schema=prisma/schema.prisma
