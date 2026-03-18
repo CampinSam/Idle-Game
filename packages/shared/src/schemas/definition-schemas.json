@@ -18,7 +18,6 @@
     "ItemType": {
       "values": [
         "MATERIAL",
-        "POTION",
         "CONSUMABLE",
         "GEAR",
         "QUEST",

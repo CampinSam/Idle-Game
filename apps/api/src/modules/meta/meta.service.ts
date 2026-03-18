@@ -5,7 +5,7 @@ export class MetaService {
   getEnums(): Record<string, string[]> {
     return {
       currencyType: ['SOFT', 'HARD', 'PREMIUM', 'SEASONAL', 'EVENT', 'GUILD'],
-      itemType: ['MATERIAL', 'POTION', 'CONSUMABLE', 'GEAR', 'QUEST'],
+      itemType: ['MATERIAL', 'CONSUMABLE', 'GEAR', 'QUEST'],
       itemRarity: ['COMMON', 'UNCOMMON', 'SCARCE', 'ADVANCED', 'RARE', 'ULTRA_RARE', 'EPIC', 'MYTHIC', 'LEGENDARY'],
       itemCategory: ['MISC', 'CRAFTING', 'COMBAT', 'EXPLORATION', 'QUEST_ITEMS', 'ENHANCEMENT'],
       xpCurve: ['linear', 'exp', 'custom'],

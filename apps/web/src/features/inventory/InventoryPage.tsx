@@ -9,7 +9,6 @@ const CATEGORY_TABS = [
   { key: 'ALL', label: 'All' },
   { key: 'MATERIAL', label: 'Materials' },
   { key: 'CONSUMABLE', label: 'Consumables' },
-  { key: 'POTION', label: 'Potions' },
   { key: 'GEAR', label: 'Gear' },
   { key: 'QUEST', label: 'Quest' },
 ];
@@ -63,7 +62,7 @@ function InventoryPageSkeleton() {
 }
 
 const OPENABLE_TYPES = new Set(['LOOTBOX', 'GIFT_PACKAGE']);
-const USABLE_TYPES = new Set(['POTION']);
+const USABLE_TYPES = new Set(['CONSUMABLE']);
 
 const OPEN_COMMAND: Record<string, string> = {
   LOOTBOX: 'OpenLootBox',

@@ -317,7 +317,7 @@
   },
   {
     "id": "potion_heal_medium",
-    "type": "POTION",
+    "type": "CONSUMABLE",
     "rarity": "UNCOMMON",
     "name": "Healing Potion",
     "description": "Restores a moderate amount of health.",
@@ -341,7 +341,7 @@
   },
   {
     "id": "potion_heal_small",
-    "type": "POTION",
+    "type": "CONSUMABLE",
     "rarity": "COMMON",
     "name": "Minor Healing Potion",
     "description": "Restores a small amount of health.",
@@ -365,7 +365,7 @@
   },
   {
     "id": "potion_speed_small",
-    "type": "POTION",
+    "type": "CONSUMABLE",
     "rarity": "COMMON",
     "name": "Swift Draught",
     "description": "Temporarily increases movement speed.",

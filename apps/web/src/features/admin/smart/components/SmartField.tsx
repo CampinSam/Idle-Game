@@ -14,7 +14,7 @@ interface Props {
 
 const FALLBACK_ENUMS: Record<string, string[]> = {
   currencyType: ['SOFT', 'HARD', 'PREMIUM', 'SEASONAL', 'EVENT', 'GUILD'],
-  itemType: ['MATERIAL', 'POTION', 'CONSUMABLE', 'GEAR', 'QUEST', 'LOOTBOX', 'GIFT_PACKAGE'],
+  itemType: ['MATERIAL', 'CONSUMABLE', 'GEAR', 'QUEST', 'LOOTBOX', 'GIFT_PACKAGE'],
   itemRarity: ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'],
   itemCategory: ['MISC', 'WEAPON', 'ARMOR', 'ACCESSORY', 'CONSUMABLE', 'CRAFTING', 'QUEST', 'CURRENCY'],
   buildingCategory: ['PRODUCTION', 'STORAGE', 'UTILITY', 'DEFENSE', 'SPECIAL'],

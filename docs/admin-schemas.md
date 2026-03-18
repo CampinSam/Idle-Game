@@ -90,12 +90,12 @@ Defines a currency type in the game economy.
 
 ## ItemDef
 
-Defines an item that can exist in player inventories. Supports materials, potions, consumables, gear, lootboxes, and quest items with full rarity tiers, equipment data, passive effects, and seasonal tagging.
+Defines an item that can exist in player inventories. Supports materials, consumables, gear, lootboxes, and quest items with full rarity tiers, equipment data, passive effects, and seasonal tagging.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `id` | string | Yes | — | Unique identifier (e.g. `mat_iron_ore`, `gear_iron_sword`) |
-| `type` | ItemType enum | Yes | — | One of: `MATERIAL`, `POTION`, `CONSUMABLE`, `GEAR`, `QUEST`, `LOOTBOX`, `GIFT_PACKAGE` |
+| `type` | ItemType enum | Yes | — | One of: `MATERIAL`, `CONSUMABLE`, `GEAR`, `QUEST`, `LOOTBOX`, `GIFT_PACKAGE` |
 | `rarity` | ItemRarity enum | No | `COMMON` | Rarity tier (see [ItemRarity Enum](#itemrarity-enum)) |
 | `name` | string | Yes | — | Display name |
 | `description` | string | No | — | Flavor text |

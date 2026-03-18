@@ -678,7 +678,6 @@ enum ItemRarity {
 
 enum ItemType {
   MATERIAL
-  POTION
   CONSUMABLE
   GEAR
   QUEST
