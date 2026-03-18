@@ -12,8 +12,8 @@ export function resolveIcon(
   currencyDefs: any[],
   itemDefs: any[],
 ): string {
-  if (!outputRefId) return `images/icons/${outputRefId}.png`; //JSON.stringify(outputRefId);
-    return `images/icons/${outputRefId}.png`;
+  if (!outputRefId) return DEFAULT_ICON_URL;
+
   let def: any = null;
   
   if (outputType === 'CURRENCY') {

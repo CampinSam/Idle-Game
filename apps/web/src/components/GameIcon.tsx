@@ -8,9 +8,10 @@ interface GameIconProps {
 }
 
 export default function GameIcon({ src, alt = '', size = 18, className = '' }: GameIconProps) {
+  const resolvedSrc = src.startsWith('/') || src.startsWith('http') ? src : mediaUrl(`images/icons/${src}.png`);
   return (
     <img
-      src={mediaUrl(`images/icons/${src}.png`)}
+      src={resolvedSrc}
       alt={alt}
       width={size}
       height={size}

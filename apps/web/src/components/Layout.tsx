@@ -93,7 +93,7 @@ export default function Layout() {
             <span className="top-bar-name">{profile.username}</span>
             <div className="top-bar-currencies">
               <div className="top-bar-currency">
-                <span className="top-bar-currency-icon"><GameIcon src="soft_arcanium" size={16} /></span>
+                <span className="top-bar-currency-icon"><GameIcon src={resolveIcon('CURRENCY', 'soft_arcanium', currencyDefs, [])} size={16} /></span>
                 <span className="top-bar-currency-val">{formatCompact(currencyBalances['soft_arcanium'] ?? 0)}</span>
               </div>
               <div className="top-bar-currency">
