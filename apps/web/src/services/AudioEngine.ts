@@ -160,12 +160,6 @@ class AudioEngine {
         return;
       }
     }
-
-    if (bus === 'music') {
-      this.stopMusic();
-    } else if (bus === 'ambient') {
-      this.stopAmbient();
-    }
   }
 
   stopMusic() {
