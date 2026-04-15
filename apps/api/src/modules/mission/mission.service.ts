@@ -126,6 +126,7 @@ export class MissionService {
   async getMissionDefinitions(userId?: string) {
     const allDefs = await (this.prisma as any).missionDef.findMany({
       include: { displayDef: true, missionCategoryDef: { include: { displayDef: true } } },
+      orderBy: { sortOrder: 'asc' },
     });
 
     if (!userId) return allDefs.map((d: any) => this.mapDefToLegacy(d));
@@ -173,6 +174,9 @@ export class MissionService {
       tags: def.tags ?? [],
       rewardPreview: def.rewardPreview ?? [],
       enabled: def.enabled ?? true,
+      sortOrder: def.sortOrder ?? 0,
+      inline: def.inline ?? false,
+      inlineLabel: def.inlineLabel ?? null,
       missionCategoryDefId: def.missionCategoryDefId,
       display: resolvedDisplay,
       requirementStatus,

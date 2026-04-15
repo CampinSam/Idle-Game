@@ -562,6 +562,9 @@ model MissionDef {
   tags                     Json               @default("[]")
   rewardPreview            Json               @default("[]")
   enabled                  Boolean            @default(true)
+  sortOrder                Int                @default(0)
+  inline                   Boolean            @default(false)
+  inlineLabel              String?
   displayDefId             String?
   displayDef               DisplayDef?        @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
   missionCategoryDefId     String?

@@ -567,9 +567,6 @@ Defines a mission or quest that players can send their entities (birds) on.
 | `id` | string | Yes | — | Unique identifier (e.g. `mission_quick_gather`) |
 | `name` | string | Yes | — | Display name |
 | `description` | string | No | — | Flavor text or instructions |
-| `type` | string | Yes | — | Mission type (e.g. `quick`, `standard`, `raid`, `story`) |
-| `category` | string | No | — | Grouping category string for UI filtering |
-| `group` | string | No | — | Sub-group within a category |
 | `difficulty` | number | No | 0 | Difficulty rating affecting success calculations |
 | `minSuccessChance` | int | No | 0 | Floor for success chance (0–100) |
 | `maxSuccessChance` | int | No | 100 | Ceiling for success chance (0–100) |
@@ -581,6 +578,9 @@ Defines a mission or quest that players can send their entities (birds) on.
 | `tags` | JSON | No | `[]` | Classification tags for filtering (e.g. `["beginner"]`, `["seasonal"]`) |
 | `rewardPreview` | JSON | No | `[]` | Preview of possible rewards shown to the player before starting |
 | `enabled` | boolean | No | true | Whether this mission is currently active |
+| `sortOrder` | number | No | 0 | Display order within its category (ascending) |
+| `inline` | boolean | No | false | If true, shows as a quick-launch pill button on the parent category card instead of a full mission card |
+| `inlineLabel` | string | No | — | Custom label for the inline pill. Defaults to the mission duration if omitted |
 | `displayDefId` | string | No | — | References a [DisplayDef](#displaydef) for card visual styling |
 | `missionCategoryDefId` | string | No | — | References a [MissionCategoryDef](#missioncategorydef) for grouping |
 | `activeModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display while the mission job is running |

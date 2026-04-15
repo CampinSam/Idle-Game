@@ -2734,6 +2734,21 @@
           "default": true,
           "description": "Is active?"
         },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Display order within category (ascending)"
+        },
+        "inline": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, shows as a quick-launch pill on the parent category card"
+        },
+        "inlineLabel": {
+          "type": "string",
+          "nullable": true,
+          "description": "Custom pill label; defaults to mission duration if omitted"
+        },
         "displayDefId": {
           "type": "ref",
           "refTable": "DisplayDef",

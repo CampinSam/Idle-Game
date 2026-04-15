@@ -206,6 +206,41 @@
   margin-top: 4px;
 }
 
+.mp-cat-chevron {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(167, 139, 250, 0.8);
+  line-height: 1;
+  margin-left: auto;
+}
+
+.mp-inline-missions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.mp-inline-pill {
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 20px;
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Exo 2', sans-serif;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.mp-inline-pill:hover {
+  background: rgba(167, 139, 250, 0.3);
+  border-color: rgba(167, 139, 250, 0.7);
+  color: #c4b5fd;
+}
+
 .mp-active-section {
   display: flex;
   flex-direction: column;

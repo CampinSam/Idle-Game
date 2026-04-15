@@ -142,7 +142,7 @@ export default function MissionsPage() {
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryStack, setCategoryStack] = useState<string[]>([]);
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
   const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
   const [showEntityPicker, setShowEntityPicker] = useState(false);
@@ -163,7 +163,7 @@ export default function MissionsPage() {
     const def = missionDefs.find((d: any) => d.id === repeatMissionDefId);
     if (!def) return;
     const catId = def.missionCategoryDefId;
-    if (catId) setSelectedCategory(catId);
+    if (catId) setCategoryStack([catId]);
     setSelectedMission(def.id);
     setSelectedEntities([]);
     setSearchParams({}, { replace: true });
@@ -186,26 +186,52 @@ export default function MissionsPage() {
 
   const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
 
-  const categories = useMemo(() => {
-    const catMap = new Map<string, { id: string; name: string; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number }>();
+  const currentCategoryId = categoryStack[categoryStack.length - 1] ?? null;
+
+  const allCategories = useMemo(() => {
+    const catMap = new Map<string, { id: string; name: string; parentId: string | null; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number; hasChildren: boolean }>();
 
     for (const catDef of missionCategoryDefs) {
       const defs = missionDefs.filter((d: any) => d.missionCategoryDefId === catDef.id);
       const locked = !meetsNonTeamRequirements(catDef);
+      const hasChildren = missionCategoryDefs.some((c: any) => c.parentId === catDef.id);
       catMap.set(catDef.id, {
         id: catDef.id,
         name: catDef.name,
+        parentId: catDef.parentId ?? null,
         display: resolveCategoryDisplay(catDef),
         tags: catDef.tags || [],
         sortOrder: catDef.sortOrder ?? 0,
         locked,
         enabled: catDef.enabled ?? true,
         count: defs.length,
+        hasChildren,
       });
     }
 
     return Array.from(catMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
   }, [missionDefs, missionCategoryDefs, profile]);
+
+  const visibleCategories = useMemo(() => {
+    return allCategories.filter(c => c.parentId === currentCategoryId);
+  }, [allCategories, currentCategoryId]);
+
+  const currentCat = allCategories.find(c => c.id === currentCategoryId) ?? null;
+  const currentCatHasChildren = currentCategoryId
+    ? allCategories.some(c => c.parentId === currentCategoryId)
+    : false;
+
+  const getInlineMissions = (catId: string) =>
+    missionDefs
+      .filter((d: any) => d.missionCategoryDefId === catId && d.inline === true)
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  const getInlineLabel = (def: any): string => {
+    if (def.inlineLabel) return def.inlineLabel;
+    const dur = def.timer?.duration ?? 0;
+    if (dur < 60) return `${dur}s`;
+    return `${Math.round(dur / 60)}m`;
+  };
 
   const teamMP = useMemo(() => {
     return selectedEntities.reduce((sum, id) => {
@@ -254,8 +280,16 @@ export default function MissionsPage() {
     setActiveSlotIndex(null);
   };
 
-  const handleSelectCategory = (catId: string) => {
-    setSelectedCategory(catId);
+  const pushCategory = (catId: string) => {
+    setCategoryStack(prev => [...prev, catId]);
+    setSelectedMission(null);
+    setSelectedEntities([]);
+    setShowEntityPicker(false);
+    setActiveSlotIndex(null);
+  };
+
+  const popCategory = () => {
+    setCategoryStack(prev => prev.slice(0, -1));
     setSelectedMission(null);
     setSelectedEntities([]);
     setShowEntityPicker(false);
@@ -269,23 +303,34 @@ export default function MissionsPage() {
     setActiveSlotIndex(null);
   };
 
+  const handleSelectInlineMission = (catId: string, missionId: string) => {
+    setCategoryStack(prev => prev[prev.length - 1] === catId ? prev : [...prev, catId]);
+    setSelectedMission(missionId);
+    setSelectedEntities([]);
+    setShowEntityPicker(false);
+    setActiveSlotIndex(null);
+  };
+
   const handleBackToCategories = () => {
-    setSelectedCategory(null);
+    setCategoryStack([]);
     setSelectedMission(null);
     setSelectedEntities([]);
     setShowEntityPicker(false);
     setActiveSlotIndex(null);
   };
 
-  const handleBackToMissionList = () => {
+  const handleBackFromMissionDetail = () => {
     setSelectedMission(null);
     setSelectedEntities([]);
     setShowEntityPicker(false);
     setActiveSlotIndex(null);
   };
 
-  const categoryDefs = selectedCategory ? missionDefs.filter((d: any) => d.missionCategoryDefId === selectedCategory).sort((a: any, b: any) => (a.id || '').localeCompare(b.id || '')) : [];
-  const currentCat = categories.find((c) => c.id === selectedCategory);
+  const categoryMissions = currentCategoryId
+    ? missionDefs
+        .filter((d: any) => d.missionCategoryDefId === currentCategoryId)
+        .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    : [];
   const catDisplay = currentCat?.display || DEFAULT_DISPLAY;
 
   const handleStart = async () => {
@@ -367,17 +412,72 @@ export default function MissionsPage() {
     </div>
   );
 
-  if (selectedCategory && !selectedMission) {
+  if (currentCategoryId && !selectedMission) {
+    if (currentCatHasChildren) {
+      return (
+        <div className="missions-page page-transition-wrapper">
+          <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
+            <div className="mp-list-header">
+              <button className="mp-back-pill" onClick={popCategory}>← Back</button>
+              <h2 className="mp-list-label">{currentCat?.name || 'Categories'}</h2>
+              {currentCat && renderTags(currentCat.tags)}
+            </div>
+            <div className="mp-categories">
+              {visibleCategories.map((cat) => {
+                const display = cat.display;
+                const unavailable = cat.locked || !cat.enabled;
+                const inlineMissions = getInlineMissions(cat.id);
+                return (
+                  <div
+                    key={cat.id}
+                    className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''}`}
+                    style={{
+                      backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
+                      '--card-bg-image': `url(${display.backgroundImage})`,
+                      borderColor: display.borderColor,
+                    } as React.CSSProperties}
+                    onClick={() => !unavailable && pushCategory(cat.id)}
+                  >
+                    <div className="mp-card-content">
+                      <div className="mp-card-header">
+                        <h3 className="mp-card-title">{cat.name}</h3>
+                        {cat.hasChildren && <span className="mp-cat-chevron">›</span>}
+                      </div>
+                      {cat.tags.length > 0 && renderTags(cat.tags)}
+                      {cat.locked && <div className="mp-lock-reason">🔒 Requirements not met</div>}
+                      {!cat.enabled && !cat.locked && <div className="mp-disabled-reason">🚫 Currently Unavailable</div>}
+                      {!unavailable && inlineMissions.length > 0 && (
+                        <div className="mp-inline-missions" onClick={e => e.stopPropagation()}>
+                          {inlineMissions.map((def: any) => (
+                            <button
+                              key={def.id}
+                              className="mp-inline-pill"
+                              onClick={() => handleSelectInlineMission(cat.id, def.id)}
+                            >{getInlineLabel(def)}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {(activeMissions.length > 0 || missionHistory.length > 0) && renderActivity()}
+        </div>
+      );
+    }
+
     return (
       <div className="missions-page page-transition-wrapper">
         <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
           <div className="mp-list-header">
-            <button className="mp-back-pill" onClick={handleBackToCategories}>← Back</button>
+            <button className="mp-back-pill" onClick={popCategory}>← Back</button>
             <h2 className="mp-list-label">{currentCat?.name || 'Missions'}</h2>
             {currentCat && renderTags(currentCat.tags)}
           </div>
           <div className="mp-list-missions">
-            {categoryDefs.map((def: any) => {
+            {categoryMissions.map((def: any) => {
               const locked = !meetsNonTeamRequirements(def);
               const missionEnabled = def.enabled ?? true;
               const unavailable = locked || !missionEnabled;
@@ -422,7 +522,7 @@ export default function MissionsPage() {
     );
   }
 
-  if (selectedCategory && selectedMission && selectedDef && currentCat) {
+  if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     const diffInfo = getDifficultyDisplay(selectedDef.difficulty);
     const display = resolveDisplay(selectedDef, missionCategoryDefs);
     const missionTags = selectedDef.tags || [];
@@ -431,7 +531,7 @@ export default function MissionsPage() {
       <div className="missions-page md-inline page-transition-wrapper">
         <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
         <div className="md-hero" style={{ backgroundImage: `url(${display.backgroundImage})` }}>
-          <button className="mp-back-pill md-hero-back-pos" onClick={handleBackToMissionList}>← Back</button>
+          <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
           <div className="md-hero-content">
             <h1 className="md-title">{selectedDef.name.toUpperCase()}</h1>
@@ -660,9 +760,10 @@ export default function MissionsPage() {
 
       <div className="missions-wrapper-card">
         <div className="mp-categories">
-        {categories.map((cat) => {
+        {visibleCategories.map((cat) => {
           const display = cat.display;
           const unavailable = cat.locked || !cat.enabled;
+          const inlineMissions = getInlineMissions(cat.id);
           return (
             <div
               key={cat.id}
@@ -672,11 +773,12 @@ export default function MissionsPage() {
                 '--card-bg-image': `url(${display.backgroundImage})`,
                 borderColor: display.borderColor,
               } as React.CSSProperties}
-              onClick={() => !unavailable && handleSelectCategory(cat.id)}
+              onClick={() => !unavailable && pushCategory(cat.id)}
             >
               <div className="mp-card-content">
                 <div className="mp-card-header">
                   <h3 className="mp-card-title">{cat.name}</h3>
+                  {cat.hasChildren && <span className="mp-cat-chevron">›</span>}
                 </div>
                 {cat.tags.length > 0 && renderTags(cat.tags)}
                 {cat.locked && (
@@ -684,6 +786,17 @@ export default function MissionsPage() {
                 )}
                 {!cat.enabled && !cat.locked && (
                   <div className="mp-disabled-reason">🚫 Currently Unavailable</div>
+                )}
+                {!unavailable && inlineMissions.length > 0 && (
+                  <div className="mp-inline-missions" onClick={e => e.stopPropagation()}>
+                    {inlineMissions.map((def: any) => (
+                      <button
+                        key={def.id}
+                        className="mp-inline-pill"
+                        onClick={() => handleSelectInlineMission(cat.id, def.id)}
+                      >{getInlineLabel(def)}</button>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
