@@ -52,6 +52,9 @@ class AudioEngine {
   private loading = false;
   private pendingMusicChain: string[] | null = null;
   private pendingAmbientChain: string[] | null = null;
+  private pendingAutoplayMusic: string | null = null;
+  private pendingAutoplayAmbient: string | null = null;
+  private autoplayRetrySetup = false;
 
   async init() {
     if (this.loaded || this.loading) return;
@@ -65,8 +68,32 @@ class AudioEngine {
     } finally {
       this.loaded = true;
       this.loading = false;
+      this.setupAutoplayRetry();
       this.flushPending();
     }
+  }
+
+  private setupAutoplayRetry() {
+    if (this.autoplayRetrySetup) return;
+    this.autoplayRetrySetup = true;
+    const retry = () => {
+      if (this.pendingAutoplayMusic) {
+        const key = this.pendingAutoplayMusic;
+        this.pendingAutoplayMusic = null;
+        this.crossfadeTo(key);
+      }
+      if (this.pendingAutoplayAmbient) {
+        const key = this.pendingAutoplayAmbient;
+        this.pendingAutoplayAmbient = null;
+        this.crossfadeTo(key);
+      }
+      document.removeEventListener('click', retry, true);
+      document.removeEventListener('keydown', retry, true);
+      document.removeEventListener('touchstart', retry, true);
+    };
+    document.addEventListener('click', retry, true);
+    document.addEventListener('keydown', retry, true);
+    document.addEventListener('touchstart', retry, true);
   }
 
   private flushPending() {
@@ -169,6 +196,7 @@ class AudioEngine {
       this.currentMusicKey = null;
     }
     this.pendingMusicChain = null;
+    this.pendingAutoplayMusic = null;
   }
 
   stopAmbient() {
@@ -178,32 +206,45 @@ class AudioEngine {
       this.currentAmbientKey = null;
     }
     this.pendingAmbientChain = null;
+    this.pendingAutoplayAmbient = null;
   }
 
   private playMusic(actionKey: string, url: string, vol: number) {
-    if (this.currentMusicKey === actionKey) return;
+    if (this.currentMusicKey === actionKey && this.currentMusic && !this.currentMusic.paused) return;
     if (this.currentMusic) {
       this.currentMusic.pause();
     }
     const audio = new Audio(url);
     audio.volume = vol;
     audio.loop = true;
-    audio.play().catch(() => {});
     this.currentMusic = audio;
     this.currentMusicKey = actionKey;
+    audio.play().then(() => {
+      this.pendingAutoplayMusic = null;
+    }).catch(() => {
+      this.currentMusicKey = null;
+      this.currentMusic = null;
+      this.pendingAutoplayMusic = actionKey;
+    });
   }
 
   private playAmbient(actionKey: string, url: string, vol: number) {
-    if (this.currentAmbientKey === actionKey) return;
+    if (this.currentAmbientKey === actionKey && this.currentAmbient && !this.currentAmbient.paused) return;
     if (this.currentAmbient) {
       this.currentAmbient.pause();
     }
     const audio = new Audio(url);
     audio.volume = vol;
     audio.loop = true;
-    audio.play().catch(() => {});
     this.currentAmbient = audio;
     this.currentAmbientKey = actionKey;
+    audio.play().then(() => {
+      this.pendingAutoplayAmbient = null;
+    }).catch(() => {
+      this.currentAmbientKey = null;
+      this.currentAmbient = null;
+      this.pendingAutoplayAmbient = actionKey;
+    });
   }
 
   private pickWeighted(entries: SoundEntry[]): SoundEntry | null {
