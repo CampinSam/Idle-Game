@@ -3,9 +3,17 @@ import { useAppSelector } from '../../store';
 import { audioEngine, AudioBusName } from '../../services/AudioEngine';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
+import '../profile/Profile.css';
 import './SettingsPage.css';
 
 type Tab = 'audio' | 'wallet';
+
+interface LinkedWallet {
+  id: string;
+  chain: string;
+  address: string;
+  isPrimary: boolean;
+}
 
 const BUS_LABELS: Record<AudioBusName, string> = {
   music: 'Music',
@@ -58,7 +66,7 @@ export default function SettingsPage() {
     setVolumes(prev => ({ ...prev, [bus]: value }));
   }, []);
 
-  const [wallets, setWallets] = useState<any[]>([]);
+  const [wallets, setWallets] = useState<LinkedWallet[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
   const [walletOpError, setWalletOpError] = useState<string | null>(null);
 
@@ -76,9 +84,10 @@ export default function SettingsPage() {
     setWalletsLoading(true);
     try {
       const list = await api.getLinkedWallets();
-      setWallets(list);
-    } catch (err: any) {
-      setWalletOpError(err?.message || 'Failed to load wallets');
+      setWallets(list as LinkedWallet[]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load wallets';
+      setWalletOpError(message);
     } finally {
       setWalletsLoading(false);
     }
@@ -93,8 +102,9 @@ export default function SettingsPage() {
     try {
       await api.removeLinkedWallet(id);
       await loadWallets();
-    } catch (err: any) {
-      setWalletOpError(err?.message || 'Failed to remove wallet');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to remove wallet';
+      setWalletOpError(message);
     }
   };
 
@@ -103,8 +113,9 @@ export default function SettingsPage() {
     try {
       await api.setWalletPrimary(id);
       await loadWallets();
-    } catch (err: any) {
-      setWalletOpError(err?.message || 'Failed to update wallet');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update wallet';
+      setWalletOpError(message);
     }
   };
 
@@ -188,8 +199,8 @@ export default function SettingsPage() {
                       {wallets.map((w) => (
                         <div key={w.id} className="wallet-item">
                           <div className="wallet-item-left">
-                            <span className="wallet-chain-badge" style={{ background: CHAIN_COLORS[w.chain] || '#555' }}>
-                              {CHAIN_LABELS[w.chain] || w.chain}
+                            <span className="wallet-chain-badge" style={{ background: CHAIN_COLORS[w.chain] ?? '#555' }}>
+                              {CHAIN_LABELS[w.chain] ?? w.chain}
                             </span>
                             <span className="wallet-address" title={w.address}>
                               {truncateAddress(w.address)}
