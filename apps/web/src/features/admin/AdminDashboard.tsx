@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -581,6 +581,10 @@ function Dashboard() {
         <a href="/admin/def" className="sidebar-link" title="Definition Editor">
           <Database size={16} />
           {!collapsed && <span>Definition Editor</span>}
+        </a>
+        <a href="/admin/icons" className="sidebar-link" title="Game Icons">
+          <Image size={16} />
+          {!collapsed && <span>Game Icons</span>}
         </a>
         <button onClick={() => { setAdminKey(''); sessionStorage.removeItem('adminKey'); window.location.reload(); }} className="btn-logout" title="Logout">
           <LogOut size={16} />

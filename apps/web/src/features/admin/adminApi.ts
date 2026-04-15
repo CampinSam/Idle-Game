@@ -86,4 +86,25 @@ export const adminApi = {
 
   getPlayerTelemetry: (id: string, limit = 30) =>
     adminRequest<any[]>(`/players/${id}/telemetry?limit=${limit}`),
+
+  listIcons: () => adminRequest<any[]>('/media/icons'),
+
+  uploadMedia: (file: File, targetDir?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const url = targetDir
+      ? `${API_BASE}/media/upload?targetDir=${encodeURIComponent(targetDir)}`
+      : `${API_BASE}/media/upload`;
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'X-Admin-Key': adminKey },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Upload failed: ${res.status}`);
+      }
+      return res.json();
+    });
+  },
 };

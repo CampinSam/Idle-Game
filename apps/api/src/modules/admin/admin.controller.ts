@@ -172,7 +172,10 @@ export class AdminController {
 
   @Post('media/upload')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadMedia(@UploadedFile() file: Express.Multer.File) {
+  async uploadMedia(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('targetDir') targetDir?: string,
+  ) {
     if (!file) throw new BadRequestException('No file provided');
     const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
     const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
@@ -182,11 +185,12 @@ export class AdminController {
     const bucketName = parts[0];
     const prefix = parts.slice(1).join('/');
     const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const objectName = prefix ? `${prefix}/media/${safeFilename}` : `media/${safeFilename}`;
+    const dir = targetDir ? targetDir.replace(/^\/+|\/+$/g, '') : 'media';
+    const objectName = prefix ? `${prefix}/${dir}/${safeFilename}` : `${dir}/${safeFilename}`;
     const bucket = objectStorageClient.bucket(bucketName);
     const gcsFile = bucket.file(objectName);
     await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
-    const assetKey = `media/${safeFilename}`;
+    const assetKey = `${dir}/${safeFilename}`;
     return { assetKey, url: `/api/media/${assetKey}` };
   }
 
@@ -199,14 +203,66 @@ export class AdminController {
     const parts = firstPath.slice(1).split('/');
     const bucketName = parts[0];
     const prefix = parts.slice(1).join('/');
-    const mediaPrefix = prefix ? `${prefix}/media/` : 'media/';
+    const searchPrefix = prefix ? `${prefix}/` : '';
     const bucket = objectStorageClient.bucket(bucketName);
-    const [files] = await bucket.getFiles({ prefix: mediaPrefix });
-    return files.map(f => {
-      const name = f.name.replace(mediaPrefix, '');
-      const assetKey = `media/${name}`;
-      return { assetKey, name, url: `/api/media/${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
-    }).filter(f => f.name);
+    const [files] = await bucket.getFiles({ prefix: searchPrefix });
+    return files
+      .filter(f => !f.name.endsWith('/'))
+      .map(f => {
+        const assetKey = searchPrefix ? f.name.replace(searchPrefix, '') : f.name;
+        return { assetKey, name: f.name, url: `/api/media/${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
+      })
+      .filter(f => f.assetKey);
+  }
+
+  @Get('media/icons')
+  async listIconsStatus() {
+    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
+    if (!paths.length) throw new BadRequestException('PUBLIC_OBJECT_SEARCH_PATHS not configured');
+    const firstPath = paths[0];
+    const parts = firstPath.slice(1).split('/');
+    const bucketName = parts[0];
+    const prefix = parts.slice(1).join('/');
+    const bucket = objectStorageClient.bucket(bucketName);
+
+    const [itemDefs, currencies] = await Promise.all([
+      (this.prisma as any).itemDefinition.findMany({
+        where: { iconKey: { not: null } },
+        select: { id: true, name: true, iconKey: true },
+      }),
+      (this.prisma as any).currency.findMany({
+        where: { iconKey: { not: null } },
+        select: { id: true, name: true, iconKey: true },
+      }),
+    ]);
+
+    const allDefs = [
+      ...itemDefs.map((d: any) => ({ ...d, type: 'item' as const })),
+      ...currencies.map((d: any) => ({ ...d, type: 'currency' as const })),
+    ];
+
+    const results = await Promise.all(
+      allDefs.map(async (def: any) => {
+        const iconKey: string = def.iconKey;
+        const objectName = prefix ? `${prefix}/images/icons/${iconKey}.png` : `images/icons/${iconKey}.png`;
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        return {
+          id: def.id,
+          name: def.name,
+          iconKey,
+          type: def.type,
+          exists,
+          url: exists ? `/api/media/images/icons/${iconKey}.png` : null,
+        };
+      }),
+    );
+
+    return results.sort((a: any, b: any) => {
+      if (a.type !== b.type) return a.type === 'currency' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
   }
 
   @Get('jobs/recent')
