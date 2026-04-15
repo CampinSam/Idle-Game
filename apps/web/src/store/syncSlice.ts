@@ -40,6 +40,7 @@ interface SyncState {
   gifts: EntityTable;
   activeEffects: EntityTable;
   currencyBalances: Record<string, number>;
+  activeSeason: any | null;
 
   tickBroadcast: TickBroadcast | null;
   lastError: string | null;
@@ -65,6 +66,7 @@ const initialState: SyncState = {
   gifts: {},
   activeEffects: {},
   currencyBalances: {},
+  activeSeason: null,
 
   tickBroadcast: null,
   lastError: null,
@@ -158,6 +160,8 @@ const syncSlice = createSlice({
           for (const c of snapshot.currencies) state.currencies[c.id || c.currencyId] = c;
         }
       }
+
+      state.activeSeason = snapshot.activeSeason ?? null;
     },
 
     applyPatches(state, action: PayloadAction<{ patches: Patch[]; cursor?: string }>) {
@@ -167,6 +171,15 @@ const syncSlice = createSlice({
         if (patch.entity === 'player') {
           if (patch.op === 'upsert') {
             state.player = { ...state.player, ...patch.data };
+          }
+          continue;
+        }
+
+        if (patch.entity === 'season') {
+          if (patch.op === 'upsert') {
+            state.activeSeason = patch.data ?? null;
+          } else if (patch.op === 'delete') {
+            state.activeSeason = null;
           }
           continue;
         }

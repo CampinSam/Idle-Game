@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useSyncGifts } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
+import { audioEngine } from '../../services/AudioEngine';
 import DailyRewardContainer from '../checkin/DailyRewardContainer';
 import QuestList from '../quests/QuestList';
 import './RewardsPage.css';
@@ -40,6 +41,8 @@ function PendingGiftsCard() {
     setErrorId(null);
     try {
       await execute('ClaimGift', { giftId });
+      audioEngine.play('sfx.reward.gift');
+      audioEngine.play('sfx.economy.currency_earn');
     } catch (err) {
       console.error('[PendingGiftsCard] Claim failed:', err);
       setErrorId(giftId);

@@ -5,6 +5,7 @@ import { useModal } from '../../context/ModalContext';
 import { api } from '../../services/api';
 import { useCommand } from '../../hooks/useCommand';
 import { useAppSelector } from '../../store';
+import { audioEngine } from '../../services/AudioEngine';
 import GameModal from './GameModal';
 
 export default function GameModalHost() {
@@ -68,6 +69,7 @@ export default function GameModalHost() {
         }
 
         case 'COMPLETE_JOB': {
+          audioEngine.play('ui.button_click');
           const jobId = action.jobId;
           const jobData = jobs[jobId];
           if (!jobData) {
@@ -97,6 +99,7 @@ export default function GameModalHost() {
         }
 
         case 'CLAIM_GIFT': {
+          audioEngine.play('ui.button_click');
           await api.claimGift(action.giftId);
 
           const replaced = await tryFetchFollowUp({ giftId: action.giftId });
@@ -107,6 +110,7 @@ export default function GameModalHost() {
         }
 
         case 'REPEAT_MISSION': {
+          audioEngine.play('ui.button_click');
           if (action.entityIds && action.entityIds.length > 0) {
             try {
               await execute('StartMission', {
@@ -126,26 +130,44 @@ export default function GameModalHost() {
           return;
         }
 
+        case 'PRESTIGE': {
+          audioEngine.play('ui.button_click');
+          try {
+            await execute('Prestige', {});
+            audioEngine.play('sfx.player.prestige');
+            dismissModal();
+          } catch (err: any) {
+            audioEngine.play('ui.error');
+            console.warn('[GameModalHost] Prestige failed:', err?.message);
+          }
+          return;
+        }
+
         case 'CRAFT_AGAIN':
           handleNavigate('/crafting');
           dismissModal();
           return;
 
         case 'BUILD_BUILDING': {
+          audioEngine.play('ui.button_click');
           try {
             await execute('BuildBuilding', { locationId: action.locationId, buildingDefId: action.buildingDefId });
             dismissModal();
           } catch (err: any) {
+            audioEngine.play('ui.error');
             alert(err?.message || 'Build failed. Please try again.');
           }
           return;
         }
 
         case 'UPGRADE_BUILDING': {
+          audioEngine.play('ui.button_click');
           try {
             await execute('UpgradeBuilding', { locationId: action.locationId, buildingId: action.buildingId });
+            audioEngine.play('sfx.building.upgrade');
             dismissModal();
           } catch (err: any) {
+            audioEngine.play('ui.error');
             console.warn('[GameModalHost] UpgradeBuilding failed:', err?.message);
           }
           return;
@@ -154,6 +176,7 @@ export default function GameModalHost() {
         case 'SHOP_PURCHASE': {
           try {
             const response = await execute('ShopPurchase', { shopItemDefId: action.shopItemDefId });
+            audioEngine.play('sfx.economy.purchase');
             const modalIntent = response.ui.find((i) => i.type === 'modal');
             if (modalIntent && modalIntent.type === 'modal') {
               replaceModal(modalIntent.spec);
@@ -161,6 +184,7 @@ export default function GameModalHost() {
               dismissModal();
             }
           } catch (err: any) {
+            audioEngine.play('ui.error');
             console.warn('[GameModalHost] ShopPurchase failed:', err?.message);
           }
           return;

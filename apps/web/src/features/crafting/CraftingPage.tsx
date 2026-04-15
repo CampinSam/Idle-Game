@@ -5,6 +5,7 @@ import {
   fetchCraftingRecipes,
 } from '../../store/gameSlice';
 import { useCommand } from '../../hooks/useCommand';
+import { audioEngine } from '../../services/AudioEngine';
 import {
   useSyncPlayer,
   useSyncEntities,
@@ -38,10 +39,13 @@ export default function CraftingPage() {
     if (!selectedRecipe || !selectedEntity) return;
     setError('');
     try {
+      audioEngine.play('ui.button_click');
       await execute('StartCrafting', { recipeId: selectedRecipe, entityId: selectedEntity });
+      audioEngine.play('sfx.craft.start');
       setSelectedRecipe(null);
       setSelectedEntity(null);
     } catch (e: any) {
+      audioEngine.play('ui.error');
       setError(e.message || 'Failed to start crafting');
     }
   };

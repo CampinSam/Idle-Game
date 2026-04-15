@@ -380,6 +380,7 @@ export interface BootstrapResponse {
     notifications?: any;
     currencies?: any;
     activeEffects?: any;
+    activeSeason?: { id: string; name?: string; [key: string]: unknown } | null;
   };
   cursor: { delta: string };
 }

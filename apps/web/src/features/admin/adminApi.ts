@@ -89,6 +89,41 @@ export const adminApi = {
 
   listIcons: () => adminRequest<any[]>('/media/icons'),
 
+  listSoundDefs: () => adminRequest<any[]>('/audio/sounds'),
+  createSoundDef: (data: { key: string; name: string; bus: string; fileKey?: string; description?: string }) =>
+    adminRequest<any>('/audio/sounds', { method: 'POST', body: JSON.stringify(data) }),
+  updateSoundDef: (id: string, data: { key?: string; name?: string; bus?: string; fileKey?: string; description?: string }) =>
+    adminRequest<any>(`/audio/sounds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSoundDef: (id: string) =>
+    adminRequest<any>(`/audio/sounds/${id}`, { method: 'DELETE' }),
+
+  listLocationDefs: () => adminRequest<any[]>('/locationDefinition'),
+  listSeasons: () => adminRequest<any[]>('/season'),
+
+  listSoundMappings: () => adminRequest<any[]>('/audio/mappings'),
+  createSoundMapping: (data: { actionKey: string; soundDefId: string; weight?: number }) =>
+    adminRequest<any>('/audio/mappings', { method: 'POST', body: JSON.stringify(data) }),
+  updateSoundMapping: (id: string, data: { weight?: number }) =>
+    adminRequest<any>(`/audio/mappings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSoundMapping: (id: string) =>
+    adminRequest<any>(`/audio/mappings/${id}`, { method: 'DELETE' }),
+
+  uploadAudio: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetch(`${API_BASE}/audio/upload`, {
+      method: 'POST',
+      headers: { 'X-Admin-Key': adminKey },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Upload failed: ${res.status}`);
+      }
+      return res.json();
+    });
+  },
+
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();
     formData.append('file', file);

@@ -379,6 +379,15 @@
         "ascension"
       ],
       "description": "Where the effect originated from"
+    },
+    "AudioBus": {
+      "values": [
+        "music",
+        "sfx",
+        "ui",
+        "ambient"
+      ],
+      "description": "The audio mixing bus that a sound definition belongs to. Controls which volume slider governs the sound."
     }
   },
   "complexTypes": {
@@ -3515,6 +3524,113 @@
         ["userId", "category"],
         ["targetType", "targetId"]
       ]
+    },
+    "SoundDef": {
+      "description": "Placeholder or real sound file definitions. Each SoundDef represents one audio asset (music track, SFX clip, UI beep, ambient loop). Admins upload files and assign keys; the AudioEngine loads them via /audio/config.",
+      "prismaModel": "SoundDef",
+      "tableName": "sound_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "key": {
+          "type": "string",
+          "required": true,
+          "description": "Unique dot-namespaced action key (e.g. sfx.mission.success, music.main_menu). Used by the AudioEngine to look up sounds."
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable display name shown in the Admin Audio Manager"
+        },
+        "bus": {
+          "type": "enum",
+          "enum": "AudioBus",
+          "required": true,
+          "description": "Audio bus assignment: music, sfx, ui, or ambient. Controls which volume slider governs this sound."
+        },
+        "fileKey": {
+          "type": "string",
+          "nullable": true,
+          "description": "Object storage key for the uploaded audio file (e.g. audio/sfx_mission_success.mp3). null when no file has been uploaded yet."
+        },
+        "description": {
+          "type": "string",
+          "nullable": true,
+          "description": "Optional notes describing where this sound is used"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, the AudioEngine ignores this sound definition even if a mapping references it"
+        },
+        "createdAt": {
+          "type": "datetime",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "type": "datetime",
+          "description": "Record last-update timestamp"
+        }
+      },
+      "indexes": [
+        "key",
+        "bus"
+      ]
+    },
+    "SoundMapping": {
+      "description": "Maps game action keys to one or more SoundDef entries with optional weights for weighted-random selection. The AudioEngine reads the active mappings at boot via GET /audio/config and resolves a random sound when audioEngine.play(actionKey) is called.",
+      "prismaModel": "SoundMapping",
+      "tableName": "sound_mappings",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "UUID primary key"
+        },
+        "actionKey": {
+          "type": "string",
+          "required": true,
+          "description": "Game action key (e.g. sfx.mission.success). Multiple mappings with the same actionKey allow weighted-random sound selection."
+        },
+        "soundDefId": {
+          "type": "string",
+          "required": true,
+          "description": "FK to SoundDef.id — the sound to play for this mapping entry"
+        },
+        "weight": {
+          "type": "integer",
+          "default": 1,
+          "description": "Relative weight for weighted-random selection among mappings sharing the same actionKey. Higher weight = higher probability."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, this mapping entry is excluded from the audio config response"
+        },
+        "createdAt": {
+          "type": "datetime",
+          "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+          "type": "datetime",
+          "description": "Record last-update timestamp"
+        }
+      },
+      "relations": {
+        "soundDef": {
+          "model": "SoundDef",
+          "field": "soundDefId",
+          "onDelete": "Cascade"
+        }
+      },
+      "indexes": [
+        "actionKey"
+      ]
     }
   },
   "tableList": [
@@ -3540,7 +3656,9 @@
     "QuestDef",
     "ShopItemDef",
     "NftCollectionDef",
-    "EffectDef"
+    "EffectDef",
+    "SoundDef",
+    "SoundMapping"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
@@ -3580,6 +3698,10 @@
       {
         "from": "ActiveEffect.effectDefId",
         "to": "EffectDef.id"
+      },
+      {
+        "from": "SoundMapping.soundDefId",
+        "to": "SoundDef.id"
       }
     ]
   }

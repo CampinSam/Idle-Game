@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { useAppDispatch } from '../../store';
+import { audioEngine } from '../../services/AudioEngine';
 import { patchBuildingEnabled } from '../../store/syncSlice';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
@@ -46,6 +47,7 @@ export default function FacilitiesTab({
     const currentEnabled = b.enabled !== false;
     const newEnabled = !currentEnabled;
     dispatch(patchBuildingEnabled({ locationId: outpostId, buildingId: b.id, enabled: newEnabled }));
+    audioEngine.play('sfx.building.toggle');
     try {
       await api.toggleBuilding(outpostId, b.id, newEnabled);
     } catch {

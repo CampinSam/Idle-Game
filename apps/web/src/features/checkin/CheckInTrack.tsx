@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSyncCheckIns, useSyncGifts } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
+import { audioEngine } from '../../services/AudioEngine';
 import { useModal } from '../../context/ModalContext';
 import { RewardTrack } from './RewardTrack';
 import { RewardClaimButton } from './RewardClaimButton';
@@ -113,6 +114,7 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
     setClaimingDay(dayIndex);
     try {
       await execute('ClaimGift', { giftId: (gift as any).id });
+      audioEngine.play('sfx.reward.checkin');
     } catch (err) {
       console.error('[CheckInTrack] Claim failed:', err);
     } finally {

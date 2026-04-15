@@ -7,6 +7,7 @@ import {
   useSyncLocations,
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
+import { audioEngine } from '../../services/AudioEngine';
 import { resolveIcon, resolveName } from '../../utils/iconResolver';
 import GameIcon from '../../components/GameIcon';
 import { useTickRate } from '../../tick';
@@ -88,12 +89,16 @@ export default function LocationDetailPage() {
       .filter((item): item is LootPopItem => item !== null);
 
     try {
+      audioEngine.play('ui.button_click');
       await execute('ClaimLocation', { locationId: id });
+      audioEngine.play('sfx.location.claim');
+      audioEngine.play('sfx.economy.currency_earn');
       if (snapshot.length > 0) {
         lootPopKey.current += 1;
         setLootPopItems(snapshot);
       }
     } catch (err: any) {
+      audioEngine.play('ui.error');
       alert('Claim failed: ' + (err.message || 'Unknown error'));
     } finally {
       setClaiming(false);

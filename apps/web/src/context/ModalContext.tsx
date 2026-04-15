@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import type { ModalSpecV1 } from '@derp/shared';
+import { audioEngine } from '../services/AudioEngine';
 
 interface ModalContextValue {
   currentModal: ModalSpecV1 | null;
@@ -29,6 +30,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   const currentModal = queue[0] || null;
 
   const pushModal = useCallback((spec: ModalSpecV1) => {
+    audioEngine.play('ui.modal_open');
     setQueue((prev) => [...prev, spec]);
   }, []);
 
@@ -40,6 +42,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const dismissModal = useCallback(() => {
+    audioEngine.play('ui.modal_close');
     setQueue((prev) => prev.slice(1));
   }, []);
 

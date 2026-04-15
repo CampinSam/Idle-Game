@@ -72,6 +72,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Store System**: `ShopItemDef` DB model for store items with flexible costs and contents. Frontend at `/store` with tabs and limited offer timers.
 - **Context-Aware Gift System**: `GiftDef` definitions with dynamic `rewardSpec` resolution based on creation context. Supports various reward types and automatic context building from job events.
 - **Generic Effects System**: Universal modifier engine for all game systems, with `EffectDef` and `ActiveEffect` models, supporting various categories, value modes, durations, and stacking rules. Integrated into mission, production, and consumable item systems.
+- **Audio System**: Full audio pipeline with `SoundDef` and `SoundMapping` Prisma models, 31 seeded placeholder sound defs, admin CRUD endpoints at `/api/admin/audio/*`, public config endpoint at `GET /api/audio/config`, frontend `AudioEngine` singleton with 4 buses (music/sfx/ui/ambient), volume settings panel in the nav, navigation-based music (`useAudioNavigation`), and audio triggers wired to modals and notifications. Admin UI at `/admin/audio`.
 
 **Command/Delta/SSE Pipeline (v1 API):**
 - **Infrastructure**: PubSubService, PlayerLockService, IdempotencyService for scalable command processing.

@@ -58,7 +58,8 @@ export type ModalAction =
   | { type: 'API_CALL'; apiKey: string; payload?: Record<string, unknown> }
   | { type: 'BUILD_BUILDING'; locationId: string; buildingDefId: string }
   | { type: 'UPGRADE_BUILDING'; locationId: string; buildingId: string }
-  | { type: 'SHOP_PURCHASE'; shopItemDefId: string };
+  | { type: 'SHOP_PURCHASE'; shopItemDefId: string }
+  | { type: 'PRESTIGE' };
 
 export type ModalBlock =
   | ModalBlockRichText
@@ -175,6 +176,7 @@ export const MODAL_ACTION_TYPES = [
   'BUILD_BUILDING',
   'UPGRADE_BUILDING',
   'SHOP_PURCHASE',
+  'PRESTIGE',
 ] as const;
 
 export type ModalActionType = (typeof MODAL_ACTION_TYPES)[number];

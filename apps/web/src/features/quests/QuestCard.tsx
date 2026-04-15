@@ -1,6 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
+import { audioEngine } from '../../services/AudioEngine';
 import GameIcon from '../../components/GameIcon';
 
 interface QuestCardProps {
@@ -45,6 +46,8 @@ function QuestCardInner({ quest }: QuestCardProps) {
     setClaiming(true);
     try {
       await execute('ClaimQuestReward', { questInstanceId: quest.id });
+      audioEngine.play('sfx.reward.quest_complete');
+      audioEngine.play('sfx.economy.currency_earn');
     } catch (err) {
       console.error('[QuestCard] Claim failed:', err);
     } finally {

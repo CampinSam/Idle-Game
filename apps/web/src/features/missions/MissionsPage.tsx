@@ -6,6 +6,7 @@ import {
   fetchMissionCategoryDefs,
 } from '../../store/gameSlice';
 import { useCommand } from '../../hooks/useCommand';
+import { audioEngine } from '../../services/AudioEngine';
 import {
   useSyncPlayer,
   useSyncEntities,
@@ -337,9 +338,12 @@ export default function MissionsPage() {
     if (!selectedMission) return;
     setError('');
     try {
+      audioEngine.play('ui.button_click');
       await execute('StartMission', { defId: selectedMission, entityIds: selectedEntities });
+      audioEngine.play('sfx.mission.start');
       handleBackToCategories();
     } catch (e: any) {
+      audioEngine.play('ui.error');
       setError(e.message || 'Failed to start mission');
     }
   };

@@ -32,6 +32,10 @@ This document describes each definition table editable through the Admin Panel, 
 23. [NftCollectionDef](#nftcollectiondef)
 24. [EffectDef](#effectdef)
 
+### Audio System Tables
+25. [SoundDef](#sounddef)
+26. [SoundMapping](#soundmapping)
+
 ### Runtime Tables
 25. [Job (Unified Job System)](#job)
 26. [Notification](#notification)
@@ -1442,6 +1446,132 @@ Defines a reusable effect blueprint in the Generic Effects System. Effects are u
   "enabled": true
 }
 ```
+
+---
+
+## SoundDef
+
+Defines a single audio asset (music track, SFX clip, UI beep, or ambient loop) that the frontend AudioEngine can play. SoundDefs are uploaded and managed via the Admin Audio Manager at `/admin/audio`. Each SoundDef has a dot-namespaced `key` that the AudioEngine uses internally and a `bus` that maps it to one of the four volume sliders (music, sfx, ui, ambient).
+
+When `fileKey` is null the sound definition acts as a placeholder — the AudioEngine will silently no-op when asked to play it, so the game remains functional while real audio files are being produced.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | uuid | Yes (auto) | — | UUID primary key |
+| `key` | string | Yes | — | Unique dot-namespaced action key (e.g. `sfx.mission.success`, `music.main_menu`). Must be globally unique. |
+| `name` | string | Yes | — | Human-readable display name shown in the Admin Audio Manager |
+| `bus` | AudioBus enum | Yes | — | Audio bus: `music`, `sfx`, `ui`, or `ambient` |
+| `fileKey` | string | No | null | Object storage key for the uploaded file (e.g. `audio/sfx_mission_success.mp3`). null = no file uploaded yet |
+| `description` | string | No | null | Optional notes describing where this sound is used |
+| `enabled` | boolean | No | true | When false, the AudioEngine skips this SoundDef even if a SoundMapping references it |
+| `createdAt` | datetime | Auto | — | Record creation timestamp |
+| `updatedAt` | datetime | Auto | — | Record last-update timestamp |
+
+### AudioBus Enum
+
+| Value | Description |
+|---|---|
+| `music` | Background music tracks; long-form, looped. Controlled by the Music volume slider. |
+| `sfx` | Game action sound effects; short clips. Controlled by the SFX volume slider. |
+| `ui` | Interface sounds (button clicks, modals, notifications). Controlled by the UI volume slider. |
+| `ambient` | Environmental background loops. Controlled by the Ambient volume slider. |
+
+**Example — mission success SFX placeholder:**
+
+```json
+{
+  "key": "sfx.mission.success",
+  "name": "Mission Success SFX",
+  "bus": "sfx",
+  "fileKey": null,
+  "description": "Mission completes with success outcome",
+  "enabled": true
+}
+```
+
+**Example — uploaded main menu music:**
+
+```json
+{
+  "key": "music.main_menu",
+  "name": "Main Menu Music",
+  "bus": "music",
+  "fileKey": "audio/music_main_menu.mp3",
+  "description": "Plays on app load before navigating to a game location",
+  "enabled": true
+}
+```
+
+---
+
+## SoundMapping
+
+Maps a game action key to a SoundDef for runtime playback. Multiple SoundMapping rows with the same `actionKey` enable weighted-random sound selection — the AudioEngine picks one using weighted probability each time `audioEngine.play(actionKey)` is called.
+
+The full set of active mappings is fetched at AudioEngine initialization via `GET /audio/config` and cached in memory. No further network requests are made during gameplay.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | uuid | Yes (auto) | — | UUID primary key |
+| `actionKey` | string | Yes | — | Game action key (e.g. `sfx.mission.success`). Multiple rows may share the same actionKey for weighted-random selection. |
+| `soundDefId` | string | Yes | — | FK to SoundDef.id — the sound asset to play |
+| `weight` | integer | No | 1 | Relative probability weight. All mappings for the same actionKey are combined: weight 2 is twice as likely as weight 1. |
+| `enabled` | boolean | No | true | When false, excluded from the audio config response |
+| `createdAt` | datetime | Auto | — | Record creation timestamp |
+| `updatedAt` | datetime | Auto | — | Record last-update timestamp |
+
+**Example — three variants for mission success with different probabilities:**
+
+```json
+[
+  { "actionKey": "sfx.mission.success", "soundDefId": "<id-of-fanfare-1>", "weight": 3 },
+  { "actionKey": "sfx.mission.success", "soundDefId": "<id-of-fanfare-2>", "weight": 2 },
+  { "actionKey": "sfx.mission.success", "soundDefId": "<id-of-fanfare-3>", "weight": 1 }
+]
+```
+
+Fanfare 1 plays 50% of the time, fanfare 2 plays 33%, and fanfare 3 plays 17%.
+
+### Standard Action Keys
+
+The following action keys are seeded as placeholder SoundDefs and are wired to audio triggers in the frontend:
+
+| Key | Bus | When it fires |
+|---|---|---|
+| `music.main_menu` | music | App load, home page when no active season |
+| `music.default` | music | Any page without a specific location music track |
+| `music.mission_active` | music | Missions page |
+| `music.location.<id>` | music | Location page for the given location ID |
+| `music.season.<id>` | music | Home page when `activeSeason.id` is set — overrides `music.main_menu` |
+| `sfx.mission.start` | sfx | Mission job submitted (`StartMission` command) |
+| `sfx.mission.success` | sfx | Mission completes — played on `CompleteMission` |
+| `sfx.mission.fail` | sfx | Mission completes with failure outcome (future: result-aware wiring) |
+| `sfx.craft.start` | sfx | Crafting job submitted (`StartCrafting` command) |
+| `sfx.craft.complete` | sfx | Crafting job collected (`CollectCrafting` command) |
+| `sfx.lootbox.open` | sfx | Lootbox or gift package opened from inventory |
+| `sfx.lootbox.rare` | sfx | Rare/legendary item revealed in lootbox (future: result-aware) |
+| `sfx.reward.checkin` | sfx | Daily check-in day claimed |
+| `sfx.reward.gift` | sfx | Pending gift claimed from Rewards page |
+| `sfx.reward.quest_complete` | sfx | Quest reward claimed (`ClaimQuestReward`) |
+| `sfx.economy.currency_earn` | sfx | Significant currency gain (future: patch-based detection) |
+| `sfx.economy.purchase` | sfx | Store item purchased (`ShopPurchase` command) |
+| `sfx.player.level_up` | sfx | Keeper level increases (detected via Redux `keeperLevel` changes) |
+| `sfx.player.prestige` | sfx | Prestige action (future: prestige command wiring) |
+| `sfx.entity.level_up` | sfx | Entity level increases (future: entity progression wiring) |
+| `sfx.entity.tier_upgrade` | sfx | Entity tier advances (future: tier upgrade wiring) |
+| `sfx.building.complete` | sfx | Building construction finished (`CompleteBuilding`) |
+| `sfx.building.upgrade` | sfx | Building upgrade completes (future: upgrade command wiring) |
+| `sfx.building.toggle` | sfx | Building enabled or disabled via toggle |
+| `sfx.location.claim` | sfx | Resources claimed from location (`ClaimLocation`) |
+| `sfx.season.start` | sfx | New season detected via Redux `activeSeason.id` change |
+| `ui.modal_open` | ui | Any game modal opens |
+| `ui.modal_close` | ui | Any game modal closes |
+| `ui.notification` | ui | New unread notification arrives |
+| `ui.tab_switch` | ui | Navigation between pages |
+| `ui.button_click` | ui | Generic button click (available via `useAudioTrigger` hook) |
+| `ui.error` | ui | Error feedback fires (wired to failed commands) |
+| `ambient.default` | ambient | Fallback ambient loop for pages without a specific ambient track |
+| `ambient.location.<id>` | ambient | Location-specific ambient loop played on location pages |
 
 ---
 

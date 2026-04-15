@@ -3,6 +3,7 @@ import { api } from '../services/api';
 import { useAppSelector, useAppDispatch } from '../store';
 import { applyPatches } from '../store/syncSlice';
 import { useSyncNotifications } from '../hooks/useSyncSelectors';
+import { audioEngine } from '../services/AudioEngine';
 
 export interface AppNotification {
   id: string;
@@ -80,6 +81,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (seenIds.current.has(n.id)) continue;
       seenIds.current.add(n.id);
       if (n.readAt || n.dismissedAt) continue;
+      audioEngine.play('ui.notification');
       if (n.priority === 'critical' || n.priority === 'high') {
         setToasts((prev) => {
           const combined = [...prev, { notification: n, id: n.id }];

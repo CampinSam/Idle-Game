@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useSyncItems, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
+import { audioEngine } from '../../services/AudioEngine';
 import { formatCompact } from '../../utils/formatNumber';
 import './InventoryPage.css';
 
@@ -24,6 +25,8 @@ const RARITY_ORDER: Record<string, number> = {
   UNCOMMON: 7,
   COMMON: 8,
 };
+
+const RARE_RARITIES = new Set(['LEGENDARY', 'MYTHIC', 'EPIC', 'ULTRA_RARE']);
 
 function rarityLabel(r: string) {
   return r.replace(/_/g, ' ');
@@ -121,7 +124,14 @@ export default function InventoryPage() {
     if (!commandType) return;
     setOpening(true);
     try {
-      await execute(commandType, { itemInstanceId: item.instanceId });
+      audioEngine.play('sfx.lootbox.open');
+      const response = await execute(commandType, { itemInstanceId: item.instanceId });
+      const hasRare = response?.patches?.some(
+        (p: any) => p.op === 'upsert' && p.entity === 'item' && RARE_RARITIES.has(p.data?.rarity),
+      );
+      if (hasRare) {
+        audioEngine.play('sfx.lootbox.rare');
+      }
       setSelectedId(null);
     } catch (err) {
       console.error(`[InventoryPage] ${commandType} failed:`, err);

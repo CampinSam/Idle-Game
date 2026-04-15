@@ -1134,6 +1134,51 @@ model ActiveEffect {
 }
 
 // ═══════════════════════════════════════════════════
+// AUDIO SYSTEM
+// ═══════════════════════════════════════════════════
+
+enum AudioBus {
+  music
+  sfx
+  ui
+  ambient
+}
+
+model SoundDef {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  name        String
+  fileKey     String?
+  bus         AudioBus
+  description String?
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  mappings    SoundMapping[]
+
+  @@index([bus])
+  @@index([enabled])
+  @@map("sound_defs")
+}
+
+model SoundMapping {
+  id         String   @id @default(cuid())
+  actionKey  String
+  soundDefId String
+  soundDef   SoundDef @relation(fields: [soundDefId], references: [id], onDelete: Cascade)
+  weight     Int      @default(1)
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([actionKey])
+  @@index([soundDefId])
+  @@index([enabled])
+  @@map("sound_mappings")
+}
+
+// ═══════════════════════════════════════════════════
 // OUTBOX (reliable event publishing)
 // ═══════════════════════════════════════════════════
 

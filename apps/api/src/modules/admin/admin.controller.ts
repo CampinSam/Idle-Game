@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { BoostService } from '../tick/boost.service';
@@ -330,6 +331,79 @@ export class AdminController {
   @Post('seeds/nft-entities')
   seedNftEntities() {
     return this.nftCollectionService.seedNftEntities();
+  }
+
+  // ── Audio: SoundDef CRUD ─────────────────────────────────────────────────
+
+  @Get('audio/sounds')
+  listSoundDefs() {
+    return this.prisma.soundDef.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  @Post('audio/sounds')
+  createSoundDef(@Body() body: { key: string; name: string; bus: AudioBus; fileKey?: string; description?: string }) {
+    return this.prisma.soundDef.create({ data: body });
+  }
+
+  @Put('audio/sounds/:id')
+  updateSoundDef(@Param('id') id: string, @Body() body: { key?: string; name?: string; bus?: AudioBus; fileKey?: string; description?: string; enabled?: boolean }) {
+    return this.prisma.soundDef.update({ where: { id }, data: body });
+  }
+
+  @Delete('audio/sounds/:id')
+  deleteSoundDef(@Param('id') id: string) {
+    return this.prisma.soundDef.delete({ where: { id } });
+  }
+
+  // ── Audio: SoundMapping CRUD ─────────────────────────────────────────────
+
+  @Get('audio/mappings')
+  listSoundMappings() {
+    return this.prisma.soundMapping.findMany({
+      include: { soundDef: { select: { id: true, key: true, name: true, bus: true } } },
+      orderBy: { actionKey: 'asc' },
+    });
+  }
+
+  @Post('audio/mappings')
+  createSoundMapping(@Body() body: { actionKey: string; soundDefId: string; weight?: number }) {
+    return this.prisma.soundMapping.create({ data: body });
+  }
+
+  @Put('audio/mappings/:id')
+  updateSoundMapping(@Param('id') id: string, @Body() body: { actionKey?: string; soundDefId?: string; weight?: number; enabled?: boolean }) {
+    return this.prisma.soundMapping.update({ where: { id }, data: body });
+  }
+
+  @Delete('audio/mappings/:id')
+  deleteSoundMapping(@Param('id') id: string) {
+    return this.prisma.soundMapping.delete({ where: { id } });
+  }
+
+  @Post('audio/upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAudio(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    const allowed = ['audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp3', 'audio/x-wav'];
+    if (!allowed.includes(file.mimetype) && !file.originalname.match(/\.(mp3|ogg|wav)$/i)) {
+      throw new BadRequestException('Only .mp3, .ogg, and .wav files are allowed');
+    }
+    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
+    if (!paths.length) throw new BadRequestException('PUBLIC_OBJECT_SEARCH_PATHS not configured');
+    const firstPath = paths[0];
+    const parts = firstPath.slice(1).split('/');
+    const bucketName = parts[0];
+    const prefix = parts.slice(1).join('/');
+    const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const objectName = prefix ? `${prefix}/audio/${safeFilename}` : `audio/${safeFilename}`;
+    const bucket = objectStorageClient.bucket(bucketName);
+    const gcsFile = bucket.file(objectName);
+    await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
+    const fileKey = `audio/${safeFilename}`;
+    return { fileKey, url: `/api/media/${fileKey}` };
   }
 
   @Get(':table')
