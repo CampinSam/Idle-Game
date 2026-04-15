@@ -31,6 +31,13 @@ export class AudioController {
       actionMap[m.actionKey].push({ soundKey: sound.key, fileKey: sound.fileKey, weight: m.weight });
     }
 
+    // Auto-map any SoundDef with a file by its own key when no explicit mapping exists
+    for (const sound of soundDefs) {
+      if (sound.fileKey && !actionMap[sound.key]) {
+        actionMap[sound.key] = [{ soundKey: sound.key, fileKey: sound.fileKey, weight: 1 }];
+      }
+    }
+
     return { actionMap };
   }
 }
