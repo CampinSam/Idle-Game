@@ -60,6 +60,7 @@ function IconManagerContent() {
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [filter, setFilter] = useState<'all' | 'missing' | 'present'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'item' | 'currency'>('all');
+  const [bustTokens, setBustTokens] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingIconKey = useRef<string | null>(null);
 
@@ -95,11 +96,13 @@ function IconManagerContent() {
     try {
       await adminApi.uploadMedia(renamedFile, 'images/icons');
       setMsg({ text: `Uploaded ${iconKey}.png successfully`, type: 'success' });
+      const token = Date.now();
       setIcons(prev => prev.map(i =>
         i.iconKey === iconKey
           ? { ...i, exists: true, url: `/api/media/images/icons/${iconKey}.png` }
           : i
       ));
+      setBustTokens(prev => ({ ...prev, [iconKey]: token }));
     } catch (e: any) {
       setMsg({ text: `Upload failed: ${e.message}`, type: 'error' });
     } finally {
@@ -175,7 +178,7 @@ function IconManagerContent() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png"
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
@@ -209,7 +212,7 @@ function IconManagerContent() {
                     <div className="icon-thumb-cell">
                       {icon.exists && icon.url ? (
                         <img
-                          src={`${icon.url}?t=${Date.now()}`}
+                          src={bustTokens[icon.iconKey] ? `${icon.url}?t=${bustTokens[icon.iconKey]}` : icon.url}
                           alt={icon.name}
                           className="icon-thumb"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
