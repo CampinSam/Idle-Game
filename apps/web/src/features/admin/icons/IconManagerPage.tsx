@@ -137,123 +137,125 @@ function IconManagerContent() {
         </div>
       </div>
 
-      <div className="icon-stats">
-        <div className="icon-stat icon-stat-total">
-          <span className="icon-stat-num">{total}</span>
-          <span className="icon-stat-label">Total</span>
+      <div className="admin-card">
+        <div className="icon-stats">
+          <div className="icon-stat icon-stat-total">
+            <span className="icon-stat-num">{total}</span>
+            <span className="icon-stat-label">Total</span>
+          </div>
+          <div className="icon-stat icon-stat-present">
+            <span className="icon-stat-num">{present}</span>
+            <span className="icon-stat-label">Present</span>
+          </div>
+          <div className="icon-stat icon-stat-missing">
+            <span className="icon-stat-num">{missing}</span>
+            <span className="icon-stat-label">Missing</span>
+          </div>
         </div>
-        <div className="icon-stat icon-stat-present">
-          <span className="icon-stat-num">{present}</span>
-          <span className="icon-stat-label">Present</span>
+
+        {msg && (
+          <div className={`icon-msg icon-msg-${msg.type}`}>{msg.text}</div>
+        )}
+
+        <div className="icon-filters">
+          <div className="icon-filter-group">
+            <label>Status:</label>
+            {(['all', 'present', 'missing'] as const).map(v => (
+              <button key={v} className={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="icon-filter-group">
+            <label>Type:</label>
+            {(['all', 'item', 'currency'] as const).map(v => (
+              <button key={v} className={typeFilter === v ? 'active' : ''} onClick={() => setTypeFilter(v)}>
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="icon-stat icon-stat-missing">
-          <span className="icon-stat-num">{missing}</span>
-          <span className="icon-stat-label">Missing</span>
-        </div>
-      </div>
 
-      {msg && (
-        <div className={`icon-msg icon-msg-${msg.type}`}>{msg.text}</div>
-      )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
 
-      <div className="icon-filters">
-        <div className="icon-filter-group">
-          <label>Status:</label>
-          {(['all', 'present', 'missing'] as const).map(v => (
-            <button key={v} className={filter === v ? 'active' : ''} onClick={() => setFilter(v)}>
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div className="icon-filter-group">
-          <label>Type:</label>
-          {(['all', 'item', 'currency'] as const).map(v => (
-            <button key={v} className={typeFilter === v ? 'active' : ''} onClick={() => setTypeFilter(v)}>
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+        {loading && <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading icons...</div>}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png"
-        style={{ display: 'none' }}
-        onChange={handleFileChange}
-      />
-
-      {loading && <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading icons...</div>}
-
-      {!loading && (
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 56 }}>Icon</th>
-                <th>Name</th>
-                <th>Icon Key</th>
-                <th style={{ width: 90 }}>Type</th>
-                <th style={{ width: 110 }}>Status</th>
-                <th style={{ width: 110 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+        {!loading && (
+          <div className="table-scroll">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
-                    No icons match the current filter.
-                  </td>
+                  <th style={{ width: 56 }}>Icon</th>
+                  <th>Name</th>
+                  <th>Icon Key</th>
+                  <th style={{ width: 90 }}>Type</th>
+                  <th style={{ width: 110 }}>Status</th>
+                  <th style={{ width: 110 }}>Action</th>
                 </tr>
-              )}
-              {filtered.map(icon => (
-                <tr key={icon.id} className={icon.exists ? '' : 'icon-row-missing'}>
-                  <td>
-                    <div className="icon-thumb-cell">
-                      {icon.exists && icon.url ? (
-                        <img
-                          src={bustTokens[icon.iconKey] ? `${icon.url}?t=${bustTokens[icon.iconKey]}` : icon.url}
-                          alt={icon.name}
-                          className="icon-thumb"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
+                      No icons match the current filter.
+                    </td>
+                  </tr>
+                )}
+                {filtered.map(icon => (
+                  <tr key={icon.id} className={icon.exists ? '' : 'icon-row-missing'}>
+                    <td>
+                      <div className="icon-thumb-cell">
+                        {icon.exists && icon.url ? (
+                          <img
+                            src={bustTokens[icon.iconKey] ? `${icon.url}?t=${bustTokens[icon.iconKey]}` : icon.url}
+                            alt={icon.name}
+                            className="icon-thumb"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="icon-thumb-placeholder">?</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="icon-name">{icon.name}</td>
+                    <td className="icon-key">{icon.iconKey}</td>
+                    <td>
+                      <span className={`icon-type-badge icon-type-${icon.type}`}>
+                        {icon.type}
+                      </span>
+                    </td>
+                    <td>
+                      {icon.exists ? (
+                        <span className="icon-status-badge icon-status-present">✓ Present</span>
                       ) : (
-                        <div className="icon-thumb-placeholder">?</div>
+                        <span className="icon-status-badge icon-status-missing">✗ Missing</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="icon-name">{icon.name}</td>
-                  <td className="icon-key">{icon.iconKey}</td>
-                  <td>
-                    <span className={`icon-type-badge icon-type-${icon.type}`}>
-                      {icon.type}
-                    </span>
-                  </td>
-                  <td>
-                    {icon.exists ? (
-                      <span className="icon-status-badge icon-status-present">✓ Present</span>
-                    ) : (
-                      <span className="icon-status-badge icon-status-missing">✗ Missing</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      className="btn-upload"
-                      onClick={() => triggerUpload(icon.iconKey)}
-                      disabled={uploading === icon.iconKey}
-                    >
-                      {uploading === icon.iconKey ? 'Uploading...' : icon.exists ? 'Replace' : 'Upload'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    </td>
+                    <td>
+                      <button
+                        className="btn-upload"
+                        onClick={() => triggerUpload(icon.iconKey)}
+                        disabled={uploading === icon.iconKey}
+                      >
+                        {uploading === icon.iconKey ? 'Uploading...' : icon.exists ? 'Replace' : 'Upload'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      <div className="icon-path-hint">
-        Icons are stored at: <code>public/images/icons/&#123;iconKey&#125;.png</code>
+        <div className="icon-path-hint">
+          Icons are stored at: <code>public/images/icons/&#123;iconKey&#125;.png</code>
+        </div>
       </div>
     </div>
   );

@@ -222,6 +222,14 @@
   overflow-x: auto;
 }
 
+.admin-card {
+  background: #0f0f2e;
+  border: 1px solid #1a1a3e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
 .table-header {
   display: flex;
   align-items: center;
