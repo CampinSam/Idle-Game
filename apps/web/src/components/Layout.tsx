@@ -17,7 +17,6 @@ import { useAppSelector } from '../store';
 import ToastOverlay from './ToastOverlay';
 import type { SyncStatus } from '../store/syncSlice';
 import NotificationCenter from '../features/notifications/NotificationCenter';
-import VolumeSettings from './VolumeSettings';
 import { formatCompact } from '../utils/formatNumber';
 import { resolveIcon } from '../utils/iconResolver';
 import GameIcon from './GameIcon';
@@ -46,7 +45,6 @@ export default function Layout() {
   useJobReadinessTimers(allActiveJobs);
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifCenter, setShowNotifCenter] = useState(false);
-  const [showVolumeSettings, setShowVolumeSettings] = useState(false);
 
   useEffect(() => { audioEngine.init(); }, []);
   useAudioNavigation();
@@ -97,7 +95,8 @@ export default function Layout() {
                 <div className="top-bar-menu">
                   <div className="top-bar-menu-name">{profile.username}</div>
                   <div className="top-bar-menu-info">Keeper Lvl {profile.keeperLevel}</div>
-                  <button className="top-bar-menu-profile" onClick={() => { navigate('/profile'); setShowMenu(false); }}>Profile & Wallets</button>
+                  <button className="top-bar-menu-profile" onClick={() => { navigate('/profile'); setShowMenu(false); }}>Profile</button>
+                  <button className="top-bar-menu-profile" onClick={() => { navigate('/settings'); setShowMenu(false); }}>Settings</button>
                   <button className="top-bar-menu-profile" onClick={() => { navigate('/rewards'); setShowMenu(false); }}>Rewards</button>
                   <button className="top-bar-menu-logout" onClick={handleLogout}>Logout</button>
                 </div>
@@ -118,18 +117,6 @@ export default function Layout() {
                 <span className="top-bar-currency-val">{formatCompact(currencyBalances['premium_gems'] ?? 0)}</span>
               </div>
             </div>
-            <button
-              className="top-bar-bell"
-              onClick={() => setShowVolumeSettings(!showVolumeSettings)}
-              aria-label="Audio settings"
-              style={{ marginRight: 4 }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-              </svg>
-            </button>
             <button className="top-bar-bell" onClick={() => setShowNotifCenter(true)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -150,10 +137,6 @@ export default function Layout() {
 
       {showNotifCenter && (
         <NotificationCenter onClose={() => setShowNotifCenter(false)} boostInfo={boostInfo} />
-      )}
-
-      {showVolumeSettings && (
-        <VolumeSettings onClose={() => setShowVolumeSettings(false)} />
       )}
 
       <main className="content page-outlet">

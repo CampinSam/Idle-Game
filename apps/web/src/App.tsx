@@ -27,6 +27,7 @@ const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEd
 const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPage'));
 const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
+const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
 const RewardsPage = lazy(() => import('./features/rewards/RewardsPage'));
 
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="inventory" element={<ErrorBoundary fallbackTitle="Inventory page error"><InventoryPage /></ErrorBoundary>} />
           <Route path="crafting" element={<ErrorBoundary fallbackTitle="Crafting page error"><CraftingPage /></ErrorBoundary>} />
           <Route path="profile" element={<ErrorBoundary fallbackTitle="Profile page error"><ProfilePage /></ErrorBoundary>} />
+          <Route path="settings" element={<ErrorBoundary fallbackTitle="Settings page error"><SettingsPage /></ErrorBoundary>} />
           <Route path="store" element={<ErrorBoundary fallbackTitle="Store page error"><StorePage /></ErrorBoundary>} />
           <Route path="rewards" element={<ErrorBoundary fallbackTitle="Rewards page error"><RewardsPage /></ErrorBoundary>} />
         </Route>
