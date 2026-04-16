@@ -25,7 +25,7 @@ export function useCollectJob() {
         const response = await execute('CompleteMission', { jobId });
         const jobPatch = response?.patches?.find(
           (p: any) => p.op === 'upsert' && p.entity === 'job' && p.id === jobId,
-        );
+        ) as { op: 'upsert'; entity: string; id: string; data: any } | undefined;
         const failed = jobPatch?.data?.status === 'failed';
         audioEngine.play(failed ? 'sfx.mission.fail' : 'sfx.mission.success');
         if (!failed) audioEngine.play('sfx.economy.currency_earn');
