@@ -408,7 +408,7 @@ export default function MissionsPage() {
           {Array.from({ length: emptyCount }).map((_, i) => (
             <div key={`open-slot-${i}`} className="mp-slot-empty">
               <span className="mp-slot-empty-icon">＋</span>
-              <span className="mp-slot-empty-label">Open Slot</span>
+              <span className="mp-slot-empty-label">Mission Slot Available</span>
             </div>
           ))}
         </div>
