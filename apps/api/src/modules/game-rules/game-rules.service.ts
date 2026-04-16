@@ -190,21 +190,29 @@ export class GameRulesService {
       }
     };
 
-    const rollAmount = (min: number, max: number): number => {
-      if (min === max) return min;
-      return rng.nextInt(min, max);
+    const rollPickCount = (min: number, max: number): number => {
+      const lo = Math.max(0, min);
+      const hi = Math.max(lo, max);
+      if (lo >= hi) return lo;
+      return lo + Math.floor(Math.random() * (hi - lo + 1));
     };
 
-    const pickWeighted = (pool: any[], count: number): any[] => {
+    const pickWeightedRandom = (pool: any[], count: number): any[] => {
       const remaining = [...pool];
       const picks: any[] = [];
       for (let i = 0; i < count && remaining.length > 0; i++) {
-        const totalOdds = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
-        let roll = rng.nextInt(0, totalOdds - 1);
+        const totalWeight = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
+        if (totalWeight <= 0) {
+          const idx = Math.floor(Math.random() * remaining.length);
+          picks.push(remaining[idx]);
+          remaining.splice(idx, 1);
+          continue;
+        }
+        let r = Math.random() * totalWeight;
         let pickedIdx = remaining.length - 1;
         for (let j = 0; j < remaining.length; j++) {
-          roll -= (remaining[j].odds ?? 100);
-          if (roll < 0) { pickedIdx = j; break; }
+          r -= (remaining[j].odds ?? 100);
+          if (r <= 0) { pickedIdx = j; break; }
         }
         picks.push(remaining[pickedIdx]);
         remaining.splice(pickedIdx, 1);
@@ -225,9 +233,9 @@ export class GameRulesService {
             );
             const count = Math.min(
               pool.length,
-              rollAmount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
+              rollPickCount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
             );
-            const picks = pickWeighted(pool, count);
+            const picks = pickWeightedRandom(pool, count);
             await processItems(picks.map((p: any) => ({ ...p, odds: undefined })));
           } else {
             await processItems(item.bundle);
@@ -251,11 +259,13 @@ export class GameRulesService {
 
     const pickWeightedText = (pool: any[]): { message: string } | undefined => {
       if (pool.length === 0) return undefined;
-      const totalOdds = pool.reduce((sum: number, t: any) => sum + (t.odds ?? 100), 0);
-      let roll = rng.nextInt(0, totalOdds - 1);
-      for (const t of pool) {
-        roll -= (t.odds ?? 100);
-        if (roll < 0) return t;
+      const weights = pool.map((t: any) => Math.max(0, Math.round((t.odds ?? 100) * 100)));
+      const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+      if (totalWeight <= 0) return pool[rng.nextInt(0, pool.length - 1)];
+      let roll = rng.nextInt(0, totalWeight - 1);
+      for (let i = 0; i < pool.length; i++) {
+        roll -= weights[i];
+        if (roll < 0) return pool[i];
       }
       return pool[pool.length - 1];
     };
@@ -282,12 +292,18 @@ export class GameRulesService {
       const remaining = [...pool];
       const picks: any[] = [];
       for (let i = 0; i < count && remaining.length > 0; i++) {
-        const totalOdds = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
-        let roll = rng.nextInt(0, totalOdds - 1);
-        let pickedIdx = remaining.length - 1;
-        for (let j = 0; j < remaining.length; j++) {
-          roll -= (remaining[j].odds ?? 100);
-          if (roll < 0) { pickedIdx = j; break; }
+        const weights = remaining.map((e: any) => Math.max(0, Math.round((e.odds ?? 100) * 100)));
+        const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+        let pickedIdx: number;
+        if (totalWeight <= 0) {
+          pickedIdx = rng.nextInt(0, remaining.length - 1);
+        } else {
+          let roll = rng.nextInt(0, totalWeight - 1);
+          pickedIdx = remaining.length - 1;
+          for (let j = 0; j < remaining.length; j++) {
+            roll -= weights[j];
+            if (roll < 0) { pickedIdx = j; break; }
+          }
         }
         picks.push(remaining[pickedIdx]);
         remaining.splice(pickedIdx, 1);
