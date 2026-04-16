@@ -190,6 +190,9 @@ export class GameRulesService {
       }
     };
 
+    // Note: the rng param here only provides `chance(p)` (no nextInt/float roll),
+    // so pick-mode sampling uses Math.random() directly. Full seeded determinism
+    // is available in resolveOutcomes where rng includes nextInt.
     const rollPickCount = (min: number, max: number): number => {
       const lo = Math.max(0, min);
       const hi = Math.max(lo, max);
