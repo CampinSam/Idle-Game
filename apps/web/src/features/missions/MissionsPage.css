@@ -400,6 +400,35 @@
   animation: card-enter 0.2s ease-out both;
 }
 
+.mp-slots-box {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.mp-slot-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.mp-slot-empty-icon {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.2);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mp-slot-empty-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
+  font-style: italic;
+}
+
 .mp-activity-title {
   font-size: 13px;
   font-weight: 800;

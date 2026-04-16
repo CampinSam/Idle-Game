@@ -20,7 +20,7 @@ import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
-import { getArchetypeDisplay, getDifficultyDisplay } from '@derp/shared';
+import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS } from '@derp/shared';
 import './MissionsPage.css';
 
 const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/mission-quick.png', cardBackground: '#1a1a2e' };
@@ -143,7 +143,12 @@ export default function MissionsPage() {
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
-  const [categoryStack, setCategoryStack] = useState<string[]>([]);
+  const [categoryStack, setCategoryStack] = useState<string[]>(() => {
+    try {
+      const s = sessionStorage.getItem('missions_nav_stack');
+      return s ? JSON.parse(s) : [];
+    } catch { return []; }
+  });
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
   const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
   const [showEntityPicker, setShowEntityPicker] = useState(false);
@@ -156,6 +161,11 @@ export default function MissionsPage() {
     dispatch(fetchMissionDefs());
     dispatch(fetchMissionCategoryDefs());
   }, [dispatch]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem('missions_nav_stack', JSON.stringify(categoryStack)); }
+    catch {}
+  }, [categoryStack]);
 
   const repeatMissionDefId = searchParams.get('repeat');
 
@@ -360,11 +370,12 @@ export default function MissionsPage() {
     }
   };
 
-  const renderActivity = () => (
-    <div className="mp-activity-box">
-      <h3 className="mp-activity-title">MISSION ACTIVITY</h3>
-
-      {activeMissions.length > 0 && (
+  const renderSlots = () => {
+    const maxSlots = ANTI_WHALE_CAPS.maxActiveMissions(profile?.keeperLevel ?? 1);
+    const emptyCount = Math.max(0, maxSlots - activeMissions.length);
+    return (
+      <div className="mp-activity-box mp-slots-box">
+        <h3 className="mp-activity-title">MISSION SLOTS</h3>
         <div className="mp-activity-group">
           {activeMissions.map((m: any) => {
             const timer = (m.startTick != null && m.durationTicks != null)
@@ -378,7 +389,6 @@ export default function MissionsPage() {
               : 2;
             return (
               <div key={m.id} className={`mp-activity-item ${isReady ? 'ready' : 'in-progress'}`} onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
-                
                 <span className="mp-activity-name">{missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}</span>
                 <span className="mp-activity-status" style={{ color: isReady ? '#10B981' : '#F59E0B' }}>
                   {isReady ? '✅ READY' : `⏱ ${formatTimeShort(remaining)}`}
@@ -395,10 +405,22 @@ export default function MissionsPage() {
               </div>
             );
           })}
+          {Array.from({ length: emptyCount }).map((_, i) => (
+            <div key={`open-slot-${i}`} className="mp-slot-empty">
+              <span className="mp-slot-empty-icon">＋</span>
+              <span className="mp-slot-empty-label">Open Slot</span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
+    );
+  };
 
-      {missionHistory.length > 0 && (
+  const renderActivity = () => {
+    if (missionHistory.length === 0) return null;
+    return (
+      <div className="mp-activity-box">
+        <h3 className="mp-activity-title">MISSION ACTIVITY</h3>
         <div className="mp-activity-group">
           {missionHistory.slice(0, 5).map((m: any) => (
             <div key={m.id} className={`mp-activity-item ${m.status}`} onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
@@ -412,14 +434,15 @@ export default function MissionsPage() {
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   if (currentCategoryId && !selectedMission) {
     if (currentCatHasChildren) {
       return (
         <div className="missions-page page-transition-wrapper">
+          {renderSlots()}
           <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
             <div className="mp-list-header">
               <button className="mp-back-pill" onClick={popCategory}>← Back</button>
@@ -467,13 +490,14 @@ export default function MissionsPage() {
               })}
             </div>
           </div>
-          {(activeMissions.length > 0 || missionHistory.length > 0) && renderActivity()}
+          {renderActivity()}
         </div>
       );
     }
 
     return (
       <div className="missions-page page-transition-wrapper">
+        {renderSlots()}
         <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
           <div className="mp-list-header">
             <button className="mp-back-pill" onClick={popCategory}>← Back</button>
@@ -521,7 +545,7 @@ export default function MissionsPage() {
             })}
           </div>
         </div>
-        {(activeMissions.length > 0 || missionHistory.length > 0) && renderActivity()}
+        {renderActivity()}
       </div>
     );
   }
@@ -762,6 +786,8 @@ export default function MissionsPage() {
     <div className="missions-page page-transition-wrapper">
       {error && <div className="mp-error">{error}</div>}
 
+      {renderSlots()}
+
       <div className="missions-wrapper-card">
         <div className="mp-categories">
         {visibleCategories.map((cat) => {
@@ -809,7 +835,7 @@ export default function MissionsPage() {
         </div>
       </div>
 
-      {(activeMissions.length > 0 || missionHistory.length > 0) && renderActivity()}
+      {renderActivity()}
     </div>
   );
 }
