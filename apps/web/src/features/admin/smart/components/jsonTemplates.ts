@@ -34,6 +34,7 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
   ],
   rewards: [
     { label: 'bundle', description: 'Probability bundle (nested outcomes)', color: PURPLE, template: () => ({ bundle: [], odds: 1 }) },
+    { label: 'pick bundle', description: 'Pick N from bundle (weighted random selection)', color: PURPLE, template: () => ({ bundle: [], odds: 1, pickMin: 1, pickMax: 1 }) },
     { label: 'currency', description: 'Currency payout', color: ORANGE, template: () => ({ type: 'currency', key: '', min: 1, max: 10, odds: 1 }) },
     { label: 'item', description: 'Item drop', color: ORANGE, template: () => ({ type: 'item', key: '', min: 1, max: 1, odds: 0.5 }) },
     { label: 'entity_xp', description: 'XP for entities', color: ORANGE, template: () => ({ type: 'entity_xp', min: 10, max: 50 }) },
@@ -43,6 +44,7 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
   ],
   bundle: [
     { label: 'bundle', description: 'Nested probability bundle', color: PURPLE, template: () => ({ bundle: [], odds: 1 }) },
+    { label: 'pick bundle', description: 'Pick N from bundle (weighted random selection)', color: PURPLE, template: () => ({ bundle: [], odds: 1, pickMin: 1, pickMax: 1 }) },
     { label: 'currency', description: 'Currency payout', color: ORANGE, template: () => ({ type: 'currency', key: '', min: 1, max: 10, odds: 1 }) },
     { label: 'item', description: 'Item drop', color: ORANGE, template: () => ({ type: 'item', key: '', min: 1, max: 1, odds: 0.5 }) },
     { label: 'entity_xp', description: 'XP for entities', color: ORANGE, template: () => ({ type: 'entity_xp', min: 10, max: 50 }) },
@@ -52,6 +54,7 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
   ],
   outcomePool: [
     { label: 'bundle', description: 'Probability bundle', color: PURPLE, template: () => ({ bundle: [], odds: 1 }) },
+    { label: 'pick bundle', description: 'Pick N from bundle (weighted random selection)', color: PURPLE, template: () => ({ bundle: [], odds: 1, pickMin: 1, pickMax: 1 }) },
     { label: 'currency', description: 'Currency payout', color: ORANGE, template: () => ({ type: 'currency', key: '', min: 1, max: 10, odds: 1 }) },
     { label: 'item', description: 'Item drop', color: ORANGE, template: () => ({ type: 'item', key: '', min: 1, max: 1, odds: 0.5 }) },
     { label: 'entity_xp', description: 'Entity XP', color: ORANGE, template: () => ({ type: 'entity_xp', min: 10, max: 50 }) },

@@ -616,6 +616,16 @@
           "max": 100,
           "description": "Percentage chance the entire bundle triggers"
         },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Pick mode: minimum number of entries to select from the bundle (uses entry odds as weights)"
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Pick mode: maximum number of entries to select from the bundle (uses entry odds as weights)"
+        },
         "requirements": {
           "type": "Requirements",
           "default": [],

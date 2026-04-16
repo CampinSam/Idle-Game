@@ -190,12 +190,48 @@ export class GameRulesService {
       }
     };
 
+    const rollAmount = (min: number, max: number): number => {
+      if (min === max) return min;
+      return rng.nextInt(min, max);
+    };
+
+    const pickWeighted = (pool: any[], count: number): any[] => {
+      const remaining = [...pool];
+      const picks: any[] = [];
+      for (let i = 0; i < count && remaining.length > 0; i++) {
+        const totalOdds = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
+        let roll = rng.nextInt(0, totalOdds - 1);
+        let pickedIdx = remaining.length - 1;
+        for (let j = 0; j < remaining.length; j++) {
+          roll -= (remaining[j].odds ?? 100);
+          if (roll < 0) { pickedIdx = j; break; }
+        }
+        picks.push(remaining[pickedIdx]);
+        remaining.splice(pickedIdx, 1);
+      }
+      return picks;
+    };
+
     const processItems = async (items: any[]) => {
       for (const item of items) {
         if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
         if (item.bundle && Array.isArray(item.bundle)) {
           if (!this.rollOdds(item.odds, rng)) continue;
-          await processItems(item.bundle);
+          const pickMin = item.pickMin ?? item.minChoices;
+          const pickMax = item.pickMax ?? item.maxChoices;
+          if (pickMin !== undefined || pickMax !== undefined) {
+            const pool = item.bundle.filter((e: any) =>
+              !e.requirements || this.checkRequirements(e.requirements, reqContext),
+            );
+            const count = Math.min(
+              pool.length,
+              rollAmount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
+            );
+            const picks = pickWeighted(pool, count);
+            await processItems(picks.map((p: any) => ({ ...p, odds: undefined })));
+          } else {
+            await processItems(item.bundle);
+          }
         } else {
           await applyEntry(item);
         }
@@ -266,13 +302,15 @@ export class GameRulesService {
         if (item.requirements && !this.checkRequirements(item.requirements, reqContext)) continue;
         if (item.bundle && Array.isArray(item.bundle)) {
           if (!this.rollOdds(item.odds, rng)) continue;
-          if (item.minChoices !== undefined || item.maxChoices !== undefined) {
+          const pickMin = item.pickMin ?? item.minChoices;
+          const pickMax = item.pickMax ?? item.maxChoices;
+          if (pickMin !== undefined || pickMax !== undefined) {
             const pool = item.bundle.filter((e: any) =>
               !e.requirements || this.checkRequirements(e.requirements, reqContext),
             );
             const count = Math.min(
               pool.length,
-              rollAmount(item.minChoices ?? 1, item.maxChoices ?? item.minChoices ?? 1),
+              rollAmount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
             );
             const picks = pickWeighted(pool, count);
             resolveItems(picks.map((p: any) => ({ ...p, odds: undefined })));

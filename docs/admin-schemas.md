@@ -2468,6 +2468,54 @@ Bundles also support an optional `requirements` array. If present, the entire bu
 
 This mixed bundle has a 5% chance of activating. If it does: the artifact item is guaranteed, premium gems have a 50% chance, both flags are always set, and the bundle's flavor text is applied. This lets you create thematic "loot packages" where finding a rare item also triggers story flags and a special message.
 
+#### Pick Mode Bundles
+
+Bundles support an optional **pick mode** activated by adding `pickMin` and/or `pickMax` fields. Instead of rolling every entry individually, the system selects between `pickMin` and `pickMax` entries at random using each entry's `odds` as a relative weight (without replacement), then resolves the chosen entries as guaranteed.
+
+Pick bundle format: `{ "bundle": [...entries], "odds": N, "pickMin": X, "pickMax": Y }`
+
+- The outer `odds` roll still applies — if it fails the bundle is skipped entirely.
+- `pickMin` — minimum number of entries to pick (default `1` if only `pickMax` is set).
+- `pickMax` — maximum number of entries to pick (default equals `pickMin` if only `pickMin` is set).
+- The actual count N is `random(pickMin, pickMax)`, clamped to the number of available entries.
+- Entry `requirements` are evaluated before building the weighted pool — ineligible entries are excluded from selection.
+- Once selected, entries are resolved as guaranteed (their `odds` value is not re-rolled during resolution since it was already used as a selection weight).
+- `pickMin: 1, pickMax: 1` = pick exactly one entry (classic "choose 1 of N" pattern).
+- `pickMin: 1, pickMax: 3` = pick anywhere from 1 to 3 entries.
+
+**Example — "choose 1 of 3 bonus rewards":**
+```json
+{
+  "bundle": [
+    { "type": "currency", "key": "premium_gems", "min": 5, "max": 10, "odds": 30 },
+    { "type": "item", "key": "mat_rare_gem", "min": 1, "max": 1, "odds": 50 },
+    { "type": "item", "key": "mat_ancient_relic", "min": 1, "max": 1, "odds": 20 }
+  ],
+  "odds": 100,
+  "pickMin": 1,
+  "pickMax": 1
+}
+```
+
+The player always receives exactly one of the three options. The higher-odds entries (rare gem at 50, gems at 30, relic at 20) are proportionally more likely to be chosen.
+
+**Example — variable pick count:**
+```json
+{
+  "bundle": [
+    { "type": "item", "key": "reward_a", "min": 1, "max": 1, "odds": 1 },
+    { "type": "item", "key": "reward_b", "min": 1, "max": 1, "odds": 1 },
+    { "type": "item", "key": "reward_c", "min": 1, "max": 1, "odds": 1 },
+    { "type": "item", "key": "reward_d", "min": 1, "max": 1, "odds": 1 }
+  ],
+  "odds": 50,
+  "pickMin": 1,
+  "pickMax": 2
+}
+```
+
+This bundle has a 50% chance of firing. If it does, 1 or 2 of the four equally-weighted entries are selected at random (without replacement).
+
 ### Requirements
 
 A unified array of conditions used in `requirements` fields across all definition types. Each entry has a `type`, an optional `key` (only needed when specifying *which* thing), and a `value`. All types support an optional `operator` field.
