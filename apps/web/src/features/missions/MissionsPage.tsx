@@ -515,6 +515,13 @@ export default function MissionsPage() {
               const diffInfo = getDifficultyDisplay(def.difficulty);
               const display = resolveDisplay(def, missionCategoryDefs);
               const missionTags = def.tags || [];
+              const listCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
+              const getListHave = (entry: { type: string; id: string }) =>
+                entry.type === 'currency'
+                  ? (currencyBalances[entry.id] ?? 0)
+                  : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+              const canAffordList = listCost.every(e => getListHave(e) >= e.amount);
+              const showCantAfford = listCost.length > 0 && !canAffordList && !locked && missionEnabled;
               return (
                 <div
                   key={def.id}
@@ -541,6 +548,9 @@ export default function MissionsPage() {
                     )}
                     {!missionEnabled && !locked && (
                       <div className="mp-disabled-reason">🚫 Currently Unavailable</div>
+                    )}
+                    {showCantAfford && (
+                      <div className="mp-cant-afford">💸 Can't Afford</div>
                     )}
                   </div>
                 </div>
