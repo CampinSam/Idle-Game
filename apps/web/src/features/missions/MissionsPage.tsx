@@ -762,7 +762,7 @@ export default function MissionsPage() {
                 {missionCost.map((entry, i) => {
                   const have = entry.type === 'currency'
                     ? (currencyBalances[entry.id] ?? 0)
-                    : Object.values(inventoryItems).filter((it: any) => it.itemDefId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                    : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
                   const canAffordEntry = have >= entry.amount;
                   return (
                     <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
@@ -804,7 +804,7 @@ export default function MissionsPage() {
                 (Array.isArray(selectedDef.cost) ? selectedDef.cost : []).some((entry: any) => {
                   const have = entry.type === 'currency'
                     ? (currencyBalances[entry.id] ?? 0)
-                    : Object.values(inventoryItems).filter((it: any) => it.itemDefId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                    : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
                   return have < entry.amount;
                 })
               }

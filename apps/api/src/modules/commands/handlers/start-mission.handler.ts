@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildEntityPatch } from '../patch-builder';
+import { PatchBuilder, buildEntityPatch, buildCurrencyPatches, buildItemPatches } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
 
 @Injectable()
@@ -20,6 +20,9 @@ export class StartMissionHandler implements CommandHandler {
     for (const entityId of (entityIds || [])) {
       await buildEntityPatch(pb, ctx.tx, entityId);
     }
+
+    await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
+    await buildItemPatches(pb, ctx.tx, ctx.userId);
 
     return {
       patches: pb.build(),
