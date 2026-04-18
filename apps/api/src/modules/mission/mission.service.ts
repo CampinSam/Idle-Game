@@ -173,6 +173,7 @@ export class MissionService {
       visibilityRequirements: def.visibilityRequirements,
       tags: def.tags ?? [],
       rewardPreview: def.rewardPreview ?? [],
+      cost: def.cost ?? [],
       enabled: def.enabled ?? true,
       sortOrder: def.sortOrder ?? 0,
       inline: def.inline ?? false,
