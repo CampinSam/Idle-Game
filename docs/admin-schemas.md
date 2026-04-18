@@ -581,6 +581,7 @@ Defines a mission or quest that players can send their entities (birds) on.
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for the mission to appear in the UI (see [Visibility Requirements](#visibility-requirements)) |
 | `tags` | JSON | No | `[]` | Classification tags for filtering (e.g. `["beginner"]`, `["seasonal"]`) |
 | `rewardPreview` | JSON | No | `[]` | Preview of possible rewards shown to the player before starting |
+| `cost` | JSON | No | `[]` | Array of cost entries deducted when the mission starts. Each entry uses `{type, id, amount}` format (see [Cost Objects](#cost-objects)) |
 | `enabled` | boolean | No | true | Whether this mission is currently active |
 | `sortOrder` | number | No | 0 | Display order within its category (ascending) |
 | `inline` | boolean | No | false | If true, shows as a quick-launch pill button on the parent category card instead of a full mission card |

@@ -2748,6 +2748,12 @@
           "default": [],
           "description": "Reward preview data for UI"
         },
+        "cost": {
+          "type": "array",
+          "items": { "$ref": "#/complexTypes/CostEntry" },
+          "default": [],
+          "description": "Cost entries deducted when the mission starts (see Cost Objects)"
+        },
         "enabled": {
           "type": "boolean",
           "default": true,

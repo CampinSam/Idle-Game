@@ -1176,6 +1176,56 @@
   font-size: 13px;
 }
 
+.md-cost-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.md-cost-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary, #9CA3AF);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.md-cost-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.md-cost-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #E5E7EB;
+}
+
+.md-cost-entry.md-cost-unaffordable {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+  color: #F87171;
+}
+
+.md-cost-have {
+  font-size: 11px;
+  opacity: 0.55;
+  margin-left: 2px;
+}
+
 .md-launch-bar {
   position: absolute;
   bottom: 0;

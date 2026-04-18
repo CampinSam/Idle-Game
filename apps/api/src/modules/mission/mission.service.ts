@@ -288,6 +288,16 @@ export class MissionService {
       }
     }
 
+    const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(dbDef.cost) ? dbDef.cost : [];
+    for (const cost of costEntries) {
+      if (cost.amount <= 0) continue;
+      if (cost.type === 'currency') {
+        await this.currencyService.spend({ userId, currencyId: cost.id, amount: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
+      } else {
+        await this.inventoryService.removeItem({ userId, itemId: cost.id, quantity: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
+      }
+    }
+
     for (const entity of entities) {
       const st = (entity.state as any) || {};
       await (db as any).entity.update({ where: { id: entity.id }, data: { state: { ...st, status: 'mission' } } });

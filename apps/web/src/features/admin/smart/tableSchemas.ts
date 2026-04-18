@@ -125,6 +125,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       visibilityRequirements: { type: 'json', default: [], description: 'Visibility conditions' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       rewardPreview: { type: 'json', default: [], description: 'Reward preview' },
+      cost: { type: 'json', default: [], description: 'Cost to start mission (currency/item entries)' },
       enabled: { type: 'boolean', default: true, description: 'Is active?' },
       sortOrder: { type: 'number', default: 0, description: 'Display order within category' },
       inline: { type: 'boolean', default: false, description: 'Show as inline pill on category card' },

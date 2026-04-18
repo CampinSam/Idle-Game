@@ -561,6 +561,7 @@ model MissionDef {
   visibilityRequirements   Json               @default("[]")
   tags                     Json               @default("[]")
   rewardPreview            Json               @default("[]")
+  cost                     Json               @default("[]")
   enabled                  Boolean            @default(true)
   sortOrder                Int                @default(0)
   inline                   Boolean            @default(false)

@@ -21,6 +21,7 @@ import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
 import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS } from '@derp/shared';
+import GameIcon from '../../components/GameIcon';
 import './MissionsPage.css';
 
 const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/mission-quick.png', cardBackground: '#1a1a2e' };
@@ -139,6 +140,8 @@ export default function MissionsPage() {
     }
   }, [pushModal]);
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
+  const inventoryItems = useAppSelector((s) => s.sync.items);
   const missionHistory = useSyncMissionHistory();
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
@@ -749,6 +752,31 @@ export default function MissionsPage() {
           {error && <div className="mp-error" style={{ marginTop: 12 }}>{error}</div>}
         </div>
 
+        {(() => {
+          const missionCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(selectedDef.cost) ? selectedDef.cost : [];
+          if (missionCost.length === 0) return null;
+          return (
+            <div className="md-cost-bar">
+              <span className="md-cost-label">Cost to Start</span>
+              <div className="md-cost-entries">
+                {missionCost.map((entry, i) => {
+                  const have = entry.type === 'currency'
+                    ? (currencyBalances[entry.id] ?? 0)
+                    : Object.values(inventoryItems).filter((it: any) => it.itemDefId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                  const canAffordEntry = have >= entry.amount;
+                  return (
+                    <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
+                      <GameIcon src={entry.id} size={16} />
+                      <span>{entry.amount.toLocaleString()}</span>
+                      <span className="md-cost-have">({have.toLocaleString()})</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="md-launch-bar">
           {selectedEntities.length === 0 ? (
             idleEntities.length === 0 ? (
@@ -770,7 +798,16 @@ export default function MissionsPage() {
           ) : (
             <button
               className="md-launch-btn"
-              disabled={selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') || selectedEntities.length > getReqValue(selectedDef.requirements, 'team_size', 1, 'lte')}
+              disabled={
+                selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') ||
+                selectedEntities.length > getReqValue(selectedDef.requirements, 'team_size', 1, 'lte') ||
+                (Array.isArray(selectedDef.cost) ? selectedDef.cost : []).some((entry: any) => {
+                  const have = entry.type === 'currency'
+                    ? (currencyBalances[entry.id] ?? 0)
+                    : Object.values(inventoryItems).filter((it: any) => it.itemDefId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                  return have < entry.amount;
+                })
+              }
               onClick={handleStart}
             >
               START MISSION
