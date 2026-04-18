@@ -293,9 +293,9 @@ export class MissionService {
     for (const cost of costEntries) {
       if (cost.amount <= 0) continue;
       if (cost.type === 'currency') {
-        await this.currencyService.spend({ userId, currencyId: cost.id, amount: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
+        await this.currencyService.spendTx(db as any, { userId, currencyId: cost.id, amount: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
       } else {
-        await this.inventoryService.removeItem({ userId, itemId: cost.id, quantity: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
+        await this.inventoryService.removeItemTx(db as any, { userId, itemId: cost.id, quantity: cost.amount, reason: `Mission: ${dbDef.name}`, sourceType: 'mission', sourceId: dbDef.id });
       }
     }
 

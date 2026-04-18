@@ -558,6 +558,13 @@ export default function MissionsPage() {
     const display = resolveDisplay(selectedDef, missionCategoryDefs);
     const missionTags = selectedDef.tags || [];
 
+    const missionCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(selectedDef.cost) ? selectedDef.cost : [];
+    const getHaveForEntry = (entry: { type: string; id: string }) =>
+      entry.type === 'currency'
+        ? (currencyBalances[entry.id] ?? 0)
+        : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+    const canAffordMission = missionCost.every(e => getHaveForEntry(e) >= e.amount);
+
     return (
       <div className="missions-page md-inline page-transition-wrapper">
         <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
@@ -752,30 +759,24 @@ export default function MissionsPage() {
           {error && <div className="mp-error" style={{ marginTop: 12 }}>{error}</div>}
         </div>
 
-        {(() => {
-          const missionCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(selectedDef.cost) ? selectedDef.cost : [];
-          if (missionCost.length === 0) return null;
-          return (
-            <div className="md-cost-bar">
-              <span className="md-cost-label">Cost to Start</span>
-              <div className="md-cost-entries">
-                {missionCost.map((entry, i) => {
-                  const have = entry.type === 'currency'
-                    ? (currencyBalances[entry.id] ?? 0)
-                    : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
-                  const canAffordEntry = have >= entry.amount;
-                  return (
-                    <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
-                      <GameIcon src={entry.id} size={16} />
-                      <span>{entry.amount.toLocaleString()}</span>
-                      <span className="md-cost-have">({have.toLocaleString()})</span>
-                    </span>
-                  );
-                })}
-              </div>
+        {missionCost.length > 0 && (
+          <div className="md-cost-bar">
+            <span className="md-cost-label">Cost to Start</span>
+            <div className="md-cost-entries">
+              {missionCost.map((entry, i) => {
+                const have = getHaveForEntry(entry);
+                const canAffordEntry = have >= entry.amount;
+                return (
+                  <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
+                    <GameIcon src={entry.id} size={16} />
+                    <span>{entry.amount.toLocaleString()}</span>
+                    <span className="md-cost-have">({have.toLocaleString()})</span>
+                  </span>
+                );
+              })}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
         <div className="md-launch-bar">
           {selectedEntities.length === 0 ? (
@@ -801,12 +802,7 @@ export default function MissionsPage() {
               disabled={
                 selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') ||
                 selectedEntities.length > getReqValue(selectedDef.requirements, 'team_size', 1, 'lte') ||
-                (Array.isArray(selectedDef.cost) ? selectedDef.cost : []).some((entry: any) => {
-                  const have = entry.type === 'currency'
-                    ? (currencyBalances[entry.id] ?? 0)
-                    : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
-                  return have < entry.amount;
-                })
+                !canAffordMission
               }
               onClick={handleStart}
             >
