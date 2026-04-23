@@ -230,7 +230,9 @@ export class NftCollectionService {
               data: { ownerUserId: userId },
             });
 
-            this.nftImageImport.ensureEntityImageHosted(updated.id);
+            // Image is served lazily on first request via /media/nft/cardano/<cid>;
+            // no eager fetch needed at claim time.
+            this.nftImageImport.invalidateKnownCidCache();
 
             claimed++;
             claimedEntityIds.push(updated.id);

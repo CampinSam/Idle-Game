@@ -43,14 +43,21 @@ export const ENTITY_ARCHETYPE_IMAGES: Record<string, string> = {
 export type EntityImageVariant = 'full' | 'thumb';
 
 const NFT_MEDIA_PREFIX = '/media/nft/cardano/';
+const NFT_IPFS_PREFIX = 'ipfs://';
 const NFT_THUMB_SUFFIX = '.thumb.webp';
 
 /**
- * Resolve the URL for an entity's portrait. When `variant === 'thumb'` and
- * the imageUrl is a hosted NFT under `/media/nft/cardano/`, this returns the
- * sibling thumbnail path so list/grid views download a tiny WebP instead of
- * the multi-MB original. The detail view should use the default 'full'
- * variant to keep showing the full-resolution artwork.
+ * Resolve the URL for an entity's portrait.
+ *
+ * - `ipfs://<cid>` URLs are normalized to `/media/nft/cardano/<cid>` so they
+ *   hit our lazy-cache endpoint instead of an IPFS gateway directly. New NFT
+ *   collections can therefore be seeded with raw `ipfs://` URLs and served
+ *   without any backfill step.
+ * - When `variant === 'thumb'` and the URL points at a hosted NFT, the
+ *   sibling `.thumb.webp` path is returned so list/grid views download a
+ *   tiny WebP instead of the multi-MB original.
+ * - The detail view keeps the default `'full'` variant so it shows the
+ *   original artwork.
  */
 export function getEntityImagePath(
   _entityId?: string,
@@ -59,14 +66,19 @@ export function getEntityImagePath(
   variant: EntityImageVariant = 'full',
 ): string {
   if (imageUrl) {
+    let normalized = imageUrl;
+    if (normalized.startsWith(NFT_IPFS_PREFIX)) {
+      const cid = normalized.slice(NFT_IPFS_PREFIX.length);
+      if (cid) normalized = `${NFT_MEDIA_PREFIX}${cid}`;
+    }
     if (
       variant === 'thumb' &&
-      imageUrl.startsWith(NFT_MEDIA_PREFIX) &&
-      !imageUrl.endsWith(NFT_THUMB_SUFFIX)
+      normalized.startsWith(NFT_MEDIA_PREFIX) &&
+      !normalized.endsWith(NFT_THUMB_SUFFIX)
     ) {
-      return `${imageUrl}${NFT_THUMB_SUFFIX}`;
+      return `${normalized}${NFT_THUMB_SUFFIX}`;
     }
-    return imageUrl;
+    return normalized;
   }
   if (archetype && ENTITY_ARCHETYPE_IMAGES[archetype]) return ENTITY_ARCHETYPE_IMAGES[archetype];
   return IMAGE_FALLBACKS.entities;

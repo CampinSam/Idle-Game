@@ -1,10 +1,10 @@
-import { Controller, Get, Param, Res, Logger } from '@nestjs/common';
+import { Controller, Get, Param, Res, Logger, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import { ObjectStorageService } from './objectStorage';
 import { NftImageImportService } from '../../modules/nft/nft-image-import.service';
 
 const NFT_THUMB_SUFFIX = '.thumb.webp';
-const NFT_THUMB_PREFIX = 'nft/cardano/';
+const NFT_PREFIX = 'nft/cardano/';
 
 @Controller('media')
 export class ObjectStorageController {
@@ -23,22 +23,32 @@ export class ObjectStorageController {
     try {
       let file = await this.storageService.searchPublicObject(filePath);
 
-      // Lazy NFT thumbnail generation: if a request for a *.thumb.webp under
-      // nft/cardano/ misses, generate it on the fly from the original.
-      if (
-        !file &&
-        filePath.startsWith(NFT_THUMB_PREFIX) &&
-        filePath.endsWith(NFT_THUMB_SUFFIX)
-      ) {
-        const cid = filePath.slice(NFT_THUMB_PREFIX.length, -NFT_THUMB_SUFFIX.length);
-        if (cid) {
+      // Lazy NFT image hydration: if a request for an NFT original or its
+      // thumbnail misses, fetch from IPFS / generate the thumb on the fly,
+      // then re-serve. The service validates the CID is one we recognize so
+      // this endpoint can't be used as an open IPFS proxy.
+      if (!file && filePath.startsWith(NFT_PREFIX)) {
+        const isThumb = filePath.endsWith(NFT_THUMB_SUFFIX);
+        const cid = isThumb
+          ? filePath.slice(NFT_PREFIX.length, -NFT_THUMB_SUFFIX.length)
+          : filePath.slice(NFT_PREFIX.length);
+
+        if (cid && !cid.includes('/')) {
           try {
-            await this.nftImageImportService.ensureThumbnail(cid);
+            if (isThumb) {
+              await this.nftImageImportService.ensureThumbnail(cid);
+            } else {
+              await this.nftImageImportService.ensureOriginal(cid);
+            }
             file = await this.storageService.searchPublicObject(filePath);
           } catch (err: any) {
-            this.logger.warn(
-              `Lazy thumb generation failed for CID ${cid}: ${err?.message || err}`,
-            );
+            if (err instanceof NotFoundException) {
+              // Unknown CID — fall through to the generic 404 below.
+            } else {
+              this.logger.warn(
+                `Lazy NFT hydrate failed for ${filePath}: ${err?.message || err}`,
+              );
+            }
           }
         }
       }

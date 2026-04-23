@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CheckInService } from '../checkin/checkin.service';
 import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NftImageImportService } from '../nft/nft-image-import.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 
@@ -43,9 +42,7 @@ function serializeEntity(entity: any) {
     level: progression.level || 1,
     xp: Number(progression.xp || 0),
     status: state.status || 'idle',
-    ...(display.imageUrl && !String(display.imageUrl).startsWith('ipfs://')
-      ? { imageUrl: display.imageUrl }
-      : {}),
+    ...(display.imageUrl ? { imageUrl: display.imageUrl } : {}),
   };
 }
 
@@ -58,7 +55,6 @@ export class QueryService {
     private prisma: PrismaService,
     private checkInService: CheckInService,
     private tickService: TickService,
-    private nftImageImport: NftImageImportService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -173,13 +169,6 @@ export class QueryService {
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
-
-    for (const e of entities) {
-      const display = (e.display as any) || {};
-      if (typeof display.imageUrl === 'string' && display.imageUrl.startsWith('ipfs://')) {
-        this.nftImageImport.ensureEntityImageHosted(e.id);
-      }
-    }
 
     const serializedEntities = entities.map(serializeEntity);
     const serializedLocations = locations.map((loc: any) =>

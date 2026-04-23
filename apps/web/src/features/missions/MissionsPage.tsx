@@ -768,7 +768,7 @@ export default function MissionsPage() {
                     >
                       <div className="md-select-entity-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
                         <GameImage
-                          src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
+                          src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
                           category="entities"
                           alt={entity.name}
                           fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}

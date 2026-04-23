@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import sharp from 'sharp';
 import { PrismaService } from '../../prisma/prisma.service';
 import { objectStorageClient } from '../../integrations/object-storage';
@@ -55,22 +55,124 @@ export class NftImageImportService {
    */
   private inflightThumbs = new Map<string, Promise<{ generated: boolean }>>();
 
+  /**
+   * Single-flight map for original-image fetches from IPFS. Same idea as
+   * `inflightThumbs` but for the (much larger) original download path.
+   */
+  private inflightOriginals = new Map<string, Promise<{ fetched: boolean }>>();
+
+  /**
+   * Allow-list of CIDs that belong to entities in our database. Refreshed
+   * periodically so the lazy /media endpoint cannot be abused as an open
+   * IPFS proxy for arbitrary CIDs.
+   */
+  private knownCidCache: Set<string> | null = null;
+  private knownCidCacheLoadedAt = 0;
+  private knownCidCacheLoading: Promise<Set<string>> | null = null;
+  private static readonly KNOWN_CID_TTL_MS = 60_000;
+
   constructor(private prisma: PrismaService) {}
 
   getStatus(): ImportStatus {
     return { ...this.state };
   }
 
-  ensureEntityImageHosted(entityId: string): void {
-    this.fetchAndHostEntityImage(entityId).catch((err) =>
-      this.logger.warn(`Lazy image fetch failed for entity ${entityId}: ${err?.message || err}`),
-    );
+  /**
+   * Refresh and return the set of NFT CIDs referenced by entities in our DB.
+   * Used as an allow-list before pulling anything from IPFS so the lazy
+   * /media endpoint cannot be abused as an open IPFS proxy. Concurrent
+   * callers share one in-flight refresh.
+   */
+  private async getKnownCids(): Promise<Set<string>> {
+    const now = Date.now();
+    if (
+      this.knownCidCache &&
+      now - this.knownCidCacheLoadedAt < NftImageImportService.KNOWN_CID_TTL_MS
+    ) {
+      return this.knownCidCache;
+    }
+    if (this.knownCidCacheLoading) return this.knownCidCacheLoading;
+
+    this.knownCidCacheLoading = (async () => {
+      const rows = await this.prisma.entity.findMany({
+        where: { nftAssetId: { not: null } },
+        select: { display: true },
+      });
+      const cids = new Set<string>();
+      for (const row of rows) {
+        const url: string = ((row.display as any) || {}).imageUrl || '';
+        const cid = this.extractCid(url);
+        if (cid) cids.add(cid);
+      }
+      this.knownCidCache = cids;
+      this.knownCidCacheLoadedAt = Date.now();
+      this.logger.log(`Refreshed known NFT CID cache: ${cids.size} CIDs`);
+      return cids;
+    })().finally(() => {
+      this.knownCidCacheLoading = null;
+    });
+
+    return this.knownCidCacheLoading;
+  }
+
+  /**
+   * Force the next call to {@link getKnownCids} to hit the database. Call
+   * after a new collection is seeded so its CIDs become servable without
+   * waiting up to {@link KNOWN_CID_TTL_MS} for the cache to expire.
+   */
+  invalidateKnownCidCache(): void {
+    this.knownCidCacheLoadedAt = 0;
+  }
+
+  private async assertCidKnown(cid: string): Promise<void> {
+    const known = await this.getKnownCids();
+    if (!known.has(cid)) {
+      throw new NotFoundException(`Unknown NFT CID: ${cid}`);
+    }
+  }
+
+  /**
+   * Ensure the original full-resolution image for `cid` is cached in object
+   * storage. If it isn't, download it from IPFS and write it. Single-flight
+   * per CID so concurrent requests share one IPFS fetch.
+   *
+   * Throws `NotFoundException` if the CID does not belong to any known NFT
+   * entity in our database.
+   */
+  async ensureOriginal(cid: string): Promise<{ fetched: boolean }> {
+    const existing = this.inflightOriginals.get(cid);
+    if (existing) return existing;
+
+    const work = (async (): Promise<{ fetched: boolean }> => {
+      await this.assertCidKnown(cid);
+
+      const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const gcsFile = bucket.file(objectName);
+
+      const [exists] = await gcsFile.exists();
+      if (exists) return { fetched: false };
+
+      const { buffer, contentType } = await this.downloadFromIpfs(cid);
+      await gcsFile.save(buffer, { contentType, resumable: false });
+      this.logger.log(`Lazy-fetched original from IPFS for CID ${cid} (${buffer.length} bytes)`);
+      return { fetched: true };
+    })();
+
+    this.inflightOriginals.set(cid, work);
+    try {
+      return await work;
+    } finally {
+      this.inflightOriginals.delete(cid);
+    }
   }
 
   /**
    * Generate a small WebP thumbnail and write it to object storage at
    * `<originalPath>.thumb.webp`. Returns true if a new thumb was written,
-   * false if it already existed. Throws on resize/upload failure.
+   * false if it already existed. If the original isn't cached yet, fetches
+   * it lazily via {@link ensureOriginal}. Throws `NotFoundException` for
+   * unknown CIDs.
    */
   async ensureThumbnail(cid: string): Promise<{ generated: boolean }> {
     const existing = this.inflightThumbs.get(cid);
@@ -86,13 +188,12 @@ export class NftImageImportService {
       const [thumbExists] = await thumbFile.exists();
       if (thumbExists) return { generated: false };
 
+      // Make sure the original is in storage; ensureOriginal validates the
+      // CID is known and pulls from IPFS if needed.
+      await this.ensureOriginal(cid);
+
       const { objectName: originalObject } = this.resolveObjectPath(originalPath);
       const originalFile = bucket.file(originalObject);
-      const [originalExists] = await originalFile.exists();
-      if (!originalExists) {
-        throw new Error(`Cannot generate thumb: original missing for CID ${cid}`);
-      }
-
       const [originalBuffer] = await originalFile.download();
       const thumbBuffer = await this.resizeToThumbnail(originalBuffer);
       await thumbFile.save(thumbBuffer, { contentType: THUMB_CONTENT_TYPE, resumable: false });
@@ -112,63 +213,6 @@ export class NftImageImportService {
       .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'cover', position: 'centre' })
       .webp({ quality: THUMB_QUALITY })
       .toBuffer();
-  }
-
-  private async fetchAndHostEntityImage(entityId: string): Promise<void> {
-    const entity = await this.prisma.entity.findUnique({
-      where: { id: entityId },
-      select: { display: true },
-    });
-    if (!entity) return;
-
-    const display = (entity.display as any) || {};
-    const imageUrl: string = display.imageUrl || '';
-    const cid = this.extractCid(imageUrl);
-    if (!cid) return;
-
-    const hostedUrl = `/media/nft/cardano/${cid}`;
-
-    try {
-      const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const gcsFile = bucket.file(objectName);
-      const [exists] = await gcsFile.exists();
-
-      let originalBuffer: Buffer | null = null;
-      let originalContentType = 'image/png';
-
-      if (!exists) {
-        const downloaded = await this.downloadFromIpfs(cid);
-        originalBuffer = downloaded.buffer;
-        originalContentType = downloaded.contentType;
-        await gcsFile.save(originalBuffer, { contentType: originalContentType, resumable: false });
-        this.logger.log(`Lazy-loaded image for entity ${entityId} (CID: ${cid})`);
-      }
-
-      // Best-effort thumbnail generation; never fails the parent operation.
-      try {
-        const thumbPath = `nft/cardano/${cid}${THUMB_SUFFIX}`;
-        const { objectName: thumbObject } = this.resolveObjectPath(thumbPath);
-        const thumbFile = bucket.file(thumbObject);
-        const [thumbExists] = await thumbFile.exists();
-        if (!thumbExists) {
-          const buf = originalBuffer ?? (await gcsFile.download())[0];
-          const thumb = await this.resizeToThumbnail(buf);
-          await thumbFile.save(thumb, { contentType: THUMB_CONTENT_TYPE, resumable: false });
-        }
-      } catch (thumbErr: any) {
-        this.logger.warn(`Lazy thumb generation failed for CID ${cid}: ${thumbErr?.message || thumbErr}`);
-      }
-
-      if (imageUrl !== hostedUrl) {
-        await this.prisma.entity.update({
-          where: { id: entityId },
-          data: { display: { ...display, imageUrl: hostedUrl } },
-        });
-      }
-    } catch (err: any) {
-      throw new Error(`CID ${cid}: ${err?.message || err}`);
-    }
   }
 
   private extractCid(imageUrl: string): string | null {
