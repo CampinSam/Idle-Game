@@ -9,7 +9,7 @@ interface AssetImageProps {
 }
 
 export default function AssetImage({ asset, style, className }: AssetImageProps) {
-  const src = mediaUrl(`images/${asset.assetKey}.png`);
+  const src = mediaUrl(asset.assetKey);
 
   return (
     <img

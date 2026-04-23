@@ -6,6 +6,16 @@ export function mediaUrl(path: string): string {
 
 export const DEFAULT_ICON_URL = mediaUrl('images/icons/default.png');
 
+// Resolve an iconKey to a /media/* URL. Two conventions are supported:
+//   - Bare names ("lucky_charm")     → images/icons/<name>.png  (seed data)
+//   - Full media paths ("media/x.png") → mediaUrl(<key>) directly  (uploader)
+function resolveIconKeyUrl(iconKey: string): string {
+  if (iconKey.includes('/') || /\.[a-zA-Z0-9]+$/.test(iconKey)) {
+    return mediaUrl(iconKey);
+  }
+  return mediaUrl(`images/icons/${iconKey}.png`);
+}
+
 export function resolveIcon(
   outputType: string | null | undefined,
   outputRefId: string | null | undefined,
@@ -23,7 +33,7 @@ export function resolveIcon(
   }
 
   if (def?.iconKey) {
-    return mediaUrl(`images/icons/${def.iconKey}.png`);
+    return resolveIconKeyUrl(def.iconKey);
   }
 
   return mediaUrl(`images/icons/${outputRefId}.png`);
