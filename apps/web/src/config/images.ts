@@ -40,8 +40,34 @@ export const ENTITY_ARCHETYPE_IMAGES: Record<string, string> = {
   Healer: '/images/birds/archetype-healer.png',
 };
 
-export function getEntityImagePath(_entityId?: string, archetype?: string, imageUrl?: string): string {
-  if (imageUrl) return imageUrl;
+export type EntityImageVariant = 'full' | 'thumb';
+
+const NFT_MEDIA_PREFIX = '/media/nft/cardano/';
+const NFT_THUMB_SUFFIX = '.thumb.webp';
+
+/**
+ * Resolve the URL for an entity's portrait. When `variant === 'thumb'` and
+ * the imageUrl is a hosted NFT under `/media/nft/cardano/`, this returns the
+ * sibling thumbnail path so list/grid views download a tiny WebP instead of
+ * the multi-MB original. The detail view should use the default 'full'
+ * variant to keep showing the full-resolution artwork.
+ */
+export function getEntityImagePath(
+  _entityId?: string,
+  archetype?: string,
+  imageUrl?: string,
+  variant: EntityImageVariant = 'full',
+): string {
+  if (imageUrl) {
+    if (
+      variant === 'thumb' &&
+      imageUrl.startsWith(NFT_MEDIA_PREFIX) &&
+      !imageUrl.endsWith(NFT_THUMB_SUFFIX)
+    ) {
+      return `${imageUrl}${NFT_THUMB_SUFFIX}`;
+    }
+    return imageUrl;
+  }
   if (archetype && ENTITY_ARCHETYPE_IMAGES[archetype]) return ENTITY_ARCHETYPE_IMAGES[archetype];
   return IMAGE_FALLBACKS.entities;
 }

@@ -141,7 +141,7 @@ export default function EntitiesPage() {
                       <span className="entity-lv-icon">🏆</span>
                     </div>
                     <GameImage
-                      src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
+                      src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
                       category="entities"
                       alt={entity.name}
                       fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
