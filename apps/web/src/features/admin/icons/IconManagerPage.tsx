@@ -94,12 +94,12 @@ function IconManagerContent() {
     setUploading(iconKey);
     setMsg(null);
     try {
-      await adminApi.uploadMedia(renamedFile, 'images/icons');
+      await adminApi.uploadMedia(renamedFile, 'icons');
       setMsg({ text: `Uploaded ${iconKey}.png successfully`, type: 'success' });
       const token = Date.now();
       setIcons(prev => prev.map(i =>
         i.iconKey === iconKey
-          ? { ...i, exists: true, url: `/api/media/images/icons/${iconKey}.png` }
+          ? { ...i, exists: true, url: `/media/icons/${iconKey}.png` }
           : i
       ));
       setBustTokens(prev => ({ ...prev, [iconKey]: token }));
@@ -254,7 +254,7 @@ function IconManagerContent() {
         )}
 
         <div className="icon-path-hint">
-          Icons are stored at: <code>public/images/icons/&#123;iconKey&#125;.png</code>
+          Icons are stored in object storage at: <code>icons/&#123;iconKey&#125;.png</code> (resolved from bare iconKey values).
         </div>
       </div>
     </div>

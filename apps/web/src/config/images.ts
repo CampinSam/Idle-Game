@@ -25,19 +25,19 @@ export const IMAGE_SPECS: Record<ImageCategory, ImageSpec> = {
 };
 
 export const IMAGE_FALLBACKS: Record<ImageCategory, string> = {
-  entities: '/images/birds/fallback.png',
-  items: '/images/items/fallback.png',
-  missions: '/images/missions/fallback.png',
-  regions: '/images/regions/fallback.png',
-  avatars: '/images/avatars/fallback.png',
-  effects: '/images/effects/fallback.png',
+  entities: '/media/images/birds/fallback.png',
+  items: '/media/images/items/fallback.png',
+  missions: '/media/images/missions/fallback.png',
+  regions: '/media/images/regions/fallback.png',
+  avatars: '/media/images/avatars/fallback.png',
+  effects: '/media/images/effects/fallback.png',
 };
 
 export const ENTITY_ARCHETYPE_IMAGES: Record<string, string> = {
-  Warrior: '/images/birds/archetype-warrior.png',
-  Scout: '/images/birds/archetype-scout.png',
-  Mage: '/images/birds/archetype-mage.png',
-  Healer: '/images/birds/archetype-healer.png',
+  Warrior: '/media/images/birds/archetype-warrior.png',
+  Scout: '/media/images/birds/archetype-scout.png',
+  Mage: '/media/images/birds/archetype-mage.png',
+  Healer: '/media/images/birds/archetype-healer.png',
 };
 
 export type EntityImageVariant = 'full' | 'thumb';
@@ -85,7 +85,7 @@ export function getEntityImagePath(
 }
 
 export function getRegionImagePath(regionSlug?: string): string {
-  if (regionSlug) return `/images/regions/${regionSlug}.png`;
+  if (regionSlug) return `/media/images/regions/${regionSlug}.png`;
   return IMAGE_FALLBACKS.regions;
 }
 

@@ -1,4 +1,4 @@
-import { DEFAULT_ICON_URL, mediaUrl } from '../utils/iconResolver';
+import { DEFAULT_ICON_URL, resolveAssetUrl } from '../utils/iconResolver';
 
 interface GameIconProps {
   src: string;
@@ -8,7 +8,7 @@ interface GameIconProps {
 }
 
 export default function GameIcon({ src, alt = '', size = 18, className = '' }: GameIconProps) {
-  const resolvedSrc = src.startsWith('/') || src.startsWith('http') ? src : mediaUrl(`images/icons/${src}.png`);
+  const resolvedSrc = resolveAssetUrl(src) ?? DEFAULT_ICON_URL;
   return (
     <img
       src={resolvedSrc}

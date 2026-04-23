@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { resolveAssetUrl } from '../../../utils/iconResolver';
 import '../admin.css';
 import './AudioManagerPage.css';
 
@@ -296,9 +297,13 @@ function SoundLibraryTab() {
                           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                             <button
                               style={{ background: 'none', border: 'none', color: '#6c63ff', cursor: 'pointer', padding: '0.15rem 0.35rem', fontSize: '0.75rem' }}
-                              onClick={() => setPreviewUrl(previewUrl === `/api/media/${sound.fileKey}` ? null : `/api/media/${sound.fileKey}`)}
+                              onClick={() => {
+                                const url = resolveAssetUrl(sound.fileKey);
+                                if (!url) return;
+                                setPreviewUrl(previewUrl === url ? null : url);
+                              }}
                             >
-                              {previewUrl === `/api/media/${sound.fileKey}` ? '⏹' : '▶'}
+                              {(() => { const url = resolveAssetUrl(sound.fileKey); return previewUrl === url ? '⏹' : '▶'; })()}
                             </button>
                             <span style={{ fontSize: '0.7rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 80, whiteSpace: 'nowrap' }}>
                               {sound.fileKey.split('/').pop()}

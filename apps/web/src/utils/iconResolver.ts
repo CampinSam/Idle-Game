@@ -1,19 +1,26 @@
-const MEDIA_BASE = import.meta.env.DEV ? '/api/media' : '/media';
+// One mental model for media: the value you save IS the path under the bucket.
+//   "/images/foo.png"  → /media/images/foo.png   (bucket lookup)
+//   "/audio/click.mp3" → /media/audio/click.mp3
+//   "lucky_charm"      → /media/icons/lucky_charm.png  (icon shortcut)
+//   "http(s)://..."    → returned unchanged
+const MEDIA_BASE = '/media';
 
 export function mediaUrl(path: string): string {
-  return `${MEDIA_BASE}/${path}`;
+  const clean = path.startsWith('/') ? path : `/${path}`;
+  return `${MEDIA_BASE}${clean}`;
 }
 
-export const DEFAULT_ICON_URL = mediaUrl('images/icons/default.png');
+export const DEFAULT_ICON_URL = `${MEDIA_BASE}/icons/default.png`;
 
-// Resolve an iconKey to a /media/* URL. Two conventions are supported:
-//   - Bare names ("lucky_charm")     → images/icons/<name>.png  (seed data)
-//   - Full media paths ("media/x.png") → mediaUrl(<key>) directly  (uploader)
-function resolveIconKeyUrl(iconKey: string): string {
-  if (iconKey.includes('/') || /\.[a-zA-Z0-9]+$/.test(iconKey)) {
-    return mediaUrl(iconKey);
-  }
-  return mediaUrl(`images/icons/${iconKey}.png`);
+export function resolveAssetUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/media/') || trimmed.startsWith('/api/media/')) return trimmed;
+  if (trimmed.startsWith('/')) return `${MEDIA_BASE}${trimmed}`;
+  // Bare name shortcut → icon
+  return `${MEDIA_BASE}/icons/${trimmed}.png`;
 }
 
 export function resolveIcon(
@@ -25,7 +32,7 @@ export function resolveIcon(
   if (!outputRefId) return DEFAULT_ICON_URL;
 
   let def: any = null;
-  
+
   if (outputType === 'CURRENCY') {
     def = currencyDefs.find((c: any) => c.id === outputRefId);
   } else if (outputType === 'ITEM') {
@@ -33,10 +40,10 @@ export function resolveIcon(
   }
 
   if (def?.iconKey) {
-    return resolveIconKeyUrl(def.iconKey);
+    return resolveAssetUrl(def.iconKey) ?? DEFAULT_ICON_URL;
   }
 
-  return mediaUrl(`images/icons/${outputRefId}.png`);
+  return resolveAssetUrl(outputRefId) ?? DEFAULT_ICON_URL;
 }
 
 export function resolveName(

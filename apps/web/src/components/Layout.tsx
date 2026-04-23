@@ -88,7 +88,7 @@ export default function Layout() {
                     strokeDashoffset={`${2 * Math.PI * 21 * (1 - Math.min(1, Math.max(0, profile.keeperXp / (profile.xpToNextLevel || 100))))}`}
                   />
                 </svg>
-                <img className="top-bar-avatar-img" src="/images/icon-entities.png" alt="" />
+                <img className="top-bar-avatar-img" src="/media/images/icon-entities.png" alt="" />
                 <span className="top-bar-level-center">{profile.keeperLevel}</span>
               </button>
               {showMenu && (

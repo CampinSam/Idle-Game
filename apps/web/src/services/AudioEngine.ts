@@ -1,3 +1,5 @@
+import { resolveAssetUrl } from '../utils/iconResolver';
+
 const STORAGE_KEY = 'audio_volumes';
 
 export type AudioBusName = 'music' | 'sfx' | 'ui' | 'ambient';
@@ -151,7 +153,8 @@ class AudioEngine {
     const vol = this.volumes[bus] / 100;
     if (vol === 0) return;
 
-    const url = `/api/media/${sound.fileKey}`;
+    const url = resolveAssetUrl(sound.fileKey);
+    if (!url) return;
 
     if (bus === 'music') {
       this.playMusic(actionKey, url, vol);

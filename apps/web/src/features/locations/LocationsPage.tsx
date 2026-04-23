@@ -114,7 +114,7 @@ export default function LocationsPage() {
                     src={regionImage}
                     category="regions"
                     alt={regionName}
-                    fallbackSrc="/images/regions/fallback.png"
+                    fallbackSrc="/media/images/regions/fallback.png"
                   />
                 </div>
                 <div className="outpost-card-stats">

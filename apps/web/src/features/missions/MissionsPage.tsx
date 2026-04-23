@@ -22,9 +22,15 @@ import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images
 import { GameImage } from '../../components/GameImage';
 import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS } from '@derp/shared';
 import GameIcon from '../../components/GameIcon';
+import { resolveAssetUrl } from '../../utils/iconResolver';
 import './MissionsPage.css';
 
 const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/mission-quick.png', cardBackground: '#1a1a2e' };
+
+function bgImageCss(value: string | null | undefined): string {
+  const url = resolveAssetUrl(value);
+  return url ? `url(${url})` : 'none';
+}
 
 function resolveDisplay(def: any, categoryDefs: any[]) {
   const missionDisplay = def.display || {};
@@ -463,7 +469,7 @@ export default function MissionsPage() {
                     className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''}`}
                     style={{
                       backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
-                      '--card-bg-image': `url(${display.backgroundImage})`,
+                      '--card-bg-image': bgImageCss(display.backgroundImage),
                       borderColor: display.borderColor,
                     } as React.CSSProperties}
                     onClick={() => !unavailable && pushCategory(cat.id)}
@@ -537,7 +543,7 @@ export default function MissionsPage() {
                   className={`mp-mission-card mp-inner-card ${locked ? 'mp-locked' : ''} ${!missionEnabled ? 'mp-disabled' : ''}`}
                   style={{
                     backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
-                    '--card-bg-image': `url(${display.backgroundImage})`,
+                    '--card-bg-image': bgImageCss(display.backgroundImage),
                     borderColor: display.borderColor,
                   } as React.CSSProperties}
                   onClick={() => !unavailable && handleSelectMission(def.id)}
@@ -598,7 +604,7 @@ export default function MissionsPage() {
     return (
       <div className="missions-page md-inline page-transition-wrapper">
         <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
-        <div className="md-hero" style={{ backgroundImage: `url(${display.backgroundImage})` }}>
+        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage) }}>
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
           <div className="md-hero-content">
@@ -863,7 +869,7 @@ export default function MissionsPage() {
               className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''}`}
               style={{
                 backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
-                '--card-bg-image': `url(${display.backgroundImage})`,
+                '--card-bg-image': bgImageCss(display.backgroundImage),
                 borderColor: display.borderColor,
               } as React.CSSProperties}
               onClick={() => !unavailable && pushCategory(cat.id)}

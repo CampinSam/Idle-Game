@@ -191,8 +191,8 @@ export class AdminController {
     const bucket = objectStorageClient.bucket(bucketName);
     const gcsFile = bucket.file(objectName);
     await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
-    const assetKey = `${dir}/${safeFilename}`;
-    return { assetKey, url: `/api/media/${assetKey}` };
+    const assetKey = `/${dir}/${safeFilename}`;
+    return { assetKey, url: `/media${assetKey}` };
   }
 
   @Get('media/list')
@@ -210,10 +210,11 @@ export class AdminController {
     return files
       .filter(f => !f.name.endsWith('/'))
       .map(f => {
-        const assetKey = searchPrefix ? f.name.replace(searchPrefix, '') : f.name;
-        return { assetKey, name: f.name, url: `/api/media/${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
+        const rel = searchPrefix ? f.name.replace(searchPrefix, '') : f.name;
+        const assetKey = `/${rel}`;
+        return { assetKey, name: f.name, url: `/media${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
       })
-      .filter(f => f.assetKey);
+      .filter(f => f.assetKey !== '/');
   }
 
   @Get('media/icons')
@@ -246,7 +247,7 @@ export class AdminController {
     const results = await Promise.all(
       allDefs.map(async (def: any) => {
         const iconKey: string = def.iconKey;
-        const objectName = prefix ? `${prefix}/images/icons/${iconKey}.png` : `images/icons/${iconKey}.png`;
+        const objectName = prefix ? `${prefix}/icons/${iconKey}.png` : `icons/${iconKey}.png`;
         const file = bucket.file(objectName);
         const [exists] = await file.exists();
         return {
@@ -255,7 +256,7 @@ export class AdminController {
           iconKey,
           type: def.type,
           exists,
-          url: exists ? `/api/media/images/icons/${iconKey}.png` : null,
+          url: exists ? `/media/icons/${iconKey}.png` : null,
         };
       }),
     );
@@ -402,8 +403,8 @@ export class AdminController {
     const bucket = objectStorageClient.bucket(bucketName);
     const gcsFile = bucket.file(objectName);
     await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
-    const fileKey = `audio/${safeFilename}`;
-    return { fileKey, url: `/api/media/${fileKey}` };
+    const fileKey = `/audio/${safeFilename}`;
+    return { fileKey, url: `/media${fileKey}` };
   }
 
   @Get(':table')

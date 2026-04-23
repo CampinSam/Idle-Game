@@ -110,7 +110,7 @@ export default function HomePage() {
            See Phase 5 in the post-MVP roadmap. */}
       <div className="hp-section">
         <div className="hp-season-banner" onClick={() => navigate('/missions')}>
-          <img src="/images/season-banner.png" alt="" className="hp-season-bg" />
+          <img src="/media/images/season-banner.png" alt="" className="hp-season-bg" />
           <div className="hp-season-content">
             <h3>VOID CONVERGENCE</h3>
             <p className="hp-season-sub">SEASON ENDS IN: <strong>24d 17h</strong></p>
@@ -125,10 +125,10 @@ export default function HomePage() {
           <div className="hp-section-label">OUTPOST PRODUCTION</div>
           <div className="hp-outpost-scene">
             <GameImage
-              src="/images/regions/derpshire-valley.png"
+              src="/media/images/regions/derpshire-valley.png"
               category="regions"
               alt="Outpost"
-              fallbackSrc="/images/regions/fallback.png"
+              fallbackSrc="/media/images/regions/fallback.png"
             />
           </div>
           <div className="hp-outpost-stats">

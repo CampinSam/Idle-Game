@@ -4,6 +4,7 @@ import {
   IMAGE_FALLBACKS,
   type ImageCategory,
 } from '../config/images';
+import { resolveAssetUrl } from '../utils/iconResolver';
 import './GameImage.css';
 
 interface GameImageProps {
@@ -45,7 +46,7 @@ export function GameImage({
     }
   }, [error]);
 
-  const imageSrc = error ? fallback : src;
+  const imageSrc = (resolveAssetUrl(error ? fallback : src) ?? fallback) as string;
 
   const classes = [
     'game-image',
