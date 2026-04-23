@@ -213,6 +213,13 @@
   margin-top: 4px;
 }
 
+.mp-card-cost-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
 .mp-cat-chevron {
   font-size: 20px;
   font-weight: 700;

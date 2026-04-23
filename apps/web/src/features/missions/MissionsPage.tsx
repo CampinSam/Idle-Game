@@ -531,8 +531,6 @@ export default function MissionsPage() {
                 entry.type === 'currency'
                   ? (currencyBalances[entry.id] ?? 0)
                   : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
-              const canAffordList = listCost.every(e => getListHave(e) >= e.amount);
-              const showCantAfford = listCost.length > 0 && !canAffordList && !locked && missionEnabled;
               return (
                 <div
                   key={def.id}
@@ -550,6 +548,20 @@ export default function MissionsPage() {
                       <span className="mp-card-duration" style={{ background: diffInfo.color, color: '#FFFFFF' }}>{diffInfo.label}</span>
                     </div>
                     {missionTags.length > 0 && renderTags(missionTags)}
+                    {listCost.length > 0 && (
+                      <div className="mp-card-cost-chips">
+                        {listCost.map((entry, i) => {
+                          const have = getListHave(entry);
+                          const canAffordEntry = have >= entry.amount;
+                          return (
+                            <span key={i} className={`md-cost-entry${canAffordEntry ? '' : ' md-cost-unaffordable'}`}>
+                              <GameIcon src={entry.id} size={14} />
+                              <span>{entry.amount.toLocaleString()}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                     {locked && (
                       <div className="mp-lock-reason">
                         🔒 {getReqValue(def.requirements, 'keeper_level') > 0
@@ -559,9 +571,6 @@ export default function MissionsPage() {
                     )}
                     {!missionEnabled && !locked && (
                       <div className="mp-disabled-reason">🚫 Currently Unavailable</div>
-                    )}
-                    {showCantAfford && (
-                      <div className="mp-cant-afford">💸 Can't Afford</div>
                     )}
                   </div>
                 </div>
