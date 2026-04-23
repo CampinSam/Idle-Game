@@ -7,6 +7,10 @@ import CostListEditor from './structured/CostListEditor';
 import RequirementsListEditor from './structured/RequirementsListEditor';
 import TimerEditor from './structured/TimerEditor';
 import OutcomeListEditor from './structured/OutcomeListEditor';
+import ObjectivesListEditor from './structured/ObjectivesListEditor';
+import CheckInDaysEditor from './structured/CheckInDaysEditor';
+import EffectListEditor from './structured/EffectListEditor';
+import ConsumableDataEditor from './structured/ConsumableDataEditor';
 
 interface Props {
   fieldName: string;
@@ -259,6 +263,33 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'outcomeSpec') {
       return renderStructured(
         <OutcomeListEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'objectivesArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      return renderStructured(
+        <ObjectivesListEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'checkInDaysArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      return renderStructured(
+        <CheckInDaysEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'effectsArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      return renderStructured(
+        <EffectListEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'consumableData') {
+      return renderStructured(
+        <ConsumableDataEditor value={value} onChange={onChange} />
       );
     }
 
