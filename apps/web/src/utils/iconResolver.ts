@@ -19,8 +19,12 @@ export function resolveAssetUrl(value: string | null | undefined): string | null
   if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
   if (trimmed.startsWith('/media/') || trimmed.startsWith('/api/media/')) return trimmed;
   if (trimmed.startsWith('/')) return `${MEDIA_BASE}${trimmed}`;
-  // Bare name shortcut → icon
-  return `${MEDIA_BASE}/icons/${trimmed}.png`;
+  // Bare-name icon shortcut: only when value has no slash AND no extension
+  if (!trimmed.includes('/') && !/\.[a-z0-9]{2,5}$/i.test(trimmed)) {
+    return `${MEDIA_BASE}/icons/${trimmed}.png`;
+  }
+  // Anything else: treat as bucket-relative (e.g. "images/foo.png")
+  return `${MEDIA_BASE}/${trimmed}`;
 }
 
 export function resolveIcon(
