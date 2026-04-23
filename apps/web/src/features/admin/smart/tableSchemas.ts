@@ -277,7 +277,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, description: 'Display name' },
       description: { type: 'string', description: 'Flavor text' },
       cycleLength: { type: 'number', default: 7, description: 'Length of one check-in cycle in days' },
-      frequency: { type: 'json', default: { type: 'daily' }, description: 'Check-in frequency config (e.g. {"type":"daily"})' },
+      frequency: { type: 'frequency', default: { type: 'daily' }, description: 'Check-in frequency config (e.g. {"type":"daily"})' },
       rewards: { type: 'checkInDaysArray', default: [], description: 'Day reward definitions (array of { day, giftDefId })' },
       requireStreak: { type: 'boolean', default: false, description: 'Reset streak on miss?' },
       allowReclaim: { type: 'boolean', default: false, description: 'Allow re-issuing day-0 after reset?' },
