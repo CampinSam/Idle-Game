@@ -4,6 +4,17 @@ import { TABLE_API_KEYS } from '../tableSchemas';
 
 const refCache = new Map<string, any[]>();
 
+export function invalidateRefCache(apiKeyOrTable?: string) {
+  if (!apiKeyOrTable) {
+    refCache.clear();
+    return;
+  }
+  refCache.delete(apiKeyOrTable);
+  // Also try the mapped key in case caller passed schema name
+  const mapped = TABLE_API_KEYS[apiKeyOrTable];
+  if (mapped) refCache.delete(mapped);
+}
+
 interface Props {
   refTable: string;
   value: string | null | undefined;

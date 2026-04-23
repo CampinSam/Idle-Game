@@ -3,6 +3,10 @@ import { FieldDef, isAssetKeyField } from '../tableSchemas';
 import RefSelect from './RefSelect';
 import CollapsibleObject from './CollapsibleObject';
 import MediaUploader from './MediaUploader';
+import CostListEditor from './structured/CostListEditor';
+import RequirementsListEditor from './structured/RequirementsListEditor';
+import TimerEditor from './structured/TimerEditor';
+import OutcomeListEditor from './structured/OutcomeListEditor';
 
 interface Props {
   fieldName: string;
@@ -106,6 +110,91 @@ function JSONField({ value, onChange, onBlur, touched, error, path }: {
   );
 }
 
+function StructuredFieldWrapper({
+  value, onChange, onBlur, touched, error, path, children,
+}: {
+  value: any;
+  onChange: (v: any) => void;
+  onBlur: () => void;
+  touched: boolean;
+  error: string | null;
+  path?: string;
+  children: React.ReactNode;
+}) {
+  const [showRaw, setShowRaw] = useState(false);
+  const [rawText, setRawText] = useState(() => JSON.stringify(value ?? null, null, 2));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const openRaw = () => {
+    setRawText(JSON.stringify(value ?? null, null, 2));
+    setLocalError(null);
+    setShowRaw(true);
+  };
+
+  const closeRaw = () => {
+    setLocalError(null);
+    setShowRaw(false);
+  };
+
+  const handleRawChange = (text: string) => {
+    setRawText(text);
+    try {
+      const parsed = JSON.parse(text);
+      setLocalError(null);
+      onChange(parsed);
+    } catch (e: any) {
+      setLocalError(`JSON error: ${e.message}`);
+    }
+  };
+
+  const showError = (touched && error) || localError;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+        <button
+          type="button"
+          onClick={() => (showRaw ? closeRaw() : openRaw())}
+          style={{
+            padding: '2px 8px',
+            background: 'transparent',
+            border: '1px solid #2a2a4e',
+            borderRadius: 4,
+            color: showRaw ? '#a78bfa' : '#666',
+            cursor: 'pointer',
+            fontSize: 10,
+            fontFamily: 'inherit',
+            letterSpacing: '0.04em',
+          }}
+          title="Toggle raw JSON view (escape hatch)"
+        >
+          {showRaw ? 'Show editor' : 'Show raw JSON'}
+        </button>
+      </div>
+      {showRaw ? (
+        <textarea
+          value={rawText}
+          onChange={e => handleRawChange(e.target.value)}
+          onBlur={onBlur}
+          style={{
+            width: '100%', minHeight: 160, background: '#0f0f2e',
+            border: `1px solid ${showError ? '#ef4444' : '#333'}`,
+            borderRadius: 6, color: '#e0e0ff', fontSize: 12,
+            fontFamily: 'monospace', padding: 8, resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+          data-path={path}
+        />
+      ) : (
+        children
+      )}
+      {showError && (
+        <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{localError || error}</div>
+      )}
+    </div>
+  );
+}
+
 export default function SmartField({ fieldName, fieldDef, value, onChange, enumOptions }: Props) {
   const [touched, setTouched] = useState(false);
   const [uploaderOpen, setUploaderOpen] = useState(false);
@@ -130,8 +219,48 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     transition: 'border-color 0.15s',
   };
 
+  const renderStructured = (inner: React.ReactNode) => (
+    <StructuredFieldWrapper
+      value={value}
+      onChange={onChange}
+      onBlur={touch}
+      touched={touched}
+      error={error}
+      path={fieldName}
+    >
+      {inner}
+    </StructuredFieldWrapper>
+  );
+
   const renderField = () => {
     const t = fieldDef.type;
+
+    if (t === 'costArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      const allowEntity = fieldName === 'contents';
+      return renderStructured(
+        <CostListEditor value={safeVal} onChange={onChange} allowEntity={allowEntity} />
+      );
+    }
+
+    if (t === 'requirementsArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      return renderStructured(
+        <RequirementsListEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'timerSpec') {
+      return renderStructured(
+        <TimerEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'outcomeSpec') {
+      return renderStructured(
+        <OutcomeListEditor value={value} onChange={onChange} />
+      );
+    }
 
     if (t === 'ref' && fieldDef.refTable) {
       return (

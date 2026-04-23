@@ -3,6 +3,7 @@ import { adminApi } from '../adminApi';
 import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
 import SmartField from './components/SmartField';
 import ModalPreview from './components/ModalPreview';
+import { invalidateRefCache } from './components/RefSelect';
 
 interface TableEntry {
   key: string;
@@ -173,6 +174,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       dispatch({ type: 'SAVE_OK', record: saved });
       setIsNew(false);
       setSelectedId(saved.id);
+      invalidateRefCache(activeTable);
       await loadRecords(activeTable);
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Save failed' });
@@ -186,6 +188,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       dispatch({ type: 'CLEAR' });
       setSelectedId(null);
       setDeleteConfirm(false);
+      invalidateRefCache(activeTable);
       await loadRecords(activeTable);
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Delete failed' });
