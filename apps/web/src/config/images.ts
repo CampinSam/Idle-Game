@@ -40,10 +40,9 @@ export const ENTITY_ARCHETYPE_IMAGES: Record<string, string> = {
   Healer: '/images/birds/archetype-healer.png',
 };
 
-export function getEntityImagePath(entityId?: string, archetype?: string, imageUrl?: string): string {
+export function getEntityImagePath(_entityId?: string, archetype?: string, imageUrl?: string): string {
   if (imageUrl) return imageUrl;
   if (archetype && ENTITY_ARCHETYPE_IMAGES[archetype]) return ENTITY_ARCHETYPE_IMAGES[archetype];
-  if (entityId) return `/images/birds/${entityId}.png`;
   return IMAGE_FALLBACKS.entities;
 }
 
