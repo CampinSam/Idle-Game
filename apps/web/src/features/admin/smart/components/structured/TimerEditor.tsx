@@ -8,6 +8,11 @@ import {
   fieldRowStyle,
   ghostButtonStyle,
 } from './editorStyles';
+import {
+  validateTimer,
+  ERROR_BORDER_COLOR,
+  errorTextStyle,
+} from './validation';
 
 interface TimerSpec {
   duration?: number;
@@ -60,6 +65,7 @@ export default function TimerEditor({ value, onChange }: Props) {
   const isEmpty = Object.keys(spec).length === 0;
 
   const update = (patch: Partial<TimerSpec>) => onChange({ ...spec, ...patch });
+  const errs = validateTimer(spec);
 
   if (isEmpty) {
     return (
@@ -90,8 +96,9 @@ export default function TimerEditor({ value, onChange }: Props) {
             type="number"
             value={spec.duration ?? ''}
             onChange={e => update({ duration: e.target.value === '' ? 0 : Number(e.target.value) })}
-            style={{ ...inputStyle, width: '100%' }}
+            style={{ ...inputStyle, width: '100%', borderColor: errs.duration ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
           />
+          {errs.duration && <span style={errorTextStyle}>{errs.duration}</span>}
         </div>
         <div style={{ ...fieldGroupStyle, minWidth: 120 }}>
           <span style={labelStyle}>skip_type</span>

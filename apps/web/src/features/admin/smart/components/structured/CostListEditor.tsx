@@ -11,6 +11,12 @@ import {
   fieldGroupStyle,
   labelStyle,
 } from './editorStyles';
+import {
+  validateCostEntry,
+  ERROR_BORDER_COLOR,
+  errorTextStyle,
+  errorWrapperStyle,
+} from './validation';
 
 export type CostType = 'currency' | 'item' | 'entity';
 
@@ -72,6 +78,7 @@ function CostEntryEditor({
 }) {
   const type: CostType = (entry.type as CostType) || 'currency';
   const refTable = TYPE_TO_REF[type];
+  const errs = validateCostEntry(entry);
 
   const handleTypeChange = (newType: CostType) => {
     const next: CostEntry = { ...entry, type: newType };
@@ -102,12 +109,15 @@ function CostEntryEditor({
         </div>
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 180 }}>
           <span style={labelStyle}>{type === 'entity' ? 'definitionId' : 'id'}</span>
-          <RefSelect
-            refTable={refTable}
-            value={getRefId(entry)}
-            onChange={v => onChange(setRefId(entry, v))}
-            placeholder={`Select ${refTable}...`}
-          />
+          <div style={errs.id ? errorWrapperStyle : undefined}>
+            <RefSelect
+              refTable={refTable}
+              value={getRefId(entry)}
+              onChange={v => onChange(setRefId(entry, v))}
+              placeholder={`Select ${refTable}...`}
+            />
+          </div>
+          {errs.id && <span style={errorTextStyle}>{errs.id}</span>}
         </div>
         <div style={fieldGroupStyle}>
           <span style={labelStyle}>amount</span>
@@ -115,8 +125,13 @@ function CostEntryEditor({
             type="number"
             value={entry.amount ?? ''}
             onChange={e => onChange({ ...entry, amount: e.target.value === '' ? undefined : Number(e.target.value) })}
-            style={{ ...numberInputStyle, width: '100%' }}
+            style={{
+              ...numberInputStyle,
+              width: '100%',
+              borderColor: errs.amount ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined),
+            }}
           />
+          {errs.amount && <span style={errorTextStyle}>{errs.amount}</span>}
         </div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', paddingBottom: 1 }}>
           <button type="button" style={iconButtonStyle} disabled={!canMoveUp} onClick={onMoveUp} title="Move up">↑</button>

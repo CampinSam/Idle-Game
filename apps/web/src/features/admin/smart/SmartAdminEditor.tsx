@@ -4,6 +4,7 @@ import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
 import SmartField from './components/SmartField';
 import ModalPreview from './components/ModalPreview';
 import { invalidateRefCache } from './components/RefSelect';
+import { structuredFieldErrorCount } from './components/structured/validation';
 
 interface TableEntry {
   key: string;
@@ -161,8 +162,18 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     return sn ? TABLE_SCHEMAS[sn] : null;
   }, [activeTable, tables]);
 
+  const structuredErrorCount = useMemo(() => {
+    if (!schema || !editorState.record) return 0;
+    let n = 0;
+    Object.entries(schema.fields).forEach(([fname, fdef]) => {
+      n += structuredFieldErrorCount(fdef.type, editorState.record![fname]);
+    });
+    return n;
+  }, [schema, editorState.record]);
+
   const handleSave = async () => {
     if (!editorState.record) return;
+    if (structuredErrorCount > 0) return;
     dispatch({ type: 'SAVE_START' });
     try {
       let saved: any;
@@ -585,15 +596,24 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                     <button type="button" onClick={() => setDeleteConfirm(false)} style={{ padding: '6px 10px', background: '#333', border: 'none', borderRadius: 6, color: '#ccc', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>No</button>
                   </>
                 )}
+                {structuredErrorCount > 0 && (
+                  <span
+                    style={{ color: '#ef4444', fontSize: 12, flexShrink: 0 }}
+                    title="Fix the highlighted fields below before saving"
+                  >
+                    {structuredErrorCount} validation issue{structuredErrorCount === 1 ? '' : 's'}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={editorState.saving || !editorState.dirty}
+                  disabled={editorState.saving || !editorState.dirty || structuredErrorCount > 0}
+                  title={structuredErrorCount > 0 ? 'Fix validation errors before saving' : undefined}
                   style={{
                     padding: '6px 16px', flexShrink: 0,
-                    background: editorState.dirty ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
+                    background: editorState.dirty && structuredErrorCount === 0 ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
                     border: 'none', borderRadius: 6, color: '#fff',
-                    cursor: editorState.dirty ? 'pointer' : 'not-allowed',
+                    cursor: editorState.dirty && structuredErrorCount === 0 ? 'pointer' : 'not-allowed',
                     fontSize: 13, fontWeight: 600,
                     opacity: editorState.saving ? 0.7 : 1,
                   }}

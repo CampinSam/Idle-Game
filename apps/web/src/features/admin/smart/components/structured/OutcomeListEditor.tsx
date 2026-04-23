@@ -16,6 +16,12 @@ import {
   labelStyle,
   ghostButtonStyle,
 } from './editorStyles';
+import {
+  validateOutcome,
+  ERROR_BORDER_COLOR,
+  errorTextStyle,
+  errorWrapperStyle,
+} from './validation';
 
 type OutcomeKind =
   | 'bundle'
@@ -97,7 +103,8 @@ function summary(entry: Outcome): string {
   return 'outcome';
 }
 
-function MinMaxOdds({ entry, onChange, showOdds = true }: { entry: Outcome; onChange: (e: Outcome) => void; showOdds?: boolean }) {
+function MinMaxOdds({ entry, onChange, showOdds = true, hasRangeError }: { entry: Outcome; onChange: (e: Outcome) => void; showOdds?: boolean; hasRangeError?: boolean }) {
+  const rangeBorder = hasRangeError ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined);
   return (
     <>
       <div style={fieldGroupStyle}>
@@ -106,7 +113,7 @@ function MinMaxOdds({ entry, onChange, showOdds = true }: { entry: Outcome; onCh
           type="number"
           value={entry.min ?? ''}
           onChange={e => onChange({ ...entry, min: e.target.value === '' ? undefined : Number(e.target.value) })}
-          style={{ ...numberInputStyle, width: '100%' }}
+          style={{ ...numberInputStyle, width: '100%', borderColor: rangeBorder }}
         />
       </div>
       <div style={fieldGroupStyle}>
@@ -115,7 +122,7 @@ function MinMaxOdds({ entry, onChange, showOdds = true }: { entry: Outcome; onCh
           type="number"
           value={entry.max ?? ''}
           onChange={e => onChange({ ...entry, max: e.target.value === '' ? undefined : Number(e.target.value) })}
-          style={{ ...numberInputStyle, width: '100%' }}
+          style={{ ...numberInputStyle, width: '100%', borderColor: rangeBorder }}
         />
       </div>
       {showOdds && (
@@ -154,6 +161,7 @@ function OutcomeEntryEditor({
   const [collapsed, setCollapsed] = useState(false);
   const [rawMode, setRawMode] = useState(false);
   const kind = detectKind(entry);
+  const errs = validateOutcome(entry);
 
   const handleKindChange = (newKind: OutcomeKind) => {
     onChange(defaultForKind(newKind));
@@ -214,21 +222,24 @@ function OutcomeEntryEditor({
             {(kind === 'currency' || kind === 'item') && (
               <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 160 }}>
                 <span style={labelStyle}>key</span>
-                <RefSelect
-                  refTable={kind === 'currency' ? 'Currency' : 'ItemDef'}
-                  value={entry.key ?? null}
-                  onChange={v => onChange({ ...entry, key: v ?? '' })}
-                  placeholder={kind === 'currency' ? 'Select Currency...' : 'Select Item...'}
-                />
+                <div style={errs.key ? errorWrapperStyle : undefined}>
+                  <RefSelect
+                    refTable={kind === 'currency' ? 'Currency' : 'ItemDef'}
+                    value={entry.key ?? null}
+                    onChange={v => onChange({ ...entry, key: v ?? '' })}
+                    placeholder={kind === 'currency' ? 'Select Currency...' : 'Select Item...'}
+                  />
+                </div>
+                {errs.key && <span style={errorTextStyle}>{errs.key}</span>}
               </div>
             )}
 
             {(kind === 'currency' || kind === 'item') && (
-              <MinMaxOdds entry={entry} onChange={onChange} />
+              <MinMaxOdds entry={entry} onChange={onChange} hasRangeError={!!errs.range} />
             )}
 
             {(kind === 'entity_xp' || kind === 'keeper_xp') && (
-              <MinMaxOdds entry={entry} onChange={onChange} showOdds={false} />
+              <MinMaxOdds entry={entry} onChange={onChange} showOdds={false} hasRangeError={!!errs.range} />
             )}
 
             {kind === 'flag' && (
@@ -252,8 +263,9 @@ function OutcomeEntryEditor({
                     type="text"
                     value={entry.key ?? ''}
                     onChange={e => onChange({ ...entry, key: e.target.value })}
-                    style={{ ...inputStyle, width: '100%' }}
+                    style={{ ...inputStyle, width: '100%', borderColor: errs.key ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
                   />
+                  {errs.key && <span style={errorTextStyle}>{errs.key}</span>}
                 </div>
                 <div style={fieldGroupStyle}>
                   <span style={labelStyle}>value</span>
@@ -295,7 +307,7 @@ function OutcomeEntryEditor({
                     type="number"
                     value={entry.pickMin ?? ''}
                     onChange={e => onChange({ ...entry, pickMin: e.target.value === '' ? undefined : Number(e.target.value) })}
-                    style={{ ...numberInputStyle, width: '100%' }}
+                    style={{ ...numberInputStyle, width: '100%', borderColor: errs.pickRange ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined) }}
                   />
                 </div>
                 <div style={fieldGroupStyle}>
@@ -304,12 +316,20 @@ function OutcomeEntryEditor({
                     type="number"
                     value={entry.pickMax ?? ''}
                     onChange={e => onChange({ ...entry, pickMax: e.target.value === '' ? undefined : Number(e.target.value) })}
-                    style={{ ...numberInputStyle, width: '100%' }}
+                    style={{ ...numberInputStyle, width: '100%', borderColor: errs.pickRange ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined) }}
                   />
                 </div>
               </>
             )}
           </div>
+
+          {(errs.range || errs.pickRange || errs.bundle) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {errs.range && <span style={errorTextStyle}>{errs.range}</span>}
+              {errs.pickRange && <span style={errorTextStyle}>{errs.pickRange}</span>}
+              {errs.bundle && <span style={errorTextStyle}>{errs.bundle}</span>}
+            </div>
+          )}
 
           {kind === 'text' && (
             <div style={fieldRowStyle}>
@@ -319,8 +339,9 @@ function OutcomeEntryEditor({
                   value={entry.message ?? ''}
                   onChange={e => onChange({ ...entry, message: e.target.value })}
                   rows={2}
-                  style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                  style={{ ...inputStyle, width: '100%', resize: 'vertical', fontFamily: 'inherit', borderColor: errs.message ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
                 />
+                {errs.message && <span style={errorTextStyle}>{errs.message}</span>}
               </div>
               <div style={fieldGroupStyle}>
                 <span style={labelStyle}>odds</span>

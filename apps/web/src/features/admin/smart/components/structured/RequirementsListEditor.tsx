@@ -12,6 +12,12 @@ import {
   fieldGroupStyle,
   labelStyle,
 } from './editorStyles';
+import {
+  validateRequirement,
+  ERROR_BORDER_COLOR,
+  errorTextStyle,
+  errorWrapperStyle,
+} from './validation';
 
 export type RequirementType =
   | 'keeper_level'
@@ -73,7 +79,7 @@ function defaultForType(type: RequirementType): Requirement {
   }
 }
 
-function ValueInput({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+function ValueInput({ value, onChange, hasError }: { value: any; onChange: (v: any) => void; hasError?: boolean }) {
   const isBool = typeof value === 'boolean';
   const isNum = typeof value === 'number';
 
@@ -82,7 +88,7 @@ function ValueInput({ value, onChange }: { value: any; onChange: (v: any) => voi
       <select
         value={String(value)}
         onChange={e => onChange(e.target.value === 'true')}
-        style={{ ...selectStyle, width: '100%' }}
+        style={{ ...selectStyle, width: '100%', borderColor: hasError ? ERROR_BORDER_COLOR : (selectStyle.borderColor as string | undefined) }}
       >
         <option value="true">true</option>
         <option value="false">false</option>
@@ -96,7 +102,7 @@ function ValueInput({ value, onChange }: { value: any; onChange: (v: any) => voi
         type="number"
         value={value}
         onChange={e => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-        style={{ ...numberInputStyle, width: '100%' }}
+        style={{ ...numberInputStyle, width: '100%', borderColor: hasError ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined) }}
       />
     );
   }
@@ -106,7 +112,7 @@ function ValueInput({ value, onChange }: { value: any; onChange: (v: any) => voi
       type="text"
       value={value ?? ''}
       onChange={e => onChange(e.target.value)}
-      style={{ ...inputStyle, width: '100%' }}
+      style={{ ...inputStyle, width: '100%', borderColor: hasError ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
     />
   );
 }
@@ -134,6 +140,7 @@ function RequirementEditor({
   const showValue = type !== 'building' && type !== 'item' && type !== 'trait'
     ? true
     : entry.operator !== 'exists' && entry.operator !== 'dne';
+  const errs = validateRequirement(entry);
 
   return (
     <div style={entryCardStyle}>
@@ -153,20 +160,23 @@ function RequirementEditor({
           <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 160 }}>
             <span style={labelStyle}>key</span>
             {refTable ? (
-              <RefSelect
-                refTable={refTable}
-                value={entry.key ?? null}
-                onChange={v => onChange({ ...entry, key: v ?? '' })}
-                placeholder={`Select ${refTable}...`}
-              />
+              <div style={errs.key ? errorWrapperStyle : undefined}>
+                <RefSelect
+                  refTable={refTable}
+                  value={entry.key ?? null}
+                  onChange={v => onChange({ ...entry, key: v ?? '' })}
+                  placeholder={`Select ${refTable}...`}
+                />
+              </div>
             ) : (
               <input
                 type="text"
                 value={entry.key ?? ''}
                 onChange={e => onChange({ ...entry, key: e.target.value })}
-                style={{ ...inputStyle, width: '100%' }}
+                style={{ ...inputStyle, width: '100%', borderColor: errs.key ? ERROR_BORDER_COLOR : (inputStyle.borderColor as string | undefined) }}
               />
             )}
+            {errs.key && <span style={errorTextStyle}>{errs.key}</span>}
           </div>
         )}
 
@@ -184,7 +194,8 @@ function RequirementEditor({
         {showValue && (
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>value</span>
-            <ValueInput value={entry.value} onChange={v => onChange({ ...entry, value: v })} />
+            <ValueInput value={entry.value} onChange={v => onChange({ ...entry, value: v })} hasError={!!errs.value} />
+            {errs.value && <span style={errorTextStyle}>{errs.value}</span>}
           </div>
         )}
 
