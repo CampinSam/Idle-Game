@@ -23,7 +23,7 @@ const storage = new Storage({
       format: { type: 'json', subject_token_field_name: 'access_token' },
     },
     universe_domain: 'googleapis.com',
-  } as any,
+  },
   projectId: '',
 });
 

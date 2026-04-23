@@ -186,7 +186,7 @@ export class AdminController {
     const bucketName = parts[0];
     const prefix = parts.slice(1).join('/');
     const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const dir = targetDir ? targetDir.replace(/^\/+|\/+$/g, '') : 'media';
+    const dir = targetDir ? targetDir.replace(/^\/+|\/+$/g, '') : 'images';
     const objectName = prefix ? `${prefix}/${dir}/${safeFilename}` : `${dir}/${safeFilename}`;
     const bucket = objectStorageClient.bucket(bucketName);
     const gcsFile = bucket.file(objectName);

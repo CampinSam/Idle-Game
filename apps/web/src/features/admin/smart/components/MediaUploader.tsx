@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { adminApi } from '../../adminApi';
 import { getAdminKey } from '../../adminApi';
+import { resolveAssetUrl } from '../../../../utils/iconResolver';
 
 interface MediaAsset {
   assetKey: string;
@@ -60,7 +61,6 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCssField = fieldName === 'cardBackground';
-  const mediaUrlFor = (key: string) => key.startsWith('/') ? `/media${key}` : `/media/${key}`;
 
   const loadAssets = useCallback(async () => {
     setAssetsLoading(true);
@@ -107,7 +107,7 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
 
   const handleInsert = () => {
     if (!selectedAsset) return;
-    const val = isCssField ? `url('${mediaUrlFor(selectedAsset.assetKey)}')` : selectedAsset.assetKey;
+    const val = isCssField ? `url('${resolveAssetUrl(selectedAsset.assetKey)}')` : selectedAsset.assetKey;
     onInsert(val);
     onClose();
   };
@@ -259,7 +259,7 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
                   >
                     <div style={{ height: 80, background: '#0f0f2e', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                       <img
-                        src={mediaUrlFor(asset.assetKey)}
+                        src={resolveAssetUrl(asset.assetKey) ?? ''}
                         alt={asset.name}
                         style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                         onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
