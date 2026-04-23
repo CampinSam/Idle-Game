@@ -45,9 +45,7 @@ function serializeEntity(entity: any) {
     level: progression.level || 1,
     xp: Number(progression.xp || 0),
     status: state.status || 'idle',
-    ...(display.imageUrl && !String(display.imageUrl).startsWith('ipfs://')
-      ? { imageUrl: display.imageUrl }
-      : {}),
+    ...(display.imageUrl ? { imageUrl: display.imageUrl } : {}),
   };
 }
 
@@ -155,6 +153,9 @@ export class NftCollectionService {
                 nftCollectionDefId: collection.id,
               },
             });
+
+            // New CID is now eligible for the lazy /media endpoint.
+            this.nftImageImport.invalidateKnownCidCache();
 
             created++;
           } catch (err) {
