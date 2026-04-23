@@ -25,7 +25,7 @@ export const IMAGE_SPECS: Record<ImageCategory, ImageSpec> = {
 };
 
 export const IMAGE_FALLBACKS: Record<ImageCategory, string> = {
-  entities: '/images/entities/fallback.png',
+  entities: '/images/birds/fallback.png',
   items: '/images/items/fallback.png',
   missions: '/images/missions/fallback.png',
   regions: '/images/regions/fallback.png',
@@ -34,16 +34,16 @@ export const IMAGE_FALLBACKS: Record<ImageCategory, string> = {
 };
 
 export const ENTITY_ARCHETYPE_IMAGES: Record<string, string> = {
-  Warrior: '/images/entities/archetype-warrior.png',
-  Scout: '/images/entities/archetype-scout.png',
-  Mage: '/images/entities/archetype-mage.png',
-  Healer: '/images/entities/archetype-healer.png',
+  Warrior: '/images/birds/archetype-warrior.png',
+  Scout: '/images/birds/archetype-scout.png',
+  Mage: '/images/birds/archetype-mage.png',
+  Healer: '/images/birds/archetype-healer.png',
 };
 
 export function getEntityImagePath(entityId?: string, archetype?: string, imageUrl?: string): string {
   if (imageUrl) return imageUrl;
-  if (entityId) return `/images/entities/${entityId}.png`;
   if (archetype && ENTITY_ARCHETYPE_IMAGES[archetype]) return ENTITY_ARCHETYPE_IMAGES[archetype];
+  if (entityId) return `/images/birds/${entityId}.png`;
   return IMAGE_FALLBACKS.entities;
 }
 
