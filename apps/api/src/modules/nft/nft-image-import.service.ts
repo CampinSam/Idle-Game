@@ -17,6 +17,7 @@ export interface ImportStatus {
   done: number;
   failed: number;
   skipped: number;
+  alreadyHosted: number;
   errors: string[];
   startedAt?: string;
   finishedAt?: string;
@@ -31,6 +32,7 @@ export class NftImageImportService {
     done: 0,
     failed: 0,
     skipped: 0,
+    alreadyHosted: 0,
     errors: [],
   };
 
@@ -90,6 +92,7 @@ export class NftImageImportService {
       done: 0,
       failed: 0,
       skipped: 0,
+      alreadyHosted: 0,
       errors: [],
       startedAt: new Date().toISOString(),
     };
@@ -101,18 +104,39 @@ export class NftImageImportService {
       });
 
       const cidToEntityIds = new Map<string, string[]>();
+      let alreadyHostedEntities = 0;
       for (const entity of entities) {
         const display = (entity.display as any) || {};
         const imageUrl: string = display.imageUrl || '';
+        if (imageUrl.startsWith('/media/')) {
+          alreadyHostedEntities++;
+          continue;
+        }
         if (!imageUrl.startsWith('ipfs://')) continue;
         const cid = imageUrl.replace('ipfs://', '');
         if (!cidToEntityIds.has(cid)) cidToEntityIds.set(cid, []);
         cidToEntityIds.get(cid)!.push(entity.id);
       }
 
+      this.state.alreadyHosted = alreadyHostedEntities;
       this.state.total = cidToEntityIds.size;
       this.logger.log(
-        `Starting IPFS image import: ${cidToEntityIds.size} unique CIDs for ${entities.length} entities`,
+        `Starting IPFS image import: ${cidToEntityIds.size} unique CIDs to process, ` +
+          `${alreadyHostedEntities} entities already hosted (skipped) out of ${entities.length} total`,
+      );
+
+      if (cidToEntityIds.size === 0) {
+        this.state.status = 'done';
+        this.state.finishedAt = new Date().toISOString();
+        this.logger.log(
+          `Import complete: nothing to do (${alreadyHostedEntities} already hosted)`,
+        );
+        return;
+      }
+
+      const existingObjects = await this.listExistingObjects('nft/cardano/');
+      this.logger.log(
+        `Bulk listing found ${existingObjects.size} existing objects under nft/cardano/`,
       );
 
       const entries = Array.from(cidToEntityIds.entries());
@@ -126,12 +150,12 @@ export class NftImageImportService {
           const hostedUrl = `/media/nft/cardano/${cid}`;
 
           try {
-            const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
-            const bucket = objectStorageClient.bucket(bucketName);
-            const gcsFile = bucket.file(objectName);
-            const [exists] = await gcsFile.exists();
+            const exists = existingObjects.has(cid);
 
             if (!exists) {
+              const { bucketName, objectName } = this.resolveObjectPath(`nft/cardano/${cid}`);
+              const bucket = objectStorageClient.bucket(bucketName);
+              const gcsFile = bucket.file(objectName);
               const { buffer, contentType } = await this.downloadFromIpfs(cid);
               await gcsFile.save(buffer, { contentType, resumable: false });
             }
@@ -165,7 +189,8 @@ export class NftImageImportService {
       this.state.status = 'done';
       this.state.finishedAt = new Date().toISOString();
       this.logger.log(
-        `Import complete: ${this.state.done} downloaded, ${this.state.skipped} skipped, ${this.state.failed} failed`,
+        `Import complete: ${this.state.done} downloaded, ${this.state.skipped} already in storage, ` +
+          `${this.state.alreadyHosted} entities already hosted, ${this.state.failed} failed`,
       );
     } catch (err: any) {
       this.state.status = 'error';
@@ -173,6 +198,20 @@ export class NftImageImportService {
       this.state.errors.push(err?.message || String(err));
       this.logger.error(`Import failed: ${err?.message || err}`);
     }
+  }
+
+  private async listExistingObjects(subPath: string): Promise<Set<string>> {
+    const { bucketName, objectName: prefix } = this.resolveObjectPath(subPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const [files] = await bucket.getFiles({ prefix });
+    const cids = new Set<string>();
+    for (const file of files) {
+      const name: string = file.name;
+      if (!name.startsWith(prefix)) continue;
+      const cid = name.slice(prefix.length);
+      if (cid) cids.add(cid);
+    }
+    return cids;
   }
 
   private resolveObjectPath(path: string): { bucketName: string; objectName: string } {
