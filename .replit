@@ -85,7 +85,7 @@ run = ["bash", "-c", "cd /home/runner/workspace && NODE_ENV=production node apps
 build = ["bash", "-c", "cd /home/runner/workspace && npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma --accept-data-loss && pnpm --filter @derp/shared build && pnpm --filter @derp/math build && pnpm --filter @derp/web build && pnpm --filter @derp/api build"]
 
 [objectStorage]
-defaultBucketID = "replit-objstore-44cea7bf-f16f-4c36-8afe-2b93174a0589"
+defaultBucketID = "replit-objstore-bdb73ea8-5bc7-48a6-859f-1e1c58b98d1c"
 
 [postMerge]
 path = "scripts/post-merge.sh"
