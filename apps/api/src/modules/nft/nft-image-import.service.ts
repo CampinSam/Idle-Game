@@ -10,7 +10,8 @@ const IPFS_GATEWAYS = [
 ];
 
 const CONCURRENCY = 20;
-const TIMEOUT_MS = 45000;
+const TIMEOUT_MS = 8000;
+const NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const THUMB_SUFFIX = '.thumb.webp';
 const THUMB_SIZE = 256;
@@ -60,6 +61,14 @@ export class NftImageImportService {
    * `inflightThumbs` but for the (much larger) original download path.
    */
   private inflightOriginals = new Map<string, Promise<{ fetched: boolean }>>();
+
+  /**
+   * Negative cache for CIDs that recently failed to download from IPFS.
+   * Prevents the entities page (which renders dozens of birds at once) from
+   * re-blocking on long gateway timeouts every render. Entries expire after
+   * {@link NEGATIVE_CACHE_TTL_MS}.
+   */
+  private failedCidUntil = new Map<string, number>();
 
   /**
    * Allow-list of CIDs that belong to entities in our database. Refreshed
@@ -153,10 +162,24 @@ export class NftImageImportService {
       const [exists] = await gcsFile.exists();
       if (exists) return { fetched: false };
 
-      const { buffer, contentType } = await this.downloadFromIpfs(cid);
-      await gcsFile.save(buffer, { contentType, resumable: false });
-      this.logger.log(`Lazy-fetched original from IPFS for CID ${cid} (${buffer.length} bytes)`);
-      return { fetched: true };
+      // Fail fast if every gateway recently rejected this CID — protects
+      // page renders that touch dozens of birds at once from re-blocking
+      // on long IPFS timeouts.
+      const cooldownUntil = this.failedCidUntil.get(cid);
+      if (cooldownUntil && Date.now() < cooldownUntil) {
+        throw new NotFoundException(`Recently failed to fetch CID ${cid} from IPFS`);
+      }
+
+      try {
+        const { buffer, contentType } = await this.downloadFromIpfs(cid);
+        await gcsFile.save(buffer, { contentType, resumable: false });
+        this.failedCidUntil.delete(cid);
+        this.logger.log(`Lazy-fetched original from IPFS for CID ${cid} (${buffer.length} bytes)`);
+        return { fetched: true };
+      } catch (err: any) {
+        this.failedCidUntil.set(cid, Date.now() + NEGATIVE_CACHE_TTL_MS);
+        throw err;
+      }
     })();
 
     this.inflightOriginals.set(cid, work);
@@ -457,25 +480,36 @@ export class NftImageImportService {
   }
 
   private async downloadFromIpfs(cid: string): Promise<{ buffer: Buffer; contentType: string }> {
-    let lastErr: Error = new Error('No gateways available');
-
-    for (const gateway of IPFS_GATEWAYS) {
+    // Race all gateways in parallel; the first successful response wins.
+    // Slow/dead gateways no longer block fast ones serially.
+    const sharedAbort = new AbortController();
+    const attempts = IPFS_GATEWAYS.map(async (gateway) => {
       const url = `${gateway}/${cid}`;
+      const controller = new AbortController();
+      const onSharedAbort = () => controller.abort();
+      sharedAbort.signal.addEventListener('abort', onSharedAbort);
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
       try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
         const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timer);
         if (!res.ok) throw new Error(`HTTP ${res.status} from ${gateway}`);
         const arrayBuffer = await res.arrayBuffer();
         const contentType = res.headers.get('content-type') || 'image/png';
         return { buffer: Buffer.from(arrayBuffer), contentType };
-      } catch (err: any) {
-        lastErr = err;
+      } finally {
+        clearTimeout(timer);
+        sharedAbort.signal.removeEventListener('abort', onSharedAbort);
       }
-    }
+    });
 
-    throw lastErr;
+    try {
+      const winner = await Promise.any(attempts);
+      sharedAbort.abort();
+      return winner;
+    } catch (err: any) {
+      const errors: any[] = err?.errors ?? [err];
+      const last = errors[errors.length - 1];
+      throw new Error(`All IPFS gateways failed for ${cid}: ${last?.message || last}`);
+    }
   }
 
   private async updateEntityImageUrls(entityIds: string[], imageUrl: string): Promise<void> {
