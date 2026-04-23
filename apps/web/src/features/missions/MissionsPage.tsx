@@ -478,13 +478,24 @@ export default function MissionsPage() {
                       {!cat.enabled && !cat.locked && <div className="mp-disabled-reason">🚫 Currently Unavailable</div>}
                       {!unavailable && inlineMissions.length > 0 && (
                         <div className="mp-inline-missions" onClick={e => e.stopPropagation()}>
-                          {inlineMissions.map((def: any) => (
-                            <button
-                              key={def.id}
-                              className="mp-inline-pill"
-                              onClick={() => handleSelectInlineMission(cat.id, def.id)}
-                            >{getInlineLabel(def)}</button>
-                          ))}
+                          {inlineMissions.map((def: any) => {
+                            const inlineCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
+                            const canAffordInline = inlineCost.every(entry => {
+                              const have = entry.type === 'currency'
+                                ? (currencyBalances[entry.id] ?? 0)
+                                : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                              return have >= entry.amount;
+                            });
+                            return (
+                              <button
+                                key={def.id}
+                                className={`mp-inline-pill${!canAffordInline ? ' mp-inline-pill--unaffordable' : ''}`}
+                                disabled={!canAffordInline}
+                                title={!canAffordInline ? "Can't afford this mission" : undefined}
+                                onClick={() => handleSelectInlineMission(cat.id, def.id)}
+                              >{getInlineLabel(def)}</button>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -862,13 +873,24 @@ export default function MissionsPage() {
                 )}
                 {!unavailable && inlineMissions.length > 0 && (
                   <div className="mp-inline-missions" onClick={e => e.stopPropagation()}>
-                    {inlineMissions.map((def: any) => (
-                      <button
-                        key={def.id}
-                        className="mp-inline-pill"
-                        onClick={() => handleSelectInlineMission(cat.id, def.id)}
-                      >{getInlineLabel(def)}</button>
-                    ))}
+                    {inlineMissions.map((def: any) => {
+                      const inlineCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
+                      const canAffordInline = inlineCost.every(entry => {
+                        const have = entry.type === 'currency'
+                          ? (currencyBalances[entry.id] ?? 0)
+                          : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                        return have >= entry.amount;
+                      });
+                      return (
+                        <button
+                          key={def.id}
+                          className={`mp-inline-pill${!canAffordInline ? ' mp-inline-pill--unaffordable' : ''}`}
+                          disabled={!canAffordInline}
+                          title={!canAffordInline ? "Can't afford this mission" : undefined}
+                          onClick={() => handleSelectInlineMission(cat.id, def.id)}
+                        >{getInlineLabel(def)}</button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
