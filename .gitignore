@@ -12,3 +12,6 @@ prisma/*.db
 prisma/migrations/20260208000000_init/
 prisma/migrations/20260317000000_remove_dead_item_def_fields/
 prisma/migrations/migration_lock.toml
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo

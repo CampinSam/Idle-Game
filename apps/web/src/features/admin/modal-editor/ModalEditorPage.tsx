@@ -417,7 +417,7 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
         <>
           <Field label="Asset Key"><input style={inp} value={(block as any).image?.assetKey || ''} onChange={e => set({ image: { ...(block as any).image, assetKey: e.target.value } })} /></Field>
           <Field label="Alt text"><input style={inp} value={(block as any).image?.alt || ''} onChange={e => set({ image: { ...(block as any).image, alt: e.target.value } })} /></Field>
-          <Field label="Caption"><input style={inp} value={(block as any).caption || ''} onChange={e => set({ caption: e.target.value })} /></Field>
+          <Field label="Caption" hint="Optional caption rendered below the image. Supports ${token} substitution from payload."><input style={inp} value={(block as any).caption || ''} onChange={e => set({ caption: e.target.value })} /></Field>
         </>
       );
 
@@ -529,7 +529,7 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
               <Field label="Gift ID"><input style={inp} value={gift.giftId || ''} onChange={e => set({ gift: { ...gift, giftId: e.target.value } })} /></Field>
             </div>
             <div style={{ flex: 2 }}>
-              <Field label="Title"><input style={inp} value={gift.title || ''} onChange={e => set({ gift: { ...gift, title: e.target.value } })} /></Field>
+              <Field label="Title" hint="Title shown above the gift. Supports ${token} substitution, e.g. ${gift.name} or ${user.name}."><input style={inp} value={gift.title || ''} onChange={e => set({ gift: { ...gift, title: e.target.value } })} /></Field>
             </div>
           </Row>
           <Field label="Rewards (optional)">
@@ -877,7 +877,7 @@ function ButtonList({ buttons, onChange }: { buttons: ModalButton[]; onChange: (
                     <Field label="ID"><input style={inp} value={btn.id} onChange={e => updateBtn(i, { ...btn, id: e.target.value })} /></Field>
                   </div>
                   <div style={{ flex: 2 }}>
-                    <Field label="Label"><input style={inp} value={btn.label} onChange={e => updateBtn(i, { ...btn, label: e.target.value })} /></Field>
+                    <Field label="Label" hint="Button text shown to the player. Supports ${token} substitution from payload, e.g. ${user.name}."><input style={inp} value={btn.label} onChange={e => updateBtn(i, { ...btn, label: e.target.value })} /></Field>
                   </div>
                   <div style={{ flex: 1 }}>
                     <Field label="Variant">
