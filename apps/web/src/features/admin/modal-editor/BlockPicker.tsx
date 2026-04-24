@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { MODAL_BLOCK_TYPES } from '@derp/shared';
 import { BLOCK_META, BLOCK_GROUP_ORDER, type BlockGroup } from './modal-editor-meta';
 
@@ -10,6 +10,25 @@ interface Props {
 
 export default function BlockPicker({ open, onClose, onPick }: Props) {
   const [query, setQuery] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape or click outside the picker.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && rootRef.current && !rootRef.current.contains(t)) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [open, onClose]);
 
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();

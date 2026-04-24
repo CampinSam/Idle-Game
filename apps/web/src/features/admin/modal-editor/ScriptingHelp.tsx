@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MODAL_BLOCK_TYPES, MODAL_ACTION_TYPES } from '@derp/shared';
 import { BLOCK_META, ACTION_META, COMMON_TOKEN_PATHS } from './modal-editor-meta';
 
 interface Props {
   /** Optional payload-derived dynamic paths to show in addition to the static common paths. */
   dynamicPaths?: string[];
-  /** Initial open state. Defaults to false. */
+  /** Initial open state. Defaults to true so common token chips are visible without an extra click. */
   defaultOpen?: boolean;
   /** Optional class for outer wrapper. */
   className?: string;
@@ -13,8 +13,23 @@ interface Props {
 
 type Tab = 'tokens' | 'from' | 'actions';
 
-export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, className }: Props) {
+export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = true, className }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Allow Escape to collapse the panel when focus is inside it.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const target = e.target as Node | null;
+      if (!target || (rootRef.current && rootRef.current.contains(target))) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
   const [tab, setTab] = useState<Tab>('tokens');
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -25,7 +40,7 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, 
   };
 
   return (
-    <div className={`me-help ${className ?? ''}`}>
+    <div ref={rootRef} className={`me-help ${className ?? ''}`}>
       <button type="button" className="me-help-toggle" onClick={() => setOpen(o => !o)}>
         <span className="me-help-toggle-icon">{open ? '▼' : '▶'}</span>
         <span className="me-help-toggle-label">Scripting help</span>

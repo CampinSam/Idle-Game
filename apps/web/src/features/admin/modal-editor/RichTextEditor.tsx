@@ -80,6 +80,26 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
   const [jsonText, setJsonText] = useState('');
   const [jsonError, setJsonError] = useState('');
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
+  const tokenWrapRef = useRef<HTMLDivElement>(null);
+
+  // Close the token picker on Escape or click outside it.
+  useEffect(() => {
+    if (!tokenPickerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTokenPickerOpen(false);
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && tokenWrapRef.current && !tokenWrapRef.current.contains(t)) setTokenPickerOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [tokenPickerOpen]);
+
   // Tracks the JSON form of the doc we last wrote out. If the incoming `doc`
   // prop matches this, we know it's just the parent echoing our own onChange,
   // and we skip touching the DOM (which would clobber the caret).
@@ -214,7 +234,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
           <button type="button" className="me-rte-btn" onClick={() => exec('insertUnorderedList')} title="Bullet list">• ≡</button>
           <button type="button" className="me-rte-btn" onClick={insertLink} title="Link">🔗</button>
           <span className="me-rte-sep" />
-          <div className="me-rte-token-wrap">
+          <div ref={tokenWrapRef} className="me-rte-token-wrap">
             <button
               type="button"
               className="me-rte-btn me-rte-btn-token"

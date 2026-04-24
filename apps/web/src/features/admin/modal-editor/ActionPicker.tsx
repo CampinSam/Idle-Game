@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { MODAL_ACTION_TYPES } from '@derp/shared';
 import { ACTION_META } from './modal-editor-meta';
 
@@ -11,6 +11,25 @@ export default function ActionPicker({ current, onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const currentMeta = ACTION_META[current];
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Close on Escape or click outside the picker.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (t && rootRef.current && !rootRef.current.contains(t)) setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -23,7 +42,7 @@ export default function ActionPicker({ current, onPick }: Props) {
   }, [query]);
 
   return (
-    <div className="me-action-picker">
+    <div ref={rootRef} className="me-action-picker">
       <button
         type="button"
         className="me-action-picker-current"
