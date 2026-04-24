@@ -908,52 +908,6 @@ function ButtonList({ buttons, onChange }: { buttons: ModalButton[]; onChange: (
   );
 }
 
-// ─── Token Path Chips ─────────────────────────────────────────────────────────
-
-function TokenPathChips({ payloadJson }: { payloadJson: string }) {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const paths = useMemo(() => {
-    try {
-      const obj = JSON.parse(payloadJson);
-      return flattenPaths(obj);
-    } catch {
-      return [];
-    }
-  }, [payloadJson]);
-
-  if (paths.length === 0) return null;
-
-  const handleCopy = (path: string) => {
-    navigator.clipboard.writeText(`\${${path}}`).catch(() => {});
-    setCopied(path);
-    setTimeout(() => setCopied(null), 1200);
-  };
-
-  return (
-    <div style={{ marginTop: 12 }}>
-      <label style={{ ...lbl, color: '#7c3aed' }}>Available Token Paths (click to copy)</label>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 160, overflowY: 'auto', padding: '6px 0' }}>
-        {paths.map(p => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => handleCopy(p)}
-            className="me-token-chip"
-            style={{
-              background: copied === p ? '#7c3aed33' : '#7c3aed0d',
-              borderColor: copied === p ? '#7c3aed' : '#7c3aed33',
-              color: copied === p ? '#a78bfa' : '#8b7cc8',
-            }}
-          >
-            {copied === p ? 'Copied!' : `\${${p}}`}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
 function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: string }) {
@@ -1392,13 +1346,15 @@ export default function ModalEditorPage() {
               catch (e: any) { return <div style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>Invalid JSON: {e.message}</div>; }
             })()}
 
-            <TokenPathChips payloadJson={payloadJson} />
-
             {payloadJson && (
               <button type="button" onClick={() => setPayloadJson('')} className="me-btn-ghost" style={{ marginTop: 8 }}>Clear</button>
             )}
           </div>
 
+          {/* Scripting help is the single source of truth for token discoverability:
+              static "Common tokens" chips show always; payload-derived dynamic chips
+              appear in the tokens tab once a payload is pasted. The legacy
+              TokenPathChips strip was removed to avoid duplication. */}
           <ScriptingHelp dynamicPaths={dynamicTokenPaths} />
         </Section>
 
