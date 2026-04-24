@@ -1300,3 +1300,57 @@
     padding: 12px;
   }
 }
+
+/* ── Inline help hint ("?" badge) ─────────────────────────────────── */
+.me-helphint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+}
+
+.me-helphint-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1a1140;
+  border: 1px solid #7c3aed55;
+  color: #a78bfa;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.me-helphint-btn:hover {
+  background: #2a1a5a;
+  border-color: #a78bfa;
+  color: #fff;
+}
+
+.me-helphint-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  margin-top: 6px;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 8px 10px;
+  background: #06061a;
+  border: 1px solid #7c3aed55;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  white-space: normal;
+}

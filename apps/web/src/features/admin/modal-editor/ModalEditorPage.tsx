@@ -297,12 +297,34 @@ const lbl: React.CSSProperties = {
   letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 4,
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <label style={lbl}>{label}</label>
+      <label style={lbl}>
+        {label}
+        {hint && <HelpHint text={hint} />}
+      </label>
       {children}
     </div>
+  );
+}
+
+function HelpHint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="me-helphint">
+      <button
+        type="button"
+        className="me-helphint-btn"
+        title={text}
+        aria-label={text}
+        onClick={(e) => { e.preventDefault(); setOpen(o => !o); }}
+        onBlur={() => setOpen(false)}
+      >
+        ?
+      </button>
+      {open && <span className="me-helphint-pop" role="tooltip">{text}</span>}
+    </span>
   );
 }
 
@@ -1284,7 +1306,10 @@ export default function ModalEditorPage() {
             <div className="me-group-title">Header</div>
             <Row>
               <div style={{ flex: 2 }}>
-                <Field label="Title (supports ${token} syntax)"><input style={inp} value={spec.header.title} onChange={e => updateHeader({ title: e.target.value })} /></Field>
+                <Field
+                  label="Title"
+                  hint="Supports ${path} tokens — e.g. ${results.message}, ${defId}, ${data.amount}. They're replaced from the payload at render time. See the Scripting help panel below for the full list."
+                ><input style={inp} value={spec.header.title} onChange={e => updateHeader({ title: e.target.value })} placeholder="e.g. Mission Complete!" /></Field>
               </div>
               <div style={{ flex: 2 }}>
                 <Field label="Subtitle"><input style={inp} value={spec.header.subtitle || ''} onChange={e => updateHeader({ subtitle: e.target.value })} /></Field>
@@ -1309,9 +1334,6 @@ export default function ModalEditorPage() {
               tokenPaths={dynamicTokenPaths}
             />
           </div>
-
-          <ScriptingHelp dynamicPaths={dynamicTokenPaths} />
-
 
           <div className="me-card">
             <div className="me-group-title">Buttons</div>
@@ -1376,6 +1398,8 @@ export default function ModalEditorPage() {
               <button type="button" onClick={() => setPayloadJson('')} className="me-btn-ghost" style={{ marginTop: 8 }}>Clear</button>
             )}
           </div>
+
+          <ScriptingHelp dynamicPaths={dynamicTokenPaths} />
         </Section>
 
         {/* ── Section 3: Preview ── */}
