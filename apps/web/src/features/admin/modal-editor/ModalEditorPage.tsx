@@ -49,16 +49,16 @@ function htmlToRichTextDoc(html: string): RichTextDoc {
   return domNodesToRichText(doc.body.childNodes);
 }
 
-function nodeToHtml(n: RichTextNode): string {
-  if (n.t === 'text') return n.v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  if (n.t === 'br') return '<br>';
-  if (n.t === 'token') return `\${${n.key}}`;
-  if (n.t === 'link') return `<a href="${n.href}">${n.c.map(nodeToHtml).join('')}</a>`;
-  return `<${n.t}>${n.c.map(nodeToHtml).join('')}</${n.t}>`;
-}
-
-function richTextDocToHtml(doc: RichTextDoc): string {
-  return doc.map(nodeToHtml).join('');
+// Plain-text snippet of a RichTextDoc. Used only for the collapsed-block
+// label preview. The full WYSIWYG conversion lives in RichTextEditor.tsx.
+function richTextDocToText(doc: RichTextDoc): string {
+  const walk = (n: RichTextNode): string => {
+    if (n.t === 'text') return n.v;
+    if (n.t === 'br') return ' ';
+    if (n.t === 'token') return `\${${n.key}}`;
+    return n.c.map(walk).join('');
+  };
+  return doc.map(walk).join(' ').replace(/\s+/g, ' ').trim();
 }
 
 // ─── Client-side token resolver (for preview only) ───────────────────────────
@@ -660,7 +660,7 @@ function BlockList({ blocks, onChange, tokenPaths }: { blocks: ModalBlock[]; onC
               )}
               <button type="button" onClick={() => toggleCollapse(i)} className="me-block-toggle">
                 <span style={{ color: '#444', fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
-                {isCollapsed && <span style={{ marginLeft: 6, color: '#555' }}>{block.type === 'richText' ? richTextDocToHtml((block as any).doc || []).replace(/<[^>]+>/g, '').slice(0, 40) || '…' : ''}</span>}
+                {isCollapsed && <span style={{ marginLeft: 6, color: '#555' }}>{block.type === 'richText' ? richTextDocToText((block as any).doc || []).slice(0, 40) || '…' : ''}</span>}
               </button>
               <button type="button" onClick={() => removeBlock(i)} className="me-block-remove" title="Remove">×</button>
             </div>
