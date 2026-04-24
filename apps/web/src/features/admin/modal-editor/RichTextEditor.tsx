@@ -100,17 +100,11 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
     };
   }, [tokenPickerOpen]);
 
-  // Tracks the JSON form of the doc we last wrote out. If the incoming `doc`
-  // prop matches this, we know it's just the parent echoing our own onChange,
-  // and we skip touching the DOM (which would clobber the caret).
+  // Last emitted doc (stringified). When the incoming prop matches, skip
+  // touching the DOM so the caret isn't clobbered during typing.
   const lastEmittedRef = useRef<string>('');
 
-  // Sync `doc` prop → contenteditable DOM, but only when the doc actually
-  // differs from what we last emitted. This handles three cases safely:
-  //   1. Initial mount (lastEmittedRef='' ≠ stringified doc) → seed the DOM.
-  //   2. User typing (parent echoes our doc back) → skip, caret preserved.
-  //   3. Component instance reused for a different block (e.g. after reorder
-  //      or delete) → doc differs → DOM is fully overwritten.
+  // Sync prop → DOM only when the doc actually differs from what we emitted.
   useEffect(() => {
     if (!ref.current) return;
     const incoming = JSON.stringify(doc);
