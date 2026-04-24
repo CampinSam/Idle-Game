@@ -5,7 +5,7 @@ import { BLOCK_META, ACTION_META, COMMON_TOKEN_PATHS } from './modal-editor-meta
 interface Props {
   /** Optional payload-derived dynamic paths to show in addition to the static common paths. */
   dynamicPaths?: string[];
-  /** Initial open state. Defaults to true so common token chips are visible without an extra click. */
+  /** Initial open state. Defaults to false per spec; a compact chip strip stays visible while collapsed. */
   defaultOpen?: boolean;
   /** Optional class for outer wrapper. */
   className?: string;
@@ -13,7 +13,7 @@ interface Props {
 
 type Tab = 'tokens' | 'from' | 'actions';
 
-export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = true, className }: Props) {
+export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, className }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +39,12 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = true, c
     setTimeout(() => setCopied(null), 1200);
   };
 
+  // A short, always-visible preview of the most useful tokens that stays put
+  // while the help panel is collapsed — gives authors instant discoverability
+  // without forcing the panel open.
+  const PREVIEW_COUNT = 4;
+  const previewPaths = COMMON_TOKEN_PATHS.slice(0, PREVIEW_COUNT);
+
   return (
     <div ref={rootRef} className={`me-help ${className ?? ''}`}>
       <button type="button" className="me-help-toggle" onClick={() => setOpen(o => !o)}>
@@ -46,6 +52,26 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = true, c
         <span className="me-help-toggle-label">Scripting help</span>
         <span className="me-help-toggle-sub">tokens • from paths • action types</span>
       </button>
+      {!open && (
+        <div className="me-help-preview">
+          <span className="me-help-preview-label">Common tokens:</span>
+          {previewPaths.map(({ path }) => (
+            <button
+              key={path}
+              type="button"
+              className="me-token-chip"
+              onClick={() => copy(`\${${path}}`)}
+              title="Click to copy"
+              style={{ background: copied === `\${${path}}` ? '#7c3aed33' : '#7c3aed0d', borderColor: copied === `\${${path}}` ? '#7c3aed' : '#7c3aed33', color: copied === `\${${path}}` ? '#a78bfa' : '#8b7cc8' }}
+            >
+              {copied === `\${${path}}` ? 'Copied!' : `\${${path}}`}
+            </button>
+          ))}
+          <button type="button" className="me-help-preview-more" onClick={() => setOpen(true)}>
+            more…
+          </button>
+        </div>
+      )}
       {open && (
         <div className="me-help-body">
           <div className="me-help-tabs">

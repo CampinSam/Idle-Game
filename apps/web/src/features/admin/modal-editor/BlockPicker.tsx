@@ -52,7 +52,7 @@ export default function BlockPicker({ open, onClose, onPick }: Props) {
   const totalMatches = Object.values(groups).reduce((acc, arr) => acc + arr.length, 0);
 
   return (
-    <div className="me-picker">
+    <div ref={rootRef} className="me-picker">
       <div className="me-picker-search-wrap">
         <input
           autoFocus
