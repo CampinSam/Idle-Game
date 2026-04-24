@@ -41,9 +41,12 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, 
 
   // A short, always-visible preview of the most useful tokens that stays put
   // while the help panel is collapsed — gives authors instant discoverability
-  // without forcing the panel open.
-  const PREVIEW_COUNT = 4;
-  const previewPaths = COMMON_TOKEN_PATHS.slice(0, PREVIEW_COUNT);
+  // without forcing the panel open. Includes a small slice of payload-derived
+  // dynamic paths when available so authors can see live tokens at a glance.
+  const STATIC_COUNT = 3;
+  const DYNAMIC_COUNT = 3;
+  const previewStatic = COMMON_TOKEN_PATHS.slice(0, STATIC_COUNT).map(p => p.path);
+  const previewDynamic = dynamicPaths.slice(0, DYNAMIC_COUNT);
 
   return (
     <div ref={rootRef} className={`me-help ${className ?? ''}`}>
@@ -55,18 +58,41 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, 
       {!open && (
         <div className="me-help-preview">
           <span className="me-help-preview-label">Common tokens:</span>
-          {previewPaths.map(({ path }) => (
-            <button
-              key={path}
-              type="button"
-              className="me-token-chip"
-              onClick={() => copy(`\${${path}}`)}
-              title="Click to copy"
-              style={{ background: copied === `\${${path}}` ? '#7c3aed33' : '#7c3aed0d', borderColor: copied === `\${${path}}` ? '#7c3aed' : '#7c3aed33', color: copied === `\${${path}}` ? '#a78bfa' : '#8b7cc8' }}
-            >
-              {copied === `\${${path}}` ? 'Copied!' : `\${${path}}`}
-            </button>
-          ))}
+          {previewStatic.map(path => {
+            const tk = `\${${path}}`;
+            return (
+              <button
+                key={`s-${path}`}
+                type="button"
+                className="me-token-chip"
+                onClick={() => copy(tk)}
+                title="Click to copy"
+                style={{ background: copied === tk ? '#7c3aed33' : '#7c3aed0d', borderColor: copied === tk ? '#7c3aed' : '#7c3aed33', color: copied === tk ? '#a78bfa' : '#8b7cc8' }}
+              >
+                {copied === tk ? 'Copied!' : tk}
+              </button>
+            );
+          })}
+          {previewDynamic.length > 0 && (
+            <>
+              <span className="me-help-preview-label" style={{ marginLeft: 6 }}>From payload:</span>
+              {previewDynamic.map(path => {
+                const tk = `\${${path}}`;
+                return (
+                  <button
+                    key={`d-${path}`}
+                    type="button"
+                    className="me-token-chip"
+                    onClick={() => copy(tk)}
+                    title="Click to copy"
+                    style={{ background: copied === tk ? '#10b98133' : '#10b9810d', borderColor: copied === tk ? '#10b981' : '#10b98133', color: copied === tk ? '#34d399' : '#6ee7b7' }}
+                  >
+                    {copied === tk ? 'Copied!' : tk}
+                  </button>
+                );
+              })}
+            </>
+          )}
           <button type="button" className="me-help-preview-more" onClick={() => setOpen(true)}>
             more…
           </button>

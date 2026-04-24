@@ -270,7 +270,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
             onClick={() => setShowJson(true)}
             title="View raw JSON"
           >
-            { } JSON
+            View JSON
           </button>
         </div>
       )}
