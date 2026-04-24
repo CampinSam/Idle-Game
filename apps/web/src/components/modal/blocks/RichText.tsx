@@ -1,5 +1,13 @@
 import type { RichTextDoc, RichTextNode } from '@derp/shared';
 
+// Reject dangerous URL schemes; allow http(s), mailto, tel, plus relative/anchor links.
+function sanitizeHref(raw: string): string {
+  const noCtrl = (raw || '').trim().replace(/[\u0000-\u001F\u007F]/g, '');
+  if (!noCtrl) return '';
+  if (/^(javascript|data|vbscript|file):/i.test(noCtrl)) return '';
+  return noCtrl;
+}
+
 export default function RichText({ doc }: { doc: RichTextDoc }) {
   return (
     <div className="gm-rich-text">
@@ -32,12 +40,17 @@ function RichNode({ node }: { node: RichTextNode }) {
       return <em>{node.c.map((c, i) => <RichNode key={i} node={c} />)}</em>;
     case 'code':
       return <code className="gm-rt-code">{node.c.map((c, i) => <RichNode key={i} node={c} />)}</code>;
-    case 'link':
+    case 'link': {
+      const safeHref = sanitizeHref(node.href);
+      const inner = node.c.map((c, i) => <RichNode key={i} node={c} />);
+      // Drop unsafe links — render the content as plain text instead.
+      if (!safeHref) return <>{inner}</>;
       return (
-        <a href={node.href} target="_blank" rel="noreferrer" className="gm-rt-link">
-          {node.c.map((c, i) => <RichNode key={i} node={c} />)}
+        <a href={safeHref} target="_blank" rel="noreferrer" className="gm-rt-link">
+          {inner}
         </a>
       );
+    }
     case 'token':
       return <span className="gm-rt-token">{`{${node.key}}`}</span>;
     default: {

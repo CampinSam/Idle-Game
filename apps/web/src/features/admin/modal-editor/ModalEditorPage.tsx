@@ -8,9 +8,13 @@ import type {
   RichTextNode,
   ModalHeader,
 } from '@derp/shared';
-import { MODAL_BLOCK_TYPES, MODAL_ACTION_TYPES } from '@derp/shared';
 import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
 import BlockRenderer from '../../../components/modal/blocks/BlockRenderer';
+import RichTextEditor from './RichTextEditor';
+import BlockPicker from './BlockPicker';
+import ActionPicker from './ActionPicker';
+import ScriptingHelp from './ScriptingHelp';
+import { BLOCK_META } from './modal-editor-meta';
 import '../../../components/modal/GameModal.css';
 import '../admin.css';
 import './ModalEditorPage.css';
@@ -27,7 +31,9 @@ function domNodesToRichText(nodes: NodeList): RichTextNode[] {
     }
     if (n.nodeType !== Node.ELEMENT_NODE) return [];
     const el = n as Element;
-    const tag = el.tagName.toLowerCase();
+    let tag = el.tagName.toLowerCase();
+    if (tag === 'b') tag = 'strong';
+    if (tag === 'i') tag = 'em';
     const c = domNodesToRichText(el.childNodes);
     if (tag === 'br') return [{ t: 'br' }];
     if (tag === 'a') return [{ t: 'link', href: el.getAttribute('href') || '', c }];
@@ -306,12 +312,12 @@ function Row({ children }: { children: React.ReactNode }) {
 
 // ─── Section (collapsible) ────────────────────────────────────────────────────
 
-function Section({ title, open, onToggle, badge, children }: {
+function Section({ title, open, onToggle, badge, children, sectionClass }: {
   title: string; open: boolean; onToggle: () => void;
-  badge?: string; children: React.ReactNode;
+  badge?: string; children: React.ReactNode; sectionClass?: string;
 }) {
   return (
-    <div className="me-section">
+    <div className={`me-section ${sectionClass ?? ''}`}>
       <button className="me-section-hdr" onClick={onToggle} type="button">
         <span className="me-section-chevron">{open ? '▼' : '▶'}</span>
         <span className="me-section-title">{title}</span>
@@ -366,18 +372,17 @@ function RewardItemsEditor({ items, onChange }: { items: any[]; onChange: (v: an
   );
 }
 
-function BlockEditor({ block, onChange }: { block: ModalBlock; onChange: (b: ModalBlock) => void }) {
+function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onChange: (b: ModalBlock) => void; tokenPaths?: string[] }) {
   const set = (updates: object) => onChange({ ...block, ...updates } as ModalBlock);
 
   switch (block.type) {
     case 'richText': {
-      const html = richTextDocToHtml(block.doc || []);
       return (
-        <Field label="HTML content (supports <p> <strong> <em> <h1> <h2> <ul> <li> <code> <a> <br> and ${token} syntax)">
-          <textarea
-            style={{ ...inp, height: 100, resize: 'vertical' }}
-            value={html}
-            onChange={e => set({ doc: htmlToRichTextDoc(e.target.value) })}
+        <Field label="Content">
+          <RichTextEditor
+            doc={block.doc || []}
+            onChange={doc => set({ doc })}
+            tokenPaths={tokenPaths}
           />
         </Field>
       );
@@ -524,7 +529,7 @@ function BlockEditor({ block, onChange }: { block: ModalBlock; onChange: (b: Mod
 
 // ─── Block List ───────────────────────────────────────────────────────────────
 
-function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: ModalBlock[]) => void }) {
+function BlockList({ blocks, onChange, tokenPaths }: { blocks: ModalBlock[]; onChange: (b: ModalBlock[]) => void; tokenPaths?: string[] }) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
@@ -594,7 +599,9 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
   return (
     <div>
       {blocks.map((block, i) => {
-        const color = BLOCK_COLORS[block.type] || '#888';
+        const meta = BLOCK_META[block.type];
+        const color = meta?.color || BLOCK_COLORS[block.type] || '#888';
+        const friendly = meta?.friendlyName || block.type;
         const isCollapsed = collapsed.has(i);
         const isDragging = dragIdx === i;
         const isDropTarget = dropIdx === i && dragIdx !== null && dragIdx !== i;
@@ -607,6 +614,7 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
             onDragOver={e => handleDragOver(e, i)}
             onDrop={e => handleDrop(e, i)}
             onDragEnd={handleDragEnd}
+            className="me-block-row"
             style={{
               marginBottom: 6, borderRadius: 8,
               border: isDropTarget ? `2px solid ${color}` : '1px solid #2a2a4e',
@@ -614,26 +622,30 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
               opacity: isDragging ? 0.5 : 1,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', gap: 6, borderBottom: isCollapsed ? 'none' : '1px solid #1a1a3e' }}>
-              <span style={{ cursor: 'grab', color: '#444', fontSize: 14, userSelect: 'none', padding: '0 2px' }}>⣿</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color, background: `${color}22`, border: `1px solid ${color}44`, borderRadius: 4, padding: '1px 6px', letterSpacing: '0.04em', textTransform: 'uppercase', flexShrink: 0 }}>
-                {block.type}
+            <div className="me-block-row-hdr" style={{ borderBottom: isCollapsed ? 'none' : '1px solid #1a1a3e' }}>
+              <span className="me-block-grip" style={{ cursor: 'grab', color: '#444', fontSize: 14, userSelect: 'none', padding: '0 2px' }}>⣿</span>
+              <span
+                className="me-block-tag"
+                style={{ color, background: `${color}22`, border: `1px solid ${color}44` }}
+                title={block.type}
+              >
+                {friendly}
               </span>
               {hasFrom && (
-                <span style={{ fontSize: 10, color: '#7c3aed', background: '#7c3aed18', border: '1px solid #7c3aed33', borderRadius: 4, padding: '1px 5px', fontFamily: 'monospace', flexShrink: 0 }}>
+                <span className="me-block-from-badge">
                   ← {(block as any).from}
                 </span>
               )}
-              <button type="button" onClick={() => toggleCollapse(i)} style={{ flex: 1, background: 'none', border: 'none', color: '#888', cursor: 'pointer', textAlign: 'left', fontSize: 11, padding: '2px 0', fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => toggleCollapse(i)} className="me-block-toggle">
                 <span style={{ color: '#444', fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
                 {isCollapsed && <span style={{ marginLeft: 6, color: '#555' }}>{block.type === 'richText' ? richTextDocToHtml((block as any).doc || []).replace(/<[^>]+>/g, '').slice(0, 40) || '…' : ''}</span>}
               </button>
-              <button type="button" onClick={() => removeBlock(i)} style={{ background: 'none', border: 'none', color: '#ef444488', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1, flexShrink: 0 }} title="Remove">×</button>
+              <button type="button" onClick={() => removeBlock(i)} className="me-block-remove" title="Remove">×</button>
             </div>
             {!isCollapsed && (
               <div style={{ padding: '10px 12px' }}>
                 <FromField block={block} onChange={b => updateBlock(i, b)} />
-                <BlockEditor block={block} onChange={b => updateBlock(i, b)} />
+                <BlockEditor block={block} onChange={b => updateBlock(i, b)} tokenPaths={tokenPaths} />
               </div>
             )}
           </div>
@@ -643,20 +655,11 @@ function BlockList({ blocks, onChange }: { blocks: ModalBlock[]; onChange: (b: M
       <button type="button" onClick={() => setPickerOpen(p => !p)} className="me-add-btn" style={{ marginTop: 4, width: '100%', justifyContent: 'center' }}>
         + Add block {pickerOpen ? '▲' : '▼'}
       </button>
-      {pickerOpen && (
-        <div style={{ marginTop: 4, padding: '10px 12px', background: '#0a0a1e', border: '1px dashed #2a2a4e', borderRadius: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {MODAL_BLOCK_TYPES.map(t => {
-            const color = BLOCK_COLORS[t] || '#888';
-            return (
-              <button key={t} type="button" onClick={() => addBlock(t)} style={{
-                padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                background: `${color}18`, border: `1px solid ${color}44`, color, letterSpacing: '0.04em',
-                textTransform: 'uppercase', fontFamily: 'inherit',
-              }}>{t}</button>
-            );
-          })}
-        </div>
-      )}
+      <BlockPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={addBlock}
+      />
     </div>
   );
 }
@@ -753,9 +756,7 @@ function ActionEditor({ action, onChange }: { action: ModalAction; onChange: (a:
   return (
     <div>
       <Field label="Action Type">
-        <select style={inp} value={type} onChange={e => onChange({ type: e.target.value as any })}>
-          {MODAL_ACTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <ActionPicker current={type} onPick={t => onChange({ type: t as any })} />
       </Field>
       {actionTypeFields[type] || null}
     </div>
@@ -1041,7 +1042,19 @@ export default function ModalEditorPage() {
   const [payloadOpen, setPayloadOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
 
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
+
   const [payloadJson, setPayloadJson] = useState('');
+
+  const dynamicTokenPaths = useMemo(() => {
+    if (!payloadJson) return [];
+    try {
+      const obj = JSON.parse(payloadJson);
+      return flattenPaths(obj);
+    } catch {
+      return [];
+    }
+  }, [payloadJson]);
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
 
@@ -1186,9 +1199,30 @@ export default function ModalEditorPage() {
         </button>
       </div>
 
-      <div className="me-content">
+      <div className="me-tabs" role="tablist" aria-label="Editor view">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'edit'}
+          className={`me-tab ${activeTab === 'edit' ? 'me-tab-active' : ''}`}
+          onClick={() => setActiveTab('edit')}
+        >
+          ✏ Edit
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'preview'}
+          className={`me-tab ${activeTab === 'preview' ? 'me-tab-active' : ''}`}
+          onClick={() => setActiveTab('preview')}
+        >
+          👁 Preview
+        </button>
+      </div>
+
+      <div className={`me-content me-tab-${activeTab}`}>
         {/* ── Section 1: Editor ── */}
-        <Section title="Editor" open={editorOpen} onToggle={() => setEditorOpen(v => !v)} badge={selectedId ? selectedId : 'new'}>
+        <Section title="Editor" open={editorOpen} onToggle={() => setEditorOpen(v => !v)} badge={selectedId ? selectedId : 'new'} sectionClass="me-section-edit">
           <div className="me-card">
             <div className="me-group-title">Database Record</div>
             <Row>
@@ -1269,10 +1303,15 @@ export default function ModalEditorPage() {
           <div className="me-card">
             <div className="me-group-title">Body Blocks</div>
             <BlockList
+              key={selectedId ?? '_new'}
               blocks={spec.body}
               onChange={blocks => { updateSpec({ body: blocks }); }}
+              tokenPaths={dynamicTokenPaths}
             />
           </div>
+
+          <ScriptingHelp dynamicPaths={dynamicTokenPaths} />
+
 
           <div className="me-card">
             <div className="me-group-title">Buttons</div>
@@ -1284,7 +1323,7 @@ export default function ModalEditorPage() {
         </Section>
 
         {/* ── Section 2: Payload ── */}
-        <Section title="Payload" open={payloadOpen} onToggle={() => setPayloadOpen(v => !v)} badge={payloadJson ? 'active' : undefined}>
+        <Section title="Payload" open={payloadOpen} onToggle={() => setPayloadOpen(v => !v)} badge={payloadJson ? 'active' : undefined} sectionClass="me-section-edit">
           <div className="me-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <span style={{ color: '#64748b', fontSize: 12, flex: 1 }}>
@@ -1340,7 +1379,7 @@ export default function ModalEditorPage() {
         </Section>
 
         {/* ── Section 3: Preview ── */}
-        <Section title="Preview" open={previewOpen} onToggle={() => setPreviewOpen(v => !v)}>
+        <Section title="Preview" open={previewOpen} onToggle={() => setPreviewOpen(v => !v)} sectionClass="me-section-preview">
           <div className="me-card" style={{ background: 'rgba(0,0,0,0.4)' }}>
             <LivePreview spec={spec} payloadJson={payloadJson} />
           </div>
