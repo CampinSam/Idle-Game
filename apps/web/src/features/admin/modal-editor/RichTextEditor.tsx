@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { RichTextDoc, RichTextNode } from '@derp/shared';
+import { sanitizeHref, type RichTextDoc, type RichTextNode } from '@derp/shared';
 
 interface Props {
   doc: RichTextDoc;
@@ -47,14 +47,6 @@ function escapeHtml(s: string): string {
 
 function escapeAttr(s: string): string {
   return escapeHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-// Strip dangerous URL schemes; allow http(s), mailto, tel, plus relative/anchor links.
-function sanitizeHref(raw: string): string {
-  const noCtrl = (raw || '').trim().replace(/[\u0000-\u001F\u007F]/g, '');
-  if (!noCtrl) return '';
-  if (/^(javascript|data|vbscript|file):/i.test(noCtrl)) return '';
-  return noCtrl;
 }
 
 function nodeToHtml(n: RichTextNode): string {
