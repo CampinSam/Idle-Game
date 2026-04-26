@@ -292,8 +292,19 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
                   onMouseEnter={() => setHighlightedIndex(listIdx)}
                   onMouseLeave={() => setHighlightedIndex(-1)}
                 >
-                  <span style={{ fontWeight: 600 }}>{opt.id}</span>
-                  {opt.name && <span style={{ color: '#888', marginLeft: 6 }}>— {opt.name}</span>}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600 }}>{opt.id}</span>
+                    {opt.name && <span style={{ color: '#888' }}>— {opt.name}</span>}
+                    {refTable === 'BundleDef' && Array.isArray(opt.bundle) && (
+                      <span style={{ color: '#a78bfa', fontSize: 11 }}>
+                        · {opt.bundle.length} {opt.bundle.length === 1 ? 'entry' : 'entries'}
+                        {(opt.pickMin != null || opt.pickMax != null) && (
+                          <> · pick {opt.pickMin ?? 1}–{opt.pickMax ?? opt.pickMin ?? 1}</>
+                        )}
+                        {opt.enabled === false && <> · disabled</>}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}

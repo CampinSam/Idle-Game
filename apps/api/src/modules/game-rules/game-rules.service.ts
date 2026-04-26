@@ -216,20 +216,26 @@ export class GameRulesService {
 
   // Rewrites bundle_ref entries to inline bundles using `defs`; overrides win.
   // Missing/disabled defs and cycles collapse to empty bundles.
-  expandBundleRefs(items: any[], defs: Map<string, any>, stack: Set<string> = new Set()): any[] {
+  // `warned` dedupes missing/disabled warnings within a single call tree.
+  expandBundleRefs(
+    items: any[],
+    defs: Map<string, any>,
+    stack: Set<string> = new Set(),
+    warned: Set<string> = new Set(),
+  ): any[] {
     if (!Array.isArray(items)) return items;
-    return items.map((item) => this.expandEntry(item, defs, stack));
+    return items.map((item) => this.expandEntry(item, defs, stack, warned));
   }
 
-  private expandEntry(item: any, defs: Map<string, any>, stack: Set<string>): any {
+  private expandEntry(item: any, defs: Map<string, any>, stack: Set<string>, warned: Set<string>): any {
     if (!item || typeof item !== 'object') return item;
 
     if (item.type === 'bundle_ref') {
       const id = item.bundleDefId;
       const def = id ? defs.get(id) : null;
       if (!def || !def.enabled) {
-        if (id && !this.warnedMissingBundleIds.has(id)) {
-          this.warnedMissingBundleIds.add(id);
+        if (id && !warned.has(id)) {
+          warned.add(id);
           this.logger.warn(`bundle_ref to missing or disabled BundleDef "${id}" — resolved as empty bundle`);
         }
         return { bundle: [], requirements: item.requirements };
@@ -240,7 +246,7 @@ export class GameRulesService {
       }
       const nextStack = new Set(stack);
       nextStack.add(id);
-      const expandedInner = this.expandBundleRefs(def.bundle ?? [], defs, nextStack);
+      const expandedInner = this.expandBundleRefs(def.bundle ?? [], defs, nextStack, warned);
       const result: any = { bundle: expandedInner };
       const odds = item.odds ?? def.odds;
       if (odds !== undefined && odds !== null) result.odds = odds;
@@ -253,7 +259,7 @@ export class GameRulesService {
     }
 
     if (Array.isArray(item.bundle)) {
-      return { ...item, bundle: this.expandBundleRefs(item.bundle, defs, stack) };
+      return { ...item, bundle: this.expandBundleRefs(item.bundle, defs, stack, warned) };
     }
 
     return item;
@@ -274,7 +280,6 @@ export class GameRulesService {
     return this.resolveOutcomes(expanded, reqContext, rng);
   }
 
-  private warnedMissingBundleIds = new Set<string>();
 
   async processEffectsWithBundles(
     userId: string,
