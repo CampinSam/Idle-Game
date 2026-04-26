@@ -7,6 +7,7 @@ import {
   type EntityDef,
   type SimulationResult,
 } from './simulator';
+import type React from 'react';
 import '../admin.css';
 import './BalancePage.css';
 
@@ -223,11 +224,266 @@ export default function BalancePage() {
                 <span>·</span>
                 <span>simulated in {output.durationMs.toFixed(0)} ms</span>
               </div>
+              <BalanceChart output={output} />
               <ResultsTable output={output} />
             </>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+const PRIMARY_COLOR = '#ffd166';
+const OVERLAY_COLORS = ['#b8b8ff', '#7df9aa', '#ff9f7f', '#ff7fbf', '#9ff7ff', '#c8a2ff'];
+
+function niceCeil(value: number): number {
+  if (!isFinite(value) || value <= 0) return 1;
+  const exp = Math.floor(Math.log10(value));
+  const pow = Math.pow(10, exp);
+  const frac = value / pow;
+  let nice: number;
+  if (frac <= 1) nice = 1;
+  else if (frac <= 2) nice = 2;
+  else if (frac <= 2.5) nice = 2.5;
+  else if (frac <= 5) nice = 5;
+  else nice = 10;
+  return nice * pow;
+}
+
+function formatTickValue(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
+  if (n >= 10_000) return (n / 1_000).toFixed(0) + 'k';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
+  return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function BalanceChart({ output }: { output: SimulationOutput }) {
+  const primary = output.primary!;
+  const maxLevel = primary.result.mean.length;
+  const [hoverLevel, setHoverLevel] = useState<number | null>(null);
+
+  const series = useMemo(() => {
+    const all: { id: string; name: string; color: string; result: SimulationResult; isPrimary: boolean }[] = [
+      { id: primary.defId, name: primary.defName, color: PRIMARY_COLOR, result: primary.result, isPrimary: true },
+    ];
+    output.overlays.forEach((o, i) => {
+      all.push({
+        id: o.defId,
+        name: o.defName,
+        color: OVERLAY_COLORS[i % OVERLAY_COLORS.length],
+        result: o.result,
+        isPrimary: false,
+      });
+    });
+    return all;
+  }, [primary, output.overlays]);
+
+  const yMax = useMemo(() => {
+    let m = 0;
+    for (const v of primary.result.p90) if (v > m) m = v;
+    for (const v of primary.result.mean) if (v > m) m = v;
+    for (const o of output.overlays) {
+      for (const v of o.result.mean) if (v > m) m = v;
+    }
+    return niceCeil(m * 1.05);
+  }, [primary, output.overlays]);
+
+  const W = 920;
+  const H = 360;
+  const PAD = { top: 16, right: 18, bottom: 32, left: 56 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const xFor = (lv: number) => PAD.left + ((lv - 1) / Math.max(1, maxLevel - 1)) * innerW;
+  const yFor = (val: number) => PAD.top + innerH - (val / yMax) * innerH;
+
+  const buildLine = (vals: number[]) =>
+    vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i + 1).toFixed(2)},${yFor(v).toFixed(2)}`).join(' ');
+
+  const meanPath = buildLine(primary.result.mean);
+  const bandPath = (() => {
+    const top = primary.result.p90.map((v, i) => `${i === 0 ? 'M' : 'L'}${xFor(i + 1).toFixed(2)},${yFor(v).toFixed(2)}`).join(' ');
+    const bottom = primary.result.p10
+      .map((_, i) => {
+        const idx = maxLevel - 1 - i;
+        return `L${xFor(idx + 1).toFixed(2)},${yFor(primary.result.p10[idx]).toFixed(2)}`;
+      })
+      .join(' ');
+    return `${top} ${bottom} Z`;
+  })();
+
+  const yTicks = 5;
+  const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) => (yMax * i) / yTicks);
+  const xTickStep = maxLevel >= 40 ? 10 : maxLevel >= 20 ? 5 : 2;
+  const xTickValues = Array.from(
+    new Set(
+      [1, ...Array.from({ length: maxLevel }, (_, i) => i + 1).filter((lv) => lv % xTickStep === 0), maxLevel],
+    ),
+  ).sort((a, b) => a - b);
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const xPx = ((e.clientX - rect.left) / rect.width) * W;
+    if (xPx < PAD.left || xPx > PAD.left + innerW) {
+      setHoverLevel(null);
+      return;
+    }
+    const frac = (xPx - PAD.left) / innerW;
+    const lv = Math.round(1 + frac * (maxLevel - 1));
+    setHoverLevel(Math.max(1, Math.min(maxLevel, lv)));
+  };
+
+  const tooltip = hoverLevel != null ? (() => {
+    const idx = hoverLevel - 1;
+    const tx = xFor(hoverLevel);
+    const tipW = 200;
+    const tipH = 30 + 18 * series.length + 12;
+    const tipX = tx + 12 + tipW > W - PAD.right ? tx - 12 - tipW : tx + 12;
+    const tipY = Math.max(PAD.top, Math.min(PAD.top + innerH - tipH, yFor(primary.result.mean[idx]) - tipH / 2));
+    return { idx, tx, tipX, tipY, tipW, tipH };
+  })() : null;
+
+  return (
+    <div className="balance-chart-wrap" role="img" aria-label="Power score progression chart">
+      <div className="balance-chart-legend">
+        {series.map((s) => (
+          <span key={s.id} className="balance-chart-legend-item">
+            <span className="balance-chart-swatch" style={{ background: s.color }} />
+            <span className={s.isPrimary ? 'balance-chart-legend-primary' : ''}>
+              {s.name}{s.isPrimary ? ' (primary, mean ± p10–p90)' : ' (mean)'}
+            </span>
+          </span>
+        ))}
+      </div>
+      <svg
+        className="balance-chart-svg"
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        onMouseMove={handleMove}
+        onMouseLeave={() => setHoverLevel(null)}
+      >
+        {yTickValues.map((v, i) => {
+          const y = yFor(v);
+          return (
+            <g key={'yg-' + i} className="balance-chart-grid">
+              <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} />
+              <text x={PAD.left - 8} y={y + 4} className="balance-chart-axis-label" textAnchor="end">
+                {formatTickValue(v)}
+              </text>
+            </g>
+          );
+        })}
+
+        {xTickValues.map((lv) => {
+          const x = xFor(lv);
+          return (
+            <g key={'xg-' + lv}>
+              <line
+                x1={x}
+                x2={x}
+                y1={PAD.top + innerH}
+                y2={PAD.top + innerH + 4}
+                className="balance-chart-axis-tick"
+              />
+              <text
+                x={x}
+                y={PAD.top + innerH + 18}
+                className="balance-chart-axis-label"
+                textAnchor="middle"
+              >
+                {lv}
+              </text>
+            </g>
+          );
+        })}
+        <text
+          x={PAD.left + innerW / 2}
+          y={H - 4}
+          className="balance-chart-axis-title"
+          textAnchor="middle"
+        >
+          Level
+        </text>
+
+        <path d={bandPath} fill={PRIMARY_COLOR} fillOpacity={0.16} stroke="none" />
+
+        {output.overlays.map((o, i) => (
+          <path
+            key={'ov-' + o.defId}
+            d={buildLine(o.result.mean)}
+            fill="none"
+            stroke={OVERLAY_COLORS[i % OVERLAY_COLORS.length]}
+            strokeWidth={1.75}
+            strokeDasharray="5 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+
+        <path
+          d={meanPath}
+          fill="none"
+          stroke={PRIMARY_COLOR}
+          strokeWidth={2.4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {hoverLevel != null && tooltip && (
+          <g>
+            <line
+              x1={tooltip.tx}
+              x2={tooltip.tx}
+              y1={PAD.top}
+              y2={PAD.top + innerH}
+              className="balance-chart-crosshair"
+            />
+            {series.map((s) => (
+              <circle
+                key={'pt-' + s.id}
+                cx={tooltip.tx}
+                cy={yFor(s.result.mean[tooltip.idx])}
+                r={3.5}
+                fill={s.color}
+                stroke="#0f0f2e"
+                strokeWidth={1.5}
+              />
+            ))}
+            <g>
+              <rect
+                x={tooltip.tipX}
+                y={tooltip.tipY}
+                width={tooltip.tipW}
+                height={tooltip.tipH}
+                rx={6}
+                ry={6}
+                className="balance-chart-tooltip-bg"
+              />
+              <text x={tooltip.tipX + 10} y={tooltip.tipY + 18} className="balance-chart-tooltip-title">
+                Level {hoverLevel}
+              </text>
+              {series.map((s, i) => {
+                const ty = tooltip.tipY + 36 + i * 18;
+                const m = s.result.mean[tooltip.idx];
+                const detail = s.isPrimary
+                  ? `${formatTickValue(m)} (p10 ${formatTickValue(s.result.p10[tooltip.idx])} – p90 ${formatTickValue(s.result.p90[tooltip.idx])})`
+                  : formatTickValue(m);
+                return (
+                  <g key={'tt-' + s.id}>
+                    <rect x={tooltip.tipX + 10} y={ty - 8} width={8} height={8} fill={s.color} rx={1.5} />
+                    <text x={tooltip.tipX + 24} y={ty} className="balance-chart-tooltip-text">
+                      <tspan className="balance-chart-tooltip-name">{s.name}: </tspan>
+                      <tspan>{detail}</tspan>
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </g>
+        )}
+      </svg>
     </div>
   );
 }
