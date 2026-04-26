@@ -10,6 +10,7 @@ import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveRewardSpec } from './reward-resolver.util';
 import { resolveRewardSpecContext } from './reward-spec-resolver.util';
 
@@ -21,6 +22,7 @@ export class GiftService {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
+    private gameRules: GameRulesService,
   ) {}
 
   private get giftInstance() {
@@ -250,6 +252,7 @@ export class GiftService {
       db || this.prisma,
       this.currencyService,
       this.inventoryService,
+      this.gameRules,
       userId,
       spec,
       giftId,

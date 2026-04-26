@@ -3,6 +3,7 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch, buildPlayerPatch } from '../patch-builder';
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
+import { GameRulesService } from '../../game-rules/game-rules.service';
 import { resolveRewardSpec } from '../../gift/reward-resolver.util';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class OpenGiftPackageHandler implements CommandHandler {
   constructor(
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
+    private gameRules: GameRulesService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -34,6 +36,7 @@ export class OpenGiftPackageHandler implements CommandHandler {
       ctx.tx,
       this.currencyService,
       this.inventoryService,
+      this.gameRules,
       ctx.userId,
       rewardSpec,
       itemInstanceId,

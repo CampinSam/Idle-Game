@@ -1,4 +1,5 @@
 import { generateEntityData } from '../entity/entity-generator.util';
+import type { GameRulesService } from '../game-rules/game-rules.service';
 
 function rollRange(min: any, max: any): number {
   const lo = Number(min ?? 0);
@@ -16,7 +17,7 @@ function rollOdds(odds: any): boolean {
   return Math.random() * 100 < pct;
 }
 
-function pickWeightedFlat(pool: any[], count: number): any[] {
+function pickWeighted(pool: any[], count: number): any[] {
   const remaining = [...pool];
   const picks: any[] = [];
   for (let i = 0; i < count && remaining.length > 0; i++) {
@@ -39,29 +40,8 @@ function pickWeightedFlat(pool: any[], count: number): any[] {
   return picks;
 }
 
-/**
- * Convert an outcome-shaped entry (as found in BundleDef.bundle / mission outcomes:
- *   { type: 'currency'|'item', key, min, max, odds? } or nested bundles)
- * into a RewardSpec entry that gift's resolveRewardSpec understands.
- * Returns null for unsupported entry shapes.
- */
 function outcomeEntryToRewardSpec(entry: any): any | null {
-  if (!entry) return null;
-  if (entry.type === 'bundle_ref') {
-    // Preserve inline overrides on the nested ref so downstream resolution
-    // honors the same odds/pick semantics regardless of nesting depth.
-    const out: any = { type: 'bundle_ref', bundleDefId: entry.bundleDefId };
-    if (entry.odds !== undefined) out.odds = entry.odds;
-    if (entry.pickMin !== undefined) out.pickMin = entry.pickMin;
-    if (entry.pickMax !== undefined) out.pickMax = entry.pickMax;
-    return out;
-  }
-  if (Array.isArray(entry.bundle)) {
-    const inner = entry.bundle
-      .map(outcomeEntryToRewardSpec)
-      .filter((e: any) => e !== null);
-    return { type: 'bundle', entries: inner };
-  }
+  if (!entry || typeof entry !== 'object') return null;
   if (entry.type === 'currency') {
     return { type: 'currency', currencyId: entry.key, amount: rollRange(entry.min, entry.max) };
   }
@@ -71,14 +51,63 @@ function outcomeEntryToRewardSpec(entry: any): any | null {
   return null;
 }
 
+async function processOutcomeBundle(
+  prisma: any,
+  currencyService: any,
+  inventoryService: any,
+  gameRules: GameRulesService,
+  userId: string,
+  bundleEntry: any,
+  sourceId: string,
+): Promise<any[]> {
+  const grants: any[] = [];
+  if (!bundleEntry || !Array.isArray(bundleEntry.bundle)) return grants;
+  if (!rollOdds(bundleEntry.odds)) return grants;
+
+  const pickMin = bundleEntry.pickMin;
+  const pickMax = bundleEntry.pickMax;
+
+  let selected: any[];
+  if (pickMin !== undefined || pickMax !== undefined) {
+    const lo = Math.max(0, Number(pickMin ?? 1));
+    const hi = Math.max(lo, Number(pickMax ?? pickMin ?? 1));
+    const count = Math.min(
+      bundleEntry.bundle.length,
+      lo + (hi > lo ? Math.floor(Math.random() * (hi - lo + 1)) : 0),
+    );
+    selected = pickWeighted(bundleEntry.bundle, count);
+  } else {
+    selected = bundleEntry.bundle.filter((o: any) =>
+      Array.isArray(o?.bundle) ? true : rollOdds(o?.odds),
+    );
+  }
+
+  for (const o of selected) {
+    if (Array.isArray(o?.bundle)) {
+      const sub = await processOutcomeBundle(
+        prisma, currencyService, inventoryService, gameRules, userId, o, sourceId,
+      );
+      grants.push(...sub);
+      continue;
+    }
+    const reward = outcomeEntryToRewardSpec(o);
+    if (!reward) continue;
+    const sub = await resolveRewardSpec(
+      prisma, currencyService, inventoryService, gameRules, userId, reward, sourceId,
+    );
+    grants.push(...sub);
+  }
+  return grants;
+}
+
 export async function resolveRewardSpec(
   prisma: any,
   currencyService: any,
   inventoryService: any,
+  gameRules: GameRulesService,
   userId: string,
   spec: any,
   sourceId: string,
-  visitedBundles: Set<string> = new Set(),
 ): Promise<any[]> {
   if (!spec || !spec.type) return [];
 
@@ -141,13 +170,7 @@ export async function resolveRewardSpec(
       if (Array.isArray(spec.entries)) {
         for (const entry of spec.entries) {
           const subGrants = await resolveRewardSpec(
-            prisma,
-            currencyService,
-            inventoryService,
-            userId,
-            entry,
-            sourceId,
-            visitedBundles,
+            prisma, currencyService, inventoryService, gameRules, userId, entry, sourceId,
           );
           grants.push(...subGrants);
         }
@@ -156,77 +179,31 @@ export async function resolveRewardSpec(
     }
 
     case 'bundle_ref': {
-      if (!spec.bundleDefId || !prisma?.bundleDef) {
+      if (!gameRules || !spec.bundleDefId) {
         grants.push({ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing' });
         break;
       }
-      // Cycle guard: if this bundle id is already on the recursion stack, abort
-      // to prevent infinite recursion / DoS from a cyclic BundleDef graph.
-      if (visitedBundles.has(spec.bundleDefId)) {
-        grants.push({ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'cycle_detected' });
-        break;
-      }
-      const def: any = await prisma.bundleDef.findUnique({ where: { id: spec.bundleDefId } });
+      const refSpec: any = { type: 'bundle_ref', bundleDefId: spec.bundleDefId };
+      if (spec.odds !== undefined) refSpec.odds = spec.odds;
+      if (spec.pickMin !== undefined) refSpec.pickMin = spec.pickMin;
+      if (spec.pickMax !== undefined) refSpec.pickMax = spec.pickMax;
+
+      const defs = await gameRules.loadBundleDefs([refSpec]);
+      const def = defs.get(spec.bundleDefId);
       if (!def || def.enabled === false || !Array.isArray(def.bundle)) {
         grants.push({ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing_or_disabled' });
         break;
       }
-      // Bundle-level odds: spec.odds (inline override) wins over def.odds.
-      const bundleOdds = spec.odds ?? def.odds;
-      if (!rollOdds(bundleOdds)) break;
-
-      // Resolve pickMin/pickMax (inline override wins). Undefined means "grant all".
-      const pickMin = spec.pickMin ?? def.pickMin;
-      const pickMax = spec.pickMax ?? def.pickMax;
-
-      // Convert outcome-shaped entries to RewardSpec entries (filtering nulls).
-      const converted: Array<{ outcome: any; reward: any }> = def.bundle
-        .map((o: any) => ({ outcome: o, reward: outcomeEntryToRewardSpec(o) }))
-        .filter((p: any) => p.reward !== null);
-
-      // Decide which to grant: pick-mode (subset by odds-weighted sampling) or grant-all
-      // mode (every entry, each gated by its own odds roll), matching game-rules semantics.
-      let selected: any[];
-      if (pickMin !== undefined || pickMax !== undefined) {
-        const lo = Math.max(0, Number(pickMin ?? 1));
-        const hi = Math.max(lo, Number(pickMax ?? pickMin ?? 1));
-        const count = Math.min(
-          converted.length,
-          lo + (hi > lo ? Math.floor(Math.random() * (hi - lo + 1)) : 0),
-        );
-        selected = pickWeightedFlat(
-          converted.map(p => ({ ...p, odds: p.outcome?.odds })),
-          count,
-        );
-      } else {
-        // Grant-all mode: gate each entry by its odds, EXCEPT bundle_ref entries
-        // whose odds are consumed once inside the recursive bundle-level roll.
-        // This avoids double-application of odds across nesting levels and matches
-        // game-rules' single-roll semantics.
-        selected = converted.filter(p =>
-          p.outcome?.type === 'bundle_ref' ? true : rollOdds(p.outcome?.odds),
-        );
+      const expandedArr = gameRules.expandBundleRefs([refSpec], defs);
+      const expanded = Array.isArray(expandedArr) ? expandedArr[0] : null;
+      if (!expanded || !Array.isArray(expanded.bundle)) {
+        grants.push({ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing_or_disabled' });
+        break;
       }
-
-      // Mark this bundle id as visited for the recursive sub-calls (only along this
-      // branch — Set is shared but we remove on the way out so siblings aren't blocked).
-      visitedBundles.add(spec.bundleDefId);
-      try {
-        for (const pair of selected) {
-          const subGrants = await resolveRewardSpec(
-            prisma,
-            currencyService,
-            inventoryService,
-            userId,
-            pair.reward,
-            sourceId,
-            visitedBundles,
-          );
-          grants.push(...subGrants);
-        }
-      } finally {
-        visitedBundles.delete(spec.bundleDefId);
-      }
+      const subGrants = await processOutcomeBundle(
+        prisma, currencyService, inventoryService, gameRules, userId, expanded, sourceId,
+      );
+      grants.push(...subGrants);
       break;
     }
 
@@ -246,9 +223,7 @@ export async function resolveRewardSpec(
       break;
     }
 
-    case 'cosmetic':
     default:
-      grants.push({ type: spec.type, status: 'not_implemented' });
       break;
   }
 
