@@ -13,6 +13,9 @@ function makeFakes() {
         return Promise.resolve(ids.map(id => bundleDefs.get(id)).filter(Boolean));
       }),
     },
+    user: {
+      findUnique: jest.fn(() => Promise.resolve(null)),
+    },
   };
   const currencyService: any = {
     creditTx: jest.fn((_db: any, args: any) => {

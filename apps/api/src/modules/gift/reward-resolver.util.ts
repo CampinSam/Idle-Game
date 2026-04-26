@@ -142,10 +142,12 @@ export async function resolveRewardSpec(
         break;
       }
 
-      // Use the canonical shared resolver. Empty user/flags context means entries
-      // with requirements get gated out — gifts have no claim-time player context,
-      // so only unconditional entries fire.
-      const reqContext: RequirementContext = { user: {}, userFlags: {} };
+      // Use the canonical shared resolver with a real claim-time player context
+      // so per-entry `requirements` (flags, keeper level, etc.) gate correctly.
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const reqContext: RequirementContext = user
+        ? gameRules.buildRequirementContext(user as any)
+        : { user: {}, userFlags: {} };
       const { resolved } = await gameRules.resolveOutcomesAsync([refSpec], reqContext, makeRng());
 
       for (const r of resolved) {
@@ -175,6 +177,7 @@ export async function resolveRewardSpec(
     }
 
     default:
+      grants.push({ type: 'unknown', specType: spec.type, status: 'not_implemented' });
       break;
   }
 
