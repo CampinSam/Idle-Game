@@ -22,10 +22,16 @@ export class BootstrapService implements OnModuleInit {
     await seedSounds(this.prisma);
     // Idempotent: rebuilds missing levelHistory entries / stat gains for any
     // entity that pre-dates the canonical addEntityXp pipeline.
-    try {
-      await this.entityService.backfillLevelHistory();
-    } catch (err) {
-      this.logger.warn(`Entity level-history backfill failed: ${err}`);
+    // Set ENTITY_BACKFILL_DISABLED=1 to skip — useful once the dataset has
+    // converged so cold starts at scale don't re-scan every entity row.
+    if (process.env.ENTITY_BACKFILL_DISABLED === '1') {
+      this.logger.log('Entity level-history backfill skipped (ENTITY_BACKFILL_DISABLED=1)');
+    } else {
+      try {
+        await this.entityService.backfillLevelHistory();
+      } catch (err) {
+        this.logger.warn(`Entity level-history backfill failed: ${err}`);
+      }
     }
   }
 
