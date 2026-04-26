@@ -304,6 +304,11 @@ export class GameRulesService {
     if (!user) return;
     const reqContext = this.buildRequirementContext(user as any);
 
+    // Expand any bundle_ref entries up-front so the rest of this method
+    // sees only inline bundles & raw entries (transparent bundle_ref support).
+    const bundleDefs = await this.loadBundleDefs(effects);
+    effects = this.expandBundleRefs(effects, bundleDefs);
+
     const applyEntry = async (effect: any) => {
       if (effect.requirements && !this.checkRequirements(effect.requirements, reqContext)) return;
       if (!this.rollOdds(effect.odds, rng)) return;

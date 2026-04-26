@@ -22,15 +22,16 @@ This document describes each definition table editable through the Admin Panel, 
 13. [MissionCategoryDef](#missioncategorydef)
 14. [MissionDef (Missions / Quests)](#missiondef)
 15. [RecipeDef (Crafting Recipes)](#recipedef)
-16. [EventDefinition](#eventdefinition)
-17. [GiftDef](#giftdef)
-18. [ModalDef](#modaldef)
-19. [LootboxDef](#lootboxdef)
-20. [CheckInDef](#checkindef)
-21. [QuestDef](#questdef)
-22. [ShopItemDef](#shopitemdef)
-23. [NftCollectionDef](#nftcollectiondef)
-24. [EffectDef](#effectdef)
+16. [BundleDef (Reusable Outcome Bundles)](#bundledef)
+17. [EventDefinition](#eventdefinition)
+18. [GiftDef](#giftdef)
+19. [ModalDef](#modaldef)
+20. [LootboxDef](#lootboxdef)
+21. [CheckInDef](#checkindef)
+22. [QuestDef](#questdef)
+23. [ShopItemDef](#shopitemdef)
+24. [NftCollectionDef](#nftcollectiondef)
+25. [EffectDef](#effectdef)
 
 ### Audio System Tables
 25. [SoundDef](#sounddef)
@@ -618,6 +619,73 @@ Defines a crafting recipe that players can execute.
 | `completedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the craft succeeded |
 | `failedModalDefId` | string | No | — | References a [ModalDef](#modaldef) to display when the craft failed (falls back to `completedModalDefId`) |
 | `data` | JSON | No | `{}` | Freeform extra data |
+
+---
+
+## BundleDef
+
+Defines a **named, reusable outcome bundle** that can be referenced from any reward caller (MissionDef success/failure, LootboxDef outcomes, RecipeDef rewards, GiftDef reward specs, server-side effects) via a `bundle_ref` entry. Editing the BundleDef updates every place that references it — no need to touch each consumer separately.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier (e.g. `bundle.starter_pack`). |
+| `name` | string | Yes | — | Display name shown in the admin editor. |
+| `description` | string | No | — | Internal notes for designers. |
+| `enabled` | boolean | No | `true` | When `false`, every `bundle_ref` to this id resolves to an empty bundle (granting nothing). Useful for sunsetting content without deleting refs. |
+| `bundle` | JSON | Yes | `[]` | Array of outcome entries — same shape as the `rewards`/`bundle` arrays elsewhere. May contain currency/item rewards, flags, text, events, inline bundles, and even nested `bundle_ref` entries (cycles are detected and collapsed). |
+| `odds` | number | No | — | Default odds for the whole bundle when used by reference. Overridden by an inline `odds` on the `bundle_ref` entry. |
+| `pickMin` | number | No | — | Default minimum number of entries to randomly select when used by reference (omit for "grant all"). Overridden by inline `pickMin`. |
+| `pickMax` | number | No | — | Default maximum number of entries to randomly select. Must be `>= pickMin` if both are set. Overridden by inline `pickMax`. |
+| `data` | JSON | No | `{}` | Freeform extra data. |
+
+### Referencing a BundleDef from any reward caller
+
+Any outcome list that accepts entries (mission `success.rewards`, mission `failure.rewards`, lootbox `outcomes`, recipe `rewards.rewards`, gift `rewardSpec.entries`, top-level effects) can include a `bundle_ref` entry:
+
+```json
+{
+  "type": "bundle_ref",
+  "bundleDefId": "bundle.starter_pack",
+  "odds": 50,
+  "pickMin": 1,
+  "pickMax": 2,
+  "requirements": [{ "type": "keeper_level", "value": 5, "operator": "gte" }]
+}
+```
+
+At resolve time the server inlines the BundleDef's `bundle` array into the outcome tree, applying the inline overrides for `odds`/`pickMin`/`pickMax`/`requirements` (each defaults to the BundleDef's own value when omitted). Missing or disabled bundle ids resolve to an empty bundle (logged once per id). Cycles between bundles are detected and collapsed to an empty bundle.
+
+> **Gift claim caveat.** When a `bundle_ref` is used inside a [GiftDef](#giftdef) `rewardSpec`, the gift resolver honors `odds`, `pickMin`, and `pickMax` (with inline overrides) and is cycle-safe, but it **does not evaluate `requirements`** — gifts are granted at claim time without a player requirement context. Gate the gift itself (or the source that issues it) with requirements instead.
+
+**Worked example.** Define a "starter cache" bundle that grants 1-2 of three things, weighted:
+
+```json
+{
+  "id": "bundle.starter_pack",
+  "name": "Starter Pack",
+  "enabled": true,
+  "pickMin": 1,
+  "pickMax": 2,
+  "bundle": [
+    { "type": "currency", "key": "soft_arcanium", "min": 50, "max": 100, "odds": 100 },
+    { "type": "item", "key": "consumable_xp_potion_small", "min": 1, "max": 2, "odds": 60 },
+    { "type": "item", "key": "mat_iron_ore", "min": 2, "max": 5, "odds": 40 }
+  ]
+}
+```
+
+Then reference it from a MissionDef success outcome with one inline override (10× the bundle's draws on success):
+
+```json
+{
+  "rewards": [
+    { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 100 },
+    { "type": "bundle_ref", "bundleDefId": "bundle.starter_pack", "pickMax": 5 }
+  ]
+}
+```
+
+The mission grants the flat 100 currency, then inlines the starter pack with `pickMax` raised from `2` to `5` while keeping the bundle's other defaults (`pickMin: 1`, plus the per-entry odds). Updating `bundle.starter_pack` later changes the mission, the lootbox, the recipe, and the gift that all reference it — in one place.
 
 ---
 
@@ -2368,6 +2436,7 @@ The `rewards` array supports all of these entry types in any combination:
 | Text | `text` | Flavor text, one selected by weighted odds |
 | Event | `emitEvent` | Dispatches a server event (e.g. to create a gift) |
 | Bundle | (has `bundle` key) | Groups any mix of the above with shared odds |
+| Bundle Ref | `bundle_ref` (with `bundleDefId`) | Inlines a saved [BundleDef](#bundledef) at resolve time, with optional `odds` / `pickMin` / `pickMax` / `requirements` overrides |
 
 Every entry and bundle supports an optional `requirements` array that gates processing behind the same requirement types used elsewhere (keeper_level, flag, trait, team_size, etc.). If requirements are not met, the entry/bundle is silently skipped — no error, it simply does not drop. Requirements are checked before odds are rolled.
 

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import RefSelect from '../RefSelect';
+import { useState, useEffect } from 'react';
+import RefSelect, { ensureRefCache, getCachedRefRow } from '../RefSelect';
 import CollapsibleObject from '../CollapsibleObject';
 import RequirementsListEditor from './RequirementsListEditor';
 import {
@@ -101,6 +101,7 @@ function summary(entry: Outcome): string {
   if (kind === 'bundle') return `bundle (${entry.bundle?.length ?? 0} items)`;
   if (kind === 'pick_bundle') return `pick ${entry.pickMin ?? 1}-${entry.pickMax ?? 1} of ${entry.bundle?.length ?? 0}`;
   if (kind === 'bundle_ref') return `bundle ref → ${entry.bundleDefId || '?'}`;
+  // (the bundle_ref summary above is the fallback; live preview rendered via <BundleRefPreview/>)
   if (kind === 'currency') return `currency ${entry.key || '?'} ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'item') return `item ${entry.key || '?'} ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'entity_xp') return `entity_xp ${entry.min ?? 0}-${entry.max ?? 0}`;
@@ -108,6 +109,29 @@ function summary(entry: Outcome): string {
   if (kind === 'flag') return `flag ${entry.operation || 'set'} ${entry.key || '?'}`;
   if (kind === 'text') return `text "${(entry.message || '').slice(0, 30)}"`;
   return 'outcome';
+}
+
+function BundleRefPreview({ id }: { id: string | undefined }) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!id) return;
+    const cached = getCachedRefRow('BundleDef', id);
+    if (cached) return;
+    let mounted = true;
+    ensureRefCache('BundleDef').then(() => { if (mounted) force(n => n + 1); });
+    return () => { mounted = false; };
+  }, [id]);
+  if (!id) return <>bundle ref → ?</>;
+  const row = getCachedRefRow('BundleDef', id);
+  if (!row) return <>bundle ref → {id}</>;
+  const entries = Array.isArray(row.bundle) ? row.bundle.length : 0;
+  const pickMin = row.pickMin;
+  const pickMax = row.pickMax;
+  const pickStr = (pickMin != null || pickMax != null)
+    ? ` — ${pickMin ?? 1}-${pickMax ?? pickMin ?? 1} of ${entries} pick`
+    : '';
+  const name = row.name ? ` (${row.name})` : '';
+  return <>bundle ref → {id}{name} — {entries} entries{pickStr}</>;
 }
 
 function MinMaxOdds({ entry, onChange, showOdds = true, hasRangeError }: { entry: Outcome; onChange: (e: Outcome) => void; showOdds?: boolean; hasRangeError?: boolean }) {
@@ -186,7 +210,9 @@ function OutcomeEntryEditor({
           {collapsed ? '▶' : '▼'}
         </button>
         <span style={{ flex: 1, color: '#a78bfa', fontSize: 12, fontWeight: 600 }}>
-          {summary(entry)}
+          {detectKind(entry) === 'bundle_ref'
+            ? <BundleRefPreview id={entry.bundleDefId} />
+            : summary(entry)}
         </span>
         <button
           type="button"

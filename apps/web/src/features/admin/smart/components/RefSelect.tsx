@@ -3,6 +3,31 @@ import { adminApi } from '../../adminApi';
 import { TABLE_API_KEYS } from '../tableSchemas';
 
 const refCache = new Map<string, any[]>();
+const inflight = new Map<string, Promise<any[]>>();
+
+export function getCachedRefRow(refTable: string, id: string): any | undefined {
+  const apiKey = TABLE_API_KEYS[refTable] ?? refTable;
+  const rows = refCache.get(apiKey);
+  if (!rows) return undefined;
+  return rows.find((r: any) => r.id === id);
+}
+
+export function ensureRefCache(refTable: string): Promise<any[]> {
+  const apiKey = TABLE_API_KEYS[refTable] ?? refTable;
+  if (refCache.has(apiKey)) return Promise.resolve(refCache.get(apiKey)!);
+  if (inflight.has(apiKey)) return inflight.get(apiKey)!;
+  const p = adminApi.list(apiKey).then((data: any[]) => {
+    refCache.set(apiKey, data);
+    inflight.delete(apiKey);
+    return data;
+  }).catch(() => {
+    refCache.set(apiKey, []);
+    inflight.delete(apiKey);
+    return [];
+  });
+  inflight.set(apiKey, p);
+  return p;
+}
 
 export function invalidateRefCache(apiKeyOrTable?: string) {
   if (!apiKeyOrTable) {
