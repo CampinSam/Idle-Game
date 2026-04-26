@@ -173,14 +173,7 @@ export class GameRulesService {
     return Math.random() * 100 < o;
   }
 
-  /**
-   * Walks an outcome tree and collects every bundleDefId referenced (including
-   * nested refs reachable via the loaded BundleDefs themselves). Returns a Map
-   * of id → BundleDef row so synchronous expansion can run without further IO.
-   *
-   * Cycle-safe: only visits each BundleDef once. Disabled or missing defs are
-   * still placed in the map (as null) so callers can detect and warn.
-   */
+  // Loads every BundleDef transitively referenced from `items`.
   async loadBundleDefs(items: any[]): Promise<Map<string, any>> {
     const out = new Map<string, any>();
     if (!Array.isArray(items)) return out;
@@ -221,18 +214,8 @@ export class GameRulesService {
     return out;
   }
 
-  /**
-   * Synchronously rewrites a (possibly nested) outcome tree, replacing every
-   * `{type:'bundle_ref', bundleDefId, ...overrides}` entry with an inline
-   * `{bundle, odds, pickMin, pickMax, requirements}` whose contents come from
-   * the matching BundleDef in `defs`. Inline overrides take precedence over
-   * the def's defaults; otherwise the def's defaults are used.
-   *
-   * - Missing or disabled BundleDefs collapse to an empty bundle (no entries)
-   *   and are logged once.
-   * - Cycles are broken by tracking ids on the recursion stack; a cycle
-   *   collapses the offending ref to an empty bundle.
-   */
+  // Rewrites bundle_ref entries to inline bundles using `defs`; overrides win.
+  // Missing/disabled defs and cycles collapse to empty bundles.
   expandBundleRefs(items: any[], defs: Map<string, any>, stack: Set<string> = new Set()): any[] {
     if (!Array.isArray(items)) return items;
     return items.map((item) => this.expandEntry(item, defs, stack));

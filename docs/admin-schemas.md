@@ -655,7 +655,7 @@ Any outcome list that accepts entries (mission `success.rewards`, mission `failu
 
 At resolve time the server inlines the BundleDef's `bundle` array into the outcome tree, applying the inline overrides for `odds`/`pickMin`/`pickMax`/`requirements` (each defaults to the BundleDef's own value when omitted). Missing or disabled bundle ids resolve to an empty bundle (logged once per id). Cycles between bundles are detected and collapsed to an empty bundle.
 
-> **Gift claim caveat.** When a `bundle_ref` is used inside a [GiftDef](#giftdef) `rewardSpec`, the gift resolver honors `odds`, `pickMin`, and `pickMax` (with inline overrides) and is cycle-safe, but it **does not evaluate `requirements`** — gifts are granted at claim time without a player requirement context. Gate the gift itself (or the source that issues it) with requirements instead.
+> **Gift claim caveat.** When a `bundle_ref` is used inside a [GiftDef](#giftdef) `rewardSpec`, requirements are evaluated against an **empty player context** (no `user` fields, no `userFlags`). Conditional entries (anything with a `requirements` clause that depends on the player) will be skipped. Gate the gift itself (or the source that issues it) with player-aware requirements; reserve `bundle_ref` requirements for unconditional or globally-true checks.
 
 **Worked example.** Define a "starter cache" bundle that grants 1-2 of three things, weighted:
 

@@ -1,20 +1,9 @@
 import { Logger } from '@nestjs/common';
-
-/**
- * Unit tests for the BundleDef resolution layer (`expandBundleRefs` + helpers)
- * in GameRulesService. Exercises the synchronous expansion logic in isolation:
- * a fresh service instance is constructed with stubbed dependencies, then its
- * private `expandBundleRefs` method is invoked directly with a hand-built
- * `defs` map. This avoids needing a database while still pinning down the
- * contract that callers (mission, lootbox, recipe, gift, effects) rely on.
- */
-
 import { GameRulesService } from './game-rules.service';
 
 function makeService(): GameRulesService {
   const fakePrisma: any = { user: { findUnique: jest.fn() }, bundleDef: { findMany: jest.fn() } };
   const svc = new GameRulesService(fakePrisma);
-  // Silence the warn() calls from missing/disabled refs and cycle detection.
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return svc;
 }

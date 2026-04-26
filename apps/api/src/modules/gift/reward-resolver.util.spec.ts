@@ -1,9 +1,3 @@
-/**
- * Unit tests for the gift reward resolver — specifically the `bundle_ref` code
- * path that delegates expansion to GameRulesService.expandBundleRefs (the
- * single shared expansion path) and then locally executes side effects per
- * resulting outcome entry.
- */
 import { resolveRewardSpec } from './reward-resolver.util';
 import { GameRulesService } from '../game-rules/game-rules.service';
 
@@ -95,8 +89,6 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
       f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
       { type: 'bundle_ref', bundleDefId: 'b.cycle' }, 'gift-1',
     );
-    // expandBundleRefs collapses the cycled inner ref to an empty bundle (with a warning log);
-    // processOutcomeBundle then iterates that empty bundle → zero grants.
     expect(f.credited).toEqual([]);
     expect(grants).toEqual([]);
   });
@@ -204,6 +196,47 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
       { type: 'bundle_ref', bundleDefId: 'outer' }, 'gift-1',
     );
     expect(f.credited.length).toBe(1);
+  });
+
+  it('honors a 50% inline odds override deterministically (pass when random < 0.5, fail when ≥ 0.5)', async () => {
+    const f1 = makeFakes();
+    f1.bundleDefs.set('b50', { id: 'b50', enabled: true,
+      bundle: [{ type: 'currency', key: 'gold', min: 1, max: 1, odds: 100 }] });
+    (Math.random as jest.Mock).mockReturnValue(0.4);
+    await resolveRewardSpec(
+      f1.prisma, f1.currencyService, f1.inventoryService, f1.gameRules, 'user-1',
+      { type: 'bundle_ref', bundleDefId: 'b50', odds: 50 }, 'gift-1',
+    );
+    expect(f1.credited).toEqual([{ currencyId: 'gold', amount: 1 }]);
+
+    const f2 = makeFakes();
+    f2.bundleDefs.set('b50', { id: 'b50', enabled: true,
+      bundle: [{ type: 'currency', key: 'gold', min: 1, max: 1, odds: 100 }] });
+    (Math.random as jest.Mock).mockReturnValue(0.6);
+    await resolveRewardSpec(
+      f2.prisma, f2.currencyService, f2.inventoryService, f2.gameRules, 'user-1',
+      { type: 'bundle_ref', bundleDefId: 'b50', odds: 50 }, 'gift-1',
+    );
+    expect(f2.credited).toEqual([]);
+  });
+
+  it('gates entries with requirements out of gift claims (empty user/flags context)', async () => {
+    const f = makeFakes();
+    f.bundleDefs.set('b.gated', {
+      id: 'b.gated', enabled: true,
+      bundle: [
+        { type: 'currency', key: 'free', min: 1, max: 1, odds: 100 },
+        {
+          type: 'currency', key: 'gated', min: 1, max: 1, odds: 100,
+          requirements: [{ type: 'flag', key: 'has_pass', value: true }],
+        },
+      ],
+    });
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'bundle_ref', bundleDefId: 'b.gated' }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'free', amount: 1 }]);
   });
 
   it('still grants legacy {type:"bundle", entries:[]} specs unchanged', async () => {
