@@ -559,6 +559,7 @@ Defines a hierarchical mission category for grouping and filtering missions in t
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for this category to appear (see [Visibility Requirements](#visibility-requirements)) |
 | `enabled` | boolean | No | true | Whether this category is currently active |
 | `sortOrder` | number | No | 0 | Display order (lower = first) |
+| `inlineOnly` | boolean | No | false | If true, this category is treated as a leaf — players cannot click into it. Its missions can only be launched through the inline pill buttons on the parent category card. |
 | `data` | JSON | No | `{}` | Freeform extra data |
 
 ---

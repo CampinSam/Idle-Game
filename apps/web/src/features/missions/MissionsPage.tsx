@@ -176,6 +176,16 @@ export default function MissionsPage() {
     catch {}
   }, [categoryStack]);
 
+  useEffect(() => {
+    if (!missionCategoryDefs.length) return;
+    const topId = categoryStack[categoryStack.length - 1];
+    if (!topId) return;
+    const topDef = missionCategoryDefs.find((c: any) => c.id === topId);
+    if (topDef?.inlineOnly && !selectedMission) {
+      setCategoryStack(prev => prev.slice(0, -1));
+    }
+  }, [categoryStack, missionCategoryDefs, selectedMission]);
+
   const repeatMissionDefId = searchParams.get('repeat');
 
   useEffect(() => {
@@ -209,7 +219,7 @@ export default function MissionsPage() {
   const currentCategoryId = categoryStack[categoryStack.length - 1] ?? null;
 
   const allCategories = useMemo(() => {
-    const catMap = new Map<string, { id: string; name: string; parentId: string | null; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number; hasChildren: boolean }>();
+    const catMap = new Map<string, { id: string; name: string; parentId: string | null; display: any; tags: any[]; sortOrder: number; locked: boolean; enabled: boolean; count: number; hasChildren: boolean; inlineOnly: boolean }>();
 
     for (const catDef of missionCategoryDefs) {
       const defs = missionDefs.filter((d: any) => d.missionCategoryDefId === catDef.id);
@@ -226,6 +236,7 @@ export default function MissionsPage() {
         enabled: catDef.enabled ?? true,
         count: defs.length,
         hasChildren,
+        inlineOnly: catDef.inlineOnly === true,
       });
     }
 
@@ -301,6 +312,8 @@ export default function MissionsPage() {
   };
 
   const pushCategory = (catId: string) => {
+    const target = allCategories.find(c => c.id === catId);
+    if (target?.inlineOnly) return;
     setCategoryStack(prev => [...prev, catId]);
     setSelectedMission(null);
     setSelectedEntities([]);
@@ -344,6 +357,9 @@ export default function MissionsPage() {
     setSelectedEntities([]);
     setShowEntityPicker(false);
     setActiveSlotIndex(null);
+    if (currentCat?.inlineOnly) {
+      setCategoryStack(prev => prev.slice(0, -1));
+    }
   };
 
   const categoryMissions = currentCategoryId
@@ -463,21 +479,23 @@ export default function MissionsPage() {
                 const display = cat.display;
                 const unavailable = cat.locked || !cat.enabled;
                 const inlineMissions = getInlineMissions(cat.id);
+                const navigable = !cat.inlineOnly;
                 return (
                   <div
                     key={cat.id}
-                    className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''}`}
+                    className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''} ${cat.inlineOnly ? 'mp-inline-only' : ''}`}
                     style={{
                       backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
                       '--card-bg-image': bgImageCss(display.backgroundImage),
                       borderColor: display.borderColor,
+                      cursor: navigable && !unavailable ? undefined : 'default',
                     } as React.CSSProperties}
-                    onClick={() => !unavailable && pushCategory(cat.id)}
+                    onClick={() => navigable && !unavailable && pushCategory(cat.id)}
                   >
                     <div className="mp-card-content">
                       <div className="mp-card-header">
                         <h3 className="mp-card-title">{cat.name}</h3>
-                        {cat.hasChildren && <span className="mp-cat-chevron">›</span>}
+                        {cat.hasChildren && navigable && <span className="mp-cat-chevron">›</span>}
                       </div>
                       {cat.tags.length > 0 && renderTags(cat.tags)}
                       {cat.locked && <div className="mp-lock-reason">🔒 Requirements not met</div>}
@@ -863,21 +881,23 @@ export default function MissionsPage() {
           const display = cat.display;
           const unavailable = cat.locked || !cat.enabled;
           const inlineMissions = getInlineMissions(cat.id);
+          const navigable = !cat.inlineOnly;
           return (
             <div
               key={cat.id}
-              className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''}`}
+              className={`mp-mission-card ${cat.locked ? 'mp-locked' : ''} ${!cat.enabled ? 'mp-disabled' : ''} ${cat.inlineOnly ? 'mp-inline-only' : ''}`}
               style={{
                 backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
                 '--card-bg-image': bgImageCss(display.backgroundImage),
                 borderColor: display.borderColor,
+                cursor: navigable && !unavailable ? undefined : 'default',
               } as React.CSSProperties}
-              onClick={() => !unavailable && pushCategory(cat.id)}
+              onClick={() => navigable && !unavailable && pushCategory(cat.id)}
             >
               <div className="mp-card-content">
                 <div className="mp-card-header">
                   <h3 className="mp-card-title">{cat.name}</h3>
-                  {cat.hasChildren && <span className="mp-cat-chevron">›</span>}
+                  {cat.hasChildren && navigable && <span className="mp-cat-chevron">›</span>}
                 </div>
                 {cat.tags.length > 0 && renderTags(cat.tags)}
                 {cat.locked && (

@@ -153,6 +153,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
       enabled: { type: 'boolean', default: true, description: 'Is active?' },
       sortOrder: { type: 'number', default: 0, description: 'Display order' },
+      inlineOnly: { type: 'boolean', default: false, description: 'Treat as a leaf — disable drill-in; missions can only be launched via inline pills on the parent card' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     },
   },

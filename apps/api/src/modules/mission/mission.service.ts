@@ -110,6 +110,7 @@ export class MissionService {
         visibilityRequirements: c.visibilityRequirements ?? [],
         enabled: c.enabled ?? true,
         sortOrder: c.sortOrder,
+        inlineOnly: c.inlineOnly ?? false,
         data: c.data,
         displayDef: c.displayDef ? {
           id: c.displayDef.id,

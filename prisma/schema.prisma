@@ -537,6 +537,7 @@ model MissionCategoryDef {
   visibilityRequirements   Json        @default("[]")
   enabled                  Boolean     @default(true)
   sortOrder                Int         @default(0)
+  inlineOnly               Boolean     @default(false)
   data                     Json        @default("{}")
 
   createdAt                DateTime    @default(now())
