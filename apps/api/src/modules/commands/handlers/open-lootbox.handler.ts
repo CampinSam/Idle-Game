@@ -69,7 +69,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     let anyFlags = false;
 
     for (let i = 0; i < rollCount; i++) {
-      const { resolved, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomes, reqContext, rng);
+      const { resolved, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomes, reqContext, rng);
       if (resolvedFlags.length > 0) anyFlags = true;
       for (const { entry, amount } of resolved) {
         if (entry.type === 'currency') {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import RefSelect from '../RefSelect';
 import CollapsibleObject from '../CollapsibleObject';
+import RequirementsListEditor from './RequirementsListEditor';
 import {
   containerStyle,
   entryCardStyle,
@@ -26,6 +27,7 @@ import {
 type OutcomeKind =
   | 'bundle'
   | 'pick_bundle'
+  | 'bundle_ref'
   | 'currency'
   | 'item'
   | 'entity_xp'
@@ -36,6 +38,7 @@ type OutcomeKind =
 interface Outcome {
   type?: string;
   bundle?: any[];
+  bundleDefId?: string;
   odds?: number;
   pickMin?: number;
   pickMax?: number;
@@ -55,6 +58,7 @@ interface ListProps {
 }
 
 function detectKind(entry: Outcome): OutcomeKind {
+  if (entry?.type === 'bundle_ref') return 'bundle_ref';
   if (entry && Array.isArray(entry.bundle)) {
     if (entry.pickMin !== undefined || entry.pickMax !== undefined) return 'pick_bundle';
     return 'bundle';
@@ -75,6 +79,8 @@ function defaultForKind(kind: OutcomeKind): Outcome {
       return { bundle: [], odds: 1 };
     case 'pick_bundle':
       return { bundle: [], odds: 1, pickMin: 1, pickMax: 1 };
+    case 'bundle_ref':
+      return { type: 'bundle_ref', bundleDefId: '' };
     case 'currency':
       return { type: 'currency', key: '', min: 1, max: 10, odds: 1 };
     case 'item':
@@ -94,6 +100,7 @@ function summary(entry: Outcome): string {
   const kind = detectKind(entry);
   if (kind === 'bundle') return `bundle (${entry.bundle?.length ?? 0} items)`;
   if (kind === 'pick_bundle') return `pick ${entry.pickMin ?? 1}-${entry.pickMax ?? 1} of ${entry.bundle?.length ?? 0}`;
+  if (kind === 'bundle_ref') return `bundle ref → ${entry.bundleDefId || '?'}`;
   if (kind === 'currency') return `currency ${entry.key || '?'} ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'item') return `item ${entry.key || '?'} ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'entity_xp') return `entity_xp ${entry.min ?? 0}-${entry.max ?? 0}`;
@@ -210,6 +217,7 @@ function OutcomeEntryEditor({
               >
                 <option value="bundle">bundle</option>
                 <option value="pick_bundle">pick bundle</option>
+                <option value="bundle_ref">bundle ref</option>
                 <option value="currency">currency</option>
                 <option value="item">item</option>
                 <option value="entity_xp">entity_xp</option>
@@ -299,6 +307,54 @@ function OutcomeEntryEditor({
               </div>
             )}
 
+            {kind === 'bundle_ref' && (
+              <>
+                <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 200 }}>
+                  <span style={labelStyle}>bundle def</span>
+                  <div style={errs.bundleDefId ? errorWrapperStyle : undefined}>
+                    <RefSelect
+                      refTable="BundleDef"
+                      value={entry.bundleDefId ?? null}
+                      onChange={v => onChange({ ...entry, bundleDefId: v ?? '' })}
+                      placeholder="Select Bundle..."
+                    />
+                  </div>
+                  {errs.bundleDefId && <span style={errorTextStyle}>{errs.bundleDefId}</span>}
+                </div>
+                <div style={fieldGroupStyle}>
+                  <span style={labelStyle}>odds (override)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={entry.odds ?? ''}
+                    placeholder="(use def)"
+                    onChange={e => onChange({ ...entry, odds: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    style={{ ...numberInputStyle, width: '100%' }}
+                  />
+                </div>
+                <div style={fieldGroupStyle}>
+                  <span style={labelStyle}>pickMin (override)</span>
+                  <input
+                    type="number"
+                    value={entry.pickMin ?? ''}
+                    placeholder="(use def)"
+                    onChange={e => onChange({ ...entry, pickMin: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    style={{ ...numberInputStyle, width: '100%', borderColor: errs.pickRange ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined) }}
+                  />
+                </div>
+                <div style={fieldGroupStyle}>
+                  <span style={labelStyle}>pickMax (override)</span>
+                  <input
+                    type="number"
+                    value={entry.pickMax ?? ''}
+                    placeholder="(use def)"
+                    onChange={e => onChange({ ...entry, pickMax: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    style={{ ...numberInputStyle, width: '100%', borderColor: errs.pickRange ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined) }}
+                  />
+                </div>
+              </>
+            )}
+
             {kind === 'pick_bundle' && (
               <>
                 <div style={fieldGroupStyle}>
@@ -365,6 +421,21 @@ function OutcomeEntryEditor({
               />
             </div>
           )}
+
+          {kind === 'bundle_ref' && (
+            <div style={{ borderLeft: '2px solid #2a2a4e', marginLeft: 4, paddingLeft: 10 }}>
+              <span style={{ ...labelStyle, display: 'block', marginBottom: 6 }}>requirements (optional)</span>
+              <RequirementsListEditor
+                value={Array.isArray(entry.requirements) ? entry.requirements : []}
+                onChange={v => {
+                  const next: any = { ...entry };
+                  if (Array.isArray(v) && v.length > 0) next.requirements = v;
+                  else delete next.requirements;
+                  onChange(next);
+                }}
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -404,6 +475,7 @@ function OutcomeArrayEditor({ items, onChange }: { items: Outcome[]; onChange: (
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button type="button" style={addButtonStyle} onClick={() => add('bundle')}>+ bundle</button>
         <button type="button" style={addButtonStyle} onClick={() => add('pick_bundle')}>+ pick bundle</button>
+        <button type="button" style={addButtonStyle} onClick={() => add('bundle_ref')}>+ bundle ref</button>
         <button type="button" style={addButtonStyle} onClick={() => add('currency')}>+ currency</button>
         <button type="button" style={addButtonStyle} onClick={() => add('item')}>+ item</button>
         <button type="button" style={addButtonStyle} onClick={() => add('entity_xp')}>+ entity_xp</button>

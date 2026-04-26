@@ -218,7 +218,7 @@ export class CraftingService {
 
     const seed = (job.data as { seed?: string })?.seed ?? jobId;
     const rng = new SeededRng(seed);
-    const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
 
     for (const { entry, amount } of resolved) {
       if (entry.type === 'emitEvent') {

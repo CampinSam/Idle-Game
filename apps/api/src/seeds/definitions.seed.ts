@@ -55,6 +55,7 @@ async function upsertManyForce(prisma: any, model: string, rows: any[], transfor
 export async function seedDefinitions(prisma: any) {
   const defs = loadJson('definitions.json');
   const itemDefs = loadJson('item-defs.json');
+  const bundleDefs = loadJson('bundle-defs.json');
 
   if (!defs) {
     logger.error('Could not load definitions.json — skipping definition seed');
@@ -150,6 +151,10 @@ export async function seedDefinitions(prisma: any) {
 
   if (defs.lootboxDefs) {
     await upsertManyForce(prisma, 'lootboxDef', defs.lootboxDefs);
+  }
+
+  if (Array.isArray(bundleDefs) && bundleDefs.length > 0) {
+    await upsertManyForce(prisma, 'bundleDef', bundleDefs);
   }
 
   if (defs.checkInDefs) {

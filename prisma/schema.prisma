@@ -924,6 +924,22 @@ model LootboxDef {
   @@map("lootbox_defs")
 }
 
+model BundleDef {
+  id          String   @id
+  name        String
+  description String?
+  version     Int      @default(1)
+  bundle      Json     @default("[]")
+  odds        Float?
+  pickMin     Int?
+  pickMax     Int?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("bundle_defs")
+}
+
 // ═══════════════════════════════════════════════════
 // PLAYER TELEMETRY
 // ═══════════════════════════════════════════════════

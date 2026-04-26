@@ -67,6 +67,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Server-Authoritative Meta System**: Provides game enums and rules via API.
 - **Player Telemetry System**: Records player events for analytics.
 - **Lootbox System**: Defines weighted outcome pools and manages item-based lootbox openings.
+- **Reusable Bundle Definitions (`BundleDef`)**: Saved, named outcome bundles that any reward-bearing definition (missions, lootboxes, recipes, gifts, effects) can reference via a `{ type: 'bundle_ref', bundleDefId }` outcome entry. References may override `odds`, `pickMin`, `pickMax`, and `requirements` per-usage. `GameRulesService.resolveOutcomesAsync` preloads referenced defs and expands them recursively (cycle-safe; missing/disabled refs resolve to empty + log warning) before normal resolution. Edited via the standard smart admin editor.
 - **Daily Check-In System**: Configurable daily check-in tracks with streaks and rewards.
 - **Quest System**: Defines objectives based on player telemetry, tracks progress, and manages rewards.
 - **Store System**: `ShopItemDef` DB model for store items with flexible costs and contents. Frontend at `/store` with tabs and limited offer timers.

@@ -447,6 +447,7 @@ export class AdminService {
       eventDefinition: (this.prisma as any).eventDefinition,
       giftDef: (this.prisma as any).giftDef,
       lootboxDef: (this.prisma as any).lootboxDef,
+      bundleDef: (this.prisma as any).bundleDef,
       checkInDef: (this.prisma as any).checkInDef,
       questDef: (this.prisma as any).questDef,
       shopItemDef: (this.prisma as any).shopItemDef,

@@ -96,11 +96,13 @@ export interface OutcomeErrors {
   key?: string;
   message?: string;
   bundle?: string;
+  bundleDefId?: string;
   pickRange?: string;
   range?: string;
 }
 
 function detectOutcomeKind(entry: any): string {
+  if (entry?.type === 'bundle_ref') return 'bundle_ref';
   if (entry && Array.isArray(entry.bundle)) {
     if (entry.pickMin !== undefined || entry.pickMax !== undefined) return 'pick_bundle';
     return 'bundle';
@@ -141,6 +143,20 @@ export function validateOutcome(o: any): OutcomeErrors {
     const max = Number(o?.pickMax ?? 0);
     if (!(min >= 1) || !(max >= min)) {
       errs.pickRange = 'invalid pickMin/pickMax';
+    }
+  }
+
+  if (kind === 'bundle_ref') {
+    if (isBlank(o?.bundleDefId)) {
+      errs.bundleDefId = 'bundle def required';
+    }
+    // Range check for overrides: only validate when both are explicitly set
+    if (o?.pickMin !== undefined && o?.pickMax !== undefined) {
+      const min = Number(o.pickMin);
+      const max = Number(o.pickMax);
+      if (!isNaN(min) && !isNaN(max) && (min < 0 || max < min)) {
+        errs.pickRange = 'pickMax must be ≥ pickMin (and ≥ 0)';
+      }
     }
   }
 

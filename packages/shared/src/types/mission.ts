@@ -43,9 +43,33 @@ export type OutcomeEntry = RewardEntry | EffectEntry | TextEntry;
 export interface OutcomeBundle {
   bundle: OutcomeOrBundle[];
   odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  requirements?: Requirement[];
 }
 
-export type OutcomeOrBundle = OutcomeEntry | OutcomeBundle;
+export interface BundleRefEntry {
+  type: 'bundle_ref';
+  bundleDefId: string;
+  odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  requirements?: Requirement[];
+}
+
+export interface BundleDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  version: number;
+  bundle: OutcomeOrBundle[];
+  odds?: number;
+  pickMin?: number;
+  pickMax?: number;
+  enabled: boolean;
+}
+
+export type OutcomeOrBundle = OutcomeEntry | OutcomeBundle | BundleRefEntry;
 
 export interface OutcomeBlock {
   rewards: OutcomeOrBundle[];

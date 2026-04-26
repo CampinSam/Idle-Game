@@ -606,9 +606,13 @@
         "bundle": {
           "type": "array",
           "items": {
-            "$ref": "#/complexTypes/RewardEntry"
+            "oneOf": [
+              { "$ref": "#/complexTypes/RewardEntry" },
+              { "$ref": "#/complexTypes/BundleEntry" },
+              { "$ref": "#/complexTypes/BundleRefEntry" }
+            ]
           },
-          "description": "Nested reward entries"
+          "description": "Nested reward entries (may include nested bundles and bundle_refs)"
         },
         "odds": {
           "type": "number",
@@ -633,6 +637,43 @@
         }
       }
     },
+    "BundleRefEntry": {
+      "description": "A reference to a saved BundleDef. At resolution time the server inlines the referenced bundle's contents and applies any inline overrides. Behaves exactly like an inline bundle whose entries came from the BundleDef.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "bundle_ref",
+          "required": true,
+          "description": "Discriminator — must be the literal string 'bundle_ref'"
+        },
+        "bundleDefId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the referenced BundleDef. Missing or disabled refs resolve to nothing (logged warning)."
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "description": "Override the BundleDef's default odds for this usage. If omitted, uses the def's odds (or 100)."
+        },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Override the BundleDef's default pickMin for this usage. If omitted, uses the def's pickMin."
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Override the BundleDef's default pickMax for this usage. If omitted, uses the def's pickMax."
+        },
+        "requirements": {
+          "type": "Requirements",
+          "default": [],
+          "description": "Conditions gating this reference (evaluated before expansion)"
+        }
+      }
+    },
     "OutcomeBlock": {
       "description": "Outcome definition containing a rewards array. Used for mission success/failure.",
       "properties": {
@@ -640,15 +681,12 @@
           "type": "array",
           "items": {
             "oneOf": [
-              {
-                "$ref": "#/complexTypes/RewardEntry"
-              },
-              {
-                "$ref": "#/complexTypes/BundleEntry"
-              }
+              { "$ref": "#/complexTypes/RewardEntry" },
+              { "$ref": "#/complexTypes/BundleEntry" },
+              { "$ref": "#/complexTypes/BundleRefEntry" }
             ]
           },
-          "description": "Array of reward entries and/or bundles"
+          "description": "Array of reward entries, bundles, and/or bundle_refs"
         }
       },
       "defaults": {
@@ -3053,10 +3091,14 @@
         "outcomes": {
           "type": "array",
           "items": {
-            "$ref": "#/complexTypes/RewardEntry"
+            "oneOf": [
+              { "$ref": "#/complexTypes/RewardEntry" },
+              { "$ref": "#/complexTypes/BundleEntry" },
+              { "$ref": "#/complexTypes/BundleRefEntry" }
+            ]
           },
           "default": [],
-          "description": "Weighted outcome pool (same format as MissionDef rewards)"
+          "description": "Weighted outcome pool (same format as MissionDef rewards). May contain bundles and bundle_refs."
         },
         "rollCount": {
           "type": "integer",
@@ -3066,6 +3108,65 @@
         "enabled": {
           "type": "boolean",
           "default": true
+        }
+      }
+    },
+    "BundleDef": {
+      "description": "Reusable bundle of outcomes that can be referenced by any RewardEntry list via a {type:'bundle_ref', bundleDefId} entry. Lets a single bundle (e.g. 'Starter Pack') be defined once and reused across missions, lootboxes, recipes, gifts, and effects. References may override odds, pickMin, pickMax, and requirements at the call site.",
+      "prismaModel": "BundleDef",
+      "tableName": "bundle_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what the bundle contains and when it's used"
+        },
+        "version": {
+          "type": "integer",
+          "default": 1
+        },
+        "bundle": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/complexTypes/RewardEntry" },
+              { "$ref": "#/complexTypes/BundleEntry" },
+              { "$ref": "#/complexTypes/BundleRefEntry" }
+            ]
+          },
+          "default": [],
+          "description": "Outcome entries (same shape as MissionDef rewards / LootboxDef outcomes). May contain nested bundles and bundle_refs."
+        },
+        "odds": {
+          "type": "number",
+          "min": 0,
+          "max": 100,
+          "description": "Default odds applied when this bundle is referenced without an inline override"
+        },
+        "pickMin": {
+          "type": "integer",
+          "min": 0,
+          "description": "Default pickMin (entries-to-pick lower bound) applied when not overridden inline"
+        },
+        "pickMax": {
+          "type": "integer",
+          "min": 0,
+          "description": "Default pickMax (entries-to-pick upper bound) applied when not overridden inline"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled bundles are skipped at resolution (no entries granted)"
         }
       }
     },
@@ -3668,6 +3769,7 @@
     "EventDefinition",
     "GiftDef",
     "LootboxDef",
+    "BundleDef",
     "CheckInDef",
     "QuestDef",
     "ShopItemDef",

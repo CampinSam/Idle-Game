@@ -452,7 +452,7 @@ export class MissionService {
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
     const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
 
-    const { resolved, texts: rolledTexts, flags: resolvedFlags } = this.gameRules.resolveOutcomes(outcomeItems, reqContext, rng);
+    const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
 
     const rewardMod = this.effectService.resolve(playerEffects, EffectCategory.REWARD_MULTIPLIER);
     const xpMod = this.effectService.resolve(playerEffects, EffectCategory.XP_MULTIPLIER);

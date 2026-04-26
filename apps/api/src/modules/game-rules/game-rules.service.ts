@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { EntityTraits } from '@derp/shared';
 
@@ -25,6 +25,8 @@ export interface RequirementContext {
 
 @Injectable()
 export class GameRulesService {
+  private readonly logger = new Logger(GameRulesService.name);
+
   constructor(private prisma: PrismaService) {}
 
   compareValues(actual: number, target: number, operator: string): boolean {
@@ -170,6 +172,126 @@ export class GameRulesService {
     if (rng) return rng.chance(o / 100);
     return Math.random() * 100 < o;
   }
+
+  /**
+   * Walks an outcome tree and collects every bundleDefId referenced (including
+   * nested refs reachable via the loaded BundleDefs themselves). Returns a Map
+   * of id → BundleDef row so synchronous expansion can run without further IO.
+   *
+   * Cycle-safe: only visits each BundleDef once. Disabled or missing defs are
+   * still placed in the map (as null) so callers can detect and warn.
+   */
+  async loadBundleDefs(items: any[]): Promise<Map<string, any>> {
+    const out = new Map<string, any>();
+    if (!Array.isArray(items)) return out;
+
+    const collectIds = (entries: any[], into: Set<string>) => {
+      for (const e of entries) {
+        if (!e || typeof e !== 'object') continue;
+        if (e.type === 'bundle_ref' && typeof e.bundleDefId === 'string') {
+          into.add(e.bundleDefId);
+        } else if (Array.isArray(e.bundle)) {
+          collectIds(e.bundle, into);
+        }
+      }
+    };
+
+    const pending = new Set<string>();
+    collectIds(items, pending);
+
+    while (pending.size > 0) {
+      const ids = Array.from(pending);
+      pending.clear();
+      const rows = await (this.prisma as any).bundleDef.findMany({ where: { id: { in: ids } } });
+      const byId = new Map<string, any>(rows.map((r: any) => [r.id, r]));
+      for (const id of ids) {
+        if (out.has(id)) continue;
+        const row = byId.get(id) ?? null;
+        out.set(id, row);
+        if (row && Array.isArray(row.bundle)) {
+          const next = new Set<string>();
+          collectIds(row.bundle, next);
+          for (const nid of next) {
+            if (!out.has(nid)) pending.add(nid);
+          }
+        }
+      }
+    }
+
+    return out;
+  }
+
+  /**
+   * Synchronously rewrites a (possibly nested) outcome tree, replacing every
+   * `{type:'bundle_ref', bundleDefId, ...overrides}` entry with an inline
+   * `{bundle, odds, pickMin, pickMax, requirements}` whose contents come from
+   * the matching BundleDef in `defs`. Inline overrides take precedence over
+   * the def's defaults; otherwise the def's defaults are used.
+   *
+   * - Missing or disabled BundleDefs collapse to an empty bundle (no entries)
+   *   and are logged once.
+   * - Cycles are broken by tracking ids on the recursion stack; a cycle
+   *   collapses the offending ref to an empty bundle.
+   */
+  expandBundleRefs(items: any[], defs: Map<string, any>, stack: Set<string> = new Set()): any[] {
+    if (!Array.isArray(items)) return items;
+    return items.map((item) => this.expandEntry(item, defs, stack));
+  }
+
+  private expandEntry(item: any, defs: Map<string, any>, stack: Set<string>): any {
+    if (!item || typeof item !== 'object') return item;
+
+    if (item.type === 'bundle_ref') {
+      const id = item.bundleDefId;
+      const def = id ? defs.get(id) : null;
+      if (!def || !def.enabled) {
+        if (id && !this.warnedMissingBundleIds.has(id)) {
+          this.warnedMissingBundleIds.add(id);
+          this.logger.warn(`bundle_ref to missing or disabled BundleDef "${id}" — resolved as empty bundle`);
+        }
+        return { bundle: [], requirements: item.requirements };
+      }
+      if (stack.has(id)) {
+        this.logger.warn(`bundle_ref cycle detected at BundleDef "${id}" — collapsing to empty bundle`);
+        return { bundle: [], requirements: item.requirements };
+      }
+      const nextStack = new Set(stack);
+      nextStack.add(id);
+      const expandedInner = this.expandBundleRefs(def.bundle ?? [], defs, nextStack);
+      const result: any = { bundle: expandedInner };
+      const odds = item.odds ?? def.odds;
+      if (odds !== undefined && odds !== null) result.odds = odds;
+      const pickMin = item.pickMin ?? def.pickMin;
+      if (pickMin !== undefined && pickMin !== null) result.pickMin = pickMin;
+      const pickMax = item.pickMax ?? def.pickMax;
+      if (pickMax !== undefined && pickMax !== null) result.pickMax = pickMax;
+      if (item.requirements !== undefined) result.requirements = item.requirements;
+      return result;
+    }
+
+    if (Array.isArray(item.bundle)) {
+      return { ...item, bundle: this.expandBundleRefs(item.bundle, defs, stack) };
+    }
+
+    return item;
+  }
+
+  /**
+   * Convenience wrapper that pre-loads all referenced BundleDefs, expands the
+   * outcome tree, and then resolves it. Use this instead of the bare
+   * `resolveOutcomes` whenever a caller wants `bundle_ref` support.
+   */
+  async resolveOutcomesAsync(
+    items: any[],
+    reqContext: RequirementContext,
+    rng: { chance: (p: number) => boolean; nextInt: (min: number, max: number) => number },
+  ): Promise<{ resolved: { entry: any; amount?: number }[]; texts: string[]; flags: { entry: any }[] }> {
+    const defs = await this.loadBundleDefs(items);
+    const expanded = this.expandBundleRefs(items, defs);
+    return this.resolveOutcomes(expanded, reqContext, rng);
+  }
+
+  private warnedMissingBundleIds = new Set<string>();
 
   async processEffectsWithBundles(
     userId: string,

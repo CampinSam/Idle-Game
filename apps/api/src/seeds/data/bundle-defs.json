@@ -1,0 +1,27 @@
+[
+  {
+    "id": "bundle_starter_pack",
+    "name": "Starter Pack",
+    "description": "Basic onboarding bundle: a small currency stipend plus one common item. Reused as a building block in early-game missions, gifts, and check-ins.",
+    "version": 1,
+    "bundle": [
+      { "type": "currency", "key": "soft_arcanium", "min": 50, "max": 100, "odds": 100 },
+      { "type": "item", "key": "consumable_xp_potion_small", "min": 1, "max": 1, "odds": 100 }
+    ],
+    "enabled": true
+  },
+  {
+    "id": "bundle_pick_one_currency",
+    "name": "Pick One Currency",
+    "description": "Reusable 'pick 1 of N currencies' bundle. Default behaviour picks one entry weighted by entry odds; callers can override pickMin/pickMax to grant more.",
+    "version": 1,
+    "bundle": [
+      { "type": "currency", "key": "soft_arcanium", "min": 100, "max": 100, "odds": 60 },
+      { "type": "currency", "key": "soft_arcanium", "min": 250, "max": 250, "odds": 30 },
+      { "type": "currency", "key": "soft_arcanium", "min": 1000, "max": 1000, "odds": 10 }
+    ],
+    "pickMin": 1,
+    "pickMax": 1,
+    "enabled": true
+  }
+]
