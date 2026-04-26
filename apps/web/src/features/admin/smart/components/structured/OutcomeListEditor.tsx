@@ -111,7 +111,8 @@ function summary(entry: Outcome): string {
   return 'outcome';
 }
 
-function BundleRefPreview({ id }: { id: string | undefined }) {
+function BundleRefPreview({ entry }: { entry: Outcome }) {
+  const id = entry.bundleDefId;
   const [, force] = useState(0);
   useEffect(() => {
     if (!id) return;
@@ -121,9 +122,19 @@ function BundleRefPreview({ id }: { id: string | undefined }) {
     ensureRefCache('BundleDef').then(() => { if (mounted) force(n => n + 1); });
     return () => { mounted = false; };
   }, [id]);
-  if (!id) return <>bundle ref → ?</>;
+
+  const overrides: string[] = [];
+  if (entry.odds !== undefined && entry.odds !== null) overrides.push(`odds=${entry.odds}`);
+  if (entry.pickMin !== undefined && entry.pickMin !== null) overrides.push(`pickMin=${entry.pickMin}`);
+  if (entry.pickMax !== undefined && entry.pickMax !== null) overrides.push(`pickMax=${entry.pickMax}`);
+  if (Array.isArray(entry.requirements) && entry.requirements.length > 0) {
+    overrides.push(`+${entry.requirements.length} req${entry.requirements.length === 1 ? '' : 's'}`);
+  }
+  const overrideStr = overrides.length > 0 ? ` · override ${overrides.join(', ')}` : '';
+
+  if (!id) return <>bundle ref → ?{overrideStr}</>;
   const row = getCachedRefRow('BundleDef', id);
-  if (!row) return <>bundle ref → {id}</>;
+  if (!row) return <>bundle ref → {id}{overrideStr}</>;
   const entries = Array.isArray(row.bundle) ? row.bundle.length : 0;
   const pickMin = row.pickMin;
   const pickMax = row.pickMax;
@@ -131,7 +142,7 @@ function BundleRefPreview({ id }: { id: string | undefined }) {
     ? ` — ${pickMin ?? 1}-${pickMax ?? pickMin ?? 1} of ${entries} pick`
     : '';
   const name = row.name ? ` (${row.name})` : '';
-  return <>bundle ref → {id}{name} — {entries} entries{pickStr}</>;
+  return <>bundle ref → {id}{name} — {entries} entries{pickStr}{overrideStr}</>;
 }
 
 function MinMaxOdds({ entry, onChange, showOdds = true, hasRangeError }: { entry: Outcome; onChange: (e: Outcome) => void; showOdds?: boolean; hasRangeError?: boolean }) {
@@ -211,7 +222,7 @@ function OutcomeEntryEditor({
         </button>
         <span style={{ flex: 1, color: '#a78bfa', fontSize: 12, fontWeight: 600 }}>
           {detectKind(entry) === 'bundle_ref'
-            ? <BundleRefPreview id={entry.bundleDefId} />
+            ? <BundleRefPreview entry={entry} />
             : summary(entry)}
         </span>
         <button

@@ -133,9 +133,11 @@ export async function resolveRewardSpec(
       if (spec.pickMax !== undefined) refSpec.pickMax = spec.pickMax;
       if (spec.requirements !== undefined) refSpec.requirements = spec.requirements;
 
-      // Detect missing/disabled up front so we can emit a structured status marker
-      // for callers; expandBundleRefs (inside resolveOutcomesAsync) also emits a warn log.
+      // Run expansion first so missing/disabled refs get the standard warn log
+      // (uniform with every other reward path), then check the def for an
+      // explicit structured status marker.
       const defs = await gameRules.loadBundleDefs([refSpec]);
+      gameRules.expandBundleRefs([refSpec], defs);
       const def = defs.get(spec.bundleDefId);
       if (!def || def.enabled === false || !Array.isArray(def.bundle)) {
         grants.push({ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing_or_disabled' });

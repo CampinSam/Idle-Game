@@ -636,7 +636,7 @@ Defines a **named, reusable outcome bundle** that can be referenced from any rew
 | `odds` | number | No | — | Default odds for the whole bundle when used by reference. Overridden by an inline `odds` on the `bundle_ref` entry. |
 | `pickMin` | number | No | — | Default minimum number of entries to randomly select when used by reference (omit for "grant all"). Overridden by inline `pickMin`. |
 | `pickMax` | number | No | — | Default maximum number of entries to randomly select. Must be `>= pickMin` if both are set. Overridden by inline `pickMax`. |
-| `data` | JSON | No | `{}` | Freeform extra data. |
+| `version` | number | No | `1` | Schema version, incremented when the bundle's shape changes. |
 
 ### Referencing a BundleDef from any reward caller
 
@@ -655,7 +655,7 @@ Any outcome list that accepts entries (mission `success.rewards`, mission `failu
 
 At resolve time the server inlines the BundleDef's `bundle` array into the outcome tree, applying the inline overrides for `odds`/`pickMin`/`pickMax`/`requirements` (each defaults to the BundleDef's own value when omitted). Missing or disabled bundle ids resolve to an empty bundle (logged once per id). Cycles between bundles are detected and collapsed to an empty bundle.
 
-> **Gift claim caveat.** When a `bundle_ref` is used inside a [GiftDef](#giftdef) `rewardSpec`, requirements are evaluated against an **empty player context** (no `user` fields, no `userFlags`). Conditional entries (anything with a `requirements` clause that depends on the player) will be skipped. Gate the gift itself (or the source that issues it) with player-aware requirements; reserve `bundle_ref` requirements for unconditional or globally-true checks.
+> **Gift claim note.** When a `bundle_ref` is used inside a [GiftDef](#giftdef) `rewardSpec`, requirements are evaluated against the **claiming player's real context** (their `user` fields and `userFlags` are loaded at claim time), so per-entry `requirements` clauses gate normally — same behaviour as missions, lootboxes, recipes, and effects.
 
 **Worked example.** Define a "starter cache" bundle that grants 1-2 of three things, weighted:
 
