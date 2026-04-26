@@ -495,46 +495,34 @@ export class MissionService {
           if (entities.length === 0) break;
           const perEntity = Math.max(1, Math.floor(amount / entities.length));
           for (const entity of entities) {
-            const ent = await (db as any).entity.findFirst({ where: { id: entity.id, ownerUserId: userId }, include: { equipment: true } });
-            if (!ent) continue;
-            const progression = (ent.progression as any) || {};
-            let currentLevel = progression.level || 1;
-            let currentXp = Number(progression.xp || 0);
-            const oldLevel = currentLevel;
-            if (currentLevel >= MAX_ENTITY_LEVEL) {
-              if (!entityResultsMap.has(entity.id)) {
-                entityResultsMap.set(entity.id, {
-                  id: entity.id,
-                  name: (ent.display as any)?.name || ent.speciesId || 'Entity',
-                  oldLevel,
-                  newLevel: oldLevel,
-                  xpGained: 0,
-                  leveledUp: false,
-                  injured: false,
-                });
-              }
+            // Canonical XP grant: applies weighted stat gains, appends a
+            // levelHistory entry per level transition, and (on level-up)
+            // emits a grouped `entity_level_up` notification. We pass
+            // `skipEffects: true` because the mission settlement has
+            // already applied the xp_multiplier above, so the canonical
+            // method must not re-apply it.
+            let result;
+            try {
+              result = await this.entityService.addEntityXp(
+                entity.id, userId, perEntity, db, { skipEffects: true },
+              );
+            } catch (err) {
+              this.logger.warn(`Failed to grant entity_xp to ${entity.id}: ${err}`);
               continue;
             }
-            let newXp = currentXp + perEntity;
-            let newLevel = currentLevel;
-            while (newLevel < MAX_ENTITY_LEVEL && newXp >= XP_PER_LEVEL(newLevel)) {
-              newXp -= XP_PER_LEVEL(newLevel);
-              newLevel++;
-            }
-            await (db as any).entity.update({ where: { id: entity.id }, data: { progression: { ...progression, level: newLevel, xp: newXp } } });
             const existing = entityResultsMap.get(entity.id);
             if (existing) {
-              existing.xpGained += perEntity;
-              existing.newLevel = newLevel;
-              existing.leveledUp = newLevel > existing.oldLevel;
+              existing.xpGained += result.xpGained;
+              existing.newLevel = result.newLevel;
+              existing.leveledUp = result.newLevel > existing.oldLevel;
             } else {
               entityResultsMap.set(entity.id, {
                 id: entity.id,
-                name: (ent.display as any)?.name || ent.speciesId || 'Entity',
-                oldLevel,
-                newLevel,
-                xpGained: perEntity,
-                leveledUp: newLevel > oldLevel,
+                name: result.entity.name || 'Entity',
+                oldLevel: result.oldLevel,
+                newLevel: result.newLevel,
+                xpGained: result.xpGained,
+                leveledUp: result.leveledUp,
                 injured: false,
               });
             }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { formatLevelUpBody } from '../entity/entity-generator.util';
 
 @Injectable()
 export class NotificationService {
@@ -7,6 +8,104 @@ export class NotificationService {
 
   private get notification() {
     return (this.prisma as any).notification;
+  }
+
+  /**
+   * Records an entity level-up notification.
+   *
+   * Uses a per-entity `groupKey` so multiple level-ups (or multi-level jumps
+   * across separate addEntityXp calls) for the same entity within ~90s
+   * collapse into a single toast that shows the cumulative stat gains.
+   * Priority is `high` so the client toast pipeline auto-surfaces it.
+   *
+   * Bypasses the generic `createNotification` aggregation because we need to
+   * sum per-stat deltas (count + body merge isn't enough).
+   */
+  async recordEntityLevelUp(
+    data: {
+      userId: string;
+      entityId: string;
+      entityName: string;
+      fromLevel: number;
+      toLevel: number;
+      gainsPerLevel: Array<{ level: number; gains: Record<string, number> }>;
+    },
+    tx?: any,
+  ) {
+    const notif = tx ? (tx as any).notification : this.notification;
+    const groupKey = `entity_level_up:${data.entityId}`;
+
+    const incomingTotal: Record<string, number> = {};
+    for (const lvl of data.gainsPerLevel) {
+      for (const [k, v] of Object.entries(lvl.gains || {})) {
+        if (typeof v === 'number' && v > 0) {
+          incomingTotal[k] = (incomingTotal[k] || 0) + v;
+        }
+      }
+    }
+
+    const cutoff = new Date(Date.now() - 90 * 1000);
+    const existing = await notif.findFirst({
+      where: {
+        userId: data.userId,
+        groupKey,
+        readAt: null,
+        archivedAt: null,
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existing) {
+      const meta = (existing.meta as any) || {};
+      const merged: Record<string, number> = { ...(meta.totalGains || {}) };
+      for (const [k, v] of Object.entries(incomingTotal)) {
+        merged[k] = (merged[k] || 0) + v;
+      }
+      const fromLevel = typeof meta.fromLevel === 'number' ? meta.fromLevel : data.fromLevel;
+      return notif.update({
+        where: { id: existing.id },
+        data: {
+          title: 'Level Up!',
+          body: formatLevelUpBody(data.entityName, data.toLevel, merged),
+          meta: {
+            ...meta,
+            entityId: data.entityId,
+            entityName: data.entityName,
+            fromLevel,
+            toLevel: data.toLevel,
+            totalGains: merged,
+            gainsPerLevel: [
+              ...(Array.isArray(meta.gainsPerLevel) ? meta.gainsPerLevel : []),
+              ...data.gainsPerLevel,
+            ],
+            count: (meta.count || 1) + 1,
+          },
+        },
+      });
+    }
+
+    return notif.create({
+      data: {
+        userId: data.userId,
+        type: 'entity_level_up',
+        category: 'progression',
+        priority: 'high',
+        title: 'Level Up!',
+        body: formatLevelUpBody(data.entityName, data.toLevel, incomingTotal),
+        deepLink: { screen: `/entities/${data.entityId}`, entityId: data.entityId },
+        meta: {
+          entityId: data.entityId,
+          entityName: data.entityName,
+          fromLevel: data.fromLevel,
+          toLevel: data.toLevel,
+          totalGains: incomingTotal,
+          gainsPerLevel: data.gainsPerLevel,
+          count: 1,
+        },
+        groupKey,
+      },
+    });
   }
 
   async createNotification(data: {

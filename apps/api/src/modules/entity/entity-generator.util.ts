@@ -155,3 +155,47 @@ export function applyWeightedLevelUp(currentStats: Record<string, any>): LevelUp
   boosted.scaling = scaling;
   return { stats: boosted, gains };
 }
+
+/**
+ * Bring a freshly-generated entity from level 1 up to `targetLevel` by running
+ * the canonical weighted-level-up helper (level - 1) times, returning the
+ * resulting stats and a synthesized levelHistory of `{ level, gains }` entries
+ * (one per gained level, levels 2..targetLevel).
+ *
+ * Used by the gift "entity grant with level override" path so an entity
+ * granted at level N has the same stat profile as one that genuinely earned
+ * its way to level N. Documented as an intentional bypass of addEntityXp:
+ * we are seeding a starting state, not awarding XP, so notifications and
+ * the XP loop don't apply.
+ */
+export function levelUpEntityToLevel(
+  baseStats: Record<string, any>,
+  targetLevel: number,
+): { stats: Record<string, any>; levelHistory: Array<{ level: number; gains: Record<string, number> }> } {
+  let stats: Record<string, any> = { ...baseStats };
+  const levelHistory: Array<{ level: number; gains: Record<string, number> }> = [];
+  for (let lvl = 2; lvl <= targetLevel; lvl++) {
+    const result = applyWeightedLevelUp(stats);
+    stats = result.stats;
+    levelHistory.push({ level: lvl, gains: result.gains });
+  }
+  return { stats, levelHistory };
+}
+
+/**
+ * Format a human-readable level-up body line, e.g.
+ *   "Sparrow reached Level 5 — +2 ATK, +3 SPD, +1 VIT"
+ *
+ * Stats with a 0 gain are omitted; ordering follows STAT_KEYS.
+ */
+export function formatLevelUpBody(
+  entityName: string,
+  newLevel: number,
+  gains: Record<string, number>,
+): string {
+  const parts = STAT_KEYS
+    .filter((k) => (gains[k] || 0) > 0)
+    .map((k) => `+${gains[k]} ${k}`);
+  const tail = parts.length > 0 ? ` — ${parts.join(', ')}` : '';
+  return `${entityName} reached Level ${newLevel}${tail}`;
+}

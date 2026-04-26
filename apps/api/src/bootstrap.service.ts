@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
+import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
 import { seedSounds } from './seeds/sounds.seed';
 
@@ -7,7 +8,10 @@ import { seedSounds } from './seeds/sounds.seed';
 export class BootstrapService implements OnModuleInit {
   private readonly logger = new Logger(BootstrapService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private entityService: EntityService,
+  ) {}
 
   async onModuleInit() {
     await this.seedTickRateIntervals();
@@ -16,6 +20,13 @@ export class BootstrapService implements OnModuleInit {
     await this.seedConsumableItems();
     await seedDefinitions(this.prisma);
     await seedSounds(this.prisma);
+    // Idempotent: rebuilds missing levelHistory entries / stat gains for any
+    // entity that pre-dates the canonical addEntityXp pipeline.
+    try {
+      await this.entityService.backfillLevelHistory();
+    } catch (err) {
+      this.logger.warn(`Entity level-history backfill failed: ${err}`);
+    }
   }
 
   private async seedTickRateIntervals() {

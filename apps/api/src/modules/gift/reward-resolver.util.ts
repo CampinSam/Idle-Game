@@ -1,4 +1,4 @@
-import { generateEntityData } from '../entity/entity-generator.util';
+import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import type { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
 
 function makeRng() {
@@ -90,14 +90,35 @@ export async function resolveRewardSpec(
 
       if (spec.overrides) {
         const overrides = spec.overrides;
-        if (overrides.level != null) {
+        if (overrides.level != null && overrides.level > 1) {
+          // Documented bypass of EntityService.addEntityXp:
+          // we are seeding a freshly-created entity at a higher starting
+          // level, not awarding XP. Run the canonical weighted level-up
+          // helper (level - 1) times so the stat profile and levelHistory
+          // match what an organically-leveled entity would have, keeping
+          // backfill + downstream consumers consistent.
+          const baseStats = (entityData.stats as any) ?? {};
+          const { stats: leveledStats, levelHistory } = levelUpEntityToLevel(baseStats, overrides.level);
+          entityData.stats = leveledStats;
           entityData.progression = {
             ...(entityData.progression as any ?? {}),
             level: overrides.level,
             xp: 0,
+            levelHistory,
+          };
+        } else if (overrides.level === 1) {
+          // Explicit level=1 still gets a normalized empty history.
+          entityData.progression = {
+            ...(entityData.progression as any ?? {}),
+            level: 1,
+            xp: 0,
+            levelHistory: [],
           };
         }
         if (overrides.stats) {
+          // Explicit per-stat overrides apply additively on top of base +
+          // weighted level-up gains. This is intentional — designers can
+          // hand-author a "stronger than baseline at level N" gift entity.
           entityData.stats = { ...(entityData.stats as any ?? {}), ...overrides.stats };
         }
         if (overrides.traits && typeof overrides.traits === 'object') {
