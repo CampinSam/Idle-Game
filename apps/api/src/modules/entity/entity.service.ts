@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EffectService } from '../effect/effect.service';
 import { NotificationService } from '../notification/notification.service';
 import { MAX_ENTITY_LEVEL, XP_PER_LEVEL, EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
-import { applyWeightedLevelUp } from './entity-generator.util';
+import { applyWeightedLevelUp } from '@derp/math';
 
 function serializeEntity(entity: any) {
   const progression = (entity.progression as any) || {};

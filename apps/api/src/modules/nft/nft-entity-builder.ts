@@ -1,6 +1,6 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftMetadata } from './nft-ownership.interface';
-import { STAT_KEYS, ScalingContribution, computeScaling } from '../entity/entity-generator.util';
+import { STAT_KEYS, computeScaling, type ScalingContribution } from '@derp/math';
 
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,

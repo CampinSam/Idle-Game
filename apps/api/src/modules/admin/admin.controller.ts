@@ -335,6 +335,11 @@ export class AdminController {
     return this.nftCollectionService.seedNftEntities();
   }
 
+  @Get('balance/bundle')
+  getBalanceBundle() {
+    return this.adminService.getBalanceBundle();
+  }
+
   // ── Audio: SoundDef CRUD ─────────────────────────────────────────────────
 
   @Get('audio/sounds')

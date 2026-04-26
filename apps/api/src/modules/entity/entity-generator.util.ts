@@ -1,41 +1,19 @@
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  STAT_KEYS,
+  computeScaling,
+  applyWeightedLevelUp,
+  type ScalingContribution,
+  type LevelUpResult,
+} from '@derp/math';
 
-export const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
-
-export interface ScalingContribution {
-  statScaling: Record<string, number>;
-  rarityMultiplier: number;
-}
-
-export function computeScaling(contributions: ScalingContribution[]): Record<string, number> {
-  const n = contributions.length;
-  const scaling: Record<string, number> = {};
-
-  if (n === 0) {
-    for (const k of STAT_KEYS) scaling[k] = 1.0;
-    return scaling;
-  }
-
-  for (const k of STAT_KEYS) {
-    const product = contributions.reduce((acc, c) => {
-      const v = c.statScaling[k];
-      return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
-    }, 1.0);
-    scaling[k] = Math.pow(product, 1 / n);
-  }
-
-  const rarityProduct = contributions.reduce((acc, c) => {
-    const v = c.rarityMultiplier;
-    return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
-  }, 1.0);
-  const rarityGeoMean = Math.pow(rarityProduct, 1 / n);
-
-  for (const k of STAT_KEYS) {
-    scaling[k] *= rarityGeoMean;
-  }
-
-  return scaling;
-}
+export {
+  STAT_KEYS,
+  computeScaling,
+  applyWeightedLevelUp,
+  type ScalingContribution,
+  type LevelUpResult,
+};
 
 export interface GeneratedEntityData {
   ownerUserId: string;
@@ -120,42 +98,6 @@ export async function generateEntityData(
     state: { status: 'idle' },
   };
 }
-
-export interface LevelUpResult {
-  stats: Record<string, any>;
-  gains: Record<string, number>;
-}
-
-export function applyWeightedLevelUp(currentStats: Record<string, any>): LevelUpResult {
-  const boosted = { ...currentStats };
-  const scaling: Record<string, number> = (boosted.scaling as any) || {};
-
-  const gains: Record<string, number> = {};
-  for (const k of STAT_KEYS) gains[k] = 0;
-
-  for (const k of STAT_KEYS) {
-    boosted[k] = (boosted[k] || 0) + 1;
-    gains[k] += 1;
-  }
-
-  const totalWeight = STAT_KEYS.reduce((sum, k) => sum + (scaling[k] || 1), 0);
-
-  for (let i = 0; i < 14; i++) {
-    let roll = Math.random() * totalWeight;
-    for (const k of STAT_KEYS) {
-      roll -= (scaling[k] || 1);
-      if (roll <= 0) {
-        boosted[k] = (boosted[k] || 0) + 1;
-        gains[k] += 1;
-        break;
-      }
-    }
-  }
-
-  boosted.scaling = scaling;
-  return { stats: boosted, gains };
-}
-
 /**
  * Bring a freshly-generated entity from level 1 up to `targetLevel` by running
  * the canonical weighted-level-up helper (level - 1) times, returning the

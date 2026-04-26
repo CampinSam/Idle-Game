@@ -89,6 +89,11 @@ export const adminApi = {
 
   listIcons: () => adminRequest<any[]>('/media/icons'),
 
+  getBalanceBundle: () => adminRequest<{
+    entityDefinitions: Array<{ id: string; name: string; speciesId: string; slots: Record<string, string[]> }>;
+    traitDefinitions: Record<string, { archetype: string; slotStats: Record<string, Record<string, number>>; scaling: Record<string, number>; rarityMultiplier: number }>;
+  }>('/balance/bundle'),
+
   listSoundDefs: () => adminRequest<any[]>('/audio/sounds'),
   createSoundDef: (data: { key: string; name: string; bus: string; fileKey?: string; description?: string }) =>
     adminRequest<any>('/audio/sounds', { method: 'POST', body: JSON.stringify(data) }),

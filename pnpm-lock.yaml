@@ -145,6 +145,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@derp/math':
+        specifier: workspace:*
+        version: link:../../packages/math
       '@derp/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -4,6 +4,7 @@ import { useSyncEntities, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
 import { getArchetypeDisplay, getStatusDisplay } from '@derp/shared';
+import { getPowerScore } from '@derp/math';
 import './EntitiesPage.css';
 
 function EntitiesPageSkeleton() {
@@ -38,20 +39,8 @@ function EntitiesPageSkeleton() {
 
 const FILTER_TABS = ['ALL', 'DERPS', 'VAMPS', 'PREDS'];
 
-function getPowerScore(entity: any): number {
-  const stats = entity.stats || {};
-  return (
-    stats.ATK * 0.40 +
-    stats.DEF * 0.30 +
-    stats.SPD * 0.20 +
-    stats.FOC * 0.10 +
-    stats.LCK * 0.05 +
-    stats.VIT * 0.05
-  );
-}
-
 function getStarRating(entity: any): number {
-  const power = getPowerScore(entity);
+  const power = getPowerScore(entity.stats || {});
   if (power >= 800) return 5;
   if (power >= 500) return 4;
   if (power >= 300) return 3.5;
@@ -129,7 +118,7 @@ export default function EntitiesPage() {
               const archetype: string = entity.traits?.body || entity.traits?.head || '';
               const archetypeDisplay = getArchetypeDisplay(archetype);
               const statusDisplay = getStatusDisplay(entity.status);
-              const power = getPowerScore(entity);
+              const power = getPowerScore(entity.stats || {});
               const stars = getStarRating(entity);
 
               return (

@@ -26,6 +26,7 @@ const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'
 const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
 const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPage'));
 const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
+const BalancePage = lazy(() => import('./features/admin/balance/BalancePage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
@@ -107,6 +108,13 @@ export default function App() {
     return (
       <Suspense fallback={<PageLoader />}>
         <AudioManagerPage />
+      </Suspense>
+    );
+  }
+  if (location.pathname.startsWith('/admin/balance')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <BalancePage />
       </Suspense>
     );
   }

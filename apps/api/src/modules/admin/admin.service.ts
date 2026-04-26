@@ -383,6 +383,38 @@ export class AdminService {
     }
   }
 
+  async getBalanceBundle() {
+    const [entityDefs, traitDefs] = await Promise.all([
+      (this.prisma as any).entityDefinition.findMany({
+        include: { bodySchema: true },
+      }),
+      (this.prisma as any).traitDefinition.findMany(),
+    ]);
+
+    const entityDefinitions = entityDefs.map((def: any) => {
+      const data = (def.data as any) || {};
+      return {
+        id: def.id,
+        name: data.name || def.id,
+        speciesId: def.speciesId,
+        slots: (def.bodySchema?.slots as any) || {},
+      };
+    });
+
+    const traitDefinitions: Record<string, any> = {};
+    for (const td of traitDefs) {
+      const data = (td.data as any) || {};
+      traitDefinitions[td.archetype] = {
+        archetype: td.archetype,
+        slotStats: (td.slotStats as any) || {},
+        scaling: (data.scaling as any) || {},
+        rarityMultiplier: typeof data.rarityMultiplier === 'number' ? data.rarityMultiplier : 1.0,
+      };
+    }
+
+    return { entityDefinitions, traitDefinitions };
+  }
+
   async getRecentJobs(limit: number) {
     const jobs = await (this.prisma as any).job.findMany({
       orderBy: { updatedAt: 'desc' },
