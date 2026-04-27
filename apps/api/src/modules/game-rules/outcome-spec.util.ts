@@ -92,7 +92,18 @@ export function normalizeOutcomeSpec(value: any): NormalizeResult {
 
 /**
  * Map of Prisma model name → list of JSON columns that hold an outcomeSpec.
- * Mirrors `apps/web/src/features/admin/smart/tableSchemas.ts`.
+ *
+ * Single source of truth for outcomeSpec storage. Verified against:
+ *   1. `apps/web/src/features/admin/smart/tableSchemas.ts` (every field with
+ *      `type: 'outcomeSpec'` — what the editor authors).
+ *   2. `prisma/schema.prisma` JSON columns — only entries listed here hold
+ *      reward outcome arrays. Other Json fields on def models are unrelated:
+ *        - missionDef.rewardPreview → display string[]
+ *        - modalDef.spec            → modal config
+ *        - checkInDef.rewards       → checkInDays array (giftDefId pointers)
+ *
+ * The unit test in `outcome-spec.util.spec.ts` pins this map exactly so any
+ * future drift is caught at CI time.
  */
 export const OUTCOME_SPEC_FIELDS_BY_MODEL: Record<string, string[]> = {
   missionDef: ['success', 'failure'],
