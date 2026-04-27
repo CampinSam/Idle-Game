@@ -92,19 +92,39 @@ describe('JobService — cancelJob', () => {
     });
   });
 
-  it.each(['ready_notified', 'completed', 'failed', 'collected', 'cancelled'])(
-    'throws NotFoundException when job is in status %s (only active is cancellable)',
-    async (status) => {
-      const { service, tx } = buildService();
-      tx.job.findFirst.mockResolvedValue(null);
+  it('uses an active-only WHERE clause so jobs in any other status are filtered out', async () => {
+    // The service relies entirely on Prisma's WHERE filter to gate non-active
+    // jobs. We can't simulate Prisma's filtering through a mock, but we can
+    // verify the exact filter shape we send to the DB matches the spec
+    // (status:'active' + userId scoping). Combined with the race-guard test
+    // below, this proves repeat cancels and ready_notified/completed/failed/
+    // collected/cancelled jobs all resolve to 404.
+    const { service, tx } = buildService();
+    tx.job.findFirst.mockResolvedValue(null);
 
-      await expect(service.cancelJob('user-1', 'job-1')).rejects.toThrow(NotFoundException);
-      expect(tx.job.findFirst).toHaveBeenCalledWith({
-        where: { id: 'job-1', userId: 'user-1', status: 'active' },
-      });
-      void status;
-    },
-  );
+    await expect(service.cancelJob('user-1', 'job-1')).rejects.toThrow(NotFoundException);
+    expect(tx.job.findFirst).toHaveBeenCalledWith({
+      where: { id: 'job-1', userId: 'user-1', status: 'active' },
+    });
+    expect(tx.job.findFirst).toHaveBeenCalledTimes(1);
+    expect(tx.job.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not flip status when the job is found but in a stale state (race-guard short-circuits the second cancel)', async () => {
+    // Simulates a sequenced cancel: the snapshot read returns an active-shaped
+    // row, but by the time we run the conditional updateMany, another tx has
+    // already moved the job out of 'active' (e.g., a parallel cancel). The
+    // count===0 guard rejects the second cancel cleanly with 404 rather than
+    // double-cancelling or producing partial side effects.
+    const { service, tx, mockEntityService } = buildService();
+    tx.job.findFirst.mockResolvedValue(makeJob());
+    tx.job.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.cancelJob('user-1', 'job-1')).rejects.toThrow(NotFoundException);
+    expect(mockEntityService.setEntityStatus).not.toHaveBeenCalled();
+    expect(tx.notification.findMany).not.toHaveBeenCalled();
+    expect(tx.playerDelta.create).not.toHaveBeenCalled();
+  });
 
   it('throws NotFoundException when a concurrent transition flips status mid-tx (race guard)', async () => {
     const { service, tx, mockEntityService } = buildService();
