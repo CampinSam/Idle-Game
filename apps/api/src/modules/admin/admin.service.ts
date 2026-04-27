@@ -8,6 +8,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
 import { GameRulesService, GameUser } from '../game-rules/game-rules.service';
+import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { SeededRng } from '@derp/math';
 
 function serializeBigInts(obj: any): any {
@@ -219,6 +220,10 @@ export class AdminService {
   async createRecord(table: string, data: any) {
     const model = this.getModel(table);
     this.convertBigIntFields(table, data);
+    const migrated = normalizeOutcomeFieldsForModel(table, data);
+    if (migrated > 0) {
+      this.logger.log(`Normalized ${migrated} legacy amount→min/max entries on create ${table}`);
+    }
     const created = await model.create({ data });
     return serializeBigInts(created);
   }
@@ -233,6 +238,11 @@ export class AdminService {
     delete data.id;
     delete data.createdAt;
     delete data.updatedAt;
+
+    const migrated = normalizeOutcomeFieldsForModel(table, data);
+    if (migrated > 0) {
+      this.logger.log(`Normalized ${migrated} legacy amount→min/max entries on update ${table}/${id}`);
+    }
 
     const updated = await model.update({ where: { id }, data });
     return serializeBigInts(updated);

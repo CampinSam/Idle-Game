@@ -476,9 +476,7 @@ export class GameRulesService {
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item });
           } else {
-            const amount = item.amount !== undefined
-              ? Number(item.amount)
-              : rollAmount(item.min ?? 1, item.max ?? item.min ?? 1);
+            const amount = rollAmount(item.min ?? 1, item.max ?? item.min ?? 1);
             if (amount <= 0) continue;
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item, amount });

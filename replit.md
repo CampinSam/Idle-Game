@@ -60,7 +60,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Editor-Ready Balance System**: Extensive use of JSON fields for data-driven game balancing.
 - **Unified Job System**: Single `Job` table for all timer-based activities.
 - **DB-Backed Definitions**: `MissionDef` and `RecipeDef` as database models.
-- **Unified Outcome System**: Flexible JSON structure for game outcomes.
+- **Unified Outcome System**: Flexible JSON structure for game outcomes. Currency / item / entity_xp / keeper_xp entries use a canonical `min`/`max` shape (rolled per-grant). Legacy single `amount` entries are auto-migrated to `min=max=amount` on every save (admin generic CRUD), during seed insert, and via a one-time idempotent boot-time backfill in `BootstrapService`. The `resolveOutcomes` resolver no longer reads `amount`. Set `OUTCOME_SPEC_BACKFILL_DISABLED=1` to skip the boot scan in CI.
 - **Unified Requirement System**: Universal `operator` field for flexible requirement comparisons.
 - **Flag System**: Generic key-value variables on the User model for dynamic game state.
 - **GameRulesService**: Centralized service for consistent game logic.

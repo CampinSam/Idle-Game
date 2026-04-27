@@ -3,6 +3,10 @@ import { PrismaService } from './prisma/prisma.service';
 import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
 import { seedSounds } from './seeds/sounds.seed';
+import {
+  OUTCOME_SPEC_FIELDS_BY_MODEL,
+  normalizeOutcomeSpec,
+} from './modules/game-rules/outcome-spec.util';
 
 @Injectable()
 export class BootstrapService implements OnModuleInit {
@@ -20,6 +24,20 @@ export class BootstrapService implements OnModuleInit {
     await this.seedConsumableItems();
     await seedDefinitions(this.prisma);
     await seedSounds(this.prisma);
+    // One-time backfill: rewrite any legacy `amount` outcome entries to
+    // `min` = `max` = amount across every definition table that holds an
+    // outcomeSpec. Idempotent — once a row is normalized, subsequent runs
+    // are no-ops. The legacy `item.amount` branch in resolveOutcomes has
+    // been removed, so any row that still carries `amount` would silently
+    // grant `1` at runtime. Failures here MUST crash startup loudly so an
+    // operator can intervene rather than serve broken rewards. Set
+    // OUTCOME_SPEC_BACKFILL_DISABLED=1 to skip (only safe in environments
+    // that have already been backfilled, e.g. CI without seed data).
+    if (process.env.OUTCOME_SPEC_BACKFILL_DISABLED === '1') {
+      this.logger.log('OutcomeSpec amount→min/max backfill skipped (OUTCOME_SPEC_BACKFILL_DISABLED=1)');
+    } else {
+      await this.backfillOutcomeSpecAmounts();
+    }
     // Idempotent: rebuilds missing levelHistory entries / stat gains for any
     // entity that pre-dates the canonical addEntityXp pipeline.
     // Set ENTITY_BACKFILL_DISABLED=1 to skip — useful once the dataset has
@@ -308,6 +326,38 @@ export class BootstrapService implements OnModuleInit {
     }
     if (seeded > 0) {
       this.logger.log(`Seeded ${seeded} consumable item definitions`);
+    }
+  }
+
+  private async backfillOutcomeSpecAmounts() {
+    let totalRows = 0;
+    let totalRewrites = 0;
+    for (const [modelName, fields] of Object.entries(OUTCOME_SPEC_FIELDS_BY_MODEL)) {
+      const model = (this.prisma as any)[modelName];
+      if (!model) continue;
+      const rows: any[] = await model.findMany();
+      for (const row of rows) {
+        const updates: Record<string, any> = {};
+        let rowChanged = 0;
+        for (const f of fields) {
+          if (row[f] === undefined || row[f] === null) continue;
+          const { value, changed } = normalizeOutcomeSpec(row[f]);
+          if (changed > 0) {
+            updates[f] = value;
+            rowChanged += changed;
+          }
+        }
+        if (rowChanged > 0) {
+          await model.update({ where: { id: row.id }, data: updates });
+          totalRows += 1;
+          totalRewrites += rowChanged;
+        }
+      }
+    }
+    if (totalRewrites > 0) {
+      this.logger.log(
+        `OutcomeSpec backfill: rewrote ${totalRewrites} legacy amount→min/max entries across ${totalRows} rows`,
+      );
     }
   }
 }

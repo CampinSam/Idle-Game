@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { normalizeOutcomeFieldsForModel } from '../modules/game-rules/outcome-spec.util';
 
 const logger = new Logger('DefinitionsSeed');
 
@@ -19,6 +20,7 @@ async function upsertMany(prisma: any, model: string, rows: any[], transform?: (
   const countBefore = await prisma[model].count();
   for (const row of rows) {
     const data = transform ? transform(row) : row;
+    normalizeOutcomeFieldsForModel(model, data);
     const { id, ...rest } = data;
     await prisma[model].upsert({
       where: { id },
@@ -38,6 +40,7 @@ async function upsertManyForce(prisma: any, model: string, rows: any[], transfor
   const countBefore = await prisma[model].count();
   for (const row of rows) {
     const data = transform ? transform(row) : row;
+    normalizeOutcomeFieldsForModel(model, data);
     const { id, ...rest } = data;
     await prisma[model].upsert({
       where: { id },
