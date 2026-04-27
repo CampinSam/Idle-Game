@@ -6,11 +6,11 @@ export default function PWAUpdateBanner() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    // Poll every 60s so an active session picks up new deploys quickly,
+    // Poll every 30s so an active session picks up new deploys quickly,
     // instead of waiting for the browser's default SW update cadence.
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
-      const intervalMs = 60_000;
+      const intervalMs = 30_000;
       setInterval(() => {
         if (registration.installing) return;
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
