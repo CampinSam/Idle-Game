@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Post, Param, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Get, Delete, Post, Param, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { WalletService } from './wallet.service';
 
@@ -10,6 +10,14 @@ export class WalletController {
   @Get()
   listWallets(@Request() req: any) {
     return this.walletService.listWallets(req.user.id);
+  }
+
+  @Post('manual')
+  addManualWallet(
+    @Request() req: any,
+    @Body() body: { chain: string; address: string },
+  ) {
+    return this.walletService.addManualWallet(req.user.id, body?.chain, body?.address);
   }
 
   @Delete(':id')

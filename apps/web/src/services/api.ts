@@ -362,6 +362,13 @@ class ApiClient {
     return this.request<{ success: true }>(`/player/wallets/${id}/primary`, { method: 'POST' });
   }
 
+  addManualWallet(chain: string, address: string) {
+    return this.request<{ linked: true }>(`/player/wallets/manual`, {
+      method: 'POST',
+      body: JSON.stringify({ chain, address }),
+    });
+  }
+
   // NFT collections
   syncNftCollections() {
     return this.request<{ claimed: number; alreadyClaimed: number; notImported: number; entities: any[] }>('/nft/collections/sync', {

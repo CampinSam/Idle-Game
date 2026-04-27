@@ -69,6 +69,9 @@ export default function SettingsPage() {
   const [wallets, setWallets] = useState<LinkedWallet[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
   const [walletOpError, setWalletOpError] = useState<string | null>(null);
+  const [manualChain, setManualChain] = useState<string>('ETH');
+  const [manualAddress, setManualAddress] = useState<string>('');
+  const [manualSubmitting, setManualSubmitting] = useState(false);
 
   const {
     connecting,
@@ -133,6 +136,27 @@ export default function SettingsPage() {
     if (!token) return;
     const ok = await linkCardano(walletKey, token);
     if (ok) await loadWallets();
+  };
+
+  const handleAddManualWallet = async () => {
+    clearConnectError();
+    setWalletOpError(null);
+    const trimmed = manualAddress.trim();
+    if (!trimmed) {
+      setWalletOpError('Address is required');
+      return;
+    }
+    setManualSubmitting(true);
+    try {
+      await api.addManualWallet(manualChain, trimmed);
+      setManualAddress('');
+      await loadWallets();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to add wallet';
+      setWalletOpError(message);
+    } finally {
+      setManualSubmitting(false);
+    }
   };
 
   return (
@@ -249,6 +273,38 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   )}
+                  <div className="wallet-add-section wallet-manual-section">
+                    <h3 className="wallet-add-title">Add wallet (no verification — dev only)</h3>
+                    <div className="wallet-manual-row">
+                      <select
+                        className="wallet-manual-chain"
+                        value={manualChain}
+                        onChange={(e) => setManualChain(e.target.value)}
+                        disabled={manualSubmitting}
+                      >
+                        <option value="ETH">Ethereum</option>
+                        <option value="BASE">Base</option>
+                        <option value="MATIC">Polygon</option>
+                        <option value="CARDANO">Cardano</option>
+                      </select>
+                      <input
+                        className="wallet-manual-address"
+                        type="text"
+                        placeholder="Wallet address"
+                        value={manualAddress}
+                        onChange={(e) => setManualAddress(e.target.value)}
+                        disabled={manualSubmitting}
+                      />
+                    </div>
+                    <button
+                      className="wallet-btn wallet-btn-evm"
+                      onClick={handleAddManualWallet}
+                      disabled={manualSubmitting}
+                      style={{ marginTop: 8 }}
+                    >
+                      {manualSubmitting ? 'Adding...' : 'Add Wallet'}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

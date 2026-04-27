@@ -164,3 +164,41 @@
   padding: 28px 16px;
   font-size: 14px;
 }
+
+.wallet-manual-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(139, 92, 246, 0.18);
+}
+
+.wallet-manual-row {
+  display: flex;
+  gap: 8px;
+}
+
+.wallet-manual-chain,
+.wallet-manual-address {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #e2d9ff;
+  font-size: 13px;
+  font-family: 'Exo 2', system-ui, sans-serif;
+  outline: none;
+}
+
+.wallet-manual-chain {
+  flex: 0 0 120px;
+  cursor: pointer;
+}
+
+.wallet-manual-address {
+  flex: 1;
+  min-width: 0;
+}
+
+.wallet-manual-chain:focus,
+.wallet-manual-address:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
