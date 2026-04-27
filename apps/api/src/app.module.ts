@@ -82,6 +82,21 @@ if (process.env.NODE_ENV === 'production') {
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'web', 'dist'),
       exclude: ['/api/(.*)', '/v1/(.*)', '/media/(.*)'],
+      serveStaticOptions: {
+        // The service worker and web manifest must never be cached by the
+        // browser; otherwise a stale SW pins the site to an old build.
+        // Hashed JS/CSS bundles still get the express.static defaults.
+        setHeaders: (res, filePath) => {
+          const base = filePath.split(/[\\/]/).pop() ?? '';
+          if (
+            base === 'sw.js' ||
+            base === 'registerSW.js' ||
+            base === 'manifest.webmanifest'
+          ) {
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          }
+        },
+      },
     }),
   );
 }

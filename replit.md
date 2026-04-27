@@ -101,6 +101,21 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 **App Storage:**
 - Replit App Storage for hosting art and media assets.
 
+**Progressive Web App (PWA):**
+- Built via `vite-plugin-pwa` (registerType `autoUpdate`, generateSW). Plugin runs as part of `pnpm --filter @derp/web build` and emits `dist/sw.js`, `dist/workbox-<hash>.js`, and `dist/manifest.webmanifest` alongside the regular bundle.
+- Web manifest: name "Derp Universe", short_name "Derp", `display: standalone`, `theme_color: #1e1b3a`, `background_color: #0c0a1a`, `start_url: /`, `scope: /`. Icons live in `apps/web/public/` (`pwa-192x192.png`, `pwa-512x512.png`, `pwa-maskable-192.png`, `pwa-maskable-512.png`, `apple-touch-icon.png`, `derp.svg`, `favicon-32.png`) — all generated from `derp.svg` via ImageMagick. Replace any of those PNGs with hand-crafted art and rebuild.
+- Workbox runtime caching:
+  - **Precache**: app shell (HTML/JS/CSS/SVG/fonts) — auto, ~57 entries, rotated by file hash.
+  - **`/media/*`** (icons, sprites, audio): `CacheFirst`, 30 days, ~500 entries.
+  - **`/api/audio/config`**: `StaleWhileRevalidate`, 1 day.
+  - **All other `/api/*`** (bootstrap, delta, commands, stream, auth, admin): `NetworkOnly` — server-authoritative state is never cached.
+  - **Google Fonts**: `CacheFirst`, 1 year.
+  - **SSE** (`/api/v1/stream`): bypassed (workbox doesn't intercept the EventSource through this strategy).
+- Update flow: when a new SW activates, `PWAUpdateBanner` (mounted in `App.tsx` via `virtual:pwa-register/react`) shows a non-blocking "A new version is available — Refresh" banner. Click triggers `updateServiceWorker(true)` which activates + reloads.
+- Production server (`apps/api/src/app.module.ts` ServeStaticModule) overrides `Cache-Control` to `no-cache, must-revalidate` for `sw.js`, `registerSW.js`, and `manifest.webmanifest` so a stale SW can never pin the site to an old build. Hashed JS/CSS bundles keep their default static caching.
+- Dev mode: `devOptions.enabled: false` — no SW runs during `pnpm --filter @derp/web dev`, so HMR is unaffected. The PWA only activates in production builds.
+- Explicitly NOT supported: offline gameplay (server-authoritative architecture requires a live connection for bootstrap/SSE), push notifications, background sync.
+
 ## External Dependencies
 - **PostgreSQL**: Primary database.
 - **Prisma ORM**: Database toolkit.
