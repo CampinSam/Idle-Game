@@ -12,7 +12,6 @@ import Layout from './components/Layout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
 import ErrorBoundary from './components/ErrorBoundary';
-import PWAUpdateBanner from './components/PWAUpdateBanner';
 
 const HomePage = lazy(() => import('./features/home/HomePage'));
 const EntitiesPage = lazy(() => import('./features/entities/EntitiesPage'));
@@ -151,7 +150,6 @@ export default function App() {
         </Route>
       </Routes>
       <GameModalHost />
-      <PWAUpdateBanner />
       </ModalProvider>
       </NotificationProvider>
       </TickEngineProvider>
