@@ -111,7 +111,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
   - **All other `/api/*`** (bootstrap, delta, commands, stream, auth, admin): `NetworkOnly` — server-authoritative state is never cached.
   - **Google Fonts**: `CacheFirst`, 1 year.
   - **SSE** (`/api/v1/stream`): bypassed (workbox doesn't intercept the EventSource through this strategy).
-- Update flow: when a new SW activates, `PWAUpdateBanner` (mounted in `App.tsx` via `virtual:pwa-register/react`) shows a non-blocking "A new version is available — Refresh" banner. Click triggers `updateServiceWorker(true)` which activates + reloads.
+- Update flow: when a new SW activates, `PWAUpdateBanner` (mounted in `main.tsx` as a sibling of `<App />` so it covers logged-out and admin routes too, via `virtual:pwa-register/react`) shows a non-blocking "A new version is available — Refresh" banner. Click triggers `updateServiceWorker(true)` which activates + reloads. The banner also calls `registration.update()` on a 60s interval so an active session picks up new deploys quickly without waiting for the browser's default SW update cadence.
 - Production server (`apps/api/src/app.module.ts` ServeStaticModule) overrides `Cache-Control` to `no-cache, must-revalidate` for `sw.js`, `registerSW.js`, and `manifest.webmanifest` so a stale SW can never pin the site to an old build. Hashed JS/CSS bundles keep their default static caching.
 - Dev mode: `devOptions.enabled: false` — no SW runs during `pnpm --filter @derp/web dev`, so HMR is unaffected. The PWA only activates in production builds.
 - Explicitly NOT supported: offline gameplay (server-authoritative architecture requires a live connection for bootstrap/SSE), push notifications, background sync.
