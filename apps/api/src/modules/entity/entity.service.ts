@@ -234,8 +234,9 @@ export class EntityService {
     return { scanned: all.length, fixed };
   }
 
-  async setEntityStatus(entityId: string, userId: string, status: string) {
-    const entity = await (this.prisma as any).entity.findFirst({
+  async setEntityStatus(entityId: string, userId: string, status: string, tx?: any) {
+    const db = tx || this.prisma;
+    const entity = await (db as any).entity.findFirst({
       where: { id: entityId, ownerUserId: userId },
       include: { equipment: true },
     });
@@ -249,7 +250,7 @@ export class EntityService {
     }
 
     const newState = { ...currentState, status };
-    const updated = await (this.prisma as any).entity.update({
+    const updated = await (db as any).entity.update({
       where: { id: entityId },
       data: { state: newState },
       include: { equipment: true },

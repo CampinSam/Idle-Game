@@ -203,6 +203,18 @@ export default function GameModalHost() {
             return;
           }
 
+          if (apiKey === 'jobs.cancel' && payload?.jobId) {
+            const jobId = payload.jobId as string;
+            try {
+              await api.cancelJob(jobId);
+            } catch (err: any) {
+              audioEngine.play('ui.error');
+              console.warn('[GameModalHost] jobs.cancel failed:', err?.message);
+            }
+            dismissModal();
+            return;
+          }
+
           console.warn(`[GameModalHost] Unhandled apiKey: ${apiKey}`);
           dismissModal();
           return;

@@ -230,6 +230,16 @@ class ApiClient {
     return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, { method: 'POST' });
   }
 
+  cancelJob(jobId: string) {
+    return this.request<{
+      cancelled: boolean;
+      jobId: string;
+      jobType: string;
+      freedEntityIds: string[];
+      deltaId: string;
+    }>(`/jobs/${jobId}/cancel`, { method: 'POST' });
+  }
+
   dismissNotification(id: string) {
     return this.request<any>('/notifications/dismiss', {
       method: 'POST',

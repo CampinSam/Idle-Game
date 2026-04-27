@@ -6,6 +6,7 @@ import { TickService } from '../tick/tick.service';
 import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { JobService } from './job.service';
 
 const JOB_TYPE_CONFIG: Record<string, { defTable: string; category: string; label: string; screen: string }> = {
   MissionJob: { defTable: 'missionDef', category: 'missions', label: 'Mission', screen: '/missions' },
@@ -24,7 +25,13 @@ export class JobController {
     private notificationService: NotificationService,
     private currencyService: CurrencyService,
     private pubsub: PubSubService,
+    private jobService: JobService,
   ) {}
+
+  @Post(':id/cancel')
+  async cancelJob(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.jobService.cancelJob(user.id, id);
+  }
 
   private async getDefForJob(job: any): Promise<any> {
     const config = JOB_TYPE_CONFIG[job.type];
