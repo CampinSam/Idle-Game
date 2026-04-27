@@ -231,13 +231,7 @@ class ApiClient {
   }
 
   cancelJob(jobId: string) {
-    return this.request<{
-      cancelled: boolean;
-      jobId: string;
-      jobType: string;
-      freedEntityIds: string[];
-      deltaId: string;
-    }>(`/jobs/${jobId}/cancel`, { method: 'POST' });
+    return this.request<{ cancelled: boolean }>(`/jobs/${jobId}/cancel`, { method: 'POST' });
   }
 
   dismissNotification(id: string) {
