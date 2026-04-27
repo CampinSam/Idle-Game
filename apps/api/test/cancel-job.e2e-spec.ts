@@ -207,11 +207,15 @@ describe('JobService — cancelJob', () => {
 
     await service.cancelJob('user-1', 'job-1');
 
-    expect(tx.notification.findMany).toHaveBeenCalledWith({
-      where: { userId: 'user-1', sourceId: 'job-1', archivedAt: null },
-    });
+    const notifWhere = {
+      userId: 'user-1',
+      sourceType: 'job_ready',
+      sourceId: 'job-1',
+      archivedAt: null,
+    };
+    expect(tx.notification.findMany).toHaveBeenCalledWith({ where: notifWhere });
     expect(tx.notification.updateMany).toHaveBeenCalledWith({
-      where: { userId: 'user-1', sourceId: 'job-1', archivedAt: null },
+      where: notifWhere,
       data: expect.objectContaining({
         archivedAt: expect.any(Date),
         dismissedAt: expect.any(Date),
