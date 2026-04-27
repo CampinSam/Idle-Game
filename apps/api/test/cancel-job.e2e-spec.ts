@@ -59,9 +59,18 @@ function buildService() {
     },
     currency: { spend: jest.fn(), credit: jest.fn() },
     item: { update: jest.fn() },
-    notification: { updateMany: jest.fn(), create: jest.fn() },
+    notification: {
+      findMany: jest.fn().mockResolvedValue([]),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      create: jest.fn(),
+    },
   };
 
+  // Simulate Prisma's interactive $transaction: if the callback throws,
+  // none of the writes are visible to subsequent calls. We don't need a
+  // full rollback simulation because each test inspects the tx mocks
+  // directly — but tests of the rollback path verify that the FINAL
+  // outcome (delta + commit) never happened.
   const mockPrisma: any = {
     $transaction: jest.fn().mockImplementation(async (fn: any) => fn(tx)),
   };
@@ -173,12 +182,11 @@ describe('JobService — cancelJob', () => {
     expect(mockEntityService.setEntityStatus).toHaveBeenNthCalledWith(1, 'entity-1', 'user-1', 'idle', tx);
     expect(mockEntityService.setEntityStatus).toHaveBeenNthCalledWith(2, 'entity-2', 'user-1', 'idle', tx);
 
-    // No refunds: zero currency / item / notification writes
+    // No refunds: zero currency / item writes; no NEW notifications created
     expect(tx.currency.spend).not.toHaveBeenCalled();
     expect(tx.currency.credit).not.toHaveBeenCalled();
     expect(tx.item.update).not.toHaveBeenCalled();
     expect(tx.notification.create).not.toHaveBeenCalled();
-    expect(tx.notification.updateMany).not.toHaveBeenCalled();
 
     // PlayerDelta persisted with deleteJob + per-entity upserts (and ui:[])
     expect(tx.playerDelta.create).toHaveBeenCalledTimes(1);
@@ -218,23 +226,82 @@ describe('JobService — cancelJob', () => {
     ]);
   });
 
-  it('still cancels the job when an entity-free fails (logs and continues)', async () => {
-    const { service, mockEntityService, tx } = buildService();
+  it('rolls back the entire transaction when any team entity cannot be released (atomicity)', async () => {
+    const { service, mockEntityService, mockPubsub, tx } = buildService();
     tx.job.findFirst.mockResolvedValue(makeJob({ team: ['entity-1', 'entity-2'] }));
-    mockEntityService.setEntityStatus
-      .mockRejectedValueOnce(new Error('entity-1 vanished'))
-      .mockResolvedValueOnce({ id: 'entity-2', status: 'idle' });
-    tx.entity.findMany.mockResolvedValue([
-      makeEntity('entity-2', { state: { status: 'idle' } }),
-    ]);
+    mockEntityService.setEntityStatus.mockRejectedValueOnce(new Error('entity-1 missing'));
 
-    const result = await service.cancelJob('user-1', 'job-1');
+    await expect(service.cancelJob('user-1', 'job-1')).rejects.toThrow('entity-1 missing');
 
-    expect(result.cancelled).toBe(true);
-    expect(tx.job.updateMany).toHaveBeenCalledWith({
-      where: { id: 'job-1', userId: 'user-1', status: 'active' },
-      data: { status: 'cancelled' },
+    // Tx body bailed before any of the post-entity work executed
+    expect(tx.entity.findMany).not.toHaveBeenCalled();
+    expect(tx.notification.findMany).not.toHaveBeenCalled();
+    expect(tx.playerDelta.create).not.toHaveBeenCalled();
+    expect(mockPubsub.publish).not.toHaveBeenCalled();
+  });
+
+  it('archives notifications sourced from the cancelled job and emits notification patches', async () => {
+    const { service, tx } = buildService();
+    tx.job.findFirst.mockResolvedValue(makeJob({ team: ['entity-1'] }));
+    tx.entity.findMany.mockResolvedValue([makeEntity('entity-1')]);
+    const staleNotif = {
+      id: 'notif-1',
+      userId: 'user-1',
+      type: 'job_ready',
+      category: 'missions',
+      priority: 'normal',
+      title: 'Mission Ready',
+      body: 'Your mission is ready to collect',
+      deepLink: { screen: '/missions', missionRunId: 'job-1' },
+      meta: { count: 1 },
+      groupKey: null,
+      sourceType: 'job_ready',
+      sourceId: 'job-1',
+      readAt: null,
+      dismissedAt: null,
+      archivedAt: null,
+      createdAt: new Date('2026-04-27T16:00:00Z'),
+    };
+    tx.notification.findMany.mockResolvedValue([staleNotif]);
+    tx.notification.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.cancelJob('user-1', 'job-1');
+
+    // Notifications archived in the same tx with the source-scoped filter
+    expect(tx.notification.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', sourceId: 'job-1', archivedAt: null },
     });
+    expect(tx.notification.updateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', sourceId: 'job-1', archivedAt: null },
+      data: expect.objectContaining({
+        archivedAt: expect.any(Date),
+        dismissedAt: expect.any(Date),
+        readAt: expect.any(Date),
+      }),
+    });
+
+    // Patches include a delete for the archived notification so the client
+    // drops it from its store (archived notifications are excluded from
+    // bootstrap, so an upsert wouldn't be the right shape).
+    const patches = tx.playerDelta.create.mock.calls[0][0].data.patches as any[];
+    const notifPatch = patches.find((p) => p.entity === 'notification' && p.id === 'notif-1');
+    expect(notifPatch).toBeDefined();
+    expect(notifPatch.op).toBe('delete');
+  });
+
+  it('skips notification patches when no notifications reference the job', async () => {
+    const { service, tx } = buildService();
+    tx.job.findFirst.mockResolvedValue(makeJob({ team: ['entity-1'] }));
+    tx.entity.findMany.mockResolvedValue([makeEntity('entity-1')]);
+    tx.notification.findMany.mockResolvedValue([]);
+
+    await service.cancelJob('user-1', 'job-1');
+
+    // findMany was called (defensive cleanup), but no updateMany since count was 0
+    expect(tx.notification.findMany).toHaveBeenCalled();
+    expect(tx.notification.updateMany).not.toHaveBeenCalled();
+    const patches = tx.playerDelta.create.mock.calls[0][0].data.patches as any[];
+    expect(patches.find((p) => p.entity === 'notification')).toBeUndefined();
   });
 
   it('cancels CraftingJob and BuildingJob types', async () => {

@@ -53,14 +53,11 @@ export class JobService {
           throw new NotFoundException('Active job not found');
         }
 
+        // Atomic: any failure to release an entity rolls back the whole
+        // cancellation (job stays 'active', no delta emitted) so we never
+        // leave team entities stuck non-idle while the job vanishes.
         for (const entityId of ids) {
-          try {
-            await this.entityService.setEntityStatus(entityId, userId, 'idle', tx);
-          } catch (err) {
-            this.logger.warn(
-              `cancelJob: failed to free entity ${entityId} (job ${jobId.slice(0, 8)}): ${err}`,
-            );
-          }
+          await this.entityService.setEntityStatus(entityId, userId, 'idle', tx);
         }
 
         const refreshed = ids.length
@@ -70,10 +67,30 @@ export class JobService {
             })
           : [];
 
+        // Notification cleanup: archive any notifications sourced from this
+        // job (job_ready, etc.) so they don't linger in the player's inbox
+        // pointing at a job that no longer exists. Done in the same tx and
+        // mirrored as patches so the client UI updates immediately.
+        const stale = await tx.notification.findMany({
+          where: { userId, sourceId: jobId, archivedAt: null },
+        });
+        const now = new Date();
+        if (stale.length > 0) {
+          await tx.notification.updateMany({
+            where: { userId, sourceId: jobId, archivedAt: null },
+            data: { archivedAt: now, dismissedAt: now, readAt: now },
+          });
+        }
+
         const pb = new PatchBuilder();
         pb.deleteJob(jobId);
         for (const entity of refreshed) {
           pb.upsertEntity(entity);
+        }
+        // Archived notifications are excluded from bootstrap, so the client
+        // should drop them from its store outright — emit a delete patch.
+        for (const notif of stale) {
+          pb.delete('notification', notif.id);
         }
         const patches = pb.build();
 
