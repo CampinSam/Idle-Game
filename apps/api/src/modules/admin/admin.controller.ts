@@ -340,6 +340,16 @@ export class AdminController {
     return this.adminService.getBalanceBundle();
   }
 
+  // Dry-run an outcome spec through the canonical resolver functions
+  // (loadBundleDefs + expandBundleRefs + resolveOutcomes). Read-only — no
+  // currency credit, no inventory write, no flag persistence. Used by the
+  // OutcomeListEditor "Test outcome" button so authors can verify a draft
+  // bundle behaves as expected before saving.
+  @Post('outcomes/test')
+  testOutcome(@Body() body: { spec: any; userId?: string; seed?: string; iterations?: number }) {
+    return this.adminService.testOutcome(body);
+  }
+
   // ── Audio: SoundDef CRUD ─────────────────────────────────────────────────
 
   @Get('audio/sounds')

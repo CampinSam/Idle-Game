@@ -7,6 +7,8 @@ import { InventoryService } from '../inventory/inventory.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
+import { GameRulesService, GameUser } from '../game-rules/game-rules.service';
+import { SeededRng } from '@derp/math';
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -33,6 +35,7 @@ export class AdminService {
     private missionService: MissionService,
     private inventoryService: InventoryService,
     private settlementService: LocationSettlementService,
+    private gameRules: GameRulesService,
   ) {}
 
   async searchPlayers(query: string) {
@@ -413,6 +416,151 @@ export class AdminService {
     }
 
     return { entityDefinitions, traitDefinitions };
+  }
+
+  async testOutcome(input: { spec: any; userId?: string; seed?: string; iterations?: number }) {
+    if (input.spec === undefined || input.spec === null) {
+      throw new BadRequestException('spec is required');
+    }
+    const iterations = input.iterations ?? 1;
+    if (!Number.isInteger(iterations) || iterations < 1 || iterations > 1000) {
+      throw new BadRequestException('iterations must be an integer between 1 and 1000');
+    }
+
+    let items: any[];
+    if (Array.isArray(input.spec)) {
+      items = input.spec;
+    } else if (input.spec && typeof input.spec === 'object' && Array.isArray((input.spec as any).rewards)) {
+      items = (input.spec as any).rewards;
+    } else {
+      throw new BadRequestException('spec must be an array or { rewards: [] } object');
+    }
+
+    let baseUser: GameUser;
+    let pickedUser: { id: string; username: string | null; keeperLevel: number; flagCount: number } | null = null;
+    if (input.userId) {
+      const u = await this.prisma.user.findUnique({ where: { id: input.userId } });
+      if (!u) throw new NotFoundException(`Player ${input.userId} not found`);
+      baseUser = u as any;
+      const flagsObj = (u.flags && typeof u.flags === 'object') ? u.flags as Record<string, unknown> : {};
+      pickedUser = {
+        id: u.id,
+        username: (u as any).username ?? null,
+        keeperLevel: (u as any).keeperLevel ?? 1,
+        flagCount: Object.keys(flagsObj).length,
+      };
+    } else {
+      baseUser = { keeperLevel: 0, flags: {} };
+    }
+
+    // Pre-load + expand bundle refs once; per-iteration we only re-roll.
+    const defs = await this.gameRules.loadBundleDefs(items);
+    const expanded = this.gameRules.expandBundleRefs(items, defs);
+
+    const seed = typeof input.seed === 'string' && input.seed.trim() !== '' ? input.seed.trim() : null;
+
+    const runs: { resolved: { entry: any; amount?: number }[]; flags: { entry: any }[]; texts: string[] }[] = [];
+    for (let i = 0; i < iterations; i++) {
+      // Clone the user's flags per iteration so flag mutations during one
+      // resolve() pass don't leak into the next iteration.
+      const baseFlags = (baseUser.flags && typeof baseUser.flags === 'object')
+        ? baseUser.flags as Record<string, unknown>
+        : {};
+      const userClone: GameUser = { ...baseUser, flags: { ...baseFlags } };
+      const reqContext = this.gameRules.buildRequirementContext(userClone);
+
+      const rng = seed
+        ? (() => {
+            const r = new SeededRng(`${seed}:${i}`);
+            return {
+              chance: (p: number) => r.chance(p),
+              nextInt: (lo: number, hi: number) => r.nextInt(lo, hi),
+            };
+          })()
+        : {
+            chance: (p: number) => Math.random() < p,
+            nextInt: (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo,
+          };
+
+      runs.push(this.gameRules.resolveOutcomes(expanded, reqContext, rng));
+    }
+
+    type EntryAgg = {
+      type: string;
+      key?: string | null;
+      count: number;
+      totalAmount: number;
+      minAmount: number;
+      maxAmount: number;
+    };
+    type FlagAgg = {
+      operation: string;
+      key: string;
+      count: number;
+      sampleValues: unknown[];
+    };
+
+    const entryKeyOf = (entry: any): string => {
+      const t = entry?.type ?? 'unknown';
+      if (t === 'currency' || t === 'item') return `${t}:${entry?.key ?? '?'}`;
+      if (t === 'emitEvent') return `event:${entry?.eventDefId ?? entry?.id ?? '?'}`;
+      return t;
+    };
+
+    const entryAgg = new Map<string, EntryAgg>();
+    const flagAgg = new Map<string, FlagAgg>();
+    const textAgg = new Map<string, number>();
+
+    for (const run of runs) {
+      for (const r of run.resolved) {
+        const k = entryKeyOf(r.entry);
+        const amt = r.amount ?? 0;
+        const cur: EntryAgg = entryAgg.get(k) ?? {
+          type: r.entry?.type ?? 'unknown',
+          key: r.entry?.key ?? null,
+          count: 0,
+          totalAmount: 0,
+          minAmount: Number.POSITIVE_INFINITY,
+          maxAmount: Number.NEGATIVE_INFINITY,
+        };
+        cur.count += 1;
+        cur.totalAmount += amt;
+        cur.minAmount = Math.min(cur.minAmount, amt);
+        cur.maxAmount = Math.max(cur.maxAmount, amt);
+        entryAgg.set(k, cur);
+      }
+      for (const f of run.flags) {
+        const e = f.entry ?? {};
+        const k = `${e.operation ?? 'set'}:${e.key ?? '?'}`;
+        const cur: FlagAgg = flagAgg.get(k) ?? {
+          operation: e.operation ?? 'set',
+          key: e.key ?? '',
+          count: 0,
+          sampleValues: [] as unknown[],
+        };
+        cur.count += 1;
+        if (cur.sampleValues.length < 5) cur.sampleValues.push(e.value);
+        flagAgg.set(k, cur);
+      }
+      for (const t of run.texts) {
+        textAgg.set(t, (textAgg.get(t) ?? 0) + 1);
+      }
+    }
+
+    const aggregate = {
+      entries: Array.from(entryAgg.values()).map((a) => ({
+        type: a.type,
+        key: a.key,
+        count: a.count,
+        totalAmount: a.totalAmount,
+        minAmount: a.minAmount === Number.POSITIVE_INFINITY ? 0 : a.minAmount,
+        maxAmount: a.maxAmount === Number.NEGATIVE_INFINITY ? 0 : a.maxAmount,
+      })),
+      flags: Array.from(flagAgg.values()),
+      texts: Array.from(textAgg.entries()).map(([message, count]) => ({ message, count })),
+    };
+
+    return serializeBigInts({ iterations, pickedUser, runs, aggregate });
   }
 
   async getRecentJobs(limit: number) {

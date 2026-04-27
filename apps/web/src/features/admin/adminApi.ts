@@ -94,6 +94,40 @@ export const adminApi = {
     traitDefinitions: Record<string, { archetype: string; slotStats: Record<string, Record<string, number>>; scaling: Record<string, number>; rarityMultiplier: number }>;
   }>('/balance/bundle'),
 
+  testOutcome: (
+    spec: any,
+    opts: { userId?: string; seed?: string; iterations?: number } = {},
+  ) =>
+    adminRequest<{
+      iterations: number;
+      pickedUser: { id: string; username: string | null; keeperLevel: number; flagCount: number } | null;
+      runs: Array<{
+        resolved: Array<{ entry: any; amount?: number }>;
+        flags: Array<{ entry: any }>;
+        texts: string[];
+      }>;
+      aggregate: {
+        entries: Array<{
+          type: string;
+          key: string | null;
+          count: number;
+          totalAmount: number;
+          minAmount: number;
+          maxAmount: number;
+        }>;
+        flags: Array<{
+          operation: string;
+          key: string;
+          count: number;
+          sampleValues: unknown[];
+        }>;
+        texts: Array<{ message: string; count: number }>;
+      };
+    }>('/outcomes/test', {
+      method: 'POST',
+      body: JSON.stringify({ spec, ...opts }),
+    }),
+
   listSoundDefs: () => adminRequest<any[]>('/audio/sounds'),
   createSoundDef: (data: { key: string; name: string; bus: string; fileKey?: string; description?: string }) =>
     adminRequest<any>('/audio/sounds', { method: 'POST', body: JSON.stringify(data) }),

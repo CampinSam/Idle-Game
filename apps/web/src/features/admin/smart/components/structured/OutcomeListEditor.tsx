@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import RefSelect, { ensureRefCache, getCachedRefRow } from '../RefSelect';
 import CollapsibleObject from '../CollapsibleObject';
 import RequirementsListEditor from './RequirementsListEditor';
+import { adminApi } from '../../../adminApi';
 import {
   containerStyle,
   entryCardStyle,
@@ -16,9 +17,11 @@ import {
   fieldRowStyle,
   labelStyle,
   ghostButtonStyle,
+  sectionStyle,
 } from './editorStyles';
 import {
   validateOutcome,
+  outcomeSpecErrorCount,
   ERROR_BORDER_COLOR,
   errorTextStyle,
   errorWrapperStyle,
@@ -520,6 +523,314 @@ function OutcomeArrayEditor({ items, onChange }: { items: Outcome[]; onChange: (
         <button type="button" style={addButtonStyle} onClick={() => add('flag')}>+ flag</button>
         <button type="button" style={addButtonStyle} onClick={() => add('text')}>+ text</button>
       </div>
+      <OutcomeTestPanel spec={items} />
+    </div>
+  );
+}
+
+type TestResult = Awaited<ReturnType<typeof adminApi.testOutcome>>;
+
+function refLabel(refTable: string, id: string | null | undefined): string {
+  if (!id) return '?';
+  const row = getCachedRefRow(refTable, id);
+  if (!row) return id;
+  return row.name ? `${row.name} (${id})` : id;
+}
+
+function describeEntry(entry: any): string {
+  const t = entry?.type;
+  if (t === 'currency') return refLabel('Currency', entry.key);
+  if (t === 'item') return refLabel('ItemDef', entry.key);
+  if (t === 'entity_xp') return 'entity XP';
+  if (t === 'keeper_xp') return 'keeper XP';
+  if (t === 'emitEvent') return `event: ${entry.eventDefId ?? entry.id ?? '?'}`;
+  return t ?? 'unknown';
+}
+
+function OutcomeTestPanel({ spec }: { spec: any }) {
+  const [open, setOpen] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [seed, setSeed] = useState('');
+  const [iterations, setIterations] = useState<number>(1);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<TestResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [, force] = useState(0);
+
+  const errorCount = outcomeSpecErrorCount(spec);
+  const isEmpty = Array.isArray(spec) ? spec.length === 0 : !(spec && Array.isArray(spec.rewards) && spec.rewards.length > 0);
+
+  // Pre-warm the ref caches so resolved currency/item entries render with
+  // friendly names instead of bare ids.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    Promise.all([
+      ensureRefCache('Currency'),
+      ensureRefCache('ItemDef'),
+    ]).then(() => { if (!cancelled) force((n) => n + 1); });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const run = async () => {
+    setRunning(true);
+    setError(null);
+    try {
+      const r = await adminApi.testOutcome(spec, {
+        userId: userId.trim() || undefined,
+        seed: seed.trim() || undefined,
+        iterations,
+      });
+      setResult(r);
+    } catch (e: any) {
+      setError(e?.message ?? 'Test failed');
+      setResult(null);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        style={{ ...addButtonStyle, alignSelf: 'flex-start' }}
+        onClick={() => setOpen(true)}
+        disabled={isEmpty}
+        title={isEmpty ? 'Add at least one outcome entry first' : 'Run this spec through the live server resolver'}
+      >
+        ▶ Test outcome
+      </button>
+    );
+  }
+
+  const disabledReason = isEmpty
+    ? 'Add at least one outcome entry first.'
+    : errorCount > 0
+      ? `Fix ${errorCount} validation error${errorCount === 1 ? '' : 's'} above before running.`
+      : null;
+
+  return (
+    <div style={sectionStyle}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <strong style={{ color: '#a78bfa', fontSize: 12, letterSpacing: '0.04em', flex: 1 }}>
+          TEST OUTCOME
+        </strong>
+        <span style={{ fontSize: 11, color: '#888' }}>
+          Runs the saved-shape spec through the same server resolver used at claim time. Read-only — no flags or items are actually granted.
+        </span>
+        <button
+          type="button"
+          style={ghostButtonStyle}
+          onClick={() => { setOpen(false); setResult(null); setError(null); }}
+        >
+          Close
+        </button>
+      </div>
+
+      <div style={fieldRowStyle}>
+        <div style={{ ...fieldGroupStyle, minWidth: 220 }}>
+          <span style={labelStyle}>player userId (optional)</span>
+          <input
+            type="text"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="empty = no player context"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ ...fieldGroupStyle, minWidth: 160 }}>
+          <span style={labelStyle}>seed (optional)</span>
+          <input
+            type="text"
+            value={seed}
+            onChange={(e) => setSeed(e.target.value)}
+            placeholder="empty = random"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ ...fieldGroupStyle, minWidth: 100, maxWidth: 140 }}>
+          <span style={labelStyle}>iterations (1-1000)</span>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={iterations}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (!Number.isFinite(n)) return;
+              setIterations(Math.max(1, Math.min(1000, Math.floor(n))));
+            }}
+            style={{ ...numberInputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ alignSelf: 'flex-end' }}>
+          <button
+            type="button"
+            style={{
+              ...addButtonStyle,
+              opacity: disabledReason || running ? 0.5 : 1,
+              cursor: disabledReason || running ? 'not-allowed' : 'pointer',
+            }}
+            disabled={!!disabledReason || running}
+            onClick={run}
+            title={disabledReason ?? undefined}
+          >
+            {running ? 'Running…' : 'Run'}
+          </button>
+        </div>
+      </div>
+
+      {disabledReason && (
+        <div style={{ fontSize: 11, color: '#fbbf24' }}>{disabledReason}</div>
+      )}
+      {error && (
+        <div style={{ fontSize: 12, color: '#ef4444' }}>Error: {error}</div>
+      )}
+
+      {result && <OutcomeTestResultView result={result} />}
+    </div>
+  );
+}
+
+function formatRange(min: number, max: number): string {
+  if (min === max) return String(min);
+  return `${min}..${max}`;
+}
+
+function OutcomeTestResultView({ result }: { result: TestResult }) {
+  const { iterations, pickedUser, runs, aggregate } = result;
+  const sample = runs[0];
+  const showAggregate = iterations > 1;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 11, color: '#888' }}>
+        Ran {iterations} iteration{iterations === 1 ? '' : 's'}
+        {pickedUser && (
+          <> · player <span style={{ color: '#e0e0ff' }}>{pickedUser.username ?? pickedUser.id}</span> (lvl {pickedUser.keeperLevel}, {pickedUser.flagCount} flag{pickedUser.flagCount === 1 ? '' : 's'})</>
+        )}
+        {!pickedUser && <> · empty player context (requirement gates may behave differently than for a real player)</>}
+      </div>
+
+      {showAggregate ? (
+        <>
+          <ResultSection title="Resolved entries (aggregate)" empty="Nothing resolved across all iterations.">
+            {aggregate.entries.length > 0 && (
+              <ul style={resultListStyle}>
+                {aggregate.entries.map((e, i) => (
+                  <li key={i} style={resultLineStyle}>
+                    <span style={{ color: '#a78bfa', fontWeight: 600, minWidth: 70, fontSize: 11 }}>{e.type}</span>
+                    <span style={{ color: '#e0e0ff' }}>{e.key ? (e.type === 'currency' ? refLabel('Currency', e.key) : e.type === 'item' ? refLabel('ItemDef', e.key) : e.key) : '—'}</span>
+                    <span style={{ color: '#888', fontSize: 11 }}>
+                      {e.count}× · total {e.totalAmount} · per-roll {formatRange(e.minAmount, e.maxAmount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ResultSection>
+          <ResultSection title="Flags (aggregate)" empty="No flag effects fired.">
+            {aggregate.flags.length > 0 && (
+              <ul style={resultListStyle}>
+                {aggregate.flags.map((f, i) => (
+                  <li key={i} style={resultLineStyle}>
+                    <span style={{ color: '#a78bfa', fontWeight: 600, minWidth: 80, fontSize: 11 }}>{f.operation}</span>
+                    <span style={{ color: '#e0e0ff' }}>{f.key}</span>
+                    <span style={{ color: '#888', fontSize: 11 }}>
+                      {f.count}× · sample values: {f.sampleValues.map((v) => JSON.stringify(v)).join(', ') || '—'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ResultSection>
+          <ResultSection title="Texts (aggregate)" empty="No flavor text was rolled.">
+            {aggregate.texts.length > 0 && (
+              <ul style={resultListStyle}>
+                {aggregate.texts.map((t, i) => (
+                  <li key={i} style={resultLineStyle}>
+                    <span style={{ color: '#888', fontSize: 11, minWidth: 40 }}>{t.count}×</span>
+                    <span style={{ color: '#e0e0ff', fontStyle: 'italic' }}>"{t.message}"</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </ResultSection>
+        </>
+      ) : (
+        sample && (
+          <>
+            <ResultSection title="Resolved entries" empty="Nothing resolved.">
+              {sample.resolved.length > 0 && (
+                <ul style={resultListStyle}>
+                  {sample.resolved.map((r, i) => (
+                    <li key={i} style={resultLineStyle}>
+                      <span style={{ color: '#a78bfa', fontWeight: 600, minWidth: 70, fontSize: 11 }}>{r.entry?.type ?? '?'}</span>
+                      <span style={{ color: '#e0e0ff' }}>{describeEntry(r.entry)}</span>
+                      {r.amount !== undefined && (
+                        <span style={{ color: '#888', fontSize: 11 }}>×{r.amount}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ResultSection>
+            <ResultSection title="Flags" empty="No flag effects fired.">
+              {sample.flags.length > 0 && (
+                <ul style={resultListStyle}>
+                  {sample.flags.map((f, i) => (
+                    <li key={i} style={resultLineStyle}>
+                      <span style={{ color: '#a78bfa', fontWeight: 600, minWidth: 80, fontSize: 11 }}>{f.entry?.operation ?? 'set'}</span>
+                      <span style={{ color: '#e0e0ff' }}>{f.entry?.key ?? '?'}</span>
+                      <span style={{ color: '#888', fontSize: 11 }}>= {JSON.stringify(f.entry?.value)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ResultSection>
+            <ResultSection title="Texts" empty="No flavor text was rolled.">
+              {sample.texts.length > 0 && (
+                <ul style={resultListStyle}>
+                  {sample.texts.map((t, i) => (
+                    <li key={i} style={resultLineStyle}>
+                      <span style={{ color: '#e0e0ff', fontStyle: 'italic' }}>"{t}"</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ResultSection>
+          </>
+        )
+      )}
+    </div>
+  );
+}
+
+const resultListStyle: React.CSSProperties = {
+  listStyle: 'none',
+  padding: 0,
+  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+};
+
+const resultLineStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 8,
+  alignItems: 'baseline',
+  fontSize: 12,
+};
+
+function ResultSection({ title, empty, children }: { title: string; empty: string; children?: React.ReactNode }) {
+  const hasContent = !!children && (Array.isArray(children) ? children.some(Boolean) : true);
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.04em', marginBottom: 4 }}>
+        {title}
+      </div>
+      {hasContent ? children : <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>{empty}</div>}
     </div>
   );
 }
