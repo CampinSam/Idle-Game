@@ -246,6 +246,28 @@ describe('GameRulesService.resolveOutcomes — pick mode (with replacement)', ()
     expect(out.resolved[0].entry.key).toBe('soft_arcanium');
   });
 
+  it('with pool.length=3 and pickMax=2 (count <= pool size), still produces exactly the requested count and allows duplicates', () => {
+    const svc = makeService();
+    const items = [{
+      bundle: [
+        { type: 'item', key: 'a', min: 1, max: 1, odds: 100 },
+        { type: 'item', key: 'b', min: 1, max: 1, odds: 100 },
+        { type: 'item', key: 'c', min: 1, max: 1, odds: 100 },
+      ],
+      pickMin: 2,
+      pickMax: 2,
+    }];
+
+    // Seeded RNG returns idx 0 for both picks → with-replacement allows the
+    // same entry to fire twice. Without-replacement (the old behaviour) would
+    // have removed entry 0 after the first pick and produced a different key.
+    const out = svc.resolveOutcomes(items, emptyReqContext(), seqRng([0, 0]));
+
+    expect(out.resolved).toHaveLength(2);
+    expect(out.resolved[0].entry.key).toBe('a');
+    expect(out.resolved[1].entry.key).toBe('a');
+  });
+
   it('honours requirements: ineligible entries are excluded from the pool before picking', () => {
     const svc = makeService();
     const items = [{
@@ -378,6 +400,49 @@ describe('GameRulesService.processEffectsWithBundles — pick mode (with replace
     await svc.processEffectsWithBundles('u1', effects);
 
     expect(applyFlag).not.toHaveBeenCalled();
+  });
+
+  it('parity with resolveOutcomes: same bundle + matching draw stream produces the same number of picks of the same entry', async () => {
+    // Both paths get a deterministic "always pick the first pool entry" stream.
+    // resolveOutcomes uses the injected rng; processEffectsWithBundles uses
+    // Math.random — stub it to 0 so the weighted walk lands on idx 0 for every
+    // pick. Same pool, same pickMin/pickMax → same count, same single key.
+    const svc = makeService();
+    (svc as any).prisma.user.findUnique = jest.fn().mockResolvedValue({ id: 'u1', keeperLevel: 1, flags: {} });
+    const applyFlag = jest.spyOn(svc as any, 'applyFlagEffect').mockResolvedValue(undefined);
+
+    const pool = [
+      { type: 'flag', operation: 'set', key: 'a', value: true, odds: 100 },
+      { type: 'flag', operation: 'set', key: 'b', value: true, odds: 100 },
+      { type: 'flag', operation: 'set', key: 'c', value: true, odds: 100 },
+    ];
+    const N = 5;
+
+    const seededOut = svc.resolveOutcomes(
+      [{ bundle: pool, pickMin: N, pickMax: N }],
+      emptyReqContext(),
+      seqRng([0, 0, 0, 0, 0]),
+    );
+
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      await svc.processEffectsWithBundles('u1', [{ bundle: pool, pickMin: N, pickMax: N }]);
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    // Both paths should end up applying the same number of operations from
+    // the same pool entry (idx 0 → key 'a'). Note: flag entries land in
+    // `flags[]` on the resolveOutcomes side (resolved[] is for rewards), and
+    // are routed to applyFlagEffect on the processEffectsWithBundles side.
+    expect(seededOut.flags).toHaveLength(N);
+    expect(seededOut.flags.every((r) => (r.entry as any).key === 'a')).toBe(true);
+    expect(applyFlag).toHaveBeenCalledTimes(N);
+    for (const call of applyFlag.mock.calls) {
+      // applyFlagEffect(userId, effect) — effect is the second argument.
+      const effect = call[1] as any;
+      expect(effect.key).toBe('a');
+    }
   });
 
   it('coerces string-typed pickMin/pickMax in the non-seeded path', async () => {
