@@ -249,11 +249,11 @@ export class GameRulesService {
       const expandedInner = this.expandBundleRefs(def.bundle ?? [], defs, nextStack, warned);
       const result: any = { bundle: expandedInner };
       const odds = item.odds ?? def.odds;
-      if (odds !== undefined && odds !== null) result.odds = odds;
+      if (odds !== undefined && odds !== null) result.odds = Number(odds);
       const pickMin = item.pickMin ?? def.pickMin;
-      if (pickMin !== undefined && pickMin !== null) result.pickMin = pickMin;
+      if (pickMin !== undefined && pickMin !== null) result.pickMin = Number(pickMin);
       const pickMax = item.pickMax ?? def.pickMax;
-      if (pickMax !== undefined && pickMax !== null) result.pickMax = pickMax;
+      if (pickMax !== undefined && pickMax !== null) result.pickMax = Number(pickMax);
       if (item.requirements !== undefined) result.requirements = item.requirements;
       return result;
     }
@@ -315,25 +315,28 @@ export class GameRulesService {
       return lo + Math.floor(Math.random() * (hi - lo + 1));
     };
 
+    // Picks N entries from `pool` with replacement using each entry's `odds`
+    // as a relative weight. Duplicates are allowed and the count may exceed
+    // `pool.length` — that is precisely how authors express "roll the whole
+    // bundle N times" by wrapping their recipe in a single inner bundle and
+    // setting pickMax = N on the consumer.
     const pickWeightedRandom = (pool: any[], count: number): any[] => {
-      const remaining = [...pool];
       const picks: any[] = [];
-      for (let i = 0; i < count && remaining.length > 0; i++) {
-        const totalWeight = remaining.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
+      if (pool.length === 0 || count <= 0) return picks;
+      const totalWeight = pool.reduce((sum: number, e: any) => sum + (e.odds ?? 100), 0);
+      for (let i = 0; i < count; i++) {
         if (totalWeight <= 0) {
-          const idx = Math.floor(Math.random() * remaining.length);
-          picks.push(remaining[idx]);
-          remaining.splice(idx, 1);
+          const idx = Math.floor(Math.random() * pool.length);
+          picks.push(pool[idx]);
           continue;
         }
         let r = Math.random() * totalWeight;
-        let pickedIdx = remaining.length - 1;
-        for (let j = 0; j < remaining.length; j++) {
-          r -= (remaining[j].odds ?? 100);
+        let pickedIdx = pool.length - 1;
+        for (let j = 0; j < pool.length; j++) {
+          r -= (pool[j].odds ?? 100);
           if (r <= 0) { pickedIdx = j; break; }
         }
-        picks.push(remaining[pickedIdx]);
-        remaining.splice(pickedIdx, 1);
+        picks.push(pool[pickedIdx]);
       }
       return picks;
     };
@@ -349,9 +352,9 @@ export class GameRulesService {
             const pool = item.bundle.filter((e: any) =>
               !e.requirements || this.checkRequirements(e.requirements, reqContext),
             );
-            const count = Math.min(
-              pool.length,
-              rollPickCount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
+            const count = rollPickCount(
+              Number(pickMin ?? 1),
+              Number(pickMax ?? pickMin ?? 1),
             );
             const picks = pickWeightedRandom(pool, count);
             await processItems(picks.map((p: any) => ({ ...p, odds: undefined })));
@@ -406,25 +409,29 @@ export class GameRulesService {
       return rng.nextInt(min, max);
     };
 
+    // Picks N entries from `pool` with replacement using each entry's `odds`
+    // as a relative weight. Duplicates are allowed and the count may exceed
+    // `pool.length` — that is precisely how authors express "roll the whole
+    // bundle N times" by wrapping their recipe in a single inner bundle and
+    // setting pickMax = N on the consumer.
     const pickWeighted = (pool: any[], count: number): any[] => {
-      const remaining = [...pool];
       const picks: any[] = [];
-      for (let i = 0; i < count && remaining.length > 0; i++) {
-        const weights = remaining.map((e: any) => Math.max(0, Math.round((e.odds ?? 100) * 100)));
-        const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+      if (pool.length === 0 || count <= 0) return picks;
+      const weights = pool.map((e: any) => Math.max(0, Math.round((e.odds ?? 100) * 100)));
+      const totalWeight = weights.reduce((sum: number, w: number) => sum + w, 0);
+      for (let i = 0; i < count; i++) {
         let pickedIdx: number;
         if (totalWeight <= 0) {
-          pickedIdx = rng.nextInt(0, remaining.length - 1);
+          pickedIdx = rng.nextInt(0, pool.length - 1);
         } else {
           let roll = rng.nextInt(0, totalWeight - 1);
-          pickedIdx = remaining.length - 1;
-          for (let j = 0; j < remaining.length; j++) {
+          pickedIdx = pool.length - 1;
+          for (let j = 0; j < pool.length; j++) {
             roll -= weights[j];
             if (roll < 0) { pickedIdx = j; break; }
           }
         }
-        picks.push(remaining[pickedIdx]);
-        remaining.splice(pickedIdx, 1);
+        picks.push(pool[pickedIdx]);
       }
       return picks;
     };
@@ -442,9 +449,9 @@ export class GameRulesService {
             const pool = item.bundle.filter((e: any) =>
               !e.requirements || this.checkRequirements(e.requirements, reqContext),
             );
-            const count = Math.min(
-              pool.length,
-              rollAmount(pickMin ?? 1, pickMax ?? pickMin ?? 1),
+            const count = rollAmount(
+              Number(pickMin ?? 1),
+              Number(pickMax ?? pickMin ?? 1),
             );
             const picks = pickWeighted(pool, count);
             resolveItems(picks.map((p: any) => ({ ...p, odds: undefined })));

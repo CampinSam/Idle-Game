@@ -635,8 +635,8 @@ Defines a **named, reusable outcome bundle** that can be referenced from any rew
 | `enabled` | boolean | No | `true` | When `false`, every `bundle_ref` to this id resolves to an empty bundle (granting nothing). Useful for sunsetting content without deleting refs. |
 | `bundle` | JSON | Yes | `[]` | Array of outcome entries — same shape as the `rewards`/`bundle` arrays elsewhere. May contain currency/item rewards, flags, text, events, inline bundles, and even nested `bundle_ref` entries (cycles are detected and collapsed). |
 | `odds` | number | No | — | Default odds for the whole bundle when used by reference. Overridden by an inline `odds` on the `bundle_ref` entry. |
-| `pickMin` | number | No | — | Default minimum number of entries to randomly select when used by reference (omit for "grant all"). Overridden by inline `pickMin`. |
-| `pickMax` | number | No | — | Default maximum number of entries to randomly select. Must be `>= pickMin` if both are set. Overridden by inline `pickMax`. |
+| `pickMin` | number | No | — | Default minimum number of entries to randomly select when used by reference (omit for "grant all"). Overridden by inline `pickMin`. Picks are weighted-random **with replacement**, so values larger than the number of bundle entries produce duplicate rolls of the same entry — that is how you express "roll this whole bundle N times". |
+| `pickMax` | number | No | — | Default maximum number of entries to randomly select. Must be `>= pickMin` if both are set. Overridden by inline `pickMax`. Same with-replacement semantics as `pickMin` — setting `pickMax` above the number of entries simply iterates the pool to that count. |
 | `version` | number | No | `1` | Schema version, incremented when the bundle's shape changes. |
 
 ### Referencing a BundleDef from any reward caller
@@ -686,7 +686,9 @@ Then reference it from a MissionDef success outcome with one inline override (10
 }
 ```
 
-The mission grants the flat 100 currency, then inlines the starter pack with `pickMax` raised from `2` to `5` while keeping the bundle's other defaults (`pickMin: 1`, plus the per-entry odds). Updating `bundle.starter_pack` later changes the mission, the lootbox, the recipe, and the gift that all reference it — in one place.
+The mission grants the flat 100 currency, then inlines the starter pack with `pickMax` raised from `2` to `5` while keeping the bundle's other defaults (`pickMin: 1`, plus the per-entry odds). Because picks are weighted-random with replacement, the mission resolves between 1 and 5 entries from a pool of 3 — duplicates are allowed, so the same entry can fire more than once. To express "always roll the whole bundle N times" rather than "pick N entries from a pool", wrap the recipe in a single inner bundle inside the BundleDef and let the consumer's `pickMax` multiply that single wrapped entry.
+
+Updating `bundle.starter_pack` later changes the mission, the lootbox, the recipe, and the gift that all reference it — in one place.
 
 ---
 
@@ -2541,18 +2543,18 @@ This mixed bundle has a 5% chance of activating. If it does: the artifact item i
 
 #### Pick Mode Bundles
 
-Bundles support an optional **pick mode** activated by adding `pickMin` and/or `pickMax` fields. Instead of rolling every entry individually, the system selects between `pickMin` and `pickMax` entries at random using each entry's `odds` as a relative weight (without replacement), then resolves the chosen entries as guaranteed.
+Bundles support an optional **pick mode** activated by adding `pickMin` and/or `pickMax` fields. Instead of rolling every entry individually, the system selects between `pickMin` and `pickMax` entries at random using each entry's `odds` as a relative weight (**with replacement** — duplicates are allowed and the count may exceed the pool size), then resolves the chosen entries as guaranteed.
 
 Pick bundle format: `{ "bundle": [...entries], "odds": N, "pickMin": X, "pickMax": Y }`
 
 - The outer `odds` roll still applies — if it fails the bundle is skipped entirely.
 - `pickMin` — minimum number of entries to pick (default `1` if only `pickMax` is set).
 - `pickMax` — maximum number of entries to pick (default equals `pickMin` if only `pickMin` is set).
-- The actual count N is `random(pickMin, pickMax)`, clamped to the number of available entries.
+- The actual count N is `random(pickMin, pickMax)`. Picks are weighted-random with replacement, so N is **not** clamped to the number of available entries — setting N greater than the pool size simply produces duplicate rolls of the same entries (this is how you express "roll the whole bundle N times" by wrapping the recipe in a single inner bundle).
 - Entry `requirements` are evaluated before building the weighted pool — ineligible entries are excluded from selection.
 - Once selected, entries are resolved as guaranteed (their `odds` value is not re-rolled during resolution since it was already used as a selection weight).
 - `pickMin: 1, pickMax: 1` = pick exactly one entry (classic "choose 1 of N" pattern).
-- `pickMin: 1, pickMax: 3` = pick anywhere from 1 to 3 entries.
+- `pickMin: 1, pickMax: 3` = pick anywhere from 1 to 3 entries (each pick weighted independently; the same entry can fire more than once).
 
 **Example — "choose 1 of 3 bonus rewards":**
 ```json
@@ -2585,7 +2587,35 @@ The player always receives exactly one of the three options. The higher-odds ent
 }
 ```
 
-This bundle has a 50% chance of firing. If it does, 1 or 2 of the four equally-weighted entries are selected at random (without replacement).
+This bundle has a 50% chance of firing. If it does, 1 or 2 of the four equally-weighted entries are selected at random with replacement (each pick is independent, so the same entry can be chosen twice).
+
+**Example — "roll this recipe N times":** Wrap the recipe in a single inner bundle so `pickMax` on the consumer multiplies the whole recipe.
+
+```json
+{
+  "id": "bundle.scout_loot",
+  "name": "Scout Loot",
+  "bundle": [
+    {
+      "bundle": [
+        { "type": "keeper_xp", "min": 1, "max": 5 },
+        { "type": "entity_xp", "min": 10, "max": 20 },
+        {
+          "bundle": [
+            { "type": "item", "key": "mat_meadow_thread", "min": 1, "max": 5, "odds": 60 },
+            { "type": "item", "key": "mat_shiny_rock",    "min": 1, "max": 3, "odds": 30 },
+            { "type": "item", "key": "mat_golden_hay_core","min": 1, "max": 2, "odds": 10 }
+          ],
+          "pickMin": 1,
+          "pickMax": 1
+        }
+      ]
+    }
+  ]
+}
+```
+
+A consumer that references this bundle with `{ "type": "bundle_ref", "bundleDefId": "bundle.scout_loot", "pickMin": 5, "pickMax": 7 }` resolves to 5–7 picks from a pool of 1 (the inner recipe), each pick rolling a fresh Keeper XP amount, Entity XP amount, and weighted-random material — i.e. 5–7 full reward rolls.
 
 ### Requirements
 
