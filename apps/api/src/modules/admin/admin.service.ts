@@ -453,7 +453,13 @@ export class AdminService {
       baseUser = { keeperLevel: 0, flags: {} };
     }
 
-    // Pre-load + expand bundle refs once; per-iteration we only re-roll.
+    // Pre-load + expand bundle refs ONCE outside the loop, then reuse the
+    // expanded tree across all N iterations. This is intentionally the manual
+    // form of `resolveOutcomesAsync` — calling that wrapper per iteration
+    // would re-issue `loadBundleDefs` (a Prisma query) for every roll, which
+    // becomes very expensive at iterations=1000. The two paths are otherwise
+    // semantically identical: same canonical chain, same resolver, same
+    // determinism guarantees.
     const defs = await this.gameRules.loadBundleDefs(items);
     const expanded = this.gameRules.expandBundleRefs(items, defs);
 
