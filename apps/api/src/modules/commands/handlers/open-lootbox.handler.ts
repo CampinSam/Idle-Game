@@ -129,7 +129,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
 
     const rewardSummary = allGrants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.type}`)
       .join(', ');
 
     const lootboxBodyText = rewardSummary || 'No rewards this time.';

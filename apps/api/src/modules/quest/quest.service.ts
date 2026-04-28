@@ -4,13 +4,36 @@ import { NotificationService } from '../notification/notification.service';
 import { TelemetryService, TelemetrySubscriber, TelemetryEvent } from '../telemetry/telemetry.service';
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
-import { pickSpecAmount } from '../game-rules/outcome-spec.util';
+import { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
 
 function shallowMatch(filter: Record<string, unknown>, data: Record<string, unknown>): boolean {
   for (const [k, v] of Object.entries(filter)) {
     if (data[k] !== v) return false;
   }
   return true;
+}
+
+function makeRng() {
+  return {
+    chance: (p: number) => Math.random() < p,
+    nextInt: (min: number, max: number) =>
+      Math.floor(Math.random() * (max - min + 1)) + min,
+  };
+}
+
+// Normalizes the editor's two top-level shapes into a flat array of outcome
+// entries. The OutcomeListEditor saves either `[ ...entries ]` directly or
+// `{ rewards: [ ...entries ] }`; everything else (a single entry object) is
+// wrapped as a one-item array so the canonical resolver can iterate uniformly.
+function normalizeRewardSpec(spec: unknown): any[] {
+  if (Array.isArray(spec)) return spec;
+  if (spec && typeof spec === 'object') {
+    const obj = spec as Record<string, unknown>;
+    if (Array.isArray(obj.rewards)) return obj.rewards as any[];
+    if (Object.keys(obj).length === 0) return [];
+    return [obj];
+  }
+  return [];
 }
 
 @Injectable()
@@ -23,6 +46,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     private telemetryService: TelemetryService,
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
+    private gameRules: GameRulesService,
   ) {}
 
   onModuleInit() {
@@ -144,42 +168,38 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     if (instance.status !== 'completed') throw new BadRequestException(`Quest cannot be claimed (status: ${instance.status})`);
 
     const def = instance.questDef;
-    const rewardSpec = (def.rewardSpec as any) || {};
+    const items = normalizeRewardSpec(def.rewardSpec);
+
+    // Route reward resolution through the canonical resolver so quest claims
+    // share field names, bundle semantics, requirement gating, and bundle_ref
+    // expansion with every other reward path (mission, crafting, lootbox, gift
+    // bundle_ref). All entries use canonical { type, key, min, max } shape.
+    const user = await (db as any).user.findUnique({ where: { id: userId } });
+    const reqContext: RequirementContext = user
+      ? this.gameRules.buildRequirementContext(user as any)
+      : { user: {}, userFlags: {} };
+    const { resolved } = await this.gameRules.resolveOutcomesAsync(items, reqContext, makeRng());
+
     const grants: any[] = [];
+    for (const r of resolved) {
+      const entry = r.entry;
+      const amount = r.amount ?? 0;
+      if (!entry?.type || !entry.key || amount <= 0) continue;
 
-    // `pickSpecAmount` accepts both shapes: legacy `{ amount }` / `{ qty }` and
-    // canonical `{ min, max }`. Returns 0 for empty / non-positive specs so the
-    // `> 0` guard preserves the old "skip when nothing to grant" behavior.
-    const grantCurrency = async (currencyId: string, amount: number) => {
-      if (!currencyId || amount <= 0) return;
-      await this.currencyService.creditTx(db, {
-        userId, currencyId, amount,
-        reason: `Quest reward: ${def.name}`,
-        sourceType: 'quest', sourceId: instance.id,
-      });
-      grants.push({ type: 'currency', currencyId, amount });
-    };
-    const grantItem = async (itemDefId: string, qty: number) => {
-      if (!itemDefId || qty <= 0) return;
-      await this.inventoryService.addItemTx(db, {
-        userId, itemId: itemDefId, quantity: qty,
-        reason: `Quest reward: ${def.name}`,
-        sourceType: 'quest', sourceId: instance.id,
-      });
-      grants.push({ type: 'item', itemDefId, qty });
-    };
-
-    if (rewardSpec.type === 'currency' && rewardSpec.currencyId) {
-      await grantCurrency(rewardSpec.currencyId, pickSpecAmount(rewardSpec));
-    } else if (rewardSpec.type === 'item' && rewardSpec.itemDefId) {
-      await grantItem(rewardSpec.itemDefId, pickSpecAmount(rewardSpec));
-    } else if (rewardSpec.type === 'bundle' && Array.isArray(rewardSpec.entries)) {
-      for (const entry of rewardSpec.entries) {
-        if (entry.type === 'currency' && entry.currencyId) {
-          await grantCurrency(entry.currencyId, pickSpecAmount(entry));
-        } else if (entry.type === 'item' && entry.itemDefId) {
-          await grantItem(entry.itemDefId, pickSpecAmount(entry));
-        }
+      if (entry.type === 'currency') {
+        await this.currencyService.creditTx(db, {
+          userId, currencyId: entry.key, amount,
+          reason: `Quest reward: ${def.name}`,
+          sourceType: 'quest', sourceId: instance.id,
+        });
+        grants.push({ type: 'currency', key: entry.key, amount });
+      } else if (entry.type === 'item') {
+        await this.inventoryService.addItemTx(db, {
+          userId, itemId: entry.key, quantity: amount,
+          reason: `Quest reward: ${def.name}`,
+          sourceType: 'quest', sourceId: instance.id,
+        });
+        grants.push({ type: 'item', key: entry.key, amount });
       }
     }
 

@@ -29,7 +29,7 @@ export class ClaimGiftHandler implements CommandHandler {
     const snapshot = (gift.snapshot as any) ?? {};
     const presentation = snapshot.presentation ?? {};
     const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
       .join(', ');
     const bodyText = rewardSummary || 'Your rewards have been added.';
 

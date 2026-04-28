@@ -3832,8 +3832,9 @@
       },
       "rewardSpec": {
         "type": "currency",
-        "amount": 100,
-        "currencyId": "premium_gems"
+        "key": "premium_gems",
+        "min": 100,
+        "max": 100
       },
       "enabled": true,
       "instant": true,
@@ -3852,8 +3853,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 100,
-        "currencyId": "soft_arcanium"
+        "key": "soft_arcanium",
+        "min": 100,
+        "max": 100
       },
       "enabled": true,
       "instant": true,
@@ -3872,8 +3874,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 200,
-        "currencyId": "soft_arcanium"
+        "key": "soft_arcanium",
+        "min": 200,
+        "max": 200
       },
       "enabled": true,
       "instant": true,
@@ -3892,8 +3895,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 500,
-        "currencyId": "soft_arcanium"
+        "key": "soft_arcanium",
+        "min": 500,
+        "max": 500
       },
       "enabled": true,
       "instant": true,
@@ -3912,8 +3916,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 5,
-        "currencyId": "hard_essence"
+        "key": "hard_essence",
+        "min": 5,
+        "max": 5
       },
       "enabled": true,
       "instant": true,
@@ -3932,8 +3937,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 10,
-        "currencyId": "hard_essence"
+        "key": "hard_essence",
+        "min": 10,
+        "max": 10
       },
       "enabled": true,
       "instant": true,
@@ -3952,8 +3958,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 20,
-        "currencyId": "premium_gems"
+        "key": "premium_gems",
+        "min": 20,
+        "max": 20
       },
       "enabled": true,
       "instant": true,
@@ -3972,8 +3979,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 20,
-        "currencyId": "season_frost_coin"
+        "key": "season_frost_coin",
+        "min": 20,
+        "max": 20
       },
       "enabled": true,
       "instant": true,
@@ -3992,8 +4000,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 40,
-        "currencyId": "season_frost_coin"
+        "key": "season_frost_coin",
+        "min": 40,
+        "max": 40
       },
       "enabled": true,
       "instant": true,
@@ -4012,8 +4021,9 @@
       "claimRules": {},
       "rewardSpec": {
         "type": "currency",
-        "amount": 100,
-        "currencyId": "season_frost_coin"
+        "key": "season_frost_coin",
+        "min": 100,
+        "max": 100
       },
       "enabled": true,
       "instant": true,
@@ -4616,8 +4626,9 @@
       ],
       "rewardSpec": {
         "type": "currency",
-        "currencyId": "premium_gems",
-        "amount": 50
+        "key": "premium_gems",
+        "min": 50,
+        "max": 50
       },
       "requirements": [],
       "repeatable": false,
@@ -4639,8 +4650,9 @@
       ],
       "rewardSpec": {
         "type": "currency",
-        "currencyId": "soft_arcanium",
-        "amount": 200
+        "key": "soft_arcanium",
+        "min": 200,
+        "max": 200
       },
       "requirements": [],
       "repeatable": false,
@@ -4667,8 +4679,9 @@
       ],
       "rewardSpec": {
         "type": "currency",
-        "currencyId": "hard_essence",
-        "amount": 25
+        "key": "hard_essence",
+        "min": 25,
+        "max": 25
       },
       "requirements": [],
       "repeatable": false,

@@ -35,6 +35,59 @@ function makeFakes() {
   return { prisma, currencyService, inventoryService, gameRules, bundleDefs, credited, items };
 }
 
+describe('resolveRewardSpec — top-level currency / item (canonical key/min/max)', () => {
+  beforeEach(() => { jest.spyOn(Math, 'random').mockReturnValue(0); });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('grants currency from a {type:"currency", key, min, max} spec', async () => {
+    const f = makeFakes();
+    const grants = await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', key: 'soft_arcanium', min: 100, max: 100 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'soft_arcanium', amount: 100 }]);
+    expect(grants).toEqual([{ type: 'currency', key: 'soft_arcanium', amount: 100 }]);
+  });
+
+  it('grants an item from a {type:"item", key, min, max} spec', async () => {
+    const f = makeFakes();
+    const grants = await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'item', key: 'gem', min: 3, max: 3 }, 'gift-1',
+    );
+    expect(f.items).toEqual([{ itemId: 'gem', quantity: 3 }]);
+    expect(grants).toEqual([{ type: 'item', key: 'gem', amount: 3 }]);
+  });
+
+  it('defaults to a grant of 1 when min/max is omitted (canonical resolver default)', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', key: 'gold' }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'gold', amount: 1 }]);
+  });
+
+  it('rolls within min..max via Math.random when no rng is wired in', async () => {
+    const f = makeFakes();
+    (Math.random as jest.Mock).mockReturnValue(0.999);
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', key: 'gold', min: 5, max: 10 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'gold', amount: 10 }]);
+  });
+
+  it('skips an entry with a missing key instead of crashing', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', min: 5, max: 5 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([]);
+  });
+});
+
 describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)', () => {
   beforeEach(() => {
     jest.spyOn(Math, 'random').mockImplementation(() => 0);
@@ -240,69 +293,5 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
       { type: 'bundle_ref', bundleDefId: 'b.gated' }, 'gift-1',
     );
     expect(f.credited).toEqual([{ currencyId: 'free', amount: 1 }]);
-  });
-
-  it('still grants legacy {type:"bundle", entries:[]} specs unchanged', async () => {
-    const f = makeFakes();
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'bundle', entries: [
-        { type: 'currency', currencyId: 'gold', amount: 7 },
-        { type: 'item', itemDefId: 'gem', qty: 1 },
-      ] }, 'gift-1',
-    );
-    expect(f.credited).toEqual([{ currencyId: 'gold', amount: 7 }]);
-    expect(f.items).toEqual([{ itemId: 'gem', quantity: 1 }]);
-  });
-});
-
-describe('resolveRewardSpec — top-level currency / item with min/max (post-amount-migration)', () => {
-  beforeEach(() => { jest.spyOn(Math, 'random').mockReturnValue(0); });
-  afterEach(() => jest.restoreAllMocks());
-
-  it('grants currency from a {type:"currency", min, max} spec (canonical post-migration shape)', async () => {
-    const f = makeFakes();
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'currency', currencyId: 'soft_arcanium', min: 100, max: 100 }, 'gift-1',
-    );
-    expect(f.credited).toEqual([{ currencyId: 'soft_arcanium', amount: 100 }]);
-  });
-
-  it('grants currency from a legacy {type:"currency", amount} spec unchanged', async () => {
-    const f = makeFakes();
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'currency', currencyId: 'soft_arcanium', amount: 100 }, 'gift-1',
-    );
-    expect(f.credited).toEqual([{ currencyId: 'soft_arcanium', amount: 100 }]);
-  });
-
-  it('grants an item from a {type:"item", min, max} spec (post-migration)', async () => {
-    const f = makeFakes();
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'item', itemDefId: 'gem', min: 3, max: 3 }, 'gift-1',
-    );
-    expect(f.items).toEqual([{ itemId: 'gem', quantity: 3 }]);
-  });
-
-  it('skips (no credit) when neither amount nor min/max is supplied', async () => {
-    const f = makeFakes();
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'currency', currencyId: 'gold' }, 'gift-1',
-    );
-    expect(f.credited).toEqual([]);
-  });
-
-  it('rolls within min..max via Math.random when no rng is wired in', async () => {
-    const f = makeFakes();
-    (Math.random as jest.Mock).mockReturnValue(0.999);
-    await resolveRewardSpec(
-      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
-      { type: 'currency', currencyId: 'gold', min: 5, max: 10 }, 'gift-1',
-    );
-    expect(f.credited).toEqual([{ currencyId: 'gold', amount: 10 }]);
   });
 });

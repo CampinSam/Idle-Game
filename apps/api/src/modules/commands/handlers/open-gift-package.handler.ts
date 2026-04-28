@@ -57,7 +57,7 @@ export class OpenGiftPackageHandler implements CommandHandler {
     }
 
     const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
       .join(', ');
 
     const giftBodyText = rewardSummary || 'Your rewards have been added.';

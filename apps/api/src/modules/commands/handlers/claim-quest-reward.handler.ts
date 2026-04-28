@@ -24,7 +24,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
 
     const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.currencyId ?? g.itemDefId ?? g.type}`)
+      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.type}`)
       .join(', ');
 
     const questBodyText = rewardSummary || 'Rewards collected.';

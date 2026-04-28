@@ -77,6 +77,22 @@ Human-readable documentation for admins. Update it when adding or significantly 
 
 ---
 
+## 6a. Shared Naming and Structure Conventions
+
+Whenever possible, data should share naming and structure conventions across the codebase. Don't invent new field names when the codebase already has one.
+
+- Before adding a new field name (`currencyId`, `itemDefId`, `entries`, `qty`, `amount`), search how the same concept is already represented elsewhere. If the canonical resolver, mission service, crafting service, lootbox handler, or content editor already uses a name (e.g. `key`, `bundle`, `min`/`max`), reuse it.
+- This applies in both directions:
+  - **Inputs** — JSON specs read by the runtime (rewards, outcomes, requirements) should use the same field names everywhere a similar concept appears. The canonical reward shape is `{ type, key, min, max, odds?, requirements?, bundle? }`.
+  - **Outputs** — grants, patches, and structured results returned to clients should use the same field names. Mixing `{ type, currencyId, amount }` in one path and `{ type, key, amount }` in another forces every consumer to write fallback chains.
+- When you find an outlier path that invented its own names, prefer **converging it onto the canonical shape** over preserving the divergence. If converging would break too much at once, document the migration plan and converge incrementally — but the destination is always one shape.
+- Outliers are a primary source of silent bugs: when the editor saves the canonical shape and one runtime path reads the legacy shape, fields read as `undefined`, amounts default to 0, and the user gets nothing — with no error.
+- **Write-time migration is allowed; runtime read paths are not.** Normalizing legacy data on the way in (bootstrap load, seed upsert, admin save, claim time) is the right place to bridge old shapes to the canonical one. Runtime read paths (services that consume the stored shape) must read **only** the canonical shape — no `?? oldField` chains. This complements principle #6.
+- Output fallback chains (e.g. a UI summary that reads `g.key ?? g.currencyId ?? g.itemDefId`) are tolerable as a transition aid for historical records that were stored before convergence — but every such chain should carry a comment naming the records it covers, and should be removed once those records are unreachable.
+- A converging refactor often quietly **activates** behaviors that the canonical resolver implements but the outlier did not (e.g. `odds`, `requirements`, weighted picks, bundle_ref). Call these out in the PR / changelog so content authors aren't surprised when an entry that previously always granted now respects its `odds`.
+
+---
+
 ## 6. No Legacy Fallbacks
 
 The project has no production data to protect. When replacing a field name, function, or code path:

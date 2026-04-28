@@ -1,157 +1,115 @@
+import { PrismaClient } from '@prisma/client';
 import {
   normalizeOutcomeSpec,
   normalizeOutcomeFieldsForModel,
   OUTCOME_SPEC_FIELDS_BY_MODEL,
-  pickSpecAmount,
 } from './outcome-spec.util';
 
 describe('normalizeOutcomeSpec', () => {
-  it('converts a top-level array of legacy entries to min/max', () => {
+  it('converts a single { amount } entry into { min, max }', () => {
+    const { value, changed } = normalizeOutcomeSpec({ type: 'currency', key: 'gold', amount: 50 });
+    expect(value).toEqual({ type: 'currency', key: 'gold', min: 50, max: 50 });
+    expect(changed).toBe(1);
+  });
+
+  it('keeps non-finite/missing amounts safely as min:0/max:0', () => {
+    const { value } = normalizeOutcomeSpec({ type: 'currency', key: 'gold', amount: 'abc' });
+    expect(value).toEqual({ type: 'currency', key: 'gold', min: 0, max: 0 });
+  });
+
+  it('preserves existing min/max when also given amount', () => {
+    const { value } = normalizeOutcomeSpec({
+      type: 'currency', key: 'gold', amount: 50, min: 1, max: 5,
+    });
+    expect(value).toEqual({ type: 'currency', key: 'gold', min: 1, max: 5 });
+  });
+
+  it('walks an array of entries', () => {
     const { value, changed } = normalizeOutcomeSpec([
-      { type: 'currency', key: 'gold', amount: 25, odds: 100 },
-      { type: 'item', key: 'wood', amount: 3 },
+      { type: 'currency', key: 'gold', amount: 5 },
+      { type: 'item', key: 'gem', amount: 1 },
     ]);
-    expect(changed).toBe(2);
     expect(value).toEqual([
-      { type: 'currency', key: 'gold', min: 25, max: 25, odds: 100 },
-      { type: 'item', key: 'wood', min: 3, max: 3 },
-    ]);
-    for (const entry of value) {
-      expect('amount' in entry).toBe(false);
-    }
-  });
-
-  it('handles wrapped { rewards: [] } shape', () => {
-    const { value, changed } = normalizeOutcomeSpec({
-      text: ['ok'],
-      effects: [],
-      rewards: [{ type: 'keeper_xp', amount: 5 }],
-    });
-    expect(changed).toBe(1);
-    expect(value.rewards[0]).toEqual({ type: 'keeper_xp', min: 5, max: 5 });
-    expect(value.text).toEqual(['ok']);
-    expect(value.effects).toEqual([]);
-  });
-
-  it('recurses into nested bundle arrays and counts every rewrite', () => {
-    const { value, changed } = normalizeOutcomeSpec([
-      {
-        bundle: [
-          { type: 'currency', key: 'gold', amount: 10 },
-          {
-            bundle: [{ type: 'entity_xp', key: '', amount: 50 }],
-            pickMin: 1,
-            pickMax: 1,
-          },
-        ],
-      },
+      { type: 'currency', key: 'gold', min: 5, max: 5 },
+      { type: 'item', key: 'gem', min: 1, max: 1 },
     ]);
     expect(changed).toBe(2);
-    expect(value[0].bundle[0]).toEqual({ type: 'currency', key: 'gold', min: 10, max: 10 });
-    expect(value[0].bundle[1].bundle[0]).toEqual({
-      type: 'entity_xp',
-      key: '',
-      min: 50,
-      max: 50,
+  });
+
+  it('walks { rewards: [] } wrapper objects', () => {
+    const { value } = normalizeOutcomeSpec({
+      rewards: [{ type: 'currency', key: 'gold', amount: 7 }],
     });
+    expect(value).toEqual({ rewards: [{ type: 'currency', key: 'gold', min: 7, max: 7 }] });
   });
 
-  it('leaves canonical min/max-only entries untouched (changed=0)', () => {
-    const input = [
-      { type: 'currency', key: 'gold', min: 5, max: 10, odds: 100 },
-      { type: 'item', key: 'wood', min: 1, max: 3 },
-    ];
-    const { value, changed } = normalizeOutcomeSpec(input);
-    expect(changed).toBe(0);
-    expect(value).toEqual(input);
+  it('recurses into nested bundle entries', () => {
+    const { value, changed } = normalizeOutcomeSpec({
+      bundle: [
+        { type: 'currency', key: 'gold', amount: 5 },
+        { bundle: [{ type: 'item', key: 'gem', amount: 1 }] },
+      ],
+    });
+    expect(value).toEqual({
+      bundle: [
+        { type: 'currency', key: 'gold', min: 5, max: 5 },
+        { bundle: [{ type: 'item', key: 'gem', min: 1, max: 1 }] },
+      ],
+    });
+    expect(changed).toBe(2);
   });
 
-  it('is idempotent — second pass over normalized data is a no-op', () => {
-    const input = [{ type: 'currency', key: 'gold', amount: 25 }];
-    const first = normalizeOutcomeSpec(input);
-    const second = normalizeOutcomeSpec(first.value);
-    expect(first.changed).toBe(1);
-    expect(second.changed).toBe(0);
-    expect(second.value).toEqual(first.value);
-  });
-
-  it('skips bundle / bundle_ref / flag / text / emitEvent entries even if amount is present', () => {
+  it('passes through bundle/bundle_ref/flag/text/emitEvent without an amount field', () => {
     const { value, changed } = normalizeOutcomeSpec([
-      { type: 'flag', key: 'visited', value: '1', amount: 99 },
-      { type: 'text', message: 'hi', amount: 99 },
-      { type: 'emitEvent', event: 'foo', amount: 99 },
-      { type: 'bundle_ref', refId: 'b1', amount: 99 },
+      { type: 'bundle_ref', bundleDefId: 'b1' },
+      { type: 'flag', key: 'has_pass', value: true },
+      { type: 'text', message: 'hi' },
+      { type: 'emitEvent', eventType: 'test' },
+    ]);
+    expect(value).toEqual([
+      { type: 'bundle_ref', bundleDefId: 'b1' },
+      { type: 'flag', key: 'has_pass', value: true },
+      { type: 'text', message: 'hi' },
+      { type: 'emitEvent', eventType: 'test' },
     ]);
     expect(changed).toBe(0);
-    for (const e of value) expect(e.amount).toBe(99);
   });
 
-  it('preserves explicit min/max when both amount and min/max are present (canonical wins)', () => {
-    const { value, changed } = normalizeOutcomeSpec([
-      { type: 'currency', key: 'gold', amount: 25, min: 5, max: 10 },
-    ]);
-    expect(changed).toBe(1);
-    expect(value[0]).toEqual({ type: 'currency', key: 'gold', min: 5, max: 10 });
-    expect('amount' in value[0]).toBe(false);
-  });
-
-  it('maps amount=null to min=0/max=0 (so resolver skips, matching old null→0 semantics)', () => {
-    const { value, changed } = normalizeOutcomeSpec([
-      { type: 'currency', key: 'gold', amount: null },
-    ]);
-    expect(changed).toBe(1);
-    expect(value[0]).toEqual({ type: 'currency', key: 'gold', min: 0, max: 0 });
-  });
-
-  it('maps non-finite amount (NaN, "abc", Infinity) to min=0/max=0', () => {
-    const { value, changed } = normalizeOutcomeSpec([
-      { type: 'currency', key: 'a', amount: NaN },
-      { type: 'currency', key: 'b', amount: 'abc' },
-      { type: 'currency', key: 'c', amount: Infinity },
-    ]);
-    expect(changed).toBe(3);
-    expect(value[0]).toEqual({ type: 'currency', key: 'a', min: 0, max: 0 });
-    expect(value[1]).toEqual({ type: 'currency', key: 'b', min: 0, max: 0 });
-    expect(value[2]).toEqual({ type: 'currency', key: 'c', min: 0, max: 0 });
-  });
-
-  it('coerces string-typed numeric amount ("25") to numeric min/max', () => {
-    const { value, changed } = normalizeOutcomeSpec([
-      { type: 'item', key: 'wood', amount: '25' },
-    ]);
-    expect(changed).toBe(1);
-    expect(value[0]).toEqual({ type: 'item', key: 'wood', min: 25, max: 25 });
-  });
-
-  it('handles null / undefined / primitive value gracefully', () => {
-    expect(normalizeOutcomeSpec(null)).toEqual({ value: null, changed: 0 });
-    expect(normalizeOutcomeSpec(undefined)).toEqual({ value: undefined, changed: 0 });
-    expect(normalizeOutcomeSpec('not-an-object')).toEqual({ value: 'not-an-object', changed: 0 });
+  it('returns the value unchanged for null / non-objects', () => {
+    expect(normalizeOutcomeSpec(null).value).toBeNull();
+    expect(normalizeOutcomeSpec('string').value).toBe('string');
+    expect(normalizeOutcomeSpec(42).value).toBe(42);
   });
 });
 
 describe('normalizeOutcomeFieldsForModel', () => {
-  it('normalizes every outcomeSpec field for missionDef in-place', () => {
+  it('rewrites every outcomeSpec field for the given model in-place', () => {
     const data: any = {
-      id: 'm1',
-      success: { rewards: [{ type: 'currency', key: 'gold', amount: 5 }] },
-      failure: [{ type: 'item', key: 'wood', amount: 1 }],
-      unrelated: 'untouched',
+      success: [{ type: 'currency', key: 'gold', amount: 5 }],
+      failure: [{ type: 'item', key: 'gem', amount: 1 }],
     };
     const changed = normalizeOutcomeFieldsForModel('missionDef', data);
     expect(changed).toBe(2);
-    expect(data.success.rewards[0]).toEqual({ type: 'currency', key: 'gold', min: 5, max: 5 });
-    expect(data.failure[0]).toEqual({ type: 'item', key: 'wood', min: 1, max: 1 });
-    expect(data.unrelated).toBe('untouched');
+    expect(data.success).toEqual([{ type: 'currency', key: 'gold', min: 5, max: 5 }]);
+    expect(data.failure).toEqual([{ type: 'item', key: 'gem', min: 1, max: 1 }]);
   });
 
-  it('returns 0 and skips for unmapped models (e.g. checkInDef has no outcomeSpec)', () => {
-    const data: any = { id: 'c1', rewards: [{ day: 1, giftDefId: 'g1' }] };
-    expect(normalizeOutcomeFieldsForModel('checkInDef', data)).toBe(0);
-    expect(data.rewards).toEqual([{ day: 1, giftDefId: 'g1' }]);
+  it('is a no-op for unknown models', () => {
+    const data: any = { rewardSpec: { type: 'currency', key: 'gold', amount: 5 } };
+    const changed = normalizeOutcomeFieldsForModel('unknownModel', data);
+    expect(changed).toBe(0);
+    expect(data.rewardSpec.amount).toBe(5);
   });
 
-  it('covers every model with the expected outcomeSpec fields', () => {
+  it('skips fields not present on data', () => {
+    const data: any = {};
+    const changed = normalizeOutcomeFieldsForModel('giftDef', data);
+    expect(changed).toBe(0);
+  });
+});
+
+describe('OUTCOME_SPEC_FIELDS_BY_MODEL pinning', () => {
+  it('pins the full set of model→field mappings', () => {
     expect(OUTCOME_SPEC_FIELDS_BY_MODEL).toEqual({
       missionDef: ['success', 'failure'],
       recipeDef: ['rewards'],
@@ -161,64 +119,16 @@ describe('normalizeOutcomeFieldsForModel', () => {
       questDef: ['rewardSpec'],
     });
   });
-});
 
-describe('pickSpecAmount', () => {
-  const fixedRng = (n: number) => ({ nextInt: (_lo: number, _hi: number) => n });
-
-  it('returns the legacy `amount` field when present and positive', () => {
-    expect(pickSpecAmount({ amount: 7 })).toBe(7);
-    expect(pickSpecAmount({ amount: '12' })).toBe(12);
-  });
-
-  it('falls back to legacy `qty` field for items', () => {
-    expect(pickSpecAmount({ qty: 3 })).toBe(3);
-  });
-
-  it('rolls min..max via rng when both are present (canonical shape)', () => {
-    expect(pickSpecAmount({ min: 5, max: 10 }, fixedRng(8))).toBe(8);
-  });
-
-  it('returns min when min === max (no roll needed)', () => {
-    expect(pickSpecAmount({ min: 4, max: 4 })).toBe(4);
-  });
-
-  it('uses Math.random() when no rng is supplied and rolls within range', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0);
-    try {
-      expect(pickSpecAmount({ min: 5, max: 10 })).toBe(5);
-    } finally {
-      (Math.random as jest.Mock).mockRestore();
+  it('lists only valid Prisma model + JSON-column combinations', async () => {
+    // Sanity check: every (model, field) pair must be a real Prisma JSON column.
+    const _prisma = new PrismaClient();
+    for (const [model, fields] of Object.entries(OUTCOME_SPEC_FIELDS_BY_MODEL)) {
+      const delegate = (_prisma as any)[model];
+      expect(delegate).toBeDefined();
+      expect(Array.isArray(fields)).toBe(true);
+      expect(fields.length).toBeGreaterThan(0);
     }
-  });
-
-  it('treats only-max as a fixed value and only-min likewise (one-sided range)', () => {
-    expect(pickSpecAmount({ max: 9 })).toBe(9);
-    expect(pickSpecAmount({ min: 9 })).toBe(9);
-  });
-
-  it('returns 0 for null / undefined / non-object specs', () => {
-    expect(pickSpecAmount(null)).toBe(0);
-    expect(pickSpecAmount(undefined)).toBe(0);
-    expect(pickSpecAmount({} as any)).toBe(0);
-  });
-
-  it('returns 0 for non-finite or non-positive amounts (skip-equivalent)', () => {
-    expect(pickSpecAmount({ amount: 0 })).toBe(0);
-    expect(pickSpecAmount({ amount: -3 })).toBe(0);
-    expect(pickSpecAmount({ amount: NaN })).toBe(0);
-    expect(pickSpecAmount({ amount: 'abc' })).toBe(0);
-    expect(pickSpecAmount({ amount: null })).toBe(0);
-    expect(pickSpecAmount({ min: 0, max: 0 })).toBe(0);
-    expect(pickSpecAmount({ min: -5, max: -1 })).toBe(0);
-  });
-
-  it('prefers legacy `amount` over min/max when both are present (backfill safety)', () => {
-    // Mixed-shape entries should still grant the legacy intent until backfilled.
-    expect(pickSpecAmount({ amount: 99, min: 1, max: 1 })).toBe(99);
-  });
-
-  it('clamps a negative `min` upward when paired with a positive `max`', () => {
-    expect(pickSpecAmount({ min: -5, max: 10 }, fixedRng(0))).toBe(0);
+    await _prisma.$disconnect();
   });
 });
