@@ -2,6 +2,7 @@ import {
   normalizeOutcomeSpec,
   normalizeOutcomeFieldsForModel,
   OUTCOME_SPEC_FIELDS_BY_MODEL,
+  pickSpecAmount,
 } from './outcome-spec.util';
 
 describe('normalizeOutcomeSpec', () => {
@@ -159,5 +160,65 @@ describe('normalizeOutcomeFieldsForModel', () => {
       bundleDef: ['bundle'],
       questDef: ['rewardSpec'],
     });
+  });
+});
+
+describe('pickSpecAmount', () => {
+  const fixedRng = (n: number) => ({ nextInt: (_lo: number, _hi: number) => n });
+
+  it('returns the legacy `amount` field when present and positive', () => {
+    expect(pickSpecAmount({ amount: 7 })).toBe(7);
+    expect(pickSpecAmount({ amount: '12' })).toBe(12);
+  });
+
+  it('falls back to legacy `qty` field for items', () => {
+    expect(pickSpecAmount({ qty: 3 })).toBe(3);
+  });
+
+  it('rolls min..max via rng when both are present (canonical shape)', () => {
+    expect(pickSpecAmount({ min: 5, max: 10 }, fixedRng(8))).toBe(8);
+  });
+
+  it('returns min when min === max (no roll needed)', () => {
+    expect(pickSpecAmount({ min: 4, max: 4 })).toBe(4);
+  });
+
+  it('uses Math.random() when no rng is supplied and rolls within range', () => {
+    jest.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      expect(pickSpecAmount({ min: 5, max: 10 })).toBe(5);
+    } finally {
+      (Math.random as jest.Mock).mockRestore();
+    }
+  });
+
+  it('treats only-max as a fixed value and only-min likewise (one-sided range)', () => {
+    expect(pickSpecAmount({ max: 9 })).toBe(9);
+    expect(pickSpecAmount({ min: 9 })).toBe(9);
+  });
+
+  it('returns 0 for null / undefined / non-object specs', () => {
+    expect(pickSpecAmount(null)).toBe(0);
+    expect(pickSpecAmount(undefined)).toBe(0);
+    expect(pickSpecAmount({} as any)).toBe(0);
+  });
+
+  it('returns 0 for non-finite or non-positive amounts (skip-equivalent)', () => {
+    expect(pickSpecAmount({ amount: 0 })).toBe(0);
+    expect(pickSpecAmount({ amount: -3 })).toBe(0);
+    expect(pickSpecAmount({ amount: NaN })).toBe(0);
+    expect(pickSpecAmount({ amount: 'abc' })).toBe(0);
+    expect(pickSpecAmount({ amount: null })).toBe(0);
+    expect(pickSpecAmount({ min: 0, max: 0 })).toBe(0);
+    expect(pickSpecAmount({ min: -5, max: -1 })).toBe(0);
+  });
+
+  it('prefers legacy `amount` over min/max when both are present (backfill safety)', () => {
+    // Mixed-shape entries should still grant the legacy intent until backfilled.
+    expect(pickSpecAmount({ amount: 99, min: 1, max: 1 })).toBe(99);
+  });
+
+  it('clamps a negative `min` upward when paired with a positive `max`', () => {
+    expect(pickSpecAmount({ min: -5, max: 10 }, fixedRng(0))).toBe(0);
   });
 });

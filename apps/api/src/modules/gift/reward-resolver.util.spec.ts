@@ -255,3 +255,54 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
     expect(f.items).toEqual([{ itemId: 'gem', quantity: 1 }]);
   });
 });
+
+describe('resolveRewardSpec — top-level currency / item with min/max (post-amount-migration)', () => {
+  beforeEach(() => { jest.spyOn(Math, 'random').mockReturnValue(0); });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('grants currency from a {type:"currency", min, max} spec (canonical post-migration shape)', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', currencyId: 'soft_arcanium', min: 100, max: 100 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'soft_arcanium', amount: 100 }]);
+  });
+
+  it('grants currency from a legacy {type:"currency", amount} spec unchanged', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', currencyId: 'soft_arcanium', amount: 100 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'soft_arcanium', amount: 100 }]);
+  });
+
+  it('grants an item from a {type:"item", min, max} spec (post-migration)', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'item', itemDefId: 'gem', min: 3, max: 3 }, 'gift-1',
+    );
+    expect(f.items).toEqual([{ itemId: 'gem', quantity: 3 }]);
+  });
+
+  it('skips (no credit) when neither amount nor min/max is supplied', async () => {
+    const f = makeFakes();
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', currencyId: 'gold' }, 'gift-1',
+    );
+    expect(f.credited).toEqual([]);
+  });
+
+  it('rolls within min..max via Math.random when no rng is wired in', async () => {
+    const f = makeFakes();
+    (Math.random as jest.Mock).mockReturnValue(0.999);
+    await resolveRewardSpec(
+      f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
+      { type: 'currency', currencyId: 'gold', min: 5, max: 10 }, 'gift-1',
+    );
+    expect(f.credited).toEqual([{ currencyId: 'gold', amount: 10 }]);
+  });
+});

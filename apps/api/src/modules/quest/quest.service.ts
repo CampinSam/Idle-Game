@@ -4,6 +4,7 @@ import { NotificationService } from '../notification/notification.service';
 import { TelemetryService, TelemetrySubscriber, TelemetryEvent } from '../telemetry/telemetry.service';
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { pickSpecAmount } from '../game-rules/outcome-spec.util';
 
 function shallowMatch(filter: Record<string, unknown>, data: Record<string, unknown>): boolean {
   for (const [k, v] of Object.entries(filter)) {
@@ -146,48 +147,38 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     const rewardSpec = (def.rewardSpec as any) || {};
     const grants: any[] = [];
 
-    if (rewardSpec.type === 'currency' && rewardSpec.currencyId && rewardSpec.amount) {
+    // `pickSpecAmount` accepts both shapes: legacy `{ amount }` / `{ qty }` and
+    // canonical `{ min, max }`. Returns 0 for empty / non-positive specs so the
+    // `> 0` guard preserves the old "skip when nothing to grant" behavior.
+    const grantCurrency = async (currencyId: string, amount: number) => {
+      if (!currencyId || amount <= 0) return;
       await this.currencyService.creditTx(db, {
-        userId,
-        currencyId: rewardSpec.currencyId,
-        amount: rewardSpec.amount,
+        userId, currencyId, amount,
         reason: `Quest reward: ${def.name}`,
-        sourceType: 'quest',
-        sourceId: instance.id,
+        sourceType: 'quest', sourceId: instance.id,
       });
-      grants.push({ type: 'currency', currencyId: rewardSpec.currencyId, amount: rewardSpec.amount });
-    } else if (rewardSpec.type === 'item' && rewardSpec.itemDefId && rewardSpec.qty) {
+      grants.push({ type: 'currency', currencyId, amount });
+    };
+    const grantItem = async (itemDefId: string, qty: number) => {
+      if (!itemDefId || qty <= 0) return;
       await this.inventoryService.addItemTx(db, {
-        userId,
-        itemId: rewardSpec.itemDefId,
-        quantity: rewardSpec.qty,
+        userId, itemId: itemDefId, quantity: qty,
         reason: `Quest reward: ${def.name}`,
-        sourceType: 'quest',
-        sourceId: instance.id,
+        sourceType: 'quest', sourceId: instance.id,
       });
-      grants.push({ type: 'item', itemDefId: rewardSpec.itemDefId, qty: rewardSpec.qty });
+      grants.push({ type: 'item', itemDefId, qty });
+    };
+
+    if (rewardSpec.type === 'currency' && rewardSpec.currencyId) {
+      await grantCurrency(rewardSpec.currencyId, pickSpecAmount(rewardSpec));
+    } else if (rewardSpec.type === 'item' && rewardSpec.itemDefId) {
+      await grantItem(rewardSpec.itemDefId, pickSpecAmount(rewardSpec));
     } else if (rewardSpec.type === 'bundle' && Array.isArray(rewardSpec.entries)) {
       for (const entry of rewardSpec.entries) {
-        if (entry.type === 'currency' && entry.currencyId && entry.amount) {
-          await this.currencyService.creditTx(db, {
-            userId,
-            currencyId: entry.currencyId,
-            amount: entry.amount,
-            reason: `Quest reward: ${def.name}`,
-            sourceType: 'quest',
-            sourceId: instance.id,
-          });
-          grants.push({ type: 'currency', currencyId: entry.currencyId, amount: entry.amount });
-        } else if (entry.type === 'item' && entry.itemDefId && entry.qty) {
-          await this.inventoryService.addItemTx(db, {
-            userId,
-            itemId: entry.itemDefId,
-            quantity: entry.qty,
-            reason: `Quest reward: ${def.name}`,
-            sourceType: 'quest',
-            sourceId: instance.id,
-          });
-          grants.push({ type: 'item', itemDefId: entry.itemDefId, qty: entry.qty });
+        if (entry.type === 'currency' && entry.currencyId) {
+          await grantCurrency(entry.currencyId, pickSpecAmount(entry));
+        } else if (entry.type === 'item' && entry.itemDefId) {
+          await grantItem(entry.itemDefId, pickSpecAmount(entry));
         }
       }
     }

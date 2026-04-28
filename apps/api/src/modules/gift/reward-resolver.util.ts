@@ -1,5 +1,6 @@
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import type { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
+import { pickSpecAmount } from '../game-rules/outcome-spec.util';
 
 function makeRng() {
   return {
@@ -59,28 +60,35 @@ export async function resolveRewardSpec(
 
   switch (spec.type) {
     case 'currency': {
+      // `pickSpecAmount` accepts both legacy `{ amount }` and canonical
+      // `{ min, max }` shapes. The `> 0` guard skips empty/invalid specs
+      // instead of crediting NaN/undefined like the old `spec.amount` read.
+      const amount = pickSpecAmount(spec);
+      if (!spec.currencyId || amount <= 0) break;
       await currencyService.creditTx(prisma, {
         userId,
         currencyId: spec.currencyId,
-        amount: spec.amount,
+        amount,
         reason: 'Reward',
         sourceType: 'reward',
         sourceId,
       });
-      grants.push({ type: 'currency', currencyId: spec.currencyId, amount: spec.amount });
+      grants.push({ type: 'currency', currencyId: spec.currencyId, amount });
       break;
     }
 
     case 'item': {
+      const qty = pickSpecAmount(spec);
+      if (!spec.itemDefId || qty <= 0) break;
       await inventoryService.addItemTx(prisma, {
         userId,
         itemId: spec.itemDefId,
-        quantity: spec.qty,
+        quantity: qty,
         reason: 'Reward',
         sourceType: 'reward',
         sourceId,
       });
-      grants.push({ type: 'item', itemDefId: spec.itemDefId, qty: spec.qty });
+      grants.push({ type: 'item', itemDefId: spec.itemDefId, qty });
       break;
     }
 

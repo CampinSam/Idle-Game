@@ -115,6 +115,49 @@ export const OUTCOME_SPEC_FIELDS_BY_MODEL: Record<string, string[]> = {
 };
 
 /**
+ * Resolve the "how much" for a single reward entry, supporting both shapes:
+ *   - legacy: `{ amount: N }` (or `{ qty: N }` for items)
+ *   - canonical: `{ min: N, max: M }` (rolled per-grant)
+ *
+ * `rng.nextInt(lo, hi)` is used when both min and max are finite and lo < hi;
+ * otherwise the call falls back to `Math.random()` so callers without an RNG
+ * (gift/quest claims today) still roll a real number.
+ *
+ * Returns 0 for null / undefined / non-finite / negative inputs — callers gate
+ * on `amount > 0` to skip empty entries (matching the resolver's contract).
+ */
+export function pickSpecAmount(
+  spec: { amount?: any; qty?: any; min?: any; max?: any } | null | undefined,
+  rng?: { nextInt: (min: number, max: number) => number },
+): number {
+  if (!spec || typeof spec !== 'object') return 0;
+
+  const legacyRaw = spec.amount !== undefined && spec.amount !== null
+    ? spec.amount
+    : spec.qty;
+  if (legacyRaw !== undefined && legacyRaw !== null) {
+    const n = Number(legacyRaw);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+
+  const minRaw = spec.min;
+  const maxRaw = spec.max;
+  const minN = minRaw === undefined || minRaw === null ? NaN : Number(minRaw);
+  const maxN = maxRaw === undefined || maxRaw === null ? NaN : Number(maxRaw);
+  const haveMin = Number.isFinite(minN);
+  const haveMax = Number.isFinite(maxN);
+  if (!haveMin && !haveMax) return 0;
+
+  const lo = Math.floor(haveMin ? minN : maxN);
+  const hi = Math.floor(haveMax ? maxN : minN);
+  if (hi <= 0) return 0;
+  const clampedLo = Math.max(0, Math.min(lo, hi));
+  if (clampedLo === hi) return hi;
+  if (rng) return rng.nextInt(clampedLo, hi);
+  return Math.floor(Math.random() * (hi - clampedLo + 1)) + clampedLo;
+}
+
+/**
  * In-place: normalize every outcomeSpec field on `data` for the given model.
  * Returns the total number of legacy `amount` entries that were rewritten.
  */
