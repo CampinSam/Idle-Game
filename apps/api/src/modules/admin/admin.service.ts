@@ -137,6 +137,22 @@ export class AdminService {
       await tx.locationInstance.deleteMany({ where: { ownerUserId: uid } });
       await tx.entity.deleteMany({ where: { ownerUserId: uid } });
 
+      const linkedWallets = await p.linkedWallet.findMany({
+        where: { userId: uid },
+        select: { chain: true, address: true },
+      });
+      await p.linkedWallet.deleteMany({ where: { userId: uid } });
+      if (linkedWallets.length > 0) {
+        await p.walletNonce.deleteMany({
+          where: {
+            OR: linkedWallets.map((w: { chain: string; address: string }) => ({
+              chain: w.chain,
+              address: w.address,
+            })),
+          },
+        });
+      }
+
       const user = await tx.user.update({
         where: { id: uid },
         data: {
@@ -144,6 +160,7 @@ export class AdminService {
           keeperXp: BigInt(0),
           flags: {},
           prestigeTokens: 0,
+          walletAddress: null,
         },
       });
 
