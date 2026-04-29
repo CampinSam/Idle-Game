@@ -93,6 +93,9 @@ export class CraftingService {
       rewards: def.rewards,
       requirements: def.requirements,
       visibilityRequirements: def.visibilityRequirements,
+      // Surface the resolved tier so the client can compute Codex availability
+      // and lock state without re-deriving the rule.
+      tier: this.recipeTier(def),
       displayDef: display,
     };
   }

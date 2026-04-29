@@ -12,6 +12,7 @@ import { useCommand } from '../../hooks/useCommand';
 import { api } from '../../services/api';
 import { audioEngine } from '../../services/AudioEngine';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
+import { computeInventoryAmount } from '../../utils/locationProduction';
 import {
   mergeDisplayStyles,
   overlayToCss,
@@ -138,6 +139,7 @@ export default function ForgePage() {
 
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
+  const syncItemsTable = useAppSelector((s) => s.sync.items);
   const allActiveCraftingJobs = useSyncActiveCraftingJobs();
   // Place-scoping: only show crucibles that belong to *this* outpost so the
   // Forge for one location can't double-count jobs from another.
@@ -229,18 +231,37 @@ export default function ForgePage() {
 
   // A recipe's "availability" is server-truthful where possible (forecast's
   // recipeTierCap + slotsOpen) and uses local checks for cost/keeperLevel.
+  // Available = passes Keeper-level visibility AND has all materials (currency
+  // and items) AND there's at least one open crucible at this Forge AND the
+  // recipe tier doesn't exceed this workshop's tier cap.
   const recipeIsAvailable = useCallback((r: any): boolean => {
     if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return false;
+    const recipeTier = Number(r.tier ?? 1);
+    const tierCap = forecast?.recipeTierCap;
+    if (typeof tierCap === 'number' && recipeTier > tierCap) return false;
+    const slotsOpen = forecast?.slotsOpen;
+    if (typeof slotsOpen === 'number' && slotsOpen <= 0) return false;
     const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
     for (const c of cost) {
-      if (c.type === 'currency' && (currencyBalances[c.id] ?? 0) < c.amount) return false;
+      if (c.type === 'currency') {
+        if ((currencyBalances[c.id] ?? 0) < c.amount) return false;
+      } else {
+        const have = computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances);
+        if (have < c.amount) return false;
+      }
     }
     return true;
-  }, [profile, currencyBalances]);
+  }, [profile, currencyBalances, syncItemsTable, forecast?.recipeTierCap, forecast?.slotsOpen]);
 
+  // Locked = visibility fails. Today that's Keeper-level OR the recipe tier
+  // exceeds what this workshop can craft (e.g. Tier-2 recipe at a Tier-1 Forge).
   const recipeIsLocked = useCallback((r: any): boolean => {
-    return Boolean(profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel);
-  }, [profile]);
+    if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return true;
+    const recipeTier = Number(r.tier ?? 1);
+    const tierCap = forecast?.recipeTierCap;
+    if (typeof tierCap === 'number' && recipeTier > tierCap) return true;
+    return false;
+  }, [profile, forecast?.recipeTierCap]);
 
   const filteredRecipes = useMemo(() => {
     const search = recipeSearch.trim().toLowerCase();
