@@ -1,9 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NftCollectionService } from '../nft/nft-collection.service';
 
 @Injectable()
 export class WalletService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(WalletService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private nftCollectionService: NftCollectionService,
+  ) {}
 
   async listWallets(userId: string) {
     return (this.prisma as any).linkedWallet.findMany({
@@ -72,7 +78,21 @@ export class WalletService {
       create: { userId, chain, address: normalizedAddress, isPrimary: isFirst },
     });
 
-    return { linked: true };
+    let sync: { claimed: number; alreadyClaimed: number; notImported: number } | null = null;
+    try {
+      const result = await this.nftCollectionService.syncUserCollections(userId);
+      sync = {
+        claimed: result.claimed,
+        alreadyClaimed: result.alreadyClaimed,
+        notImported: result.notImported,
+      };
+    } catch (err) {
+      this.logger.error(
+        `Linked wallet ${chain}:${normalizedAddress} for user ${userId} but NFT sync failed: ${err}`,
+      );
+    }
+
+    return { linked: true, sync };
   }
 
   async setPrimary(userId: string, walletId: string) {

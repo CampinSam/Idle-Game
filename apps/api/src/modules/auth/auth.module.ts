@@ -9,6 +9,7 @@ import { TickModule } from '../tick/tick.module';
 import { EventModule } from '../event/event.module';
 import { LocationModule } from '../location/location.module';
 import { CheckInModule } from '../checkin/checkin.module';
+import { NftModule } from '../nft/nft.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CheckInModule } from '../checkin/checkin.module';
     EventModule,
     LocationModule,
     CheckInModule,
+    NftModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

@@ -8,6 +8,7 @@ import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { CheckInService } from '../checkin/checkin.service';
+import { NftCollectionService } from '../nft/nft-collection.service';
 import { generateEntityData } from '../entity/entity-generator.util';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class AuthService {
     private eventService: EventService,
     private settlementService: LocationSettlementService,
     private checkInService: CheckInService,
+    private nftCollectionService: NftCollectionService,
   ) {}
 
   async register(username: string, email: string, password: string) {
@@ -209,6 +211,13 @@ export class AuthService {
         update: { userId: authenticatedUserId },
         create: { userId: authenticatedUserId, chain, address: normalizedAddress, isPrimary: isFirst },
       });
+      try {
+        await this.nftCollectionService.syncUserCollections(authenticatedUserId);
+      } catch (err) {
+        this.logger.error(
+          `Linked wallet ${chain}:${normalizedAddress} for user ${authenticatedUserId} but NFT sync failed: ${err}`,
+        );
+      }
       return { linked: true };
     }
 
