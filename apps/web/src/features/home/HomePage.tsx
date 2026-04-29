@@ -74,10 +74,14 @@ export default function HomePage() {
   }, [dispatch, craftingRecipes]);
 
   const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
-  const goToForge = useCallback((locationId?: string) => {
+  const goToForge = useCallback((locationId?: string, craftJobId?: string) => {
     const target = locationId || primaryWorkshop?.locationId;
-    if (target) navigate(`/locations/${target}/workshop`);
-    else navigate('/locations');
+    if (target) {
+      const suffix = craftJobId ? `?craftJob=${encodeURIComponent(craftJobId)}` : '';
+      navigate(`/locations/${target}/workshop${suffix}`);
+    } else {
+      navigate('/locations');
+    }
   }, [navigate, primaryWorkshop]);
 
   const openModalSpec = useCallback(async (params: { jobId?: string; giftId?: string }) => {
@@ -218,7 +222,7 @@ export default function HomePage() {
             const timeStr = formatTime(getJobRemaining(j));
             const isCrafting = j.type === 'CraftingJob';
             const craftLoc = j.data?.locationId || j.locationId;
-            const handleRowClick = isCrafting ? () => goToForge(craftLoc) : () => openModalSpec({ jobId: j.id });
+            const handleRowClick = isCrafting ? () => goToForge(craftLoc, j.id) : () => openModalSpec({ jobId: j.id });
             return (
               <div key={j.id} className="hp-mission-row" onClick={handleRowClick} style={{ cursor: 'pointer' }}>
                 <div className="hp-mission-icon">{getJobIcon(j.type)}</div>

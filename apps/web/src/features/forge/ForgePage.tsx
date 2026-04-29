@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
@@ -132,6 +132,8 @@ export default function ForgePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const materialFilter = searchParams.get('material') || '';
+  const focusedJobId = searchParams.get('craftJob') || '';
+  const focusedJobRef = useRef<HTMLDivElement | null>(null);
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const tick = useCurrentTick();
@@ -205,6 +207,14 @@ export default function ForgePage() {
   useEffect(() => {
     dispatch(fetchCraftingRecipes());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!focusedJobId) return;
+    const t = setTimeout(() => {
+      focusedJobRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [focusedJobId, allActiveCraftingJobs.length]);
 
   const forecastBucket = Math.floor(tick / 30);
   useEffect(() => {
@@ -449,8 +459,13 @@ export default function ForgePage() {
                 const progress = totalDurationTicks > 0 ? Math.min(1, Math.max(0, elapsedTicks / totalDurationTicks)) : (isReady ? 1 : 0);
                 const ringCircumference = 2 * Math.PI * 28;
                 const ringDashOffset = ringCircumference * (1 - progress);
+                const isFocused = focusedJobId && job.id === focusedJobId;
                 return (
-                  <div key={job.id} className={`forge-job-card ${tierClass} ${isReady ? 'ready' : ''}`}>
+                  <div
+                    key={job.id}
+                    ref={isFocused ? focusedJobRef : null}
+                    className={`forge-job-card ${tierClass} ${isReady ? 'ready' : ''} ${isFocused ? 'is-focused' : ''}`}
+                  >
                     <div className="forge-job-portrait">
                       {entity?.imageUrl ? (
                         <img src={entity.imageUrl} alt={entityName} />

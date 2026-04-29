@@ -142,6 +142,16 @@
   border-color: rgba(192, 132, 252, 0.6);
   box-shadow: 0 0 18px rgba(192, 132, 252, 0.3), inset 0 0 14px rgba(192, 132, 252, 0.1);
 }
+.forge-job-card.is-focused {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+  animation: forge-job-card-pulse 1.6s ease-out 2;
+}
+@keyframes forge-job-card-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55); }
+  70%  { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
 .forge-job-name { font-weight: 700; }
 .forge-job-entity {
   font-size: 12px;
