@@ -274,11 +274,16 @@ export default function HomePage() {
         }).length;
         const hasAffordable = affordableCount > 0;
 
-        // Hero shows when:
-        //   ready  → a craft is sitting at the anvil
-        //   actionable → slot open AND idle Derp AND at least one affordable recipe
-        //   unlocked   → no crafts ever started yet
-        const newlyUnlocked = wsActive.length === 0 && !readyCraftJob;
+        const visibleRecipeIds = (craftingRecipes || [])
+          .filter((r: any) => (r.requiredKeeperLevel || 1) <= keeperLvl)
+          .map((r: any) => String(r.id))
+          .sort();
+        const seenKey = `forge.recipes.seen.${primaryWorkshop.locationId}`;
+        let previouslySeen: string[] = [];
+        try { previouslySeen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { previouslySeen = []; }
+        const seenSet = new Set(previouslySeen);
+        const newlyUnlockedIds = visibleRecipeIds.filter((id) => !seenSet.has(id));
+        const newlyUnlocked = newlyUnlockedIds.length > 0;
         const triggerKind: 'ready' | 'actionable' | 'unlocked' | null = readyCraftJob
           ? 'ready'
           : (slotOpen && idleHasSlot && hasAffordable)
@@ -333,6 +338,7 @@ export default function HomePage() {
                   className="hp-forge-hero-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    try { localStorage.setItem(seenKey, JSON.stringify(visibleRecipeIds)); } catch {}
                     goToForge(primaryWorkshop.locationId);
                   }}
                 >

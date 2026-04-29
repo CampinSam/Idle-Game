@@ -599,8 +599,7 @@ export default function ForgePage() {
                     background: dd?.cardBackground || 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))',
                     borderColor: dd?.borderColor || 'rgba(139,92,246,0.45)',
                   }}
-                  onClick={() => !isLocked && setSelectedRecipe(r.id)}
-                  disabled={isLocked}
+                  onClick={() => setSelectedRecipe(r.id)}
                   title={
                     !meetsLevel
                       ? `Requires Keeper Lvl ${r.requiredKeeperLevel}`
