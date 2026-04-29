@@ -37,9 +37,6 @@ function resolveDisplay(def: any, categoryDefs: any[]) {
   const catDef = categoryDefs.find((c: any) => c.id === def.missionCategoryDefId);
   const catDisplay = catDef?.displayDef || {};
 
-  // Always merge defensively: if the backend already pre-merged into missionDisplay.style
-  // (current contract), re-merging with the same category base is a no-op. If a future or
-  // alternate code path hands us an unmerged mission style, this still produces correct results.
   const style: DisplayStyle = mergeDisplayStyles(
     catDisplay.style as DisplayStyle | undefined,
     missionDisplay.style as DisplayStyle | undefined,
@@ -70,6 +67,7 @@ function displayCssVars(
   const style = display.style || {};
   const overlay = overlayToCss(style.overlay);
   const bg = style.background || {};
+  const body = style.body || {};
   const vars: Record<string, string> = {};
   if (overlay) {
     if (opts?.hero) vars['--md-hero-overlay'] = overlay;
@@ -78,6 +76,11 @@ function displayCssVars(
   if (bg.position) vars['--card-bg-position'] = bg.position;
   if (bg.size) vars['--card-bg-size'] = bg.size;
   if (bg.repeat) vars['--card-bg-repeat'] = bg.repeat;
+  if (body.color) vars['--card-body-color'] = body.color;
+  if (body.fontFamily) vars['--card-body-font-family'] = body.fontFamily;
+  if (body.fontSize) vars['--card-body-font-size'] = String(body.fontSize);
+  if (body.fontWeight !== undefined && body.fontWeight !== '') vars['--card-body-font-weight'] = String(body.fontWeight);
+  if (body.lineHeight) vars['--card-body-line-height'] = String(body.lineHeight);
   return {
     vars,
     titleStyle: textStyleToCss(style.title) as React.CSSProperties,
@@ -665,7 +668,7 @@ export default function MissionsPage() {
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
           <div className="md-hero-content">
-            <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name.toUpperCase()}</h1>
+            <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name}</h1>
             <div className="md-badges">
               <span className="md-badge md-badge-tier">{diffInfo.tier}</span>
               <span className="md-badge md-badge-diff" style={{ background: diffInfo.color }}>{diffInfo.label}</span>

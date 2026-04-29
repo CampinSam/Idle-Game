@@ -218,6 +218,9 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
+  color: var(--card-body-color, inherit);
+  font-family: var(--card-body-font-family, inherit);
+  font-size: var(--card-body-font-size, inherit);
 }
 
 .mp-cat-chevron {
@@ -376,8 +379,10 @@
 }
 
 .mp-mp-label {
-  font-size: 13px;
-  color: rgba(255,255,255,0.7);
+  font-size: var(--card-body-font-size, 13px);
+  color: var(--card-body-color, rgba(255,255,255,0.7));
+  font-family: var(--card-body-font-family, inherit);
+  font-weight: var(--card-body-font-weight, inherit);
 }
 
 .mp-mp-coin {
@@ -408,9 +413,11 @@
 }
 
 .mp-card-rewards {
-  font-size: 12px;
-  color: rgba(255,255,255,0.7);
-  line-height: 1.4;
+  font-size: var(--card-body-font-size, 12px);
+  color: var(--card-body-color, rgba(255,255,255,0.7));
+  line-height: var(--card-body-line-height, 1.4);
+  font-family: var(--card-body-font-family, inherit);
+  font-weight: var(--card-body-font-weight, inherit);
 }
 
 .mp-card-progress {
@@ -653,6 +660,7 @@
   text-shadow: 0 2px 8px rgba(0,0,0,0.6);
   letter-spacing: 0.5px;
   line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .md-badges {
@@ -693,9 +701,11 @@
 }
 
 .md-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
+  font-size: var(--card-body-font-size, 14px);
+  color: var(--card-body-color, var(--text-secondary));
+  line-height: var(--card-body-line-height, 1.6);
+  font-family: var(--card-body-font-family, inherit);
+  font-weight: var(--card-body-font-weight, inherit);
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(139, 92, 246, 0.08);
   border-radius: 10px;

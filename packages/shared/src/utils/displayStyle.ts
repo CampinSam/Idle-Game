@@ -58,7 +58,9 @@ export function textStyleToCss(text?: DisplayTextStyle | null): Record<string, s
   if (!text) return {};
   const out: Record<string, string | number> = {};
   if (text.fontFamily) out.fontFamily = text.fontFamily;
-  if (text.fontWeight !== undefined && text.fontWeight !== '') out.fontWeight = text.fontWeight as any;
+  if (text.fontWeight !== undefined && text.fontWeight !== '') {
+    out.fontWeight = text.fontWeight;
+  }
   if (text.fontSize) out.fontSize = text.fontSize;
   if (text.color) out.color = text.color;
   if (text.letterSpacing) out.letterSpacing = text.letterSpacing;

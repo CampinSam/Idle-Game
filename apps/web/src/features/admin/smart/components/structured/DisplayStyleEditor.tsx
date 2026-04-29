@@ -80,16 +80,28 @@ export default function DisplayStyleEditor({ value, onChange }: Props) {
             />
           </div>
           <div style={fieldGroupStyle}>
-            <span style={labelStyle}>opacity (0–1)</span>
-            <input
-              type="number"
-              min={0}
-              max={1}
-              step={0.05}
-              value={overlay.opacity ?? ''}
-              onChange={e => onChange(setPath(v, 'overlay', 'opacity', e.target.value === '' ? '' : Number(e.target.value)))}
-              style={{ ...inputStyle, width: '100%' }}
-            />
+            <span style={labelStyle}>
+              opacity (darkness): {typeof overlay.opacity === 'number' ? `${Math.round(overlay.opacity * 100)}%` : '— default —'}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={typeof overlay.opacity === 'number' ? Math.round(overlay.opacity * 100) : 0}
+                onChange={e => onChange(setPath(v, 'overlay', 'opacity', Number(e.target.value) / 100))}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => onChange(setPath(v, 'overlay', 'opacity', ''))}
+                style={{ ...inputStyle, padding: '2px 8px', cursor: 'pointer' }}
+                title="Reset to default"
+              >
+                clear
+              </button>
+            </div>
           </div>
         </div>
         <div style={fieldGroupStyle}>
