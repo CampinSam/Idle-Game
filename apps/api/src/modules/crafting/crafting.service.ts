@@ -14,16 +14,21 @@ import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import {
   calculateCraftingLuck,
   durationSecondsToTicks,
-  SeededRng,
-  qualityProbabilities,
-  rollQualityFromCl,
   workshopLuckFloor,
   workshopParallelSlots,
   workshopTimerMultiplier,
   workshopRecipeTierCap,
   QUALITY_TIERS,
+  SeededRng,
 } from '@derp/math';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
+
+function qualityFromCl(cl: number): { key: string; label: string } {
+  for (let i = QUALITY_TIERS.length - 1; i >= 0; i--) {
+    if (cl >= QUALITY_TIERS[i].minCl) return { key: QUALITY_TIERS[i].key, label: QUALITY_TIERS[i].label };
+  }
+  return { key: QUALITY_TIERS[0].key, label: QUALITY_TIERS[0].label };
+}
 
 @Injectable()
 export class CraftingService {
@@ -137,12 +142,6 @@ export class CraftingService {
     return 3;
   }
 
-  /**
-   * Returns the projected Crafting Luck and per-quality-tier probability
-   * distribution for each idle entity. Server-authoritative — the same
-   * helpers (qualityProbabilities / rollQualityFromCl) are used by
-   * collectCrafting, so the forecast matches what collection will roll.
-   */
   async getLuckForecast(userId: string, options: { includeAll?: boolean; locationId?: string } = {}) {
     const includeAll = options.includeAll === true;
     const entities = await (this.prisma as any).entity.findMany({
@@ -162,8 +161,7 @@ export class CraftingService {
       const progression = (entity.progression as any) || {};
       const rawCl = calculateCraftingLuck(stats);
       const effectiveCl = Math.max(rawCl, luckFloor);
-      const probs = qualityProbabilities(effectiveCl);
-      const expectedTier = probs.reduce((best, p) => (p.probability > best.probability ? p : best), probs[0]);
+      const expected = qualityFromCl(effectiveCl);
       const display = (entity.display as any) || {};
       return {
         entityId: entity.id,
@@ -175,9 +173,8 @@ export class CraftingService {
         craftingLuck: Number(effectiveCl.toFixed(2)),
         rawCraftingLuck: Number(rawCl.toFixed(2)),
         luckFloor,
-        probabilities: probs.map((p) => ({ key: p.key, label: p.label, probability: Number(p.probability.toFixed(4)) })),
-        expectedQuality: expectedTier.key,
-        expectedQualityLabel: expectedTier.label,
+        expectedQuality: expected.key,
+        expectedQualityLabel: expected.label,
       };
     });
 
@@ -250,19 +247,10 @@ export class CraftingService {
       locationName: b.location?.definition?.region?.displayName
         || b.location?.definition?.id
         || b.locationId,
-      // Workshop's resolved DisplayDef so the Forge hero (per-outpost) and
-      // Home Forge hero (per-primary-workshop) can theme themselves through
-      // the same channel as recipes/missions instead of hardcoded fallbacks.
       displayDef: this.mapBuildingDisplayDef(b.buildingDef),
     }));
   }
 
-  /**
-   * Resolve a BuildingDef.displayDef into the same shape we already ship for
-   * recipe displayDefs (id, borderColor, backgroundImage, cardBackground,
-   * merged style). Returns null when the building has no displayDef so the
-   * client can decide whether to fall back to its built-in defaults.
-   */
   private mapBuildingDisplayDef(def: any) {
     const dd = def?.displayDef;
     if (!dd) return null;
@@ -472,11 +460,7 @@ export class CraftingService {
     const luckFloor = workshopLuckFloor(workshopTier);
     const cl = Math.max(rawCl, luckFloor);
 
-    const seedForQuality = (job.data as { seed?: string })?.seed ?? jobId;
-    const qualityRng = new SeededRng(`${seedForQuality}:quality`);
-    const qualityRoll = rollQualityFromCl(cl, qualityRng);
-    const quality = qualityRoll.key;
-    const qualityProbs = qualityRoll.probabilities;
+    const quality = qualityFromCl(cl).key;
 
     const recipeId = job.defId;
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
@@ -578,7 +562,6 @@ export class CraftingService {
           rawCraftingLuck: rawCl,
           luckFloor,
           workshopTier,
-          qualityProbabilities: qualityProbs.map((p) => ({ key: p.key, label: p.label, probability: Number(p.probability.toFixed(4)) })),
           rewards: grantedRewards,
           ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
         },

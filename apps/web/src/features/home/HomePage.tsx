@@ -301,10 +301,6 @@ export default function HomePage() {
             : `Lvl ${primaryWorkshop.level} ${primaryWorkshop.name} — pick a recipe to forge your first item.`;
         const heroBtn =
           triggerKind === 'ready' ? 'COLLECT NOW' : triggerKind === 'actionable' ? 'ENTER THE FORGE' : 'BEGIN CRAFTING';
-        // Theme the Home Forge hero from the primary workshop's DisplayDef so
-        // it stays in lockstep with whatever the admin set per outpost/season.
-        // Falls through to the built-in `.hp-forge-hero-bg` only when no
-        // DisplayDef is configured on the workshop.
         const wsDisplay = (primaryWorkshop as any)?.displayDef || null;
         const heroBgImage = wsDisplay?.backgroundImage || null;
         const heroBorder = wsDisplay?.borderColor || null;

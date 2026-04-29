@@ -48,7 +48,6 @@ function fmtSeconds(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-interface QualityProb { key: string; label: string; probability: number }
 interface ForecastResponse {
   cap: number;
   tiers: Array<{ key: string; label: string; minCl: number }>;
@@ -69,7 +68,6 @@ interface ForecastResponse {
     craftingLuck: number;
     rawCraftingLuck: number;
     luckFloor: number;
-    probabilities: QualityProb[];
     expectedQuality: string;
     expectedQualityLabel: string;
   }>;
@@ -141,8 +139,6 @@ export default function ForgePage() {
   const entities = useSyncEntities();
   const syncItemsTable = useAppSelector((s) => s.sync.items);
   const allActiveCraftingJobs = useSyncActiveCraftingJobs();
-  // Place-scoping: only show crucibles that belong to *this* outpost so the
-  // Forge for one location can't double-count jobs from another.
   const activeCraftingJobs = useMemo(
     () => allActiveCraftingJobs.filter(
       (j: any) => (j.data?.locationId || j.locationId) === outpostId,
@@ -163,9 +159,6 @@ export default function ForgePage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('all');
   const [workshopLevel, setWorkshopLevel] = useState(1);
-  // Hold the full workshop info (incl. resolved DisplayDef) so the Forge hero
-  // can theme itself per outpost / season instead of using a hardcoded image.
-  // The hero falls back to FORGE_FALLBACK only when DisplayDef is absent.
   const [workshopInfo, setWorkshopInfo] = useState<any>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try {
@@ -239,11 +232,6 @@ export default function ForgePage() {
     return Array.from(set).sort();
   }, [craftingRecipes]);
 
-  // A recipe's "availability" is server-truthful where possible (forecast's
-  // recipeTierCap + slotsOpen) and uses local checks for cost/keeperLevel.
-  // Available = passes Keeper-level visibility AND has all materials (currency
-  // and items) AND there's at least one open crucible at this Forge AND the
-  // recipe tier doesn't exceed this workshop's tier cap.
   const recipeIsAvailable = useCallback((r: any): boolean => {
     if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return false;
     const recipeTier = Number(r.tier ?? 1);
@@ -263,8 +251,6 @@ export default function ForgePage() {
     return true;
   }, [profile, currencyBalances, syncItemsTable, forecast?.recipeTierCap, forecast?.slotsOpen]);
 
-  // Locked = visibility fails. Today that's Keeper-level OR the recipe tier
-  // exceeds what this workshop can craft (e.g. Tier-2 recipe at a Tier-1 Forge).
   const recipeIsLocked = useCallback((r: any): boolean => {
     if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return true;
     const recipeTier = Number(r.tier ?? 1);
@@ -350,9 +336,6 @@ export default function ForgePage() {
   const recipeTitleStyle = textStyleToCss(recipeStyle.title);
   const recipeBodyStyle = textStyleToCss(recipeStyle.body);
 
-  // The Forge hero is themed by the workshop's DisplayDef so admins can
-  // re-skin it per outpost / season without code changes. We fall back to the
-  // hardcoded FORGE_FALLBACK only when the workshop has no DisplayDef.
   const heroStyle: DisplayStyle = useMemo(
     () => mergeDisplayStyles(undefined, workshopInfo?.displayDef?.style),
     [workshopInfo],
@@ -454,10 +437,6 @@ export default function ForgePage() {
                 const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
                 const isReady = remMs <= 0;
                 const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
-                // Affordances: portrait of the assigned Derp, recipe-tier
-                // rarity glow (T1=common/T2=rare/T3=epic), and an animated
-                // SVG countdown ring driven by elapsed/duration. These make
-                // each crucible feel alive instead of a name + timer.
                 const entity = entities.find((e: any) => e.id === job.entityId);
                 const entityName = entity?.name || 'Derp';
                 const portraitInitial = entityName.trim().charAt(0).toUpperCase() || '?';
@@ -720,20 +699,6 @@ export default function ForgePage() {
                         >
                           {f.expectedQualityLabel}
                         </span>
-                        <div className="forge-entity-probs" aria-hidden>
-                          {f.probabilities.map((p) => (
-                            <div
-                              key={p.key}
-                              className="forge-entity-prob-seg"
-                              style={{
-                                width: `${Math.max(2, p.probability * 100)}%`,
-                                background: QUALITY_COLOURS[p.key] || '#475569',
-                                opacity: 0.35 + p.probability * 0.65,
-                              }}
-                              title={`${p.label}: ${(p.probability * 100).toFixed(1)}%`}
-                            />
-                          ))}
-                        </div>
                       </div>
                     )}
                   </button>
@@ -757,32 +722,14 @@ export default function ForgePage() {
                   marker={selectedForecast?.craftingLuck ?? null}
                   qualityKey={selectedForecast?.expectedQuality ?? null}
                 />
-                {selectedForecast && (
-                  <div className="forge-forecast-probs">
-                    {selectedForecast.probabilities.map((p) => (
-                      <div key={p.key} className="forge-forecast-prob">
-                        <div className="forge-forecast-prob-label" style={{ color: QUALITY_COLOURS[p.key] || '#94a3b8' }}>
-                          {p.label}
-                        </div>
-                        <div className="forge-forecast-prob-bar">
-                          <div
-                            className="forge-forecast-prob-fill"
-                            style={{ width: `${p.probability * 100}%`, background: QUALITY_COLOURS[p.key] || '#475569' }}
-                          />
-                        </div>
-                        <div className="forge-forecast-prob-pct">{(p.probability * 100).toFixed(0)}%</div>
-                      </div>
-                    ))}
-                    {forecast.luckFloor > 0 && selectedForecast.rawCraftingLuck < forecast.luckFloor && (
-                      <div className="forge-forecast-floor-note">
-                        ⚒️ Workshop Tier {forecast.workshopTier} sets a luck floor of {forecast.luckFloor} (raw CL {selectedForecast.rawCraftingLuck.toFixed(0)}).
-                      </div>
-                    )}
+                {selectedForecast && forecast.luckFloor > 0 && selectedForecast.rawCraftingLuck < forecast.luckFloor && (
+                  <div className="forge-forecast-floor-note">
+                    ⚒️ Workshop Tier {forecast.workshopTier} sets a luck floor of {forecast.luckFloor} (raw CL {selectedForecast.rawCraftingLuck.toFixed(0)}).
                   </div>
                 )}
                 {!selectedEntity && !forecastLoading && (
                   <div className="forge-forecast-hint">
-                    Select a Derp to see the full quality probability distribution.
+                    Select a Derp to see its expected quality on this scale.
                   </div>
                 )}
               </div>
