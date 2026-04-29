@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   containerStyle,
   sectionStyle,
@@ -34,17 +35,22 @@ function PresetOrCustom({ value, presets, placeholder, onChange }: {
   placeholder?: string;
   onChange: (v: string) => void;
 }) {
-  const isCustom = value !== '' && !presets.includes(value);
+  // Track "custom mode" in local UI state so toggling the dropdown doesn't write
+  // a sentinel value (like ' ') into persisted data before the user types.
+  const valueIsCustom = value !== '' && !presets.includes(value);
+  const [customMode, setCustomMode] = useState<boolean>(valueIsCustom);
+  const showCustom = customMode || valueIsCustom;
+
   return (
     <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
       <select
-        value={isCustom ? '__custom__' : value}
+        value={showCustom ? '__custom__' : value}
         onChange={e => {
           const v = e.target.value;
           if (v === '__custom__') {
-            // switch to custom mode but don't clobber existing value
-            if (!isCustom) onChange(value || ' ');
+            setCustomMode(true);
           } else {
+            setCustomMode(false);
             onChange(v);
           }
         }}
@@ -54,7 +60,7 @@ function PresetOrCustom({ value, presets, placeholder, onChange }: {
         {presets.map(p => <option key={p} value={p}>{p}</option>)}
         <option value="__custom__">Custom…</option>
       </select>
-      {isCustom && (
+      {showCustom && (
         <input
           type="text"
           value={value}

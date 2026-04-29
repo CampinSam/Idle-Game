@@ -63,7 +63,11 @@ function resolveCategoryDisplay(catDef: any) {
 function displayCssVars(
   display: { style?: DisplayStyle },
   opts?: { hero?: boolean },
-): { vars: Record<string, string>; titleStyle: React.CSSProperties; bodyStyle: React.CSSProperties } {
+): { vars: Record<string, string>; titleStyle: React.CSSProperties } {
+  // Body typography is intentionally exposed only via CSS custom properties
+  // (consumed by targeted text classes like .mp-card-rewards, .md-description)
+  // rather than spread onto the card container, so it does not bleed into
+  // unrelated descendants like buttons, badges, or chevrons.
   const style = display.style || {};
   const overlay = overlayToCss(style.overlay);
   const bg = style.background || {};
@@ -84,7 +88,6 @@ function displayCssVars(
   return {
     vars,
     titleStyle: textStyleToCss(style.title) as React.CSSProperties,
-    bodyStyle: textStyleToCss(style.body) as React.CSSProperties,
   };
 }
 
@@ -512,7 +515,7 @@ export default function MissionsPage() {
             <div className="mp-categories">
               {visibleCategories.map((cat) => {
                 const display = cat.display;
-                const { vars, titleStyle, bodyStyle } = displayCssVars(display);
+                const { vars, titleStyle } = displayCssVars(display);
                 const unavailable = cat.locked || !cat.enabled;
                 const inlineMissions = getInlineMissions(cat.id);
                 const navigable = !cat.inlineOnly;
@@ -526,7 +529,6 @@ export default function MissionsPage() {
                       borderColor: display.borderColor,
                       cursor: navigable && !unavailable ? undefined : 'default',
                       ...vars,
-                      ...bodyStyle,
                     } as React.CSSProperties}
                     onClick={() => navigable && !unavailable && pushCategory(cat.id)}
                   >
@@ -587,7 +589,7 @@ export default function MissionsPage() {
               const unavailable = locked || !missionEnabled;
               const diffInfo = getDifficultyDisplay(def.difficulty);
               const display = resolveDisplay(def, missionCategoryDefs);
-              const { vars, titleStyle, bodyStyle } = displayCssVars(display);
+              const { vars, titleStyle } = displayCssVars(display);
               const missionTags = def.tags || [];
               const listCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
               const getListHave = (entry: { type: string; id: string }) =>
@@ -603,7 +605,6 @@ export default function MissionsPage() {
                     '--card-bg-image': bgImageCss(display.backgroundImage),
                     borderColor: display.borderColor,
                     ...vars,
-                    ...bodyStyle,
                   } as React.CSSProperties}
                   onClick={() => !unavailable && handleSelectMission(def.id)}
                 >
@@ -663,7 +664,7 @@ export default function MissionsPage() {
     const heroCss = displayCssVars(display, { hero: true });
     return (
       <div className="missions-page md-inline page-transition-wrapper">
-        <div className="md-unified-card" style={{ borderColor: display.borderColor, ...heroCss.bodyStyle }}>
+        <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
         <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage), ...heroCss.vars } as React.CSSProperties}>
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
@@ -921,7 +922,7 @@ export default function MissionsPage() {
         <div className="mp-categories">
         {visibleCategories.map((cat) => {
           const display = cat.display;
-          const { vars, titleStyle, bodyStyle } = displayCssVars(display);
+          const { vars, titleStyle } = displayCssVars(display);
           const unavailable = cat.locked || !cat.enabled;
           const inlineMissions = getInlineMissions(cat.id);
           const navigable = !cat.inlineOnly;
@@ -935,7 +936,6 @@ export default function MissionsPage() {
                 borderColor: display.borderColor,
                 cursor: navigable && !unavailable ? undefined : 'default',
                 ...vars,
-                ...bodyStyle,
               } as React.CSSProperties}
               onClick={() => navigable && !unavailable && pushCategory(cat.id)}
             >
