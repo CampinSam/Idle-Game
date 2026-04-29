@@ -30,6 +30,11 @@ function qualityFromCl(cl: number): { key: string; label: string } {
   return { key: QUALITY_TIERS[0].key, label: QUALITY_TIERS[0].label };
 }
 
+function qualityDistributionFromCl(cl: number): { key: string; label: string; probability: number }[] {
+  const matched = qualityFromCl(cl).key;
+  return QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, probability: t.key === matched ? 1 : 0 }));
+}
+
 @Injectable()
 export class CraftingService {
   private readonly logger = new Logger(CraftingService.name);
@@ -162,6 +167,7 @@ export class CraftingService {
       const rawCl = calculateCraftingLuck(stats);
       const effectiveCl = Math.max(rawCl, luckFloor);
       const expected = qualityFromCl(effectiveCl);
+      const probabilities = qualityDistributionFromCl(effectiveCl);
       const display = (entity.display as any) || {};
       return {
         entityId: entity.id,
@@ -173,6 +179,7 @@ export class CraftingService {
         craftingLuck: Number(effectiveCl.toFixed(2)),
         rawCraftingLuck: Number(rawCl.toFixed(2)),
         luckFloor,
+        probabilities,
         expectedQuality: expected.key,
         expectedQualityLabel: expected.label,
       };
@@ -461,6 +468,7 @@ export class CraftingService {
     const cl = Math.max(rawCl, luckFloor);
 
     const quality = qualityFromCl(cl).key;
+    const qualityProbabilities = qualityDistributionFromCl(cl);
 
     const recipeId = job.defId;
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
@@ -562,6 +570,7 @@ export class CraftingService {
           rawCraftingLuck: rawCl,
           luckFloor,
           workshopTier,
+          qualityProbabilities,
           rewards: grantedRewards,
           ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
         },

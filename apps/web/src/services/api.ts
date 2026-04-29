@@ -186,6 +186,7 @@ class ApiClient {
         craftingLuck: number;
         rawCraftingLuck: number;
         luckFloor: number;
+        probabilities: Array<{ key: string; label: string; probability: number }>;
         expectedQuality: string;
         expectedQualityLabel: string;
       }>;

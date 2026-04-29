@@ -48,6 +48,7 @@ function fmtSeconds(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
+interface QualityProb { key: string; label: string; probability: number }
 interface ForecastResponse {
   cap: number;
   tiers: Array<{ key: string; label: string; minCl: number }>;
@@ -68,6 +69,7 @@ interface ForecastResponse {
     craftingLuck: number;
     rawCraftingLuck: number;
     luckFloor: number;
+    probabilities: QualityProb[];
     expectedQuality: string;
     expectedQualityLabel: string;
   }>;
@@ -699,6 +701,20 @@ export default function ForgePage() {
                         >
                           {f.expectedQualityLabel}
                         </span>
+                        <div className="forge-entity-probs" aria-hidden>
+                          {f.probabilities.map((p) => (
+                            <div
+                              key={p.key}
+                              className="forge-entity-prob-seg"
+                              style={{
+                                width: `${Math.max(2, p.probability * 100)}%`,
+                                background: QUALITY_COLOURS[p.key] || '#475569',
+                                opacity: 0.35 + p.probability * 0.65,
+                              }}
+                              title={`${p.label}: ${(p.probability * 100).toFixed(1)}%`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </button>
@@ -722,14 +738,32 @@ export default function ForgePage() {
                   marker={selectedForecast?.craftingLuck ?? null}
                   qualityKey={selectedForecast?.expectedQuality ?? null}
                 />
-                {selectedForecast && forecast.luckFloor > 0 && selectedForecast.rawCraftingLuck < forecast.luckFloor && (
-                  <div className="forge-forecast-floor-note">
-                    ⚒️ Workshop Tier {forecast.workshopTier} sets a luck floor of {forecast.luckFloor} (raw CL {selectedForecast.rawCraftingLuck.toFixed(0)}).
+                {selectedForecast && (
+                  <div className="forge-forecast-probs">
+                    {selectedForecast.probabilities.map((p) => (
+                      <div key={p.key} className="forge-forecast-prob">
+                        <div className="forge-forecast-prob-label" style={{ color: QUALITY_COLOURS[p.key] || '#94a3b8' }}>
+                          {p.label}
+                        </div>
+                        <div className="forge-forecast-prob-bar">
+                          <div
+                            className="forge-forecast-prob-fill"
+                            style={{ width: `${p.probability * 100}%`, background: QUALITY_COLOURS[p.key] || '#475569' }}
+                          />
+                        </div>
+                        <div className="forge-forecast-prob-pct">{(p.probability * 100).toFixed(0)}%</div>
+                      </div>
+                    ))}
+                    {forecast.luckFloor > 0 && selectedForecast.rawCraftingLuck < forecast.luckFloor && (
+                      <div className="forge-forecast-floor-note">
+                        ⚒️ Workshop Tier {forecast.workshopTier} sets a luck floor of {forecast.luckFloor} (raw CL {selectedForecast.rawCraftingLuck.toFixed(0)}).
+                      </div>
+                    )}
                   </div>
                 )}
                 {!selectedEntity && !forecastLoading && (
                   <div className="forge-forecast-hint">
-                    Select a Derp to see its expected quality on this scale.
+                    Select a Derp to see the full quality probability distribution.
                   </div>
                 )}
               </div>
