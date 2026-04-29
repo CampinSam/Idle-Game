@@ -3,7 +3,7 @@
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "essence",
       "type": "HARD",
       "seasonId": null,
@@ -15,7 +15,7 @@
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "💎",
+      "symbol": "\ud83d\udc8e",
       "iconKey": "gems",
       "type": "PREMIUM",
       "seasonId": null,
@@ -27,7 +27,7 @@
     {
       "id": "season_frost_coin",
       "name": "Frost Coin",
-      "symbol": "❄️",
+      "symbol": "\u2744\ufe0f",
       "iconKey": "frost_coin",
       "type": "SEASONAL",
       "seasonId": "season_1",
@@ -39,7 +39,7 @@
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "🪙",
+      "symbol": "\ud83e\ude99",
       "iconKey": "soft_arcanium",
       "type": "SOFT",
       "seasonId": null,
@@ -228,7 +228,7 @@
     },
     {
       "id": "reconstruction_zone_alpha",
-      "displayName": "Reconstruction Zone █",
+      "displayName": "Reconstruction Zone \u2588",
       "biome": "urban_ruins",
       "modifiers": {
         "gatherBonus": 0.05
@@ -1109,21 +1109,37 @@
       "backgroundImage": "/images/regions/sandcrypt-badlands.png",
       "cardBackground": "linear-gradient(180deg, rgba(249,115,22,0.18) 0%, rgba(34,24,88,0.95) 60%)",
       "style": {
-        "overlay": { "color": "#0c0a1a", "opacity": 0.55 },
-        "title": { "color": "#fed7aa", "fontWeight": "900", "letterSpacing": "0.08em", "textTransform": "uppercase" },
-        "body": { "color": "#fde68a" }
+        "overlay": {
+          "color": "#0c0a1a",
+          "opacity": 0.55
+        },
+        "title": {
+          "color": "#fed7aa",
+          "fontWeight": "900",
+          "letterSpacing": "0.08em",
+          "textTransform": "uppercase"
+        },
+        "body": {
+          "color": "#fde68a"
+        }
       },
       "data": {}
     },
     {
       "id": "display_recipe_default",
-      "name": "Recipe — Default",
+      "name": "Recipe \u2014 Default",
       "borderColor": "#8b5cf6",
       "backgroundImage": null,
       "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
       "style": {
-        "title": { "color": "#c4b5fd", "fontWeight": "800", "letterSpacing": "0.04em" },
-        "body": { "color": "#cbd5e1" }
+        "title": {
+          "color": "#c4b5fd",
+          "fontWeight": "800",
+          "letterSpacing": "0.04em"
+        },
+        "body": {
+          "color": "#cbd5e1"
+        }
       },
       "data": {}
     },
@@ -1638,22 +1654,33 @@
     {
       "id": "bld_forge",
       "name": "The Forge",
-      "description": "A roaring crucible at the heart of the outpost — where raw materials are refined into wonders.",
-      "tags": ["workshop", "crafting"],
+      "description": "A roaring crucible at the heart of the outpost \u2014 where raw materials are refined into wonders.",
+      "tags": [
+        "workshop",
+        "crafting"
+      ],
       "category": "WORKSHOP",
       "iconKey": null,
       "rules": {
         "level": {
           "1": {
-            "timer": { "duration": 600 },
+            "timer": {
+              "duration": 600
+            },
             "constructionCost": [
-              { "id": "soft_arcanium", "type": "currency", "amount": 250 }
+              {
+                "id": "soft_arcanium",
+                "type": "currency",
+                "amount": 250
+              }
             ]
           }
         },
         "maxLevel": 5
       },
-      "data": { "purpose": "crafting" },
+      "data": {
+        "purpose": "crafting"
+      },
       "requirements": [],
       "visibilityRequirements": [],
       "displayDefId": "display_forge",
@@ -2208,7 +2235,7 @@
     {
       "id": "mission_perp_1_data_sweep",
       "name": "Data Recovery Sweep",
-      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
+      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape\u2019s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They\u2019re not supposed to touch anything important. They\u2019re absolutely going to touch everything.",
       "difficulty": 1,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2829,9 +2856,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "⚡ 10-25 XP",
-        "🛡️ 5-12 KXP",
-        "💎 5-15 soft_arcanium"
+        "\u26a1 10-25 XP",
+        "\ud83d\udee1\ufe0f 5-12 KXP",
+        "\ud83d\udc8e 5-15 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -2936,9 +2963,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "⚡ 8-18 XP",
-        "🛡️ 4-9 KXP",
-        "💎 3-10 soft_arcanium"
+        "\u26a1 8-18 XP",
+        "\ud83d\udee1\ufe0f 4-9 KXP",
+        "\ud83d\udc8e 3-10 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -3043,9 +3070,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "⚡ 15-35 XP",
-        "🛡️ 8-18 KXP",
-        "💎 8-20 soft_arcanium"
+        "\u26a1 15-35 XP",
+        "\ud83d\udee1\ufe0f 8-18 KXP",
+        "\ud83d\udc8e 8-20 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -3173,10 +3200,10 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "⚡ 60-120 XP",
-        "🛡️ 30-60 KXP",
-        "💎 30-70 soft_arcanium",
-        "🎁 1-2 mana_shard (15%)"
+        "\u26a1 60-120 XP",
+        "\ud83d\udee1\ufe0f 30-60 KXP",
+        "\ud83d\udc8e 30-70 soft_arcanium",
+        "\ud83c\udf81 1-2 mana_shard (15%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3297,10 +3324,10 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "⚡ 40-80 XP",
-        "🛡️ 20-40 KXP",
-        "💎 20-50 soft_arcanium",
-        "🎁 1-3 iron_ore (10%)"
+        "\u26a1 40-80 XP",
+        "\ud83d\udee1\ufe0f 20-40 KXP",
+        "\ud83d\udc8e 20-50 soft_arcanium",
+        "\ud83c\udf81 1-3 iron_ore (10%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3429,11 +3456,11 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "⚡ 80-160 XP",
-        "🛡️ 40-80 KXP",
-        "💎 40-100 soft_arcanium",
-        "🎁 1-2 shadow_silk (20%)",
-        "🎁 1 crystal_bloom (10%)"
+        "\u26a1 80-160 XP",
+        "\ud83d\udee1\ufe0f 40-80 KXP",
+        "\ud83d\udc8e 40-100 soft_arcanium",
+        "\ud83c\udf81 1-2 shadow_silk (20%)",
+        "\ud83c\udf81 1 crystal_bloom (10%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3540,7 +3567,9 @@
           "value": 7
         }
       ],
-      "data": {},
+      "data": {
+        "tier": 3
+      },
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
@@ -3595,7 +3624,9 @@
           "value": 10
         }
       ],
-      "data": {},
+      "data": {
+        "tier": 3
+      },
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
@@ -3830,7 +3861,9 @@
           "value": 3
         }
       ],
-      "data": {},
+      "data": {
+        "tier": 2
+      },
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
@@ -3926,7 +3959,7 @@
       "name": "Daily Login Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is paying off — here's a healthy supply of Arcanium.",
+        "body": "Your streak is paying off \u2014 here's a healthy supply of Arcanium.",
         "title": "Daily Check-In Reward",
         "rarity": "UNCOMMON",
         "iconKey": "soft_arcanium"
@@ -3989,7 +4022,7 @@
       "name": "Weekly Bonus Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is climbing — here's a solid Essence reward.",
+        "body": "Your streak is climbing \u2014 here's a solid Essence reward.",
         "title": "Weekly Bonus",
         "rarity": "RARE",
         "iconKey": "essence"
@@ -4052,7 +4085,7 @@
       "name": "Seasonal Check-In Reward",
       "version": 1,
       "presentation": {
-        "body": "The frost grows deeper — so do your rewards.",
+        "body": "The frost grows deeper \u2014 so do your rewards.",
         "title": "Seasonal Reward",
         "rarity": "RARE",
         "iconKey": "frost_coin"

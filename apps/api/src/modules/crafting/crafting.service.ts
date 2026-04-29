@@ -141,17 +141,15 @@ export class CraftingService {
   }
 
   /**
-   * Recipe "tier" comes from optional metadata in recipeDef.data.tier (1-3).
-   * Falls back to derive from requiredKeeperLevel: ≤3 → tier 1, ≤6 → tier 2,
-   * else tier 3, so existing seeds without explicit tiers still gate sensibly.
+   * Recipe "tier" is read from `recipeDef.data.tier` (1-3) and defaults to 1
+   * per Task #111 spec. Seeds opt T2/T3 recipes in by setting `data.tier`
+   * explicitly; the default keeps the rule predictable for new content
+   * authors and avoids surprise tier-cap blocks on legacy recipes.
    */
   private recipeTier(def: any): number {
     const explicit = (def?.data as any)?.tier;
     if (typeof explicit === 'number' && explicit >= 1 && explicit <= 3) return explicit;
-    const lvl = Number(def?.requiredKeeperLevel ?? 1);
-    if (lvl <= 3) return 1;
-    if (lvl <= 6) return 2;
-    return 3;
+    return 1;
   }
 
   async getLuckForecast(userId: string, options: { includeAll?: boolean; locationId?: string } = {}) {
