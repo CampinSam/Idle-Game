@@ -8,9 +8,9 @@ export class StartCraftingHandler implements CommandHandler {
   constructor(private craftingService: CraftingService) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
-    const { recipeId, entityId } = payload;
+    const { recipeId, entityId, locationId } = payload;
 
-    const result = await this.craftingService.startCrafting(ctx.userId, recipeId, entityId);
+    const result = await this.craftingService.startCrafting(ctx.userId, recipeId, entityId, locationId);
 
     const pb = new PatchBuilder();
 

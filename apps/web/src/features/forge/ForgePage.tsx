@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
   useSyncPlayer,
@@ -47,9 +47,12 @@ function fmtSeconds(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
+interface QualityProb { key: string; label: string; probability: number }
 interface ForecastResponse {
   cap: number;
   tiers: Array<{ key: string; label: string; minCl: number }>;
+  workshopTier: number;
+  luckFloor: number;
   entities: Array<{
     entityId: string;
     name: string;
@@ -58,10 +61,11 @@ interface ForecastResponse {
     idle: boolean;
     stats: { FOC: number; LCK: number };
     craftingLuck: number;
-    quality: string;
-    qualityLabel: string;
-    tierIndex: number;
-    nextTier: { key: string; label: string; minCl: number; deltaCl: number } | null;
+    rawCraftingLuck: number;
+    luckFloor: number;
+    probabilities: QualityProb[];
+    expectedQuality: string;
+    expectedQualityLabel: string;
   }>;
 }
 
@@ -120,6 +124,8 @@ function ForecastBar({
 export default function ForgePage() {
   const { id: outpostId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const materialFilter = searchParams.get('material') || '';
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const tick = useCurrentTick();
@@ -138,6 +144,9 @@ export default function ForgePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [workshopChecked, setWorkshopChecked] = useState(false);
+  const [recipeSearch, setRecipeSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [workshopLevel, setWorkshopLevel] = useState(1);
 
   // Server-enforced "crafting is a place": validate that this outpost actually
   // hosts an enabled workshop owned by the player. If not, redirect away so
@@ -150,7 +159,11 @@ export default function ForgePage() {
     let cancelled = false;
     setWorkshopChecked(false);
     api.getCraftingWorkshopAtLocation(outpostId)
-      .then(() => { if (!cancelled) setWorkshopChecked(true); })
+      .then((info: any) => {
+        if (cancelled) return;
+        setWorkshopChecked(true);
+        if (info?.level) setWorkshopLevel(Number(info.level));
+      })
       .catch(() => {
         if (cancelled) return;
         navigate(`/locations/${outpostId}`, { replace: true });
@@ -166,15 +179,74 @@ export default function ForgePage() {
   useEffect(() => {
     let cancelled = false;
     setForecastLoading(true);
-    api.getCraftingForecast(true)
+    api.getCraftingForecast(true, outpostId)
       .then((data) => { if (!cancelled) setForecast(data); })
       .catch(() => { if (!cancelled) setForecast(null); })
       .finally(() => { if (!cancelled) setForecastLoading(false); });
     return () => { cancelled = true; };
-  }, [forecastBucket]);
+  }, [forecastBucket, outpostId]);
 
   const idleEntities = entities.filter((e: any) => e.status === 'idle');
   const recipe = craftingRecipes.find((r: any) => r.id === selectedRecipe);
+
+  const recipeCategories = useMemo<string[]>(() => {
+    const set = new Set<string>();
+    for (const r of craftingRecipes as any[]) {
+      const cat = (r.category || r.group || 'general') as string;
+      set.add(cat);
+    }
+    return Array.from(set).sort();
+  }, [craftingRecipes]);
+
+  const filteredRecipes = useMemo(() => {
+    const search = recipeSearch.trim().toLowerCase();
+    return (craftingRecipes as any[]).filter((r: any) => {
+      if (materialFilter) {
+        const cost: Array<{ type: string; id: string }> = r.cost ?? [];
+        if (!cost.some((c) => c.id === materialFilter || c.id === `mat_${materialFilter}`)) return false;
+      }
+      if (categoryFilter !== 'all') {
+        const cat = (r.category || r.group || 'general') as string;
+        if (cat !== categoryFilter) return false;
+      }
+      if (search) {
+        const hay = `${r.name || ''} ${r.description || ''}`.toLowerCase();
+        if (!hay.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [craftingRecipes, materialFilter, categoryFilter, recipeSearch]);
+
+  const matName = useMemo(() => {
+    if (!materialFilter) return '';
+    return materialFilter.replace(/^mat_/, '').replace(/_/g, ' ');
+  }, [materialFilter]);
+
+  const clearMaterialFilter = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('material');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Compute per-recipe blocked reasons (for slide-up sheet).
+  const recipeBlockedReasons = useMemo<string[]>(() => {
+    if (!recipe) return [];
+    const reasons: string[] = [];
+    const cost: Array<{ type: string; id: string; amount: number }> = recipe.cost ?? [];
+    for (const c of cost) {
+      if (c.type === 'currency') {
+        const have = currencyBalances[c.id] ?? 0;
+        if (have < c.amount) reasons.push(`Need ${c.amount - have} more ${c.id.replace('soft_', '').replace('mat_', '')}`);
+      }
+    }
+    if (profile && (recipe.requiredKeeperLevel || 1) > profile.keeperLevel) {
+      reasons.push(`Requires Keeper Lvl ${recipe.requiredKeeperLevel}`);
+    }
+    if (idleEntities.length === 0) {
+      reasons.push('No idle Derps available');
+    }
+    return reasons;
+  }, [recipe, currencyBalances, profile, idleEntities.length]);
 
   const recipeStyle: DisplayStyle = useMemo(
     () => mergeDisplayStyles(undefined, recipe?.displayDef?.style),
@@ -201,7 +273,7 @@ export default function ForgePage() {
     setBusy(true);
     try {
       audioEngine.play('ui.button_click');
-      await execute('StartCrafting', { recipeId: selectedRecipe, entityId: selectedEntity });
+      await execute('StartCrafting', { recipeId: selectedRecipe, entityId: selectedEntity, locationId: outpostId });
       audioEngine.play('sfx.craft.start');
       setSelectedRecipe(null);
       setSelectedEntity(null);
@@ -254,47 +326,114 @@ export default function ForgePage() {
 
       {error && <div className="forge-error">{error}</div>}
 
-      <section className="forge-section forge-jobs-section">
+      {(() => {
+        const maxSlots = Math.max(1, workshopLevel + 1);
+        const usedSlots = activeCraftingJobs.length;
+        const emptySlots = Math.max(0, maxSlots - usedSlots);
+        return (
+          <section className="forge-section forge-jobs-section">
+            <div className="forge-section-head">
+              <h2>In the Crucible</h2>
+              <span className="forge-section-sub">{usedSlots} / {maxSlots} crucibles</span>
+            </div>
+            <div className="forge-jobs">
+              {activeCraftingJobs.map((job: any) => {
+                const timer = (job.startTick != null && job.durationTicks != null)
+                  ? createCountdownTimer({ startTick: job.startTick, durationTicks: job.durationTicks })
+                  : null;
+                const remTicks = timer ? timer.getValue(tick) : Infinity;
+                const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
+                const isReady = remMs <= 0;
+                const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
+                return (
+                  <div key={job.id} className={`forge-job-card ${isReady ? 'ready' : ''}`}>
+                    <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
+                    {isReady ? (
+                      <button className="forge-collect-btn" onClick={() => handleCollect(job.id)}>
+                        Collect
+                      </button>
+                    ) : (
+                      <span className="forge-job-time">{fmtSeconds(remMs / 1000)} left</span>
+                    )}
+                  </div>
+                );
+              })}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <button
+                  key={`empty-slot-${i}`}
+                  className="forge-job-card forge-job-card-empty"
+                  onClick={() => {
+                    const el = document.querySelector('.forge-codex-section');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  aria-label="Empty crucible — pick a recipe"
+                >
+                  <div className="forge-job-empty-icon">＋</div>
+                  <div className="forge-job-empty-label">Empty Crucible</div>
+                </button>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
+      <section className="forge-section forge-codex-section">
         <div className="forge-section-head">
-          <h2>In the Crucible</h2>
-          <span className="forge-section-sub">{activeCraftingJobs.length} active</span>
+          <h2>Recipe Codex</h2>
+          <span className="forge-section-sub">
+            {filteredRecipes.length === craftingRecipes.length
+              ? `${craftingRecipes.length} known`
+              : `${filteredRecipes.length} of ${craftingRecipes.length}`}
+          </span>
         </div>
-        {activeCraftingJobs.length === 0 ? (
-          <div className="forge-empty">Nothing crafting yet. Pick a recipe below.</div>
-        ) : (
-          <div className="forge-jobs">
-            {activeCraftingJobs.map((job: any) => {
-              const timer = (job.startTick != null && job.durationTicks != null)
-                ? createCountdownTimer({ startTick: job.startTick, durationTicks: job.durationTicks })
-                : null;
-              const remTicks = timer ? timer.getValue(tick) : Infinity;
-              const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
-              const isReady = remMs <= 0;
-              const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
-              return (
-                <div key={job.id} className={`forge-job-card ${isReady ? 'ready' : ''}`}>
-                  <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
-                  {isReady ? (
-                    <button className="forge-collect-btn" onClick={() => handleCollect(job.id)}>
-                      Collect
-                    </button>
-                  ) : (
-                    <span className="forge-job-time">{fmtSeconds(remMs / 1000)} left</span>
-                  )}
-                </div>
-              );
-            })}
+
+        <div className="forge-codex-controls">
+          <input
+            type="text"
+            className="forge-codex-search"
+            placeholder="Search recipes…"
+            value={recipeSearch}
+            onChange={(e) => setRecipeSearch(e.target.value)}
+            aria-label="Search recipes"
+          />
+          {recipeCategories.length > 1 && (
+            <div className="forge-codex-cats" role="tablist">
+              <button
+                role="tab"
+                aria-selected={categoryFilter === 'all'}
+                className={`forge-codex-cat ${categoryFilter === 'all' ? 'is-active' : ''}`}
+                onClick={() => setCategoryFilter('all')}
+              >
+                All
+              </button>
+              {recipeCategories.map((cat) => (
+                <button
+                  key={cat}
+                  role="tab"
+                  aria-selected={categoryFilter === cat}
+                  className={`forge-codex-cat ${categoryFilter === cat ? 'is-active' : ''}`}
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {materialFilter && (
+          <div className="forge-filter-chip-row">
+            <span className="forge-filter-chip">
+              Filtered by <strong>{matName}</strong>
+              <button onClick={clearMaterialFilter} aria-label="Clear filter">×</button>
+            </span>
           </div>
         )}
-      </section>
-
-      <section className="forge-section">
-        <div className="forge-section-head">
-          <h2>Recipes</h2>
-          <span className="forge-section-sub">{craftingRecipes.length} known</span>
-        </div>
+        {filteredRecipes.length === 0 && materialFilter && (
+          <div className="forge-empty">No recipes use <strong>{matName}</strong>. <button className="forge-link-btn" onClick={clearMaterialFilter}>Show all recipes</button></div>
+        )}
         <div className="forge-recipe-grid">
-          {craftingRecipes.map((r: any) => {
+          {filteredRecipes.map((r: any) => {
             const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
             const canAfford = cost.every((c) =>
               c.type === 'currency' ? (currencyBalances[c.id] ?? 0) >= c.amount : true);
@@ -334,8 +473,12 @@ export default function ForgePage() {
       </section>
 
       {recipe && (
+        <>
+          <div className="forge-sheet-backdrop" onClick={() => setSelectedRecipe(null)} aria-hidden />
         <section
-          className="forge-section forge-assign"
+          className="forge-section forge-assign forge-sheet"
+          role="dialog"
+          aria-label={`Recipe details for ${recipe.name}`}
           style={{
             background: recipe.displayDef?.cardBackground || undefined,
             borderColor: recipe.displayDef?.borderColor || undefined,
@@ -345,11 +488,25 @@ export default function ForgePage() {
             <div className="forge-assign-overlay" style={{ background: recipeOverlay }} aria-hidden />
           )}
           <div className="forge-assign-inner">
+            <button
+              className="forge-sheet-close"
+              onClick={() => { setSelectedRecipe(null); setSelectedEntity(null); }}
+              aria-label="Close recipe sheet"
+            >
+              ×
+            </button>
             <div className="forge-assign-head">
               <h2 style={recipeTitleStyle as React.CSSProperties}>Assign a Derp to "{recipe.name}"</h2>
               <p style={recipeBodyStyle as React.CSSProperties}>
                 Crafting Luck = FOC×0.5 + LCK×0.3 (+bonuses). Higher CL pushes the result toward better quality tiers.
               </p>
+              {recipeBlockedReasons.length > 0 && (
+                <ul className="forge-blocked-reasons" role="alert">
+                  {recipeBlockedReasons.map((r, i) => (
+                    <li key={i}>⚠️ {r}</li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="forge-entity-grid">
@@ -371,10 +528,24 @@ export default function ForgePage() {
                         <span className="forge-entity-cl">CL {f.craftingLuck.toFixed(0)}</span>
                         <span
                           className="forge-entity-quality"
-                          style={{ color: QUALITY_COLOURS[f.quality] || '#94a3b8' }}
+                          style={{ color: QUALITY_COLOURS[f.expectedQuality] || '#94a3b8' }}
                         >
-                          {f.qualityLabel}
+                          {f.expectedQualityLabel}
                         </span>
+                        <div className="forge-entity-probs" aria-hidden>
+                          {f.probabilities.map((p) => (
+                            <div
+                              key={p.key}
+                              className="forge-entity-prob-seg"
+                              style={{
+                                width: `${Math.max(2, p.probability * 100)}%`,
+                                background: QUALITY_COLOURS[p.key] || '#475569',
+                                opacity: 0.35 + p.probability * 0.65,
+                              }}
+                              title={`${p.label}: ${(p.probability * 100).toFixed(1)}%`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </button>
@@ -387,10 +558,8 @@ export default function ForgePage() {
                 <div className="forge-forecast-head">
                   <span>Quality Forecast</span>
                   {selectedForecast && (
-                    <span style={{ color: QUALITY_COLOURS[selectedForecast.quality] || '#94a3b8' }}>
-                      {selectedForecast.name} → {selectedForecast.qualityLabel}
-                      {selectedForecast.nextTier &&
-                        ` · +${selectedForecast.nextTier.deltaCl.toFixed(0)} CL → ${selectedForecast.nextTier.label}`}
+                    <span style={{ color: QUALITY_COLOURS[selectedForecast.expectedQuality] || '#94a3b8' }}>
+                      {selectedForecast.name} → expected {selectedForecast.expectedQualityLabel}
                     </span>
                   )}
                 </div>
@@ -398,11 +567,34 @@ export default function ForgePage() {
                   cap={forecast.cap}
                   tiers={forecast.tiers}
                   marker={selectedForecast?.craftingLuck ?? null}
-                  qualityKey={selectedForecast?.quality ?? null}
+                  qualityKey={selectedForecast?.expectedQuality ?? null}
                 />
+                {selectedForecast && (
+                  <div className="forge-forecast-probs">
+                    {selectedForecast.probabilities.map((p) => (
+                      <div key={p.key} className="forge-forecast-prob">
+                        <div className="forge-forecast-prob-label" style={{ color: QUALITY_COLOURS[p.key] || '#94a3b8' }}>
+                          {p.label}
+                        </div>
+                        <div className="forge-forecast-prob-bar">
+                          <div
+                            className="forge-forecast-prob-fill"
+                            style={{ width: `${p.probability * 100}%`, background: QUALITY_COLOURS[p.key] || '#475569' }}
+                          />
+                        </div>
+                        <div className="forge-forecast-prob-pct">{(p.probability * 100).toFixed(0)}%</div>
+                      </div>
+                    ))}
+                    {forecast.luckFloor > 0 && selectedForecast.rawCraftingLuck < forecast.luckFloor && (
+                      <div className="forge-forecast-floor-note">
+                        ⚒️ Workshop Tier {forecast.workshopTier} sets a luck floor of {forecast.luckFloor} (raw CL {selectedForecast.rawCraftingLuck.toFixed(0)}).
+                      </div>
+                    )}
+                  </div>
+                )}
                 {!selectedEntity && !forecastLoading && (
                   <div className="forge-forecast-hint">
-                    Select a Derp to see where their Crafting Luck lands.
+                    Select a Derp to see the full quality probability distribution.
                   </div>
                 )}
               </div>
@@ -417,6 +609,7 @@ export default function ForgePage() {
             </button>
           </div>
         </section>
+        </>
       )}
     </div>
   );

@@ -58,6 +58,11 @@ export class AuthService {
         data: locData,
       });
       await this.settlementService.recalculateLocationMeta(loc.id);
+      try {
+        await this.grantStarterWorkshop(user.id, loc.id);
+      } catch (err) {
+        this.logger.warn(`Failed to grant starter Workshop to ${user.id}: ${err}`);
+      }
     } catch (err) {
       this.logger.error(`Failed to create starter location for ${user.id}: ${err}`);
     }
@@ -154,6 +159,40 @@ export class AuthService {
       storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
       state: {},
     };
+  }
+
+  /**
+   * Grant a tier-1 Workshop building inside the player's starter Outpost so
+   * The Forge is reachable from the very first session. Idempotent — skips
+   * when a workshop already exists at the location.
+   */
+  private async grantStarterWorkshop(userId: string, locationId: string) {
+    const existing = await (this.prisma as any).locationBuildingInstance.findFirst({
+      where: { locationId, buildingDef: { category: 'WORKSHOP' } },
+    }).catch(() => null);
+    if (existing) return;
+
+    const def = await (this.prisma as any).buildingDef.findUnique({ where: { id: 'bld_forge' } });
+    if (!def) {
+      this.logger.warn(`grantStarterWorkshop: bld_forge definition missing — seeds may not have run`);
+      return;
+    }
+
+    await (this.prisma as any).locationBuildingInstance.create({
+      data: {
+        locationId,
+        buildingDefId: 'bld_forge',
+        level: 1,
+        enabled: true,
+        state: { grantedBy: 'starter' },
+      },
+    });
+    try {
+      await this.settlementService.recalculateLocationMeta(locationId);
+    } catch (err) {
+      this.logger.warn(`recalc after starter Workshop failed: ${err}`);
+    }
+    this.logger.log(`Granted starter Workshop (bld_forge) to ${userId} at ${locationId}`);
   }
 
   async requestWalletNonce(chain: string, address: string): Promise<{ nonce: string; message: string }> {
@@ -324,6 +363,7 @@ export class AuthService {
     try {
       const currentTick = await this.tickService.getCurrentTick();
       const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
+      await this.grantStarterWorkshop(user.id, loc.id);
       await this.settlementService.recalculateLocationMeta(loc.id);
     } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
     try {

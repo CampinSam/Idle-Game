@@ -11,24 +11,16 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
 import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
-import { calculateCraftingLuck, durationSecondsToTicks, SeededRng } from '@derp/math';
+import {
+  calculateCraftingLuck,
+  durationSecondsToTicks,
+  SeededRng,
+  qualityProbabilities,
+  rollQualityFromCl,
+  workshopLuckFloor,
+  QUALITY_TIERS,
+} from '@derp/math';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
-
-const QUALITY_TIERS: Array<{ key: string; label: string; minCl: number }> = [
-  { key: 'common',   label: 'Common',   minCl: 0 },
-  { key: 'uncommon', label: 'Uncommon', minCl: 30 },
-  { key: 'rare',     label: 'Rare',     minCl: 60 },
-  { key: 'epic',     label: 'Epic',     minCl: 100 },
-];
-
-function qualityForCl(cl: number): { quality: string; label: string; tierIndex: number } {
-  let chosen = QUALITY_TIERS[0];
-  let chosenIdx = 0;
-  for (let i = 0; i < QUALITY_TIERS.length; i += 1) {
-    if (cl >= QUALITY_TIERS[i].minCl) { chosen = QUALITY_TIERS[i]; chosenIdx = i; }
-  }
-  return { quality: chosen.key, label: chosen.label, tierIndex: chosenIdx };
-}
 
 @Injectable()
 export class CraftingService {
@@ -103,11 +95,23 @@ export class CraftingService {
   }
 
   /**
-   * Returns the projected Crafting Luck and Quality forecast for each idle entity
-   * (or for the entire entity roster when includeAll=true). Server-authoritative —
-   * the client must never re-derive luck/quality from raw stats.
+   * Returns the highest workshop tier (level) the player owns. Returns 0 if
+   * the player has no enabled workshop. Used to apply a CL "luck floor" so
+   * higher-tier workshops shore up bad-stat entities.
    */
-  async getLuckForecast(userId: string, options: { includeAll?: boolean } = {}) {
+  async getMaxWorkshopTier(userId: string, locationId?: string): Promise<number> {
+    const workshops = await this.getWorkshops(userId);
+    const eligible = workshops.filter((w: any) => w.enabled && (locationId ? w.locationId === locationId : true));
+    return eligible.reduce((m: number, w: any) => Math.max(m, Number(w.level || 0)), 0);
+  }
+
+  /**
+   * Returns the projected Crafting Luck and per-quality-tier probability
+   * distribution for each idle entity. Server-authoritative — the same
+   * helpers (qualityProbabilities / rollQualityFromCl) are used by
+   * collectCrafting, so the forecast matches what collection will roll.
+   */
+  async getLuckForecast(userId: string, options: { includeAll?: boolean; locationId?: string } = {}) {
     const includeAll = options.includeAll === true;
     const entities = await (this.prisma as any).entity.findMany({
       where: { ownerUserId: userId },
@@ -116,31 +120,40 @@ export class CraftingService {
 
     const tiers = QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, minCl: t.minCl }));
     const cap = 150;
+    const workshopTier = await this.getMaxWorkshopTier(userId, options.locationId);
+    const luckFloor = workshopLuckFloor(workshopTier);
 
     const forecasts = entities.map((entity: any) => {
       const stats = (entity.stats as any) || {};
-      const status = (entity.state as any)?.status || entity.status || 'idle';
-      const cl = calculateCraftingLuck(stats);
-      const tier = qualityForCl(cl);
-      const next = QUALITY_TIERS[tier.tierIndex + 1];
+      const state = (entity.state as any) || {};
+      const status = state.status || 'idle';
+      const progression = (entity.progression as any) || {};
+      const rawCl = calculateCraftingLuck(stats);
+      const effectiveCl = Math.max(rawCl, luckFloor);
+      const probs = qualityProbabilities(effectiveCl);
+      const expectedTier = probs.reduce((best, p) => (p.probability > best.probability ? p : best), probs[0]);
+      const display = (entity.display as any) || {};
       return {
         entityId: entity.id,
-        name: entity.name,
-        level: entity.level ?? 1,
+        name: display.name || `Lvl ${progression.level || 1}`,
+        level: Number(progression.level ?? 1),
         status,
         idle: status === 'idle',
         stats: { FOC: Number(stats.FOC ?? 0), LCK: Number(stats.LCK ?? 0) },
-        craftingLuck: Number(cl.toFixed(2)),
-        quality: tier.quality,
-        qualityLabel: tier.label,
-        tierIndex: tier.tierIndex,
-        nextTier: next ? { key: next.key, label: next.label, minCl: next.minCl, deltaCl: Number((next.minCl - cl).toFixed(2)) } : null,
+        craftingLuck: Number(effectiveCl.toFixed(2)),
+        rawCraftingLuck: Number(rawCl.toFixed(2)),
+        luckFloor,
+        probabilities: probs.map((p) => ({ key: p.key, label: p.label, probability: Number(p.probability.toFixed(4)) })),
+        expectedQuality: expectedTier.key,
+        expectedQualityLabel: expectedTier.label,
       };
     });
 
     return {
       cap,
       tiers,
+      workshopTier,
+      luckFloor,
       entities: includeAll ? forecasts : forecasts.filter((f: any) => f.idle),
     };
   }
@@ -234,8 +247,12 @@ export class CraftingService {
     return match;
   }
 
-  async startCrafting(userId: string, recipeId: string, entityId: string) {
-    await this.assertHasEnabledWorkshop(userId);
+  async startCrafting(userId: string, recipeId: string, entityId: string, locationId?: string) {
+    if (locationId) {
+      await this.assertWorkshopAtLocation(userId, locationId);
+    } else {
+      await this.assertHasEnabledWorkshop(userId);
+    }
 
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
     if (!recipe) throw new NotFoundException('Recipe not found');
@@ -253,7 +270,7 @@ export class CraftingService {
       );
     }
 
-    const entity = await this.entityService.getEntity(userId, entityId);
+    const entity = await this.entityService.getEntity(entityId, userId);
     const entityStatus = (entity as any).state?.status || 'idle';
     if (entityStatus !== 'idle') {
       throw new BadRequestException(`Entity is currently ${entityStatus}`);
@@ -292,7 +309,7 @@ export class CraftingService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: [entityId],
-        data: { seed: randomUUID() },
+        data: { seed: randomUUID(), locationId: locationId ?? null },
       },
     });
 
@@ -321,13 +338,17 @@ export class CraftingService {
     const entity = await (this.prisma as any).entity.findUnique({ where: { id: entityId } });
     if (!entity) throw new NotFoundException('Entity not found');
 
-    const cl = calculateCraftingLuck(entity.stats as any);
+    const rawCl = calculateCraftingLuck(entity.stats as any);
+    const jobLocationId = (job.data as { locationId?: string | null })?.locationId ?? undefined;
+    const workshopTier = await this.getMaxWorkshopTier(userId, jobLocationId);
+    const luckFloor = workshopLuckFloor(workshopTier);
+    const cl = Math.max(rawCl, luckFloor);
 
-    let quality: string;
-    if (cl >= 100) quality = 'epic';
-    else if (cl >= 60) quality = 'rare';
-    else if (cl >= 30) quality = 'uncommon';
-    else quality = 'common';
+    const seedForQuality = (job.data as { seed?: string })?.seed ?? jobId;
+    const qualityRng = new SeededRng(`${seedForQuality}:quality`);
+    const qualityRoll = rollQualityFromCl(cl, qualityRng);
+    const quality = qualityRoll.key;
+    const qualityProbs = qualityRoll.probabilities;
 
     const recipeId = job.defId;
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
@@ -423,7 +444,16 @@ export class CraftingService {
       where: { id: jobId },
       data: {
         status: 'collected',
-        results: { quality, craftingLuck: cl, rewards: grantedRewards, ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}) },
+        results: {
+          quality,
+          craftingLuck: cl,
+          rawCraftingLuck: rawCl,
+          luckFloor,
+          workshopTier,
+          qualityProbabilities: qualityProbs.map((p) => ({ key: p.key, label: p.label, probability: Number(p.probability.toFixed(4)) })),
+          rewards: grantedRewards,
+          ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
+        },
       },
     });
 

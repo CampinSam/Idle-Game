@@ -148,10 +148,10 @@ class ApiClient {
     return this.request<any[]>('/crafting/active');
   }
 
-  startCrafting(recipeId: string, entityId: string) {
+  startCrafting(recipeId: string, entityId: string, locationId?: string) {
     return this.request<any>('/crafting/start', {
       method: 'POST',
-      body: JSON.stringify({ recipeId, entityId }),
+      body: JSON.stringify(locationId ? { recipeId, entityId, locationId } : { recipeId, entityId }),
     });
   }
 
@@ -161,11 +161,16 @@ class ApiClient {
     });
   }
 
-  getCraftingForecast(includeAll = false) {
-    const qs = includeAll ? '?includeAll=1' : '';
+  getCraftingForecast(includeAll = false, locationId?: string) {
+    const params = new URLSearchParams();
+    if (includeAll) params.set('includeAll', '1');
+    if (locationId) params.set('locationId', locationId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
     return this.request<{
       cap: number;
       tiers: Array<{ key: string; label: string; minCl: number }>;
+      workshopTier: number;
+      luckFloor: number;
       entities: Array<{
         entityId: string;
         name: string;
@@ -174,10 +179,11 @@ class ApiClient {
         idle: boolean;
         stats: { FOC: number; LCK: number };
         craftingLuck: number;
-        quality: string;
-        qualityLabel: string;
-        tierIndex: number;
-        nextTier: { key: string; label: string; minCl: number; deltaCl: number } | null;
+        rawCraftingLuck: number;
+        luckFloor: number;
+        probabilities: Array<{ key: string; label: string; probability: number }>;
+        expectedQuality: string;
+        expectedQualityLabel: string;
       }>;
     }>(`/crafting/forecast${qs}`);
   }

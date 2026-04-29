@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { CraftingService } from './crafting.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -10,6 +10,10 @@ class StartCraftingDto {
 
   @IsString()
   entityId: string;
+
+  @IsOptional()
+  @IsString()
+  locationId?: string;
 }
 
 @Controller('crafting')
@@ -31,9 +35,11 @@ export class CraftingController {
   getLuckForecast(
     @CurrentUser() user: { id: string },
     @Query('includeAll') includeAll?: string,
+    @Query('locationId') locationId?: string,
   ) {
     return this.craftingService.getLuckForecast(user.id, {
       includeAll: includeAll === '1' || includeAll === 'true',
+      locationId: locationId || undefined,
     });
   }
 
@@ -52,7 +58,7 @@ export class CraftingController {
 
   @Post('start')
   startCrafting(@CurrentUser() user: { id: string }, @Body() dto: StartCraftingDto) {
-    return this.craftingService.startCrafting(user.id, dto.recipeId, dto.entityId);
+    return this.craftingService.startCrafting(user.id, dto.recipeId, dto.entityId, dto.locationId);
   }
 
   @Post(':id/collect')

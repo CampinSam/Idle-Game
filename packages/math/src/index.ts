@@ -11,7 +11,14 @@ export {
 } from './entity-progression';
 export { calculateSynergyBonus, calculateSynergyScore } from './synergy';
 export { calculateSuccessChance } from './success-probability';
-export { calculateCraftingLuck } from './crafting-luck';
+export {
+  calculateCraftingLuck,
+  qualityProbabilities,
+  rollQualityFromCl,
+  workshopLuckFloor,
+  QUALITY_TIERS,
+  type QualityProbability,
+} from './crafting-luck';
 export { SeededRng } from './rng';
 export {
   getCurrentTick,

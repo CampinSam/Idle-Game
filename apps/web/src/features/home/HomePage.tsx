@@ -217,28 +217,63 @@ export default function HomePage() {
         </div>
       </div>
 
-      {primaryWorkshop && (
-        <div className="hp-section">
-          <div className="hp-forge-hero" onClick={() => goToForge(primaryWorkshop.locationId)}>
-            <div className="hp-forge-hero-bg" />
-            <div className="hp-forge-hero-content">
-              <div className="hp-forge-hero-eyebrow">⚒️  WORKSHOP</div>
-              <h3 className="hp-forge-hero-title">The Forge is Ready</h3>
-              <p className="hp-forge-hero-sub">
-                {workshops.length > 1
-                  ? `${workshops.length} workshops · Lvl ${primaryWorkshop.level} ${primaryWorkshop.name}`
-                  : `${primaryWorkshop.name} · Lvl ${primaryWorkshop.level}${primaryWorkshop.enabled ? '' : ' · Disabled'}`}
-              </p>
-              <button
-                className="hp-forge-hero-btn"
-                onClick={(e) => { e.stopPropagation(); goToForge(primaryWorkshop.locationId); }}
-              >
-                ENTER THE FORGE
-              </button>
+      {(() => {
+        if (!primaryWorkshop) return null;
+        const readyCraftJob = allActiveJobs.find(
+          (j: any) => j.type === 'CraftingJob' && getJobRemaining(j) <= 0,
+        );
+        const activeCraftingJobs = allActiveJobs.filter((j: any) => j.type === 'CraftingJob');
+        const idleHasSlot = idleEntities > 0;
+        const newlyUnlocked = activeCraftingJobs.length === 0;
+        const triggerKind: 'ready' | 'actionable' | 'unlocked' | null = readyCraftJob
+          ? 'ready'
+          : idleHasSlot
+          ? 'actionable'
+          : newlyUnlocked
+          ? 'unlocked'
+          : null;
+        if (!triggerKind) return null;
+        const heroTitle =
+          triggerKind === 'ready'
+            ? 'A Craft is Ready to Collect'
+            : triggerKind === 'actionable'
+            ? 'The Forge Awaits'
+            : 'Your Forge is Unlocked';
+        const heroSub =
+          triggerKind === 'ready'
+            ? 'Pull it from the flames before it cools.'
+            : triggerKind === 'actionable'
+            ? `${idleEntities} idle Derp${idleEntities === 1 ? '' : 's'} · Lvl ${primaryWorkshop.level} ${primaryWorkshop.name}`
+            : `Lvl ${primaryWorkshop.level} ${primaryWorkshop.name} — pick a recipe to forge your first item.`;
+        const heroBtn =
+          triggerKind === 'ready' ? 'COLLECT NOW' : triggerKind === 'actionable' ? 'ENTER THE FORGE' : 'BEGIN CRAFTING';
+        return (
+          <div className="hp-section">
+            <div
+              className={`hp-forge-hero hp-forge-hero-${triggerKind}`}
+              onClick={() => goToForge(primaryWorkshop.locationId)}
+            >
+              <div className="hp-forge-hero-bg" />
+              <div className="hp-forge-hero-content">
+                <div className="hp-forge-hero-eyebrow">
+                  {triggerKind === 'ready' ? '✨  READY' : triggerKind === 'unlocked' ? '🆕  NEW' : '⚒️  WORKSHOP'}
+                </div>
+                <h3 className="hp-forge-hero-title">{heroTitle}</h3>
+                <p className="hp-forge-hero-sub">{heroSub}</p>
+                <button
+                  className="hp-forge-hero-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToForge(primaryWorkshop.locationId);
+                  }}
+                >
+                  {heroBtn}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="hp-section">
         <div className="hp-section-header">

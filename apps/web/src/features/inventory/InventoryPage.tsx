@@ -271,10 +271,12 @@ export default function InventoryPage() {
                   className="inv-manage-btn inv-craft-btn"
                   onClick={() => {
                     audioEngine.play('ui.button_click');
-                    if (forgeLocationId) navigate(`/locations/${forgeLocationId}/workshop`);
-                    else navigate('/locations');
+                    const matId = (selectedItem.itemDefId || selectedItem.id) as string;
+                    const q = `?material=${encodeURIComponent(matId)}`;
+                    if (forgeLocationId) navigate(`/locations/${forgeLocationId}/workshop${q}`);
+                    else navigate(`/crafting${q}`);
                   }}
-                  title={forgeLocationId ? 'Open The Forge' : 'Build a Workshop in your Outpost first'}
+                  title={forgeLocationId ? 'Open The Forge with recipes filtered to this material' : 'Build a Workshop in your Outpost first'}
                 >
                   ⚒️  Craft with this
                 </button>
