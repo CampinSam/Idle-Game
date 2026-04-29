@@ -15,7 +15,7 @@ interface Props {
 }
 
 const BG_POSITIONS = ['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right'];
-const BG_SIZES = ['cover', 'contain', '100% 100%', 'auto'];
+const BG_SIZES = ['cover', 'contain', '100%', '100% 100%', 'auto'];
 const BG_REPEATS = ['', 'no-repeat', 'repeat', 'repeat-x', 'repeat-y', 'space', 'round'];
 const TEXT_TRANSFORMS = ['', 'none', 'uppercase', 'lowercase', 'capitalize'];
 const FONT_FAMILIES = [
