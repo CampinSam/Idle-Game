@@ -46,7 +46,18 @@ export default function HomePage() {
   const craftingRecipes = useAppSelector((s) => s.game.craftingRecipes);
   const [claimError, setClaimError] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [workshops, setWorkshops] = useState<Array<{ buildingId: string; locationId: string; name: string; level: number; enabled: boolean }>>([]);
+  const [workshops, setWorkshops] = useState<Array<{
+    buildingId: string;
+    locationId: string;
+    name: string;
+    level: number;
+    enabled: boolean;
+    displayDef?: {
+      borderColor?: string | null;
+      backgroundImage?: string | null;
+      cardBackground?: string | null;
+    } | null;
+  }>>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -290,13 +301,32 @@ export default function HomePage() {
             : `Lvl ${primaryWorkshop.level} ${primaryWorkshop.name} — pick a recipe to forge your first item.`;
         const heroBtn =
           triggerKind === 'ready' ? 'COLLECT NOW' : triggerKind === 'actionable' ? 'ENTER THE FORGE' : 'BEGIN CRAFTING';
+        // Theme the Home Forge hero from the primary workshop's DisplayDef so
+        // it stays in lockstep with whatever the admin set per outpost/season.
+        // Falls through to the built-in `.hp-forge-hero-bg` only when no
+        // DisplayDef is configured on the workshop.
+        const wsDisplay = (primaryWorkshop as any)?.displayDef || null;
+        const heroBgImage = wsDisplay?.backgroundImage || null;
+        const heroBorder = wsDisplay?.borderColor || null;
+        const heroCardBg = wsDisplay?.cardBackground || null;
+        const heroBgStyle = heroBgImage
+          ? (/^(linear-gradient|radial-gradient|url\()/i.test(heroBgImage) ? heroBgImage : `url(${heroBgImage})`)
+          : null;
         return (
           <div className="hp-section">
             <div
               className={`hp-forge-hero hp-forge-hero-${triggerKind}`}
               onClick={() => goToForge(primaryWorkshop.locationId)}
+              style={{
+                ...(heroCardBg ? { background: heroCardBg } : {}),
+                ...(heroBorder ? { borderColor: heroBorder } : {}),
+              }}
             >
-              <div className="hp-forge-hero-bg" />
+              {heroBgStyle ? (
+                <div className="hp-forge-hero-bg" style={{ backgroundImage: heroBgStyle }} />
+              ) : (
+                <div className="hp-forge-hero-bg" />
+              )}
               <div className="hp-forge-hero-content">
                 <div className="hp-forge-hero-eyebrow">
                   {triggerKind === 'ready' ? '✨  READY' : triggerKind === 'unlocked' ? '🆕  NEW' : '⚒️  WORKSHOP'}

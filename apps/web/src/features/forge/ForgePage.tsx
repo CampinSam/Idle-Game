@@ -163,6 +163,10 @@ export default function ForgePage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('all');
   const [workshopLevel, setWorkshopLevel] = useState(1);
+  // Hold the full workshop info (incl. resolved DisplayDef) so the Forge hero
+  // can theme itself per outpost / season instead of using a hardcoded image.
+  // The hero falls back to FORGE_FALLBACK only when DisplayDef is absent.
+  const [workshopInfo, setWorkshopInfo] = useState<any>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem('forge:favorites');
@@ -193,6 +197,7 @@ export default function ForgePage() {
       .then((info: any) => {
         if (cancelled) return;
         setWorkshopChecked(true);
+        setWorkshopInfo(info || null);
         if (info?.level) setWorkshopLevel(Number(info.level));
       })
       .catch(() => {
@@ -345,11 +350,18 @@ export default function ForgePage() {
   const recipeTitleStyle = textStyleToCss(recipeStyle.title);
   const recipeBodyStyle = textStyleToCss(recipeStyle.body);
 
+  // The Forge hero is themed by the workshop's DisplayDef so admins can
+  // re-skin it per outpost / season without code changes. We fall back to the
+  // hardcoded FORGE_FALLBACK only when the workshop has no DisplayDef.
   const heroStyle: DisplayStyle = useMemo(
-    () => mergeDisplayStyles(undefined, undefined),
-    [],
+    () => mergeDisplayStyles(undefined, workshopInfo?.displayDef?.style),
+    [workshopInfo],
   );
   const heroOverlay = overlayToCss(heroStyle.overlay);
+  const heroBgImage = workshopInfo?.displayDef?.backgroundImage || FORGE_FALLBACK.backgroundImage;
+  const heroBorderColor = workshopInfo?.displayDef?.borderColor || FORGE_FALLBACK.borderColor;
+  const heroTitleStyle = textStyleToCss(heroStyle.title);
+  const heroBodyStyle = textStyleToCss(heroStyle.body);
 
   const selectedForecast = useMemo(
     () => (selectedEntity && forecast ? forecast.entities.find((e) => e.entityId === selectedEntity) : null),
@@ -396,8 +408,8 @@ export default function ForgePage() {
       <div
         className="forge-hero"
         style={{
-          backgroundImage: bgImageCss(FORGE_FALLBACK.backgroundImage),
-          borderColor: FORGE_FALLBACK.borderColor,
+          backgroundImage: bgImageCss(heroBgImage),
+          borderColor: heroBorderColor,
         }}
       >
         <div className="forge-hero-overlay" style={{ background: heroOverlay || 'rgba(12,10,26,0.55)' }} />
@@ -405,9 +417,13 @@ export default function ForgePage() {
           ← Back to Outpost
         </button>
         <div className="forge-hero-content">
-          <div className="forge-hero-eyebrow">⚒️  WORKSHOP</div>
-          <h1 className="forge-hero-title">The Forge</h1>
-          <p className="forge-hero-blurb">
+          <div className="forge-hero-eyebrow" style={heroBodyStyle}>
+            ⚒️  {workshopInfo?.locationName ? workshopInfo.locationName.toUpperCase() : 'WORKSHOP'}
+          </div>
+          <h1 className="forge-hero-title" style={heroTitleStyle}>
+            {workshopInfo?.name || 'The Forge'}
+          </h1>
+          <p className="forge-hero-blurb" style={heroBodyStyle}>
             Crucibles roar, anvils sing. Pick a recipe, assign a Derp, and let server-side luck shape what you'll pull from the flames.
           </p>
         </div>
@@ -438,9 +454,50 @@ export default function ForgePage() {
                 const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
                 const isReady = remMs <= 0;
                 const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
+                // Affordances: portrait of the assigned Derp, recipe-tier
+                // rarity glow (T1=common/T2=rare/T3=epic), and an animated
+                // SVG countdown ring driven by elapsed/duration. These make
+                // each crucible feel alive instead of a name + timer.
+                const entity = entities.find((e: any) => e.id === job.entityId);
+                const entityName = entity?.name || 'Derp';
+                const portraitInitial = entityName.trim().charAt(0).toUpperCase() || '?';
+                const recipeTier = Number(recipeDef?.tier ?? 1);
+                const tierClass = recipeTier >= 3 ? 'tier-3' : recipeTier >= 2 ? 'tier-2' : 'tier-1';
+                const totalDurationTicks = Number(job.durationTicks ?? 0);
+                const elapsedTicks = totalDurationTicks - (Number.isFinite(remTicks) ? Math.max(0, remTicks) : totalDurationTicks);
+                const progress = totalDurationTicks > 0 ? Math.min(1, Math.max(0, elapsedTicks / totalDurationTicks)) : (isReady ? 1 : 0);
+                const ringCircumference = 2 * Math.PI * 28;
+                const ringDashOffset = ringCircumference * (1 - progress);
                 return (
-                  <div key={job.id} className={`forge-job-card ${isReady ? 'ready' : ''}`}>
-                    <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
+                  <div key={job.id} className={`forge-job-card ${tierClass} ${isReady ? 'ready' : ''}`}>
+                    <div className="forge-job-portrait">
+                      {entity?.imageUrl ? (
+                        <img src={entity.imageUrl} alt={entityName} />
+                      ) : (
+                        <span className="forge-job-portrait-initial">{portraitInitial}</span>
+                      )}
+                      <svg
+                        className="forge-job-ring"
+                        width="64"
+                        height="64"
+                        viewBox="0 0 64 64"
+                        aria-hidden="true"
+                      >
+                        <circle className="forge-job-ring-track" cx="32" cy="32" r="28" />
+                        <circle
+                          className="forge-job-ring-fill"
+                          cx="32"
+                          cy="32"
+                          r="28"
+                          strokeDasharray={ringCircumference}
+                          strokeDashoffset={ringDashOffset}
+                        />
+                      </svg>
+                    </div>
+                    <div className="forge-job-info">
+                      <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
+                      <div className="forge-job-entity">{entityName}</div>
+                    </div>
                     {isReady ? (
                       <button className="forge-collect-btn" onClick={() => handleCollect(job.id)}>
                         Collect

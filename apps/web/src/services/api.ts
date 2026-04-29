@@ -202,6 +202,13 @@ class ApiClient {
       enabled: boolean;
       locationId: string;
       locationName?: string;
+      displayDef?: {
+        id: string;
+        borderColor?: string | null;
+        backgroundImage?: string | null;
+        cardBackground?: string | null;
+        style?: any;
+      } | null;
     }>>('/crafting/workshops');
   }
 
@@ -213,6 +220,14 @@ class ApiClient {
       level: number;
       enabled: boolean;
       locationId: string;
+      locationName?: string;
+      displayDef?: {
+        id: string;
+        borderColor?: string | null;
+        backgroundImage?: string | null;
+        cardBackground?: string | null;
+        style?: any;
+      } | null;
     }>(`/crafting/workshops/${encodeURIComponent(locationId)}`);
   }
 

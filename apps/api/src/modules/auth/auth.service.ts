@@ -115,6 +115,16 @@ export class AuthService {
       this.logger.warn(`Failed to recalculate location meta on login for ${user.id}: ${err}`);
     }
 
+    // Backfill: existing players who registered before The Forge shipped need
+    // a tier-1 Workshop in their starter outpost so the new crafting place is
+    // reachable on first load. The grant is idempotent — it no-ops when a
+    // workshop already exists at the location.
+    try {
+      await this.ensureStarterWorkshopForExistingUser(user.id);
+    } catch (err) {
+      this.logger.warn(`Failed to backfill starter Workshop on login for ${user.id}: ${err}`);
+    }
+
     try {
       await this.checkInService.autoCheck(user.id);
     } catch (err) {
@@ -159,6 +169,28 @@ export class AuthService {
       storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
       state: {},
     };
+  }
+
+  /**
+   * Login-time backfill that walks every outpost the player owns and grants
+   * a tier-1 Workshop in any outpost that doesn't already have one. Used so
+   * existing players who registered before The Forge shipped get a Workshop
+   * the next time they log in, without requiring a server-wide migration.
+   */
+  private async ensureStarterWorkshopForExistingUser(userId: string) {
+    const locations = await (this.prisma as any).locationInstance.findMany({
+      where: { ownerUserId: userId },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!locations || locations.length === 0) return;
+    for (const loc of locations) {
+      try {
+        await this.grantStarterWorkshop(userId, loc.id);
+      } catch (err) {
+        this.logger.warn(`Backfill grantStarterWorkshop(${loc.id}) failed: ${err}`);
+      }
+    }
   }
 
   /**
@@ -280,6 +312,14 @@ export class AuthService {
       user = await this.prisma.user.findUnique({ where: { id: existing.userId } });
       if (!user) throw new UnauthorizedException('Account not found');
       try { await this.recalculateUserLocations(user.id); } catch {}
+      // Same backfill as the email-login branch: existing wallet players who
+      // registered before The Forge shipped get a tier-1 Workshop in their
+      // starter outpost on next SIWE login. Idempotent + per-location guarded.
+      try {
+        await this.ensureStarterWorkshopForExistingUser(user.id);
+      } catch (err) {
+        this.logger.warn(`Failed to backfill starter Workshop on SIWE login for ${user.id}: ${err}`);
+      }
       try { await this.checkInService.autoCheck(user.id); } catch {}
       try { await this.nftCollectionService.syncIfStale(user.id); } catch (err) {
         this.logger.warn(`Throttled NFT sync failed on SIWE login for ${user.id}: ${err}`);

@@ -216,7 +216,10 @@ export class CraftingService {
           { buildingDef: { tags: { array_contains: 'workshop' } } },
         ],
       },
-      include: { location: { include: { definition: { include: { region: true } } } }, buildingDef: true },
+      include: {
+        location: { include: { definition: { include: { region: true } } } },
+        buildingDef: { include: { displayDef: true } },
+      },
       orderBy: { createdAt: 'asc' },
     }).catch(async () => {
       // tags JSON `array_contains` may not be supported on every Postgres setup;
@@ -226,7 +229,10 @@ export class CraftingService {
           location: { ownerUserId: userId },
           buildingDef: { category: 'WORKSHOP' },
         },
-        include: { location: { include: { definition: { include: { region: true } } } }, buildingDef: true },
+        include: {
+          location: { include: { definition: { include: { region: true } } } },
+          buildingDef: { include: { displayDef: true } },
+        },
         orderBy: { createdAt: 'asc' },
       });
     });
@@ -244,7 +250,29 @@ export class CraftingService {
       locationName: b.location?.definition?.region?.displayName
         || b.location?.definition?.id
         || b.locationId,
+      // Workshop's resolved DisplayDef so the Forge hero (per-outpost) and
+      // Home Forge hero (per-primary-workshop) can theme themselves through
+      // the same channel as recipes/missions instead of hardcoded fallbacks.
+      displayDef: this.mapBuildingDisplayDef(b.buildingDef),
     }));
+  }
+
+  /**
+   * Resolve a BuildingDef.displayDef into the same shape we already ship for
+   * recipe displayDefs (id, borderColor, backgroundImage, cardBackground,
+   * merged style). Returns null when the building has no displayDef so the
+   * client can decide whether to fall back to its built-in defaults.
+   */
+  private mapBuildingDisplayDef(def: any) {
+    const dd = def?.displayDef;
+    if (!dd) return null;
+    return {
+      id: dd.id,
+      borderColor: dd.borderColor,
+      backgroundImage: dd.backgroundImage,
+      cardBackground: dd.cardBackground,
+      style: mergeDisplayStyles(undefined, dd.style as DisplayStyle | undefined),
+    };
   }
 
   async getActiveJobs(userId: string) {
