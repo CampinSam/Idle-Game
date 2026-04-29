@@ -201,6 +201,7 @@ class ApiClient {
       level: number;
       enabled: boolean;
       locationId: string;
+      locationName?: string;
     }>>('/crafting/workshops');
   }
 

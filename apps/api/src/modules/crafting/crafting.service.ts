@@ -216,7 +216,7 @@ export class CraftingService {
           { buildingDef: { tags: { array_contains: 'workshop' } } },
         ],
       },
-      include: { location: true, buildingDef: true },
+      include: { location: { include: { definition: { include: { region: true } } } }, buildingDef: true },
       orderBy: { createdAt: 'asc' },
     }).catch(async () => {
       // tags JSON `array_contains` may not be supported on every Postgres setup;
@@ -226,7 +226,7 @@ export class CraftingService {
           location: { ownerUserId: userId },
           buildingDef: { category: 'WORKSHOP' },
         },
-        include: { location: true, buildingDef: true },
+        include: { location: { include: { definition: { include: { region: true } } } }, buildingDef: true },
         orderBy: { createdAt: 'asc' },
       });
     });
@@ -238,6 +238,12 @@ export class CraftingService {
       level: b.level,
       enabled: b.enabled !== false,
       locationId: b.locationId,
+      // Surfaced so the /crafting redirect can show a meaningful outpost
+      // selector when the player owns more than one Forge. LocationDefinition
+      // has no `name` column today; the friendly label comes from the region.
+      locationName: b.location?.definition?.region?.displayName
+        || b.location?.definition?.id
+        || b.locationId,
     }));
   }
 

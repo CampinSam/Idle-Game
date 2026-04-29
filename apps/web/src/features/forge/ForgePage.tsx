@@ -217,7 +217,12 @@ export default function ForgePage() {
     return () => { cancelled = true; };
   }, [forecastBucket, outpostId]);
 
-  const idleEntities = entities.filter((e: any) => e.status === 'idle');
+  const idleEntities = useMemo(() => {
+    const list = entities.filter((e: any) => e.status === 'idle');
+    if (!forecast) return list;
+    const luck = new Map<string, number>(forecast.entities.map((f) => [f.entityId, f.craftingLuck]));
+    return [...list].sort((a: any, b: any) => (luck.get(b.id) ?? -1) - (luck.get(a.id) ?? -1));
+  }, [entities, forecast]);
   const recipe = craftingRecipes.find((r: any) => r.id === selectedRecipe);
 
   const recipeCategories = useMemo<string[]>(() => {
@@ -297,24 +302,40 @@ export default function ForgePage() {
   }, [searchParams, setSearchParams]);
 
   // Compute per-recipe blocked reasons (for slide-up sheet).
+  // Mirrors the server's startCrafting checks so the UI surfaces every
+  // shortfall up-front (currency + items + keeper level + idle Derp +
+  // workshop tier cap + open crucible slots) instead of failing on submit.
   const recipeBlockedReasons = useMemo<string[]>(() => {
     if (!recipe) return [];
     const reasons: string[] = [];
     const cost: Array<{ type: string; id: string; amount: number }> = recipe.cost ?? [];
     for (const c of cost) {
+      const label = c.id.replace('soft_', '').replace('mat_', '').replace(/_/g, ' ');
       if (c.type === 'currency') {
         const have = currencyBalances[c.id] ?? 0;
-        if (have < c.amount) reasons.push(`Need ${c.amount - have} more ${c.id.replace('soft_', '').replace('mat_', '')}`);
+        if (have < c.amount) reasons.push(`Need ${c.amount - have} more ${label}`);
+      } else {
+        const have = computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances);
+        if (have < c.amount) reasons.push(`Need ${c.amount - have} more ${label}`);
       }
     }
     if (profile && (recipe.requiredKeeperLevel || 1) > profile.keeperLevel) {
       reasons.push(`Requires Keeper Lvl ${recipe.requiredKeeperLevel}`);
     }
+    const recipeTier = Number(recipe.tier ?? 1);
+    const tierCap = forecast?.recipeTierCap;
+    if (typeof tierCap === 'number' && recipeTier > tierCap) {
+      reasons.push(`Requires Tier ${recipeTier} Workshop (this Forge is Tier ${tierCap})`);
+    }
+    const slotsOpen = forecast?.slotsOpen;
+    if (typeof slotsOpen === 'number' && slotsOpen <= 0) {
+      reasons.push('All crucibles are busy — collect a finished craft first');
+    }
     if (idleEntities.length === 0) {
       reasons.push('No idle Derps available');
     }
     return reasons;
-  }, [recipe, currencyBalances, profile, idleEntities.length]);
+  }, [recipe, currencyBalances, syncItemsTable, profile, idleEntities.length, forecast?.recipeTierCap, forecast?.slotsOpen]);
 
   const recipeStyle: DisplayStyle = useMemo(
     () => mergeDisplayStyles(undefined, recipe?.displayDef?.style),
@@ -521,21 +542,34 @@ export default function ForgePage() {
           {filteredRecipes.map((r: any) => {
             const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
             const canAfford = cost.every((c) =>
-              c.type === 'currency' ? (currencyBalances[c.id] ?? 0) >= c.amount : true);
+              c.type === 'currency'
+                ? (currencyBalances[c.id] ?? 0) >= c.amount
+                : computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances) >= c.amount);
             const meetsLevel = !profile || profile.keeperLevel >= (r.requiredKeeperLevel || 1);
+            const isLocked = recipeIsLocked(r);
+            const recipeTier = Number(r.tier ?? 1);
+            const tierCap = forecast?.recipeTierCap;
+            const tierLocked = typeof tierCap === 'number' && recipeTier > tierCap;
             const dd = r.displayDef;
             const cardStyle: DisplayStyle = mergeDisplayStyles(undefined, dd?.style);
             const isFav = favorites.has(r.id);
             return (
               <div key={r.id} className="forge-recipe-card-wrap">
                 <button
-                  className={`forge-recipe-card ${selectedRecipe === r.id ? 'is-selected' : ''} ${!meetsLevel ? 'is-locked' : ''}`}
+                  className={`forge-recipe-card ${selectedRecipe === r.id ? 'is-selected' : ''} ${isLocked ? 'is-locked' : ''}`}
                   style={{
                     background: dd?.cardBackground || 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))',
                     borderColor: dd?.borderColor || 'rgba(139,92,246,0.45)',
                   }}
-                  onClick={() => meetsLevel && setSelectedRecipe(r.id)}
-                  disabled={!meetsLevel}
+                  onClick={() => !isLocked && setSelectedRecipe(r.id)}
+                  disabled={isLocked}
+                  title={
+                    !meetsLevel
+                      ? `Requires Keeper Lvl ${r.requiredKeeperLevel}`
+                      : tierLocked
+                        ? `Requires Tier ${recipeTier} Workshop`
+                        : undefined
+                  }
                 >
                   <div className="forge-recipe-title" style={textStyleToCss(cardStyle.title) as React.CSSProperties}>
                     {r.name}
@@ -551,6 +585,7 @@ export default function ForgePage() {
                     </span>
                     <span>{fmtSeconds(r.timer?.duration ?? 0)}</span>
                     {!meetsLevel && <span className="is-locked-tag">Lvl {r.requiredKeeperLevel}</span>}
+                    {meetsLevel && tierLocked && <span className="is-locked-tag">Tier {recipeTier}</span>}
                   </div>
                 </button>
                 <button
@@ -698,10 +733,15 @@ export default function ForgePage() {
 
             <button
               className="forge-start-btn"
-              disabled={!selectedEntity || busy}
+              disabled={!selectedEntity || busy || recipeBlockedReasons.length > 0}
               onClick={handleStart}
+              title={recipeBlockedReasons[0]}
             >
-              {busy ? 'Igniting…' : `Begin Forging (${(recipe.cost ?? []).map((c: any) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ') || 'Free'})`}
+              {busy
+                ? 'Igniting…'
+                : recipeBlockedReasons.length > 0
+                  ? recipeBlockedReasons[0]
+                  : `Begin Forging (${(recipe.cost ?? []).map((c: any) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ') || 'Free'})`}
             </button>
           </div>
         </section>
