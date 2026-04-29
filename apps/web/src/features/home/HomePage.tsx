@@ -257,10 +257,13 @@ export default function HomePage() {
         const idleHasSlot = idleEntities > 0;
 
         // Affordable recipes the player can start NOW: passes keeperLevel +
-        // currency cost + material cost (inventory).
+        // workshop tier cap + currency cost + material cost (inventory).
         const keeperLvl = profile?.keeperLevel ?? 1;
+        const recipeTierCap = wsTier;
+        const passesVisibility = (r: any) =>
+          (r.requiredKeeperLevel || 1) <= keeperLvl && Number(r.tier ?? 1) <= recipeTierCap;
         const affordableCount = (craftingRecipes || []).filter((r: any) => {
-          if ((r.requiredKeeperLevel || 1) > keeperLvl) return false;
+          if (!passesVisibility(r)) return false;
           const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
           for (const c of cost) {
             if (c.type === 'currency') {
@@ -275,7 +278,7 @@ export default function HomePage() {
         const hasAffordable = affordableCount > 0;
 
         const visibleRecipeIds = (craftingRecipes || [])
-          .filter((r: any) => (r.requiredKeeperLevel || 1) <= keeperLvl)
+          .filter(passesVisibility)
           .map((r: any) => String(r.id))
           .sort();
         const seenKey = `forge.recipes.seen.${primaryWorkshop.locationId}`;
