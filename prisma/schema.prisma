@@ -514,6 +514,7 @@ model DisplayDef {
   borderColor     String?
   backgroundImage String?
   cardBackground  String?
+  style           Json     @default("{}")
   data            Json     @default("{}")
 
   createdAt       DateTime @default(now())

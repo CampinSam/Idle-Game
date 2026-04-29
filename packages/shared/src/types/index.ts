@@ -7,3 +7,4 @@ export * from './timer';
 export * from './modal';
 export * from './command-pipeline';
 export * from './effects';
+export * from './displayStyle';

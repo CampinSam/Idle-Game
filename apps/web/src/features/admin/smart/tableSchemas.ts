@@ -64,6 +64,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       borderColor: { type: 'color', description: 'CSS border color' },
       backgroundImage: { type: 'assetKey', description: 'Background image asset key or URL' },
       cardBackground: { type: 'assetKey', description: 'CSS background (wraps in url() for assets)' },
+      style: { type: 'displayStyle', default: {}, description: 'Overlay, background layout, title & body fonts (per-mission overrides layer over category)' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     },
   },

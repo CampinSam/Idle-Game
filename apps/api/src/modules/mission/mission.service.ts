@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EntityService } from '../entity/entity.service';
 import { CurrencyService } from '../currency/currency.service';
@@ -117,6 +118,7 @@ export class MissionService {
           borderColor: c.displayDef.borderColor,
           backgroundImage: c.displayDef.backgroundImage,
           cardBackground: c.displayDef.cardBackground,
+          style: c.displayDef.style ?? {},
           data: c.displayDef.data,
         } : null,
         requirementStatus,
@@ -150,6 +152,10 @@ export class MissionService {
       borderColor: missionDisplay?.borderColor ?? catDisplay?.borderColor ?? null,
       backgroundImage: missionDisplay?.backgroundImage ?? catDisplay?.backgroundImage ?? null,
       cardBackground: missionDisplay?.cardBackground ?? catDisplay?.cardBackground ?? null,
+      style: mergeDisplayStyles(
+        catDisplay?.style as DisplayStyle | undefined,
+        missionDisplay?.style as DisplayStyle | undefined,
+      ),
     };
 
     const reqs: any[] = Array.isArray(def.requirements) ? def.requirements : [];

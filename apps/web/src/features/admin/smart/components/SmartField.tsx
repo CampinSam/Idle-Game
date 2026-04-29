@@ -12,6 +12,7 @@ import CheckInDaysEditor from './structured/CheckInDaysEditor';
 import EffectListEditor from './structured/EffectListEditor';
 import ConsumableDataEditor from './structured/ConsumableDataEditor';
 import FrequencyEditor from './structured/FrequencyEditor';
+import DisplayStyleEditor from './structured/DisplayStyleEditor';
 
 interface Props {
   fieldName: string;
@@ -297,6 +298,12 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'frequency') {
       return renderStructured(
         <FrequencyEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'displayStyle') {
+      return renderStructured(
+        <DisplayStyleEditor value={value} onChange={onChange} />
       );
     }
 

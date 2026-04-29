@@ -20,7 +20,7 @@ import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
 import { GameImage } from '../../components/GameImage';
-import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS } from '@derp/shared';
+import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS, mergeDisplayStyles, overlayToCss, textStyleToCss, type DisplayStyle } from '@derp/shared';
 import GameIcon from '../../components/GameIcon';
 import { resolveAssetUrl } from '../../utils/iconResolver';
 import './MissionsPage.css';
@@ -37,10 +37,19 @@ function resolveDisplay(def: any, categoryDefs: any[]) {
   const catDef = categoryDefs.find((c: any) => c.id === def.missionCategoryDefId);
   const catDisplay = catDef?.displayDef || {};
 
+  // Always merge defensively: if the backend already pre-merged into missionDisplay.style
+  // (current contract), re-merging with the same category base is a no-op. If a future or
+  // alternate code path hands us an unmerged mission style, this still produces correct results.
+  const style: DisplayStyle = mergeDisplayStyles(
+    catDisplay.style as DisplayStyle | undefined,
+    missionDisplay.style as DisplayStyle | undefined,
+  );
+
   return {
     borderColor: missionDisplay.borderColor || catDisplay.borderColor || DEFAULT_DISPLAY.borderColor,
     backgroundImage: missionDisplay.backgroundImage || catDisplay.backgroundImage || DEFAULT_DISPLAY.backgroundImage,
     cardBackground: missionDisplay.cardBackground || catDisplay.cardBackground || DEFAULT_DISPLAY.cardBackground,
+    style,
   };
 }
 
@@ -50,6 +59,29 @@ function resolveCategoryDisplay(catDef: any) {
     borderColor: d.borderColor || DEFAULT_DISPLAY.borderColor,
     backgroundImage: d.backgroundImage || DEFAULT_DISPLAY.backgroundImage,
     cardBackground: d.cardBackground || DEFAULT_DISPLAY.cardBackground,
+    style: (d.style || {}) as DisplayStyle,
+  };
+}
+
+function displayCssVars(
+  display: { style?: DisplayStyle },
+  opts?: { hero?: boolean },
+): { vars: Record<string, string>; titleStyle: React.CSSProperties; bodyStyle: React.CSSProperties } {
+  const style = display.style || {};
+  const overlay = overlayToCss(style.overlay);
+  const bg = style.background || {};
+  const vars: Record<string, string> = {};
+  if (overlay) {
+    if (opts?.hero) vars['--md-hero-overlay'] = overlay;
+    else vars['--card-overlay'] = overlay;
+  }
+  if (bg.position) vars['--card-bg-position'] = bg.position;
+  if (bg.size) vars['--card-bg-size'] = bg.size;
+  if (bg.repeat) vars['--card-bg-repeat'] = bg.repeat;
+  return {
+    vars,
+    titleStyle: textStyleToCss(style.title) as React.CSSProperties,
+    bodyStyle: textStyleToCss(style.body) as React.CSSProperties,
   };
 }
 
@@ -477,6 +509,7 @@ export default function MissionsPage() {
             <div className="mp-categories">
               {visibleCategories.map((cat) => {
                 const display = cat.display;
+                const { vars, titleStyle, bodyStyle } = displayCssVars(display);
                 const unavailable = cat.locked || !cat.enabled;
                 const inlineMissions = getInlineMissions(cat.id);
                 const navigable = !cat.inlineOnly;
@@ -489,12 +522,14 @@ export default function MissionsPage() {
                       '--card-bg-image': bgImageCss(display.backgroundImage),
                       borderColor: display.borderColor,
                       cursor: navigable && !unavailable ? undefined : 'default',
+                      ...vars,
+                      ...bodyStyle,
                     } as React.CSSProperties}
                     onClick={() => navigable && !unavailable && pushCategory(cat.id)}
                   >
                     <div className="mp-card-content">
                       <div className="mp-card-header">
-                        <h3 className="mp-card-title">{cat.name}</h3>
+                        <h3 className="mp-card-title" style={titleStyle}>{cat.name}</h3>
                         {cat.hasChildren && navigable && <span className="mp-cat-chevron">›</span>}
                       </div>
                       {cat.tags.length > 0 && renderTags(cat.tags)}
@@ -549,6 +584,7 @@ export default function MissionsPage() {
               const unavailable = locked || !missionEnabled;
               const diffInfo = getDifficultyDisplay(def.difficulty);
               const display = resolveDisplay(def, missionCategoryDefs);
+              const { vars, titleStyle, bodyStyle } = displayCssVars(display);
               const missionTags = def.tags || [];
               const listCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
               const getListHave = (entry: { type: string; id: string }) =>
@@ -563,12 +599,14 @@ export default function MissionsPage() {
                     backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
                     '--card-bg-image': bgImageCss(display.backgroundImage),
                     borderColor: display.borderColor,
+                    ...vars,
+                    ...bodyStyle,
                   } as React.CSSProperties}
                   onClick={() => !unavailable && handleSelectMission(def.id)}
                 >
                   <div className="mp-card-content">
                     <div className="mp-card-header">
-                      <h3 className="mp-card-title">{def.name}</h3>
+                      <h3 className="mp-card-title" style={titleStyle}>{def.name}</h3>
                       <span className="mp-card-duration" style={{ background: diffInfo.color, color: '#FFFFFF' }}>{diffInfo.label}</span>
                     </div>
                     {missionTags.length > 0 && renderTags(missionTags)}
@@ -619,14 +657,15 @@ export default function MissionsPage() {
         : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
     const canAffordMission = missionCost.every(e => getHaveForEntry(e) >= e.amount);
 
+    const heroCss = displayCssVars(display, { hero: true });
     return (
       <div className="missions-page md-inline page-transition-wrapper">
-        <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
-        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage) }}>
+        <div className="md-unified-card" style={{ borderColor: display.borderColor, ...heroCss.bodyStyle }}>
+        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage), ...heroCss.vars } as React.CSSProperties}>
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
           <div className="md-hero-content">
-            <h1 className="md-title">{selectedDef.name.toUpperCase()}</h1>
+            <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name.toUpperCase()}</h1>
             <div className="md-badges">
               <span className="md-badge md-badge-tier">{diffInfo.tier}</span>
               <span className="md-badge md-badge-diff" style={{ background: diffInfo.color }}>{diffInfo.label}</span>
@@ -879,6 +918,7 @@ export default function MissionsPage() {
         <div className="mp-categories">
         {visibleCategories.map((cat) => {
           const display = cat.display;
+          const { vars, titleStyle, bodyStyle } = displayCssVars(display);
           const unavailable = cat.locked || !cat.enabled;
           const inlineMissions = getInlineMissions(cat.id);
           const navigable = !cat.inlineOnly;
@@ -891,12 +931,14 @@ export default function MissionsPage() {
                 '--card-bg-image': bgImageCss(display.backgroundImage),
                 borderColor: display.borderColor,
                 cursor: navigable && !unavailable ? undefined : 'default',
+                ...vars,
+                ...bodyStyle,
               } as React.CSSProperties}
               onClick={() => navigable && !unavailable && pushCategory(cat.id)}
             >
               <div className="mp-card-content">
                 <div className="mp-card-header">
-                  <h3 className="mp-card-title">{cat.name}</h3>
+                  <h3 className="mp-card-title" style={titleStyle}>{cat.name}</h3>
                   {cat.hasChildren && navigable && <span className="mp-cat-chevron">›</span>}
                 </div>
                 {cat.tags.length > 0 && renderTags(cat.tags)}

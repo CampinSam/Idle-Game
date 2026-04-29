@@ -305,11 +305,17 @@
   z-index: 0;
 }
 
+.mp-mission-card::before {
+  background-position: var(--card-bg-position, center);
+  background-size: var(--card-bg-size, cover);
+  background-repeat: var(--card-bg-repeat, no-repeat);
+}
+
 .mp-mission-card::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%);
+  background: var(--card-overlay, linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%));
   z-index: 0;
   pointer-events: none;
 }
@@ -619,15 +625,16 @@
   position: relative;
   width: 100%;
   height: 200px;
-  background-size: cover;
-  background-position: center;
+  background-size: var(--card-bg-size, cover);
+  background-position: var(--card-bg-position, center);
+  background-repeat: var(--card-bg-repeat, no-repeat);
   flex-shrink: 0;
 }
 
 .md-hero-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(15,10,40,0.2) 0%, rgba(15,10,40,0.6) 50%, rgba(15,10,40,1) 100%);
+  background: var(--md-hero-overlay, linear-gradient(180deg, rgba(15,10,40,0.2) 0%, rgba(15,10,40,0.6) 50%, rgba(15,10,40,1) 100%));
 }
 
 
