@@ -339,7 +339,11 @@ export default function HomePage() {
                   onClick={(e) => {
                     e.stopPropagation();
                     try { localStorage.setItem(seenKey, JSON.stringify(visibleRecipeIds)); } catch {}
-                    goToForge(primaryWorkshop.locationId);
+                    const targetLocId =
+                      triggerKind === 'ready'
+                        ? (readyCraftJob?.data?.locationId || readyCraftJob?.locationId || primaryWorkshop.locationId)
+                        : primaryWorkshop.locationId;
+                    goToForge(targetLocId);
                   }}
                 >
                   {heroBtn}

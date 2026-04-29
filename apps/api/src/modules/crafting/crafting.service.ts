@@ -30,6 +30,12 @@ function qualityFromCl(cl: number): { key: string; label: string } {
   return { key: QUALITY_TIERS[0].key, label: QUALITY_TIERS[0].label };
 }
 
+// Per Task #111 spec: collectCrafting uses the deterministic CL-threshold roll
+// `qualityFromCl`. The forecast distribution must therefore exactly mirror that
+// outcome — 1.0 on the matched tier, 0.0 on the others — so the UI never
+// promises a probabilistic outcome that the collect path cannot deliver. If
+// product later switches to probabilistic rolls, both this helper and
+// collectCrafting must migrate together to stay in lockstep.
 function qualityDistributionFromCl(cl: number): { key: string; label: string; probability: number }[] {
   const matched = qualityFromCl(cl).key;
   return QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, probability: t.key === matched ? 1 : 0 }));
