@@ -329,9 +329,20 @@ class ApiClient {
   }
 
   walletVerify(chain: string, address: string, signature: string) {
-    return this.request<{ accessToken: string; player: any } | { linked: true }>('/auth/wallet/verify', {
+    return this.request<
+      | { accessToken: string; player: any }
+      | { linked: true }
+      | { needsOnboarding: true; walletToken: string; chain: string; address: string }
+    >('/auth/wallet/verify', {
       method: 'POST',
       body: JSON.stringify({ chain, address, signature }),
+    });
+  }
+
+  walletCompleteOnboarding(walletToken: string, username: string, email?: string) {
+    return this.request<{ accessToken: string; player: any }>('/auth/wallet/complete', {
+      method: 'POST',
+      body: JSON.stringify({ walletToken, username, email }),
     });
   }
 

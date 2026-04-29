@@ -37,22 +37,26 @@ export default function LoginPage() {
     }
   };
 
+  const handleWalletResult = (result: Awaited<ReturnType<typeof connectEvm>>) => {
+    if (!result) return;
+    if (result.kind === 'onboarding') {
+      navigate('/onboarding/wallet', {
+        state: { walletToken: result.walletToken, chain: result.chain, address: result.address },
+      });
+      return;
+    }
+    dispatch(setAuth({ token: result.accessToken, player: result.player }));
+    navigate('/');
+  };
+
   const handleEvmConnect = async () => {
     clearWalletError();
-    const result = await connectEvm();
-    if (result) {
-      dispatch(setAuth({ token: result.accessToken, player: result.player }));
-      navigate('/');
-    }
+    handleWalletResult(await connectEvm());
   };
 
   const handleCardanoConnect = async (walletKey: string) => {
     clearWalletError();
-    const result = await connectCardano(walletKey);
-    if (result) {
-      dispatch(setAuth({ token: result.accessToken, player: result.player }));
-      navigate('/');
-    }
+    handleWalletResult(await connectCardano(walletKey));
   };
 
   const showWalletSection = hasEvm || detectedCardanoWallets.length > 0;

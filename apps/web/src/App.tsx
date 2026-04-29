@@ -11,6 +11,7 @@ import { TickEngineProvider } from './tick';
 import Layout from './components/Layout';
 import LoginPage from './features/auth/LoginPage';
 import RegisterPage from './features/auth/RegisterPage';
+import WalletOnboardingPage from './features/auth/WalletOnboardingPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const HomePage = lazy(() => import('./features/home/HomePage'));
@@ -72,6 +73,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/onboarding/wallet" element={<WalletOnboardingPage />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     );

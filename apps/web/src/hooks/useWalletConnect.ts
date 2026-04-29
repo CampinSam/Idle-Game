@@ -9,9 +9,13 @@ export interface WalletConnectState {
   hasEvm: boolean;
 }
 
+export type WalletConnectResult =
+  | { kind: 'session'; accessToken: string; player: any }
+  | { kind: 'onboarding'; walletToken: string; chain: string; address: string };
+
 export interface WalletConnectActions {
-  connectEvm: () => Promise<{ accessToken: string; player: any } | null>;
-  connectCardano: (walletKey: string) => Promise<{ accessToken: string; player: any } | null>;
+  connectEvm: () => Promise<WalletConnectResult | null>;
+  connectCardano: (walletKey: string) => Promise<WalletConnectResult | null>;
   linkEvm: (token: string) => Promise<boolean>;
   linkCardano: (walletKey: string, token: string) => Promise<boolean>;
   clearError: () => void;
@@ -28,7 +32,7 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
     setHasEvm(detectEvmWallet());
   }, []);
 
-  const connectEvm = async (): Promise<{ accessToken: string; player: any } | null> => {
+  const connectEvm = async (): Promise<WalletConnectResult | null> => {
     setConnecting(true);
     setError(null);
     try {
@@ -41,7 +45,10 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
       const signature = await ethereum.request({ method: 'personal_sign', params: [message, address] });
       const result = await api.walletVerify('ETH', address, signature);
       if ('linked' in result) return null;
-      return result;
+      if ('needsOnboarding' in result) {
+        return { kind: 'onboarding', walletToken: result.walletToken, chain: result.chain, address: result.address };
+      }
+      return { kind: 'session', accessToken: result.accessToken, player: result.player };
     } catch (err: any) {
       setError(err?.message || 'EVM wallet connection failed');
       return null;
@@ -50,7 +57,7 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
     }
   };
 
-  const connectCardano = async (walletKey: string): Promise<{ accessToken: string; player: any } | null> => {
+  const connectCardano = async (walletKey: string): Promise<WalletConnectResult | null> => {
     setConnecting(true);
     setError(null);
     try {
@@ -64,7 +71,10 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
       const signature = typeof signResult === 'string' ? signResult : JSON.stringify(signResult);
       const result = await api.walletVerify('CARDANO', address, signature);
       if ('linked' in result) return null;
-      return result;
+      if ('needsOnboarding' in result) {
+        return { kind: 'onboarding', walletToken: result.walletToken, chain: result.chain, address: result.address };
+      }
+      return { kind: 'session', accessToken: result.accessToken, player: result.player };
     } catch (err: any) {
       setError(err?.message || 'Cardano wallet connection failed');
       return null;

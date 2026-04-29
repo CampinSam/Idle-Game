@@ -176,7 +176,11 @@ export class AuthService {
     address: string,
     signature: string,
     authenticatedUserId?: string,
-  ): Promise<{ accessToken: string; player: any } | { linked: true }> {
+  ): Promise<
+    | { accessToken: string; player: any }
+    | { linked: true }
+    | { needsOnboarding: true; walletToken: string; chain: string; address: string }
+  > {
     const normalizedAddress = chain === 'CARDANO' ? address : address.toLowerCase();
 
     const nonceRecord = await (this.prisma as any).walletNonce.findUnique({
@@ -242,38 +246,101 @@ export class AuthService {
         this.logger.warn(`Throttled NFT sync failed on SIWE login for ${user.id}: ${err}`);
       }
     } else {
-      const username = `Keeper${crypto.randomBytes(4).toString('hex')}`;
-      user = await this.prisma.user.create({
-        data: { username, email: `${normalizedAddress}@wallet.derp`, authProvider: 'wallet' },
+      // No account exists for this wallet yet. Don't auto-create one — issue a
+      // short-lived "onboarding ticket" so the client can take the user through
+      // the account creation screen with the wallet already verified.
+      const walletToken = this.jwt.sign(
+        {
+          purpose: 'wallet_onboarding',
+          chain,
+          address: normalizedAddress,
+        },
+        { expiresIn: '15m' },
+      );
+      return {
+        needsOnboarding: true,
+        walletToken,
+        chain,
+        address: normalizedAddress,
+      };
+    }
+
+    const token = this.jwt.sign({ sub: user.id, username: user.username });
+    return { accessToken: token, player: this.toPlayerResponse(user) };
+  }
+
+  async completeWalletOnboarding(
+    walletToken: string,
+    username: string,
+    email?: string,
+  ): Promise<{ accessToken: string; player: any }> {
+    let payload: any;
+    try {
+      payload = this.jwt.verify(walletToken);
+    } catch {
+      throw new UnauthorizedException('Onboarding ticket expired or invalid — please reconnect your wallet');
+    }
+    if (payload?.purpose !== 'wallet_onboarding' || !payload?.chain || !payload?.address) {
+      throw new UnauthorizedException('Invalid onboarding ticket');
+    }
+
+    const chain: string = payload.chain;
+    const normalizedAddress: string = payload.address;
+
+    const trimmedUsername = (username || '').trim();
+    if (trimmedUsername.length < 3) {
+      throw new BadRequestException('Username must be at least 3 characters');
+    }
+
+    const finalEmail = (email && email.trim()) || `${normalizedAddress}@wallet.derp`;
+
+    // Race-safe duplicate checks.
+    const existingByName = await this.prisma.user.findUnique({ where: { username: trimmedUsername } });
+    if (existingByName) {
+      throw new ConflictException('Username already taken');
+    }
+    const existingByEmail = await this.prisma.user.findUnique({ where: { email: finalEmail } });
+    if (existingByEmail) {
+      throw new ConflictException('Email already in use');
+    }
+    const existingWallet = await (this.prisma as any).linkedWallet.findUnique({
+      where: { chain_address: { chain, address: normalizedAddress } },
+    });
+    if (existingWallet) {
+      throw new ConflictException('This wallet is already linked to an account');
+    }
+
+    const user = await this.prisma.user.create({
+      data: { username: trimmedUsername, email: finalEmail, authProvider: 'wallet' },
+    });
+    await (this.prisma as any).linkedWallet.create({
+      data: { userId: user.id, chain, address: normalizedAddress, isPrimary: true },
+    });
+
+    try {
+      const entityData = await generateEntityData(this.prisma, user.id, 'derp_bird', 'Starter Entity');
+      await (this.prisma as any).entity.create({ data: entityData });
+    } catch (err) { this.logger.error(`Failed to create starter entity: ${err}`); }
+    try {
+      const currentTick = await this.tickService.getCurrentTick();
+      const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
+      await this.settlementService.recalculateLocationMeta(loc.id);
+    } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
+    try {
+      await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
+        userId: user.id, sourceType: 'registration', sourceId: user.id,
+        idempotencyKey: `welcome-gift-${user.id}`,
       });
-      await (this.prisma as any).linkedWallet.create({
-        data: { userId: user.id, chain, address: normalizedAddress, isPrimary: true },
+    } catch {}
+    try {
+      await (this.prisma as any).itemInstance.create({
+        data: { userId: user.id, definitionId: 'item_common_chest', quantity: 3 },
       });
-      try {
-        const entityData = await generateEntityData(this.prisma, user.id, 'derp_bird', 'Starter Entity');
-        await (this.prisma as any).entity.create({ data: entityData });
-      } catch (err) { this.logger.error(`Failed to create starter entity: ${err}`); }
-      try {
-        const currentTick = await this.tickService.getCurrentTick();
-        const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
-        await this.settlementService.recalculateLocationMeta(loc.id);
-      } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
-      try {
-        await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
-          userId: user.id, sourceType: 'registration', sourceId: user.id,
-          idempotencyKey: `welcome-gift-${user.id}`,
-        });
-      } catch {}
-      try {
-        await (this.prisma as any).itemInstance.create({
-          data: { userId: user.id, definitionId: 'item_common_chest', quantity: 3 },
-        });
-      } catch (err) { this.logger.warn(`Failed to seed starter chests for ${user.id}: ${err}`); }
-      try {
-        await this.nftCollectionService.syncUserCollections(user.id);
-      } catch (err) {
-        this.logger.error(`First-login NFT sync failed for new wallet user ${user.id}: ${err}`);
-      }
+    } catch (err) { this.logger.warn(`Failed to seed starter chests for ${user.id}: ${err}`); }
+    try {
+      await this.nftCollectionService.syncUserCollections(user.id);
+    } catch (err) {
+      this.logger.error(`First-login NFT sync failed for new wallet user ${user.id}: ${err}`);
     }
 
     const token = this.jwt.sign({ sub: user.id, username: user.username });

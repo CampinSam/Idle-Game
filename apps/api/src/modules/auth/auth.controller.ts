@@ -47,6 +47,19 @@ class WalletVerifyDto {
   linkMode?: string;
 }
 
+class WalletCompleteOnboardingDto {
+  @IsString()
+  walletToken: string;
+
+  @IsString()
+  @MinLength(3)
+  username: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -75,5 +88,10 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   walletLink(@Body() dto: WalletVerifyDto, @Request() req: any) {
     return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.id);
+  }
+
+  @Post('wallet/complete')
+  walletCompleteOnboarding(@Body() dto: WalletCompleteOnboardingDto) {
+    return this.authService.completeWalletOnboarding(dto.walletToken, dto.username, dto.email);
   }
 }
