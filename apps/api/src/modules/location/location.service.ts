@@ -72,7 +72,7 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
@@ -114,7 +114,7 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
@@ -158,7 +158,7 @@ export class LocationService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },
@@ -207,7 +207,7 @@ export class LocationService {
       include: {
         definition: true,
         buildings: {
-          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+          include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } },
         },
       },
     });
@@ -266,6 +266,7 @@ export class LocationService {
           name: def.name,
           description: def.description,
           tags: def.tags,
+          category: def.category ?? null,
           rules: def.rules,
           requirements: def.requirements,
           meetsRequirements: meetsReqs,
@@ -294,7 +295,7 @@ export class LocationService {
       include: {
         definition: true,
         buildings: {
-          include: { buildingDef: true, rooms: { include: { roomDef: true } } },
+          include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } },
         },
       },
     });

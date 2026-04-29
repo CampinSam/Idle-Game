@@ -154,6 +154,7 @@ export const BUILDING_CATEGORY_DISPLAY: Record<string, BuildingCategoryDisplay> 
   GENERATOR: { icon: '⚡' },
   DEFENSE:   { icon: '🛡️' },
   STORAGE:   { icon: '📦' },
+  WORKSHOP:  { icon: '⚒️' },
   default:   { icon: '🏗️' },
 };
 

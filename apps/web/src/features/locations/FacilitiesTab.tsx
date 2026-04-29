@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAppDispatch } from '../../store';
 import { audioEngine } from '../../services/AudioEngine';
@@ -38,6 +39,7 @@ export default function FacilitiesTab({
   onUpgradeClick,
 }: FacilitiesTabProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState(0);
   const [availableData, setAvailableData] = useState<any>(null);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
@@ -196,6 +198,25 @@ export default function FacilitiesTab({
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {!isBuilding && b.category === 'WORKSHOP' && (
+              <div className="facility-card-workshop">
+                <p className="facility-workshop-blurb">
+                  Step inside The Forge to brew, smith, and enchant. Server-side luck shapes the gear quality you'll pull from the crucible.
+                </p>
+                <button
+                  type="button"
+                  className="facility-workshop-cta"
+                  onClick={() => {
+                    audioEngine.play('ui.button_click');
+                    navigate(`/locations/${outpostId}/workshop`);
+                  }}
+                  disabled={!isEnabled}
+                >
+                  ⚒️  Open The Forge
+                </button>
               </div>
             )}
 

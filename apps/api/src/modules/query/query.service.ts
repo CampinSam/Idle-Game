@@ -105,7 +105,7 @@ export class QueryService {
           definition: true,
           buildings: {
             include: {
-              buildingDef: true,
+              buildingDef: { include: { displayDef: true } },
               rooms: { include: { roomDef: true } },
             },
           },

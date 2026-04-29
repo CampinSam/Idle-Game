@@ -83,9 +83,21 @@ export function serializeLocation(
       const status = job ? 'building' : (isEnabled ? 'active' : 'disabled');
 
       const defTags: string[] = Array.isArray(b.buildingDef?.tags) ? b.buildingDef.tags : [];
+      const explicitCategory: string | null = b.buildingDef?.category || null;
       let category = 'GENERATOR';
-      if (defTags.includes('storage')) category = 'STORAGE';
+      if (explicitCategory) category = explicitCategory;
+      else if (defTags.includes('storage')) category = 'STORAGE';
       else if (defTags.includes('defense')) category = 'DEFENSE';
+      else if (defTags.includes('workshop') || defTags.includes('crafting')) category = 'WORKSHOP';
+
+      const displayDef = b.buildingDef?.displayDef ? {
+        id: b.buildingDef.displayDef.id,
+        borderColor: b.buildingDef.displayDef.borderColor,
+        backgroundImage: b.buildingDef.displayDef.backgroundImage,
+        cardBackground: b.buildingDef.displayDef.cardBackground,
+        style: b.buildingDef.displayDef.style ?? {},
+        data: b.buildingDef.displayDef.data,
+      } : null;
 
       const bRules = (b.buildingDef?.rules as LevelRules) || {};
       const bConfig = resolveLevelConfig(bRules, b.level);
@@ -120,6 +132,7 @@ export function serializeLocation(
         maxLevel,
         enabled: isEnabled,
         status,
+        displayDef,
         outputType: resolved.outputType,
         outputRefId: resolved.outputRefId,
         resourcePerHour: String(rph),

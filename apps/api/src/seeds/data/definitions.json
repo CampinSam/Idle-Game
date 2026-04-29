@@ -1103,6 +1103,31 @@
   ],
   "displayDefs": [
     {
+      "id": "display_forge",
+      "name": "The Forge",
+      "borderColor": "#f97316",
+      "backgroundImage": "/images/regions/sandcrypt-badlands.png",
+      "cardBackground": "linear-gradient(180deg, rgba(249,115,22,0.18) 0%, rgba(34,24,88,0.95) 60%)",
+      "style": {
+        "overlay": { "color": "#0c0a1a", "opacity": 0.55 },
+        "title": { "color": "#fed7aa", "fontWeight": "900", "letterSpacing": "0.08em", "textTransform": "uppercase" },
+        "body": { "color": "#fde68a" }
+      },
+      "data": {}
+    },
+    {
+      "id": "display_recipe_default",
+      "name": "Recipe — Default",
+      "borderColor": "#8b5cf6",
+      "backgroundImage": null,
+      "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
+      "style": {
+        "title": { "color": "#c4b5fd", "fontWeight": "800", "letterSpacing": "0.04em" },
+        "body": { "color": "#cbd5e1" }
+      },
+      "data": {}
+    },
+    {
       "id": "display_outpost_mission",
       "name": "Outpost Mission",
       "borderColor": "#8a7aee",
@@ -1328,6 +1353,10 @@
                 },
                 {
                   "buildingDefId": "gen_iron_excavator"
+                },
+                {
+                  "buildingDefId": "bld_forge",
+                  "maxCount": 1
                 }
               ]
             }
@@ -1606,6 +1635,33 @@
     }
   ],
   "buildingDefs": [
+    {
+      "id": "bld_forge",
+      "name": "The Forge",
+      "description": "A roaring crucible at the heart of the outpost — where raw materials are refined into wonders.",
+      "tags": ["workshop", "crafting"],
+      "category": "WORKSHOP",
+      "iconKey": null,
+      "rules": {
+        "level": {
+          "1": {
+            "timer": { "duration": 600 },
+            "constructionCost": [
+              { "id": "soft_arcanium", "type": "currency", "amount": 250 }
+            ]
+          }
+        },
+        "maxLevel": 5
+      },
+      "data": { "purpose": "crafting" },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "displayDefId": "display_forge",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null
+    },
     {
       "id": "bld_clone_pod",
       "name": "Clone Pod",
@@ -3549,6 +3605,7 @@
       "id": "recipe_heal_potion",
       "name": "Brew Healing Potion",
       "description": "Brew a moderate healing potion from crystal blooms.",
+      "displayDefId": "display_recipe_default",
       "category": "potions",
       "group": null,
       "cost": [
@@ -3597,6 +3654,7 @@
       "id": "recipe_iron_sword",
       "name": "Forge Iron Sword",
       "description": "Forge a basic iron sword from ore.",
+      "displayDefId": "display_recipe_default",
       "category": "weapons",
       "group": null,
       "cost": [
@@ -3640,6 +3698,7 @@
       "id": "recipe_mana_ring",
       "name": "Enchant Ring of Focus",
       "description": "Imbue a ring with concentrated mana energy.",
+      "displayDefId": "display_recipe_default",
       "category": "accessories",
       "group": null,
       "cost": [
@@ -3688,6 +3747,7 @@
       "id": "recipe_reverse_incubator",
       "name": "Reverse-Engineer Incubator",
       "description": null,
+      "displayDefId": "display_recipe_default",
       "category": null,
       "group": null,
       "cost": [

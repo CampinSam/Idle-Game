@@ -21,6 +21,7 @@ const LocationsPage = lazy(() => import('./features/locations/LocationsPage'));
 const LocationDetailPage = lazy(() => import('./features/locations/LocationDetailPage'));
 const MissionsPage = lazy(() => import('./features/missions/MissionsPage'));
 const CraftingPage = lazy(() => import('./features/crafting/CraftingPage'));
+const ForgePage = lazy(() => import('./features/forge/ForgePage'));
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
 const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
 const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="entities/:id" element={<ErrorBoundary fallbackTitle="Entity detail error"><EntityDetailPage /></ErrorBoundary>} />
           <Route path="locations" element={<ErrorBoundary fallbackTitle="Locations page error"><LocationsPage /></ErrorBoundary>} />
           <Route path="locations/:id" element={<ErrorBoundary fallbackTitle="Location detail error"><LocationDetailPage /></ErrorBoundary>} />
+          <Route path="locations/:id/workshop" element={<ErrorBoundary fallbackTitle="Forge error"><ForgePage /></ErrorBoundary>} />
           <Route path="missions" element={<ErrorBoundary fallbackTitle="Missions page error"><MissionsPage /></ErrorBoundary>} />
           <Route path="inventory" element={<ErrorBoundary fallbackTitle="Inventory page error"><InventoryPage /></ErrorBoundary>} />
           <Route path="crafting" element={<ErrorBoundary fallbackTitle="Crafting page error"><CraftingPage /></ErrorBoundary>} />

@@ -1,9 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSyncItems, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import { formatCompact } from '../../utils/formatNumber';
+import { api } from '../../services/api';
 import './InventoryPage.css';
 
 const CATEGORY_TABS = [
@@ -73,13 +75,27 @@ const OPEN_COMMAND: Record<string, string> = {
 };
 
 export default function InventoryPage() {
+  const navigate = useNavigate();
   const items = useSyncItems();
   const syncStatus = useSyncStatus();
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [using, setUsing] = useState(false);
+  const [forgeLocationId, setForgeLocationId] = useState<string | null>(null);
   const { pushModal } = useModal();
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCraftingWorkshops()
+      .then((list) => {
+        if (cancelled) return;
+        const enabled = list.find((w) => w.enabled) ?? list[0];
+        setForgeLocationId(enabled?.locationId ?? null);
+      })
+      .catch(() => { if (!cancelled) setForgeLocationId(null); });
+    return () => { cancelled = true; };
+  }, []);
   const { execute } = useCommand({
     onUiIntent: (intent) => {
       if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
@@ -249,6 +265,18 @@ export default function InventoryPage() {
                   onClick={() => handleUse(selectedItem)}
                 >
                   {using ? 'Using…' : 'Use'}
+                </button>
+              ) : selectedItem.type === 'MATERIAL' ? (
+                <button
+                  className="inv-manage-btn inv-craft-btn"
+                  onClick={() => {
+                    audioEngine.play('ui.button_click');
+                    if (forgeLocationId) navigate(`/locations/${forgeLocationId}/workshop`);
+                    else navigate('/locations');
+                  }}
+                  title={forgeLocationId ? 'Open The Forge' : 'Build a Workshop in your Outpost first'}
+                >
+                  ⚒️  Craft with this
                 </button>
               ) : (
                 <button className="inv-manage-btn">Manage</button>

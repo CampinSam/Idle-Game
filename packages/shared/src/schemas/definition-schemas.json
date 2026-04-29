@@ -2528,6 +2528,12 @@
           "default": [],
           "description": "Visibility conditions"
         },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling reference"
+        },
         "activeModalDefId": {
           "type": "ref",
           "refTable": "ModalDef",
@@ -2935,6 +2941,12 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "displayDefId": {
+          "type": "ref",
+          "refTable": "DisplayDef",
+          "nullable": true,
+          "description": "Visual styling reference"
         },
         "activeModalDefId": {
           "type": "ref",

@@ -122,7 +122,7 @@ export class LocationSettlementService {
       include: {
         workerAssignments: true,
         definition: true,
-        buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+        buildings: { include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } } },
       },
     });
 
@@ -888,7 +888,7 @@ export class LocationSettlementService {
       where: { id: locationId },
       include: {
         definition: true,
-        buildings: { include: { buildingDef: true, rooms: { include: { roomDef: true } } } },
+        buildings: { include: { buildingDef: { include: { displayDef: true } }, rooms: { include: { roomDef: true } } } },
         workerAssignments: true,
       },
     });

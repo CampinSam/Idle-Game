@@ -161,6 +161,49 @@ class ApiClient {
     });
   }
 
+  getCraftingForecast(includeAll = false) {
+    const qs = includeAll ? '?includeAll=1' : '';
+    return this.request<{
+      cap: number;
+      tiers: Array<{ key: string; label: string; minCl: number }>;
+      entities: Array<{
+        entityId: string;
+        name: string;
+        level: number;
+        status: string;
+        idle: boolean;
+        stats: { FOC: number; LCK: number };
+        craftingLuck: number;
+        quality: string;
+        qualityLabel: string;
+        tierIndex: number;
+        nextTier: { key: string; label: string; minCl: number; deltaCl: number } | null;
+      }>;
+    }>(`/crafting/forecast${qs}`);
+  }
+
+  getCraftingWorkshops() {
+    return this.request<Array<{
+      buildingId: string;
+      buildingDefId: string;
+      name: string;
+      level: number;
+      enabled: boolean;
+      locationId: string;
+    }>>('/crafting/workshops');
+  }
+
+  getCraftingWorkshopAtLocation(locationId: string) {
+    return this.request<{
+      buildingId: string;
+      buildingDefId: string;
+      name: string;
+      level: number;
+      enabled: boolean;
+      locationId: string;
+    }>(`/crafting/workshops/${encodeURIComponent(locationId)}`);
+  }
+
   getCurrencies() {
     return this.request<any[]>('/currencies');
   }

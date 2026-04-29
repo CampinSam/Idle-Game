@@ -445,3 +445,62 @@
     font-size: 18px;
   }
 }
+
+/* Forge Hero */
+.hp-forge-hero {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(249, 115, 22, 0.55);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  isolation: isolate;
+}
+.hp-forge-hero:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(249, 115, 22, 0.25); }
+.hp-forge-hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(249,115,22,0.55) 0%, rgba(34,24,88,0.85) 70%),
+    radial-gradient(circle at 80% 20%, rgba(254,215,170,0.35), transparent 55%);
+  z-index: 0;
+}
+.hp-forge-hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #fff7ed;
+}
+.hp-forge-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fed7aa;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.hp-forge-hero-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 3px 14px rgba(249, 115, 22, 0.55);
+}
+.hp-forge-hero-sub { margin: 0; font-size: 13px; color: #fde68a; }
+.hp-forge-hero-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(254, 215, 170, 0.55);
+  background: rgba(15, 12, 38, 0.55);
+  color: #fff7ed;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  font-size: 12px;
+}
+.hp-forge-hero-btn:hover { background: rgba(15, 12, 38, 0.8); }

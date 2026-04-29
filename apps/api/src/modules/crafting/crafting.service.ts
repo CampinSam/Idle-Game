@@ -12,6 +12,23 @@ import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
 import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import { calculateCraftingLuck, durationSecondsToTicks, SeededRng } from '@derp/math';
+import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
+
+const QUALITY_TIERS: Array<{ key: string; label: string; minCl: number }> = [
+  { key: 'common',   label: 'Common',   minCl: 0 },
+  { key: 'uncommon', label: 'Uncommon', minCl: 30 },
+  { key: 'rare',     label: 'Rare',     minCl: 60 },
+  { key: 'epic',     label: 'Epic',     minCl: 100 },
+];
+
+function qualityForCl(cl: number): { quality: string; label: string; tierIndex: number } {
+  let chosen = QUALITY_TIERS[0];
+  let chosenIdx = 0;
+  for (let i = 0; i < QUALITY_TIERS.length; i += 1) {
+    if (cl >= QUALITY_TIERS[i].minCl) { chosen = QUALITY_TIERS[i]; chosenIdx = i; }
+  }
+  return { quality: chosen.key, label: chosen.label, tierIndex: chosenIdx };
+}
 
 @Injectable()
 export class CraftingService {
@@ -46,7 +63,9 @@ export class CraftingService {
   }
 
   async getRecipes(userId?: string) {
-    const allDefs = await (this.prisma as any).recipeDef.findMany();
+    const allDefs = await (this.prisma as any).recipeDef.findMany({
+      include: { displayDef: true },
+    });
 
     if (!userId) return allDefs.map((d: any) => this.mapDefToLegacy(d));
 
@@ -59,6 +78,14 @@ export class CraftingService {
   }
 
   private mapDefToLegacy(def: any) {
+    const dd = def.displayDef;
+    const display = dd ? {
+      id: dd.id,
+      borderColor: dd.borderColor,
+      backgroundImage: dd.backgroundImage,
+      cardBackground: dd.cardBackground,
+      style: mergeDisplayStyles(undefined, dd.style as DisplayStyle | undefined),
+    } : null;
     return {
       id: def.id,
       name: def.name,
@@ -71,7 +98,90 @@ export class CraftingService {
       rewards: def.rewards,
       requirements: def.requirements,
       visibilityRequirements: def.visibilityRequirements,
+      displayDef: display,
     };
+  }
+
+  /**
+   * Returns the projected Crafting Luck and Quality forecast for each idle entity
+   * (or for the entire entity roster when includeAll=true). Server-authoritative —
+   * the client must never re-derive luck/quality from raw stats.
+   */
+  async getLuckForecast(userId: string, options: { includeAll?: boolean } = {}) {
+    const includeAll = options.includeAll === true;
+    const entities = await (this.prisma as any).entity.findMany({
+      where: { ownerUserId: userId },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+
+    const tiers = QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, minCl: t.minCl }));
+    const cap = 150;
+
+    const forecasts = entities.map((entity: any) => {
+      const stats = (entity.stats as any) || {};
+      const status = (entity.state as any)?.status || entity.status || 'idle';
+      const cl = calculateCraftingLuck(stats);
+      const tier = qualityForCl(cl);
+      const next = QUALITY_TIERS[tier.tierIndex + 1];
+      return {
+        entityId: entity.id,
+        name: entity.name,
+        level: entity.level ?? 1,
+        status,
+        idle: status === 'idle',
+        stats: { FOC: Number(stats.FOC ?? 0), LCK: Number(stats.LCK ?? 0) },
+        craftingLuck: Number(cl.toFixed(2)),
+        quality: tier.quality,
+        qualityLabel: tier.label,
+        tierIndex: tier.tierIndex,
+        nextTier: next ? { key: next.key, label: next.label, minCl: next.minCl, deltaCl: Number((next.minCl - cl).toFixed(2)) } : null,
+      };
+    });
+
+    return {
+      cap,
+      tiers,
+      entities: includeAll ? forecasts : forecasts.filter((f: any) => f.idle),
+    };
+  }
+
+  /**
+   * Returns the workshop-eligible buildings owned by the user. Used by the Home
+   * Forge hero card and Items "Craft with this" entry to know whether a player
+   * can actually open the Forge yet, and which outpost to deep-link to.
+   */
+  async getWorkshops(userId: string) {
+    const buildings = await (this.prisma as any).locationBuildingInstance.findMany({
+      where: {
+        location: { ownerUserId: userId },
+        OR: [
+          { buildingDef: { category: 'WORKSHOP' } },
+          { buildingDef: { tags: { array_contains: 'workshop' } } },
+        ],
+      },
+      include: { location: true, buildingDef: true },
+      orderBy: { createdAt: 'asc' },
+    }).catch(async () => {
+      // tags JSON `array_contains` may not be supported on every Postgres setup;
+      // fall back to a category-only filter and let the seed data drive WORKSHOP.
+      return (this.prisma as any).locationBuildingInstance.findMany({
+        where: {
+          location: { ownerUserId: userId },
+          buildingDef: { category: 'WORKSHOP' },
+        },
+        include: { location: true, buildingDef: true },
+        orderBy: { createdAt: 'asc' },
+      });
+    });
+
+    return buildings.map((b: any) => ({
+      buildingId: b.id,
+      buildingDefId: b.buildingDefId,
+      name: b.buildingDef?.name || b.buildingDefId,
+      level: b.level,
+      enabled: b.enabled !== false,
+      locationId: b.locationId,
+    }));
   }
 
   async getActiveJobs(userId: string) {
@@ -93,7 +203,40 @@ export class CraftingService {
     }));
   }
 
+  /**
+   * Crafting is a place — the player must own at least one enabled WORKSHOP
+   * (Forge) building before any craft can begin. Throws BadRequestException
+   * otherwise so the API surface enforces the rule in addition to the UI.
+   */
+  private async assertHasEnabledWorkshop(userId: string): Promise<void> {
+    const workshops = await this.getWorkshops(userId);
+    const hasEnabled = workshops.some((w: any) => w.enabled);
+    if (!hasEnabled) {
+      throw new BadRequestException(
+        'You need to build a Forge in your Outpost before crafting.',
+      );
+    }
+  }
+
+  /**
+   * Used by the Forge page to verify that a given location actually hosts an
+   * enabled WORKSHOP building owned by this player. Returns the matching
+   * workshop entry, or throws so the UI can redirect.
+   */
+  async assertWorkshopAtLocation(userId: string, locationId: string) {
+    const workshops = await this.getWorkshops(userId);
+    const match = workshops.find(
+      (w: any) => w.locationId === locationId && w.enabled,
+    );
+    if (!match) {
+      throw new NotFoundException('No enabled workshop at this location.');
+    }
+    return match;
+  }
+
   async startCrafting(userId: string, recipeId: string, entityId: string) {
+    await this.assertHasEnabledWorkshop(userId);
+
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
     if (!recipe) throw new NotFoundException('Recipe not found');
 

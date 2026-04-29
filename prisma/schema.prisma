@@ -350,6 +350,8 @@ model BuildingDef {
   readyModalDefId          String?
   completedModalDefId      String?
   failedModalDefId         String?
+  displayDefId             String?
+  displayDef               DisplayDef? @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -522,6 +524,8 @@ model DisplayDef {
 
   missionCategoryDefs MissionCategoryDef[]
   missionDefs         MissionDef[]
+  buildingDefs        BuildingDef[]
+  recipeDefs          RecipeDef[]
 
   @@map("display_defs")
 }
@@ -604,6 +608,8 @@ model RecipeDef {
   completedModalDefId      String?
   failedModalDefId         String?
   data                     Json     @default("{}")
+  displayDefId             String?
+  displayDef               DisplayDef? @relation(fields: [displayDefId], references: [id], onDelete: SetNull)
 
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt

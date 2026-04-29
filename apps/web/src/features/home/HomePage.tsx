@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { computeGeneratorProduction, computeConsumptionFromBuildings, aggregateByResource } from '../../utils/locationProduction';
 import {
@@ -39,6 +39,22 @@ export default function HomePage() {
   const { collectJob } = useCollectJob();
   const [claimError, setClaimError] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [workshops, setWorkshops] = useState<Array<{ buildingId: string; locationId: string; name: string; level: number; enabled: boolean }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCraftingWorkshops()
+      .then((list) => { if (!cancelled) setWorkshops(list); })
+      .catch(() => { if (!cancelled) setWorkshops([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
+  const goToForge = useCallback((locationId?: string) => {
+    const target = locationId || primaryWorkshop?.locationId;
+    if (target) navigate(`/locations/${target}/workshop`);
+    else navigate('/locations');
+  }, [navigate, primaryWorkshop]);
 
   const openModalSpec = useCallback(async (params: { jobId?: string; giftId?: string }) => {
     try {
@@ -176,11 +192,14 @@ export default function HomePage() {
 
           {inProgressJobs.map((j: any) => {
             const timeStr = formatTime(getJobRemaining(j));
+            const isCrafting = j.type === 'CraftingJob';
+            const handleRowClick = isCrafting ? () => goToForge(j.locationId) : () => openModalSpec({ jobId: j.id });
             return (
-              <div key={j.id} className="hp-mission-row" onClick={() => openModalSpec({ jobId: j.id })} style={{ cursor: 'pointer' }}>
+              <div key={j.id} className="hp-mission-row" onClick={handleRowClick} style={{ cursor: 'pointer' }}>
                 <div className="hp-mission-icon">{getJobIcon(j.type)}</div>
                 <div className="hp-mission-info">
                   <span className="hp-mission-name">{j.name}</span>
+                  {isCrafting && <span className="hp-mission-status-text">Tap to open The Forge →</span>}
                 </div>
                 <div className="hp-mission-timer">
                   <span className="hp-timer-badge">{timeStr}</span>
@@ -197,6 +216,29 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {primaryWorkshop && (
+        <div className="hp-section">
+          <div className="hp-forge-hero" onClick={() => goToForge(primaryWorkshop.locationId)}>
+            <div className="hp-forge-hero-bg" />
+            <div className="hp-forge-hero-content">
+              <div className="hp-forge-hero-eyebrow">⚒️  WORKSHOP</div>
+              <h3 className="hp-forge-hero-title">The Forge is Ready</h3>
+              <p className="hp-forge-hero-sub">
+                {workshops.length > 1
+                  ? `${workshops.length} workshops · Lvl ${primaryWorkshop.level} ${primaryWorkshop.name}`
+                  : `${primaryWorkshop.name} · Lvl ${primaryWorkshop.level}${primaryWorkshop.enabled ? '' : ' · Disabled'}`}
+              </p>
+              <button
+                className="hp-forge-hero-btn"
+                onClick={(e) => { e.stopPropagation(); goToForge(primaryWorkshop.locationId); }}
+              >
+                ENTER THE FORGE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="hp-section">
         <div className="hp-section-header">

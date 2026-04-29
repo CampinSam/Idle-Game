@@ -111,7 +111,9 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.locationDefinitions) {
-    await upsertMany(prisma, 'locationDefinition', defs.locationDefinitions);
+    // Force-update so changes to allowed buildings (e.g. adding bld_forge to
+    // derp_outpost) propagate to existing rows on every boot.
+    await upsertManyForce(prisma, 'locationDefinition', defs.locationDefinitions);
   }
 
   if (defs.roomDefs) {
@@ -119,7 +121,9 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.buildingDefs) {
-    await upsertMany(prisma, 'buildingDef', defs.buildingDefs);
+    // Force-update so newly added `displayDefId` / `category` fields are
+    // applied to pre-existing building defs.
+    await upsertManyForce(prisma, 'buildingDef', defs.buildingDefs);
   }
 
   if (defs.missionDefs) {
@@ -127,7 +131,8 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.recipeDefs) {
-    await upsertMany(prisma, 'recipeDef', defs.recipeDefs);
+    // Force-update so the new `displayDefId` link is applied to existing recipes.
+    await upsertManyForce(prisma, 'recipeDef', defs.recipeDefs);
   }
 
   if (itemDefs && itemDefs.length > 0) {
