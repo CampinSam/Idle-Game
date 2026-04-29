@@ -170,6 +170,45 @@ export class QueryService {
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
 
+    // Backward-compat for The Forge: pre-Forge CraftingJobs were stored without
+    // `data.locationId`. The new place-based UI filters jobs by locationId, so
+    // legacy in-flight jobs would otherwise be invisible. Adopt them on
+    // bootstrap by attaching the player's first enabled WORKSHOP locationId
+    // and persisting the patch so subsequent reads (and collect) see it.
+    try {
+      const legacyCraftingJobs = (jobs || []).filter(
+        (j: any) => j.type === 'CraftingJob' && !((j.data as any)?.locationId),
+      );
+      if (legacyCraftingJobs.length > 0) {
+        let fallbackLocationId: string | null = null;
+        for (const loc of locations || []) {
+          const ws = (loc.buildings || []).find(
+            (b: any) => b?.buildingDef?.category === 'WORKSHOP' && b?.enabled !== false,
+          );
+          if (ws) { fallbackLocationId = loc.id; break; }
+        }
+        if (!fallbackLocationId) {
+          for (const loc of locations || []) {
+            const anyWs = (loc.buildings || []).find(
+              (b: any) => b?.buildingDef?.category === 'WORKSHOP',
+            );
+            if (anyWs) { fallbackLocationId = loc.id; break; }
+          }
+        }
+        if (fallbackLocationId) {
+          for (const j of legacyCraftingJobs) {
+            const nextData = { ...((j.data as any) || {}), locationId: fallbackLocationId };
+            try {
+              await this.prisma.job.update({ where: { id: j.id }, data: { data: nextData } });
+              j.data = nextData;
+            } catch { /* best-effort */ }
+          }
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Forge legacy job backfill failed for ${userId}: ${err}`);
+    }
+
     const serializedEntities = entities.map(serializeEntity);
     const serializedLocations = locations.map((loc: any) =>
       serializeLocation(loc, buildingJobs, currencyIds),
