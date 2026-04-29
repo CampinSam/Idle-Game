@@ -4,6 +4,10 @@ import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
+import {
+  adoptLegacyCraftingJobLocations,
+  pickFallbackWorkshopLocationId,
+} from '../crafting/legacy-job-adoption.util';
 
 const MAX_DELTA_AGE = 10000;
 
@@ -171,40 +175,12 @@ export class QueryService {
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
 
     // Backward-compat for The Forge: pre-Forge CraftingJobs were stored without
-    // `data.locationId`. The new place-based UI filters jobs by locationId, so
-    // legacy in-flight jobs would otherwise be invisible. Adopt them on
-    // bootstrap by attaching the player's first enabled WORKSHOP locationId
-    // and persisting the patch so subsequent reads (and collect) see it.
+    // `data.locationId`. Use the shared adoption helper so this path stays in
+    // lockstep with `CraftingService.getActiveJobs`.
     try {
-      const legacyCraftingJobs = (jobs || []).filter(
-        (j: any) => j.type === 'CraftingJob' && !((j.data as any)?.locationId),
+      await adoptLegacyCraftingJobLocations(this.prisma, jobs as any[], () =>
+        pickFallbackWorkshopLocationId(locations as any[]),
       );
-      if (legacyCraftingJobs.length > 0) {
-        let fallbackLocationId: string | null = null;
-        for (const loc of locations || []) {
-          const ws = (loc.buildings || []).find(
-            (b: any) => b?.buildingDef?.category === 'WORKSHOP' && b?.enabled !== false,
-          );
-          if (ws) { fallbackLocationId = loc.id; break; }
-        }
-        if (!fallbackLocationId) {
-          for (const loc of locations || []) {
-            const anyWs = (loc.buildings || []).find(
-              (b: any) => b?.buildingDef?.category === 'WORKSHOP',
-            );
-            if (anyWs) { fallbackLocationId = loc.id; break; }
-          }
-        }
-        if (fallbackLocationId) {
-          for (const j of legacyCraftingJobs) {
-            const nextData = { ...((j.data as any) || {}), locationId: fallbackLocationId };
-            try {
-              await this.prisma.job.update({ where: { id: j.id }, data: { data: nextData } });
-              j.data = nextData;
-            } catch { /* best-effort */ }
-          }
-        }
-      }
     } catch (err) {
       this.logger.warn(`Forge legacy job backfill failed for ${userId}: ${err}`);
     }

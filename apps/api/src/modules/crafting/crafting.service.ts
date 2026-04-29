@@ -10,6 +10,7 @@ import { PlayerService } from '../player/player.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
+import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import {
   calculateCraftingLuck,
@@ -282,28 +283,18 @@ export class CraftingService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Backward-compat: pre-Forge jobs were stored without a locationId, which
-    // would orphan them in the new place-scoped UI. On read, infer any missing
-    // locationId to the player's first enabled WORKSHOP (if any) and persist
-    // it so the job becomes addressable from /locations/:id/workshop.
-    const needsAdoption = jobs.some((j: any) => !j.data?.locationId);
-    let workshops: any[] = [];
-    if (needsAdoption) {
-      try { workshops = await this.getWorkshops(userId); } catch { workshops = []; }
-    }
-    const fallbackLocationId =
-      workshops.find((w: any) => w.enabled)?.locationId || workshops[0]?.locationId || null;
-    if (needsAdoption && fallbackLocationId) {
-      for (const j of jobs) {
-        if (!j.data?.locationId) {
-          const nextData = { ...(j.data || {}), locationId: fallbackLocationId };
-          try {
-            await (this.prisma as any).job.update({ where: { id: j.id }, data: { data: nextData } });
-            j.data = nextData;
-          } catch { /* best-effort */ }
-        }
-      }
-    }
+    // Backward-compat: pre-Forge jobs were stored without a locationId. Use
+    // the shared adoption helper so this fallback path stays in lockstep with
+    // `QueryService.bootstrap`. The fallback workshop lookup is lazy so we
+    // don't pay for `getWorkshops` when every job is already tagged.
+    try {
+      await adoptLegacyCraftingJobLocations(this.prisma, jobs as any[], async () => {
+        const workshops = await this.getWorkshops(userId).catch(() => [] as any[]);
+        return workshops.find((w: any) => w.enabled)?.locationId
+          || workshops[0]?.locationId
+          || null;
+      });
+    } catch { /* best-effort */ }
 
     const tickInfo = await this.tickService.getTickInfo();
     const serverTime = new Date().toISOString();
