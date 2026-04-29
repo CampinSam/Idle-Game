@@ -182,6 +182,29 @@ export class NftCollectionService {
     );
   }
 
+  static readonly DEFAULT_SYNC_THROTTLE_MS = 5 * 60 * 1000;
+
+  /**
+   * Run syncUserCollections only if the user hasn't been synced within the
+   * given throttle window. Returns null when skipped, the SyncResult otherwise.
+   * Used by login flows and the daily background sweep so we don't hammer
+   * chain RPC providers on every request.
+   */
+  async syncIfStale(
+    userId: string,
+    minIntervalMs: number = NftCollectionService.DEFAULT_SYNC_THROTTLE_MS,
+  ): Promise<SyncResult | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { lastNftSyncAt: true } as any,
+    });
+    const last = (user as any)?.lastNftSyncAt as Date | null | undefined;
+    if (last && Date.now() - new Date(last).getTime() < minIntervalMs) {
+      return null;
+    }
+    return this.syncUserCollections(userId);
+  }
+
   async syncUserCollections(userId: string): Promise<SyncResult> {
     const wallets = await (this.prisma as any).linkedWallet.findMany({ where: { userId } });
     const collections = await (this.prisma as any).nftCollectionDef.findMany({ where: { active: true } });
@@ -284,6 +307,15 @@ export class NftCollectionService {
       } catch (err) {
         this.logger.error(`Failed to push entity deltas after NFT sync: ${err}`);
       }
+    }
+
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { lastNftSyncAt: new Date() } as any,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to update lastNftSyncAt for user ${userId}: ${err}`);
     }
 
     return { claimed, alreadyClaimed, notImported, entities: newEntities };

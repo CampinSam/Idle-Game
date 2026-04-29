@@ -116,6 +116,12 @@ export class AuthService {
       this.logger.warn(`Failed to auto check-in for ${user.id}: ${err}`);
     }
 
+    try {
+      await this.nftCollectionService.syncIfStale(user.id);
+    } catch (err) {
+      this.logger.warn(`Throttled NFT sync failed on login for ${user.id}: ${err}`);
+    }
+
     const token = this.jwt.sign({ sub: user.id, username: user.username });
 
     return {
@@ -232,6 +238,9 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('Account not found');
       try { await this.recalculateUserLocations(user.id); } catch {}
       try { await this.checkInService.autoCheck(user.id); } catch {}
+      try { await this.nftCollectionService.syncIfStale(user.id); } catch (err) {
+        this.logger.warn(`Throttled NFT sync failed on SIWE login for ${user.id}: ${err}`);
+      }
     } else {
       const username = `Keeper${crypto.randomBytes(4).toString('hex')}`;
       user = await this.prisma.user.create({
@@ -260,6 +269,11 @@ export class AuthService {
           data: { userId: user.id, definitionId: 'item_common_chest', quantity: 3 },
         });
       } catch (err) { this.logger.warn(`Failed to seed starter chests for ${user.id}: ${err}`); }
+      try {
+        await this.nftCollectionService.syncUserCollections(user.id);
+      } catch (err) {
+        this.logger.error(`First-login NFT sync failed for new wallet user ${user.id}: ${err}`);
+      }
     }
 
     const token = this.jwt.sign({ sub: user.id, username: user.username });
