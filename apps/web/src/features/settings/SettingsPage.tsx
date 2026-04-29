@@ -72,6 +72,14 @@ export default function SettingsPage() {
   const [manualChain, setManualChain] = useState<string>('ETH');
   const [manualAddress, setManualAddress] = useState<string>('');
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [resyncing, setResyncing] = useState(false);
+  const [resyncResult, setResyncResult] = useState<{
+    claimed: number;
+    alreadyClaimed: number;
+    notImported: number;
+    unclaimed: number;
+    reconciliationSkippedCollections: string[];
+  } | null>(null);
 
   const {
     connecting,
@@ -136,6 +144,27 @@ export default function SettingsPage() {
     if (!token) return;
     const ok = await linkCardano(walletKey, token);
     if (ok) await loadWallets();
+  };
+
+  const handleResync = async () => {
+    setWalletOpError(null);
+    setResyncResult(null);
+    setResyncing(true);
+    try {
+      const result = await api.syncNftCollections();
+      setResyncResult({
+        claimed: result.claimed,
+        alreadyClaimed: result.alreadyClaimed,
+        notImported: result.notImported,
+        unclaimed: result.unclaimed,
+        reconciliationSkippedCollections: result.reconciliationSkippedCollections ?? [],
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to resync NFTs';
+      setWalletOpError(message);
+    } finally {
+      setResyncing(false);
+    }
   };
 
   const handleAddManualWallet = async () => {
@@ -216,6 +245,34 @@ export default function SettingsPage() {
                 <div className="settings-loading">Loading wallets...</div>
               ) : (
                 <>
+                  {wallets.length > 0 && (
+                    <div className="wallet-resync-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 13, opacity: 0.8 }}>
+                        Reconcile NFTs across all linked wallets — claims new NFTs and removes ones you no longer hold.
+                      </div>
+                      <button
+                        className="wallet-action-btn wallet-action-primary"
+                        onClick={handleResync}
+                        disabled={resyncing}
+                      >
+                        {resyncing ? 'Resyncing...' : '🔄 Resync NFTs'}
+                      </button>
+                    </div>
+                  )}
+                  {resyncResult && (
+                    <div className="wallet-resync-result" style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(0,180,80,0.08)', border: '1px solid rgba(0,180,80,0.25)', borderRadius: 6, fontSize: 13 }}>
+                      <strong>Sync complete.</strong>{' '}
+                      Claimed {resyncResult.claimed}, unclaimed {resyncResult.unclaimed}
+                      {resyncResult.alreadyClaimed > 0 && `, already owned ${resyncResult.alreadyClaimed}`}
+                      {resyncResult.notImported > 0 && `, ${resyncResult.notImported} not imported yet`}.
+                      {resyncResult.reconciliationSkippedCollections.length > 0 && (
+                        <div style={{ marginTop: 4, color: '#c97a00' }}>
+                          Note: {resyncResult.reconciliationSkippedCollections.length} collection
+                          {resyncResult.reconciliationSkippedCollections.length === 1 ? ' was' : 's were'} skipped from removal due to a chain query failure. Try again in a moment.
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {wallets.length === 0 ? (
                     <div className="settings-empty">No wallets linked to this account.</div>
                   ) : (

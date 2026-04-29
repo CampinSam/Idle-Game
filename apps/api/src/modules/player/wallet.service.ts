@@ -78,13 +78,14 @@ export class WalletService {
       create: { userId, chain, address: normalizedAddress, isPrimary: isFirst },
     });
 
-    let sync: { claimed: number; alreadyClaimed: number; notImported: number } | null = null;
+    let sync: { claimed: number; alreadyClaimed: number; notImported: number; unclaimed: number } | null = null;
     try {
       const result = await this.nftCollectionService.syncUserCollections(userId);
       sync = {
         claimed: result.claimed,
         alreadyClaimed: result.alreadyClaimed,
         notImported: result.notImported,
+        unclaimed: result.unclaimed,
       };
     } catch (err) {
       this.logger.error(
