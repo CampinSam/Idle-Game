@@ -13,10 +13,60 @@ interface Props {
   onChange: (next: any) => void;
 }
 
-const BG_POSITIONS = ['', 'center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right'];
-const BG_SIZES = ['', 'cover', 'contain', '100% 100%', 'auto'];
+const BG_POSITIONS = ['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right'];
+const BG_SIZES = ['cover', 'contain', '100% 100%', 'auto'];
 const BG_REPEATS = ['', 'no-repeat', 'repeat', 'repeat-x', 'repeat-y', 'space', 'round'];
 const TEXT_TRANSFORMS = ['', 'none', 'uppercase', 'lowercase', 'capitalize'];
+const FONT_FAMILIES = [
+  `'Exo 2', system-ui, sans-serif`,
+  `'Cinzel', serif`,
+  `system-ui, sans-serif`,
+  `serif`,
+  `monospace`,
+  `Georgia, serif`,
+  `'Courier New', monospace`,
+  `Impact, sans-serif`,
+];
+
+function PresetOrCustom({ value, presets, placeholder, onChange }: {
+  value: string;
+  presets: string[];
+  placeholder?: string;
+  onChange: (v: string) => void;
+}) {
+  const isCustom = value !== '' && !presets.includes(value);
+  return (
+    <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+      <select
+        value={isCustom ? '__custom__' : value}
+        onChange={e => {
+          const v = e.target.value;
+          if (v === '__custom__') {
+            // switch to custom mode but don't clobber existing value
+            if (!isCustom) onChange(value || ' ');
+          } else {
+            onChange(v);
+          }
+        }}
+        style={{ ...selectStyle, width: '100%' }}
+      >
+        <option value="">— default —</option>
+        {presets.map(p => <option key={p} value={p}>{p}</option>)}
+        <option value="__custom__">Custom…</option>
+      </select>
+      {isCustom && (
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          style={{ ...inputStyle, width: '100%' }}
+          autoFocus
+        />
+      )}
+    </div>
+  );
+}
 
 function setPath(obj: any, section: string, key: string, val: any): any {
   const next = { ...(obj || {}) };
@@ -122,23 +172,21 @@ export default function DisplayStyleEditor({ value, onChange }: Props) {
         <div style={fieldRowStyle}>
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>position</span>
-            <select
+            <PresetOrCustom
               value={bg.position || ''}
-              onChange={e => onChange(setPath(v, 'background', 'position', e.target.value))}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              {BG_POSITIONS.map(p => <option key={p} value={p}>{p || '— default (center) —'}</option>)}
-            </select>
+              presets={BG_POSITIONS}
+              placeholder="e.g. 30% 70%"
+              onChange={val => onChange(setPath(v, 'background', 'position', val))}
+            />
           </div>
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>size</span>
-            <select
+            <PresetOrCustom
               value={bg.size || ''}
-              onChange={e => onChange(setPath(v, 'background', 'size', e.target.value))}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              {BG_SIZES.map(s => <option key={s} value={s}>{s || '— default (cover) —'}</option>)}
-            </select>
+              presets={BG_SIZES}
+              placeholder="e.g. 200px or 80% auto"
+              onChange={val => onChange(setPath(v, 'background', 'size', val))}
+            />
           </div>
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>repeat</span>
@@ -159,12 +207,11 @@ export default function DisplayStyleEditor({ value, onChange }: Props) {
         <div style={fieldRowStyle}>
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>fontFamily</span>
-            <input
-              type="text"
+            <PresetOrCustom
               value={title.fontFamily || ''}
-              onChange={e => onChange(setPath(v, 'title', 'fontFamily', e.target.value))}
-              placeholder='e.g. "Cinzel", serif'
-              style={{ ...inputStyle, width: '100%' }}
+              presets={FONT_FAMILIES}
+              placeholder={`e.g. 'My Font', sans-serif`}
+              onChange={val => onChange(setPath(v, 'title', 'fontFamily', val))}
             />
           </div>
           <div style={fieldGroupStyle}>
@@ -235,11 +282,11 @@ export default function DisplayStyleEditor({ value, onChange }: Props) {
         <div style={fieldRowStyle}>
           <div style={fieldGroupStyle}>
             <span style={labelStyle}>fontFamily</span>
-            <input
-              type="text"
+            <PresetOrCustom
               value={body.fontFamily || ''}
-              onChange={e => onChange(setPath(v, 'body', 'fontFamily', e.target.value))}
-              style={{ ...inputStyle, width: '100%' }}
+              presets={FONT_FAMILIES}
+              placeholder={`e.g. 'My Font', sans-serif`}
+              onChange={val => onChange(setPath(v, 'body', 'fontFamily', val))}
             />
           </div>
           <div style={fieldGroupStyle}>
