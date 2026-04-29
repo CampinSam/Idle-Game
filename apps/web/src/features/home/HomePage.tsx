@@ -1,12 +1,15 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { computeGeneratorProduction, computeConsumptionFromBuildings, aggregateByResource } from '../../utils/locationProduction';
+import { computeGeneratorProduction, computeConsumptionFromBuildings, aggregateByResource, computeInventoryAmount } from '../../utils/locationProduction';
 import {
   useSyncPlayer,
   useSyncEntities,
   useSyncLocations,
   useAllActiveJobs,
+  useSyncCurrencyBalances,
 } from '../../hooks/useSyncSelectors';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { fetchCraftingRecipes } from '../../store/gameSlice';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
@@ -37,6 +40,10 @@ export default function HomePage() {
 
   const allActiveJobs = useAllActiveJobs();
   const { collectJob } = useCollectJob();
+  const dispatch = useAppDispatch();
+  const currencyBalances = useSyncCurrencyBalances();
+  const syncItemsTable = useAppSelector((s) => s.sync.items);
+  const craftingRecipes = useAppSelector((s) => s.game.craftingRecipes);
   const [claimError, setClaimError] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [workshops, setWorkshops] = useState<Array<{ buildingId: string; locationId: string; name: string; level: number; enabled: boolean }>>([]);
@@ -48,6 +55,12 @@ export default function HomePage() {
       .catch(() => { if (!cancelled) setWorkshops([]); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!craftingRecipes || craftingRecipes.length === 0) {
+      dispatch(fetchCraftingRecipes());
+    }
+  }, [dispatch, craftingRecipes]);
 
   const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
   const goToForge = useCallback((locationId?: string) => {
@@ -193,7 +206,8 @@ export default function HomePage() {
           {inProgressJobs.map((j: any) => {
             const timeStr = formatTime(getJobRemaining(j));
             const isCrafting = j.type === 'CraftingJob';
-            const handleRowClick = isCrafting ? () => goToForge(j.locationId) : () => openModalSpec({ jobId: j.id });
+            const craftLoc = j.data?.locationId || j.locationId;
+            const handleRowClick = isCrafting ? () => goToForge(craftLoc) : () => openModalSpec({ jobId: j.id });
             return (
               <div key={j.id} className="hp-mission-row" onClick={handleRowClick} style={{ cursor: 'pointer' }}>
                 <div className="hp-mission-icon">{getJobIcon(j.type)}</div>
@@ -222,12 +236,41 @@ export default function HomePage() {
         const readyCraftJob = allActiveJobs.find(
           (j: any) => j.type === 'CraftingJob' && getJobRemaining(j) <= 0,
         );
-        const activeCraftingJobs = allActiveJobs.filter((j: any) => j.type === 'CraftingJob');
+        // Place-scoped slot count: only crucibles at the primary workshop count.
+        const wsTier = Math.max(1, Number(primaryWorkshop.level || 1));
+        const slotsTotal = wsTier >= 3 ? 3 : wsTier >= 2 ? 2 : 1;
+        const wsActive = allActiveJobs.filter(
+          (j: any) => j.type === 'CraftingJob' && (j.data?.locationId || j.locationId) === primaryWorkshop.locationId,
+        );
+        const slotOpen = wsActive.length < slotsTotal;
         const idleHasSlot = idleEntities > 0;
-        const newlyUnlocked = activeCraftingJobs.length === 0;
+
+        // Affordable recipes the player can start NOW: passes keeperLevel +
+        // currency cost + material cost (inventory).
+        const keeperLvl = profile?.keeperLevel ?? 1;
+        const affordableCount = (craftingRecipes || []).filter((r: any) => {
+          if ((r.requiredKeeperLevel || 1) > keeperLvl) return false;
+          const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
+          for (const c of cost) {
+            if (c.type === 'currency') {
+              if ((currencyBalances[c.id] ?? 0) < c.amount) return false;
+            } else {
+              const have = computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances);
+              if (have < c.amount) return false;
+            }
+          }
+          return true;
+        }).length;
+        const hasAffordable = affordableCount > 0;
+
+        // Hero shows when:
+        //   ready  → a craft is sitting at the anvil
+        //   actionable → slot open AND idle Derp AND at least one affordable recipe
+        //   unlocked   → no crafts ever started yet
+        const newlyUnlocked = wsActive.length === 0 && !readyCraftJob;
         const triggerKind: 'ready' | 'actionable' | 'unlocked' | null = readyCraftJob
           ? 'ready'
-          : idleHasSlot
+          : (slotOpen && idleHasSlot && hasAffordable)
           ? 'actionable'
           : newlyUnlocked
           ? 'unlocked'
@@ -243,7 +286,7 @@ export default function HomePage() {
           triggerKind === 'ready'
             ? 'Pull it from the flames before it cools.'
             : triggerKind === 'actionable'
-            ? `${idleEntities} idle Derp${idleEntities === 1 ? '' : 's'} · Lvl ${primaryWorkshop.level} ${primaryWorkshop.name}`
+            ? `${affordableCount} recipe${affordableCount === 1 ? '' : 's'} ready · ${slotsTotal - wsActive.length}/${slotsTotal} crucible${slotsTotal === 1 ? '' : 's'} open`
             : `Lvl ${primaryWorkshop.level} ${primaryWorkshop.name} — pick a recipe to forge your first item.`;
         const heroBtn =
           triggerKind === 'ready' ? 'COLLECT NOW' : triggerKind === 'actionable' ? 'ENTER THE FORGE' : 'BEGIN CRAFTING';

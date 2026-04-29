@@ -53,6 +53,11 @@ interface ForecastResponse {
   tiers: Array<{ key: string; label: string; minCl: number }>;
   workshopTier: number;
   luckFloor: number;
+  slotsTotal?: number;
+  slotsUsed?: number;
+  slotsOpen?: number;
+  timerMultiplier?: number;
+  recipeTierCap?: number;
   entities: Array<{
     entityId: string;
     name: string;
@@ -133,7 +138,15 @@ export default function ForgePage() {
 
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
-  const activeCraftingJobs = useSyncActiveCraftingJobs();
+  const allActiveCraftingJobs = useSyncActiveCraftingJobs();
+  // Place-scoping: only show crucibles that belong to *this* outpost so the
+  // Forge for one location can't double-count jobs from another.
+  const activeCraftingJobs = useMemo(
+    () => allActiveCraftingJobs.filter(
+      (j: any) => (j.data?.locationId || j.locationId) === outpostId,
+    ),
+    [allActiveCraftingJobs, outpostId],
+  );
   const currencyBalances = useSyncCurrencyBalances();
   const { craftingRecipes } = useAppSelector((s) => s.game);
 
@@ -146,7 +159,23 @@ export default function ForgePage() {
   const [workshopChecked, setWorkshopChecked] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('all');
   const [workshopLevel, setWorkshopLevel] = useState(1);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('forge:favorites');
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set<string>(); }
+  });
+  const toggleFavorite = useCallback((recipeId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(recipeId)) next.delete(recipeId);
+      else next.add(recipeId);
+      try { localStorage.setItem('forge:favorites', JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   // Server-enforced "crafting is a place": validate that this outpost actually
   // hosts an enabled workshop owned by the player. If not, redirect away so
@@ -198,6 +227,21 @@ export default function ForgePage() {
     return Array.from(set).sort();
   }, [craftingRecipes]);
 
+  // A recipe's "availability" is server-truthful where possible (forecast's
+  // recipeTierCap + slotsOpen) and uses local checks for cost/keeperLevel.
+  const recipeIsAvailable = useCallback((r: any): boolean => {
+    if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return false;
+    const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
+    for (const c of cost) {
+      if (c.type === 'currency' && (currencyBalances[c.id] ?? 0) < c.amount) return false;
+    }
+    return true;
+  }, [profile, currencyBalances]);
+
+  const recipeIsLocked = useCallback((r: any): boolean => {
+    return Boolean(profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel);
+  }, [profile]);
+
   const filteredRecipes = useMemo(() => {
     const search = recipeSearch.trim().toLowerCase();
     return (craftingRecipes as any[]).filter((r: any) => {
@@ -209,13 +253,16 @@ export default function ForgePage() {
         const cat = (r.category || r.group || 'general') as string;
         if (cat !== categoryFilter) return false;
       }
+      if (availabilityFilter === 'available' && !recipeIsAvailable(r)) return false;
+      if (availabilityFilter === 'locked' && !recipeIsLocked(r)) return false;
+      if (availabilityFilter === 'favorites' && !favorites.has(r.id)) return false;
       if (search) {
         const hay = `${r.name || ''} ${r.description || ''}`.toLowerCase();
         if (!hay.includes(search)) return false;
       }
       return true;
     });
-  }, [craftingRecipes, materialFilter, categoryFilter, recipeSearch]);
+  }, [craftingRecipes, materialFilter, categoryFilter, recipeSearch, availabilityFilter, favorites, recipeIsAvailable, recipeIsLocked]);
 
   const matName = useMemo(() => {
     if (!materialFilter) return '';
@@ -327,8 +374,12 @@ export default function ForgePage() {
       {error && <div className="forge-error">{error}</div>}
 
       {(() => {
-        const maxSlots = Math.max(1, workshopLevel + 1);
-        const usedSlots = activeCraftingJobs.length;
+        // Prefer server-authoritative slot counts from forecast (matches the
+        // workshopParallelSlots() helper: L1=1, L2=2, L3=3). Fall back to
+        // local computation while forecast is loading.
+        const fallbackSlots = workshopLevel >= 3 ? 3 : workshopLevel >= 2 ? 2 : 1;
+        const maxSlots = forecast?.slotsTotal ?? fallbackSlots;
+        const usedSlots = forecast?.slotsUsed ?? activeCraftingJobs.length;
         const emptySlots = Math.max(0, maxSlots - usedSlots);
         return (
           <section className="forge-section forge-jobs-section">
@@ -396,8 +447,21 @@ export default function ForgePage() {
             onChange={(e) => setRecipeSearch(e.target.value)}
             aria-label="Search recipes"
           />
+          <div className="forge-codex-cats" role="tablist" aria-label="Availability filter">
+            {(['all', 'available', 'locked', 'favorites'] as const).map((key) => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={availabilityFilter === key}
+                className={`forge-codex-cat forge-codex-pill ${availabilityFilter === key ? 'is-active' : ''}`}
+                onClick={() => setAvailabilityFilter(key)}
+              >
+                {key === 'all' ? 'All' : key === 'available' ? '✓ Available' : key === 'locked' ? '🔒 Locked' : '★ Favorites'}
+              </button>
+            ))}
+          </div>
           {recipeCategories.length > 1 && (
-            <div className="forge-codex-cats" role="tablist">
+            <div className="forge-codex-cats" role="tablist" aria-label="Category filter">
               <button
                 role="tab"
                 aria-selected={categoryFilter === 'all'}
@@ -440,33 +504,44 @@ export default function ForgePage() {
             const meetsLevel = !profile || profile.keeperLevel >= (r.requiredKeeperLevel || 1);
             const dd = r.displayDef;
             const cardStyle: DisplayStyle = mergeDisplayStyles(undefined, dd?.style);
+            const isFav = favorites.has(r.id);
             return (
-              <button
-                key={r.id}
-                className={`forge-recipe-card ${selectedRecipe === r.id ? 'is-selected' : ''} ${!meetsLevel ? 'is-locked' : ''}`}
-                style={{
-                  background: dd?.cardBackground || 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))',
-                  borderColor: dd?.borderColor || 'rgba(139,92,246,0.45)',
-                }}
-                onClick={() => meetsLevel && setSelectedRecipe(r.id)}
-                disabled={!meetsLevel}
-              >
-                <div className="forge-recipe-title" style={textStyleToCss(cardStyle.title) as React.CSSProperties}>
-                  {r.name}
-                </div>
-                {r.description && (
-                  <div className="forge-recipe-desc" style={textStyleToCss(cardStyle.body) as React.CSSProperties}>
-                    {r.description}
+              <div key={r.id} className="forge-recipe-card-wrap">
+                <button
+                  className={`forge-recipe-card ${selectedRecipe === r.id ? 'is-selected' : ''} ${!meetsLevel ? 'is-locked' : ''}`}
+                  style={{
+                    background: dd?.cardBackground || 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))',
+                    borderColor: dd?.borderColor || 'rgba(139,92,246,0.45)',
+                  }}
+                  onClick={() => meetsLevel && setSelectedRecipe(r.id)}
+                  disabled={!meetsLevel}
+                >
+                  <div className="forge-recipe-title" style={textStyleToCss(cardStyle.title) as React.CSSProperties}>
+                    {r.name}
                   </div>
-                )}
-                <div className="forge-recipe-meta">
-                  <span className={canAfford ? '' : 'is-bad'}>
-                    {cost.length === 0 ? 'Free' : cost.map((c) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ')}
-                  </span>
-                  <span>{fmtSeconds(r.timer?.duration ?? 0)}</span>
-                  {!meetsLevel && <span className="is-locked-tag">Lvl {r.requiredKeeperLevel}</span>}
-                </div>
-              </button>
+                  {r.description && (
+                    <div className="forge-recipe-desc" style={textStyleToCss(cardStyle.body) as React.CSSProperties}>
+                      {r.description}
+                    </div>
+                  )}
+                  <div className="forge-recipe-meta">
+                    <span className={canAfford ? '' : 'is-bad'}>
+                      {cost.length === 0 ? 'Free' : cost.map((c) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ')}
+                    </span>
+                    <span>{fmtSeconds(r.timer?.duration ?? 0)}</span>
+                    {!meetsLevel && <span className="is-locked-tag">Lvl {r.requiredKeeperLevel}</span>}
+                  </div>
+                </button>
+                <button
+                  className={`forge-recipe-fav ${isFav ? 'is-fav' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(r.id); }}
+                  aria-label={isFav ? 'Unfavorite recipe' : 'Favorite recipe'}
+                  aria-pressed={isFav}
+                  type="button"
+                >
+                  {isFav ? '★' : '☆'}
+                </button>
+              </div>
             );
           })}
         </div>

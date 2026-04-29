@@ -41,6 +41,24 @@ export const workshopLuckFloor = (workshopLevel: number): number => {
   return 0;
 };
 
+export const workshopParallelSlots = (workshopLevel: number): number => {
+  if (workshopLevel >= 3) return 3;
+  if (workshopLevel >= 2) return 2;
+  return 1;
+};
+
+export const workshopTimerMultiplier = (workshopLevel: number): number => {
+  if (workshopLevel >= 3) return 0.8;
+  if (workshopLevel >= 2) return 0.9;
+  return 1.0;
+};
+
+export const workshopRecipeTierCap = (workshopLevel: number): number => {
+  if (workshopLevel >= 3) return 3;
+  if (workshopLevel >= 2) return 2;
+  return 1;
+};
+
 export const qualityProbabilities = (cl: number): QualityProbability[] => {
   const sigma = 22;
   const weights = QUALITY_TIERS.map((t) => Math.exp(-Math.pow(t.center - cl, 2) / (2 * sigma * sigma)));

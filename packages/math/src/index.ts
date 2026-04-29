@@ -16,6 +16,9 @@ export {
   qualityProbabilities,
   rollQualityFromCl,
   workshopLuckFloor,
+  workshopParallelSlots,
+  workshopTimerMultiplier,
+  workshopRecipeTierCap,
   QUALITY_TIERS,
   type QualityProbability,
 } from './crafting-luck';

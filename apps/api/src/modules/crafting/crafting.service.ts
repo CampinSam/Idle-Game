@@ -18,6 +18,9 @@ import {
   qualityProbabilities,
   rollQualityFromCl,
   workshopLuckFloor,
+  workshopParallelSlots,
+  workshopTimerMultiplier,
+  workshopRecipeTierCap,
   QUALITY_TIERS,
 } from '@derp/math';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
@@ -106,6 +109,32 @@ export class CraftingService {
   }
 
   /**
+   * Counts active CraftingJob rows scoped to a specific location (read from
+   * Job.data.locationId). Used for slot-cap enforcement.
+   */
+  private async countActiveCraftingAtLocation(userId: string, locationId: string): Promise<number> {
+    const jobs = await (this.prisma as any).job.findMany({
+      where: { userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified'] } },
+      select: { data: true },
+    });
+    return jobs.filter((j: any) => (j.data?.locationId ?? null) === locationId).length;
+  }
+
+  /**
+   * Recipe "tier" comes from optional metadata in recipeDef.data.tier (1-3).
+   * Falls back to derive from requiredKeeperLevel: ≤3 → tier 1, ≤6 → tier 2,
+   * else tier 3, so existing seeds without explicit tiers still gate sensibly.
+   */
+  private recipeTier(def: any): number {
+    const explicit = (def?.data as any)?.tier;
+    if (typeof explicit === 'number' && explicit >= 1 && explicit <= 3) return explicit;
+    const lvl = Number(def?.requiredKeeperLevel ?? 1);
+    if (lvl <= 3) return 1;
+    if (lvl <= 6) return 2;
+    return 3;
+  }
+
+  /**
    * Returns the projected Crafting Luck and per-quality-tier probability
    * distribution for each idle entity. Server-authoritative — the same
    * helpers (qualityProbabilities / rollQualityFromCl) are used by
@@ -149,11 +178,23 @@ export class CraftingService {
       };
     });
 
+    const slotsTotal = workshopParallelSlots(workshopTier);
+    const slotsUsed = options.locationId
+      ? await this.countActiveCraftingAtLocation(userId, options.locationId)
+      : 0;
+    const timerMultiplier = workshopTimerMultiplier(workshopTier);
+    const recipeTierCap = workshopRecipeTierCap(workshopTier);
+
     return {
       cap,
       tiers,
       workshopTier,
       luckFloor,
+      slotsTotal,
+      slotsUsed,
+      slotsOpen: Math.max(0, slotsTotal - slotsUsed),
+      timerMultiplier,
+      recipeTierCap,
       entities: includeAll ? forecasts : forecasts.filter((f: any) => f.idle),
     };
   }
@@ -248,10 +289,38 @@ export class CraftingService {
   }
 
   async startCrafting(userId: string, recipeId: string, entityId: string, locationId?: string) {
+    // Crafting is a place: always resolve to a concrete enabled workshop so
+    // slot cap / tier-cap / timer mechanics apply uniformly. If the caller
+    // didn't pass a locationId, fall back to the player's first enabled
+    // workshop (legacy clients).
+    let workshopMatch: any = null;
+    let effectiveLocationId: string;
     if (locationId) {
-      await this.assertWorkshopAtLocation(userId, locationId);
+      workshopMatch = await this.assertWorkshopAtLocation(userId, locationId);
+      effectiveLocationId = locationId;
     } else {
-      await this.assertHasEnabledWorkshop(userId);
+      const workshops = await this.getWorkshops(userId);
+      workshopMatch = workshops.find((w: any) => w.enabled);
+      if (!workshopMatch) {
+        throw new BadRequestException(
+          'You need to build a Forge in your Outpost before crafting.',
+        );
+      }
+      effectiveLocationId = workshopMatch.locationId;
+    }
+
+    // Place-scoped slot cap: workshop tier governs how many parallel crucibles
+    // a single Forge can run. Block before any spend so failed starts don't
+    // burn currencies/items.
+    {
+      const tier = Number(workshopMatch?.level || 0);
+      const slotsTotal = workshopParallelSlots(tier);
+      const slotsUsed = await this.countActiveCraftingAtLocation(userId, effectiveLocationId);
+      if (slotsUsed >= slotsTotal) {
+        throw new BadRequestException(
+          `All ${slotsTotal} crucible${slotsTotal === 1 ? '' : 's'} at this Forge are in use. Upgrade the Workshop to unlock more slots.`,
+        );
+      }
     }
 
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
@@ -268,6 +337,18 @@ export class CraftingService {
       throw new BadRequestException(
         `Requires Keeper Level ${recipe.requiredKeeperLevel}`,
       );
+    }
+
+    // Recipe tier vs workshop tier — Tier-2 recipes need a Tier-2 Workshop.
+    {
+      const tier = Number(workshopMatch?.level || 0);
+      const recipeTier = this.recipeTier(recipe);
+      const cap = workshopRecipeTierCap(tier);
+      if (recipeTier > cap) {
+        throw new BadRequestException(
+          `This recipe needs a Tier ${recipeTier} Workshop. Your Forge here is Tier ${tier || 1}.`,
+        );
+      }
     }
 
     const entity = await this.entityService.getEntity(entityId, userId);
@@ -301,6 +382,16 @@ export class CraftingService {
       durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
     }
 
+    // Workshop tier shortens the timer (Tier 2 ×0.9, Tier 3 ×0.8). Applied
+    // after effect modifiers so high-tier Workshops compound with boosts.
+    {
+      const tier = Number(workshopMatch?.level || 0);
+      const mult = workshopTimerMultiplier(tier);
+      if (mult !== 1) {
+        durationTicks = Math.max(1, Math.floor(durationTicks * mult));
+      }
+    }
+
     const job = await (this.prisma as any).job.create({
       data: {
         userId,
@@ -309,7 +400,7 @@ export class CraftingService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: [entityId],
-        data: { seed: randomUUID(), locationId: locationId ?? null },
+        data: { seed: randomUUID(), locationId: effectiveLocationId },
       },
     });
 

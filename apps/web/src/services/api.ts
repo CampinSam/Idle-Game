@@ -171,6 +171,11 @@ class ApiClient {
       tiers: Array<{ key: string; label: string; minCl: number }>;
       workshopTier: number;
       luckFloor: number;
+      slotsTotal: number;
+      slotsUsed: number;
+      slotsOpen: number;
+      timerMultiplier: number;
+      recipeTierCap: number;
       entities: Array<{
         entityId: string;
         name: string;
