@@ -290,21 +290,6 @@ export class CraftingService {
   }
 
   /**
-   * Crafting is a place — the player must own at least one enabled WORKSHOP
-   * (Forge) building before any craft can begin. Throws BadRequestException
-   * otherwise so the API surface enforces the rule in addition to the UI.
-   */
-  private async assertHasEnabledWorkshop(userId: string): Promise<void> {
-    const workshops = await this.getWorkshops(userId);
-    const hasEnabled = workshops.some((w: any) => w.enabled);
-    if (!hasEnabled) {
-      throw new BadRequestException(
-        'You need to build a Forge in your Outpost before crafting.',
-      );
-    }
-  }
-
-  /**
    * Used by the Forge page to verify that a given location actually hosts an
    * enabled WORKSHOP building owned by this player. Returns the matching
    * workshop entry, or throws so the UI can redirect.
@@ -579,7 +564,9 @@ export class CraftingService {
 
     const rewardSummary = grantedRewards.map(r => `${r.amount}x ${r.name || r.key || r.type}`).join(', ');
     const notifBody = `${recipe?.name || recipeId} — ${quality} quality${rewardSummary ? ` (${rewardSummary})` : ''}`;
-    const notifDeepLink = { screen: '/crafting', craftJobId: jobId };
+    const notifDeepLink = jobLocationId
+      ? { screen: `/locations/${jobLocationId}/workshop`, craftJobId: jobId, locationId: jobLocationId }
+      : { screen: '/crafting', craftJobId: jobId };
     let updatedNotification: any = null;
 
     if (externalTx) {
