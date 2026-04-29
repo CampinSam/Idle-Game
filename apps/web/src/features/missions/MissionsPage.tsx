@@ -664,8 +664,8 @@ export default function MissionsPage() {
     const heroCss = displayCssVars(display, { hero: true });
     return (
       <div className="missions-page md-inline page-transition-wrapper">
-        <div className="md-unified-card" style={{ borderColor: display.borderColor }}>
-        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage), ...heroCss.vars } as React.CSSProperties}>
+        <div className="md-unified-card" style={{ borderColor: display.borderColor, ...heroCss.vars } as React.CSSProperties}>
+        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage) }}>
           <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
           <div className="md-hero-gradient" />
           <div className="md-hero-content">
