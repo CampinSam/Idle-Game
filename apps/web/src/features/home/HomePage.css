@@ -461,14 +461,25 @@
 }
 .hp-forge-hero:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(249, 115, 22, 0.25); }
 .hp-forge-hero-bg {
+  /* Layer for workshop's custom backgroundImage (set inline from JSX).
+     The orange forge tint is painted on .hp-forge-hero::after above this,
+     so it stays visible even when this layer carries an opaque image. */
   position: absolute;
   inset: 0;
-  /* Orange at bottom fading up to purple, with a warm forge-glow highlight
-     near the bottom. Sits over the opaque .hp-forge-hero card surface. */
-  background:
-    linear-gradient(to top, rgba(249,115,22,0.55) 0%, rgba(34,24,88,0.85) 70%),
-    radial-gradient(circle at 50% 100%, rgba(254,215,170,0.35), transparent 55%);
   z-index: 0;
+}
+.hp-forge-hero::after {
+  /* Orange-at-bottom fading up to purple, with a warm forge-glow at the
+     bottom-center. Sits ABOVE .hp-forge-hero-bg (same z-index but later
+     in paint order) and BELOW .hp-forge-hero-content (z-index: 1). */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(254, 215, 170, 0.32), transparent 55%),
+    linear-gradient(to top, rgba(249, 115, 22, 0.55) 0%, rgba(34, 24, 88, 0.55) 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 .hp-forge-hero-content {
   position: relative;
