@@ -489,7 +489,51 @@
   text-transform: uppercase;
   text-shadow: 0 3px 14px rgba(249, 115, 22, 0.55);
 }
-.hp-forge-hero-sub { margin: 0; font-size: 13px; color: #fde68a; }
+.hp-forge-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: #fde68a;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hp-forge-tier-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(15, 12, 38, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  color: #e2e8f0;
+}
+.hp-forge-tier-pill.tier-2 {
+  border-color: rgba(96, 165, 250, 0.65);
+  color: #bfdbfe;
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.25);
+}
+.hp-forge-tier-pill.tier-3 {
+  border-color: rgba(192, 132, 252, 0.7);
+  color: #e9d5ff;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.32);
+}
+.hp-forge-tier-bonus {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.55);
+  color: #bbf7d0;
+}
 .hp-forge-hero-btn {
   margin-top: 8px;
   align-self: flex-start;

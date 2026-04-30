@@ -421,6 +421,32 @@ export default function ForgePage() {
           <p className="forge-hero-blurb" style={heroBodyStyle}>
             Crucibles roar, anvils sing. Pick a recipe, assign a Derp, and let server-side luck shape what you'll pull from the flames.
           </p>
+          {(() => {
+            // Tier-driven badges: surface the perks each workshop level grants
+            // (parallel slots + timer speed-up). Forecast is authoritative; we
+            // fall back to local workshopLevel while the request is in flight.
+            const tier = forecast?.workshopTier ?? Math.max(1, Number(workshopLevel || 1));
+            const fallbackSlotsTotal = tier >= 3 ? 3 : tier >= 2 ? 2 : 1;
+            const slotsTotal = forecast?.slotsTotal ?? fallbackSlotsTotal;
+            const slotsUsed = forecast?.slotsUsed ?? activeCraftingJobs.length;
+            const fallbackMultiplier = tier >= 3 ? 0.8 : tier >= 2 ? 0.9 : 1.0;
+            const multiplier = forecast?.timerMultiplier ?? fallbackMultiplier;
+            const speedupPct = Math.round((1 - multiplier) * 100);
+            const slotsFull = slotsUsed >= slotsTotal;
+            return (
+              <div className="forge-hero-pills" aria-label="Workshop perks">
+                <span className={`forge-pill forge-pill-tier tier-${Math.min(3, Math.max(1, tier))}`}>
+                  T{tier} Workshop
+                </span>
+                <span className={`forge-pill forge-pill-slots ${slotsFull ? 'is-full' : ''}`}>
+                  {slotsUsed} / {slotsTotal} {slotsTotal === 1 ? 'slot' : 'slots'}
+                </span>
+                <span className={`forge-pill forge-pill-timer ${speedupPct > 0 ? 'is-bonus' : 'is-base'}`}>
+                  {speedupPct > 0 ? `−${speedupPct}% craft time` : 'Standard craft time'}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -637,7 +663,7 @@ export default function ForgePage() {
                     </span>
                     <span>{fmtSeconds(r.timer?.duration ?? 0)}</span>
                     {!meetsLevel && <span className="is-locked-tag">Lvl {r.requiredKeeperLevel}</span>}
-                    {meetsLevel && tierLocked && <span className="is-locked-tag">Tier {recipeTier}</span>}
+                    {tierLocked && <span className="is-locked-tag is-tier-lock">Needs T{recipeTier} Workshop</span>}
                   </div>
                 </button>
                 <button

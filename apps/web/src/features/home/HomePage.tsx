@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { computeGeneratorProduction, computeConsumptionFromBuildings, aggregateByResource, computeInventoryAmount } from '../../utils/locationProduction';
 import {
@@ -305,11 +305,21 @@ export default function HomePage() {
             : triggerKind === 'actionable'
             ? 'The Forge Awaits'
             : 'Your Forge is Unlocked';
-        const heroSub =
+        const tierSpeedupPct = wsTier >= 3 ? 20 : wsTier >= 2 ? 10 : 0;
+        const heroSub: React.ReactNode =
           triggerKind === 'ready'
             ? 'Pull it from the flames before it cools.'
             : triggerKind === 'actionable'
-            ? `${affordableCount} recipe${affordableCount === 1 ? '' : 's'} ready · ${slotsTotal - wsActive.length}/${slotsTotal} crucible${slotsTotal === 1 ? '' : 's'} open`
+            ? (
+              <>
+                {`${affordableCount} recipe${affordableCount === 1 ? '' : 's'} ready`}
+                <span className={`hp-forge-tier-pill tier-${Math.min(3, wsTier)}`}>T{wsTier}</span>
+                {` · ${slotsTotal - wsActive.length}/${slotsTotal} crucible${slotsTotal === 1 ? '' : 's'} open`}
+                {tierSpeedupPct > 0 && (
+                  <span className="hp-forge-tier-bonus">−{tierSpeedupPct}% time</span>
+                )}
+              </>
+            )
             : `Lvl ${primaryWorkshop.level} ${primaryWorkshop.name} — pick a recipe to forge your first item.`;
         const heroBtn =
           triggerKind === 'ready' ? 'COLLECT NOW' : triggerKind === 'actionable' ? 'ENTER THE FORGE' : 'BEGIN CRAFTING';
