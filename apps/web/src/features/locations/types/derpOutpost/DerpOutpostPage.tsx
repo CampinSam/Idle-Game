@@ -20,6 +20,7 @@ import { useModal } from '../../../../context/ModalContext';
 import { api } from '../../../../services/api';
 import { getRegionDisplay } from '@derp/shared';
 import BuildingCard from './components/BuildingCard';
+import { EntityCard, EntityList } from '../../../entities/components';
 import type { LocationPageProps } from '../../registry';
 import './DerpOutpostPage.css';
 
@@ -50,6 +51,9 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const lootPopKey = useRef(0);
   const [availableData, setAvailableData] = useState<any>(null);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [activeWorkerSlot, setActiveWorkerSlot] = useState<number | null>(null);
+  const [showWorkerPicker, setShowWorkerPicker] = useState(false);
+  const [workerError, setWorkerError] = useState<string>('');
 
   const id = outpost.id;
 
@@ -128,9 +132,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const hasClaimable =
     resourceSummaries.some((res) => Math.floor(res.currentAmount) >= 1) ||
     storedResources.some((v) => Math.floor(Number(v)) >= 1);
-
-  const assignedEntityIds = workersData.map((w: any) => w.entityId);
-  const assignedEntities = entities.filter((b: any) => assignedEntityIds.includes(b.id));
 
   const allWarehouseStorageItems = useMemo(() => {
     const capacityMap = (outpost?.storage?.capacity as Record<string, number>) || {};
@@ -373,38 +374,103 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         </div>
       </div>
 
-      <div className="od-card od-card-workers">
-        <h3 className="od-card-title">WORKERS ({workersData.length})</h3>
-        <div className="od-workers-detail-list">
-          {assignedEntities.map((entity: any) => (
-            <div key={entity.id} className="od-worker-detail">
-              <span className="od-worker-detail-icon">🐦</span>
-              <div className="od-worker-detail-info">
-                <div className="od-worker-detail-name">{entity.name}</div>
-                <div className="od-worker-detail-level">Level {entity.level}</div>
-              </div>
-              <div className="od-worker-detail-stats">
-                <span>ATK {(entity.stats as any)?.ATK || 0}</span>
-                <span>DEF {(entity.stats as any)?.DEF || 0}</span>
-              </div>
+      {(() => {
+        const maxWorkers = Number(outpost.maxWorkers ?? 2);
+        const idleEntities = entities.filter((e: any) => e.status === 'idle');
+        const emptySlotCount = Math.max(0, maxWorkers - workersData.length);
+
+        const handleAssignWorker = async (entityId: string) => {
+          setWorkerError('');
+          setShowWorkerPicker(false);
+          setActiveWorkerSlot(null);
+          try {
+            audioEngine.play('ui.button_click');
+            await execute('AssignWorker', { locationId: id, entityId });
+          } catch (err: any) {
+            audioEngine.play('ui.error');
+            setWorkerError(err?.message || 'Failed to assign worker');
+          }
+        };
+
+        const handleRemoveWorker = async (entityId: string) => {
+          setWorkerError('');
+          try {
+            audioEngine.play('ui.button_click');
+            await execute('RemoveWorker', { locationId: id, entityId });
+          } catch (err: any) {
+            audioEngine.play('ui.error');
+            setWorkerError(err?.message || 'Failed to remove worker');
+          }
+        };
+
+        const openSlot = (slotIndex: number) => {
+          setActiveWorkerSlot(slotIndex);
+          setShowWorkerPicker(true);
+        };
+
+        return (
+          <div className="od-card od-card-workers">
+            <h3 className="od-card-title">WORKERS ({workersData.length}/{maxWorkers})</h3>
+            <div className="od-workers-grid">
+              {workersData.map((w: any) => {
+                const entity = entities.find((e: any) => e.id === w.entityId);
+                if (!entity) {
+                  return (
+                    <div key={w.id} className="od-worker-loading-slot">
+                      <span className="od-worker-loading-label">…</span>
+                    </div>
+                  );
+                }
+                return (
+                  <EntityCard
+                    key={w.id}
+                    entity={entity}
+                    useCase="outpost"
+                    onRemove={() => handleRemoveWorker(entity.id)}
+                  />
+                );
+              })}
+              {Array.from({ length: emptySlotCount }).map((_, i) => {
+                const slotIndex = workersData.length + i;
+                const isActive = activeWorkerSlot === slotIndex;
+                return (
+                  <button
+                    key={`empty-${i}`}
+                    type="button"
+                    className={`od-worker-empty-slot ${isActive ? 'od-worker-empty-slot--active' : ''}`}
+                    onClick={() => openSlot(slotIndex)}
+                  >
+                    <div className="od-worker-empty-slot__top">
+                      <span className="od-worker-empty-slot__plus">＋</span>
+                    </div>
+                    <div className="od-worker-empty-slot__bot">
+                      <span className="od-worker-empty-slot__label">Add Worker</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-          ))}
-          {workersData
-            .filter((w: any) => !entities.find((b: any) => b.id === w.entityId))
-            .map((w: any) => (
-              <div key={w.id} className="od-worker-detail">
-                <span className="od-worker-detail-icon">🐦</span>
-                <div className="od-worker-detail-info">
-                  <div className="od-worker-detail-name">Entity</div>
-                  <div className="od-worker-detail-level">Slot {w.slotIndex + 1}</div>
-                </div>
+            {workersData.length === 0 && emptySlotCount === 0 && (
+              <div className="od-empty-tasks">No worker slots on this outpost.</div>
+            )}
+            {showWorkerPicker && (
+              <div className="od-worker-picker">
+                <h4 className="od-worker-picker-label">Select an Entity</h4>
+                <EntityList
+                  entities={idleEntities}
+                  mode="picker"
+                  useCase="outpost"
+                  onSelect={(entity) => handleAssignWorker(entity.id)}
+                  emptyMessage="No idle entities. Pull one back from a mission."
+                />
               </div>
-            ))}
-          {workersData.length === 0 && (
-            <div className="od-empty-tasks">No workers assigned to this outpost.</div>
-          )}
-        </div>
-      </div>
+            )}
+            {workerError && (
+              <div className="od-worker-error">{workerError}</div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="od-card od-card-warehouse">
         <h3 className="od-card-title">WAREHOUSE</h3>

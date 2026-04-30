@@ -332,57 +332,105 @@
   box-shadow: none;
 }
 
-.od-card-workers .od-workers-detail-list {
+.od-card-workers .od-workers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 90px);
+  gap: 8px;
+  justify-content: center;
+}
+
+.od-card-workers .od-worker-empty-slot {
+  width: 90px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: var(--bg-card);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  padding: 0;
 }
 
-.od-card-workers .od-worker-detail {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: rgba(96, 165, 250, 0.05);
-  border: 1px solid rgba(96, 165, 250, 0.15);
-  border-radius: 10px;
+.od-card-workers .od-worker-empty-slot:hover {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
-.od-card-workers .od-worker-detail-icon {
-  font-size: 24px;
-  width: 36px;
-  height: 36px;
+.od-card-workers .od-worker-empty-slot--active {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5), inset 0 0 8px rgba(139, 92, 246, 0.15);
+}
+
+.od-card-workers .od-worker-empty-slot__top {
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(96, 165, 250, 0.12);
-  border-radius: 50%;
-  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.od-card-workers .od-worker-detail-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: #f1f5f9;
+.od-card-workers .od-worker-empty-slot__bot {
+  padding: 8px;
+  background: var(--bg-card);
+  text-align: center;
 }
 
-.od-card-workers .od-worker-detail-level {
+.od-card-workers .od-worker-empty-slot__plus {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 300;
+}
+
+.od-card-workers .od-worker-empty-slot__label {
+  display: block;
   font-size: 11px;
-  color: #93c5fd;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.od-card-workers .od-worker-detail-stats {
+.od-card-workers .od-worker-loading-slot {
+  width: 90px;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
   display: flex;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
 }
 
-.od-card-workers .od-worker-detail-stats span {
-  font-size: 10px;
-  font-weight: 700;
+.od-card-workers .od-worker-loading-label {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  padding: 3px 7px;
-  border-radius: 6px;
+  font-size: 18px;
+}
+
+.od-card-workers .od-worker-picker {
+  margin-top: 12px;
+}
+
+.od-card-workers .od-worker-picker-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+.od-card-workers .od-worker-error {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 12px;
 }
 
 .od-card-warehouse .od-storage-list {

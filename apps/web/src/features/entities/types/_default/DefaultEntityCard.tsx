@@ -162,6 +162,14 @@ export default function DefaultEntityCard({
     return (
       <div className={cls} onClick={handleClick}>
         <div className="entity-card__top entity-card__top--compact" style={{ background: archetypeDisplay.gradient }}>
+          {onRemove && (
+            <button
+              type="button"
+              className="entity-card__remove"
+              onClick={(e) => { e.stopPropagation(); onRemove(entity); }}
+              aria-label="Remove worker"
+            >✕</button>
+          )}
           <GameImage
             src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
             category="entities"

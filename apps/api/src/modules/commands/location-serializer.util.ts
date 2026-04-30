@@ -34,6 +34,10 @@ export function serializeLocation(
   const workerMult = 10000 + workerCount * 2000;
   const threatMult = getThreatMult(location.threatLevel || 0);
 
+  const locRules = (location.definition?.rules as LevelRules) || {};
+  const locConfig = resolveLevelConfig(locRules, location.level);
+  const maxWorkers = locConfig.workers?.slots ?? 2;
+
   const resourceTypes: Record<string, string> = {};
   for (const b of (location.buildings ?? [])) {
     const bRules = (b.buildingDef?.rules as LevelRules) || {};
@@ -156,12 +160,13 @@ export function serializeLocation(
         })),
       };
     }),
-    workers: (location.workerAssignments ?? []).map((w: any) => ({
+    maxWorkers,
+    workers: (location.workerAssignments ?? []).map((w: any, i: number) => ({
       id: w.id,
       locationId: location.id,
       entityId: w.entityId,
       roleTag: w.roleTag,
-      slotIndex: 0,
+      slotIndex: i,
     })),
   };
 }
