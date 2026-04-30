@@ -3,19 +3,21 @@
   flex-direction: column;
   gap: 18px;
   padding-bottom: 96px;
+  background: linear-gradient(180deg, #1a1350 0%, #13103a 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 /* Hero */
 .forge-hero {
   position: relative;
-  border-radius: 18px;
-  border: 1px solid rgba(249, 115, 22, 0.55);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.55);
   background-size: cover;
   background-position: center;
   overflow: hidden;
   min-height: 220px;
   isolation: isolate;
-  margin: -8px -8px 0;
 }
 .forge-hero-overlay {
   position: absolute;
