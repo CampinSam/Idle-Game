@@ -1962,7 +1962,7 @@
       }
     },
     "ConsumableData": {
-      "description": "Consumable behavior for items with type CONSUMABLE. References EffectDef records for the actual effects.",
+      "description": "Consumable behavior for items with type CONSUMABLE. References EffectDef records for the actual effects. Each effect carries its own targetType — there is no top-level targetType.",
       "properties": {
         "effects": {
           "type": "array",
@@ -1971,12 +1971,6 @@
           },
           "required": true,
           "description": "Array of effect specs applied when the item is consumed"
-        },
-        "targetType": {
-          "type": "enum",
-          "enum": "EffectTargetType",
-          "required": true,
-          "description": "Default target type for resolution"
         }
       }
     },

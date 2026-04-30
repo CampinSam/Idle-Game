@@ -105,7 +105,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       uniqueInstance: { type: 'boolean', default: false, description: 'Each item unique?' },
       equipData: { type: 'json', description: 'Equipment slot and stats' },
       passiveEffects: { type: 'json', description: 'Passive effects' },
-      consumableData: { type: 'consumableData', description: 'Consumable behavior ({ effects, targetType })' },
+      consumableData: { type: 'consumableData', description: 'Consumable behavior ({ effects: [{ effectDefId, targetType }] })' },
       data: { type: 'json', default: {}, description: 'Extra data' },
       seasonId: { type: 'string', description: 'Season ID' },
     },

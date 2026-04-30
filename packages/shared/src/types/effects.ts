@@ -143,7 +143,6 @@ export interface ConsumableEffectSpec {
 
 export interface ConsumableData {
   effects: ConsumableEffectSpec[];
-  targetType: EffectTargetType;
 }
 
 export interface PassiveEffectSpec {

@@ -4,6 +4,11 @@ import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
 import { seedSounds } from './seeds/sounds.seed';
 import {
+  buildSeedConsumableMap,
+  canonicalConsumableData,
+  consumableDataEqual,
+} from './seeds/consumable-data.util';
+import {
   OUTCOME_SPEC_FIELDS_BY_MODEL,
   normalizeOutcomeSpec,
 } from './modules/game-rules/outcome-spec.util';
@@ -24,6 +29,13 @@ export class BootstrapService implements OnModuleInit {
     await this.seedConsumableItems();
     await seedDefinitions(this.prisma);
     await seedSounds(this.prisma);
+    // Idempotent: rewrite any historical `consumableData` rows that still
+    // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
+    // targetType enum values, or a redundant top-level `targetType`. After
+    // this runs every consumable on disk matches the canonical
+    // `{ effects: [{ effectDefId, targetType }] }` shape and the client no
+    // longer needs defensive normalization.
+    await this.backfillConsumableData();
     // One-time backfill: rewrite any legacy `amount` outcome entries to
     // `min` = `max` = amount across every definition table that holds an
     // outcomeSpec. Idempotent — once a row is normalized, subsequent runs
@@ -197,6 +209,72 @@ export class BootstrapService implements OnModuleInit {
         maxStacks: 3,
         durationSec: 1800,
       },
+      {
+        id: 'eff_xp_scroll',
+        name: 'XP Scroll',
+        description: 'Doubles XP gains (+100%) for 10 minutes.',
+        iconKey: 'xp_scroll',
+        category: 'xp_multiplier',
+        valueMode: 'percent_add',
+        durationModel: 'timed',
+        stackingRule: 'refresh',
+        targetType: 'player',
+        value: 100,
+        durationSec: 600,
+      },
+      {
+        id: 'eff_speed_boost',
+        name: 'Swift Draught',
+        description: 'Boosts SPD by 5 for 1 minute.',
+        iconKey: 'potion_speed',
+        category: 'stat_boost',
+        valueMode: 'flat_add',
+        durationModel: 'timed',
+        stackingRule: 'refresh',
+        targetType: 'player',
+        value: 0,
+        stats: { SPD: 5 },
+        durationSec: 60,
+      },
+      {
+        id: 'eff_heal_minor',
+        name: 'Minor Heal',
+        description: 'Restores +20 VIT to a target entity.',
+        iconKey: 'potion_heal',
+        category: 'stat_boost',
+        valueMode: 'flat_add',
+        durationModel: 'instant',
+        stackingRule: 'no_stack',
+        targetType: 'entity',
+        value: 0,
+        stats: { VIT: 20 },
+      },
+      {
+        id: 'eff_heal',
+        name: 'Heal',
+        description: 'Restores +50 VIT to a target entity.',
+        iconKey: 'potion_heal',
+        category: 'stat_boost',
+        valueMode: 'flat_add',
+        durationModel: 'instant',
+        stackingRule: 'no_stack',
+        targetType: 'entity',
+        value: 0,
+        stats: { VIT: 50 },
+      },
+      {
+        id: 'eff_revival',
+        name: 'Revival',
+        description: 'Restores +100 VIT to a target entity.',
+        iconKey: 'revival_token',
+        category: 'stat_boost',
+        valueMode: 'flat_add',
+        durationModel: 'instant',
+        stackingRule: 'no_stack',
+        targetType: 'entity',
+        value: 0,
+        stats: { VIT: 100 },
+      },
     ];
 
     let seeded = 0;
@@ -232,7 +310,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 99,
         consumableData: {
-          targetType: 'entity',
           effects: [{ effectDefId: 'eff_xp_potion_small', targetType: 'entity' }],
         },
       },
@@ -247,7 +324,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 10,
         consumableData: {
-          targetType: 'player',
           effects: [{ effectDefId: 'eff_xp_boost_timed', targetType: 'player' }],
         },
       },
@@ -262,7 +338,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 10,
         consumableData: {
-          targetType: 'player',
           effects: [{ effectDefId: 'eff_stat_boost_atk', targetType: 'player' }],
         },
       },
@@ -277,7 +352,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 5,
         consumableData: {
-          targetType: 'location',
           effects: [{ effectDefId: 'eff_production_boost', targetType: 'location' }],
         },
       },
@@ -292,7 +366,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 10,
         consumableData: {
-          targetType: 'player',
           effects: [{ effectDefId: 'eff_currency_boost', targetType: 'player' }],
         },
       },
@@ -307,7 +380,6 @@ export class BootstrapService implements OnModuleInit {
         stackable: true,
         maxStack: 5,
         consumableData: {
-          targetType: 'player',
           effects: [{ effectDefId: 'eff_reward_boost', targetType: 'player' }],
         },
       },
@@ -357,6 +429,33 @@ export class BootstrapService implements OnModuleInit {
     if (totalRewrites > 0) {
       this.logger.log(
         `OutcomeSpec backfill: rewrote ${totalRewrites} legacy amount→min/max entries across ${totalRows} rows`,
+      );
+    }
+  }
+
+  private async backfillConsumableData() {
+    const seedItemDefs = require('./seeds/data/item-defs.json');
+    const seedById = buildSeedConsumableMap(seedItemDefs);
+
+    const rows: Array<{ id: string; consumableData: unknown }> = await (
+      this.prisma as any
+    ).itemDefinition.findMany({ where: { type: 'CONSUMABLE' } });
+
+    let rewritten = 0;
+    for (const row of rows) {
+      const next = canonicalConsumableData(row.consumableData, seedById.get(row.id) ?? null);
+      if (consumableDataEqual(row.consumableData as any, next)) continue;
+
+      await (this.prisma as any).itemDefinition.update({
+        where: { id: row.id },
+        data: { consumableData: next as any },
+      });
+      rewritten += 1;
+    }
+
+    if (rewritten > 0) {
+      this.logger.log(
+        `ConsumableData backfill: normalized ${rewritten} item definition(s) to canonical shape`,
       );
     }
   }

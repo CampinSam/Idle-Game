@@ -20,8 +20,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "effect": "luck_boost",
-      "duration": 300
+      "effects": [
+        { "effectDefId": "eff_success_chance", "targetType": "player" }
+      ]
     }
   },
   {
@@ -45,9 +46,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "effect": "xp_boost",
-      "duration": 600,
-      "multiplier": 2
+      "effects": [
+        { "effectDefId": "eff_xp_scroll", "targetType": "player" }
+      ]
     }
   },
   {
@@ -335,8 +336,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "amount": 50,
-      "effect": "heal"
+      "effects": [
+        { "effectDefId": "eff_heal", "targetType": "entity" }
+      ]
     }
   },
   {
@@ -359,8 +361,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "amount": 20,
-      "effect": "heal"
+      "effects": [
+        { "effectDefId": "eff_heal_minor", "targetType": "entity" }
+      ]
     }
   },
   {
@@ -384,8 +387,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "effect": "speed_boost",
-      "duration": 60
+      "effects": [
+        { "effectDefId": "eff_speed_boost", "targetType": "player" }
+      ]
     }
   },
   {
@@ -444,8 +448,9 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": {
-      "effect": "revive",
-      "hpPercent": 50
+      "effects": [
+        { "effectDefId": "eff_revival", "targetType": "entity" }
+      ]
     }
   },
   {
