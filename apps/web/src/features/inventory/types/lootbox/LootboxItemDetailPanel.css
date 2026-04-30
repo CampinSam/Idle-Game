@@ -1,9 +1,3 @@
-/* ── Lootbox detail panel ──
- * Bespoke layout for LOOTBOX items. Co-exists with .item-detail-panel
- * (we keep that class on the root so the inline-positioning rule from
- * ItemList.css continues to work).
- */
-
 .lootbox-detail {
   background: linear-gradient(180deg, rgba(20, 12, 38, 0.97), rgba(8, 5, 20, 0.97));
   border-top: 1px solid rgba(245, 158, 11, 0.35);
@@ -23,7 +17,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Icon with pulsing amber glow ring */
 .lootbox-detail__icon-wrap {
   position: relative;
   width: 88px;
@@ -72,7 +65,6 @@
   50%      { opacity: 0.9; transform: scale(1.06); }
 }
 
-/* Info column */
 .lootbox-detail__info {
   flex: 1;
   min-width: 0;
@@ -89,7 +81,6 @@
   margin-bottom: 4px;
 }
 
-/* Reuse rarity colour palette from default panel */
 .lootbox-detail__rarity.rarity-COMMON      { color: #8a8a9a; }
 .lootbox-detail__rarity.rarity-UNCOMMON    { color: #4dcb6a; }
 .lootbox-detail__rarity.rarity-SCARCE      { color: #4db0da; }

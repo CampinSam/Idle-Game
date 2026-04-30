@@ -14,15 +14,6 @@ function rarityLabel(r?: string) {
   return (r || 'COMMON').replace(/_/g, ' ');
 }
 
-/**
- * Bespoke detail panel for LOOTBOX-type items.
- *
- * Differs from the default panel in two ways:
- *  - The icon area is enlarged and given a glowing pulsing frame to
- *    advertise that the item is openable.
- *  - Adds a "Possible Rewards" hint row that lists any preview tags the
- *    item exposes through `item.possibleRewards` (graceful no-op if absent).
- */
 export default function LootboxItemDetailPanel({
   item,
   actions,

@@ -16,7 +16,7 @@ import { defaultEntityViews } from './types/_default';
 import { cyborgEntityViews } from './types/cyborg';
 
 const ARCHETYPE_REGISTRY: Record<string, EntityViews> = {
-  Cyborg: cyborgEntityViews,
+  cyborg: cyborgEntityViews,
 };
 
 const KIND_REGISTRY: Record<string, EntityViews> = {};

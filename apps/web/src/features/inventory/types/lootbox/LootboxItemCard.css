@@ -1,14 +1,7 @@
-/* ── Lootbox item overlay ──
- * Layered on top of `.item-card` via the `item-card--lootbox` modifier.
- * Visuals: animated shimmer sweep across the icon area + a glowing "?" badge
- * in the top-left, signalling unopened mystery contents.
- */
-
 .item-card--lootbox {
   overflow: hidden;
 }
 
-/* Diagonal shimmer sweep that loops forever (slow, subtle) */
 .item-card--lootbox .item-card__img-wrap::before {
   content: '';
   position: absolute;
@@ -29,7 +22,6 @@
   pointer-events: none;
 }
 
-/* Mystery "?" badge top-left */
 .item-card--lootbox .item-card__img-wrap::after {
   content: '?';
   position: absolute;
@@ -49,7 +41,6 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Reduce motion: hold shimmer at rest */
 @media (prefers-reduced-motion: reduce) {
   .item-card--lootbox .item-card__img-wrap::before {
     animation: none;

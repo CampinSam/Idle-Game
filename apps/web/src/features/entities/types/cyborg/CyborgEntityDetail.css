@@ -1,14 +1,7 @@
-/* ── Cyborg detail wrapper ──
- * Wraps DefaultEntityDetail without modifying it. Adds a top status banner
- * and a subtle cyan scanline overlay on the hero, scoped via the
- * `.entity-detail--cyborg` parent class so the default layout is preserved.
- */
-
 .entity-detail--cyborg {
   position: relative;
 }
 
-/* Status banner above the hero */
 .entity-detail--cyborg__banner {
   display: flex;
   align-items: center;
@@ -41,7 +34,6 @@
   50%      { opacity: 0.35; }
 }
 
-/* Subtle scanline overlay anchored to the hero */
 .entity-detail--cyborg .entity-detail__hero {
   position: relative;
 }
