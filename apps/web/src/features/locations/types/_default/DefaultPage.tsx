@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { getRegionDisplay } from '@derp/shared';
 import { formatAmount } from '../../../../utils/locationProduction';
 import type { LocationPageProps } from '../../registry';
-import '../derpOutpost/DerpOutpostPage.css';
+import './DefaultPage.css';
 
 export default function DefaultPage({ outpost }: LocationPageProps) {
   const navigate = useNavigate();

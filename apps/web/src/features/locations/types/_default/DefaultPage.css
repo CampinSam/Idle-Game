@@ -1,0 +1,37 @@
+.od-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 12px;
+}
+
+.od-card-stack .od-card {
+  width: 100%;
+  padding: 14px 16px;
+}
+
+.od-card-stack .od-card.od-card-header {
+  padding: 0;
+  overflow: hidden;
+}
+
+.od-card-stack .od-card-header .od-hero-image {
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.od-card-stack .od-card-header .od-hero-image img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.od-card-stack .od-header-info-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 14px;
+}
