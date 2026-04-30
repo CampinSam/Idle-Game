@@ -242,9 +242,18 @@ export default function MissionsPage() {
       // can scroll down to it.
       if (target === document.documentElement || target === document.body) return;
       // Ignore clicks beyond the document's clientWidth/Height (vertical or
-      // horizontal scrollbar tracks on a scrollable container).
+      // horizontal page scrollbar tracks).
       if (e.clientX > document.documentElement.clientWidth) return;
       if (e.clientY > document.documentElement.clientHeight) return;
+      // Ignore clicks on any scrollable inner container's scrollbar.
+      // clientWidth/Height excludes the scrollbar gutter, so if the click
+      // lands beyond the target's content area, it's on the scrollbar itself.
+      if (target instanceof HTMLElement) {
+        const rect = target.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        if (offsetX > target.clientWidth || offsetY > target.clientHeight) return;
+      }
       const insidePicker = entityPickerRef.current?.contains(target);
       const insideTeamGrid = teamGridRef.current?.contains(target);
       if (!insidePicker && !insideTeamGrid) {
