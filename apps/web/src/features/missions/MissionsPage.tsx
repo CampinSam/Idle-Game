@@ -235,7 +235,16 @@ export default function MissionsPage() {
   useEffect(() => {
     if (!showEntityPicker) return;
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
+      const target = e.target as Node | null;
+      if (!target) return;
+      // Ignore clicks on the page/document scrollbar — those land on <html>
+      // or <body> and would otherwise dismiss the picker before the user
+      // can scroll down to it.
+      if (target === document.documentElement || target === document.body) return;
+      // Ignore clicks beyond the document's clientWidth/Height (vertical or
+      // horizontal scrollbar tracks on a scrollable container).
+      if (e.clientX > document.documentElement.clientWidth) return;
+      if (e.clientY > document.documentElement.clientHeight) return;
       const insidePicker = entityPickerRef.current?.contains(target);
       const insideTeamGrid = teamGridRef.current?.contains(target);
       if (!insidePicker && !insideTeamGrid) {
