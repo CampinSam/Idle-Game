@@ -274,7 +274,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
       </div>
 
       <div className="od-card od-card-timers">
-        <h3 className="od-card-title">TIMERS</h3>
+        <h3 className="od-card-title">PRODUCTION</h3>
         {resourceSummaries.length > 0 && (
           <>
             {hasActivity ? (
