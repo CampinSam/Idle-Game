@@ -1,0 +1,87 @@
+.entity-detail--derp-bird-perfect {
+  position: relative;
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(244, 114, 182, 0.18),
+    transparent 65%
+  );
+}
+
+.entity-detail--derp-bird-perfect__banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(244, 114, 182, 0.22),
+    rgba(125, 211, 252, 0.22),
+    rgba(253, 224, 71, 0.22),
+    rgba(244, 114, 182, 0.22)
+  );
+  background-size: 200% 100%;
+  border-bottom: 1px solid rgba(244, 114, 182, 0.55);
+  color: #fef3c7;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 6px rgba(253, 224, 71, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  animation: perfect-banner-shine 5s linear infinite;
+}
+
+.entity-detail--derp-bird-perfect__trait {
+  color: #fde68a;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.entity-detail--derp-bird-perfect__star {
+  color: #fde68a;
+  font-size: 14px;
+  text-shadow: 0 0 6px rgba(253, 224, 71, 0.9);
+  animation: perfect-star-spin 3s ease-in-out infinite;
+}
+
+.entity-detail--derp-bird-perfect .entity-detail__hero {
+  position: relative;
+}
+
+.entity-detail--derp-bird-perfect .entity-detail__hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2.5px 2.5px at 14% 22%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(2px 2px at 78% 14%, rgba(253, 224, 71, 0.95), transparent 60%),
+    radial-gradient(2.5px 2.5px at 32% 80%, rgba(125, 211, 252, 0.95), transparent 60%),
+    radial-gradient(2px 2px at 88% 68%, rgba(244, 114, 182, 0.95), transparent 60%),
+    radial-gradient(2px 2px at 8% 64%, rgba(167, 243, 208, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 56% 38%, rgba(196, 181, 253, 0.95), transparent 60%);
+  pointer-events: none;
+  animation: perfect-twinkle-detail 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-detail--derp-bird-perfect__banner { animation: none; }
+  .entity-detail--derp-bird-perfect__star { animation: none; }
+  .entity-detail--derp-bird-perfect .entity-detail__hero::after { animation: none; }
+}
+
+@keyframes perfect-banner-shine {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes perfect-star-spin {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50%      { transform: rotate(20deg) scale(1.18); }
+}
+
+@keyframes perfect-twinkle-detail {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}

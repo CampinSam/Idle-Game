@@ -1,0 +1,85 @@
+.entity-card--derp-bird-perfect {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(15, 8, 30, 0.95), rgba(8, 4, 18, 0.95)) padding-box,
+    conic-gradient(
+      from 0deg,
+      #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc
+    ) border-box;
+  border: 2px solid transparent;
+  box-shadow:
+    0 0 16px rgba(244, 114, 182, 0.45),
+    0 0 32px rgba(125, 211, 252, 0.3),
+    inset 0 0 12px rgba(255, 255, 255, 0.06);
+  animation: perfect-spin-border 6s linear infinite;
+}
+
+.entity-card--derp-bird-perfect:hover {
+  box-shadow:
+    0 0 22px rgba(244, 114, 182, 0.7),
+    0 0 44px rgba(125, 211, 252, 0.45),
+    inset 0 0 14px rgba(255, 255, 255, 0.1);
+}
+
+.entity-card--derp-bird-perfect::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 18% 28%, rgba(255, 255, 255, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 72% 18%, rgba(253, 224, 71, 0.9), transparent 60%),
+    radial-gradient(2px 2px at 38% 78%, rgba(125, 211, 252, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 86% 62%, rgba(244, 114, 182, 0.95), transparent 60%),
+    radial-gradient(1.5px 1.5px at 12% 60%, rgba(167, 243, 208, 0.9), transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 2;
+  animation: perfect-twinkle 2.4s ease-in-out infinite;
+}
+
+.entity-card--derp-bird-perfect::after {
+  content: '★ PERFECT';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 1px 6px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  color: #1a0f2e;
+  background: linear-gradient(135deg, #fde68a, #fca5a5 50%, #c4b5fd);
+  border-radius: 3px;
+  box-shadow:
+    0 1px 4px rgba(253, 224, 71, 0.7),
+    0 0 8px rgba(244, 114, 182, 0.5);
+  z-index: 4;
+  pointer-events: none;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.entity-card--derp-bird-perfect > * {
+  position: relative;
+  z-index: 3;
+}
+
+.entity-card--derp-bird-perfect.entity-card--selected,
+.entity-card--derp-bird-perfect.entity-card--active {
+  box-shadow:
+    0 0 24px rgba(253, 224, 71, 0.8),
+    0 0 48px rgba(244, 114, 182, 0.5),
+    inset 0 0 14px rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-card--derp-bird-perfect { animation: none; }
+  .entity-card--derp-bird-perfect::before { animation: none; }
+}
+
+@keyframes perfect-spin-border {
+  to { transform: rotate(0deg); }
+}
+
+@keyframes perfect-twinkle {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
