@@ -40,6 +40,27 @@
   backdrop-filter: blur(6px);
 }
 .forge-back-pill:hover { background: rgba(12, 10, 26, 0.75); }
+
+/* Floating variant — sits below the global fixed top bar (z 90, ~60px)
+ * and below the recipe sheet/backdrop (z 50/51). */
+.forge-back-pill-floating {
+  position: fixed;
+  top: calc(72px + env(safe-area-inset-top, 0px));
+  left: 16px;
+  z-index: 40;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  background: rgba(12, 10, 26, 0.82);
+  animation: forgeFloatingBackIn 0.18s ease forwards;
+}
+@keyframes forgeFloatingBackIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Reserve room under the floating pill so scrollIntoView jumps (e.g. the
+ * Empty Crucible shortcut to the codex) land below it, not behind it. */
+body.forge-floating-back-active .content {
+  scroll-padding-top: 110px;
+}
 .forge-hero-content {
   position: relative;
   z-index: 1;

@@ -162,6 +162,8 @@ export default function ForgePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [workshopChecked, setWorkshopChecked] = useState(false);
+  const heroBackPillRef = useRef<HTMLButtonElement | null>(null);
+  const [showFloatingBack, setShowFloatingBack] = useState(false);
   const [recipeSearch, setRecipeSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('all');
@@ -210,6 +212,35 @@ export default function ForgePage() {
   useEffect(() => {
     dispatch(fetchCraftingRecipes());
   }, [dispatch]);
+
+  // Show the floating back pill the moment the hero's own back pill is
+  // hidden — either scrolled past the viewport top or behind the fixed
+  // top bar (~60px). Negative rootMargin shrinks the viewport so the
+  // observer treats the area behind the top bar as "outside".
+  useEffect(() => {
+    if (!workshopChecked) {
+      setShowFloatingBack(false);
+      return;
+    }
+    const el = heroBackPillRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowFloatingBack(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '-60px 0px 0px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [workshopChecked]);
+
+  // While the floating pill is visible, reserve scroll-padding on the
+  // scroll container so scrollIntoView targets (e.g. the Empty Crucible
+  // shortcut to the codex) land below the pill instead of behind it.
+  useEffect(() => {
+    const active = showFloatingBack && !selectedRecipe;
+    if (!active) return;
+    document.body.classList.add('forge-floating-back-active');
+    return () => document.body.classList.remove('forge-floating-back-active');
+  }, [showFloatingBack, selectedRecipe]);
 
   useEffect(() => {
     if (!focusedJobId) return;
@@ -396,6 +427,13 @@ export default function ForgePage() {
   if (!workshopChecked) {
     return (
       <div className="forge-scene">
+        <button
+          className="forge-back-pill forge-back-pill-floating"
+          onClick={() => navigate(outpostId ? `/locations/${outpostId}` : '/locations')}
+          aria-label="Back to Outpost"
+        >
+          ← Back to Outpost
+        </button>
         <div className="forge-loading">Validating workshop…</div>
       </div>
     );
@@ -411,7 +449,11 @@ export default function ForgePage() {
         }}
       >
         <div className="forge-hero-overlay" style={{ background: heroOverlay || 'rgba(12,10,26,0.55)' }} />
-        <button className="forge-back-pill" onClick={() => navigate(`/locations/${outpostId}`)}>
+        <button
+          ref={heroBackPillRef}
+          className="forge-back-pill"
+          onClick={() => navigate(`/locations/${outpostId}`)}
+        >
           ← Back to Outpost
         </button>
         <div className="forge-hero-content">
@@ -798,6 +840,15 @@ export default function ForgePage() {
           </div>
         </section>
         </>
+      )}
+      {showFloatingBack && !recipe && (
+        <button
+          className="forge-back-pill forge-back-pill-floating"
+          onClick={() => navigate(`/locations/${outpostId}`)}
+          aria-label="Back to Outpost"
+        >
+          ← Back to Outpost
+        </button>
       )}
     </div>
   );
