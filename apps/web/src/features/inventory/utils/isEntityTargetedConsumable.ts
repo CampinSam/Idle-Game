@@ -7,7 +7,6 @@ export function isEntityTargetedConsumable(item: any): boolean {
 
   return effects.some((e: any) => {
     const tt = (e?.targetType ?? '').toString().toLowerCase();
-    if (!tt) return true;
     return tt === 'entity';
   });
 }
