@@ -1,20 +1,7 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { CraftingService } from './crafting.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-
-class StartCraftingDto {
-  @IsString()
-  recipeId: string;
-
-  @IsString()
-  entityId: string;
-
-  @IsOptional()
-  @IsString()
-  locationId?: string;
-}
 
 @Controller('crafting')
 @UseGuards(JwtAuthGuard)
@@ -54,11 +41,6 @@ export class CraftingController {
     @Param('locationId') locationId: string,
   ) {
     return this.craftingService.assertWorkshopAtLocation(user.id, locationId);
-  }
-
-  @Post('start')
-  startCrafting(@CurrentUser() user: { id: string }, @Body() dto: StartCraftingDto) {
-    return this.craftingService.startCrafting(user.id, dto.recipeId, dto.entityId, dto.locationId);
   }
 
   @Post(':id/collect')

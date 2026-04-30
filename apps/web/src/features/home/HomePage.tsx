@@ -350,7 +350,8 @@ export default function HomePage() {
                       triggerKind === 'ready'
                         ? (readyCraftJob?.data?.locationId || readyCraftJob?.locationId || primaryWorkshop.locationId)
                         : primaryWorkshop.locationId;
-                    goToForge(targetLocId);
+                    const focusJobId = triggerKind === 'ready' ? readyCraftJob?.id : undefined;
+                    goToForge(targetLocId, focusJobId);
                   }}
                 >
                   {heroBtn}

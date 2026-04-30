@@ -21,6 +21,7 @@ import { api } from '../../../../services/api';
 import { getRegionDisplay } from '@derp/shared';
 import BuildingCard from './components/BuildingCard';
 import type { LocationPageProps } from '../../registry';
+import './DerpOutpostPage.css';
 
 const WAREHOUSE_DEF_ID = 'stor_warehouse';
 

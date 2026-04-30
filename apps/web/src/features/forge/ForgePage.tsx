@@ -543,7 +543,7 @@ export default function ForgePage() {
             aria-label="Search recipes"
           />
           <div className="forge-codex-cats" role="tablist" aria-label="Availability filter">
-            {(['all', 'available', 'locked', 'favorites'] as const).map((key) => (
+            {(['available', 'locked', 'favorites', 'all'] as const).map((key) => (
               <button
                 key={key}
                 role="tab"

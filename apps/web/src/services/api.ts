@@ -148,13 +148,6 @@ class ApiClient {
     return this.request<any[]>('/crafting/active');
   }
 
-  startCrafting(recipeId: string, entityId: string, locationId?: string) {
-    return this.request<any>('/crafting/start', {
-      method: 'POST',
-      body: JSON.stringify(locationId ? { recipeId, entityId, locationId } : { recipeId, entityId }),
-    });
-  }
-
   collectCrafting(jobId: string) {
     return this.request<any>(`/crafting/${jobId}/collect`, {
       method: 'POST',
