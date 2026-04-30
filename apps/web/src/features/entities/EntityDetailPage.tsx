@@ -2,18 +2,25 @@ import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
-import { PotionPickerModal } from '../inventory/components';
+import { PotionPickerModal, UsePotionFlowModal } from '../inventory/components';
 import './EntityDetailPage.css';
 
 export default function EntityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [potionPickerOpen, setPotionPickerOpen] = useState(false);
+  const [usePotionState, setUsePotionState] = useState<{ potion: any } | null>(null);
 
   const entity = useAppSelector((s) => s.sync.entities[id ?? '']);
 
   const openPotionPicker = useCallback(() => setPotionPickerOpen(true), []);
   const closePotionPicker = useCallback(() => setPotionPickerOpen(false), []);
+  const closeUsePotion = useCallback(() => setUsePotionState(null), []);
+
+  const handlePickedPotion = useCallback((potion: any) => {
+    setPotionPickerOpen(false);
+    setUsePotionState({ potion });
+  }, []);
 
   if (!entity) {
     return (
@@ -41,6 +48,15 @@ export default function EntityDetailPage() {
         entityId={entity.id}
         entityName={entity.name}
         onClose={closePotionPicker}
+        onSelectPotion={handlePickedPotion}
+      />
+
+      <UsePotionFlowModal
+        isOpen={!!usePotionState}
+        potion={usePotionState?.potion ?? null}
+        targetEntityId={entity.id}
+        targetEntityName={entity.name}
+        onClose={closeUsePotion}
       />
     </div>
   );

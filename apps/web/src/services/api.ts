@@ -232,6 +232,10 @@ class ApiClient {
     return this.request<any[]>('/inventory/items');
   }
 
+  getEffectDefs() {
+    return this.request<any[]>('/effects/defs');
+  }
+
   getInventory() {
     return this.request<any>('/inventory');
   }

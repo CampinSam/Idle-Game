@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSyncItems, useSyncStatus } from '../../hooks/useSyncSelectors';
+import { useSyncItems, useSyncStatus, useSyncEntities } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import { api } from '../../services/api';
-import { ItemList, type ItemCategoryTab } from './components';
+import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab } from './components';
+import { getConsumableTargetType } from './utils/getConsumableTargetType';
 import './InventoryPage.css';
 
 const CATEGORY_TABS: ItemCategoryTab[] = [
@@ -24,6 +25,13 @@ const OPEN_COMMAND: Record<string, string> = {
   LOOTBOX: 'OpenLootBox',
   GIFT_PACKAGE: 'OpenGiftPackage',
 };
+
+function unsupportedTargetTooltip(target: 'unknown' | 'location' | 'team' | 'job' | 'global', hasEntities: boolean): string {
+  if (target === 'location') return 'Location-targeted potions are not yet supported from the inventory.';
+  if (target === 'unknown') return 'This consumable is missing target info — please report it.';
+  if (!hasEntities) return 'You need at least one entity to use this potion.';
+  return 'This potion can\'t be used here.';
+}
 
 function InventoryPageSkeleton() {
   return (
@@ -53,13 +61,18 @@ function InventoryPageSkeleton() {
 export default function InventoryPage() {
   const navigate = useNavigate();
   const items = useSyncItems();
+  const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-  const [using, setUsing] = useState(false);
   const [forgeLocationId, setForgeLocationId] = useState<string | null>(null);
   const { pushModal } = useModal();
+
+  // Use-Potion flow state. Either the entity picker is open (for entity-targeted
+  // potions) or the confirm/result modal is open. Only one at a time.
+  const [entityPickerPotion, setEntityPickerPotion] = useState<any | null>(null);
+  const [usePotionState, setUsePotionState] = useState<{ potion: any; targetEntityId?: string; targetEntityName?: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,18 +137,42 @@ export default function InventoryPage() {
     }
   }, [opening, execute]);
 
-  const handleUse = useCallback(async (item: any) => {
-    if (using) return;
-    setUsing(true);
-    try {
-      await execute('UseConsumable', { itemInstanceId: item.instanceId });
-      setSelectedId(null);
-    } catch (err) {
-      console.error('[InventoryPage] UseConsumable failed:', err);
-    } finally {
-      setUsing(false);
+  /**
+   * Routes the Use button by consumable target type.
+   * - player: open confirm/result modal directly.
+   * - entity: open entity picker first; on confirm hand off to the same modal.
+   * - location/unknown: button is disabled at render time, so this is a no-op.
+   */
+  const handleUse = useCallback((item: any) => {
+    audioEngine.play('ui.button_click');
+    const target = getConsumableTargetType(item);
+    if (target === 'player') {
+      setUsePotionState({ potion: item });
+      return;
     }
-  }, [using, execute]);
+    if (target === 'entity') {
+      setEntityPickerPotion(item);
+      return;
+    }
+    // location / unknown — should be disabled, but be explicit just in case.
+    console.warn('[InventoryPage] Use button pressed for unsupported target type:', target);
+  }, []);
+
+  const handlePickerSelectEntity = useCallback((entityId: string, entity: any) => {
+    if (!entityPickerPotion) return;
+    const potion = entityPickerPotion;
+    setEntityPickerPotion(null);
+    setUsePotionState({ potion, targetEntityId: entityId, targetEntityName: entity?.name });
+  }, [entityPickerPotion]);
+
+  const closeUsePotion = useCallback(() => {
+    setUsePotionState(null);
+    setSelectedId(null);
+  }, []);
+
+  const closeEntityPicker = useCallback(() => {
+    setEntityPickerPotion(null);
+  }, []);
 
   const renderActions = useCallback((item: any) => {
     if (OPENABLE_TYPES.has(item.type)) {
@@ -150,13 +187,20 @@ export default function InventoryPage() {
       );
     }
     if (USABLE_TYPES.has(item.type)) {
+      const target = getConsumableTargetType(item);
+      const supported =
+        target === 'player' || (target === 'entity' && entities.length > 0);
+      const tooltip = supported
+        ? undefined
+        : unsupportedTargetTooltip(target as any, entities.length > 0);
       return (
         <button
           className="inv-manage-btn inv-use-btn"
-          disabled={using}
+          disabled={!supported}
           onClick={() => handleUse(item)}
+          title={tooltip}
         >
-          {using ? 'Using…' : 'Use'}
+          Use
         </button>
       );
     }
@@ -178,7 +222,7 @@ export default function InventoryPage() {
       );
     }
     return <button className="inv-manage-btn">Manage</button>;
-  }, [opening, using, forgeLocationId, handleOpen, handleUse, navigate]);
+  }, [opening, entities.length, forgeLocationId, handleOpen, handleUse, navigate]);
 
   if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
@@ -197,6 +241,21 @@ export default function InventoryPage() {
           detailPanelActions={renderActions}
         />
       </div>
+
+      <EntityPickerModal
+        isOpen={!!entityPickerPotion}
+        potion={entityPickerPotion}
+        onClose={closeEntityPicker}
+        onSelectEntity={handlePickerSelectEntity}
+      />
+
+      <UsePotionFlowModal
+        isOpen={!!usePotionState}
+        potion={usePotionState?.potion ?? null}
+        targetEntityId={usePotionState?.targetEntityId ?? null}
+        targetEntityName={usePotionState?.targetEntityName ?? null}
+        onClose={closeUsePotion}
+      />
     </div>
   );
 }

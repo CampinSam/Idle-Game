@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost';
+export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'potion-picker';
 
 export type EntityFilter = 'ALL' | 'DERPS' | 'VAMPS' | 'PREDS';
 

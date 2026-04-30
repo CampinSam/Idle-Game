@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSyncItems } from '../../../hooks/useSyncSelectors';
-import { useCommand } from '../../../hooks/useCommand';
-import { useModal } from '../../../context/ModalContext';
 import ItemList from './ItemList';
 import { isEntityTargetedConsumable } from '../utils/isEntityTargetedConsumable';
 import './PotionPickerModal.css';
@@ -11,24 +9,24 @@ export interface PotionPickerModalProps {
   entityId: string;
   entityName?: string;
   onClose: () => void;
+  /**
+   * Called when the player picks a potion and confirms. The parent should
+   * close this modal and open the Use-Potion confirmation/result flow with
+   * the chosen potion + entityId. This decouples picking from applying so
+   * all entry points share the same confirm/result UX.
+   */
+  onSelectPotion: (potion: any) => void;
 }
 
 export default function PotionPickerModal({
   isOpen,
-  entityId,
+  entityId: _entityId,
   entityName,
   onClose,
+  onSelectPotion,
 }: PotionPickerModalProps) {
   const items = useSyncItems();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [applying, setApplying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { pushModal } = useModal();
-  const { execute } = useCommand({
-    onUiIntent: (intent) => {
-      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
-    },
-  });
 
   const potions = useMemo(() => {
     return items.map((i: any) => ({
@@ -59,16 +57,8 @@ export default function PotionPickerModal({
   }, [entityTargetedPotions, selectedId]);
 
   useEffect(() => {
-    if (!isOpen) {
-      setSelectedId(null);
-      setApplying(false);
-      setError(null);
-    }
+    if (!isOpen) setSelectedId(null);
   }, [isOpen]);
-
-  useEffect(() => {
-    setError(null);
-  }, [selectedId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -83,27 +73,10 @@ export default function PotionPickerModal({
     setSelectedId((prev) => (prev === item.instanceId ? null : item.instanceId));
   }, []);
 
-  const handleApply = useCallback(async () => {
-    if (!selected || applying) return;
-    setApplying(true);
-    setError(null);
-    try {
-      await execute('UseConsumable', {
-        itemInstanceId: selected.instanceId,
-        targetId: entityId,
-      });
-      onClose();
-    } catch (err: any) {
-      console.error('[PotionPickerModal] UseConsumable failed:', err);
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Could not apply potion. Please try again.';
-      setError(typeof message === 'string' ? message : 'Could not apply potion.');
-    } finally {
-      setApplying(false);
-    }
-  }, [selected, applying, execute, entityId, onClose]);
+  const handleApply = useCallback(() => {
+    if (!selected) return;
+    onSelectPotion(selected);
+  }, [selected, onSelectPotion]);
 
   if (!isOpen) return null;
 
@@ -118,7 +91,7 @@ export default function PotionPickerModal({
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Apply Potion"
+        aria-label="Pick Potion"
       >
         <button
           className="potion-picker-modal__close"
@@ -129,9 +102,9 @@ export default function PotionPickerModal({
         </button>
 
         <div className="potion-picker-modal__header">
-          <h2 className="potion-picker-modal__title">Apply Potion</h2>
+          <h2 className="potion-picker-modal__title">Pick Potion</h2>
           {entityName && (
-            <p className="potion-picker-modal__subtitle">to {entityName}</p>
+            <p className="potion-picker-modal__subtitle">to apply on {entityName}</p>
           )}
         </div>
 
@@ -155,18 +128,11 @@ export default function PotionPickerModal({
           </div>
         )}
 
-        {error && (
-          <div className="potion-picker-modal__error" role="alert">
-            {error}
-          </div>
-        )}
-
         <div className="potion-picker-modal__footer">
           <button
             type="button"
             className="potion-picker-modal__btn potion-picker-modal__btn--cancel"
             onClick={onClose}
-            disabled={applying}
           >
             Cancel
           </button>
@@ -174,9 +140,9 @@ export default function PotionPickerModal({
             type="button"
             className="potion-picker-modal__btn potion-picker-modal__btn--apply"
             onClick={handleApply}
-            disabled={!selected || applying}
+            disabled={!selected}
           >
-            {applying ? 'Applying…' : 'Apply'}
+            Continue
           </button>
         </div>
       </div>

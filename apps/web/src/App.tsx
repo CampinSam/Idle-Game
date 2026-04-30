@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from './store';
 import { restoreSession } from './store/authSlice';
-import { fetchCurrencyDefs, fetchItemDefs } from './store/gameSlice';
+import { fetchCurrencyDefs, fetchItemDefs, fetchEffectDefs } from './store/gameSlice';
 import { useSyncEngine } from './hooks/useSyncEngine';
 import { NotificationProvider } from './context/NotificationContext';
 import { ModalProvider } from './context/ModalContext';
@@ -58,6 +58,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (token && !initializing) {
       dispatch(fetchCurrencyDefs());
       dispatch(fetchItemDefs());
+      dispatch(fetchEffectDefs());
     }
   }, [token, initializing, dispatch]);
 

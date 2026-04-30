@@ -10,6 +10,7 @@ interface GameState {
   craftingRecipes: any[];
   currencyDefs: any[];
   itemDefs: any[];
+  effectDefs: any[];
   loading: boolean;
 }
 
@@ -19,6 +20,7 @@ const initialState: GameState = {
   craftingRecipes: [],
   currencyDefs: [],
   itemDefs: [],
+  effectDefs: [],
   loading: false,
 };
 
@@ -27,6 +29,7 @@ export const fetchMissionCategoryDefs = createAsyncThunk('game/fetchMissionCateg
 export const fetchCraftingRecipes = createAsyncThunk('game/fetchCraftingRecipes', () => api.getCraftingRecipes());
 export const fetchCurrencyDefs = createAsyncThunk('game/fetchCurrencyDefs', () => api.getCurrencies());
 export const fetchItemDefs = createAsyncThunk('game/fetchItemDefs', () => api.getItemDefs());
+export const fetchEffectDefs = createAsyncThunk('game/fetchEffectDefs', () => api.getEffectDefs());
 
 const gameSlice = createSlice({
   name: 'game',
@@ -38,7 +41,8 @@ const gameSlice = createSlice({
       .addCase(fetchMissionCategoryDefs.fulfilled, (state, action) => { state.missionCategoryDefs = action.payload; })
       .addCase(fetchCraftingRecipes.fulfilled, (state, action) => { state.craftingRecipes = action.payload; })
       .addCase(fetchCurrencyDefs.fulfilled, (state, action) => { state.currencyDefs = action.payload; })
-      .addCase(fetchItemDefs.fulfilled, (state, action) => { state.itemDefs = action.payload; });
+      .addCase(fetchItemDefs.fulfilled, (state, action) => { state.itemDefs = action.payload; })
+      .addCase(fetchEffectDefs.fulfilled, (state, action) => { state.effectDefs = action.payload; });
   },
 });
 

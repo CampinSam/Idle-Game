@@ -1,12 +1,10 @@
+import { getConsumableTargetType } from './getConsumableTargetType';
+
+/**
+ * Backward-compat helper: returns true when this consumable needs an entity
+ * target. Implemented in terms of `getConsumableTargetType` so the two stay
+ * in sync.
+ */
 export function isEntityTargetedConsumable(item: any): boolean {
-  const cd = item?.consumableData ?? item?.definition?.consumableData;
-  if (!cd) return false;
-
-  const effects = Array.isArray(cd.effects) ? cd.effects : [];
-  if (effects.length === 0) return false;
-
-  return effects.some((e: any) => {
-    const tt = (e?.targetType ?? '').toString().toLowerCase();
-    return tt === 'entity';
-  });
+  return getConsumableTargetType(item) === 'entity';
 }

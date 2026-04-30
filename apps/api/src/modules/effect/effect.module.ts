@@ -1,10 +1,12 @@
 import { Module, Global, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { EffectService } from './effect.service';
+import { EffectController } from './effect.controller';
 import { TickModule } from '../tick/tick.module';
 
 @Global()
 @Module({
   imports: [TickModule],
+  controllers: [EffectController],
   providers: [EffectService],
   exports: [EffectService],
 })
