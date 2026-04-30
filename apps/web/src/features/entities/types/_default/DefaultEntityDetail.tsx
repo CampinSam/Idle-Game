@@ -16,7 +16,7 @@ function getStatBarWidth(value: number): number {
 }
 
 export default function DefaultEntityDetail(props: EntityDetailProps) {
-  const { entity, variant = 'full', useCase = 'mission', onRemove } = props;
+  const { entity, variant = 'full', useCase = 'mission', onRemove, onApplyPotion } = props;
 
   // Lightweight variant delegates to the small EntityCard.
   if (variant === 'lightweight') {
@@ -29,10 +29,10 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
     );
   }
 
-  return <FullEntityDetail entity={entity} />;
+  return <FullEntityDetail entity={entity} onApplyPotion={onApplyPotion} />;
 }
 
-function FullEntityDetail({ entity }: { entity: any }) {
+function FullEntityDetail({ entity, onApplyPotion }: { entity: any; onApplyPotion?: () => void }) {
   const [activeTab, setActiveTab] = useState(0);
 
   const archetype = getEntityArchetype(entity);
@@ -114,7 +114,13 @@ function FullEntityDetail({ entity }: { entity: any }) {
           </div>
 
           <div className="entity-detail__action-btns">
-            <button className="entity-detail__boost-btn">BOOST</button>
+            <button
+              className="entity-detail__boost-btn"
+              onClick={onApplyPotion}
+              disabled={!onApplyPotion}
+            >
+              BOOST
+            </button>
             <button className="entity-detail__ascend-btn">ASCEND</button>
           </div>
 

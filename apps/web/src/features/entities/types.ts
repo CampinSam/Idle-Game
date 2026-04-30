@@ -40,4 +40,6 @@ export interface EntityDetailProps {
   onBack?: () => void;
   /** Slots for action chips in lightweight mode (e.g. mission Remove button). */
   onRemove?: (entity: any) => void;
+  /** Opens the potion picker for this entity (e.g. wired to BOOST button on the full detail view). */
+  onApplyPotion?: () => void;
 }
