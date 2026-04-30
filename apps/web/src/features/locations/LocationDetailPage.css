@@ -206,54 +206,6 @@
   margin-bottom: 10px;
 }
 
-.od-fortification .od-fort-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.od-fort-ring {
-  position: relative;
-  width: 88px;
-  height: 88px;
-}
-
-.od-ring-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.od-fort-value {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--text-primary);
-}
-
-.od-fort-details {
-  width: 100%;
-}
-
-.od-fort-boost {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-  justify-content: center;
-}
-
-.od-threat-info {
-  font-size: 11px;
-  color: #F59E0B;
-  text-align: center;
-}
-
 .od-production {
   display: flex;
   flex-direction: column;

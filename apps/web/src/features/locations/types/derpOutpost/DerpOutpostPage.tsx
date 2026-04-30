@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../../../store/gameSlice';
-import { useSyncEntities } from '../../../../hooks/useSyncSelectors';
+import { useSyncEntities, useAllActiveJobs } from '../../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../../hooks/useCommand';
 import { audioEngine } from '../../../../services/AudioEngine';
 import { resolveIcon, resolveName } from '../../../../utils/iconResolver';
@@ -43,6 +43,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
+  const allActiveJobs = useAllActiveJobs();
 
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
@@ -111,6 +112,21 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
 
   const constructingBuildings = buildingsData.filter(
     (b: any) => b.status === 'building' && b.startTick != null && b.durationTicks != null,
+  );
+
+  // Surface ALL location-bound active jobs in the Timers card (e.g. crafting,
+  // missions tied to this outpost) so the panel mirrors the server's view of
+  // what's running here, not just construction + production summaries.
+  const locationJobs = useMemo(
+    () =>
+      allActiveJobs.filter(
+        (j: any) =>
+          (j.data?.locationId || j.locationId) === id &&
+          j.type !== 'BuildingJob' &&
+          j.startTick != null &&
+          j.durationTicks != null,
+      ),
+    [allActiveJobs, id],
   );
 
   const storedResources = Object.values((outpost.storage?.stored as Record<string, number>) || {});
@@ -329,6 +345,22 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
             ))}
           </div>
         )}
+        {locationJobs.length > 0 && (
+          <div className="od-timers-construction">
+            <div className="od-timers-section-label">
+              {locationJobs.some((j: any) => j.type === 'CraftingJob') ? 'Crafting' : 'Active Jobs'}
+            </div>
+            {locationJobs.map((j: any) => (
+              <BuildingProgressBar
+                key={j.id}
+                name={(j.name || j.defId || j.recipeId || j.type || 'Job').toString().replace(/_/g, ' ')}
+                startTick={j.startTick}
+                durationTicks={j.durationTicks}
+                tickRate={tickRate}
+              />
+            ))}
+          </div>
+        )}
         <div className="od-prod-actions" style={{ position: 'relative' }}>
           <LootPop
             key={lootPopKey.current}
@@ -465,20 +497,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         )}
         {!loadingAvailable && availableData && availableData.available?.length > 0 && (
           <div className="facilities-available-list">
-            {availableData.available
-              .filter((def: any) => def.id !== WAREHOUSE_DEF_ID || !hasWarehouse)
-              .map((def: any) => (
-                <div key={def.id} className="available-building-card">
-                  <div className="available-card-top">
-                    <span className="available-card-name">{def.name}</span>
-                    <button className="build-pill" onClick={() => openBuildModal(def)}>BUILD</button>
-                  </div>
-                  <div className="available-card-divider" />
-                  <div className="available-card-bottom">
-                    <span className="available-card-desc">{def.description}</span>
-                  </div>
-                </div>
-              ))}
             {availableData.slotsAvailable === false && (
               <div className="facility-slot-warning">
                 {availableData.nextSlotRequirement
@@ -486,6 +504,30 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
                   : 'No additional building slots available.'}
               </div>
             )}
+            {availableData.available
+              .filter((def: any) => def.id !== WAREHOUSE_DEF_ID || !hasWarehouse)
+              .map((def: any) => {
+                const slotBlocked = availableData.slotsAvailable === false;
+                return (
+                  <div key={def.id} className={`available-building-card ${slotBlocked ? 'is-blocked' : ''}`}>
+                    <div className="available-card-top">
+                      <span className="available-card-name">{def.name}</span>
+                      <button
+                        className="build-pill"
+                        onClick={() => openBuildModal(def)}
+                        disabled={slotBlocked}
+                        title={slotBlocked ? 'No building slots available' : undefined}
+                      >
+                        BUILD
+                      </button>
+                    </div>
+                    <div className="available-card-divider" />
+                    <div className="available-card-bottom">
+                      <span className="available-card-desc">{def.description}</span>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
         {!loadingAvailable && (!availableData?.available || availableData.available.length === 0) && (
