@@ -42,7 +42,7 @@
 .forge-hero-content {
   position: relative;
   z-index: 1;
-  padding: 60px 22px 24px;
+  padding: 60px 22px 28px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -76,7 +76,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 .forge-pill {
   display: inline-flex;
@@ -532,7 +532,7 @@
 
 @media (max-width: 640px) {
   .forge-hero { margin: -4px -4px 0; min-height: 180px; }
-  .forge-hero-content { padding: 48px 16px 18px; }
+  .forge-hero-content { padding: 48px 16px 22px; }
   .forge-hero-title { font-size: 28px; }
   .forge-section { padding: 12px; }
   .forge-recipe-grid { grid-template-columns: 1fr 1fr; }
