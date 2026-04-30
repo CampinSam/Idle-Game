@@ -102,6 +102,34 @@
 
 .entity-detail__equip-slot:last-child { border-bottom: none; }
 
+.entity-detail__equip-slot--button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-radius: 6px;
+}
+
+.entity-detail__equip-slot--button:last-child { border-bottom: none; }
+
+.entity-detail__equip-slot--button:hover:not(:disabled) {
+  background: rgba(255,255,255,0.06);
+}
+
+.entity-detail__equip-slot--button:active:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+}
+
+.entity-detail__equip-slot--button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .entity-detail__equip-slot-icon {
   font-size: 18px;
   width: 30px;

@@ -31,13 +31,6 @@ export default function EntityDetailPage() {
         <h1 className="entity-detail-page__name">{entity.name}</h1>
         <div className="entity-detail-page__header-icons">
           <button className="entity-detail-page__icon-btn" style={{ background: '#F59E0B' }}>⚡</button>
-          <button
-            className="entity-detail-page__icon-btn"
-            style={{ background: '#10B981' }}
-            onClick={openPotionPicker}
-            aria-label="Apply potion"
-            title="Apply Potion"
-          >🧪</button>
           <button className="entity-detail-page__icon-btn" style={{ background: '#6B7280' }}>⚙️</button>
         </div>
       </div>

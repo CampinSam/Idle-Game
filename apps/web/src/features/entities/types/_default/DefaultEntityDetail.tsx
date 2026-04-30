@@ -76,12 +76,19 @@ function FullEntityDetail({ entity, onApplyPotion }: { entity: any; onApplyPotio
                 <div className="entity-detail__equip-slot-name">+ EQUIP RELIC</div>
               </div>
             </div>
-            <div className="entity-detail__equip-slot">
+            <button
+              type="button"
+              className="entity-detail__equip-slot entity-detail__equip-slot--button"
+              onClick={onApplyPotion}
+              disabled={!onApplyPotion}
+              aria-label="Apply potion"
+              title="Apply Potion"
+            >
               <span className="entity-detail__equip-slot-icon">🧪</span>
               <div className="entity-detail__equip-slot-info">
                 <div className="entity-detail__equip-slot-name">+ EQUIP POTION</div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
