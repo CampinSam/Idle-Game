@@ -463,9 +463,11 @@
 .hp-forge-hero-bg {
   position: absolute;
   inset: 0;
+  /* Orange at bottom fading up to purple, with a warm forge-glow highlight
+     near the bottom. Sits over the opaque .hp-forge-hero card surface. */
   background:
-    linear-gradient(135deg, rgba(249,115,22,0.55) 0%, rgba(34,24,88,0.85) 70%),
-    radial-gradient(circle at 80% 20%, rgba(254,215,170,0.35), transparent 55%);
+    linear-gradient(to top, rgba(249,115,22,0.55) 0%, rgba(34,24,88,0.85) 70%),
+    radial-gradient(circle at 50% 100%, rgba(254,215,170,0.35), transparent 55%);
   z-index: 0;
 }
 .hp-forge-hero-content {
