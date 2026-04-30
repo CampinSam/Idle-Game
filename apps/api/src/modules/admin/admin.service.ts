@@ -135,7 +135,32 @@ export class AdminService {
         await p.locationWorkerAssignment.deleteMany({ where: { locationId: loc.id } });
       }
       await tx.locationInstance.deleteMany({ where: { ownerUserId: uid } });
-      await tx.entity.deleteMany({ where: { ownerUserId: uid } });
+
+      // Split entities: NFT-backed entities are universe-scoped and must NEVER
+      // be deleted on reset (the on-chain wallet still owns them, and the rows
+      // are shared with other game systems). Only unclaim them so a future
+      // wallet sync can re-attach them. Non-NFT entities (starter mints, etc.)
+      // are user-only and safe to delete (their equipment is cascade-deleted
+      // by the FK on EntityEquipment.entityId).
+      const nftEntityIds = await p.entity.findMany({
+        where: { ownerUserId: uid, nftCollectionDefId: { not: null } },
+        select: { id: true },
+      });
+      if (nftEntityIds.length > 0) {
+        // Equipment refers to ItemInstance rows that were just wiped (line ~115)
+        // and ItemInstance has no FK constraint, so we must clear equipment
+        // rows ourselves to avoid orphaned references on the preserved NFTs.
+        await p.entityEquipment.deleteMany({
+          where: { entityId: { in: nftEntityIds.map((e: { id: string }) => e.id) } },
+        });
+      }
+      await p.entity.updateMany({
+        where: { ownerUserId: uid, nftCollectionDefId: { not: null } },
+        data: { ownerUserId: null },
+      });
+      await p.entity.deleteMany({
+        where: { ownerUserId: uid, nftCollectionDefId: null },
+      });
 
       const linkedWallets = await p.linkedWallet.findMany({
         where: { userId: uid },
