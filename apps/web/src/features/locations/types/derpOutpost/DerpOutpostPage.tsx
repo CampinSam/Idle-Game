@@ -501,44 +501,45 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         {loadingAvailable && (
           <div className="od-empty-tasks">Loading available buildings...</div>
         )}
-        {!loadingAvailable && availableData && availableData.available?.length > 0 && (
-          <div className="facilities-available-list">
-            {availableData.slotsAvailable === false && (
-              <div className="facility-slot-warning">
-                {availableData.nextSlotRequirement
-                  ? `Requires ${availableData.nextSlotRequirement} for more building slots.`
-                  : 'No additional building slots available.'}
-              </div>
-            )}
-            {availableData.available
-              .filter((def: any) => def.id !== WAREHOUSE_DEF_ID || !hasWarehouse)
-              .map((def: any) => {
-                const slotBlocked = availableData.slotsAvailable === false;
-                return (
-                  <div key={def.id} className={`available-building-card ${slotBlocked ? 'is-blocked' : ''}`}>
-                    <div className="available-card-top">
-                      <span className="available-card-name">{def.name}</span>
-                      <button
-                        className="build-pill"
-                        onClick={() => openBuildModal(def)}
-                        disabled={slotBlocked}
-                        title={slotBlocked ? 'No building slots available' : undefined}
-                      >
-                        BUILD
-                      </button>
-                    </div>
-                    <div className="available-card-divider" />
-                    <div className="available-card-bottom">
-                      <span className="available-card-desc">{def.description}</span>
-                    </div>
+        {!loadingAvailable && (() => {
+          const filteredAvailable = (availableData?.available || []).filter(
+            (def: any) => def.id !== WAREHOUSE_DEF_ID || !hasWarehouse,
+          );
+          if (filteredAvailable.length === 0) {
+            return <div className="od-empty-tasks">No buildings available to build.</div>;
+          }
+          const slotBlocked = availableData?.slotsAvailable === false;
+          return (
+            <div className="facilities-available-list">
+              {slotBlocked && (
+                <div className="facility-slot-warning">
+                  {availableData?.nextSlotRequirement
+                    ? `Requires ${availableData.nextSlotRequirement} for more building slots.`
+                    : 'No additional building slots available.'}
+                </div>
+              )}
+              {filteredAvailable.map((def: any) => (
+                <div key={def.id} className={`available-building-card ${slotBlocked ? 'is-blocked' : ''}`}>
+                  <div className="available-card-top">
+                    <span className="available-card-name">{def.name}</span>
+                    <button
+                      className="build-pill"
+                      onClick={() => openBuildModal(def)}
+                      disabled={slotBlocked}
+                      title={slotBlocked ? 'No building slots available' : undefined}
+                    >
+                      BUILD
+                    </button>
                   </div>
-                );
-              })}
-          </div>
-        )}
-        {!loadingAvailable && (!availableData?.available || availableData.available.length === 0) && (
-          <div className="od-empty-tasks">No buildings available to build.</div>
-        )}
+                  <div className="available-card-divider" />
+                  <div className="available-card-bottom">
+                    <span className="available-card-desc">{def.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
