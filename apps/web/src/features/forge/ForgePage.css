@@ -18,6 +18,7 @@
   overflow: hidden;
   min-height: 220px;
   isolation: isolate;
+  padding-bottom: 24px;
 }
 .forge-hero-overlay {
   position: absolute;
