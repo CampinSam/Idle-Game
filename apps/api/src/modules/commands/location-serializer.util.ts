@@ -58,6 +58,7 @@ export function serializeLocation(
     definitionId: location.definitionId,
     regionId: location.regionId,
     name: location.definitionId || location.regionId || 'Location',
+    kind: location.definition?.kind || '',
     region: location.definition?.kind || '',
     isUnique: location.isUnique,
     level: location.level,

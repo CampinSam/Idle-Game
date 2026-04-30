@@ -91,13 +91,11 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const buildingsData: any[] = outpost.buildings || [];
   const workersData: any[] = outpost.workers || [];
 
-  const warehouseBuildings = buildingsData.filter(
-    (b: any) => (b.buildingDefId || b.defId) === WAREHOUSE_DEF_ID,
-  );
+  const isWarehouse = (b: any) =>
+    (b.buildingDefId || b.defId || b.definitionId) === WAREHOUSE_DEF_ID;
+  const warehouseBuildings = buildingsData.filter(isWarehouse);
   const hasWarehouse = warehouseBuildings.length > 0;
-  const nonWarehouseBuildings = buildingsData.filter(
-    (b: any) => (b.buildingDefId || b.defId) !== WAREHOUSE_DEF_ID,
-  );
+  const nonWarehouseBuildings = buildingsData.filter((b: any) => !isWarehouse(b));
 
   const sortedBuildings = useMemo(
     () =>
@@ -114,9 +112,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     (b: any) => b.status === 'building' && b.startTick != null && b.durationTicks != null,
   );
 
-  // Surface ALL location-bound active jobs in the Timers card (e.g. crafting,
-  // missions tied to this outpost) so the panel mirrors the server's view of
-  // what's running here, not just construction + production summaries.
   const locationJobs = useMemo(
     () =>
       allActiveJobs.filter(

@@ -52,14 +52,11 @@
   text-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
 }
 
-/* Per-card accent palette via CSS custom props */
 .od-card-header {
   --accent: rgba(139, 92, 246, 0.6);
   --accent-text: #c4b5fd;
 }
 
-/* Hero card needs flush-edge padding (image bleeds to border) — bump
-   specificity to override `.od-card-stack .od-card { padding: 14px ... }`. */
 .od-card-stack .od-card.od-card-header {
   padding: 0;
 }

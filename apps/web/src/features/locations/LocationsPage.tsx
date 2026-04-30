@@ -73,7 +73,7 @@ export default function LocationsPage() {
       >
         <div className="outpost-cards-row">
           {pagedLocations.map((op: any) => {
-            const { Card } = getLocationViews(op.region, op.isUnique, op.definitionId);
+            const { Card } = getLocationViews(op.kind || op.region, op.isUnique, op.definitionId);
             return (
               <Card
                 key={op.id}

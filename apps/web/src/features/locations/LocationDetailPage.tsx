@@ -18,7 +18,7 @@ export default function LocationDetailPage() {
   }
 
   const { Page } = getLocationViews(
-    outpost.region,
+    outpost.kind || outpost.region,
     !!outpost.isUnique,
     outpost.definitionId,
   );
