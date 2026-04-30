@@ -191,8 +191,8 @@ export class NftCollectionService {
   /**
    * Run syncUserCollections only if the user hasn't been synced within the
    * given throttle window. Returns null when skipped, the SyncResult otherwise.
-   * Used by login flows and the daily background sweep so we don't hammer
-   * chain RPC providers on every request.
+   * Used by the daily background sweep so we don't hammer chain RPC providers
+   * if a user happens to have logged in recently.
    */
   async syncIfStale(
     userId: string,
@@ -206,6 +206,23 @@ export class NftCollectionService {
     if (last && Date.now() - new Date(last).getTime() < minIntervalMs) {
       return null;
     }
+    return this.syncUserCollections(userId);
+  }
+
+  /**
+   * Lazy ownership reconciliation for login flows. Always runs (no throttle).
+   *
+   * "Lazy" here means we only ever touch entities that ALREADY EXIST in the
+   * database — claiming/transferring them to the rightful on-chain owner and
+   * unclaiming entities the user no longer holds. We never create new entity
+   * rows from chain data; that's the job of a future background worker that
+   * will keep the entities table in sync with on-chain mints.
+   *
+   * Cost per login: one cheap Blockfrost (or per-chain) query per linked
+   * (wallet, active-collection) pair, plus a handful of DB upserts. No call
+   * to the expensive getAllPolicyAssets path.
+   */
+  async lazySyncOnLogin(userId: string): Promise<SyncResult> {
     return this.syncUserCollections(userId);
   }
 
@@ -255,6 +272,10 @@ export class NftCollectionService {
           });
 
           if (!existingEntity) {
+            // On-chain asset exists but no entity row in the DB yet. Lazy
+            // sync intentionally does NOT mint a row here — a future on-chain
+            // reconciler worker will keep the entities table in sync with
+            // the chain. Just count it for visibility.
             notImported++;
             continue;
           }
@@ -411,6 +432,12 @@ export class NftCollectionService {
       } catch (err) {
         this.logger.error(`Failed to push entity deltas after NFT sync: ${err}`);
       }
+    }
+
+    if (notImported > 0) {
+      this.logger.log(
+        `NFT sync for user ${userId}: ${notImported} on-chain asset(s) held but not yet in entities table — awaiting on-chain reconciler worker.`,
+      );
     }
 
     try {

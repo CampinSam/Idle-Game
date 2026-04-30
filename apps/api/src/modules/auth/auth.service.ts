@@ -128,9 +128,9 @@ export class AuthService {
     }
 
     try {
-      await this.nftCollectionService.syncIfStale(user.id);
+      await this.nftCollectionService.lazySyncOnLogin(user.id);
     } catch (err) {
-      this.logger.warn(`Throttled NFT sync failed on login for ${user.id}: ${err}`);
+      this.logger.warn(`Lazy NFT sync failed on login for ${user.id}: ${err}`);
     }
 
     const token = this.jwt.sign({ sub: user.id, username: user.username });
@@ -308,8 +308,8 @@ export class AuthService {
         this.logger.warn(`Failed to backfill starter Workshop on SIWE login for ${user.id}: ${err}`);
       }
       try { await this.checkInService.autoCheck(user.id); } catch {}
-      try { await this.nftCollectionService.syncIfStale(user.id); } catch (err) {
-        this.logger.warn(`Throttled NFT sync failed on SIWE login for ${user.id}: ${err}`);
+      try { await this.nftCollectionService.lazySyncOnLogin(user.id); } catch (err) {
+        this.logger.warn(`Lazy NFT sync failed on SIWE login for ${user.id}: ${err}`);
       }
     } else {
       // No account exists for this wallet yet. Don't auto-create one — issue a
