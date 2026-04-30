@@ -34,7 +34,8 @@ export function getEntityViews(
 }
 
 export function getEntityArchetype(entity: any): string {
-  return (entity?.traits?.body || entity?.traits?.head || '') as string;
+  const raw = (entity?.traits?.body || entity?.traits?.head || '') as string;
+  return raw.toLowerCase();
 }
 
 export function getEntityKind(entity: any): string {
