@@ -298,7 +298,6 @@ export class NftImageImportService {
       }
 
       this.state.alreadyHosted = alreadyHostedEntities;
-      this.state.total = ipfsCidToEntityIds.size;
 
       const existingObjects = await this.listObjectNames('nft/cardano/');
       const existingOriginals = new Set<string>();
@@ -311,8 +310,27 @@ export class NftImageImportService {
         }
       }
 
+      // Recover orphaned hosted entries: an entity's `display.imageUrl` may
+      // already point at `/media/nft/cardano/<cid>`, but the original file
+      // can be missing from object storage (e.g. partial migration, storage
+      // wipe, or a previous run that updated the URL before the upload
+      // settled). Without this, Phase 2 would silently skip those CIDs and
+      // they would lazy-hydrate from IPFS on every page render. Merge them
+      // into Phase 1 with empty entityIds so the URL update is a no-op
+      // (URL is already correct) but the IPFS download + thumb generation
+      // happen.
+      let recoveredOrphans = 0;
+      for (const cid of hostedCids) {
+        if (!existingOriginals.has(cid) && !ipfsCidToEntityIds.has(cid)) {
+          ipfsCidToEntityIds.set(cid, []);
+          recoveredOrphans++;
+        }
+      }
+      this.state.total = ipfsCidToEntityIds.size;
+
       this.logger.log(
-        `Starting NFT image job: ${ipfsCidToEntityIds.size} CIDs to download, ` +
+        `Starting NFT image job: ${ipfsCidToEntityIds.size} CIDs to download ` +
+          `(${recoveredOrphans} orphaned hosted entries to recover), ` +
           `${alreadyHostedEntities} entities already hosted, ` +
           `${existingOriginals.size} originals + ${existingThumbs.size} thumbs in storage`,
       );

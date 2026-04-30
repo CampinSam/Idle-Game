@@ -42,13 +42,14 @@ export class ObjectStorageController {
             }
             file = await this.storageService.searchPublicObject(filePath);
           } catch (err: any) {
-            if (err instanceof NotFoundException) {
-              // Unknown CID — fall through to the generic 404 below.
-            } else {
-              this.logger.warn(
-                `Lazy NFT hydrate failed for ${filePath}: ${err?.message || err}`,
-              );
-            }
+            // Log every failure path so missing-image issues are visible in
+            // ops logs. NotFoundException covers two real problems we want
+            // to see: unknown CIDs (could indicate stale allow-list cache)
+            // and CIDs in the negative-cache cooldown after IPFS failures.
+            const reason = err instanceof NotFoundException ? 'not-found' : 'error';
+            this.logger.warn(
+              `Lazy NFT hydrate ${reason} for ${filePath}: ${err?.message || err}`,
+            );
           }
         }
       }

@@ -49,7 +49,11 @@ function FullEntityDetail({ entity, onApplyPotion }: { entity: any; onApplyPotio
     <div className="entity-detail">
       <div className="entity-detail__hero" style={{ background: archetypeDisplay.gradient }}>
         <GameImage
-          src={getEntityImagePath(entity.id, archetype, entity.imageUrl)}
+          // Hero portrait renders at 160x160 (see DefaultEntityDetail.css), so
+          // the same 256px `thumb` variant served on list cards is more than
+          // enough resolution. Avoids downloading the multi-MB original NFT
+          // image just to display it scaled down.
+          src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
           category="entities"
           alt={entity.name}
           fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
