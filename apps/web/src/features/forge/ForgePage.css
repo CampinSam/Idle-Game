@@ -621,12 +621,14 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   z-index: 51;
   margin: 0;
   border-radius: 18px 18px 0 0;
-  max-height: 85vh;
+  max-height: calc(100dvh - 60px - 64px - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   animation: forgeSheetSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   box-shadow: 0 -16px 40px rgba(0,0,0,0.55);
 }

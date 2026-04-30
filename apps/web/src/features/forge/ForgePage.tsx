@@ -717,23 +717,6 @@ export default function ForgePage() {
               )}
             </div>
 
-            {(() => {
-              const forecasts: Record<string, EntityForecast> = {};
-              forecast?.entities.forEach((f) => { forecasts[f.entityId] = f as EntityForecast; });
-              return (
-                <EntityList
-                  entities={idleEntities}
-                  mode="picker"
-                  useCase="crafting"
-                  selectedIds={selectedEntity ? [selectedEntity] : []}
-                  onSelect={(entity) => setSelectedEntity(entity.id)}
-                  forecasts={forecasts}
-                  qualityColors={QUALITY_COLOURS}
-                  emptyMessage="No idle Derps. Pull one back from a mission."
-                />
-              );
-            })()}
-
             {forecast && (
               <div className="forge-forecast-box">
                 <div className="forge-forecast-head">
@@ -785,14 +768,33 @@ export default function ForgePage() {
               className="forge-start-btn"
               disabled={!selectedEntity || busy || recipeBlockedReasons.length > 0}
               onClick={handleStart}
-              title={recipeBlockedReasons[0]}
+              title={recipeBlockedReasons[0] ?? (!selectedEntity ? 'Select a Derp to begin' : undefined)}
             >
               {busy
                 ? 'Igniting…'
                 : recipeBlockedReasons.length > 0
                   ? recipeBlockedReasons[0]
-                  : `Begin Forging (${(recipe.cost ?? []).map((c: any) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ') || 'Free'})`}
+                  : !selectedEntity
+                    ? 'Select a Derp to begin'
+                    : `Begin Forging (${(recipe.cost ?? []).map((c: any) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ') || 'Free'})`}
             </button>
+
+            {(() => {
+              const forecasts: Record<string, EntityForecast> = {};
+              forecast?.entities.forEach((f) => { forecasts[f.entityId] = f as EntityForecast; });
+              return (
+                <EntityList
+                  entities={idleEntities}
+                  mode="picker"
+                  useCase="crafting"
+                  selectedIds={selectedEntity ? [selectedEntity] : []}
+                  onSelect={(entity) => setSelectedEntity(entity.id)}
+                  forecasts={forecasts}
+                  qualityColors={QUALITY_COLOURS}
+                  emptyMessage="No idle Derps. Pull one back from a mission."
+                />
+              );
+            })()}
           </div>
         </section>
         </>
