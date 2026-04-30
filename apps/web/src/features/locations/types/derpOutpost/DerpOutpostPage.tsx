@@ -72,7 +72,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     return () => { cancelled = true; };
   }, [id]);
 
-  const regionDisplay = getRegionDisplay(outpost.region);
+  const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
 

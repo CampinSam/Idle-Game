@@ -22,7 +22,7 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
-  const regionDisplay = getRegionDisplay(op.region);
+  const regionDisplay = getRegionDisplay(op.regionId || op.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
   const timerData = locationTimerMap.get(op.id);

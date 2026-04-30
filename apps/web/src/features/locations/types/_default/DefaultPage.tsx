@@ -6,7 +6,7 @@ import '../derpOutpost/DerpOutpostPage.css';
 
 export default function DefaultPage({ outpost }: LocationPageProps) {
   const navigate = useNavigate();
-  const regionDisplay = getRegionDisplay(outpost.region);
+  const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
 

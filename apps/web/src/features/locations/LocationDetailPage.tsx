@@ -1,10 +1,11 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useSyncLocations } from '../../hooks/useSyncSelectors';
 import { getLocationViews } from './registry';
 import './LocationDetailPage.css';
 
 export default function LocationDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const locations = useSyncLocations();
 
   const outpost = locations.find((op: any) => op.id === id);
@@ -26,6 +27,18 @@ export default function LocationDetailPage() {
   return (
     <div className="outpost-detail-page">
       <div className="od-container">
+        <nav className="od-breadcrumb" aria-label="Breadcrumb">
+          <button
+            type="button"
+            className="od-breadcrumb-back"
+            onClick={() => navigate('/locations')}
+            aria-label="Back to locations"
+          >
+            ← Locations
+          </button>
+          <span className="od-breadcrumb-sep">/</span>
+          <span className="od-breadcrumb-current">{outpost.name || 'Location'}</span>
+        </nav>
         <Page outpost={outpost} />
       </div>
     </div>
