@@ -108,9 +108,13 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
                   <span className="storage-bar-name">
                     {resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
                   </span>
-                  <span className={`storage-bar-rate ${isDepleting ? 'rate-negative' : ''}`}>
-                    {res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/hr
-                  </span>
+                  {isFull ? (
+                    <span className="storage-bar-rate rate-full">FULL</span>
+                  ) : (
+                    <span className={`storage-bar-rate ${isDepleting ? 'rate-negative' : ''}`}>
+                      {res.netRatePerHour >= 0 ? '+' : ''}{formatRate(res.netRatePerHour)}/hr
+                    </span>
+                  )}
                 </div>
                 <div className="storage-bar-track">
                   <div

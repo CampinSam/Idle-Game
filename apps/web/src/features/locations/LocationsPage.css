@@ -273,6 +273,15 @@
   color: #EF4444;
 }
 
+.storage-bar-rate.rate-full {
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
 .storage-bar-fill.depleting {
   background: linear-gradient(90deg, #EF4444, #DC2626);
   animation: deplete-pulse 2s ease-in-out infinite;
