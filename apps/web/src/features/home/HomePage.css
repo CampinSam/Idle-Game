@@ -449,6 +449,10 @@
 /* Forge Hero */
 .hp-forge-hero {
   position: relative;
+  /* Solid card base so the translucent overlay below sits on opaque color
+     (no page bleed-through). Matches the dark-purple card surface used by
+     other wrapper cards in the app. */
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
   border-radius: 16px;
   border: 1px solid rgba(249, 115, 22, 0.55);
   overflow: hidden;

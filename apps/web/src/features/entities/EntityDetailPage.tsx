@@ -33,15 +33,17 @@ export default function EntityDetailPage() {
 
   return (
     <div className="entity-detail-page">
-      <div className="entity-detail-page__header">
-        <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
-        <h1 className="entity-detail-page__name">{entity.name}</h1>
-        <div className="entity-detail-page__header-icons">
-          <button className="entity-detail-page__icon-btn" style={{ background: '#F59E0B' }}>⚡</button>
-          <button className="entity-detail-page__icon-btn" style={{ background: '#6B7280' }}>⚙️</button>
+      <div className="entity-detail-page__card">
+        <div className="entity-detail-page__header">
+          <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
+          <h1 className="entity-detail-page__name">{entity.name}</h1>
+          <div className="entity-detail-page__header-icons">
+            <button className="entity-detail-page__icon-btn" style={{ background: '#F59E0B' }}>⚡</button>
+            <button className="entity-detail-page__icon-btn" style={{ background: '#6B7280' }}>⚙️</button>
+          </div>
         </div>
+        <EntityDetail entity={entity} variant="full" onApplyPotion={openPotionPicker} />
       </div>
-      <EntityDetail entity={entity} variant="full" onApplyPotion={openPotionPicker} />
 
       <PotionPickerModal
         isOpen={potionPickerOpen}
