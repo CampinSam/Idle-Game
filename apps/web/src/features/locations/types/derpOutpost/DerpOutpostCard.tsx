@@ -28,10 +28,10 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
   const timerData = locationTimerMap.get(op.id);
   const resourceSummaries = timerData?.resourceSummaries || [];
 
-  const totalRatePerHour = resourceSummaries.reduce(
-    (s, r) => s + r.netRatePerHour,
-    0,
-  );
+  const totalRatePerHour = resourceSummaries.reduce((s, r) => {
+    const isFull = r.capacity > 0 && r.currentAmount / r.capacity >= 0.995;
+    return isFull ? s : s + r.netRatePerHour;
+  }, 0);
 
   return (
     <div

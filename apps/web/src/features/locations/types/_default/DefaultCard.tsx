@@ -6,6 +6,7 @@ import {
   formatRate,
   formatAmount,
 } from '../../../../utils/locationProduction';
+import { getRegionDisplay } from '@derp/shared';
 import type { LocationCardProps } from '../../registry';
 
 export default function DefaultCard({ outpost, onClick }: LocationCardProps) {
@@ -14,6 +15,8 @@ export default function DefaultCard({ outpost, onClick }: LocationCardProps) {
   const locationTimerMap = useLocationTimers();
   const timerData = locationTimerMap.get(outpost.id);
   const resourceSummaries = timerData?.resourceSummaries || [];
+  const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
+  const regionLabel = (regionDisplay.displayName || 'Location').toUpperCase();
 
   return (
     <div
@@ -22,7 +25,7 @@ export default function DefaultCard({ outpost, onClick }: LocationCardProps) {
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       <div className="outpost-card-top">
-        <span className="outpost-region-name">{(outpost.region || 'LOCATION').toUpperCase()}</span>
+        <span className="outpost-region-name">{regionLabel}</span>
         <span className="outpost-lv-badge">⭐ Lv. {outpost.level}</span>
       </div>
       <div className="outpost-card-stats">
