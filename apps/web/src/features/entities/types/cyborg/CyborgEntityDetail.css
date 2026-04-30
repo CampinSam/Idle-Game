@@ -1,0 +1,62 @@
+/* ── Cyborg detail wrapper ──
+ * Wraps DefaultEntityDetail without modifying it. Adds a top status banner
+ * and a subtle cyan scanline overlay on the hero, scoped via the
+ * `.entity-detail--cyborg` parent class so the default layout is preserved.
+ */
+
+.entity-detail--cyborg {
+  position: relative;
+}
+
+/* Status banner above the hero */
+.entity-detail--cyborg__banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.04));
+  border-bottom: 1px solid rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.entity-detail--cyborg__banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.85);
+  animation: cyborg-detail-blink 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-detail--cyborg__banner-dot { animation: none; }
+}
+
+@keyframes cyborg-detail-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* Subtle scanline overlay anchored to the hero */
+.entity-detail--cyborg .entity-detail__hero {
+  position: relative;
+}
+
+.entity-detail--cyborg .entity-detail__hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(56, 189, 248, 0.07) 0px,
+    rgba(56, 189, 248, 0.07) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
