@@ -29,7 +29,7 @@
   z-index: 1;
 }
 
-.entity-card--derp-bird::after {
+.entity-card--derp-bird-nft::after {
   content: 'NFT';
   position: absolute;
   top: 4px;

@@ -1,6 +1,7 @@
 import DefaultEntityDetail from '../_default/DefaultEntityDetail';
 import type { EntityDetailProps } from '../../types';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './isPerfectSpecimen';
+import { isNftEntity } from './isNftEntity';
 import './DerpBirdEntityDetail.css';
 import './PerfectSpecimenDetail.css';
 
@@ -11,6 +12,7 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
 
   const perfect = isPerfectSpecimen(props.entity);
   const trait = getPerfectSpecimenTrait(props.entity);
+  const nft = isNftEntity(props.entity);
 
   if (perfect) {
     return (
@@ -28,6 +30,10 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
         <DefaultEntityDetail {...props} />
       </div>
     );
+  }
+
+  if (!nft) {
+    return <DefaultEntityDetail {...props} />;
   }
 
   return (

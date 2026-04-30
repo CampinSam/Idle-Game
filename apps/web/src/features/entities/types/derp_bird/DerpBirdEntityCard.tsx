@@ -1,16 +1,22 @@
 import DefaultEntityCard from '../_default/DefaultEntityCard';
 import type { EntityCardProps } from '../../types';
 import { isPerfectSpecimen } from './isPerfectSpecimen';
+import { isNftEntity } from './isNftEntity';
 import './DerpBirdEntityCard.css';
 import './PerfectSpecimenCard.css';
 
 export default function DerpBirdEntityCard(props: EntityCardProps) {
   const perfect = isPerfectSpecimen(props.entity);
-  const modifier = perfect ? 'entity-card--derp-bird-perfect' : 'entity-card--derp-bird';
+  const nft = isNftEntity(props.entity);
+
+  const classes = perfect
+    ? ['entity-card--derp-bird-perfect']
+    : ['entity-card--derp-bird', nft && 'entity-card--derp-bird-nft'];
+
   return (
     <DefaultEntityCard
       {...props}
-      className={[modifier, props.className].filter(Boolean).join(' ')}
+      className={[...classes, props.className].filter(Boolean).join(' ')}
     />
   );
 }
