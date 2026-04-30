@@ -13,8 +13,13 @@ export interface ItemViews {
 }
 
 import { defaultItemViews } from './types/_default';
+import { lootboxItemViews } from './types/lootbox';
+import { consumableItemViews } from './types/consumable';
 
-const TYPE_REGISTRY: Record<string, ItemViews> = {};
+const TYPE_REGISTRY: Record<string, ItemViews> = {
+  LOOTBOX: lootboxItemViews,
+  CONSUMABLE: consumableItemViews,
+};
 
 const DEF_REGISTRY: Record<string, ItemViews> = {};
 

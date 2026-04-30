@@ -1,0 +1,71 @@
+/* ── Cyborg archetype overlay ──
+ * Layered on top of `.entity-card` via the `entity-card--cyborg` modifier.
+ * Visuals: holographic scanlines + cyan circuit corner brackets + cyan border tint.
+ * Works across all useCases because the overlays are absolutely positioned
+ * inside the (already `position: relative`) `.entity-card` root.
+ */
+
+.entity-card--cyborg {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.08),
+    0 0 12px rgba(14, 165, 233, 0.18);
+}
+
+.entity-card--cyborg:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.18),
+    0 0 18px rgba(14, 165, 233, 0.32);
+}
+
+/* Scanline veil */
+.entity-card--cyborg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(56, 189, 248, 0.08) 0px,
+    rgba(56, 189, 248, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  mix-blend-mode: screen;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+/* Circuit-corner brackets (top-left + bottom-right) */
+.entity-card--cyborg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.55) 0 1px, transparent 1px) top    left  / 14px 14px no-repeat,
+    linear-gradient(135deg, rgba(56, 189, 248, 0.55) 0 1px, transparent 1px) top    left  / 1px 14px no-repeat,
+    linear-gradient(315deg, rgba(56, 189, 248, 0.55) 0 1px, transparent 1px) bottom right / 14px 14px no-repeat,
+    linear-gradient(315deg, rgba(56, 189, 248, 0.55) 0 1px, transparent 1px) bottom right / 1px 14px no-repeat;
+  z-index: 2;
+}
+
+/* Keep card content above overlays */
+.entity-card--cyborg > * {
+  position: relative;
+  z-index: 3;
+}
+
+/* Selected/active overrides should still win the border colour.
+ * `!important` is required on `border-color` to defeat the default
+ * `.entity-card--active`/`.entity-card--mission.entity-card--selected`
+ * rules which themselves use `!important`. */
+.entity-card--cyborg.entity-card--selected,
+.entity-card--cyborg.entity-card--active {
+  border-color: #38bdf8 !important;
+  box-shadow:
+    0 0 14px rgba(56, 189, 248, 0.55),
+    inset 0 0 8px rgba(56, 189, 248, 0.18);
+}

@@ -1,0 +1,64 @@
+/* ── Lootbox item overlay ──
+ * Layered on top of `.item-card` via the `item-card--lootbox` modifier.
+ * Visuals: animated shimmer sweep across the icon area + a glowing "?" badge
+ * in the top-left, signalling unopened mystery contents.
+ */
+
+.item-card--lootbox {
+  overflow: hidden;
+}
+
+/* Diagonal shimmer sweep that loops forever (slow, subtle) */
+.item-card--lootbox .item-card__img-wrap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 45%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0.18) 55%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: lootbox-shimmer 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Mystery "?" badge top-left */
+.item-card--lootbox .item-card__img-wrap::after {
+  content: '?';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Reduce motion: hold shimmer at rest */
+@media (prefers-reduced-motion: reduce) {
+  .item-card--lootbox .item-card__img-wrap::before {
+    animation: none;
+    left: -100%;
+  }
+}
+
+@keyframes lootbox-shimmer {
+  0%   { left: -120%; }
+  60%  { left: 120%; }
+  100% { left: 120%; }
+}

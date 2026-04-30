@@ -13,8 +13,11 @@ export interface EntityViews {
 }
 
 import { defaultEntityViews } from './types/_default';
+import { cyborgEntityViews } from './types/cyborg';
 
-const ARCHETYPE_REGISTRY: Record<string, EntityViews> = {};
+const ARCHETYPE_REGISTRY: Record<string, EntityViews> = {
+  Cyborg: cyborgEntityViews,
+};
 
 const KIND_REGISTRY: Record<string, EntityViews> = {};
 

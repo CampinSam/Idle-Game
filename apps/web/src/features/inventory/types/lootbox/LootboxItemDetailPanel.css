@@ -1,0 +1,164 @@
+/* ── Lootbox detail panel ──
+ * Bespoke layout for LOOTBOX items. Co-exists with .item-detail-panel
+ * (we keep that class on the root so the inline-positioning rule from
+ * ItemList.css continues to work).
+ */
+
+.lootbox-detail {
+  background: linear-gradient(180deg, rgba(20, 12, 38, 0.97), rgba(8, 5, 20, 0.97));
+  border-top: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  animation: lootbox-detail-slide-up 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lootbox-detail { animation: none; }
+}
+
+@keyframes lootbox-detail-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Icon with pulsing amber glow ring */
+.lootbox-detail__icon-wrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(245, 158, 11, 0.55);
+}
+
+.lootbox-detail__icon-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.45), transparent 70%);
+  animation: lootbox-detail-pulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.lootbox-detail__icon {
+  position: relative;
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  z-index: 1;
+}
+
+.lootbox-detail__missing {
+  position: relative;
+  width: 50%;
+  height: 50%;
+  opacity: 0.4;
+  color: var(--text-secondary);
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lootbox-detail__icon-glow { animation: none; opacity: 0.65; }
+}
+
+@keyframes lootbox-detail-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 0.9; transform: scale(1.06); }
+}
+
+/* Info column */
+.lootbox-detail__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lootbox-detail__rarity {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+/* Reuse rarity colour palette from default panel */
+.lootbox-detail__rarity.rarity-COMMON      { color: #8a8a9a; }
+.lootbox-detail__rarity.rarity-UNCOMMON    { color: #4dcb6a; }
+.lootbox-detail__rarity.rarity-SCARCE      { color: #4db0da; }
+.lootbox-detail__rarity.rarity-ADVANCED    { color: #8a7aee; }
+.lootbox-detail__rarity.rarity-RARE        { color: #a98aff; }
+.lootbox-detail__rarity.rarity-ULTRA_RARE  { color: #e060ff; }
+.lootbox-detail__rarity.rarity-EPIC        { color: #ff6090; }
+.lootbox-detail__rarity.rarity-MYTHIC      { color: #ffc040; }
+.lootbox-detail__rarity.rarity-LEGENDARY   { color: #ffe040; }
+
+.lootbox-detail__name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fde68a;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 4px rgba(245, 158, 11, 0.35);
+}
+
+.lootbox-detail__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.lootbox-detail__meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.lootbox-detail__chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.lootbox-detail__chip--type {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.lootbox-detail__rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lootbox-detail__reward-pill {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.lootbox-detail__actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

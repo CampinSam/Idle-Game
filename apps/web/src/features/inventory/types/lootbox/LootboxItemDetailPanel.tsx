@@ -1,0 +1,70 @@
+import type { ItemDetailPanelProps } from '../../types';
+import './LootboxItemDetailPanel.css';
+
+function MissingIcon() {
+  return (
+    <svg className="lootbox-detail__missing" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M12 8v4M12 16h.01" />
+    </svg>
+  );
+}
+
+function rarityLabel(r?: string) {
+  return (r || 'COMMON').replace(/_/g, ' ');
+}
+
+/**
+ * Bespoke detail panel for LOOTBOX-type items.
+ *
+ * Differs from the default panel in two ways:
+ *  - The icon area is enlarged and given a glowing pulsing frame to
+ *    advertise that the item is openable.
+ *  - Adds a "Possible Rewards" hint row that lists any preview tags the
+ *    item exposes through `item.possibleRewards` (graceful no-op if absent).
+ */
+export default function LootboxItemDetailPanel({
+  item,
+  actions,
+  className = '',
+}: ItemDetailPanelProps) {
+  const possibleRewards: string[] = Array.isArray(item.possibleRewards) ? item.possibleRewards : [];
+
+  return (
+    <div className={`lootbox-detail item-detail-panel ${className}`.trim()}>
+      <div className="lootbox-detail__icon-wrap">
+        <div className="lootbox-detail__icon-glow" aria-hidden />
+        {item.iconUrl ? (
+          <img className="lootbox-detail__icon" src={item.iconUrl} alt={item.name} />
+        ) : (
+          <MissingIcon />
+        )}
+      </div>
+
+      <div className="lootbox-detail__info">
+        <span className={`lootbox-detail__rarity rarity-${item.rarity || 'COMMON'}`}>
+          {rarityLabel(item.rarity)}
+        </span>
+        <div className="lootbox-detail__name">{item.name}</div>
+        <div className="lootbox-detail__desc">
+          {item.description || 'Open this lootbox to claim its contents.'}
+        </div>
+        <div className="lootbox-detail__meta-row">
+          <span className="lootbox-detail__chip lootbox-detail__chip--type">LOOTBOX</span>
+          {possibleRewards.length > 0 && (
+            <span className="lootbox-detail__chip">{possibleRewards.length} possible rewards</span>
+          )}
+        </div>
+        {possibleRewards.length > 0 && (
+          <div className="lootbox-detail__rewards">
+            {possibleRewards.slice(0, 4).map((r) => (
+              <span key={r} className="lootbox-detail__reward-pill">{r}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {actions && <div className="lootbox-detail__actions">{actions}</div>}
+    </div>
+  );
+}

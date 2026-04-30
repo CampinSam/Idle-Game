@@ -1,0 +1,32 @@
+/* ── Consumable item overlay ──
+ * Layered on top of `.item-card` via the `item-card--consumable` modifier.
+ * Visuals: soft emerald glow under the icon + a tiny bubble accent so
+ * potions/elixirs read as "drink-able" at a glance.
+ */
+
+.item-card--consumable .item-card__img-wrap {
+  background:
+    radial-gradient(circle at 50% 60%, rgba(16, 185, 129, 0.35) 0%, transparent 65%),
+    rgba(0, 0, 0, 0.2);
+}
+
+.item-card--consumable .item-card__img-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(167, 243, 208, 0.85);
+  box-shadow:
+    -6px -3px 0 -2px rgba(167, 243, 208, 0.7),
+    -3px 4px 0 -3px rgba(167, 243, 208, 0.55);
+  pointer-events: none;
+}
+
+.item-card--consumable:hover .item-card__img-wrap {
+  background:
+    radial-gradient(circle at 50% 60%, rgba(16, 185, 129, 0.55) 0%, transparent 70%),
+    rgba(0, 0, 0, 0.2);
+}
