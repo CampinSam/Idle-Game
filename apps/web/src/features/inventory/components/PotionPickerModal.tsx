@@ -3,6 +3,7 @@ import { useSyncItems } from '../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../hooks/useCommand';
 import { useModal } from '../../../context/ModalContext';
 import ItemList from './ItemList';
+import { isEntityTargetedConsumable } from '../utils/isEntityTargetedConsumable';
 import './PotionPickerModal.css';
 
 export interface PotionPickerModalProps {
@@ -37,10 +38,25 @@ export default function PotionPickerModal({
     }));
   }, [items]);
 
+  const allConsumables = useMemo(
+    () => potions.filter((p: any) => p.type === 'CONSUMABLE'),
+    [potions],
+  );
+
+  const entityTargetedPotions = useMemo(
+    () => allConsumables.filter(isEntityTargetedConsumable),
+    [allConsumables],
+  );
+
+  const emptyMessage =
+    allConsumables.length === 0
+      ? 'No potions in inventory'
+      : 'No entity-targeted potions in inventory';
+
   const selected = useMemo(() => {
     if (!selectedId) return null;
-    return potions.find((p: any) => p.instanceId === selectedId) || null;
-  }, [potions, selectedId]);
+    return entityTargetedPotions.find((p: any) => p.instanceId === selectedId) || null;
+  }, [entityTargetedPotions, selectedId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -121,13 +137,12 @@ export default function PotionPickerModal({
 
         <div className="potion-picker-modal__body">
           <ItemList
-            items={potions}
+            items={entityTargetedPotions}
             mode="picker"
             useCase="potion-picker"
-            typeFilter={['CONSUMABLE']}
             selectedId={selectedId}
             onSelect={handleSelect}
-            emptyMessage="No potions in inventory"
+            emptyMessage={emptyMessage}
           />
         </div>
 
