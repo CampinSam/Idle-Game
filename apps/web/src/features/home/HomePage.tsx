@@ -327,19 +327,20 @@ export default function HomePage() {
         const wsDisplay = (primaryWorkshop as any)?.displayDef || null;
         const heroBgImage = wsDisplay?.backgroundImage || null;
         const heroBorder = wsDisplay?.borderColor || null;
-        const heroCardBg = wsDisplay?.cardBackground || null;
         const heroBgStyle = heroBgImage
           ? (/^(linear-gradient|radial-gradient|url\()/i.test(heroBgImage) ? heroBgImage : `url(${heroBgImage})`)
           : null;
+        // Note: wsDisplay.cardBackground is intentionally NOT applied to the
+        // parent here — it was a translucent override that revealed the page
+        // background through the card. The card chassis is always the solid
+        // .hp-forge-hero CSS surface; themed visuals belong on the
+        // .hp-forge-hero-bg overlay below via wsDisplay.backgroundImage.
         return (
           <div className="hp-section">
             <div
               className={`hp-forge-hero hp-forge-hero-${triggerKind}`}
               onClick={() => goToForge(primaryWorkshop.locationId)}
-              style={{
-                ...(heroCardBg ? { background: heroCardBg } : {}),
-                ...(heroBorder ? { borderColor: heroBorder } : {}),
-              }}
+              style={heroBorder ? { borderColor: heroBorder } : undefined}
             >
               {heroBgStyle ? (
                 <div className="hp-forge-hero-bg" style={{ backgroundImage: heroBgStyle }} />
