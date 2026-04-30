@@ -94,7 +94,6 @@
   border-color: rgba(139, 92, 246, 0.32);
 }
 
-/* ----------- Header card ----------- */
 .od-card-header .od-hero-image {
   position: relative;
   overflow: hidden;
@@ -192,7 +191,6 @@
   white-space: nowrap;
 }
 
-/* ----------- Timers / production card ----------- */
 .od-card-timers .od-prod-rate {
   display: flex;
   align-items: baseline;
@@ -334,7 +332,6 @@
   box-shadow: none;
 }
 
-/* ----------- Workers card ----------- */
 .od-card-workers .od-workers-detail-list {
   display: flex;
   flex-direction: column;
@@ -388,7 +385,6 @@
   border-radius: 6px;
 }
 
-/* ----------- Warehouse card ----------- */
 .od-card-warehouse .od-storage-list {
   display: flex;
   flex-direction: column;

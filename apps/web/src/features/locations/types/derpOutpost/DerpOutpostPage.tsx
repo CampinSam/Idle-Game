@@ -460,13 +460,24 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
             <div className="od-warehouse-empty-blurb">
               No warehouse on this outpost. Build one to unlock storage capacity for stockpiling resources.
             </div>
-            <button
-              className="od-warehouse-build-cta"
-              disabled={!warehouseDef}
-              onClick={() => warehouseDef && openBuildModal(warehouseDef)}
-            >
-              {warehouseDef ? '🏗️ Build a Warehouse' : 'Warehouse not yet available'}
-            </button>
+            {(() => {
+              const slotsBlocked = availableData?.slotsAvailable === false;
+              const ctaDisabled = !warehouseDef || slotsBlocked;
+              const ctaLabel = !warehouseDef
+                ? 'Warehouse not yet available'
+                : slotsBlocked
+                  ? 'No building slots available'
+                  : '🏗️ Build a Warehouse';
+              return (
+                <button
+                  className="od-warehouse-build-cta"
+                  disabled={ctaDisabled}
+                  onClick={() => !ctaDisabled && warehouseDef && openBuildModal(warehouseDef)}
+                >
+                  {ctaLabel}
+                </button>
+              );
+            })()}
           </div>
         )}
       </div>
