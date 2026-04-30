@@ -35,29 +35,36 @@ export interface QualityProbability {
   probability: number;
 }
 
-export const workshopLuckFloor = (workshopLevel: number): number => {
-  if (workshopLevel >= 3) return 25;
-  if (workshopLevel >= 2) return 10;
-  return 0;
+export interface WorkshopTierPerks {
+  tier: number;
+  slots: number;
+  timerMultiplier: number;
+  luckFloor: number;
+  recipeTierCap: number;
+}
+
+export const WORKSHOP_TIER_PERKS: readonly WorkshopTierPerks[] = [
+  { tier: 1, slots: 1, timerMultiplier: 1.0, luckFloor: 0, recipeTierCap: 1 },
+  { tier: 2, slots: 2, timerMultiplier: 0.9, luckFloor: 10, recipeTierCap: 2 },
+  { tier: 3, slots: 3, timerMultiplier: 0.8, luckFloor: 25, recipeTierCap: 3 },
+] as const;
+
+export const workshopTierPerks = (workshopLevel: number): WorkshopTierPerks => {
+  const clamped = Math.max(1, Math.min(WORKSHOP_TIER_PERKS.length, Math.floor(workshopLevel || 1)));
+  return WORKSHOP_TIER_PERKS[clamped - 1];
 };
 
-export const workshopParallelSlots = (workshopLevel: number): number => {
-  if (workshopLevel >= 3) return 3;
-  if (workshopLevel >= 2) return 2;
-  return 1;
-};
+export const workshopLuckFloor = (workshopLevel: number): number =>
+  workshopTierPerks(workshopLevel).luckFloor;
 
-export const workshopTimerMultiplier = (workshopLevel: number): number => {
-  if (workshopLevel >= 3) return 0.8;
-  if (workshopLevel >= 2) return 0.9;
-  return 1.0;
-};
+export const workshopParallelSlots = (workshopLevel: number): number =>
+  workshopTierPerks(workshopLevel).slots;
 
-export const workshopRecipeTierCap = (workshopLevel: number): number => {
-  if (workshopLevel >= 3) return 3;
-  if (workshopLevel >= 2) return 2;
-  return 1;
-};
+export const workshopTimerMultiplier = (workshopLevel: number): number =>
+  workshopTierPerks(workshopLevel).timerMultiplier;
+
+export const workshopRecipeTierCap = (workshopLevel: number): number =>
+  workshopTierPerks(workshopLevel).recipeTierCap;
 
 export const qualityProbabilities = (cl: number): QualityProbability[] => {
   const sigma = 22;

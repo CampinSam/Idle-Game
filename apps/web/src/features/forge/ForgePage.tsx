@@ -19,6 +19,7 @@ import {
   textStyleToCss,
   type DisplayStyle,
 } from '@derp/shared';
+import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import './ForgePage.css';
 
 const FORGE_FALLBACK = {
@@ -426,11 +427,9 @@ export default function ForgePage() {
             // (parallel slots + timer speed-up). Forecast is authoritative; we
             // fall back to local workshopLevel while the request is in flight.
             const tier = forecast?.workshopTier ?? Math.max(1, Number(workshopLevel || 1));
-            const fallbackSlotsTotal = tier >= 3 ? 3 : tier >= 2 ? 2 : 1;
-            const slotsTotal = forecast?.slotsTotal ?? fallbackSlotsTotal;
+            const slotsTotal = forecast?.slotsTotal ?? workshopParallelSlots(tier);
             const slotsUsed = forecast?.slotsUsed ?? activeCraftingJobs.length;
-            const fallbackMultiplier = tier >= 3 ? 0.8 : tier >= 2 ? 0.9 : 1.0;
-            const multiplier = forecast?.timerMultiplier ?? fallbackMultiplier;
+            const multiplier = forecast?.timerMultiplier ?? workshopTimerMultiplier(tier);
             const speedupPct = Math.round((1 - multiplier) * 100);
             const slotsFull = slotsUsed >= slotsTotal;
             return (
@@ -453,11 +452,9 @@ export default function ForgePage() {
       {error && <div className="forge-error">{error}</div>}
 
       {(() => {
-        // Prefer server-authoritative slot counts from forecast (matches the
-        // workshopParallelSlots() helper: L1=1, L2=2, L3=3). Fall back to
-        // local computation while forecast is loading.
-        const fallbackSlots = workshopLevel >= 3 ? 3 : workshopLevel >= 2 ? 2 : 1;
-        const maxSlots = forecast?.slotsTotal ?? fallbackSlots;
+        // Prefer server-authoritative slot counts from forecast. Fall back to
+        // the shared workshopParallelSlots() helper while forecast is loading.
+        const maxSlots = forecast?.slotsTotal ?? workshopParallelSlots(workshopLevel);
         const usedSlots = forecast?.slotsUsed ?? activeCraftingJobs.length;
         const emptySlots = Math.max(0, maxSlots - usedSlots);
         return (

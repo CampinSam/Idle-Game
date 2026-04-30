@@ -16,6 +16,7 @@ import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
+import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import './HomePage.css';
 
 function formatTime(ms: number) {
@@ -253,7 +254,7 @@ export default function HomePage() {
         );
         // Place-scoped slot count: only crucibles at the primary workshop count.
         const wsTier = Math.max(1, Number(primaryWorkshop.level || 1));
-        const slotsTotal = wsTier >= 3 ? 3 : wsTier >= 2 ? 2 : 1;
+        const slotsTotal = workshopParallelSlots(wsTier);
         const wsActive = allActiveJobs.filter(
           (j: any) => j.type === 'CraftingJob' && (j.data?.locationId || j.locationId) === primaryWorkshop.locationId,
         );
@@ -305,7 +306,7 @@ export default function HomePage() {
             : triggerKind === 'actionable'
             ? 'The Forge Awaits'
             : 'Your Forge is Unlocked';
-        const tierSpeedupPct = wsTier >= 3 ? 20 : wsTier >= 2 ? 10 : 0;
+        const tierSpeedupPct = Math.round((1 - workshopTimerMultiplier(wsTier)) * 100);
         const heroSub: React.ReactNode =
           triggerKind === 'ready'
             ? 'Pull it from the flames before it cools.'

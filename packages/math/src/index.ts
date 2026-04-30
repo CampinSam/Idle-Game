@@ -19,8 +19,11 @@ export {
   workshopParallelSlots,
   workshopTimerMultiplier,
   workshopRecipeTierCap,
+  workshopTierPerks,
+  WORKSHOP_TIER_PERKS,
   QUALITY_TIERS,
   type QualityProbability,
+  type WorkshopTierPerks,
 } from './crafting-luck';
 export { SeededRng } from './rng';
 export {
