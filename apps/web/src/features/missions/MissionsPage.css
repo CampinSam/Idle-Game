@@ -963,6 +963,7 @@
   text-transform: uppercase;
 }
 
+/* Container for filled (EntityCard) + empty slot cards */
 .md-team-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 90px);
@@ -970,132 +971,64 @@
   justify-content: center;
 }
 
-.md-entity-card {
+/* Empty "Add Entity" slot rendered alongside EntityCards */
+.md-empty-slot {
   width: 90px;
   border-radius: 12px;
-  overflow: hidden;
-  border: 2px solid var(--border);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: var(--bg-card);
   cursor: pointer;
-  transition: all 0.2s;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
 }
 
-.md-entity-card:hover {
-  border-color: rgba(255,255,255,0.2);
+.md-empty-slot:hover {
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
-.md-entity-card-top {
-  position: relative;
+.md-empty-slot--active {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5), inset 0 0 8px rgba(139, 92, 246, 0.15);
+}
+
+.md-empty-slot__top {
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.md-entity-remove {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(239, 68, 68, 0.85);
-  color: white;
-  font-size: 12px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2;
-  opacity: 1;
-}
-
-.md-slot-active {
-  border-color: #8B5CF6 !important;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5), inset 0 0 8px rgba(139, 92, 246, 0.15);
-}
-
-.md-slot-active.md-empty-slot .md-entity-empty-top {
-  border-color: rgba(139, 92, 246, 0.5);
-  background: rgba(139, 92, 246, 0.1);
-}
-
-.md-entity-power-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(0,0,0,0.5);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 800;
-  color: white;
-}
-
-.md-entity-avatar {
-  font-size: 40px;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-}
-
-.md-entity-portrait {
-  width: 60px !important;
-  height: 60px !important;
-  border-radius: 50% !important;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-}
-
-.md-entity-card-bot {
+.md-empty-slot__bot {
   padding: 8px;
   background: var(--bg-card);
   text-align: center;
 }
 
-.md-entity-id {
+.md-empty-slot__plus {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 300;
+}
+
+.md-empty-slot__label {
   display: block;
   font-size: 11px;
   font-weight: 800;
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.md-entity-pscore {
-  display: block;
-  font-size: 10px;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.md-empty-slot {
-  border-style: dashed;
-  border-color: rgba(255,255,255,0.15);
-  background: var(--bg-card);
-}
-
-.md-empty-top {
-  background: rgba(255,255,255,0.03);
-}
-
-.md-empty-slot .md-entity-card-bot {
-  background: var(--bg-card);
-}
-
-.md-plus-icon {
-  font-size: 28px;
-  color: rgba(255,255,255,0.2);
-  font-weight: 300;
-}
-
+/* Picker section wrapper around EntityList (picker mode) */
 .md-entity-picker {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 10px;
-  padding: 14px;
+  margin-top: 12px;
 }
 
 .md-picker-label {
@@ -1104,127 +1037,7 @@
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin-bottom: 10px;
-}
-
-.md-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 80px);
-  gap: 8px;
-  justify-content: center;
-}
-
-
-.md-ticket-start-btn {
-  padding: 8px 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border) !important;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: 0.5px;
-}
-
-.md-ticket-start-btn:disabled {
-  opacity: 0.4;
-}
-
-.md-ticket-start-btn:not(:disabled):hover {
-  border-color: var(--derp-purple) !important;
-}
-
-.md-select-entity {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 80px;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border) !important;
-  border-radius: 10px;
-  transition: all 0.15s;
-  overflow: hidden;
-}
-
-.md-select-entity-top {
-  width: 100%;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(30, 20, 60, 0.8), rgba(20, 15, 45, 0.8));
-}
-
-.md-select-entity-bot {
-  width: 100%;
-  padding: 4px 4px 6px;
-  text-align: center;
-  background: var(--bg-card);
-}
-
-.md-select-entity.current {
-  border-color: #8B5CF6 !important;
-  background: rgba(139, 92, 246, 0.15);
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-}
-
-.md-select-entity.selected {
-  border-color: rgba(255,255,255,0.15) !important;
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: none;
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.md-select-entity:hover:not(.selected) {
-  border-color: rgba(255,255,255,0.2) !important;
-}
-
-.md-sb-emoji {
-  font-size: 24px;
-}
-
-.md-sb-portrait {
-  width: 44px !important;
-  height: 44px !important;
-  border-radius: 50% !important;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
-}
-
-.md-sb-name {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  line-height: 1.2;
-}
-
-.md-sb-mp {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-.md-sb-stat {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.md-no-entities {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 20px;
-  color: var(--text-secondary);
-  font-size: 13px;
+  margin: 0 0 10px;
 }
 
 .md-cost-bar {

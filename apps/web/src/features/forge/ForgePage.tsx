@@ -20,6 +20,8 @@ import {
   type DisplayStyle,
 } from '@derp/shared';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
+import { EntityList } from '../entities/components';
+import type { EntityForecast } from '../entities/types';
 import './ForgePage.css';
 
 const FORGE_FALLBACK = {
@@ -715,49 +717,22 @@ export default function ForgePage() {
               )}
             </div>
 
-            <div className="forge-entity-grid">
-              {idleEntities.length === 0 && (
-                <div className="forge-empty">No idle Derps. Pull one back from a mission.</div>
-              )}
-              {idleEntities.map((entity: any) => {
-                const f = forecast?.entities.find((x) => x.entityId === entity.id);
-                return (
-                  <button
-                    key={entity.id}
-                    className={`forge-entity-card ${selectedEntity === entity.id ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedEntity(entity.id)}
-                  >
-                    <div className="forge-entity-name">{entity.name}</div>
-                    <div className="forge-entity-meta">Lvl {entity.level}</div>
-                    {f && (
-                      <div className="forge-entity-stats">
-                        <span className="forge-entity-cl">CL {f.craftingLuck.toFixed(0)}</span>
-                        <span
-                          className="forge-entity-quality"
-                          style={{ color: QUALITY_COLOURS[f.expectedQuality] || '#94a3b8' }}
-                        >
-                          {f.expectedQualityLabel}
-                        </span>
-                        <div className="forge-entity-probs" aria-hidden>
-                          {f.probabilities.map((p) => (
-                            <div
-                              key={p.key}
-                              className="forge-entity-prob-seg"
-                              style={{
-                                width: `${Math.max(2, p.probability * 100)}%`,
-                                background: QUALITY_COLOURS[p.key] || '#475569',
-                                opacity: 0.35 + p.probability * 0.65,
-                              }}
-                              title={`${p.label}: ${(p.probability * 100).toFixed(1)}%`}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {(() => {
+              const forecasts: Record<string, EntityForecast> = {};
+              forecast?.entities.forEach((f) => { forecasts[f.entityId] = f as EntityForecast; });
+              return (
+                <EntityList
+                  entities={idleEntities}
+                  mode="picker"
+                  useCase="crafting"
+                  selectedIds={selectedEntity ? [selectedEntity] : []}
+                  onSelect={(entity) => setSelectedEntity(entity.id)}
+                  forecasts={forecasts}
+                  qualityColors={QUALITY_COLOURS}
+                  emptyMessage="No idle Derps. Pull one back from a mission."
+                />
+              );
+            })()}
 
             {forecast && (
               <div className="forge-forecast-box">

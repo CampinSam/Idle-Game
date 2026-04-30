@@ -18,10 +18,10 @@ import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
-import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../config/images';
-import { GameImage } from '../../components/GameImage';
-import { getArchetypeDisplay, getDifficultyDisplay, ANTI_WHALE_CAPS, mergeDisplayStyles, overlayToCss, textStyleToCss, type DisplayStyle } from '@derp/shared';
+import { getDifficultyDisplay, ANTI_WHALE_CAPS, mergeDisplayStyles, overlayToCss, textStyleToCss, type DisplayStyle } from '@derp/shared';
 import GameIcon from '../../components/GameIcon';
+import { EntityCard, EntityList } from '../entities/components';
+import { getEntityMP } from '../entities/utils';
 import { resolveAssetUrl } from '../../utils/iconResolver';
 import './MissionsPage.css';
 
@@ -101,11 +101,6 @@ function meetsNonTeamRequirements(def: any): boolean {
     return false;
   }
   return true;
-}
-
-function getEntityMP(entity: any) {
-  const s = entity.stats || {};
-  return (s.atk || s.ATK || 0) * 0.40 + (s.def || s.DEF || 0) * 0.30 + (s.spd || s.SPD || 0) * 0.20 + (s.foc || s.FOC || 0) * 0.10 + (s.lck || s.LCK || 0) * 0.05 + (s.vit || s.VIT || 0) * 0.05;
 }
 
 function getReqValue(reqs: any[], type: string, defaultValue: any = 0, operator?: string): any {
@@ -777,36 +772,28 @@ export default function MissionsPage() {
               {selectedEntities.map((entityId, slotIndex) => {
                 const entity = entities.find((b: any) => b.id === entityId);
                 if (!entity) return null;
-                const mp = Math.round(getEntityMP(entity));
-                const archetype = (entity as any).traits?.head || 'Dave';
                 const isActive = activeSlotIndex === slotIndex;
                 return (
-                  <div key={entity.id} className={`md-entity-card ${isActive ? 'md-slot-active' : ''}`} onClick={() => openSlot(slotIndex)}>
-                    <div className="md-entity-card-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
-                      <div className="md-entity-remove" onClick={(e) => { e.stopPropagation(); removeEntityFromSlot(slotIndex); }}>✕</div>
-                      <span className="md-entity-power-badge">⚡{mp}</span>
-                      <GameImage
-                        src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
-                        category="entities"
-                        alt={(entity as any).name}
-                        fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-                        className="md-entity-portrait"
-                      />
-                    </div>
-                    <div className="md-entity-card-bot">
-                      <span className="md-entity-id">{(entity as any).name}</span>
-                      <span className="md-entity-pscore">MP  {mp}</span>
-                    </div>
-                  </div>
+                  <EntityCard
+                    key={entity.id}
+                    entity={entity}
+                    useCase="mission"
+                    active={isActive}
+                    onClick={() => openSlot(slotIndex)}
+                    onRemove={() => removeEntityFromSlot(slotIndex)}
+                  />
                 );
               })}
               {selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'lte') && (
-                <div className="md-entity-card md-empty-slot" onClick={() => openSlot(selectedEntities.length)}>
-                  <div className="md-entity-card-top md-empty-top">
-                    <span className="md-plus-icon">＋</span>
+                <div
+                  className={`md-empty-slot ${activeSlotIndex === selectedEntities.length ? 'md-empty-slot--active' : ''}`}
+                  onClick={() => openSlot(selectedEntities.length)}
+                >
+                  <div className="md-empty-slot__top">
+                    <span className="md-empty-slot__plus">＋</span>
                   </div>
-                  <div className="md-entity-card-bot">
-                    <span className="md-entity-id">Add Entity</span>
+                  <div className="md-empty-slot__bot">
+                    <span className="md-empty-slot__label">Add Entity</span>
                   </div>
                 </div>
               )}
@@ -816,40 +803,16 @@ export default function MissionsPage() {
           {showEntityPicker && (
             <div ref={entityPickerRef} className="md-entity-picker">
               <h4 className="md-picker-label">Select an Entity</h4>
-              <div className="md-picker-grid">
-                {idleEntities.map((entity: any) => {
-                  const archetype = entity.traits?.head || 'Dave';
-                  const mp = Math.round(getEntityMP(entity));
-                  const isInOtherSlot = selectedEntities.includes(entity.id);
-                  const isCurrentSlotEntity = activeSlotIndex !== null && selectedEntities[activeSlotIndex] === entity.id;
-                  return (
-                    <button
-                      key={entity.id}
-                      className={`md-select-entity ${isInOtherSlot ? 'selected' : ''} ${isCurrentSlotEntity ? 'current' : ''}`}
-                      disabled={isInOtherSlot}
-                      onClick={() => {
-                        if (!isInOtherSlot) {
-                          selectEntityForSlot(entity.id);
-                        }
-                      }}
-                    >
-                      <div className="md-select-entity-top" style={{ background: getArchetypeDisplay(archetype).gradient }}>
-                        <GameImage
-                          src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
-                          category="entities"
-                          alt={entity.name}
-                          fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-                          className="md-sb-portrait"
-                        />
-                      </div>
-                      <div className="md-select-entity-bot">
-                        <span className="md-sb-name">{entity.name}</span>
-                        <span className="md-sb-mp">⚡{mp}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <EntityList
+                entities={idleEntities}
+                mode="picker"
+                useCase="mission"
+                selectedIds={selectedEntities.filter((id, i) => i !== activeSlotIndex)}
+                disabledIds={selectedEntities.filter((id, i) => i !== activeSlotIndex)}
+                activeId={activeSlotIndex !== null ? selectedEntities[activeSlotIndex] : null}
+                onSelect={(entity) => selectEntityForSlot(entity.id)}
+                emptyMessage="No idle entities."
+              />
             </div>
           )}
 

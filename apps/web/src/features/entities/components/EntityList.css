@@ -1,0 +1,116 @@
+.entity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Filter strip (entities tab) ── */
+.entity-list__filter-strip {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+.entity-list__filter-tab {
+  flex: 1;
+  padding: 11px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: 'Exo 2', system-ui, sans-serif;
+}
+
+.entity-list__filter-tab:hover {
+  color: #c4b5fd;
+}
+
+.entity-list__filter-tab--active {
+  color: #c4b5fd;
+  border-bottom-color: var(--derp-purple);
+}
+
+/* ── Search row ── */
+.entity-list__search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.entity-list__search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: 'Exo 2', system-ui, sans-serif;
+}
+
+.entity-list__search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* ── Grid layouts ── */
+.entity-list__grid {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.entity-list--grid .entity-list__grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.entity-list--team .entity-list__grid {
+  grid-template-columns: repeat(auto-fill, 90px);
+  justify-content: center;
+}
+
+.entity-list--picker .entity-list__grid {
+  grid-template-columns: repeat(auto-fill, 80px);
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.entity-list--wide .entity-list__grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  padding: 0;
+}
+
+/* ── Empty state ── */
+.entity-list__empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Browse-grid responsive */
+@media (max-width: 400px) {
+  .entity-list--grid .entity-list__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Stagger animation for cards */
+.entity-list__grid > * { animation: card-enter 0.25s ease-out both; }
+.entity-list__grid > *:nth-child(1)  { animation-delay: 0ms; }
+.entity-list__grid > *:nth-child(2)  { animation-delay: 40ms; }
+.entity-list__grid > *:nth-child(3)  { animation-delay: 80ms; }
+.entity-list__grid > *:nth-child(4)  { animation-delay: 120ms; }
+.entity-list__grid > *:nth-child(5)  { animation-delay: 160ms; }
+.entity-list__grid > *:nth-child(6)  { animation-delay: 200ms; }
+.entity-list__grid > *:nth-child(n+7) { animation-delay: 200ms; }

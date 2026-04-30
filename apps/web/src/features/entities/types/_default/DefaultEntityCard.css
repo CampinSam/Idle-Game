@@ -1,0 +1,351 @@
+/* ── Generic card base ── */
+.entity-card {
+  position: relative;
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+  animation: card-enter 0.25s ease-out both;
+  background: linear-gradient(180deg, #1e1850 0%, #151030 100%);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.entity-card:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+}
+
+.entity-card--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.entity-card--selected {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5), inset 0 0 8px rgba(139, 92, 246, 0.15);
+}
+
+.entity-card--active {
+  border-color: #8B5CF6 !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5), inset 0 0 8px rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+/* ── BROWSE variant ── */
+.entity-card--browse:hover {
+  transform: translateY(-2px);
+}
+
+.entity-card__art {
+  position: relative;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.entity-card__portrait {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.entity-card__portrait--cover {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  opacity: 0.85;
+}
+
+.entity-card__portrait--round {
+  width: 60px !important;
+  height: 60px !important;
+  border-radius: 50% !important;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+}
+
+.entity-card__status-icon {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 14px;
+}
+
+.entity-card__level-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.entity-card__level-num {
+  font-size: 16px;
+  font-weight: 900;
+  color: white;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.entity-card__level-icon {
+  font-size: 12px;
+}
+
+.entity-card__info {
+  padding: 8px;
+}
+
+.entity-card__name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.entity-card__name {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-card__check {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.entity-card__class-row {
+  margin-bottom: 6px;
+}
+
+.entity-card__class-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 0.8px;
+}
+
+.entity-card__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.entity-card__stars {
+  display: flex;
+  gap: 0;
+}
+
+.entity-card__star {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.entity-card__star--full { color: #F59E0B; }
+.entity-card__star--half { color: #F59E0B; opacity: 0.6; }
+.entity-card__star--empty { color: #374151; }
+
+.entity-card__power {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+/* ── MISSION + OUTPOST compact card ── */
+.entity-card--mission,
+.entity-card--outpost {
+  width: 90px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+}
+
+.entity-card__top {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entity-card__top--compact {
+  background: linear-gradient(135deg, rgba(30, 20, 60, 0.8), rgba(20, 15, 45, 0.8));
+}
+
+.entity-card__remove {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.85);
+  color: white;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  z-index: 2;
+  padding: 0;
+}
+
+.entity-card__mp-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+}
+
+.entity-card__bot {
+  padding: 8px;
+  background: var(--bg-card);
+  text-align: center;
+}
+
+.entity-card__id {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-card__sub {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Picker-mode "current/selected" highlights for compact cards */
+.entity-card--mission.entity-card--active,
+.entity-card--outpost.entity-card--active {
+  border-color: #8B5CF6 !important;
+}
+
+.entity-card--mission.entity-card--selected,
+.entity-card--outpost.entity-card--selected {
+  border-color: rgba(255,255,255,0.15) !important;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Smaller "picker" sizing override applied via list layout */
+.entity-list--picker .entity-card--mission,
+.entity-list--picker .entity-card--outpost {
+  width: 80px;
+}
+
+.entity-list--picker .entity-card__portrait--round {
+  width: 44px !important;
+  height: 44px !important;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+
+.entity-list--picker .entity-card__bot {
+  padding: 4px 4px 6px;
+}
+
+.entity-list--picker .entity-card__id {
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.entity-list--picker .entity-card__sub {
+  font-size: 9px;
+}
+
+/* ── CRAFTING (forge) card ── */
+.entity-card--crafting {
+  text-align: left;
+  background: rgba(15, 12, 38, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+  font: inherit;
+}
+
+.entity-card--crafting:hover { transform: translateY(-1px); }
+
+.entity-card--crafting.entity-card--selected {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.entity-card--crafting .entity-card__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff7ed;
+  white-space: normal;
+}
+
+.entity-card__meta {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.entity-card__forecast {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  gap: 4px;
+}
+
+.entity-card__cl { color: #fde68a; font-weight: 700; }
+.entity-card__quality { font-weight: 800; }
+
+.entity-card__probs {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.35);
+}
+
+.entity-card__prob-seg {
+  height: 100%;
+  transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
