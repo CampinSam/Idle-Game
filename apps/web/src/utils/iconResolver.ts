@@ -10,7 +10,7 @@ export function mediaUrl(path: string): string {
   return `${MEDIA_BASE}${clean}`;
 }
 
-export const DEFAULT_ICON_URL = `${MEDIA_BASE}/icons/default.png`;
+export const DEFAULT_ICON_URL = `${MEDIA_BASE}/images/icons/default.png`;
 
 export function resolveAssetUrl(value: string | null | undefined): string | null {
   if (!value) return null;
