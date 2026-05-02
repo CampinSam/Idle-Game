@@ -205,17 +205,23 @@ export default function InventoryPage() {
       );
     }
     if (item.type === 'MATERIAL') {
+      // Crafting requires a Workshop building at one of the player's outposts.
+      // ForgePage does the same preflight server-side and redirects away when
+      // it fails — gating the entry button avoids a redirect loop and gives a
+      // clearer reason in the tooltip.
+      const hasWorkshop = !!forgeLocationId;
       return (
         <button
           className="inv-manage-btn inv-craft-btn"
+          disabled={!hasWorkshop}
           onClick={() => {
+            if (!hasWorkshop) return;
             audioEngine.play('ui.button_click');
             const matId = (item.itemDefId || item.id) as string;
             const q = `?material=${encodeURIComponent(matId)}`;
-            if (forgeLocationId) navigate(`/locations/${forgeLocationId}/workshop${q}`);
-            else navigate(`/crafting${q}`);
+            navigate(`/locations/${forgeLocationId}/workshop${q}`);
           }}
-          title={forgeLocationId ? 'Open The Forge with recipes filtered to this material' : 'Build a Workshop in your Outpost first'}
+          title={hasWorkshop ? 'Open The Forge with recipes filtered to this material' : 'Build a Workshop in your Outpost first'}
         >
           ⚒️  Craft with this
         </button>

@@ -15,7 +15,7 @@ import {
 } from '../hooks/useSyncSelectors';
 import { useAppSelector } from '../store';
 import ToastOverlay from './ToastOverlay';
-import type { SyncStatus } from '../store/syncSlice';
+import ConnectionStatusBanner from './ConnectionStatusBanner';
 import NotificationCenter from '../features/notifications/NotificationCenter';
 import { formatCompact } from '../utils/formatNumber';
 import { resolveIcon } from '../utils/iconResolver';
@@ -34,7 +34,6 @@ export default function Layout() {
   const profile = useSyncPlayer();
   const currencyBalances = useSyncCurrencyBalances();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
-  const syncStatus = useAppSelector((s) => s.sync.status) as SyncStatus;
   const { unreadCount } = useNotifications();
   const boostInfo = useActiveBoosts();
 
@@ -64,16 +63,9 @@ export default function Layout() {
     setShowMenu(false);
   };
 
-  const isOffline = syncStatus === 'disconnected' || syncStatus === 'reconnecting';
-
   return (
     <div className="layout">
-      {isOffline && (
-        <div className={`sync-offline-banner${syncStatus === 'reconnecting' ? ' reconnecting' : ''}`} role="alert">
-          <span>⚠</span>
-          {syncStatus === 'reconnecting' ? 'Connection lost — reconnecting...' : 'You are offline'}
-        </div>
-      )}
+      <ConnectionStatusBanner />
       {profile && (
         <div className="top-bar-container">
           <div className="top-bar">

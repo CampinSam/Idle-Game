@@ -423,14 +423,36 @@ export class AuthService {
     }
   }
 
+  /**
+   * Verify a CIP-30 `signData` payload (CIP-8 / COSE_Sign1).
+   *
+   * Real verification requires a CBOR + ed25519 stack
+   * (e.g. `@emurgo/cardano-message-signing-nodejs` for COSE parsing plus
+   * `@stablelib/ed25519` or `@noble/ed25519` for signature checks against
+   * the bech32-decoded stake/payment key). That dependency is intentionally
+   * not wired here yet — see `replit.md` for the follow-up.
+   *
+   * Posture until the real verifier ships:
+   *   - PRODUCTION: refuse the login. Better to show "Cardano login is
+   *     temporarily unavailable" than to accept any signature blindly,
+   *     which previously meant anyone could impersonate any wallet by
+   *     supplying its public address.
+   *   - DEV: still accept (with a loud warning), gated behind an explicit
+   *     `DEV_ALLOW_CARDANO_BYPASS=true` env flag so this code path can
+   *     never accidentally ship enabled.
+   */
   private async verifyCardanoSignature(address: string, message: string, signature: string): Promise<boolean> {
-    try {
-      this.logger.log(`Cardano signature check for address ${address.substring(0, 20)}... (dev: accepting as valid)`);
-      return true;
-    } catch (err) {
-      this.logger.error(`Cardano signature verification error: ${err}`);
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      this.logger.error(`Cardano signature verification is not implemented — rejecting login for ${address.substring(0, 20)}...`);
       return false;
     }
+    if (process.env.DEV_ALLOW_CARDANO_BYPASS === 'true') {
+      this.logger.warn(`[DEV BYPASS] Cardano signature accepted without verification for ${address.substring(0, 20)}... (DEV_ALLOW_CARDANO_BYPASS=true)`);
+      return true;
+    }
+    this.logger.error(`Cardano signature verification is not implemented and DEV_ALLOW_CARDANO_BYPASS is not set — rejecting`);
+    return false;
   }
 
   private toPlayerResponse(user: any) {

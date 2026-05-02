@@ -7,6 +7,24 @@ async function bootstrap() {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
+  // Fail loudly in production if critical security env vars are missing
+  // rather than booting with insecure defaults that the rest of the app
+  // would silently rely on. Dev keeps permissive defaults for local DX.
+  if (isProduction) {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET must be set in production');
+    }
+    if (!process.env.ADMIN_SECRET) {
+      throw new Error('ADMIN_SECRET must be set in production');
+    }
+    if (!process.env.CORS_ORIGIN) {
+      throw new Error('CORS_ORIGIN must be set in production (no wildcard)');
+    }
+    if (process.env.CORS_ORIGIN === '*') {
+      throw new Error('CORS_ORIGIN must not be "*" in production');
+    }
+  }
+
   if (isProduction) {
     app.setGlobalPrefix('api', {
       exclude: ['/health', '/media/(.*)'],
@@ -21,8 +39,9 @@ async function bootstrap() {
     }),
   );
 
+  const corsOrigin = process.env.CORS_ORIGIN || (isProduction ? false : '*');
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigin,
     credentials: true,
   });
 

@@ -393,16 +393,12 @@ export class CraftingService {
     }
 
     const costEntries: Array<{ type: string; id: string; amount: number }> = recipe.cost ?? [];
-    for (const cost of costEntries) {
-      if (cost.amount <= 0) continue;
-      if (cost.type === 'currency') {
-        await this.currencyService.spend({ userId, currencyId: cost.id, amount: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
-      } else {
-        await this.inventoryService.removeItem({ userId, itemId: cost.id, quantity: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
-      }
-    }
-    await this.entityService.setEntityStatus(entityId, userId, 'working');
 
+    // Compute timing OUTSIDE the transaction so we don't hold a Postgres
+    // tx open while reading effects/tick — but commit the spend, item
+    // removal, entity status flip and Job row in a single atomic write.
+    // Previously these were sequential top-level transactions, so a crash
+    // between them could spend currency without ever creating the job.
     const now = new Date();
     const currentTick = await this.tickService.getCurrentTick(now);
     const timer = recipe.timer as any;
@@ -427,16 +423,28 @@ export class CraftingService {
       }
     }
 
-    const job = await (this.prisma as any).job.create({
-      data: {
-        userId,
-        type: 'CraftingJob',
-        defId: recipe.id,
-        status: 'active',
-        timer: { startTick: currentTick, durationTicks },
-        team: [entityId],
-        data: { seed: randomUUID(), locationId: effectiveLocationId },
-      },
+    const job = await this.prisma.$transaction(async (tx) => {
+      for (const cost of costEntries) {
+        if (cost.amount <= 0) continue;
+        if (cost.type === 'currency') {
+          await this.currencyService.spendTx(tx as any, { userId, currencyId: cost.id, amount: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+        } else {
+          await this.inventoryService.removeItemTx(tx as any, { userId, itemId: cost.id, quantity: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+        }
+      }
+      await this.entityService.setEntityStatus(entityId, userId, 'working', tx);
+
+      return await (tx as any).job.create({
+        data: {
+          userId,
+          type: 'CraftingJob',
+          defId: recipe.id,
+          status: 'active',
+          timer: { startTick: currentTick, durationTicks },
+          team: [entityId],
+          data: { seed: randomUUID(), locationId: effectiveLocationId },
+        },
+      });
     });
 
     return this.mapJobToCraftingResponse(job);

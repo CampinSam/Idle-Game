@@ -30,6 +30,18 @@ function formatTime(ms: number) {
   return `${minutes}m left`;
 }
 
+function formatSeasonRemaining(endsAtIso: string): string {
+  const end = new Date(endsAtIso).getTime();
+  const ms = end - Date.now();
+  if (!Number.isFinite(ms) || ms <= 0) return 'ENDED';
+  const totalMinutes = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
   const { pushModal } = useModal();
@@ -38,6 +50,11 @@ export default function HomePage() {
   const locations = useSyncLocations();
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
+  const activeSeason = useAppSelector((s: any) => s.sync?.activeSeason ?? null);
+  const seasonTimeRemaining = useMemo(
+    () => (activeSeason?.endsAt ? formatSeasonRemaining(activeSeason.endsAt) : ''),
+    [activeSeason?.endsAt],
+  );
 
   const allActiveJobs = useAllActiveJobs();
   const { collectJob } = useCollectJob();
@@ -150,20 +167,21 @@ export default function HomePage() {
 
   return (
     <div className="hp">
-      {/* TODO(Phase 5): Replace with live season data from GET /season/current.
-           Season name, time remaining, and CTA label should come from the SeasonService.
-           See Phase 5 in the post-MVP roadmap. */}
-      <div className="hp-section">
-        <div className="hp-season-banner" onClick={() => navigate('/missions')}>
-          <img src="/media/images/season-banner.png" alt="" className="hp-season-bg" />
-          <div className="hp-season-content">
-            <h3>VOID CONVERGENCE</h3>
-            <p className="hp-season-sub">SEASON ENDS IN: <strong>24d 17h</strong></p>
-            <p className="hp-season-desc">Cosmic mysteries await!</p>
-            <button className="hp-season-btn">SEASON MISSIONS</button>
+      {activeSeason?.name && activeSeason?.endsAt && (
+        <div className="hp-section">
+          <div className="hp-season-banner" onClick={() => navigate('/missions')}>
+            <img src="/media/images/season-banner.png" alt="" className="hp-season-bg" />
+            <div className="hp-season-content">
+              <h3>{String(activeSeason.name).toUpperCase()}</h3>
+              <p className="hp-season-sub">SEASON ENDS IN: <strong>{seasonTimeRemaining}</strong></p>
+              {activeSeason.config?.tagline && (
+                <p className="hp-season-desc">{activeSeason.config.tagline}</p>
+              )}
+              <button className="hp-season-btn">SEASON MISSIONS</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="hp-combined-card">
         <div className="hp-combined-top">
