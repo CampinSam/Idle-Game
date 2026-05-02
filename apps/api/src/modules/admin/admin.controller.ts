@@ -248,7 +248,7 @@ export class AdminController {
     const results = await Promise.all(
       allDefs.map(async (def: any) => {
         const iconKey: string = def.iconKey;
-        const objectName = prefix ? `${prefix}/icons/${iconKey}.png` : `icons/${iconKey}.png`;
+        const objectName = prefix ? `${prefix}/images/icons/${iconKey}.png` : `images/icons/${iconKey}.png`;
         const file = bucket.file(objectName);
         const [exists] = await file.exists();
         return {
@@ -257,7 +257,7 @@ export class AdminController {
           iconKey,
           type: def.type,
           exists,
-          url: exists ? `/media/icons/${iconKey}.png` : null,
+          url: exists ? `/media/images/icons/${iconKey}.png` : null,
         };
       }),
     );

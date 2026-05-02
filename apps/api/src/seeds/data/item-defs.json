@@ -6,7 +6,6 @@
     "name": "Lucky Charm",
     "description": "Boosts luck for the next mission.",
     "iconKey": "lucky_charm",
-    "iconUrl": null,
     "uiColor": null,
     "category": "ENHANCEMENT",
     "groups": [
@@ -32,7 +31,6 @@
     "name": "XP Scroll",
     "description": "Doubles experience gained for the next mission.",
     "iconKey": "xp_scroll",
-    "iconUrl": null,
     "uiColor": null,
     "category": "ENHANCEMENT",
     "groups": [
@@ -58,7 +56,6 @@
     "name": "Iron Sword",
     "description": "A sturdy blade forged from iron ore.",
     "iconKey": "iron_sword",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": [
@@ -85,7 +82,6 @@
     "name": "Ring of Focus",
     "description": "A ring that sharpens the wearer's focus.",
     "iconKey": "mana_ring",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": [
@@ -113,7 +109,6 @@
     "name": "Fake Security Badge",
     "description": "Convincing at a glance. Catastrophic under inspection.",
     "iconKey": null,
-    "iconUrl": null,
     "uiColor": null,
     "category": "QUEST_ITEMS",
     "groups": [],
@@ -132,7 +127,6 @@
     "name": "GL!TCH Residue",
     "description": null,
     "iconKey": null,
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [],
@@ -151,7 +145,6 @@
     "name": "Prototype Egg",
     "description": null,
     "iconKey": null,
-    "iconUrl": null,
     "uiColor": null,
     "category": "MISC",
     "groups": [],
@@ -170,7 +163,6 @@
     "name": "Crystal Bloom",
     "description": "A flower that grows near ley lines.",
     "iconKey": "crystal_bloom",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -192,7 +184,6 @@
     "name": "Feather Dust",
     "description": "Fine dust gathered from enchanted feathers.",
     "iconKey": "feather_dust",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -213,7 +204,6 @@
     "name": "Iron Ore",
     "description": "Common ore used in basic crafting.",
     "iconKey": "iron_ore",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -235,7 +225,6 @@
     "name": "Mana Shard",
     "description": "Glimmering shard infused with arcane energy.",
     "iconKey": "mana_shard",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -257,7 +246,6 @@
     "name": "Shadow Silk",
     "description": "Rare silk woven from shadow threads.",
     "iconKey": "shadow_silk",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -279,7 +267,6 @@
     "name": "Starlight Dust",
     "description": "Glittering particles that fall from the night sky.",
     "iconKey": "starlight_dust",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -301,7 +288,6 @@
     "name": "Void Essence",
     "description": "Concentrated essence from the void between realms.",
     "iconKey": "void_essence",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -323,7 +309,6 @@
     "name": "Healing Potion",
     "description": "Restores a moderate amount of health.",
     "iconKey": "potion_heal",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": [
@@ -348,7 +333,6 @@
     "name": "Minor Healing Potion",
     "description": "Restores a small amount of health.",
     "iconKey": "potion_heal",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": [
@@ -373,7 +357,6 @@
     "name": "Swift Draught",
     "description": "Temporarily increases movement speed.",
     "iconKey": "potion_speed",
-    "iconUrl": null,
     "uiColor": null,
     "category": "ENHANCEMENT",
     "groups": [
@@ -399,7 +382,6 @@
     "name": "Ember Crystal",
     "description": "A fragment of condensed flame energy found near volcanic vents.",
     "iconKey": "ember_crystal",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": ["rare", "elemental"],
@@ -418,7 +400,6 @@
     "name": "Silver Dust",
     "description": "Fine metallic powder used in enchanting and alchemy.",
     "iconKey": "silver_dust",
-    "iconUrl": null,
     "uiColor": null,
     "category": "CRAFTING",
     "groups": ["basic", "metal"],
@@ -437,7 +418,6 @@
     "name": "Revival Token",
     "description": "Instantly revives a defeated keeper mid-mission.",
     "iconKey": "revival_token",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": ["revival", "combat"],
@@ -460,7 +440,6 @@
     "name": "Shadow Cloak",
     "description": "A cloak woven from shadow silk that improves stealth and evasion.",
     "iconKey": "shadow_cloak",
-    "iconUrl": null,
     "uiColor": null,
     "category": "COMBAT",
     "groups": ["armor", "stealth"],
@@ -485,7 +464,6 @@
     "name": "Ancient Map Fragment",
     "description": "A piece of a larger map leading to forgotten treasure.",
     "iconKey": "ancient_map",
-    "iconUrl": null,
     "uiColor": null,
     "category": "QUEST_ITEMS",
     "groups": [
@@ -506,7 +484,6 @@
     "name": "Common Chest",
     "description": "A sturdy chest filled with everyday supplies. Open it to receive resources.",
     "iconKey": "common_chest",
-    "iconUrl": null,
     "uiColor": "#6b7280",
     "category": "MISC",
     "groups": ["lootbox"],
@@ -526,7 +503,6 @@
     "name": "Rare Crate",
     "description": "A reinforced crate stamped with arcane sigils. Contains rare materials and premium currency.",
     "iconKey": "rare_crate",
-    "iconUrl": null,
     "uiColor": "#3b82f6",
     "category": "MISC",
     "groups": ["lootbox"],
@@ -546,7 +522,6 @@
     "name": "Mystery Egg",
     "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
     "iconKey": "mystery_egg",
-    "iconUrl": null,
     "uiColor": "#a78bfa",
     "category": "MISC",
     "groups": ["lootbox"],

@@ -1,7 +1,7 @@
 // One mental model for media: the value you save IS the path under the bucket.
-//   "/images/foo.png"  → /media/images/foo.png   (bucket lookup)
+//   "/images/foo.png"  → /media/images/foo.png            (bucket lookup)
 //   "/audio/click.mp3" → /media/audio/click.mp3
-//   "lucky_charm"      → /media/icons/lucky_charm.png  (icon shortcut)
+//   "lucky_charm"      → /media/images/icons/lucky_charm.png  (icon shortcut)
 //   "http(s)://..."    → returned unchanged
 const MEDIA_BASE = '/media';
 
@@ -21,7 +21,7 @@ export function resolveAssetUrl(value: string | null | undefined): string | null
   if (trimmed.startsWith('/')) return `${MEDIA_BASE}${trimmed}`;
   // Bare-name icon shortcut: only when value has no slash AND no extension
   if (!trimmed.includes('/') && !/\.[a-z0-9]{2,5}$/i.test(trimmed)) {
-    return `${MEDIA_BASE}/icons/${trimmed}.png`;
+    return `${MEDIA_BASE}/images/icons/${trimmed}.png`;
   }
   // Anything else: treat as bucket-relative (e.g. "images/foo.png")
   return `${MEDIA_BASE}/${trimmed}`;

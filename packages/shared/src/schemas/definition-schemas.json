@@ -2113,11 +2113,6 @@
           "nullable": true,
           "description": "Icon key"
         },
-        "iconUrl": {
-          "type": "string",
-          "nullable": true,
-          "description": "Direct icon URL"
-        },
         "uiColor": {
           "type": "string",
           "format": "css-color",

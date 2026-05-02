@@ -1,4 +1,5 @@
 import { formatCompact } from '../../../../utils/formatNumber';
+import { resolveAssetUrl } from '../../../../utils/iconResolver';
 import type { ItemCardProps } from '../../types';
 import './DefaultItemCard.css';
 
@@ -30,11 +31,13 @@ export default function DefaultItemCard({
     ? `Lvl ${item.level ?? 1}`
     : '';
 
+  const iconUrl = resolveAssetUrl(item.iconKey);
+
   return (
     <div className={cls} onClick={() => !disabled && onClick?.(item)}>
       <div className="item-card__img-wrap">
-        {item.iconUrl ? (
-          <img className="item-card__img" src={item.iconUrl} alt={item.name} />
+        {iconUrl ? (
+          <img className="item-card__img" src={iconUrl} alt={item.name} />
         ) : (
           <MissingIcon />
         )}

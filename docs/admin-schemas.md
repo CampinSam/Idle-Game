@@ -104,8 +104,7 @@ Defines an item that can exist in player inventories. Supports materials, consum
 | `rarity` | ItemRarity enum | No | `COMMON` | Rarity tier (see [ItemRarity Enum](#itemrarity-enum)) |
 | `name` | string | Yes | — | Display name |
 | `description` | string | No | — | Flavor text |
-| `iconKey` | string | No | — | Key used to resolve the display icon |
-| `iconUrl` | string | No | — | Direct URL to an icon image |
+| `iconKey` | string | No | — | Icon path or bare key. A leading `/` (e.g. `/images/icons/foo.png`) is treated as a literal path under the public bucket; a bare key (e.g. `lucky_charm`) resolves to `/media/images/icons/<key>.png`; absolute `http(s)://`, `data:`, and `blob:` URLs pass through unchanged. |
 | `uiColor` | string | No | — | CSS color for UI accent (e.g. border glow) |
 | `category` | ItemCategory enum | No | `MISC` | One of: `MISC`, `CRAFTING`, `COMBAT`, `EXPLORATION`, `QUEST_ITEMS`, `ENHANCEMENT` |
 | `groups` | string[] | No | `[]` | Tags for filtering/searching (e.g. `["ore", "basic"]`, `["weapon", "melee"]`) |

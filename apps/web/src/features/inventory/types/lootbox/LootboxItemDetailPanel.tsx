@@ -1,3 +1,4 @@
+import { resolveAssetUrl } from '../../../../utils/iconResolver';
 import type { ItemDetailPanelProps } from '../../types';
 import './LootboxItemDetailPanel.css';
 
@@ -20,13 +21,14 @@ export default function LootboxItemDetailPanel({
   className = '',
 }: ItemDetailPanelProps) {
   const possibleRewards: string[] = Array.isArray(item.possibleRewards) ? item.possibleRewards : [];
+  const iconUrl = resolveAssetUrl(item.iconKey);
 
   return (
     <div className={`lootbox-detail item-detail-panel ${className}`.trim()}>
       <div className="lootbox-detail__icon-wrap">
         <div className="lootbox-detail__icon-glow" aria-hidden />
-        {item.iconUrl ? (
-          <img className="lootbox-detail__icon" src={item.iconUrl} alt={item.name} />
+        {iconUrl ? (
+          <img className="lootbox-detail__icon" src={iconUrl} alt={item.name} />
         ) : (
           <MissingIcon />
         )}

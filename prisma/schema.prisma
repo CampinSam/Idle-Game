@@ -716,7 +716,6 @@ model ItemDefinition {
   name            String
   description     String?
   iconKey         String?
-  iconUrl         String?
   uiColor         String?
   category        ItemCategory @default(MISC)
   groups          String[]     @default([])

@@ -94,7 +94,6 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, description: 'Display name' },
       description: { type: 'string', description: 'Flavor text' },
       iconKey: { type: 'assetKey', description: 'Icon asset key' },
-      iconUrl: { type: 'assetKey', description: 'Direct icon URL' },
       uiColor: { type: 'color', description: 'CSS color for UI accent' },
       category: { type: 'enum', enum: 'itemCategory', default: 'MISC', description: 'Item category' },
       groups: { type: 'stringArray', default: [], description: 'Tags for filtering' },
@@ -483,7 +482,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   System: ['EventDefinition'],
 };
 
-export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'iconUrl', 'cardBackground'];
+export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];
 
 export function isAssetKeyField(fieldName: string): boolean {
   return ASSET_KEY_FIELD_PATTERNS.some(p => fieldName.toLowerCase().includes(p.toLowerCase()));
