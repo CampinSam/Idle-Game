@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from '../../../../utils/iconResolver';
+import { resolveAssetUrl, DEFAULT_ICON_URL } from '../../../../utils/iconResolver';
 import type { ItemDetailPanelProps } from '../../types';
 import './DefaultItemDetailPanel.css';
 
@@ -16,7 +16,7 @@ function rarityLabel(r?: string) {
 }
 
 export default function DefaultItemDetailPanel({ item, actions, className = '' }: ItemDetailPanelProps) {
-  const iconUrl = resolveAssetUrl(item.iconKey);
+  const iconUrl = resolveAssetUrl(item.iconKey) ?? DEFAULT_ICON_URL;
   return (
     <div className={`item-detail-panel ${className}`.trim()}>
       <div className="item-detail-panel__img-wrap">

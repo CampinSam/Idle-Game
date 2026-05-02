@@ -1,5 +1,5 @@
 import { formatCompact } from '../../../../utils/formatNumber';
-import { resolveAssetUrl } from '../../../../utils/iconResolver';
+import { resolveAssetUrl, DEFAULT_ICON_URL } from '../../../../utils/iconResolver';
 import type { ItemCardProps } from '../../types';
 import './DefaultItemCard.css';
 
@@ -31,7 +31,7 @@ export default function DefaultItemCard({
     ? `Lvl ${item.level ?? 1}`
     : '';
 
-  const iconUrl = resolveAssetUrl(item.iconKey);
+  const iconUrl = resolveAssetUrl(item.iconKey) ?? DEFAULT_ICON_URL;
 
   return (
     <div className={cls} onClick={() => !disabled && onClick?.(item)}>

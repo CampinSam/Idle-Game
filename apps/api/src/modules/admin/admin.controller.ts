@@ -245,19 +245,42 @@ export class AdminController {
       ...currencies.map((d: any) => ({ ...d, type: 'currency' as const })),
     ];
 
+    // Mirror iconResolver semantics on the server: a leading `/` or any value
+    // containing a slash is treated as a literal path under the bucket; a bare
+    // key (no slash, no extension) shortcuts to `images/icons/<key>.png`.
+    // Absolute URLs (`http(s)://`, `data:`, `blob:`) are skipped — we cannot
+    // verify their existence in the public bucket.
     const results = await Promise.all(
       allDefs.map(async (def: any) => {
         const iconKey: string = def.iconKey;
-        const objectName = prefix ? `${prefix}/images/icons/${iconKey}.png` : `images/icons/${iconKey}.png`;
-        const file = bucket.file(objectName);
-        const [exists] = await file.exists();
+        const trimmed = iconKey.trim();
+        const isAbsolute = /^(https?:|data:|blob:)/i.test(trimmed);
+
+        let relPath: string | null = null;
+        if (!isAbsolute) {
+          if (!trimmed.includes('/') && !/\.[a-z0-9]{2,5}$/i.test(trimmed)) {
+            relPath = `images/icons/${trimmed}.png`;
+          } else {
+            relPath = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+          }
+        }
+
+        let exists = false;
+        if (relPath) {
+          const objectName = prefix ? `${prefix}/${relPath}` : relPath;
+          const file = bucket.file(objectName);
+          [exists] = await file.exists();
+        } else {
+          exists = true; // absolute URL — assume reachable
+        }
+
         return {
           id: def.id,
           name: def.name,
           iconKey,
           type: def.type,
           exists,
-          url: exists ? `/media/images/icons/${iconKey}.png` : null,
+          url: exists ? (isAbsolute ? trimmed : `/media/${relPath}`) : null,
         };
       }),
     );

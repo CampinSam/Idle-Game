@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from '../../../../utils/iconResolver';
+import { resolveAssetUrl, DEFAULT_ICON_URL } from '../../../../utils/iconResolver';
 import type { ItemDetailPanelProps } from '../../types';
 import './LootboxItemDetailPanel.css';
 
@@ -21,7 +21,7 @@ export default function LootboxItemDetailPanel({
   className = '',
 }: ItemDetailPanelProps) {
   const possibleRewards: string[] = Array.isArray(item.possibleRewards) ? item.possibleRewards : [];
-  const iconUrl = resolveAssetUrl(item.iconKey);
+  const iconUrl = resolveAssetUrl(item.iconKey) ?? DEFAULT_ICON_URL;
 
   return (
     <div className={`lootbox-detail item-detail-panel ${className}`.trim()}>
