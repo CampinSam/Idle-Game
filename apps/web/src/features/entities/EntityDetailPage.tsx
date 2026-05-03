@@ -244,7 +244,10 @@ export default function EntityDetailPage() {
   return (
     <div className="entity-detail-page">
       <div
-        className="entity-detail-page__card"
+        className={[
+          'entity-detail-page__card',
+          getEntityKind(entity) === 'derp_bird' && (isPerfectSpecimen(entity) ? 'entity-detail-page__card--perfect' : 'entity-detail-page__card--derp-bird'),
+        ].filter(Boolean).join(' ')}
         ref={cardRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

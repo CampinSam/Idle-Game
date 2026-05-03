@@ -4,6 +4,7 @@
 }
 
 .entity-detail-page__card {
+  position: relative;
   background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 16px;
@@ -11,6 +12,86 @@
   padding: 14px;
   animation: card-enter 0.2s ease-out both;
   will-change: transform;
+}
+
+/* ── Derp Bird card treatment ── */
+
+.entity-detail-page__card--derp-bird {
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(45, 212, 191, 0.08),
+    0 0 14px rgba(20, 184, 166, 0.18);
+}
+
+.entity-detail-page__card--derp-bird::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(60deg,  rgba(45, 212, 191, 0.18) 25%, transparent 25.5%, transparent 75%, rgba(45, 212, 191, 0.18) 75.5%),
+    linear-gradient(120deg, rgba(45, 212, 191, 0.18) 25%, transparent 25.5%, transparent 75%, rgba(45, 212, 191, 0.18) 75.5%);
+  background-size: 16px 28px;
+  pointer-events: none;
+  border-radius: inherit;
+  mix-blend-mode: screen;
+  z-index: 0;
+}
+
+.entity-detail-page__card--derp-bird > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Perfect Specimen card treatment ── */
+
+.entity-detail-page__card--perfect {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(160deg, #1a1640 0%, #221a50 100%) padding-box,
+    conic-gradient(
+      from 0deg,
+      #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc
+    ) border-box;
+  box-shadow:
+    0 0 20px rgba(244, 114, 182, 0.4),
+    0 0 40px rgba(125, 211, 252, 0.2),
+    inset 0 0 12px rgba(255, 255, 255, 0.04);
+  animation: card-enter 0.2s ease-out both, detail-perfect-border-spin 6s linear infinite;
+}
+
+.entity-detail-page__card--perfect::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(60deg,  rgba(244, 114, 182, 0.18) 25%, transparent 25.5%, transparent 75%, rgba(244, 114, 182, 0.18) 75.5%),
+    linear-gradient(120deg, rgba(125, 211, 252, 0.18) 25%, transparent 25.5%, transparent 75%, rgba(125, 211, 252, 0.18) 75.5%);
+  background-size: 16px 28px;
+  pointer-events: none;
+  border-radius: inherit;
+  mix-blend-mode: screen;
+  z-index: 0;
+  animation: detail-perfect-twinkle 2.6s ease-in-out infinite;
+}
+
+.entity-detail-page__card--perfect > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-detail-page__card--perfect { animation: card-enter 0.2s ease-out both; }
+  .entity-detail-page__card--perfect::before { animation: none; }
+}
+
+@keyframes detail-perfect-border-spin {
+  from { --conic-angle: 0deg; }
+  to   { --conic-angle: 360deg; }
+}
+
+@keyframes detail-perfect-twinkle {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
 }
 
 .entity-detail-page__loading {
