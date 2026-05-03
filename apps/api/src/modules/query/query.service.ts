@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CheckInService } from '../checkin/checkin.service';
 import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import {
@@ -21,6 +22,8 @@ export interface BootstrapResult {
     notifications?: any;
     currencies?: any;
     activeEffects?: any;
+    homeBanners?: HomeBannerSnapshot[];
+    activeSeason?: any;
   };
   cursor: { delta: string };
 }
@@ -59,6 +62,7 @@ export class QueryService {
     private prisma: PrismaService,
     private checkInService: CheckInService,
     private tickService: TickService,
+    private homeBannerService: HomeBannerService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -87,6 +91,8 @@ export class QueryService {
       unclaimedGifts,
       tagDefs,
       visualEffectDefs,
+      homeBanners,
+      activeSeason,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -186,6 +192,11 @@ export class QueryService {
       (this.prisma as any).visualEffectDef.findMany({
         where: { enabled: true },
         orderBy: { sortOrder: 'asc' },
+      }),
+      this.homeBannerService.listActive(userId),
+      this.prisma.season.findFirst({
+        where: { status: 'active', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
+        orderBy: { endsAt: 'asc' },
       }),
     ]);
 
@@ -314,6 +325,17 @@ export class QueryService {
           expiresAtTick: e.expiresAtTick,
           createdAt: e.createdAt?.toISOString?.() ?? e.createdAt,
         })),
+        homeBanners,
+        activeSeason: activeSeason
+          ? {
+              id: activeSeason.id,
+              name: activeSeason.name,
+              startsAt: activeSeason.startsAt.toISOString(),
+              endsAt: activeSeason.endsAt.toISOString(),
+              status: activeSeason.status,
+              config: activeSeason.config ?? {},
+            }
+          : null,
       },
       cursor: { delta: cursorId.toString() },
     };

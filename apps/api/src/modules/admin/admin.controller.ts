@@ -58,6 +58,7 @@ export class AdminController {
       { key: 'effectDef', name: 'Effect Definitions', table: 'effect_defs' },
       { key: 'tagDef', name: 'Visual Tag Definitions', table: 'tag_defs' },
       { key: 'visualEffectDef', name: 'Visual Effect Definitions', table: 'visual_effect_defs' },
+      { key: 'homeBannerDef', name: 'Home Banners', table: 'home_banner_defs' },
     ];
   }
 

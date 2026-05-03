@@ -151,3 +151,22 @@ export function useSyncActiveEffects() {
   const table = useAppSelector((s) => s.sync.activeEffects);
   return useMemo(() => Object.values(table), [table]);
 }
+
+/**
+ * Returns the active homescreen banners, freshly filtered against the
+ * current wall-clock time so banners whose `endsAt` has slipped into the
+ * past disappear without waiting for a re-bootstrap. Re-evaluates whenever
+ * the server-supplied list or the `nowMs` argument changes; pass a value
+ * derived from a tick / interval if you want the filter to refresh live.
+ */
+export function useHomeBanners(nowMs?: number) {
+  const banners = useAppSelector((s) => s.sync.homeBanners);
+  return useMemo(() => {
+    const now = nowMs ?? Date.now();
+    return banners.filter((b: any) => {
+      if (b.startsAt && new Date(b.startsAt).getTime() > now) return false;
+      if (b.endsAt && new Date(b.endsAt).getTime() <= now) return false;
+      return true;
+    });
+  }, [banners, nowMs]);
+}

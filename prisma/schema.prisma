@@ -1125,10 +1125,43 @@ model Season {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  homeBanners HomeBannerDef[]
+
   @@index([status])
   @@index([ecosystemId])
   @@index([startsAt])
   @@map("seasons")
+}
+
+// ═══════════════════════════════════════════════════
+// HOME BANNERS — generic data-driven banner slot on the homescreen.
+// Replaces the previously hardcoded season banner. Multiple active
+// banners produce a swipeable carousel; one becomes a single card.
+// ═══════════════════════════════════════════════════
+model HomeBannerDef {
+  id              String    @id
+  name            String                              // admin-facing label
+  title           String                              // big headline shown on the card
+  subtitle        String?                             // small line above/below title (e.g. "SEASON ENDS IN: 3d")
+  description     String?                             // body copy below the title
+  backgroundImage String?                             // asset key or URL for the card background
+  ctaLabel        String?                             // button label (omit/empty to hide CTA)
+  ctaRoute        String?                             // route to navigate to on tap
+  priority        Int       @default(0)               // higher = earlier in carousel
+  startsAt        DateTime?                           // banner is hidden before this
+  endsAt          DateTime?                           // banner is hidden after this; powers countdown
+  status          String    @default("active")        // active | draft | archived
+  seasonId        String?                             // optional link to a Season (substitutes title/endsAt)
+  season          Season?   @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  config          Json      @default("{}")            // { autoAdvanceMs?: number, tagline?: string, ... }
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([startsAt])
+  @@index([endsAt])
+  @@map("home_banner_defs")
 }
 
 // ═══════════════════════════════════════════════════

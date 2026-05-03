@@ -17,7 +17,7 @@ import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
-import { formatSeasonRemaining } from '../../utils/formatSeasonRemaining';
+import { BannerCarousel } from './BannerCarousel';
 import './HomePage.css';
 
 function formatTime(ms: number) {
@@ -39,12 +39,6 @@ export default function HomePage() {
   const locations = useSyncLocations();
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
-  const activeSeason = useAppSelector((s: any) => s.sync?.activeSeason ?? null);
-  const seasonTimeRemaining = useMemo(
-    () => (activeSeason?.endsAt ? formatSeasonRemaining(activeSeason.endsAt) : ''),
-    [activeSeason?.endsAt],
-  );
-
   const allActiveJobs = useAllActiveJobs();
   const { collectJob } = useCollectJob();
   const dispatch = useAppDispatch();
@@ -156,21 +150,7 @@ export default function HomePage() {
 
   return (
     <div className="hp">
-      {activeSeason?.name && activeSeason?.endsAt && (
-        <div className="hp-section">
-          <div className="hp-season-banner" onClick={() => navigate('/missions')}>
-            <img src="/media/images/season-banner.png" alt="" className="hp-season-bg" />
-            <div className="hp-season-content">
-              <h3>{String(activeSeason.name).toUpperCase()}</h3>
-              <p className="hp-season-sub">SEASON ENDS IN: <strong>{seasonTimeRemaining}</strong></p>
-              {activeSeason.config?.tagline && (
-                <p className="hp-season-desc">{activeSeason.config.tagline}</p>
-              )}
-              <button className="hp-season-btn">SEASON MISSIONS</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BannerCarousel />
 
       <div className="hp-combined-card">
         <div className="hp-combined-top">

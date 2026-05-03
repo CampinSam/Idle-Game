@@ -24,6 +24,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   ShopItemDef: 'shopItemDef',
   NftCollectionDef: 'nftCollectionDef',
   EffectDef: 'effectDef',
+  HomeBannerDef: 'homeBannerDef',
 };
 
 export interface FieldDef {
@@ -466,10 +467,30 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       enabled: { type: 'boolean', default: true, description: 'Active?' },
     },
   },
+  HomeBannerDef: {
+    color: '#22D3EE',
+    group: 'UI',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. banner_summer_sale)' },
+      name: { type: 'string', required: true, description: 'Admin-facing label' },
+      title: { type: 'string', required: true, description: 'Big headline shown on the card' },
+      subtitle: { type: 'string', description: 'Small line above/below title (optional)' },
+      description: { type: 'string', description: 'Body copy beneath the title (optional)' },
+      backgroundImage: { type: 'assetKey', description: 'Background image asset key or URL' },
+      ctaLabel: { type: 'string', description: 'CTA button label (leave blank to hide button)' },
+      ctaRoute: { type: 'string', description: 'Route to navigate to on tap (e.g. /missions)' },
+      priority: { type: 'number', default: 0, description: 'Higher priority appears earlier in carousel' },
+      startsAt: { type: 'string', description: 'ISO datetime — banner is hidden before this (blank = always)' },
+      endsAt: { type: 'string', description: 'ISO datetime — banner is hidden after this; powers countdown (blank = no countdown)' },
+      status: { type: 'options', options: ['active', 'draft', 'archived'], default: 'active', description: 'Visibility status' },
+      seasonId: { type: 'ref', refTable: 'Season', description: 'Optional Season link (substitutes title/endsAt from the Season row)' },
+      config: { type: 'json', default: {}, description: 'Extra config: { autoAdvanceMs?: number, tagline?: string, deriveFromActiveSeason?: boolean }' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
-  UI: ['ModalDef', 'DisplayDef'],
+  UI: ['ModalDef', 'DisplayDef', 'HomeBannerDef'],
   Missions: ['MissionDef', 'MissionCategoryDef'],
   Crafting: ['RecipeDef'],
   Locations: ['BuildingDef', 'RoomDef', 'LocationDefinition', 'RegionDefinition'],

@@ -1,7 +1,7 @@
 import { Store } from '@reduxjs/toolkit';
 import { api } from './api';
 import type { DeltaResponse } from './api';
-import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickBroadcast } from '../store/syncSlice';
+import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickBroadcast, setHomeBanners } from '../store/syncSlice';
 import type { RootState } from '../store';
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -90,6 +90,20 @@ export class SyncEngine {
         }));
       } catch {
         console.warn('[SyncEngine] Failed to parse tick.rate.updated event');
+      }
+    });
+
+    es.addEventListener('home_banners.updated', (e: MessageEvent) => {
+      // Whole-list replacement broadcast emitted by the admin service after
+      // any HomeBannerDef create/update/delete. Clients refresh the carousel
+      // without waiting for a re-bootstrap.
+      try {
+        const msg = JSON.parse(e.data);
+        if (Array.isArray(msg?.banners)) {
+          this.store.dispatch(setHomeBanners(msg.banners));
+        }
+      } catch {
+        console.warn('[SyncEngine] Failed to parse home_banners.updated event');
       }
     });
 

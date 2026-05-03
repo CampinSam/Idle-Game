@@ -177,5 +177,15 @@ export async function seedDefinitions(prisma: any) {
     await upsertManyForce(prisma, 'modalDef', defs.modalDefs);
   }
 
+  const homeBannerDefs = loadJson('home-banner-defs.json');
+  if (Array.isArray(homeBannerDefs) && homeBannerDefs.length > 0) {
+    await upsertManyForce(prisma, 'homeBannerDef', homeBannerDefs, (r: any) => {
+      const copy = { ...r };
+      if (copy.startsAt) copy.startsAt = new Date(copy.startsAt);
+      if (copy.endsAt) copy.endsAt = new Date(copy.endsAt);
+      return copy;
+    });
+  }
+
   logger.log('Definition seeding complete');
 }

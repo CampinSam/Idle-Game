@@ -5,11 +5,19 @@ export interface PubSubMessage {
   deltaId: string;
 }
 
-export interface BroadcastMessage {
-  type: 'tick.rate.updated';
-  tickRate: number;
-  boosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
-}
+export type BroadcastMessage =
+  | {
+      type: 'tick.rate.updated';
+      tickRate: number;
+      boosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
+    }
+  | {
+      // Whole-list replacement of the active home banner set. Emitted by the
+      // admin service after a HomeBannerDef create/update/delete so every
+      // connected client refreshes its carousel without a re-bootstrap.
+      type: 'home_banners.updated';
+      banners: any[];
+    };
 
 export abstract class PubSubService {
   abstract publish(channel: string, message: PubSubMessage): void;

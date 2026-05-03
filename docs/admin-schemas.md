@@ -1646,6 +1646,46 @@ The following action keys are seeded as placeholder SoundDefs and are wired to a
 
 ---
 
+## HomeBannerDef
+
+Generic data-driven banner shown at the top of the homescreen. Drives announcements, sales, season info, and event call-outs through a single pipeline. Replaces the legacy hardcoded season banner — when `config.deriveFromActiveSeason` is true the active Season's `displayName`/`endsAt`/`tagline` are substituted into the banner at fetch time.
+
+The active set (status=`active`, current time within `startsAt`/`endsAt` window, sorted by `priority` descending) is shipped in the bootstrap snapshot under `homeBanners` and broadcast in real-time via SSE (`home_banners.updated`) when admin records change. Zero banners hides the slot; one banner renders a static card; two or more render a swipeable carousel with page dots and auto-advance.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | Yes | — | Unique identifier (e.g. `banner_summer_sale`) |
+| `name` | string | Yes | — | Admin-facing label |
+| `title` | string | Yes | — | Big headline shown on the card (rendered uppercase) |
+| `subtitle` | string | No | null | Small line above the body. When `endsAt` is set, the subtitle becomes the prefix for the live countdown (`<subtitle>: <Xd Yh>`) |
+| `description` | string | No | null | Body copy beneath the title |
+| `backgroundImage` | string | No | null | Asset key or URL for the card background image |
+| `ctaLabel` | string | No | null | CTA button label (omit/blank to hide the button) |
+| `ctaRoute` | string | No | null | Route to navigate to on tap or CTA click (e.g. `/missions`) |
+| `priority` | integer | No | 0 | Higher priority appears earlier in the carousel order |
+| `startsAt` | datetime | No | null | Banner is hidden before this datetime |
+| `endsAt` | datetime | No | null | Banner is hidden after this datetime; powers the live countdown subtitle |
+| `status` | enum | No | `active` | One of `active`, `draft`, `archived` |
+| `seasonId` | string | No | null | Optional FK to Season — used by `deriveFromActiveSeason` |
+| `config` | json | No | `{}` | See **Config Format** below |
+
+### Config Format
+
+```ts
+{
+  autoAdvance?: boolean;        // false disables auto-advance for the whole rotation
+  autoAdvanceMs?: number;       // ms between cards (default 7000); the longest value among active cards wins
+  tagline?: string;             // overrides `description` as the body copy line
+  deriveFromActiveSeason?: boolean; // when true and a Season is active, substitutes the season's displayName/endsAt/tagline
+}
+```
+
+### Real-time Updates
+
+Admin create/update/delete on `homeBannerDef` recomputes the active set and broadcasts `home_banners.updated` over SSE. The web `SyncEngine` dispatches `setHomeBanners` so all connected clients refresh without re-bootstrap. Expiry is also enforced live on the client (`useHomeBanners(nowMs)`) so banners drop out the moment their `endsAt` passes.
+
+---
+
 ## Job
 
 The unified Job table stores all timer-based player activities: missions, crafting, and building construction. Unlike the definition tables above (which are game design data), Jobs are runtime records created when a player starts an activity.

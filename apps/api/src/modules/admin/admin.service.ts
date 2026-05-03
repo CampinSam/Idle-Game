@@ -10,6 +10,8 @@ import { generateEntityData } from '../entity/entity-generator.util';
 import { GameRulesService, GameUser } from '../game-rules/game-rules.service';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { SeededRng } from '@derp/math';
+import { HomeBannerService } from '../home-banner/home-banner.service';
+import { PubSubService } from '../infrastructure/pubsub.service';
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -37,6 +39,8 @@ export class AdminService {
     private inventoryService: InventoryService,
     private settlementService: LocationSettlementService,
     private gameRules: GameRulesService,
+    private homeBannerService: HomeBannerService,
+    private pubsub: PubSubService,
   ) {}
 
   async searchPlayers(query: string) {
@@ -267,6 +271,7 @@ export class AdminService {
       this.logger.log(`Normalized ${migrated} legacy amount→min/max entries on create ${table}`);
     }
     const created = await model.create({ data });
+    await this.broadcastIfHomeBanner(table);
     return serializeBigInts(created);
   }
 
@@ -287,7 +292,27 @@ export class AdminService {
     }
 
     const updated = await model.update({ where: { id }, data });
+    await this.broadcastIfHomeBanner(table);
     return serializeBigInts(updated);
+  }
+
+  /**
+   * After any write to `homeBannerDef`, recompute the active set and push
+   * it to every connected client over the global broadcast channel. The
+   * banner list is small and global, so a whole-list replacement is the
+   * simplest delta shape and avoids per-user delta plumbing.
+   *
+   * Best-effort only — logs and swallows errors so an admin save never
+   * fails because of a downstream broadcast hiccup.
+   */
+  private async broadcastIfHomeBanner(table: string): Promise<void> {
+    if (table !== 'homeBannerDef') return;
+    try {
+      const banners = await this.homeBannerService.listActive('admin-broadcast');
+      this.pubsub.publishBroadcast({ type: 'home_banners.updated', banners });
+    } catch (err) {
+      this.logger.warn(`home_banners.updated broadcast failed: ${(err as any)?.message ?? err}`);
+    }
   }
 
   async updateBoost(id: string, data: { name?: string; description?: string }) {
@@ -305,6 +330,7 @@ export class AdminService {
     const existing = await model.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
     const deleted = await model.delete({ where: { id } });
+    await this.broadcastIfHomeBanner(table);
     return serializeBigInts(deleted);
   }
 
@@ -695,6 +721,7 @@ export class AdminService {
       tagDef: (this.prisma as any).tagDef,
       visualEffectDef: (this.prisma as any).visualEffectDef,
       season: (this.prisma as any).season,
+      homeBannerDef: (this.prisma as any).homeBannerDef,
     };
 
     if (!models[table]) {

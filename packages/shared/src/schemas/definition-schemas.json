@@ -3754,6 +3754,29 @@
       "indexes": [
         "actionKey"
       ]
+    },
+    "HomeBannerDef": {
+      "description": "Generic data-driven banner shown at the top of the homescreen. Multiple active banners produce a swipeable carousel; one becomes a single static card. Drives announcements, sales, season info, and event call-outs.",
+      "prismaModel": "HomeBannerDef",
+      "tableName": "home_banner_defs",
+      "primaryKey": "id",
+      "fields": {
+        "id":              { "type": "string",   "required": true,  "description": "Unique identifier (e.g. banner_summer_sale)" },
+        "name":            { "type": "string",   "required": true,  "description": "Admin-facing label" },
+        "title":           { "type": "string",   "required": true,  "description": "Big headline shown on the card" },
+        "subtitle":        { "type": "string",   "nullable": true,  "description": "Small line above/below the title (optional)" },
+        "description":     { "type": "string",   "nullable": true,  "description": "Body copy beneath the title (optional)" },
+        "backgroundImage": { "type": "string",   "nullable": true,  "description": "Asset key or URL for the card background" },
+        "ctaLabel":        { "type": "string",   "nullable": true,  "description": "CTA button label (blank hides the button)" },
+        "ctaRoute":        { "type": "string",   "nullable": true,  "description": "Route to navigate to on tap (e.g. /missions)" },
+        "priority":        { "type": "integer",  "default": 0,      "description": "Higher priority appears earlier in the carousel" },
+        "startsAt":        { "type": "string",   "format": "date-time", "nullable": true, "description": "Banner is hidden before this datetime" },
+        "endsAt":          { "type": "string",   "format": "date-time", "nullable": true, "description": "Banner is hidden after this datetime; powers the countdown subtitle" },
+        "status":          { "type": "enum",     "values": ["active", "draft", "archived"], "default": "active", "description": "Visibility status" },
+        "seasonId":        { "type": "string",   "nullable": true,  "refTable": "Season", "description": "Optional Season link (substitutes title/endsAt from the Season row when config.deriveFromActiveSeason is true)" },
+        "config":          { "type": "json",     "default": {},     "description": "Extra config: { autoAdvanceMs?: number, autoAdvance?: boolean, tagline?: string, deriveFromActiveSeason?: boolean }" }
+      },
+      "indexes": ["status", "startsAt", "endsAt"]
     }
   },
   "tableList": [
@@ -3782,7 +3805,8 @@
     "NftCollectionDef",
     "EffectDef",
     "SoundDef",
-    "SoundMapping"
+    "SoundMapping",
+    "HomeBannerDef"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",

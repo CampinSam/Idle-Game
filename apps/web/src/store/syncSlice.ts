@@ -20,6 +20,21 @@ export interface TickBroadcast {
   receivedAt: number;
 }
 
+export interface HomeBannerSnapshot {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  backgroundImage: string | null;
+  ctaLabel: string | null;
+  ctaRoute: string | null;
+  priority: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  seasonId: string | null;
+  config: Record<string, any>;
+}
+
 interface SyncState {
   status: SyncStatus;
   cursor: string | null;
@@ -42,6 +57,11 @@ interface SyncState {
   activeEffects: EntityTable;
   currencyBalances: Record<string, number>;
   activeSeason: any | null;
+
+  // Home banner carousel — server-resolved list of currently active banners
+  // (filtered by status + start/end window + season-derive substitution).
+  // Stored as an ordered array (priority desc) since order is meaningful.
+  homeBanners: HomeBannerSnapshot[];
 
   // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
   // so `<Tag tagKey>` is a single dictionary lookup.
@@ -74,6 +94,7 @@ const initialState: SyncState = {
   activeEffects: {},
   currencyBalances: {},
   activeSeason: null,
+  homeBanners: [],
 
   tagDefs: {},
   visualEffectDefs: {},
@@ -182,7 +203,16 @@ const syncSlice = createSlice({
         }
       }
 
-      state.activeSeason = snapshot.activeSeason ?? null;
+      state.activeSeason = snapshot.activeSeason ?? (snapshot.state as any)?.activeSeason ?? null;
+      state.homeBanners = Array.isArray((snapshot.state as any)?.homeBanners)
+        ? (snapshot.state as any).homeBanners
+        : Array.isArray((snapshot as any).homeBanners)
+        ? (snapshot as any).homeBanners
+        : [];
+    },
+
+    setHomeBanners(state, action: PayloadAction<HomeBannerSnapshot[]>) {
+      state.homeBanners = Array.isArray(action.payload) ? action.payload : [];
     },
 
     applyPatches(state, action: PayloadAction<{ patches: Patch[]; cursor?: string }>) {
@@ -201,6 +231,18 @@ const syncSlice = createSlice({
             state.activeSeason = patch.data ?? null;
           } else if (patch.op === 'delete') {
             state.activeSeason = null;
+          }
+          continue;
+        }
+
+        if (patch.entity === 'homeBanner') {
+          // Whole-list replacement is the simplest delta shape for this
+          // table — the active set is small and ordering matters. The
+          // server emits a single upsert with `data` as the full new list.
+          if (patch.op === 'upsert' && Array.isArray(patch.data)) {
+            state.homeBanners = patch.data as HomeBannerSnapshot[];
+          } else if (patch.op === 'delete') {
+            state.homeBanners = [];
           }
           continue;
         }
@@ -261,5 +303,5 @@ const syncSlice = createSlice({
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled, setTickBroadcast } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled, setTickBroadcast, setHomeBanners } = syncSlice.actions;
 export default syncSlice.reducer;

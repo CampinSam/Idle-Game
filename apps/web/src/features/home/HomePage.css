@@ -353,6 +353,45 @@
   transform: scale(1.05);
 }
 
+/* Banner carousel — page dots overlay shown when 2+ banners are active. */
+.hp-banner-card {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+.hp-banner-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.hp-banner-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.hp-banner-dot:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.hp-banner-dot-active {
+  background: #f0e6ff;
+  transform: scale(1.25);
+  box-shadow: 0 0 6px rgba(196, 181, 253, 0.8);
+}
+
 .hp-keeper-card {
   background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
   border: 1px solid rgba(139, 92, 246, 0.25);

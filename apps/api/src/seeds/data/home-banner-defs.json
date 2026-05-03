@@ -1,0 +1,21 @@
+[
+  {
+    "id": "banner_active_season",
+    "name": "Active Season Banner",
+    "title": "ACTIVE SEASON",
+    "subtitle": "SEASON ENDS IN: —",
+    "description": null,
+    "backgroundImage": "/media/images/season-banner.png",
+    "ctaLabel": "SEASON MISSIONS",
+    "ctaRoute": "/missions",
+    "priority": 100,
+    "startsAt": null,
+    "endsAt": null,
+    "status": "active",
+    "seasonId": null,
+    "config": {
+      "deriveFromActiveSeason": true,
+      "autoAdvanceMs": 7000
+    }
+  }
+]

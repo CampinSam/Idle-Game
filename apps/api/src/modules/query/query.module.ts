@@ -4,9 +4,10 @@ import { QueryController } from './query.controller';
 import { CheckInModule } from '../checkin/checkin.module';
 import { TickModule } from '../tick/tick.module';
 import { NftModule } from '../nft/nft.module';
+import { HomeBannerModule } from '../home-banner/home-banner.module';
 
 @Module({
-  imports: [CheckInModule, TickModule, NftModule],
+  imports: [CheckInModule, TickModule, NftModule, HomeBannerModule],
   controllers: [QueryController],
   providers: [QueryService],
   exports: [QueryService],

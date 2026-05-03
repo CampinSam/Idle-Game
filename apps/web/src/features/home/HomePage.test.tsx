@@ -45,9 +45,28 @@ const baseSyncState = {
   activeEffects: {},
   currencyBalances: {},
   activeSeason: null,
+  homeBanners: [],
   tickBroadcast: null,
   lastError: null,
 };
+
+function makeBanner(overrides: any = {}) {
+  return {
+    id: 'banner_test',
+    title: 'Void Convergence',
+    subtitle: 'SEASON ENDS IN',
+    description: null,
+    backgroundImage: '/media/images/season-banner.png',
+    ctaLabel: 'SEASON MISSIONS',
+    ctaRoute: '/missions',
+    priority: 100,
+    startsAt: null,
+    endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000 * 3).toISOString(),
+    seasonId: 'season_1',
+    config: { tagline: 'Beware the void.' },
+    ...overrides,
+  };
+}
 
 describe('HomePage', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -56,44 +75,71 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />, {
       preloadedState: { sync: { ...baseSyncState, player: null } } as any,
     });
-    // Skeleton renders without throwing — there should be no season banner text.
-    expect(screen.queryByText(/SEASON ENDS IN/i)).toBeNull();
-    // Wait for the queued getCraftingWorkshops effect to settle so its setState
-    // doesn't fire after the test completes (which would log an act() warning
-    // and could mask real timing bugs).
+    expect(screen.queryByTestId('home-banner')).toBeNull();
     await waitFor(() => expect(api.getCraftingWorkshops).toHaveBeenCalled());
   });
 
-  it('does not render the season banner when no season is active', async () => {
+  it('does not render the banner carousel when there are no active banners', async () => {
     renderWithProviders(<HomePage />, {
       preloadedState: {
         sync: {
           ...baseSyncState,
           player: { id: 'u1', username: 'tester', keeperLevel: 1, keeperXp: 0 },
-          activeSeason: null,
+          homeBanners: [],
         },
       } as any,
     });
-    expect(screen.queryByText(/SEASON ENDS IN/i)).toBeNull();
+    expect(screen.queryByTestId('home-banner')).toBeNull();
     await waitFor(() => expect(api.getCraftingWorkshops).toHaveBeenCalled());
   });
 
-  it('renders the season banner with the active season name', async () => {
+  it('renders a single banner without page dots', async () => {
     renderWithProviders(<HomePage />, {
       preloadedState: {
         sync: {
           ...baseSyncState,
           player: { id: 'u1', username: 'tester', keeperLevel: 1, keeperXp: 0 },
-          activeSeason: {
-            id: 'season_1',
-            name: 'Void Convergence',
-            endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000 * 3).toISOString(),
-            config: { tagline: 'Beware the void.' },
-          },
+          homeBanners: [makeBanner()],
         },
       } as any,
     });
     expect(await screen.findByText(/VOID CONVERGENCE/i)).toBeInTheDocument();
     expect(screen.getByText(/SEASON ENDS IN/i)).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).toBeNull();
+  });
+
+  it('renders page dots when multiple banners are active', async () => {
+    renderWithProviders(<HomePage />, {
+      preloadedState: {
+        sync: {
+          ...baseSyncState,
+          player: { id: 'u1', username: 'tester', keeperLevel: 1, keeperXp: 0 },
+          homeBanners: [
+            makeBanner({ id: 'b1', title: 'First', priority: 100 }),
+            makeBanner({ id: 'b2', title: 'Second', priority: 50, ctaLabel: 'GO' }),
+          ],
+        },
+      } as any,
+    });
+    expect(await screen.findByText(/FIRST/i)).toBeInTheDocument();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(2);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('hides expired banners using endsAt', async () => {
+    renderWithProviders(<HomePage />, {
+      preloadedState: {
+        sync: {
+          ...baseSyncState,
+          player: { id: 'u1', username: 'tester', keeperLevel: 1, keeperXp: 0 },
+          homeBanners: [
+            makeBanner({ endsAt: new Date(Date.now() - 1000).toISOString() }),
+          ],
+        },
+      } as any,
+    });
+    expect(screen.queryByTestId('home-banner')).toBeNull();
+    await waitFor(() => expect(api.getCraftingWorkshops).toHaveBeenCalled());
   });
 });
