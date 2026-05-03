@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
-import { getEntityStatusLabel, getTraitCategoryTags } from './utils';
 import { getFilteredSortedEntities } from './entityListUtils';
 import type { EntityFilter, EntitySortBy } from './types';
 import './EntityDetailPage.css';
@@ -28,6 +27,16 @@ function readBrowseSort(): EntitySortBy {
   const v = safeGet(STORAGE_KEY_SORT);
   if (v === 'name' || v === 'level' || v === 'power' || v === 'collection') return v;
   return 'name';
+}
+
+function statusEmoji(status: string | undefined): string {
+  switch ((status || 'idle').toLowerCase()) {
+    case 'idle':    return '🟢';
+    case 'mission': return '🔵';
+    case 'working': return '🟡';
+    case 'injured': return '🔴';
+    default:        return '⚪';
+  }
 }
 
 export default function EntityDetailPage() {
@@ -63,7 +72,6 @@ export default function EntityDetailPage() {
 
   const currentIdx = navList.findIndex((e) => e.id === id);
   const total = navList.length;
-  const showPosition = total >= 1 && currentIdx >= 0;
   const hasNav = total > 1 && currentIdx >= 0;
   const prevId: string | undefined = hasNav ? navList[(currentIdx - 1 + total) % total]?.id : undefined;
   const nextId: string | undefined = hasNav ? navList[(currentIdx + 1) % total]?.id : undefined;
@@ -224,10 +232,6 @@ export default function EntityDetailPage() {
     );
   }
 
-  const statusKey = (entity.status || 'idle').toLowerCase();
-  const statusLabel = getEntityStatusLabel(entity.status);
-  const traitTags = getTraitCategoryTags(entity);
-
   return (
     <div className="entity-detail-page">
       <div
@@ -240,47 +244,43 @@ export default function EntityDetailPage() {
         style={{ touchAction: 'pan-y' }}
       >
         <div className="entity-detail-page__header">
-          <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
-
-          {hasNav && (
-            <button
-              type="button"
-              className="entity-detail-page__nav-btn"
-              onClick={handlePrev}
-              aria-label="Previous entity"
-            >
-              ‹
-            </button>
-          )}
+          <button
+            className="entity-detail-page__back-btn"
+            onClick={() => navigate('/entities')}
+            aria-label="Back to entities"
+          >
+            ←
+          </button>
 
           <div className="entity-detail-page__name-block">
             <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
-            {showPosition && (
-              <span className="entity-detail-page__position">{currentIdx + 1} / {total}</span>
-            )}
-            {traitTags.length > 0 && (
-              <div className="entity-detail-page__trait-pills">
-                {traitTags.map((tag) => (
-                  <span key={tag} className="entity-detail-page__trait-pill">{tag}</span>
-                ))}
-              </div>
-            )}
           </div>
 
           {hasNav && (
-            <button
-              type="button"
-              className="entity-detail-page__nav-btn"
-              onClick={handleNext}
-              aria-label="Next entity"
-            >
-              ›
-            </button>
+            <div className="entity-detail-page__nav-group">
+              <button
+                type="button"
+                className="entity-detail-page__nav-btn"
+                onClick={handlePrev}
+                aria-label="Previous entity"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="entity-detail-page__nav-btn"
+                onClick={handleNext}
+                aria-label="Next entity"
+              >
+                ›
+              </button>
+            </div>
           )}
 
-          <span className={`entity-detail-page__status-pill entity-detail-page__status-pill--${statusKey}`}>
-            {statusLabel}
+          <span className="entity-detail-page__status-dot" aria-label={entity.status || 'idle'}>
+            {statusEmoji(entity.status)}
           </span>
+
           <div className="entity-detail-page__header-icons" ref={menuRef}>
             <button
               type="button"
