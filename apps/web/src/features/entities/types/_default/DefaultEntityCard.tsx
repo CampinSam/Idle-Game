@@ -62,10 +62,9 @@ export default function DefaultEntityCard({
     return (
       <div className={cls} onClick={handleClick}>
         <div className="entity-card__art" style={{ background: archetypeDisplay.gradient }}>
-          <div className="entity-card__status-icon">{statusDisplay.icon}</div>
           <div className="entity-card__level-badge">
+            <span className="entity-card__level-label">LVL</span>
             <span className="entity-card__level-num">{entity.level}</span>
-            <span className="entity-card__level-icon">🏆</span>
           </div>
           <GameImage
             src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
@@ -78,7 +77,7 @@ export default function DefaultEntityCard({
         <div className="entity-card__info">
           <div className="entity-card__name-row">
             <span className="entity-card__name">{entity.name}</span>
-            <span className="entity-card__check">✅</span>
+            <span className="entity-card__status-dot">{statusDisplay.icon}</span>
           </div>
           <div className="entity-card__class-row">
             <span className="entity-card__class-badge" style={{ backgroundColor: archetypeDisplay.color }}>
