@@ -35,6 +35,11 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Styling**: Plain CSS utility shim.
 - **Performance**: Code splitting for page components, lazy-loaded admin pages, and layout-accurate skeleton screens.
 - **Animations**: Page transitions with fade/rise and staggered card entry.
+- **Page layout model** (canonical — do not override per page):
+  - Token: `--page-top-gap: 8px` defined in `Layout.css :root`. All page roots use `padding-top: var(--page-top-gap)`.
+  - Horizontal gutter: `Layout.css .content` provides `padding: 60px 16px 80px`. No page-level horizontal padding or `max-width` overrides.
+  - **Browser pages** (Entities, Inventory, Missions, Store): page root has `display:flex; flex-direction:column; flex:1; min-height:0`. Wrapper card also `flex:1; min-height:0; overflow:hidden` (or `overflow-y:auto`). Inner content area scrolls — nav bar always visible.
+  - **Dashboard pages** (Home, Rewards, Locations, Profile, Settings, Entity Detail, Location Detail): free-flow, cards stack vertically. Global `.content` scroll handles overflow.
 
 **Blockchain Wallet System:**
 - **DB Models**: `LinkedWallet` and `WalletNonce` for user wallets and authentication.
