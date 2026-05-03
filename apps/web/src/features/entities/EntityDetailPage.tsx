@@ -11,6 +11,9 @@ const STORAGE_KEY_FILTER = 'entities_activeFilter';
 const STORAGE_KEY_SORT   = 'entities_sortBy';
 const STORAGE_KEY_SEARCH = 'entities_searchQuery';
 
+type SlideDir = 'left' | 'right';
+type LocationState = { slideDir?: SlideDir };
+
 function safeGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
 }
@@ -57,10 +60,11 @@ export default function EntityDetailPage() {
     [allEntities, browseFilter, browseSearch, browseSortBy],
   );
 
-  const currentIdx = navList.findIndex((e: any) => e.id === id);
+  const currentIdx = navList.findIndex((e) => e.id === id);
   const total = navList.length;
-  const prevId = total > 1 ? (navList[(currentIdx - 1 + total) % total] as any)?.id as string : undefined;
-  const nextId = total > 1 ? (navList[(currentIdx + 1) % total] as any)?.id as string : undefined;
+  const hasNav = total > 1 && currentIdx >= 0;
+  const prevId: string | undefined = hasNav ? navList[(currentIdx - 1 + total) % total]?.id : undefined;
+  const nextId: string | undefined = hasNav ? navList[(currentIdx + 1) % total]?.id : undefined;
 
   function springBack(card: HTMLDivElement) {
     card.style.transition = 'transform 0.2s ease-out';
@@ -72,19 +76,19 @@ export default function EntityDetailPage() {
     }, { once: true });
   }
 
-  function doNavigate(card: HTMLDivElement, targetId: string, dir: 'left' | 'right') {
+  function doNavigate(card: HTMLDivElement, targetId: string, dir: SlideDir) {
     const toX = dir === 'left' ? '-110%' : '110%';
     card.style.transition = 'transform 0.18s ease-out';
     card.style.transform = `translateX(${toX})`;
     setTimeout(() => {
-      navigate(`/entities/${targetId}`, { state: { slideDir: dir } });
+      navigate(`/entities/${targetId}`, { state: { slideDir: dir } satisfies LocationState });
     }, 170);
   }
 
-  function navTo(targetId: string, dir: 'left' | 'right') {
+  function navTo(targetId: string, dir: SlideDir) {
     const card = cardRef.current;
     if (card) doNavigate(card, targetId, dir);
-    else navigate(`/entities/${targetId}`, { state: { slideDir: dir } });
+    else navigate(`/entities/${targetId}`, { state: { slideDir: dir } satisfies LocationState });
   }
 
   function handlePrev() {
@@ -100,7 +104,8 @@ export default function EntityDetailPage() {
       mountedRef.current = true;
       return;
     }
-    const dir = (location.state as any)?.slideDir as 'left' | 'right' | undefined;
+    const state = location.state as LocationState | null;
+    const dir = state?.slideDir;
     if (!dir) return;
     const card = cardRef.current;
     if (!card) return;
@@ -123,6 +128,7 @@ export default function EntityDetailPage() {
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (pointerRef.current) return;
     if ((e.target as HTMLElement).closest('button')) return;
+    if (!hasNav) return;
     pointerRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -161,7 +167,7 @@ export default function EntityDetailPage() {
     const card = cardRef.current;
     if (!card) return;
     if (Math.abs(dx) >= 50) {
-      const dir = dx < 0 ? 'left' : 'right';
+      const dir: SlideDir = dx < 0 ? 'left' : 'right';
       const targetId = dir === 'left' ? nextId : prevId;
       if (targetId) {
         doNavigate(card, targetId, dir);
@@ -226,8 +232,23 @@ export default function EntityDetailPage() {
       >
         <div className="entity-detail-page__header">
           <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
+
+          {hasNav && (
+            <button
+              type="button"
+              className="entity-detail-page__nav-btn"
+              onClick={handlePrev}
+              aria-label="Previous entity"
+            >
+              ‹
+            </button>
+          )}
+
           <div className="entity-detail-page__name-block">
             <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
+            {hasNav && (
+              <span className="entity-detail-page__position">{currentIdx + 1} / {total}</span>
+            )}
             {traitTags.length > 0 && (
               <div className="entity-detail-page__trait-pills">
                 {traitTags.map((tag) => (
@@ -236,6 +257,18 @@ export default function EntityDetailPage() {
               </div>
             )}
           </div>
+
+          {hasNav && (
+            <button
+              type="button"
+              className="entity-detail-page__nav-btn"
+              onClick={handleNext}
+              aria-label="Next entity"
+            >
+              ›
+            </button>
+          )}
+
           <span className={`entity-detail-page__status-pill entity-detail-page__status-pill--${statusKey}`}>
             {statusLabel}
           </span>
@@ -256,30 +289,6 @@ export default function EntityDetailPage() {
             )}
           </div>
         </div>
-
-        {total > 1 && (
-          <div className="entity-detail-page__nav-row">
-            <button
-              type="button"
-              className="entity-detail-page__nav-btn"
-              onClick={handlePrev}
-              aria-label="Previous entity"
-            >
-              ‹
-            </button>
-            <span className="entity-detail-page__position">
-              {currentIdx >= 0 ? currentIdx + 1 : '–'} / {total}
-            </span>
-            <button
-              type="button"
-              className="entity-detail-page__nav-btn"
-              onClick={handleNext}
-              aria-label="Next entity"
-            >
-              ›
-            </button>
-          </div>
-        )}
 
         <EntityDetail entity={entity} variant="full" />
       </div>
