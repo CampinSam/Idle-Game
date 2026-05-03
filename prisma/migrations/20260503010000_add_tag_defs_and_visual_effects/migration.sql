@@ -16,7 +16,12 @@ CREATE TABLE "visual_effect_defs" (
     CONSTRAINT "visual_effect_defs_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "visual_effect_defs_key_key" ON "visual_effect_defs"("key");
+-- Use a real UNIQUE CONSTRAINT (not just a unique index) so that downstream
+-- FKs targeting `key` can be introspected as referencing a constraint. Some
+-- diff/migration tools (including Replit's publish-time schema diff) only
+-- recognize FK targets when a UNIQUE CONSTRAINT exists, not a bare UNIQUE
+-- INDEX — even though Postgres itself accepts either.
+ALTER TABLE "visual_effect_defs" ADD CONSTRAINT "visual_effect_defs_key_key" UNIQUE ("key");
 
 -- CreateTable: tag_defs (visual contract for every named badge/pill/chip)
 CREATE TABLE "tag_defs" (
