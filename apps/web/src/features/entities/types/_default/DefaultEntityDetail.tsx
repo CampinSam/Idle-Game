@@ -60,7 +60,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       <div className="entity-detail__top">
 
         {/* Portrait card */}
-        <div className="entity-detail__portrait-card" style={{ background: archetypeDisplay.gradient }}>
+        <div className="entity-detail__portrait-card">
           {/* Level badge overlaps portrait */}
           <div className="entity-detail__level-badge">
             <span className="entity-detail__level-badge-icon">⚡</span>
