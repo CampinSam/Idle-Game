@@ -13,7 +13,7 @@ import type {
 import './EntityList.css';
 
 const COLLECTION_OPTIONS: Array<{ key: EntityFilter; label: string; archetypeKeys: string[] | null }> = [
-  { key: 'ALL',   label: 'All Collections', archetypeKeys: null },
+  { key: 'ALL',   label: 'All', archetypeKeys: null },
   { key: 'DERPS', label: 'Derps',  archetypeKeys: ['Derp', 'Dave', 'Warrior', 'Mage', 'Rogue', 'Healer', 'Tank'] },
   { key: 'VAMPS', label: 'Vamps',  archetypeKeys: ['Vamp', 'Vampire'] },
   { key: 'PREDS', label: 'Preds',  archetypeKeys: ['Pred', 'Predator'] },
@@ -128,7 +128,7 @@ export default function EntityList({
     }
 
     return list;
-  }, [entities, effectiveFilter, search, sortBy]);
+  }, [entities, effectiveFilter, search, sortBy, showControls]);
 
   const resolvedLayout: EntityListLayout = layout ?? (
     mode === 'picker'
