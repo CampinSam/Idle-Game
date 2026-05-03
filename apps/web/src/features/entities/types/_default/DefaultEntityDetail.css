@@ -272,7 +272,7 @@
   height: 100%;
   background: linear-gradient(90deg, #7C3AED, #A78BFA);
   border-radius: 4px;
-  transition: width 0.4s;
+  transition: none;
 }
 
 .entity-detail__xp-nums {

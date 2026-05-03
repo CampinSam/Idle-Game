@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
 import { getArchetypeDisplay, TRAIT_SLOT_DISPLAY } from '@derp/shared';
@@ -39,6 +40,7 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
 
 function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
   const [activeTab, setActiveTab] = useState<ProgressionTab>('LEVEL');
+  const progress = useAnimatedProgress(1500);
 
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
@@ -92,13 +94,13 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
         <div className="entity-detail__power-block">
           <div className="entity-detail__power-header">
             <div className="entity-detail__power-label">POWER SCORE</div>
-            <div className="entity-detail__power-value">{power.toFixed(2)}</div>
+            <div className="entity-detail__power-value">{(power * progress).toFixed(2)}</div>
           </div>
 
           <div className="entity-detail__power-divider" />
 
           <div className="entity-detail__radar-wrap">
-            <StatRadarChart stats={stats} size={155} />
+            <StatRadarChart stats={stats} size={155} progress={progress} />
           </div>
         </div>
       </div>
@@ -133,7 +135,7 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
                 <div className="entity-detail__prog-row entity-detail__prog-row--xp">
                   <span className="entity-detail__prog-row-label">XP</span>
                   <div className="entity-detail__xp-bar-wrap">
-                    <div className="entity-detail__xp-bar" style={{ width: `${xpPercent}%` }} />
+                    <div className="entity-detail__xp-bar" style={{ width: `${xpPercent * progress}%` }} />
                   </div>
                   <span className="entity-detail__xp-nums">{xpCurrent} / {xpMax}</span>
                 </div>

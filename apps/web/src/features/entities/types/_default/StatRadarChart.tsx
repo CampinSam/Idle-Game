@@ -16,6 +16,8 @@ interface StatRadarChartProps {
    * fills proportionally regardless of progression stage.
    */
   maxValue?: number;
+  /** Animation progress 0→1. Scales all data points from the centre outward. */
+  progress?: number;
 }
 
 function polarToCart(cx: number, cy: number, r: number, index: number): [number, number] {
@@ -23,7 +25,7 @@ function polarToCart(cx: number, cy: number, r: number, index: number): [number,
   return [cx + r * Math.sin(angle), cy - r * Math.cos(angle)];
 }
 
-export default function StatRadarChart({ stats, size = 200, maxValue }: StatRadarChartProps) {
+export default function StatRadarChart({ stats, size = 200, maxValue, progress = 1 }: StatRadarChartProps) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.34;
@@ -34,7 +36,7 @@ export default function StatRadarChart({ stats, size = 200, maxValue }: StatRada
   const scale = maxValue ?? Math.max(10, ...statValues);
 
   const dataPoints = STATS.map((_, i) => {
-    const ratio = Math.min(statValues[i] / scale, 1);
+    const ratio = Math.min(statValues[i] / scale, 1) * progress;
     return polarToCart(cx, cy, maxR * ratio, i);
   });
   const dataPoly = dataPoints.map(([x, y]) => `${x},${y}`).join(' ');
