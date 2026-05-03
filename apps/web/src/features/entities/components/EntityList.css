@@ -3,6 +3,8 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Unified controls bar (search + collection filter + sort) ── */
@@ -11,9 +13,12 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(26, 22, 64, 0.97);
   border-bottom: 1px solid rgba(139, 92, 246, 0.12);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .entity-list__search-wrap {
@@ -135,11 +140,6 @@
 
 .entity-list--grid .entity-list__grid {
   grid-template-columns: repeat(3, 1fr);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  align-content: start;
 }
 
 .entity-list--team .entity-list__grid {
