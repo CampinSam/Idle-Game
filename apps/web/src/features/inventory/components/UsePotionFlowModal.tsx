@@ -128,7 +128,6 @@ export default function UsePotionFlowModal({
 
   const handleApply = useCallback(async () => {
     if (!potion || phase === 'applying') return;
-    audioEngine.play('ui.button_click');
     setError(null);
     setPhase('applying');
 

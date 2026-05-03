@@ -194,7 +194,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
       .filter((item): item is LootPopItem => item !== null);
 
     try {
-      audioEngine.play('ui.button_click');
       await execute('ClaimLocation', { locationId: id });
       audioEngine.play('sfx.location.claim');
       audioEngine.play('sfx.economy.currency_earn');
@@ -384,7 +383,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           setShowWorkerPicker(false);
           setActiveWorkerSlot(null);
           try {
-            audioEngine.play('ui.button_click');
             await execute('AssignWorker', { locationId: id, entityId });
           } catch (err: any) {
             audioEngine.play('ui.error');
@@ -395,7 +393,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         const handleRemoveWorker = async (entityId: string) => {
           setWorkerError('');
           try {
-            audioEngine.play('ui.button_click');
             await execute('RemoveWorker', { locationId: id, entityId });
           } catch (err: any) {
             audioEngine.play('ui.error');

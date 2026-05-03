@@ -21,6 +21,7 @@ import { formatCompact } from '../utils/formatNumber';
 import { resolveIcon } from '../utils/iconResolver';
 import GameIcon from './GameIcon';
 import { audioEngine } from '../services/AudioEngine';
+import { installButtonSfx } from '../services/buttonSfx';
 import { useAudioNavigation } from '../hooks/useAudioNavigation';
 import { useLevelUpAudio } from '../hooks/useLevelUpAudio';
 import { useSeasonStartAudio } from '../hooks/useSeasonStartAudio';
@@ -45,7 +46,7 @@ export default function Layout() {
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifCenter, setShowNotifCenter] = useState(false);
 
-  useEffect(() => { audioEngine.init(); }, []);
+  useEffect(() => { audioEngine.init(); installButtonSfx(); }, []);
   useAudioNavigation();
   useLevelUpAudio();
   useSeasonStartAudio();

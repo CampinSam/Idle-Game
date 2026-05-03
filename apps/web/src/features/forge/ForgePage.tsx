@@ -402,7 +402,6 @@ export default function ForgePage() {
     setError('');
     setBusy(true);
     try {
-      audioEngine.play('ui.button_click');
       await execute('StartCrafting', { recipeId: selectedRecipe, entityId: selectedEntity, locationId: outpostId });
       audioEngine.play('sfx.craft.start');
       setSelectedRecipe(null);

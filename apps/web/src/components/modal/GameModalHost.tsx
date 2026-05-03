@@ -69,7 +69,6 @@ export default function GameModalHost() {
         }
 
         case 'COMPLETE_JOB': {
-          audioEngine.play('ui.button_click');
           const jobId = action.jobId;
           const jobData = jobs[jobId];
           if (!jobData) {
@@ -99,7 +98,6 @@ export default function GameModalHost() {
         }
 
         case 'CLAIM_GIFT': {
-          audioEngine.play('ui.button_click');
           await api.claimGift(action.giftId);
 
           const replaced = await tryFetchFollowUp({ giftId: action.giftId });
@@ -110,7 +108,6 @@ export default function GameModalHost() {
         }
 
         case 'REPEAT_MISSION': {
-          audioEngine.play('ui.button_click');
           if (action.entityIds && action.entityIds.length > 0) {
             try {
               await execute('StartMission', {
@@ -131,7 +128,6 @@ export default function GameModalHost() {
         }
 
         case 'PRESTIGE': {
-          audioEngine.play('ui.button_click');
           try {
             await execute('Prestige', {});
             audioEngine.play('sfx.player.prestige');
@@ -149,7 +145,6 @@ export default function GameModalHost() {
           return;
 
         case 'BUILD_BUILDING': {
-          audioEngine.play('ui.button_click');
           try {
             await execute('BuildBuilding', { locationId: action.locationId, buildingDefId: action.buildingDefId });
             dismissModal();
@@ -161,7 +156,6 @@ export default function GameModalHost() {
         }
 
         case 'UPGRADE_BUILDING': {
-          audioEngine.play('ui.button_click');
           try {
             await execute('UpgradeBuilding', { locationId: action.locationId, buildingId: action.buildingId });
             audioEngine.play('sfx.building.upgrade');

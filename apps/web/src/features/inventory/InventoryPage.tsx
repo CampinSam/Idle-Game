@@ -144,7 +144,6 @@ export default function InventoryPage() {
    * - location/unknown: button is disabled at render time, so this is a no-op.
    */
   const handleUse = useCallback((item: any) => {
-    audioEngine.play('ui.button_click');
     const target = getConsumableTargetType(item);
     if (target === 'player') {
       setUsePotionState({ potion: item });
@@ -216,7 +215,6 @@ export default function InventoryPage() {
           disabled={!hasWorkshop}
           onClick={() => {
             if (!hasWorkshop) return;
-            audioEngine.play('ui.button_click');
             const matId = (item.itemDefId || item.id) as string;
             const q = `?material=${encodeURIComponent(matId)}`;
             navigate(`/locations/${forgeLocationId}/workshop${q}`);

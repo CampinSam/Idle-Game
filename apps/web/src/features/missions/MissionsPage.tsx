@@ -437,7 +437,6 @@ export default function MissionsPage() {
     if (!selectedMission) return;
     setError('');
     try {
-      audioEngine.play('ui.button_click');
       await execute('StartMission', { defId: selectedMission, entityIds: selectedEntities });
       audioEngine.play('sfx.mission.start');
       handleBackToCategories();

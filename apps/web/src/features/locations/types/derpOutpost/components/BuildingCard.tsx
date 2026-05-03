@@ -146,7 +146,6 @@ export default function BuildingCard({
             type="button"
             className="facility-workshop-cta"
             onClick={() => {
-              audioEngine.play('ui.button_click');
               navigate(`/locations/${outpostId}/workshop`);
             }}
             disabled={!isEnabled}
