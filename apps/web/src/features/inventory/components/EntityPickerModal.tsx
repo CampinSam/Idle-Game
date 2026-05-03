@@ -5,6 +5,7 @@ import EntityList from '../../entities/components/EntityList';
 import GameIcon from '../../../components/GameIcon';
 import { summarizeEffect } from '../utils/summarizeEffect';
 import type { EffectDefLite } from '../utils/summarizeEffect';
+import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import './EntityPickerModal.css';
 
 export interface EntityPickerModalProps {
@@ -31,6 +32,9 @@ export default function EntityPickerModal({
   const entities = useSyncEntities();
   const effectDefsList = useAppSelector((s) => s.game.effectDefs);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<EntityFilter>('ALL');
+  const [sortBy, setSortBy] = useState<EntitySortBy>('name');
 
   const effectDefs: Record<string, EffectDefLite> = useMemo(() => {
     const map: Record<string, EffectDefLite> = {};
@@ -52,7 +56,12 @@ export default function EntityPickerModal({
   }, [consumableEffects, effectDefs]);
 
   useEffect(() => {
-    if (!isOpen) setSelectedId(null);
+    if (!isOpen) {
+      setSelectedId(null);
+      setSearch('');
+      setActiveFilter('ALL');
+      setSortBy('name');
+    }
   }, [isOpen, potion?.instanceId]);
 
   useEffect(() => {
@@ -129,6 +138,13 @@ export default function EntityPickerModal({
               entities={entities as any[]}
               mode="picker"
               useCase="potion-picker"
+              showControls
+              search={search}
+              onSearchChange={setSearch}
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
               selectedIds={selectedId ? [selectedId] : []}
               onSelect={handleSelect}
               emptyMessage="No entities to show."
