@@ -177,7 +177,7 @@ async function seedTestAccount() {
     return;
   }
 
-  const passwordHash = await bcrypt.hash('test123456', 12);
+  const passwordHash = await bcrypt.hash('Derp1234!', 12);
 
   const user = await prisma.user.create({
     data: {

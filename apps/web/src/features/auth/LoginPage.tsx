@@ -12,7 +12,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { loading, error } = useAppSelector((s) => s.auth);
   const [email, setEmail] = useState(IS_DEV ? 'test@derp.dev' : '');
-  const [password, setPassword] = useState(IS_DEV ? 'test123456' : '');
+  const [password, setPassword] = useState(IS_DEV ? 'Derp1234!' : '');
   const { token } = useAppSelector((s) => s.auth);
   const autoLoginDone = useRef(false);
 
@@ -21,7 +21,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (IS_DEV && !autoLoginDone.current && !token) {
       autoLoginDone.current = true;
-      dispatch(login({ email: 'test@derp.dev', password: 'test123456' })).then((result) => {
+      dispatch(login({ email: 'test@derp.dev', password: 'Derp1234!' })).then((result) => {
         if (login.fulfilled.match(result)) {
           navigate('/');
         }
