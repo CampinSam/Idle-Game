@@ -113,7 +113,16 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || (isProduction ? 5000 : 3001);
-  await app.listen(port, '0.0.0.0');
+  // In production (Cloud Run / autoscale) the container must bind on all
+  // interfaces so the platform's load balancer can reach it. In development,
+  // bind to 127.0.0.1 only — the Vite dev server already proxies `/api` and
+  // `/media` to `http://127.0.0.1:3001` (see apps/web/vite.config.ts), and
+  // keeping the port off the public 0.0.0.0 interface prevents Replit's port
+  // auto-detector from mirroring it into `.replit`'s `[[ports]]` block. That
+  // mirroring was breaking autoscale publishes because Cloud Run only allows
+  // a single forwarded port (the production app on 5000 → 80).
+  const host = isProduction ? '0.0.0.0' : '127.0.0.1';
+  await app.listen(port, host);
 
   // Use the structured logger so this line is consistent with the rest of
   // the boot output and carries no stray console.log calls.
