@@ -1,4 +1,9 @@
 .entities-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-top: 8px;
 }
 
 /* ── Wrapper card (page chrome) ── */
@@ -8,4 +13,8 @@
   border-radius: 16px;
   overflow: hidden;
   animation: card-enter 0.2s ease-out both;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }

@@ -3,12 +3,10 @@
    ============================================ */
 
 .store-wrapper {
-  padding: 8px 12px 0;
+  padding-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-width: 520px;
-  margin: 0 auto;
 }
 
 /* ---- Card Wrapper ---- */
