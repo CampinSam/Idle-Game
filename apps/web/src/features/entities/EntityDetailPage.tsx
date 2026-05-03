@@ -38,6 +38,7 @@ export default function EntityDetailPage() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const mountedRef = useRef(false);
+  const navigatingRef = useRef(false);
   const pointerRef = useRef<{
     startX: number;
     startY: number;
@@ -62,6 +63,7 @@ export default function EntityDetailPage() {
 
   const currentIdx = navList.findIndex((e) => e.id === id);
   const total = navList.length;
+  const showPosition = total >= 1 && currentIdx >= 0;
   const hasNav = total > 1 && currentIdx >= 0;
   const prevId: string | undefined = hasNav ? navList[(currentIdx - 1 + total) % total]?.id : undefined;
   const nextId: string | undefined = hasNav ? navList[(currentIdx + 1) % total]?.id : undefined;
@@ -77,6 +79,8 @@ export default function EntityDetailPage() {
   }
 
   function doNavigate(card: HTMLDivElement, targetId: string, dir: SlideDir) {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     const toX = dir === 'left' ? '-110%' : '110%';
     card.style.transition = 'transform 0.18s ease-out';
     card.style.transform = `translateX(${toX})`;
@@ -86,9 +90,13 @@ export default function EntityDetailPage() {
   }
 
   function navTo(targetId: string, dir: SlideDir) {
+    if (navigatingRef.current) return;
     const card = cardRef.current;
     if (card) doNavigate(card, targetId, dir);
-    else navigate(`/entities/${targetId}`, { state: { slideDir: dir } satisfies LocationState });
+    else {
+      navigatingRef.current = true;
+      navigate(`/entities/${targetId}`, { state: { slideDir: dir } satisfies LocationState });
+    }
   }
 
   function handlePrev() {
@@ -119,6 +127,7 @@ export default function EntityDetailPage() {
         card.addEventListener('transitionend', function onEnd() {
           card.style.transition = '';
           card.style.transform = '';
+          navigatingRef.current = false;
           card.removeEventListener('transitionend', onEnd);
         }, { once: true });
       });
@@ -246,7 +255,7 @@ export default function EntityDetailPage() {
 
           <div className="entity-detail-page__name-block">
             <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
-            {hasNav && (
+            {showPosition && (
               <span className="entity-detail-page__position">{currentIdx + 1} / {total}</span>
             )}
             {traitTags.length > 0 && (
