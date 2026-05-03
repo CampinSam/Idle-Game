@@ -7,7 +7,7 @@
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 16px;
   overflow: hidden;
-  padding: 14px 14px 18px;
+  padding: 14px;
   animation: card-enter 0.2s ease-out both;
 }
 

@@ -154,6 +154,7 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
         {/* Body slots & traits — no emojis, tighter rows */}
         <div className="entity-detail__body-slots">
           <div className="entity-detail__panel-title">BODY SLOTS &amp; TRAITS</div>
+          <div className="entity-detail__power-divider" />
           {TRAIT_SLOT_ORDER.map((slot) => {
             const value = traits[slot];
             const archetypeColor = value
