@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger as NestLogger } from '@nestjs/common';
 import { Logger as PinoLogger } from 'nestjs-pino';
+import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -41,16 +43,44 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // Trust the first proxy hop so `req.ip` reflects the real client IP
+  // (forwarded via `x-forwarded-for` by Replit's edge / Cloudflare-style
+  // fronts) instead of the proxy's loopback address. Without this every
+  // request looks like it came from `127.0.0.1` and the per-IP throttlers
+  // become a global throttler, which is much worse for legitimate users
+  // sharing an exit IP. We trust EXACTLY one hop — `true` would let any
+  // attacker spoof their IP via a crafted `x-forwarded-for` header.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Replace the default Nest logger with the structured pino logger we wired
   // in AppModule so every framework-emitted line is JSON-able and carries
   // the request-id we attach via pino-http.
   app.useLogger(app.get(PinoLogger));
+
+  // Security headers. Defaults give us X-Content-Type-Options, X-Frame-Options
+  // (DENY), Referrer-Policy, and HSTS in production. We disable CSP because
+  // the SPA bundle is served by ServeStaticModule with inline scripts/styles
+  // and the dev preview is iframed via Replit's proxy — a strict CSP needs
+  // its own design pass before turning on.
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  // Bound request bodies. Defaults are generous (~100kb for JSON in modern
+  // express) but we want an explicit, low cap so a single malicious POST
+  // can't wedge memory. Media uploads go through their own multipart route
+  // (object-storage) which streams to GCS and isn't affected by this cap.
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
 
   if (isProduction) {
     app.setGlobalPrefix('api', {
       exclude: ['/health', '/health/ready', '/media/(.*)'],
     });
   }
+
+  // Drain in-flight requests on SIGTERM/SIGINT before tearing down Prisma.
+  // Without this, Replit Deploy recycles kill mid-transaction commands and
+  // the user sees orphaned idempotency-placeholder rows.
+  app.enableShutdownHooks();
 
   app.useGlobalPipes(
     new ValidationPipe({

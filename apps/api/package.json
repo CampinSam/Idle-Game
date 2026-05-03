@@ -36,6 +36,7 @@
     "class-validator": "^0.14.0",
     "ethers": "^6.16.0",
     "google-auth-library": "^10.5.0",
+    "helmet": "^8.1.0",
     "nestjs-pino": "^4.6.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

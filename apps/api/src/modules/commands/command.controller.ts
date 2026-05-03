@@ -7,7 +7,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { IsString, IsObject, IsNotEmpty, IsOptional } from 'class-validator';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CommandService, CommandInput } from './command.service';
 
@@ -31,6 +31,7 @@ export class CommandController {
 
   @Post('commands')
   @UseGuards(ThrottlerGuard, JwtAuthGuard)
+  @SkipThrottle({ auth: true })
   async executeCommand(@Request() req: any, @Body() body: CommandDto) {
     const input: CommandInput = {
       type: body.type,

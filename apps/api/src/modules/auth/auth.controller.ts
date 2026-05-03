@@ -1,4 +1,5 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -64,7 +65,12 @@ class WalletCompleteOnboardingDto {
   email?: string;
 }
 
+// Whole controller goes through ThrottlerGuard. We `SkipThrottle` the
+// `commands` named scope so its 120/min budget doesn't apply here, leaving
+// only the stricter `auth` 10/min scope from `app.module.ts` in effect.
 @Controller('auth')
+@UseGuards(ThrottlerGuard)
+@SkipThrottle({ commands: true })
 export class AuthController {
   constructor(private authService: AuthService) {}
 

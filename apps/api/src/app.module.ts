@@ -38,6 +38,7 @@ import { NftModule } from './modules/nft/nft.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { EffectModule } from './modules/effect/effect.module';
 import { AudioModule } from './modules/audio/audio.module';
+import { ClientErrorsModule } from './modules/client-errors/client-errors.module';
 
 const isProductionLog = process.env.NODE_ENV === 'production';
 
@@ -88,11 +89,31 @@ const imports: any[] = [
           },
     },
   }),
-  ThrottlerModule.forRoot([{
-    name: 'commands',
-    ttl: 60_000,   // 1 minute window
-    limit: 120,    // max 120 commands per minute per user (~2/sec)
-  }]),
+  ThrottlerModule.forRoot([
+    {
+      name: 'commands',
+      ttl: 60_000,   // 1 minute window
+      limit: 120,    // max 120 commands per minute per user (~2/sec)
+    },
+    {
+      // Per-IP throttle on the auth surface (login, register, wallet verify).
+      // 10/min is well above legitimate use (a human logs in at most a
+      // handful of times per minute) and well below what's useful for
+      // brute-forcing a password or hammering wallet-nonce generation.
+      name: 'auth',
+      ttl: 60_000,
+      limit: 10,
+    },
+    {
+      // Cap on `/v1/client-errors` so a misbehaving client (or attacker
+      // probing the endpoint) can't fill our log stream. 60/min/IP is
+      // generous for a real session — the client also caps at 25 per
+      // session in `clientErrorReporter.ts`.
+      name: 'clientErrors',
+      ttl: 60_000,
+      limit: 60,
+    },
+  ]),
   PrismaModule,
   GameRulesModule,
   InfrastructureModule,
@@ -124,6 +145,7 @@ const imports: any[] = [
   ShopModule,
   EffectModule,
   AudioModule,
+  ClientErrorsModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {
