@@ -6,6 +6,7 @@ import RewardsListBlock from './RewardsListBlock';
 import MetaRowsBlock from './MetaRowsBlock';
 import InventoryDeltaBlock from './InventoryDeltaBlock';
 import GiftRevealBlock from './GiftRevealBlock';
+import ClickRevealBlock from './ClickRevealBlock';
 import AssetImage from '../AssetImage';
 
 export default function BlockRenderer({ block }: { block: ModalBlock }) {
@@ -52,6 +53,18 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
             <BlockRenderer key={idx} block={child} />
           ))}
         </>
+      );
+
+    case 'clickReveal':
+      return (
+        <ClickRevealBlock
+          cover={block.cover}
+          coverImage={block.coverImage}
+          tags={block.tags}
+          soundMap={block.soundMap}
+          fxMap={block.fxMap}
+          children={block.children}
+        />
       );
 
     case 'error':

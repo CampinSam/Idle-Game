@@ -166,6 +166,21 @@ export const BLOCK_META: Record<string, BlockMeta> = {
       </div>
     ),
   },
+  clickReveal: {
+    friendlyName: 'Click Reveal',
+    description: 'Hides children behind a tap-to-reveal cover. Optional tags drive per-item sound and visual effect via "tag=value" maps.',
+    group: 'Reveal',
+    color: '#c084fc',
+    fromHint: 'use Tags + Sound/FX maps instead of "from"',
+    fromShape: 'tags: "${item.rarity}"\nsoundMap: "legendary=sfx.x, *=sfx.y"\nfxMap: "rare=burst, *=shimmer"',
+    preview: () => (
+      <div className="me-prev-meta">
+        <div className="me-prev-meta-row" style={{ justifyContent: 'center', color: '#c084fc' }}>
+          <span>👆 Tap to reveal</span>
+        </div>
+      </div>
+    ),
+  },
   error: {
     friendlyName: 'Error Message',
     description: 'Red error banner for failure messages.',

@@ -487,6 +487,87 @@
   margin-bottom: 12px;
 }
 
+.gm-reveal-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 120px;
+  margin: 12px 0;
+  padding: 24px 16px;
+  border-radius: 14px;
+  border: 1px dashed rgba(167, 139, 250, 0.4);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.10));
+  color: #e2e8f0;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  text-transform: uppercase;
+}
+
+.gm-reveal-cover:hover {
+  border-color: rgba(167, 139, 250, 0.7);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+}
+
+.gm-reveal-cover:active {
+  transform: scale(0.98);
+}
+
+.gm-reveal-cover-label {
+  text-shadow: 0 0 12px rgba(167, 139, 250, 0.5);
+}
+
+.gm-reveal-content {
+  margin: 12px 0;
+  animation: gm-reveal-fade 0.35s ease-out;
+}
+
+@keyframes gm-reveal-fade {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.gm-reveal-fx-shimmer {
+  animation: gm-reveal-fade 0.35s ease-out, gm-fx-shimmer 1.2s ease-out;
+}
+
+@keyframes gm-fx-shimmer {
+  0% { filter: brightness(1.6) saturate(1.4); }
+  100% { filter: brightness(1) saturate(1); }
+}
+
+.gm-reveal-fx-burst {
+  animation: gm-fx-burst 0.5s ease-out;
+}
+
+@keyframes gm-fx-burst {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.gm-reveal-fx-glow {
+  animation: gm-reveal-fade 0.35s ease-out, gm-fx-glow 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes gm-fx-glow {
+  from { filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5)); }
+  to { filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.9)); }
+}
+
+.gm-reveal-fx-pulse {
+  animation: gm-fx-pulse 0.9s ease-out 2;
+}
+
+@keyframes gm-fx-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
 .gm-error-block {
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);

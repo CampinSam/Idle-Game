@@ -179,6 +179,19 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
     }
   }
 
+  if (block.type === 'clickReveal') {
+    const childBlocks: any[] = Array.isArray(block.children) ? block.children : [];
+    return {
+      type: 'clickReveal',
+      cover: typeof block.cover === 'string' ? resolveTokensClient(block.cover, ctx) : block.cover,
+      coverImage: block.coverImage ? resolveAllStringsClient({ ...block.coverImage }, ctx) : undefined,
+      tags: typeof block.tags === 'string' ? resolveTokensClient(block.tags, ctx) : block.tags,
+      soundMap: typeof block.soundMap === 'string' ? resolveTokensClient(block.soundMap, ctx) : block.soundMap,
+      fxMap: typeof block.fxMap === 'string' ? resolveTokensClient(block.fxMap, ctx) : block.fxMap,
+      children: childBlocks.map(c => resolveBlockClient(c, ctx)),
+    };
+  }
+
   if (block.type === 'list') {
     const expr: string = typeof block.list === 'string' ? block.list : '';
     const trimmed = expr.trim();
@@ -281,6 +294,16 @@ const BLOCK_DEFAULTS: Record<string, () => ModalBlock> = {
       { type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '${item.name}' }] }] },
     ],
   }),
+  clickReveal: () => ({
+    type: 'clickReveal',
+    cover: 'Tap to reveal',
+    tags: '',
+    soundMap: '*=sfx.reveal_default',
+    fxMap: '*=shimmer',
+    children: [
+      { type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: 'Surprise!' }] }] },
+    ],
+  }),
   error: () => ({ type: 'error', message: 'Something went wrong.' }),
 };
 
@@ -288,7 +311,7 @@ const BLOCK_COLORS: Record<string, string> = {
   richText: '#818cf8', divider: '#64748b', image: '#22d3ee', metaRows: '#a78bfa',
   timer: '#fb923c', progress: '#34d399', rewardsPreview: '#fbbf24',
   rewardsList: '#fbbf24', inventoryDelta: '#f472b6', giftReveal: '#f59e0b',
-  list: '#60a5fa', error: '#ef4444',
+  list: '#60a5fa', clickReveal: '#c084fc', error: '#ef4444',
 };
 
 const BUTTON_DEFAULTS: () => ModalButton = () => ({
@@ -386,7 +409,7 @@ function Section({ title, open, onToggle, badge, children, sectionClass }: {
 // ─── From Field ───────────────────────────────────────────────────────────────
 
 function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: ModalBlock) => void }) {
-  if (block.type === 'divider' || block.type === 'list') return null;
+  if (block.type === 'divider' || block.type === 'list' || block.type === 'clickReveal') return null;
   const hint = FROM_HINTS[block.type] || '';
   return (
     <div className="me-from-field">
@@ -611,6 +634,71 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
                 blocks={children}
                 onChange={next => set({ children: next })}
                 tokenPaths={childTokenPaths}
+              />
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    case 'clickReveal': {
+      const children = (block as any).children || [];
+      return (
+        <>
+          <Field label="Cover label" hint="Text shown on the tap-to-reveal cover. Supports ${tokens}.">
+            <input
+              style={inp}
+              value={(block as any).cover || ''}
+              onChange={e => set({ cover: e.target.value })}
+              placeholder="Tap to reveal"
+            />
+          </Field>
+          <Row>
+            <div style={{ flex: 1 }}>
+              <Field label="Cover image asset (optional)" hint="If set, the cover renders this image instead of the label text.">
+                <input
+                  style={inp}
+                  value={(block as any).coverImage?.assetKey || ''}
+                  onChange={e => set({ coverImage: e.target.value ? { assetKey: e.target.value, alt: (block as any).coverImage?.alt || '' } : undefined })}
+                  placeholder="icons/mystery_box"
+                />
+              </Field>
+            </div>
+          </Row>
+          <Field label="Tags" hint="Comma-separated tags driving sound/fx selection. Supports ${tokens}, e.g. ${item.rarity} or ${item.tags}.">
+            <input
+              style={inp}
+              value={(block as any).tags || ''}
+              onChange={e => set({ tags: e.target.value })}
+              placeholder="${item.rarity}"
+            />
+          </Field>
+          <Field label="Sound map" hint='Format: "tag1=sfx.key1, tag2=sfx.key2, *=sfx.fallback". First matching tag wins; * (or empty key) is the fallback.'>
+            <textarea
+              style={{ ...inp, minHeight: 50, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+              value={(block as any).soundMap || ''}
+              onChange={e => set({ soundMap: e.target.value })}
+              placeholder="legendary=sfx.reveal_legendary, rare=sfx.reveal_rare, *=sfx.reveal_default"
+            />
+          </Field>
+          <Field label="FX map" hint='Format: "tag1=name1, tag2=name2, *=fallback". Applies CSS class gm-reveal-fx-<name>. Built-in: shimmer, burst, glow, pulse.'>
+            <textarea
+              style={{ ...inp, minHeight: 50, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+              value={(block as any).fxMap || ''}
+              onChange={e => set({ fxMap: e.target.value })}
+              placeholder="legendary=glow, rare=burst, *=shimmer"
+            />
+          </Field>
+          <div style={{ marginTop: 10 }}>
+            <label style={lbl}>
+              Hidden children (revealed on tap)
+              <HelpHint text="Blocks rendered after the user taps the cover. Tokens like ${item.*} from a parent List still resolve here." />
+            </label>
+            <div style={{ borderLeft: '2px solid #c084fc44', paddingLeft: 8, marginTop: 4 }}>
+              <BlockList
+                blocks={children}
+                onChange={next => set({ children: next })}
+                tokenPaths={tokenPaths}
               />
             </div>
           </div>

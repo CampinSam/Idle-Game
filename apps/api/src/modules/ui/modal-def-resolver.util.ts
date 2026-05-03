@@ -75,6 +75,20 @@ function mapRewardItem(r: any): { name: string; qty?: number; assetKey?: string;
 function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
   const b = block as any;
 
+  if (b.type === 'clickReveal') {
+    const children: ModalBlock[] = Array.isArray(b.children) ? b.children : [];
+    const resolvedChildren = children.map(child => resolveBlock(child, ctx));
+    return {
+      type: 'clickReveal',
+      cover: typeof b.cover === 'string' ? resolveTokens(b.cover, ctx) : b.cover,
+      coverImage: b.coverImage ? resolveAllStrings({ ...b.coverImage }, ctx) : undefined,
+      tags: typeof b.tags === 'string' ? resolveTokens(b.tags, ctx) : b.tags,
+      soundMap: typeof b.soundMap === 'string' ? resolveTokens(b.soundMap, ctx) : b.soundMap,
+      fxMap: typeof b.fxMap === 'string' ? resolveTokens(b.fxMap, ctx) : b.fxMap,
+      children: resolvedChildren,
+    } as ModalBlock;
+  }
+
   if (b.type === 'list') {
     const expr: string = typeof b.list === 'string' ? b.list : '';
     const trimmed = expr.trim();

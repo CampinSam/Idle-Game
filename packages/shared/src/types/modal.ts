@@ -73,6 +73,7 @@ export type ModalBlock =
   | ModalBlockInventoryDelta
   | ModalBlockGiftReveal
   | ModalBlockList
+  | ModalBlockClickReveal
   | ModalBlockError;
 
 export interface ModalBlockRichText {
@@ -146,6 +147,16 @@ export interface ModalBlockList {
   emptyText?: string;
 }
 
+export interface ModalBlockClickReveal {
+  type: 'clickReveal';
+  cover?: string;
+  coverImage?: AssetRef;
+  tags?: string;
+  soundMap?: string;
+  fxMap?: string;
+  children: ModalBlock[];
+}
+
 export interface ModalBlockError {
   type: 'error';
   message: string;
@@ -201,7 +212,56 @@ export const MODAL_BLOCK_TYPES = [
   'inventoryDelta',
   'giftReveal',
   'list',
+  'clickReveal',
   'error',
 ] as const;
+
+/**
+ * Parse a "k1=v1, k2=v2, *=fallback" string into ordered [key, value] pairs.
+ * Whitespace around keys/values is trimmed. Empty entries are dropped.
+ */
+export function parseTagMap(src: string | undefined | null): [string, string][] {
+  if (!src || typeof src !== 'string') return [];
+  const out: [string, string][] = [];
+  for (const raw of src.split(',')) {
+    const eq = raw.indexOf('=');
+    if (eq < 0) continue;
+    const key = raw.slice(0, eq).trim();
+    const val = raw.slice(eq + 1).trim();
+    if (!val) continue;
+    out.push([key, val]);
+  }
+  return out;
+}
+
+/**
+ * Resolve the first matching value from a tag map for a given list of tags.
+ * Tags are checked in order; for each tag, the first map entry whose key
+ * equals that tag wins. After all tags are tried, a `*` (or empty `""`) key
+ * acts as a final fallback.
+ */
+export function lookupTagMap(
+  pairs: [string, string][],
+  tags: string[],
+): string | undefined {
+  if (pairs.length === 0) return undefined;
+  for (const tag of tags) {
+    const t = tag.trim();
+    if (!t) continue;
+    for (const [k, v] of pairs) {
+      if (k === t) return v;
+    }
+  }
+  for (const [k, v] of pairs) {
+    if (k === '*' || k === '') return v;
+  }
+  return undefined;
+}
+
+/** Split a free-form tag string ("legendary", "rare,shiny") into a clean list. */
+export function splitTags(src: string | undefined | null): string[] {
+  if (!src || typeof src !== 'string') return [];
+  return src.split(',').map(s => s.trim()).filter(Boolean);
+}
 
 export type ModalBlockType = (typeof MODAL_BLOCK_TYPES)[number];
