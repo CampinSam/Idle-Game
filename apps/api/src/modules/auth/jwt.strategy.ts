@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private static readonly bootLogger = new Logger(JwtStrategy.name);
+
   constructor(config: ConfigService) {
     const isProduction = process.env.NODE_ENV === 'production';
     const secret = config.get<string>('JWT_SECRET');
@@ -13,8 +15,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw new Error('JWT_SECRET must be set in production');
       }
       // Dev fallback: noisy log so this can never sneak into a real deploy.
-      // eslint-disable-next-line no-console
-      console.warn('[JwtStrategy] JWT_SECRET not set — using dev fallback. DO NOT USE IN PROD.');
+      JwtStrategy.bootLogger.warn(
+        'JWT_SECRET not set — using dev fallback. DO NOT USE IN PROD.',
+      );
     }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

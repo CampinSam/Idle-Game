@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
@@ -23,6 +24,8 @@ import {
 
 @Injectable()
 export class LocationService {
+  private readonly logger = new Logger(LocationService.name);
+
   constructor(
     private prisma: PrismaService,
     private settlementService: LocationSettlementService,
@@ -431,7 +434,7 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate storage for location ${locationId}: ${err}`,
         );
       }
@@ -464,7 +467,7 @@ export class LocationService {
     if (!building) throw new NotFoundException("Building not found");
 
     if (!building.buildingDef) {
-      console.warn(
+      this.logger.warn(
         `completeBuilding: definition not found for buildingDefId=${building.buildingDefId}, failing job gracefully`,
       );
       const buildingJob = await (this.prisma as any).job.findFirst({
@@ -607,7 +610,7 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate location meta for ${locationId}: ${err}`,
         );
       }
@@ -750,7 +753,7 @@ export class LocationService {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
       } catch (err) {
-        console.warn(
+        this.logger.warn(
           `Failed to recalculate storage for location ${locationId}: ${err}`,
         );
       }
@@ -920,7 +923,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -964,7 +967,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -1019,7 +1022,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }
@@ -1053,7 +1056,7 @@ export class LocationService {
     try {
       await this.settlementService.recalculateLocationMeta(locationId);
     } catch (err) {
-      console.warn(
+      this.logger.warn(
         `Failed to recalculate location meta for ${locationId}: ${err}`,
       );
     }

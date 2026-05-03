@@ -72,14 +72,16 @@ export async function seedNftEntities(prisma: any): Promise<{ skipped: boolean; 
 
 if (require.main === module) {
   const { PrismaClient } = require('@prisma/client');
+  const { Logger } = require('@nestjs/common');
+  const seedLogger = new Logger('NftEntitiesSeed');
   const prisma = new PrismaClient();
   seedNftEntities(prisma)
-    .then((result) => {
-      console.log('Result:', JSON.stringify(result));
+    .then((result: unknown) => {
+      seedLogger.log(`Result: ${JSON.stringify(result)}`);
       return prisma.$disconnect();
     })
     .catch((err: any) => {
-      console.error('Seed failed:', err);
+      seedLogger.error({ err }, `Seed failed: ${err?.message ?? String(err)}`);
       return prisma.$disconnect().then(() => process.exit(1));
     });
 }

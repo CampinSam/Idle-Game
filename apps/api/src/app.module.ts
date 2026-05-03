@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'crypto';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthController } from './health.controller';
@@ -37,8 +39,55 @@ import { ShopModule } from './modules/shop/shop.module';
 import { EffectModule } from './modules/effect/effect.module';
 import { AudioModule } from './modules/audio/audio.module';
 
+const isProductionLog = process.env.NODE_ENV === 'production';
+
 const imports: any[] = [
   ConfigModule.forRoot({ isGlobal: true }),
+  // Structured JSON logging in prod, pretty-printed in dev. Per-request
+  // child logger carries the `req.id` so any log emitted while servicing
+  // a request can be traced back to that request — critical for debugging
+  // command-pipeline failures in production.
+  LoggerModule.forRoot({
+    pinoHttp: {
+      level: process.env.LOG_LEVEL || (isProductionLog ? 'info' : 'debug'),
+      genReqId: (req) =>
+        (req.headers['x-request-id'] as string | undefined) || randomUUID(),
+      customLogLevel: (_req, res, err) => {
+        const status = res.statusCode;
+        if (err || status >= 500) return 'error';
+        if (status >= 400) return 'warn';
+        return 'info';
+      },
+      // Never log credentials, even by accident. The redact paths cover
+      // both Express request shape and arbitrary nested payloads we might
+      // log directly via `logger.info({ user, ... })`.
+      redact: {
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-admin-key"]',
+          '*.password',
+          '*.token',
+          '*.accessToken',
+          '*.refreshToken',
+          '*.JWT_SECRET',
+          '*.ADMIN_SECRET',
+        ],
+        censor: '[REDACTED]',
+      },
+      transport: isProductionLog
+        ? undefined
+        : {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              singleLine: false,
+              translateTime: 'SYS:HH:MM:ss.l',
+              ignore: 'pid,hostname,req,res,responseTime',
+            },
+          },
+    },
+  }),
   ThrottlerModule.forRoot([{
     name: 'commands',
     ttl: 60_000,   // 1 minute window
