@@ -185,6 +185,7 @@ async function seedTestAccount() {
       email: 'test@derp.dev',
       passwordHash,
       keeperLevel: 1,
+      authProvider: 'email',
     },
   });
 
