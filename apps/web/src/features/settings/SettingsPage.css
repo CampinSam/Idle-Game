@@ -1,5 +1,5 @@
 .settings-page {
-  padding-top: 8px;
+  padding-top: var(--page-top-gap);
 }
 
 .settings-wrapper-card {

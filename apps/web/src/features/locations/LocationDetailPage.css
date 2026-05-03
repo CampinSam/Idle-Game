@@ -1,4 +1,5 @@
 .outpost-detail-page {
+  padding-top: var(--page-top-gap);
 }
 
 .od-loading {

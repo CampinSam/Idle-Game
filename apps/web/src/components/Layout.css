@@ -1,3 +1,7 @@
+:root {
+  --page-top-gap: 8px;
+}
+
 .layout {
   display: flex;
   flex-direction: column;
