@@ -18,6 +18,7 @@ API_PORT = "3001"
 
 [userenv.production]
 NODE_ENV = "production"
+CORS_ORIGIN = "https://derp-idle-game.replit.app"
 
 [workflows]
 runButton = "Project"
