@@ -243,18 +243,7 @@ export default function EntityDetailPage() {
 
   return (
     <div className="entity-detail-page">
-      <div
-        className={[
-          'entity-detail-page__card',
-          getEntityKind(entity) === 'derp_bird' && (isPerfectSpecimen(entity) ? 'entity-detail-page__card--perfect' : 'entity-detail-page__card--derp-bird'),
-        ].filter(Boolean).join(' ')}
-        ref={cardRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        style={{ touchAction: 'pan-y' }}
-      >
+      <div className="entity-detail-page__header-card">
         <div className="entity-detail-page__header">
           <button
             className="entity-detail-page__back-btn"
@@ -327,7 +316,20 @@ export default function EntityDetailPage() {
             </div>
           )}
         </div>
+      </div>
 
+      <div
+        className={[
+          'entity-detail-page__card',
+          getEntityKind(entity) === 'derp_bird' && (isPerfectSpecimen(entity) ? 'entity-detail-page__card--perfect' : 'entity-detail-page__card--derp-bird'),
+        ].filter(Boolean).join(' ')}
+        ref={cardRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        style={{ touchAction: 'pan-y' }}
+      >
         <EntityDetail entity={entity} variant="full" />
       </div>
     </div>

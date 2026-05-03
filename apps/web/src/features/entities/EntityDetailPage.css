@@ -1,6 +1,17 @@
 .entity-detail-page {
   padding-top: var(--page-top-gap);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entity-detail-page__header-card {
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .entity-detail-page__card {
@@ -106,8 +117,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  padding: 10px 12px;
 }
 
 .entity-detail-page__back-btn {
