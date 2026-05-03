@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import authReducer from '../store/authSlice';
 import gameReducer from '../store/gameSlice';
@@ -10,13 +10,19 @@ import { ModalProvider } from '../context/ModalContext';
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
+// Pre-combine so `configureStore` sees a single concrete `Reducer` instead of
+// a slice map. Without this, TS overload resolution gets confused by the
+// `preloadedState as any` cast and picks the wrong overload — which then
+// flags the slice keys ("auth", "game", "sync") as unknown properties.
+const testRootReducer = combineReducers({
+  auth: authReducer,
+  game: gameReducer,
+  sync: syncReducer,
+});
+
 export function makeTestStore(preloadedState?: Record<string, any>) {
   return configureStore({
-    reducer: {
-      auth: authReducer,
-      game: gameReducer,
-      sync: syncReducer,
-    },
+    reducer: testRootReducer,
     preloadedState: preloadedState as any,
   });
 }
