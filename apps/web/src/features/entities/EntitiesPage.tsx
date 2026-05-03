@@ -23,12 +23,45 @@ function EntitiesPageSkeleton() {
   );
 }
 
+const STORAGE_KEY_FILTER = 'entities_activeFilter';
+const STORAGE_KEY_SORT = 'entities_sortBy';
+
+function safeLocalStorageGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function safeLocalStorageSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
+function readFilter(): EntityFilter {
+  const stored = safeLocalStorageGet(STORAGE_KEY_FILTER);
+  if (stored === 'ALL' || stored === 'DERPS' || stored === 'VAMPS' || stored === 'PREDS') return stored;
+  return 'ALL';
+}
+
+function readSort(): EntitySortBy {
+  const stored = safeLocalStorageGet(STORAGE_KEY_SORT);
+  if (stored === 'name' || stored === 'level' || stored === 'power' || stored === 'collection') return stored;
+  return 'name';
+}
+
 export default function EntitiesPage() {
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
-  const [activeFilter, setActiveFilter] = useState<EntityFilter>('ALL');
+  const [activeFilter, setActiveFilter] = useState<EntityFilter>(readFilter);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<EntitySortBy>('name');
+  const [sortBy, setSortBy] = useState<EntitySortBy>(readSort);
+
+  function handleFilterChange(filter: EntityFilter) {
+    safeLocalStorageSet(STORAGE_KEY_FILTER, filter);
+    setActiveFilter(filter);
+  }
+
+  function handleSortChange(sort: EntitySortBy) {
+    safeLocalStorageSet(STORAGE_KEY_SORT, sort);
+    setSortBy(sort);
+  }
 
   if (syncStatus === 'disconnected') return <EntitiesPageSkeleton />;
 
@@ -41,11 +74,11 @@ export default function EntitiesPage() {
           useCase="browse"
           showControls
           activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
+          onFilterChange={handleFilterChange}
           search={searchQuery}
           onSearchChange={setSearchQuery}
           sortBy={sortBy}
-          onSortChange={setSortBy}
+          onSortChange={handleSortChange}
           emptyMessage="No entities found."
         />
       </div>
