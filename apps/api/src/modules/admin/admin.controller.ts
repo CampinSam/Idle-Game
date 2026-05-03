@@ -56,6 +56,8 @@ export class AdminController {
       { key: 'nftCollectionDef', name: 'NFT Collection Definitions', table: 'nft_collection_defs' },
       { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },
       { key: 'effectDef', name: 'Effect Definitions', table: 'effect_defs' },
+      { key: 'tagDef', name: 'Visual Tag Definitions', table: 'tag_defs' },
+      { key: 'visualEffectDef', name: 'Visual Effect Definitions', table: 'visual_effect_defs' },
     ];
   }
 

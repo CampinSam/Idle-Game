@@ -43,6 +43,11 @@ interface SyncState {
   currencyBalances: Record<string, number>;
   activeSeason: any | null;
 
+  // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
+  // so `<Tag tagKey>` is a single dictionary lookup.
+  tagDefs: Record<string, any>;
+  visualEffectDefs: Record<string, any>;
+
   tickBroadcast: TickBroadcast | null;
   lastError: string | null;
 }
@@ -69,6 +74,9 @@ const initialState: SyncState = {
   activeEffects: {},
   currencyBalances: {},
   activeSeason: null,
+
+  tagDefs: {},
+  visualEffectDefs: {},
 
   tickBroadcast: null,
   lastError: null,
@@ -124,8 +132,16 @@ const syncSlice = createSlice({
       state.activeEffects = {};
       state.currencyBalances = {};
 
+      // Catalog tables: rebuilt in full on every bootstrap (rare changes,
+      // small payload). Keyed by stable `key` not `id` so callers can do
+      // `state.tagDefs['rarity-epic']` without an O(n) find.
+      state.tagDefs = {};
+      state.visualEffectDefs = {};
+
       if (snapshot.state) {
         const s = snapshot.state;
+        if ((s as any).tagDefs) for (const t of (s as any).tagDefs) state.tagDefs[t.key] = t;
+        if ((s as any).visualEffectDefs) for (const v of (s as any).visualEffectDefs) state.visualEffectDefs[v.key] = v;
         if (s.entities) for (const e of s.entities) state.entities[e.id] = e;
         if (s.locations) for (const l of s.locations) state.locations[l.id] = l;
         if (s.buildings) for (const b of s.buildings) state.buildings[b.id] = b;

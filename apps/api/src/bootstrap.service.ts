@@ -4,6 +4,7 @@ import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
 import { seedSounds } from './seeds/sounds.seed';
 import { seedRetention } from './seeds/retention.seed';
+import { seedTags } from './seeds/tags.seed';
 import {
   buildSeedConsumableMap,
   canonicalConsumableData,
@@ -35,6 +36,10 @@ export class BootstrapService implements OnModuleInit {
     // doesn't have to know about cadence-aware quest defs or the new
     // AchievementDef table.
     await seedRetention(this.prisma);
+    // Visual tag + reusable effect catalog. Cheap; seeded last so any
+    // earlier failure (which is far more likely to be schema-related)
+    // surfaces before we get into UI catalog territory.
+    await seedTags(this.prisma);
     // Idempotent: rewrite any historical `consumableData` rows that still
     // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
     // targetType enum values, or a redundant top-level `targetType`. After

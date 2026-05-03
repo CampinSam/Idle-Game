@@ -3,6 +3,7 @@ import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import GameIcon from '../../components/GameIcon';
+import { Tag } from '../../components/Tag';
 
 interface QuestCardProps {
   quest: any;
@@ -62,9 +63,7 @@ function QuestCardInner({ quest }: QuestCardProps) {
     <div className={`quest-card ${status}`}>
       <div className="quest-card-header">
         <span className="quest-card-name">{def.name || 'Quest'}</span>
-        <span className={`quest-card-badge ${status}`}>
-          {status === 'active' ? 'In Progress' : status === 'completed' ? 'Complete' : 'Claimed'}
-        </span>
+        <Tag tagKey={`quest-${status}`} />
       </div>
 
       <div className="quest-objectives">

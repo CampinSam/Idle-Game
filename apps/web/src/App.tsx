@@ -29,6 +29,7 @@ const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEd
 const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPage'));
 const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
 const BalancePage = lazy(() => import('./features/admin/balance/BalancePage'));
+const TagEditorPage = lazy(() => import('./features/admin/tag-editor/TagEditorPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
@@ -120,6 +121,13 @@ export default function App() {
     return (
       <Suspense fallback={<PageLoader />}>
         <BalancePage />
+      </Suspense>
+    );
+  }
+  if (location.pathname.startsWith('/admin/tag-editor')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TagEditorPage />
       </Suspense>
     );
   }

@@ -2,18 +2,11 @@ import { memo, useState, useCallback } from 'react';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
+import { Tag } from '../../components/Tag';
 
 interface AchievementCardProps {
   achievement: any;
 }
-
-const TIER_LABEL: Record<number, string> = {
-  1: 'Bronze',
-  2: 'Silver',
-  3: 'Gold',
-  4: 'Platinum',
-  5: 'Diamond',
-};
 
 function describePermanentEffect(spec: any): string | null {
   if (!spec || !spec.effectDefId) return null;
@@ -66,16 +59,13 @@ function AchievementCardInner({ achievement }: AchievementCardProps) {
     <div className={`achievement-card status-${status} tier-${tier}`}>
       <div className="achievement-card-header">
         <div className="achievement-card-title">
-          <span className={`achievement-card-tier tier-${tier}`}>
-            {TIER_LABEL[tier] ?? `Tier ${tier}`}
-          </span>
+          {/* Tier + status pills now come from the unified Tag catalog so
+              their colors / glow effects match the matching item icon
+              tier in inventory. */}
+          <Tag tagKey={`ach-tier-${tier}`} />
           <span className="achievement-card-name">{def.name || 'Achievement'}</span>
         </div>
-        <span className={`achievement-card-badge status-${status}`}>
-          {status === 'active' && 'In Progress'}
-          {status === 'completed' && 'Ready!'}
-          {status === 'claimed' && 'Unlocked'}
-        </span>
+        <Tag tagKey={`ach-status-${status}`} />
       </div>
 
       {def.description && (
@@ -109,10 +99,12 @@ function AchievementCardInner({ achievement }: AchievementCardProps) {
       </div>
 
       {permanentDesc && (status === 'claimed' || status === 'completed') && (
-        <div className="achievement-card-permanent-pill">
-          <span className="achievement-permanent-icon">★</span>
-          {permanentDesc}
-        </div>
+        <Tag
+          tagKey="permanent-bonus"
+          size="lg"
+          icon={<span className="achievement-permanent-icon">★</span>}
+          label={permanentDesc}
+        />
       )}
 
       {status === 'completed' && (

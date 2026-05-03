@@ -85,6 +85,8 @@ export class QueryService {
       checkInInstances,
       activeEffects,
       unclaimedGifts,
+      tagDefs,
+      visualEffectDefs,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -175,6 +177,16 @@ export class QueryService {
         where: { userId, status: 'UNCLAIMED' },
         orderBy: { createdAt: 'desc' },
       }),
+      // Visual tag catalog: small, slow-changing, ships in the bootstrap
+      // snapshot so `<Tag tagKey>` renders inline without a second fetch.
+      (this.prisma as any).tagDef.findMany({
+        where: { enabled: true },
+        orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
+      }),
+      (this.prisma as any).visualEffectDef.findMany({
+        where: { enabled: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -225,6 +237,8 @@ export class QueryService {
           achievements: achievementInstances,
           checkins: checkInInstances,
           gifts: unclaimedGifts,
+          tagDefs,
+          visualEffectDefs,
           missions: jobs
             .filter((j: any) => j.type === 'MissionJob')
             .map((j: any) => {

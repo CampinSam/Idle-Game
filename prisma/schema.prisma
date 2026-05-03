@@ -1282,3 +1282,72 @@ model Outbox {
   @@index([status, createdAt])
   @@map("outbox")
 }
+
+// ═══════════════════════════════════════════════════
+// VISUAL TAGS + REUSABLE EFFECTS
+// ═══════════════════════════════════════════════════
+//
+// `VisualEffectDef` is a generic, reusable animation/effect spec — keyed by
+// a string the frontend maps to a CSS class. Used by tags but also by item
+// icons / entity art so e.g. an "epic" item icon can share the same
+// shimmer effect as the "epic" rarity tag.
+//
+// `TagDef` is the visual contract for any named badge/pill/chip rendered
+// in the app (rarity, status, tier, system labels). Replaces the dozens
+// of bespoke per-component CSS classes with a single data-driven
+// `<Tag tagKey="...">` component.
+
+model VisualEffectDef {
+  id           String   @id
+  key          String   @unique
+  name         String
+  description  String?
+  // CSS animation name; the frontend ships keyframes for a fixed catalog
+  // (shimmer, shake, pulse, glow, bounce, rainbow). Custom keyframes
+  // would require a frontend code change — by design.
+  cssAnimation String
+  durationMs   Int      @default(1500)
+  easing       String   @default("ease-in-out")
+  // Free-form params consumed as CSS custom properties at render time
+  // (e.g. `{ "color": "#ffd700", "intensity": 0.8 }` → `--effect-color`,
+  // `--effect-intensity`).
+  params       Json     @default("{}")
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tagDefs      TagDef[]
+
+  @@map("visual_effect_defs")
+}
+
+model TagDef {
+  id              String   @id
+  // Stable lookup key used by `<Tag tagKey="...">`.
+  key             String   @unique
+  // Default rendered label (callers can override via the component prop).
+  label           String
+  // Free-form grouping for the admin editor (rarity / status / tier / system).
+  category        String   @default("system")
+  color           String   @default("#ffffff")
+  backgroundColor String   @default("#2a2a3a")
+  borderColor     String   @default("#3a3a4a")
+  opacity         Float    @default(1.0)
+  fontSize        String?
+  // Optional reference to a VisualEffectDef.key. Kept as a string FK to the
+  // unique `key` so seeds can reference effects by stable name without
+  // chasing UUIDs.
+  effectKey       String?
+  effect          VisualEffectDef? @relation(fields: [effectKey], references: [key], onDelete: SetNull)
+  enabled         Boolean  @default(true)
+  sortOrder       Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([effectKey])
+  @@map("tag_defs")
+}

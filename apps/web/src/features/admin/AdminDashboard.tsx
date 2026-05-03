@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3 } from 'lucide-react';
+import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -589,6 +589,10 @@ function Dashboard() {
         <a href="/admin/audio" className="sidebar-link" title="Audio Manager">
           <Music size={16} />
           {!collapsed && <span>Audio Manager</span>}
+        </a>
+        <a href="/admin/tag-editor" className="sidebar-link" title="Visual Tag Editor">
+          <TagIcon size={16} />
+          {!collapsed && <span>Tag Editor</span>}
         </a>
         <a href="/admin/balance" className="sidebar-link" title="Balance Simulator">
           <BarChart3 size={16} />

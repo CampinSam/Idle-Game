@@ -692,6 +692,8 @@ export class AdminService {
       nftCollectionDef: (this.prisma as any).nftCollectionDef,
       modalDef: (this.prisma as any).modalDef,
       effectDef: (this.prisma as any).effectDef,
+      tagDef: (this.prisma as any).tagDef,
+      visualEffectDef: (this.prisma as any).visualEffectDef,
       season: (this.prisma as any).season,
     };
 

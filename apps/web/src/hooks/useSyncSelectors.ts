@@ -131,6 +131,22 @@ export function useSyncGifts() {
   return useMemo(() => Object.values(table), [table]);
 }
 
+export function useTagDefs() {
+  return useAppSelector((s) => s.sync.tagDefs);
+}
+
+export function useTagDef(key: string | undefined | null) {
+  return useAppSelector((s) => (key ? s.sync.tagDefs[key] : undefined));
+}
+
+export function useVisualEffectDefs() {
+  return useAppSelector((s) => s.sync.visualEffectDefs);
+}
+
+export function useVisualEffectDef(key: string | undefined | null) {
+  return useAppSelector((s) => (key ? s.sync.visualEffectDefs[key] : undefined));
+}
+
 export function useSyncActiveEffects() {
   const table = useAppSelector((s) => s.sync.activeEffects);
   return useMemo(() => Object.values(table), [table]);
