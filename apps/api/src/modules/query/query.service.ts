@@ -81,6 +81,7 @@ export class QueryService {
       currencyDefs,
       missionHistory,
       questInstances,
+      achievementInstances,
       checkInInstances,
       activeEffects,
       unclaimedGifts,
@@ -160,6 +161,11 @@ export class QueryService {
         include: { questDef: true },
         orderBy: { startedAt: 'desc' },
       }),
+      (this.prisma as any).achievementInstance.findMany({
+        where: { userId },
+        include: { achievementDef: true },
+        orderBy: { startedAt: 'desc' },
+      }),
       (this.prisma as any).checkInInstance.findMany({
         where: { userId },
         include: { checkInDef: true },
@@ -216,6 +222,7 @@ export class QueryService {
             ),
           ),
           quests: questInstances,
+          achievements: achievementInstances,
           checkins: checkInInstances,
           gifts: unclaimedGifts,
           missions: jobs

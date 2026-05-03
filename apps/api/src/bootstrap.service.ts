@@ -3,6 +3,7 @@ import { PrismaService } from './prisma/prisma.service';
 import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
 import { seedSounds } from './seeds/sounds.seed';
+import { seedRetention } from './seeds/retention.seed';
 import {
   buildSeedConsumableMap,
   canonicalConsumableData,
@@ -29,6 +30,11 @@ export class BootstrapService implements OnModuleInit {
     await this.seedConsumableItems();
     await seedDefinitions(this.prisma);
     await seedSounds(this.prisma);
+    // Retention loop content (daily/weekly quests + achievements). Kept
+    // separate from `seedDefinitions` so the giant definitions.json file
+    // doesn't have to know about cadence-aware quest defs or the new
+    // AchievementDef table.
+    await seedRetention(this.prisma);
     // Idempotent: rewrite any historical `consumableData` rows that still
     // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
     // targetType enum values, or a redundant top-level `targetType`. After

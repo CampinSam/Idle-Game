@@ -18,6 +18,7 @@ import { ToggleRoomHandler } from './handlers/toggle-room.handler';
 import { OpenGiftPackageHandler } from './handlers/open-gift-package.handler';
 import { OpenLootBoxHandler } from './handlers/open-lootbox.handler';
 import { ClaimQuestRewardHandler } from './handlers/claim-quest-reward.handler';
+import { ClaimAchievementRewardHandler } from './handlers/claim-achievement-reward.handler';
 import { ShopPurchaseHandler } from './handlers/shop-purchase.handler';
 import { UseConsumableHandler } from './handlers/use-consumable.handler';
 import { ClaimGiftHandler } from './handlers/claim-gift.handler';
@@ -45,6 +46,7 @@ export class CommandRouter {
     private openGiftPackage: OpenGiftPackageHandler,
     private openLootBox: OpenLootBoxHandler,
     private claimQuestReward: ClaimQuestRewardHandler,
+    private claimAchievementReward: ClaimAchievementRewardHandler,
     private shopPurchase: ShopPurchaseHandler,
     private useConsumable: UseConsumableHandler,
     private claimGift: ClaimGiftHandler,
@@ -67,6 +69,7 @@ export class CommandRouter {
     this.handlers.set('OpenGiftPackage', this.openGiftPackage);
     this.handlers.set('OpenLootBox', this.openLootBox);
     this.handlers.set('ClaimQuestReward', this.claimQuestReward);
+    this.handlers.set('ClaimAchievementReward', this.claimAchievementReward);
     this.handlers.set('ShopPurchase', this.shopPurchase);
     this.handlers.set('UseConsumable', this.useConsumable);
     this.handlers.set('ClaimGift', this.claimGift);

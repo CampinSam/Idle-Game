@@ -20,6 +20,7 @@ import { ToggleRoomHandler } from './handlers/toggle-room.handler';
 import { OpenGiftPackageHandler } from './handlers/open-gift-package.handler';
 import { OpenLootBoxHandler } from './handlers/open-lootbox.handler';
 import { ClaimQuestRewardHandler } from './handlers/claim-quest-reward.handler';
+import { ClaimAchievementRewardHandler } from './handlers/claim-achievement-reward.handler';
 import { ShopPurchaseHandler } from './handlers/shop-purchase.handler';
 import { UseConsumableHandler } from './handlers/use-consumable.handler';
 import { ClaimGiftHandler } from './handlers/claim-gift.handler';
@@ -31,6 +32,7 @@ import { CurrencyModule } from '../currency/currency.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { GameRulesModule } from '../game-rules/game-rules.module';
 import { QuestModule } from '../quest/quest.module';
+import { AchievementModule } from '../achievement/achievement.module';
 import { EntityModule } from '../entity/entity.module';
 import { GiftModule } from '../gift/gift.module';
 
@@ -44,6 +46,7 @@ import { GiftModule } from '../gift/gift.module';
     InventoryModule,
     GameRulesModule,
     QuestModule,
+    AchievementModule,
     EntityModule,
     GiftModule,
   ],
@@ -69,6 +72,7 @@ import { GiftModule } from '../gift/gift.module';
     OpenGiftPackageHandler,
     OpenLootBoxHandler,
     ClaimQuestRewardHandler,
+    ClaimAchievementRewardHandler,
     ShopPurchaseHandler,
     UseConsumableHandler,
     ClaimGiftHandler,

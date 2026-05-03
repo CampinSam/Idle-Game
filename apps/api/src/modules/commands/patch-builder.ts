@@ -67,6 +67,19 @@ export class PatchBuilder {
     return this;
   }
 
+  upsertAchievement(instance: any): this {
+    // Pass through the full row including the included `achievementDef`
+    // so the frontend can render names/descriptions without a second
+    // fetch. Mirrors how QuestInstance is shipped.
+    this.patches.push({
+      op: 'upsert',
+      entity: 'achievement',
+      id: instance.id,
+      data: instance,
+    });
+    return this;
+  }
+
   deleteItem(itemId: string): this {
     this.patches.push({ op: 'delete', entity: 'item', id: itemId });
     return this;

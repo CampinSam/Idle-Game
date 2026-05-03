@@ -36,6 +36,7 @@ interface SyncState {
   currencies: EntityTable;
   missions: EntityTable;
   quests: EntityTable;
+  achievements: EntityTable;
   checkins: EntityTable;
   gifts: EntityTable;
   activeEffects: EntityTable;
@@ -62,6 +63,7 @@ const initialState: SyncState = {
   currencies: {},
   missions: {},
   quests: {},
+  achievements: {},
   checkins: {},
   gifts: {},
   activeEffects: {},
@@ -74,7 +76,7 @@ const initialState: SyncState = {
 
 const ENTITY_KEY_MAP: Record<string, keyof Pick<SyncState,
   'entities' | 'locations' | 'buildings' | 'rooms' | 'items' |
-  'jobs' | 'notifications' | 'currencies' | 'missions' | 'quests' | 'checkins' | 'gifts' | 'activeEffects'
+  'jobs' | 'notifications' | 'currencies' | 'missions' | 'quests' | 'achievements' | 'checkins' | 'gifts' | 'activeEffects'
 >> = {
   entity: 'entities',
   location: 'locations',
@@ -86,6 +88,7 @@ const ENTITY_KEY_MAP: Record<string, keyof Pick<SyncState,
   currency: 'currencies',
   mission: 'missions',
   quest: 'quests',
+  achievement: 'achievements',
   checkin: 'checkins',
   gift: 'gifts',
   activeEffect: 'activeEffects',
@@ -115,6 +118,7 @@ const syncSlice = createSlice({
       state.currencies = {};
       state.missions = {};
       state.quests = {};
+      state.achievements = {};
       state.checkins = {};
       state.gifts = {};
       state.activeEffects = {};
@@ -128,6 +132,7 @@ const syncSlice = createSlice({
         if (s.rooms) for (const r of s.rooms) state.rooms[r.id] = r;
         if (s.missions) for (const m of s.missions) state.missions[m.id] = m;
         if (s.quests) for (const q of s.quests) state.quests[q.id] = q;
+        if (s.achievements) for (const a of s.achievements) state.achievements[a.id] = a;
         if (s.checkins) for (const ci of s.checkins) state.checkins[ci.id] = ci;
         if (s.gifts) for (const g of s.gifts) state.gifts[g.id] = g;
       }

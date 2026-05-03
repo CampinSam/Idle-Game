@@ -90,6 +90,7 @@ export default function Layout() {
                   <button className="top-bar-menu-profile" onClick={() => { navigate('/profile'); setShowMenu(false); }}>Profile</button>
                   <button className="top-bar-menu-profile" onClick={() => { navigate('/settings'); setShowMenu(false); }}>Settings</button>
                   <button className="top-bar-menu-profile" onClick={() => { navigate('/rewards'); setShowMenu(false); }}>Rewards</button>
+                  <button className="top-bar-menu-profile" onClick={() => { navigate('/achievements'); setShowMenu(false); }}>Achievements</button>
                   <button className="top-bar-menu-logout" onClick={handleLogout}>Logout</button>
                 </div>
               )}

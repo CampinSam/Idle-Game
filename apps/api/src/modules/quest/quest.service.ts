@@ -5,6 +5,23 @@ import { TelemetryService, TelemetrySubscriber, TelemetryEvent } from '../teleme
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
+import { getWindowStart } from '../../common/util/cadence';
+
+// A QuestDef.cadence value of 'daily' or 'weekly' means the quest auto-resets
+// at the start of the next UTC day (or UTC Monday). 'oneoff' is the legacy
+// behavior — claimed once unless `repeatable` is true.
+function isCadenceQuest(def: any): boolean {
+  return def?.cadence === 'daily' || def?.cadence === 'weekly';
+}
+
+function freshProgress(objectives: any[]): any[] {
+  return objectives.map((obj: any, i: number) => ({
+    objectiveIndex: i,
+    current: 0,
+    target: obj?.target ?? 1,
+    completed: false,
+  }));
+}
 
 function shallowMatch(filter: Record<string, unknown>, data: Record<string, unknown>): boolean {
   for (const [k, v] of Object.entries(filter)) {
@@ -55,6 +72,14 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
 
   async processEvent(userId: string, event: TelemetryEvent, tx?: any): Promise<void> {
     const db = tx || this.prisma;
+
+    // Lazy cadence reset: before counting this event, roll over any daily/
+    // weekly quests whose previous window has elapsed. We do this on every
+    // event rather than via cron because (a) there is no scheduler in the
+    // codebase yet, (b) it's cheap (a single indexed query + at-most-N
+    // updates), and (c) it guarantees a player who logs in after a multi-day
+    // absence sees fresh quests immediately.
+    await this.resetExpiredCadenceQuests(userId, db);
 
     const instances = await (db as any).questInstance.findMany({
       where: { userId, status: 'active' },
@@ -142,17 +167,73 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     if (!def || !def.enabled) return null;
 
     const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
-    const initialProgress = objectives.map((obj: any, i: number) => ({
-      objectiveIndex: i,
-      current: 0,
-      target: obj.target ?? 1,
-      completed: false,
-    }));
+
+    // Stamp the cadence window start on creation so the very first claim
+    // already has the correct boundary recorded. One-off quests stay null.
+    const windowStartedAt = isCadenceQuest(def)
+      ? getWindowStart(def.cadence, new Date())
+      : null;
 
     return (db as any).questInstance.create({
-      data: { userId, questDefId, progress: initialProgress },
+      data: { userId, questDefId, progress: freshProgress(objectives), windowStartedAt },
       include: { questDef: true },
     });
+  }
+
+  /**
+   * Roll over any daily/weekly quest instances whose recorded window is
+   * older than the current window. Idempotent — instances already in the
+   * current window are skipped by the WHERE clause.
+   *
+   * Called lazily from `processEvent` and `listInstances` so the system
+   * needs no cron. The cost is bounded: each user has at most a few dozen
+   * active quest instances, and the WHERE filters down to expired ones
+   * before any update fires.
+   */
+  async resetExpiredCadenceQuests(userId: string, tx?: any): Promise<number> {
+    const db = tx || this.prisma;
+    const now = new Date();
+
+    // Pull only the cadence quests the user has touched. We need the def
+    // alongside to compute the window boundary per-cadence.
+    const instances = await (db as any).questInstance.findMany({
+      where: {
+        userId,
+        questDef: { cadence: { in: ['daily', 'weekly'] } },
+      },
+      include: { questDef: true },
+    });
+
+    let reset = 0;
+    for (const inst of instances) {
+      const def = inst.questDef;
+      if (!def || !isCadenceQuest(def)) continue;
+
+      const currentWindow = getWindowStart(def.cadence, now);
+      const lastWindow = inst.windowStartedAt
+        ? getWindowStart(def.cadence, inst.windowStartedAt)
+        : null;
+
+      // Same window — nothing to do. We compare both anchored to their
+      // window starts so off-by-millisecond writes can't trigger spurious
+      // resets.
+      if (lastWindow && lastWindow.getTime() >= currentWindow.getTime()) continue;
+
+      const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
+      await (db as any).questInstance.update({
+        where: { id: inst.id },
+        data: {
+          progress: freshProgress(objectives),
+          status: 'active',
+          windowStartedAt: currentWindow,
+          completedAt: null,
+          claimedAt: null,
+        },
+      });
+      reset += 1;
+    }
+
+    return reset;
   }
 
   async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[] }> {
@@ -203,17 +284,37 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       }
     }
 
-    if (def.repeatable) {
+    // Daily/weekly cadence quests are implicitly repeatable — claiming
+    // resets them inside the SAME window so the user sees them as `active`
+    // immediately, but `windowStartedAt` stays at the current window so
+    // they can't farm the reward again until the window rolls over. The
+    // next call to `resetExpiredCadenceQuests` will pick up the rollover.
+    const cadence = isCadenceQuest(def);
+    if (def.repeatable || cadence) {
       const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
-      const freshProgress = objectives.map((obj: any, i: number) => ({
-        objectiveIndex: i,
-        current: 0,
-        target: obj.target ?? 1,
-        completed: false,
-      }));
+      const now = new Date();
+      const updateData: any = {
+        status: 'active',
+        claimedAt: now,
+        completedAt: null,
+        progress: freshProgress(objectives),
+      };
+      if (cadence) {
+        // For cadence quests, set the window to NOW so the player can't
+        // claim again until the next UTC midnight / Monday. We record the
+        // window start (not now) so subsequent rollover comparisons work.
+        updateData.windowStartedAt = getWindowStart(def.cadence, now);
+        // For cadence quests we also want claimedAt to mark this cycle as
+        // already-rewarded — a simple way to gate the UI is `status:
+        // 'claimed_this_cycle'` but we keep `active` for backward compat
+        // with the existing quest tabs. The frontend can compare
+        // `claimedAt` vs `windowStartedAt` to render a "Come back tomorrow"
+        // state without breaking the active-list filter.
+        updateData.status = 'claimed';
+      }
       await (db as any).questInstance.update({
         where: { id: questInstanceId },
-        data: { status: 'active', claimedAt: new Date(), completedAt: null, progress: freshProgress },
+        data: updateData,
       });
     } else {
       await (db as any).questInstance.update({
@@ -226,6 +327,15 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
   }
 
   async listInstances(userId: string): Promise<any[]> {
+    // Lazy rollover before returning, so a returning player sees fresh
+    // dailies/weeklies on the very first read after midnight without
+    // needing to fire a telemetry event first.
+    try {
+      await this.resetExpiredCadenceQuests(userId);
+    } catch (err) {
+      this.logger.warn(`Cadence quest reset failed for ${userId}: ${err}`);
+    }
+
     return (this.prisma as any).questInstance.findMany({
       where: { userId },
       include: { questDef: true },

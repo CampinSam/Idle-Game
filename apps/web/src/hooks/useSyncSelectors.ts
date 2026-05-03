@@ -116,6 +116,11 @@ export function useSyncQuests() {
   return useMemo(() => Object.values(table), [table]);
 }
 
+export function useSyncAchievements() {
+  const table = useAppSelector((s) => s.sync.achievements);
+  return useMemo(() => Object.values(table), [table]);
+}
+
 export function useSyncCheckIns() {
   const table = useAppSelector((s) => s.sync.checkins);
   return useMemo(() => Object.values(table), [table]);

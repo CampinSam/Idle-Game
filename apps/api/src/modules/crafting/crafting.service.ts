@@ -10,6 +10,7 @@ import { PlayerService } from '../player/player.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import {
@@ -57,6 +58,7 @@ export class CraftingService {
     private gameRules: GameRulesService,
     private eventService: EventService,
     private effectService: EffectService,
+    private telemetryService: TelemetryService,
   ) {}
 
   private mapJobToCraftingResponse(job: any) {
@@ -597,6 +599,22 @@ export class CraftingService {
     const updated = externalTx
       ? await doWrites(externalTx)
       : await this.prisma.$transaction(doWrites, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
+
+    // Telemetry: emit a `crafting_completed` event so quest/achievement
+    // subscribers can tick progress. Run inside externalTx if present so
+    // it shares atomicity with the command path; otherwise fire-and-forget.
+    try {
+      await this.telemetryService.record(
+        userId,
+        'crafting_completed',
+        recipeId,
+        1,
+        { quality, jobId },
+        externalTx,
+      );
+    } catch (err) {
+      this.logger.warn(`Failed to record crafting telemetry: ${err}`);
+    }
 
     // Post-commit: dispatch emitEvent outcomes through the Outbox. These are
     // already idempotent at the event-dispatch layer and must NOT block the

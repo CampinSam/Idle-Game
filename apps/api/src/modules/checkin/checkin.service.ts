@@ -2,64 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
-
-function getWindowStart(frequency: any, now: Date): Date {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-
-  if (type === 'daily') {
-    const d = new Date(now);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  }
-
-  if (type === 'every_x_days') {
-    const epochMs = now.getTime();
-    const windowMs = interval * 24 * 60 * 60 * 1000;
-    const windowStart = Math.floor(epochMs / windowMs) * windowMs;
-    return new Date(windowStart);
-  }
-
-  if (type === 'weekly') {
-    const d = new Date(now);
-    d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    const diffToMonday = (day === 0 ? 6 : day - 1);
-    d.setUTCDate(d.getUTCDate() - diffToMonday);
-    return d;
-  }
-
-  if (type === 'monthly') {
-    const d = new Date(now);
-    d.setUTCDate(1);
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  }
-
-  const d = new Date(now);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
-function getWindowDurationMs(frequency: any): number {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-
-  if (type === 'daily') return 24 * 60 * 60 * 1000;
-  if (type === 'every_x_days') return interval * 24 * 60 * 60 * 1000;
-  if (type === 'weekly') return 7 * 24 * 60 * 60 * 1000;
-  if (type === 'monthly') return 30 * 24 * 60 * 60 * 1000;
-  return 24 * 60 * 60 * 1000;
-}
-
-function windowsMissed(lastClaimedAt: Date | null, frequency: any, now: Date): number {
-  if (!lastClaimedAt) return 1;
-  const lastWindowStart = getWindowStart(frequency, lastClaimedAt);
-  const currentWindowStart = getWindowStart(frequency, now);
-  const durationMs = getWindowDurationMs(frequency);
-  const diff = currentWindowStart.getTime() - lastWindowStart.getTime();
-  return Math.floor(diff / durationMs);
-}
+// Window math is shared with the QuestService daily/weekly cadence reset
+// logic so a player's daily check-in and daily quest both roll over at
+// exactly the same UTC moment. See `apps/api/src/common/util/cadence.ts`.
+import { windowsMissed } from '../../common/util/cadence';
 
 @Injectable()
 export class CheckInService {
