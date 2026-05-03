@@ -17,6 +17,7 @@ import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
+import { formatSeasonRemaining } from '../../utils/formatSeasonRemaining';
 import './HomePage.css';
 
 function formatTime(ms: number) {
@@ -28,18 +29,6 @@ function formatTime(ms: number) {
   const minutes = totalMinutes % 60;
   if (hours > 0) return `${hours}h ${minutes}m left`;
   return `${minutes}m left`;
-}
-
-function formatSeasonRemaining(endsAtIso: string): string {
-  const end = new Date(endsAtIso).getTime();
-  const ms = end - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) return 'ENDED';
-  const totalMinutes = Math.floor(ms / 60_000);
-  const days = Math.floor(totalMinutes / (60 * 24));
-  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-  if (days > 0) return `${days}d ${hours}h`;
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${minutes}m`;
 }
 
 export default function HomePage() {

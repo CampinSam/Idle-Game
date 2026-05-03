@@ -395,14 +395,14 @@ class ApiClient {
     });
   }
 
-  walletVerify(chain: string, address: string, signature: string) {
+  walletVerify(chain: string, address: string, signature: string, key?: string) {
     return this.request<
       | { accessToken: string; player: any }
       | { linked: true }
       | { needsOnboarding: true; walletToken: string; chain: string; address: string }
     >('/auth/wallet/verify', {
       method: 'POST',
-      body: JSON.stringify({ chain, address, signature }),
+      body: JSON.stringify({ chain, address, signature, key }),
     });
   }
 
@@ -420,10 +420,10 @@ class ApiClient {
     });
   }
 
-  walletVerifyAuthed(chain: string, address: string, signature: string, _token: string) {
+  walletVerifyAuthed(chain: string, address: string, signature: string, _token: string, key?: string) {
     return this.request<{ linked: true }>('/auth/wallet/link', {
       method: 'POST',
-      body: JSON.stringify({ chain, address, signature }),
+      body: JSON.stringify({ chain, address, signature, key }),
     });
   }
 

@@ -68,8 +68,12 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
         .map((b: number) => b.toString(16).padStart(2, '0'))
         .join('');
       const signResult = await walletApi.signData(address, msgHex);
-      const signature = typeof signResult === 'string' ? signResult : JSON.stringify(signResult);
-      const result = await api.walletVerify('CARDANO', address, signature);
+      // CIP-30 signData returns { signature, key } — both hex CBOR (COSE_Sign1, COSE_Key).
+      // Older code stringified the whole object as `signature`; the API now requires both
+      // fields separately so the server can run real CIP-8 verification.
+      const signature = typeof signResult === 'string' ? signResult : signResult?.signature ?? '';
+      const cosekey = typeof signResult === 'string' ? undefined : signResult?.key;
+      const result = await api.walletVerify('CARDANO', address, signature, cosekey);
       if ('linked' in result) return null;
       if ('needsOnboarding' in result) {
         return { kind: 'onboarding', walletToken: result.walletToken, chain: result.chain, address: result.address };
@@ -115,8 +119,9 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
         .map((b: number) => b.toString(16).padStart(2, '0'))
         .join('');
       const signResult = await walletApi.signData(address, msgHex);
-      const signature = typeof signResult === 'string' ? signResult : JSON.stringify(signResult);
-      await api.walletVerifyAuthed('CARDANO', address, signature, token);
+      const signature = typeof signResult === 'string' ? signResult : signResult?.signature ?? '';
+      const cosekey = typeof signResult === 'string' ? undefined : signResult?.key;
+      await api.walletVerifyAuthed('CARDANO', address, signature, token, cosekey);
       return true;
     } catch (err: any) {
       setError(err?.message || 'Failed to link Cardano wallet');

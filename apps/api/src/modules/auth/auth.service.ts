@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { ethers } from 'ethers';
+import { bech32 } from 'bech32';
+import verifyCardanoDataSignature from '@cardano-foundation/cardano-verify-datasignature';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
@@ -237,6 +239,7 @@ export class AuthService {
     address: string,
     signature: string,
     authenticatedUserId?: string,
+    key?: string,
   ): Promise<
     | { accessToken: string; player: any }
     | { linked: true }
@@ -256,7 +259,7 @@ export class AuthService {
     let verified = false;
 
     if (chain === 'CARDANO') {
-      verified = await this.verifyCardanoSignature(address, message, signature);
+      verified = await this.verifyCardanoSignature(address, message, signature, key);
     } else {
       verified = this.verifyEvmSignature(normalizedAddress, message, signature);
     }
@@ -424,34 +427,81 @@ export class AuthService {
   }
 
   /**
+   * Convert a raw Cardano address (hex bytes from CIP-30 `getChangeAddress` /
+   * `getRewardAddresses`) into its bech32 form (`addr1...`, `addr_test1...`,
+   * `stake1...`, `stake_test1...`).
+   *
+   * Header byte layout (CIP-19):
+   *   high nibble = address type (0..7 payment-style, 14/15 stake)
+   *   low nibble  = network id (0 testnet, 1 mainnet)
+   *
+   * `bech32.encode` defaults to a 90-char limit; Cardano shelley addresses are
+   * ~103 chars, so we pass an explicit large limit.
+   */
+  private hexAddressToBech32(hex: string): string {
+    const bytes = Buffer.from(hex, 'hex');
+    if (bytes.length === 0) throw new Error('Empty Cardano address');
+    const header = bytes[0];
+    const type = (header & 0xf0) >> 4;
+    const network = header & 0x0f;
+    const isStake = type >= 0x0e;
+    const isMainnet = network === 1;
+    const prefix = isStake
+      ? (isMainnet ? 'stake' : 'stake_test')
+      : (isMainnet ? 'addr' : 'addr_test');
+    return bech32.encode(prefix, bech32.toWords(bytes), 1000);
+  }
+
+  /**
    * Verify a CIP-30 `signData` payload (CIP-8 / COSE_Sign1).
    *
-   * Real verification requires a CBOR + ed25519 stack
-   * (e.g. `@emurgo/cardano-message-signing-nodejs` for COSE parsing plus
-   * `@stablelib/ed25519` or `@noble/ed25519` for signature checks against
-   * the bech32-decoded stake/payment key). That dependency is intentionally
-   * not wired here yet — see `replit.md` for the follow-up.
+   * Inputs:
+   *   - `address`: hex form of the wallet address that was bound to the nonce.
+   *   - `message`: the plain-text nonce message we asked the wallet to sign.
+   *   - `signature`: hex CBOR COSE_Sign1 returned by `signData`.
+   *   - `key`: hex CBOR COSE_Key (verification key) returned by `signData`.
    *
-   * Posture until the real verifier ships:
-   *   - PRODUCTION: refuse the login. Better to show "Cardano login is
-   *     temporarily unavailable" than to accept any signature blindly,
-   *     which previously meant anyone could impersonate any wallet by
-   *     supplying its public address.
-   *   - DEV: still accept (with a loud warning), gated behind an explicit
-   *     `DEV_ALLOW_CARDANO_BYPASS=true` env flag so this code path can
-   *     never accidentally ship enabled.
+   * The verifier checks all three properties:
+   *   1. The signature is a valid ed25519 sig over the COSE Sig_structure
+   *   2. The COSE payload equals our nonce message
+   *   3. The COSE address header matches the bech32 form of our recorded address
+   *
+   * If any of these fail we refuse the login — never fall through to a bypass
+   * in production. The dev bypass remains as an escape hatch for local testing
+   * with a stub wallet that can't produce a real CIP-30 payload.
    */
-  private async verifyCardanoSignature(address: string, message: string, signature: string): Promise<boolean> {
+  private async verifyCardanoSignature(
+    address: string,
+    message: string,
+    signature: string,
+    key?: string,
+  ): Promise<boolean> {
     const isProduction = process.env.NODE_ENV === 'production';
+    const shortAddr = address.substring(0, 20);
+
+    if (key && signature) {
+      try {
+        const bech32Address = this.hexAddressToBech32(address);
+        const ok = verifyCardanoDataSignature(signature, key, message, bech32Address);
+        if (ok) return true;
+        this.logger.warn(`Cardano signature verification failed for ${shortAddr}... (sig/key/message/address mismatch)`);
+        return false;
+      } catch (err) {
+        this.logger.error(`Cardano signature verification threw for ${shortAddr}...: ${err}`);
+        return false;
+      }
+    }
+
+    // Missing `key` — legacy clients that only send `signature`. Cannot verify.
     if (isProduction) {
-      this.logger.error(`Cardano signature verification is not implemented — rejecting login for ${address.substring(0, 20)}...`);
+      this.logger.error(`Cardano login for ${shortAddr}... rejected: COSE_Key missing (client must send { signature, key } from CIP-30 signData)`);
       return false;
     }
     if (process.env.DEV_ALLOW_CARDANO_BYPASS === 'true') {
-      this.logger.warn(`[DEV BYPASS] Cardano signature accepted without verification for ${address.substring(0, 20)}... (DEV_ALLOW_CARDANO_BYPASS=true)`);
+      this.logger.warn(`[DEV BYPASS] Cardano signature accepted without verification for ${shortAddr}... (DEV_ALLOW_CARDANO_BYPASS=true; key not supplied)`);
       return true;
     }
-    this.logger.error(`Cardano signature verification is not implemented and DEV_ALLOW_CARDANO_BYPASS is not set — rejecting`);
+    this.logger.error(`Cardano login for ${shortAddr}... rejected: COSE_Key missing and DEV_ALLOW_CARDANO_BYPASS not set`);
     return false;
   }
 

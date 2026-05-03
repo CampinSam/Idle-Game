@@ -63,10 +63,15 @@ export async function enableCardanoWallet(walletKey: string): Promise<any> {
   return w.enable();
 }
 
-export async function signCardanoMessage(api: any, message: string): Promise<{ address: string; signature: string }> {
+export async function signCardanoMessage(
+  api: any,
+  message: string,
+): Promise<{ address: string; signature: string; key?: string }> {
   const address = await getCardanoAddress(api);
   const msgHex = Buffer.from(message).toString('hex');
   const signResult = await api.signData(address, msgHex);
-  const signature = typeof signResult === 'string' ? signResult : JSON.stringify(signResult);
-  return { address, signature };
+  // CIP-30 returns { signature, key }; both hex CBOR. Fall back gracefully for stub wallets.
+  const signature = typeof signResult === 'string' ? signResult : signResult?.signature ?? '';
+  const key = typeof signResult === 'string' ? undefined : signResult?.key;
+  return { address, signature, key };
 }

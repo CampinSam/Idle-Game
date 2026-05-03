@@ -44,6 +44,10 @@ class WalletVerifyDto {
 
   @IsOptional()
   @IsString()
+  key?: string;
+
+  @IsOptional()
+  @IsString()
   linkMode?: string;
 }
 
@@ -81,13 +85,13 @@ export class AuthController {
 
   @Post('wallet/verify')
   walletVerify(@Body() dto: WalletVerifyDto) {
-    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature);
+    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, undefined, dto.key);
   }
 
   @Post('wallet/link')
   @UseGuards(AuthGuard('jwt'))
   walletLink(@Body() dto: WalletVerifyDto, @Request() req: any) {
-    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.id);
+    return this.authService.verifyWalletSignature(dto.chain, dto.address, dto.signature, req.user.id, dto.key);
   }
 
   @Post('wallet/complete')
