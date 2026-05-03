@@ -48,3 +48,52 @@ export function getStarRating(entity: any): number {
   if (power >= 200) return 3;
   return 2.5;
 }
+
+/**
+ * Derive up to 3 short label pills for the entity header:
+ *  1. Hybrid vs single-archetype spread
+ *  2. "[Archetype]-leaning" when one archetype appears most (≥2 times) in a mixed set
+ *  3. Role based on the highest stat (Support, Attacker, etc.)
+ */
+export function getTraitCategoryTags(entity: any): string[] {
+  const traits = entity?.traits || {};
+  const slots = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;
+
+  const counts: Record<string, number> = {};
+  for (const slot of slots) {
+    const val = traits[slot];
+    if (val) counts[val] = (counts[val] || 0) + 1;
+  }
+
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const distinctCount = sorted.length;
+  const tags: string[] = [];
+
+  if (distinctCount >= 3) {
+    tags.push('Hybrid');
+  }
+
+  if (sorted.length > 0) {
+    const [topName, topCount] = sorted[0];
+    if (topCount >= 2) {
+      tags.push(`${topName}-leaning`);
+    }
+  }
+
+  const stats = normalizeStats(entity?.stats);
+  const statEntries = Object.entries(stats) as [string, number][];
+  if (statEntries.length > 0) {
+    const maxStat = statEntries.reduce((a, b) => b[1] > a[1] ? b : a);
+    const roleMap: Record<string, string> = {
+      ATK: 'Attacker',
+      DEF: 'Defender',
+      SPD: 'Scout',
+      FOC: 'Support',
+      LCK: 'Gambler',
+      VIT: 'Tank',
+    };
+    if (roleMap[maxStat[0]]) tags.push(roleMap[maxStat[0]]);
+  }
+
+  return tags;
+}

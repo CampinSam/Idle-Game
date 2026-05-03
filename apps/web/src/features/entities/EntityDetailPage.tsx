@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
-import { getEntityStatusLabel } from './utils';
+import { getEntityStatusLabel, getTraitCategoryTags } from './utils';
 import './EntityDetailPage.css';
 
 export default function EntityDetailPage() {
@@ -43,13 +43,23 @@ export default function EntityDetailPage() {
 
   const statusKey = (entity.status || 'idle').toLowerCase();
   const statusLabel = getEntityStatusLabel(entity.status);
+  const traitTags = getTraitCategoryTags(entity);
 
   return (
     <div className="entity-detail-page">
       <div className="entity-detail-page__card">
         <div className="entity-detail-page__header">
           <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
-          <h1 className="entity-detail-page__name">{entity.name}</h1>
+          <div className="entity-detail-page__name-block">
+            <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
+            {traitTags.length > 0 && (
+              <div className="entity-detail-page__trait-pills">
+                {traitTags.map((tag) => (
+                  <span key={tag} className="entity-detail-page__trait-pill">{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
           <span className={`entity-detail-page__status-pill entity-detail-page__status-pill--${statusKey}`}>
             {statusLabel}
           </span>
