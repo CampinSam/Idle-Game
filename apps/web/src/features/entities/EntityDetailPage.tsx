@@ -5,6 +5,7 @@ import { EntityDetail } from './components';
 import { getFilteredSortedEntities } from './entityListUtils';
 import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
+import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
 import type { EntityFilter, EntitySortBy } from './types';
 import './EntityDetailPage.css';
 
@@ -261,15 +262,23 @@ export default function EntityDetailPage() {
           </button>
 
           <div className="entity-detail-page__name-block">
-            <div className="entity-detail-page__name-row">
-              {isNftEntity(entity) && (
-                <span className="entity-detail-page__nft-chip">NFT</span>
-              )}
-              <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
-            </div>
-            {getCollectionLabel(entity) && (
-              <div className="entity-detail-page__name-sub">{getCollectionLabel(entity)}</div>
-            )}
+            <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
+            {isPerfectSpecimen(entity) ? (
+              <div className="entity-detail-page__name-sub entity-detail-page__name-sub--perfect">
+                <span className="entity-detail-page__perfect-star">★</span>
+                PERFECT
+                {getPerfectSpecimenTrait(entity) && (
+                  <span> · {getPerfectSpecimenTrait(entity)!.toUpperCase()}</span>
+                )}
+              </div>
+            ) : getCollectionLabel(entity) ? (
+              <div className="entity-detail-page__name-sub">
+                {isNftEntity(entity) && (
+                  <span className="entity-detail-page__nft-chip">NFT</span>
+                )}
+                {getCollectionLabel(entity)}
+              </div>
+            ) : null}
           </div>
 
           <span className="entity-detail-page__status-dot" aria-label={entity.status || 'idle'}>

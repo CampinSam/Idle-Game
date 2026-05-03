@@ -56,13 +56,6 @@
   min-width: 0;
 }
 
-.entity-detail-page__name-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-}
-
 .entity-detail-page__name {
   font-size: 15px;
   font-weight: 900;
@@ -87,6 +80,9 @@
 }
 
 .entity-detail-page__name-sub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.8px;
@@ -96,6 +92,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.entity-detail-page__name-sub--perfect {
+  background: linear-gradient(90deg, #fde68a, #fca5a5, #c4b5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+}
+
+.entity-detail-page__perfect-star {
+  font-size: 10px;
 }
 
 /* ── Prev / Next grouped together ── */
