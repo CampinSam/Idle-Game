@@ -159,11 +159,14 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
             const archetypeColor = value
               ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
               : 'rgba(255,255,255,0.3)';
+            const displayValue = value
+              ? value.replace(/\b\w/g, (c) => c.toUpperCase())
+              : '—';
             return (
               <div key={slot} className="entity-detail__slot-row">
                 <span className="entity-detail__slot-name">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
                 <span className="entity-detail__slot-value" style={{ color: archetypeColor }}>
-                  {value ?? '—'}
+                  {displayValue}
                 </span>
               </div>
             );

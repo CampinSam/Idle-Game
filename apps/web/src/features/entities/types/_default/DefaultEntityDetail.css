@@ -7,7 +7,7 @@
 /* ── Top section: portrait card + power/radar ── */
 .entity-detail__top {
   display: grid;
-  grid-template-columns: 50% 50%;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   align-items: stretch;
 }
@@ -20,6 +20,7 @@
   flex-direction: column;
   align-items: center;
   padding: 6px;
+  gap: 6px;
   position: relative;
 }
 
@@ -315,10 +316,9 @@
 }
 
 .entity-detail__slot-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
   padding: 4px 0;
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
