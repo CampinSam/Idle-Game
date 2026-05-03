@@ -1,9 +1,6 @@
 .entity-detail-page {
   padding-top: var(--page-top-gap);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .entity-detail-page__header-card {
