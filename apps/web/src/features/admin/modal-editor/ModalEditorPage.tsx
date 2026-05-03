@@ -424,6 +424,214 @@ function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: Modal
   );
 }
 
+// ─── Tag/Value Map Editor (used for clickReveal soundMap & fxMap) ────────────
+
+const FX_BUILTINS = ['shimmer', 'burst', 'glow', 'pulse'];
+
+type MapRow = { tag: string; value: string };
+
+function parseTagValueMap(raw: string): MapRow[] {
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split(',').map(part => {
+    const s = part.trim();
+    if (!s) return null;
+    const eq = s.indexOf('=');
+    if (eq < 0) return { tag: '*', value: s };
+    return { tag: s.slice(0, eq).trim(), value: s.slice(eq + 1).trim() };
+  }).filter((r): r is MapRow => !!r);
+}
+
+function serializeTagValueMap(rows: MapRow[]): string {
+  return rows
+    .filter(r => r.tag || r.value)
+    .map(r => `${r.tag || '*'}=${r.value}`)
+    .join(', ');
+}
+
+let soundOptionsCache: string[] | null = null;
+let soundOptionsPromise: Promise<string[]> | null = null;
+function loadSoundOptions(): Promise<string[]> {
+  if (soundOptionsCache) return Promise.resolve(soundOptionsCache);
+  if (!soundOptionsPromise) {
+    soundOptionsPromise = adminApi.listSoundMappings()
+      .then((items: any[]) => {
+        const keys = Array.from(new Set((items || [])
+          .map(it => String(it?.actionKey || ''))
+          .filter(Boolean))).sort();
+        soundOptionsCache = keys;
+        return keys;
+      })
+      .catch(() => {
+        // Don't permanently cache the failure — clear the in-flight promise
+        // so a subsequent mount can retry the fetch.
+        soundOptionsPromise = null;
+        return [];
+      });
+  }
+  return soundOptionsPromise;
+}
+
+function useSoundActionKeys(enabled: boolean): string[] {
+  const [keys, setKeys] = useState<string[]>(soundOptionsCache || []);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    loadSoundOptions().then(k => { if (alive) setKeys(k); });
+    return () => { alive = false; };
+  }, [enabled]);
+  return keys;
+}
+
+function TagValueMapEditor({
+  value,
+  onChange,
+  kind,
+  placeholder,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  kind: 'sound' | 'fx';
+  placeholder: string;
+}) {
+  const [rawMode, setRawMode] = useState(false);
+  const [customRows, setCustomRows] = useState<Set<number>>(new Set());
+  const soundKeys = useSoundActionKeys(kind === 'sound');
+  const rows = useMemo(() => parseTagValueMap(value || ''), [value]);
+  const datalistId = useMemo(
+    () => `tvm-${kind}-${Math.random().toString(36).slice(2, 8)}`,
+    [kind],
+  );
+
+  const setRows = (next: MapRow[]) => onChange(serializeTagValueMap(next));
+  const addRow = () => setRows([...rows, { tag: rows.length === 0 ? '*' : '', value: '' }]);
+  const removeRow = (i: number) => {
+    setCustomRows(prev => {
+      const s = new Set<number>();
+      prev.forEach(idx => {
+        if (idx === i) return;
+        s.add(idx > i ? idx - 1 : idx);
+      });
+      return s;
+    });
+    setRows(rows.filter((_, j) => j !== i));
+  };
+  const setRow = (i: number, patch: Partial<MapRow>) => {
+    const next = [...rows];
+    next[i] = { ...next[i], ...patch };
+    setRows(next);
+  };
+  const setRowCustom = (i: number, on: boolean) => {
+    setCustomRows(prev => {
+      const s = new Set(prev);
+      if (on) s.add(i); else s.delete(i);
+      return s;
+    });
+  };
+
+  const isCustomFx = (i: number, v: string) =>
+    customRows.has(i) || (!!v && !FX_BUILTINS.includes(v));
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+        <button
+          type="button"
+          onClick={() => setRawMode(m => !m)}
+          style={{
+            background: 'none', border: '1px solid #2a2a4e', color: '#94a3b8',
+            fontSize: 10, padding: '2px 8px', borderRadius: 4, cursor: 'pointer',
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}
+        >
+          {rawMode ? 'Use rows' : 'Edit as text'}
+        </button>
+      </div>
+
+      {rawMode ? (
+        <textarea
+          style={{ ...inp, minHeight: 50, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      ) : (
+        <div>
+          {kind === 'sound' && (
+            <datalist id={datalistId}>
+              {soundKeys.map(k => <option key={k} value={k} />)}
+            </datalist>
+          )}
+          {rows.length === 0 && (
+            <div style={{ color: '#555', fontSize: 11, fontStyle: 'italic', marginBottom: 6 }}>
+              No entries. Add a row to set a fallback (* = …) or per-tag value.
+            </div>
+          )}
+          {rows.map((r, i) => {
+            const fxIsCustom = kind === 'fx' && isCustomFx(i, r.value);
+            return (
+              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
+                <input
+                  style={{ ...inp, flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+                  placeholder="tag (use * for fallback)"
+                  value={r.tag}
+                  onChange={e => setRow(i, { tag: e.target.value })}
+                />
+                <span style={{ color: '#555', fontSize: 12 }}>=</span>
+                {kind === 'sound' ? (
+                  <input
+                    style={{ ...inp, flex: 2, fontFamily: 'monospace', fontSize: 12 }}
+                    list={datalistId}
+                    placeholder="sfx.action_key"
+                    value={r.value}
+                    onChange={e => setRow(i, { value: e.target.value })}
+                  />
+                ) : (
+                  <>
+                    <select
+                      style={{ ...inp, flex: fxIsCustom ? 1 : 2, fontSize: 12 }}
+                      value={fxIsCustom ? '__custom__' : r.value}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === '__custom__') {
+                          setRowCustom(i, true);
+                        } else {
+                          setRowCustom(i, false);
+                          setRow(i, { value: v });
+                        }
+                      }}
+                    >
+                      <option value="">— none —</option>
+                      {FX_BUILTINS.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                      <option value="__custom__">custom…</option>
+                    </select>
+                    {fxIsCustom && (
+                      <input
+                        style={{ ...inp, flex: 1, fontFamily: 'monospace', fontSize: 12 }}
+                        placeholder="custom fx name"
+                        value={r.value}
+                        onChange={e => setRow(i, { value: e.target.value })}
+                      />
+                    )}
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeRow(i)}
+                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}
+                  title="Remove"
+                >×</button>
+              </div>
+            );
+          })}
+          <button type="button" onClick={addRow} className="me-add-btn">+ Add row</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Block Editor ─────────────────────────────────────────────────────────────
 
 function RewardItemsEditor({ items, onChange }: { items: any[]; onChange: (v: any[]) => void }) {
@@ -673,19 +881,19 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
               placeholder="${item.rarity}"
             />
           </Field>
-          <Field label="Sound map" hint='Format: "tag1=sfx.key1, tag2=sfx.key2, *=sfx.fallback". First matching tag wins; * (or empty key) is the fallback.'>
-            <textarea
-              style={{ ...inp, minHeight: 50, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+          <Field label="Sound map" hint='First matching tag wins; * is the fallback. Values come from the audio mappings table (Admin → Audio).'>
+            <TagValueMapEditor
+              kind="sound"
               value={(block as any).soundMap || ''}
-              onChange={e => set({ soundMap: e.target.value })}
+              onChange={v => set({ soundMap: v })}
               placeholder="legendary=sfx.reveal_legendary, rare=sfx.reveal_rare, *=sfx.reveal_default"
             />
           </Field>
-          <Field label="FX map" hint='Format: "tag1=name1, tag2=name2, *=fallback". Applies CSS class gm-reveal-fx-<name>. Built-in: shimmer, burst, glow, pulse.'>
-            <textarea
-              style={{ ...inp, minHeight: 50, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }}
+          <Field label="FX map" hint='First matching tag wins; * is the fallback. Built-in effects: shimmer, burst, glow, pulse. Use "custom…" for any other CSS class name.'>
+            <TagValueMapEditor
+              kind="fx"
               value={(block as any).fxMap || ''}
-              onChange={e => set({ fxMap: e.target.value })}
+              onChange={v => set({ fxMap: v })}
               placeholder="legendary=glow, rare=burst, *=shimmer"
             />
           </Field>
