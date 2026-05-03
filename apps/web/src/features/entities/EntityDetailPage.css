@@ -94,17 +94,16 @@
   text-overflow: ellipsis;
 }
 
-.entity-detail-page__name-sub--perfect {
-  background: linear-gradient(90deg, #fde68a, #fca5a5, #c4b5fd);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.entity-detail-page__perfect-chip {
+  padding: 1px 5px;
+  font-size: 8px;
   font-weight: 900;
-  letter-spacing: 1.1px;
-}
-
-.entity-detail-page__perfect-star {
-  font-size: 10px;
+  letter-spacing: 1px;
+  color: #1a0f2e;
+  background: linear-gradient(135deg, #fde68a, #fca5a5 50%, #c4b5fd);
+  border-radius: 3px;
+  line-height: 1.5;
+  text-shadow: none;
 }
 
 /* ── Prev / Next grouped together ── */

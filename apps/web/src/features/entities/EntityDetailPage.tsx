@@ -263,22 +263,23 @@ export default function EntityDetailPage() {
 
           <div className="entity-detail-page__name-block">
             <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
-            {isPerfectSpecimen(entity) ? (
-              <div className="entity-detail-page__name-sub entity-detail-page__name-sub--perfect">
-                <span className="entity-detail-page__perfect-star">★</span>
-                PERFECT
-                {getPerfectSpecimenTrait(entity) && (
-                  <span> · {getPerfectSpecimenTrait(entity)!.toUpperCase()}</span>
-                )}
-              </div>
-            ) : getCollectionLabel(entity) ? (
+            {(getCollectionLabel(entity) || isPerfectSpecimen(entity)) && (
               <div className="entity-detail-page__name-sub">
                 {isNftEntity(entity) && (
                   <span className="entity-detail-page__nft-chip">NFT</span>
                 )}
-                {getCollectionLabel(entity)}
+                {isPerfectSpecimen(entity) ? (
+                  <span className="entity-detail-page__perfect-chip">
+                    ★ PERFECT
+                    {getPerfectSpecimenTrait(entity) && (
+                      <span> · {getPerfectSpecimenTrait(entity)!.toUpperCase()}</span>
+                    )}
+                  </span>
+                ) : (
+                  getCollectionLabel(entity)
+                )}
               </div>
-            ) : null}
+            )}
           </div>
 
           <span className="entity-detail-page__status-dot" aria-label={entity.status || 'idle'}>
