@@ -20,15 +20,6 @@
   color: var(--text-secondary);
 }
 
-.entity-detail-page__back-link {
-  display: block;
-  text-align: center;
-  margin-top: 12px;
-  color: var(--derp-purple);
-  background: none;
-  border: none;
-}
-
 .entity-detail-page__header {
   display: flex;
   align-items: center;
@@ -55,7 +46,24 @@
   color: var(--text-primary);
 }
 
+.entity-detail-page__status-pill {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(107, 114, 128, 0.2);
+  color: #9CA3AF;
+  text-transform: none;
+}
+
+.entity-detail-page__status-pill--idle    { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+.entity-detail-page__status-pill--mission { background: rgba(59, 130, 246, 0.2); color: #3B82F6; }
+.entity-detail-page__status-pill--working { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+.entity-detail-page__status-pill--injured { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
+
 .entity-detail-page__header-icons {
+  position: relative;
   display: flex;
   gap: 6px;
 }
@@ -69,4 +77,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #6B7280;
+  color: white;
+  cursor: pointer;
+}
+
+.entity-detail-page__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: linear-gradient(180deg, #1e1850 0%, #151030 100%);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+
+.entity-detail-page__menu-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+  text-align: center;
+  font-style: italic;
 }

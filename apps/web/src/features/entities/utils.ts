@@ -29,6 +29,17 @@ export function getXpForLevel(level: number): number {
   return Math.floor(100 * Math.pow(1.15, level - 1));
 }
 
+/** Friendly capitalized label for an entity status (e.g. "working" → "Crafting"). */
+export function getEntityStatusLabel(status: string | undefined): string {
+  switch ((status || 'idle').toLowerCase()) {
+    case 'idle':    return 'Idle';
+    case 'mission': return 'Mission';
+    case 'working': return 'Crafting';
+    case 'injured': return 'Injured';
+    default:        return (status || 'Idle').charAt(0).toUpperCase() + (status || 'Idle').slice(1).toLowerCase();
+  }
+}
+
 export function getStarRating(entity: any): number {
   const power = getEntityPower(entity);
   if (power >= 800) return 5;

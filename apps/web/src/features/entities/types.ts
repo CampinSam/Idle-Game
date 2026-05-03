@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Entity } from '@derp/shared';
 
 export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'potion-picker';
 
@@ -33,13 +34,11 @@ export interface EntityCardProps {
 }
 
 export interface EntityDetailProps {
-  entity: any;
+  entity: Entity;
   variant?: EntityDetailVariant;
   useCase?: EntityUseCase;
   showHeader?: boolean;
   onBack?: () => void;
   /** Slots for action chips in lightweight mode (e.g. mission Remove button). */
-  onRemove?: (entity: any) => void;
-  /** Opens the potion picker for this entity (e.g. wired to BOOST button on the full detail view). */
-  onApplyPotion?: () => void;
+  onRemove?: (entity: Entity) => void;
 }
