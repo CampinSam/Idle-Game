@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Headers } from '@nestjs/common';
 import { IsString, IsArray, ArrayMinSize } from 'class-validator';
 import { MissionService } from './mission.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 
 class StartMissionDto {
   @IsString()
@@ -17,7 +18,10 @@ class StartMissionDto {
 @Controller('missions')
 @UseGuards(JwtAuthGuard)
 export class MissionController {
-  constructor(private missionService: MissionService) {}
+  constructor(
+    private missionService: MissionService,
+    private idempotency: IdempotencyService,
+  ) {}
 
   @Get('categories')
   getCategories(@CurrentUser() user: { id: string }) {
@@ -40,13 +44,33 @@ export class MissionController {
   }
 
   @Post('start')
-  startMission(@CurrentUser() user: { id: string }, @Body() dto: StartMissionDto) {
-    return this.missionService.startMission(user.id, dto.defId, dto.entityIds);
+  startMission(
+    @CurrentUser() user: { id: string },
+    @Body() dto: StartMissionDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/missions/start',
+      idempotencyKey,
+      { defId: dto.defId, entityIds: dto.entityIds },
+      () => this.missionService.startMission(user.id, dto.defId, dto.entityIds),
+    );
   }
 
   @Post(':id/complete')
-  completeMission(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.missionService.completeMission(user.id, id);
+  completeMission(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      `POST:/missions/${id}/complete`,
+      idempotencyKey,
+      { missionId: id },
+      () => this.missionService.completeMission(user.id, id),
+    );
   }
 
 }

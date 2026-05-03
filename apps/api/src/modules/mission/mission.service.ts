@@ -225,8 +225,19 @@ export class MissionService {
     return jobs.map((job: any) => this.mapJobToMissionResponse(job));
   }
 
-  async startMission(userId: string, missionDefId: string, entityIds: string[], externalTx?: any) {
-    const db = externalTx || this.prisma;
+  async startMission(userId: string, missionDefId: string, entityIds: string[], externalTx?: any): Promise<any> {
+    // Atomicity: cost-spend, entity status flip and Job row creation must
+    // commit together. When called from /v1/commands the outer pipeline
+    // already gives us a tx; when called from REST POST /missions/start we
+    // open our own here so a crash mid-flow can't burn currency without
+    // creating the mission row.
+    if (!externalTx) {
+      return this.prisma.$transaction(
+        (tx) => this.startMission(userId, missionDefId, entityIds, tx),
+        { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' },
+      );
+    }
+    const db = externalTx;
     const dbDef = await (db as any).missionDef.findUnique({ where: { id: missionDefId } });
     if (!dbDef) throw new NotFoundException('Mission not found');
 
@@ -351,8 +362,20 @@ export class MissionService {
     return this.mapJobToMissionResponse(job);
   }
 
-  async completeMission(userId: string, missionId: string, externalTx?: any) {
-    const db = externalTx || this.prisma;
+  async completeMission(userId: string, missionId: string, externalTx?: any): Promise<any> {
+    // Atomicity: keeper-XP, currency credits, item grants, entity XP/level
+    // updates, status-flip back to idle, ActiveEffect cleanup and the Job
+    // row update must all commit together. When invoked from /v1/commands
+    // the outer pipeline supplies the tx; when invoked from REST
+    // POST /missions/:id/complete (or admin tools) we open our own so a
+    // mid-loop crash can't half-pay rewards.
+    if (!externalTx) {
+      return this.prisma.$transaction(
+        (tx) => this.completeMission(userId, missionId, tx),
+        { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' },
+      );
+    }
+    const db = externalTx;
     this.logger.log(`completeMission called: userId=${userId.slice(0,8)}, missionId=${missionId.slice(0,8)}`);
     const mission = await (db as any).job.findFirst({
       where: { id: missionId, userId, type: 'MissionJob', status: { in: ['active', 'ready_notified'] } },
@@ -552,28 +575,22 @@ export class MissionService {
           break;
         }
         case 'currency': {
-          if (externalTx) {
-            await this.currencyService.creditTx(db, {
-              userId, currencyId: entry.key, amount,
-              reason: `Mission: ${def.name}`, sourceType: 'mission', sourceId: missionId,
-            });
-          } else {
-            await this.currencyService.credit({
-              userId, currencyId: entry.key, amount,
-              reason: `Mission: ${def.name}`, sourceType: 'mission', sourceId: missionId,
-            });
-          }
+          // We always run inside a tx (see top of completeMission), so the
+          // Tx variants are the only correct choice — they participate in
+          // the same transaction as the keeper-XP/item/entity writes.
+          await this.currencyService.creditTx(db, {
+            userId, currencyId: entry.key, amount,
+            reason: `Mission: ${def.name}`, sourceType: 'mission', sourceId: missionId,
+          });
           const name = await this.gameRules.resolveName('currency', entry.key);
           grantedRewards.push({ type: 'currency', key: entry.key, amount, name });
           break;
         }
         case 'item': {
-          const itemParams = { userId, itemId: entry.key, quantity: amount, reason: `Mission: ${def.name}`, sourceType: 'mission', sourceId: missionId };
-          if (externalTx) {
-            await this.inventoryService.addItemTx(db, itemParams);
-          } else {
-            await this.inventoryService.addItem(itemParams);
-          }
+          await this.inventoryService.addItemTx(db, {
+            userId, itemId: entry.key, quantity: amount,
+            reason: `Mission: ${def.name}`, sourceType: 'mission', sourceId: missionId,
+          });
           const name = await this.gameRules.resolveName('item', entry.key);
           grantedRewards.push({ type: 'item', key: entry.key, amount, name });
           break;

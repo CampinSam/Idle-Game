@@ -77,30 +77,36 @@ class ApiClient {
     return this.request<any>(`/locations/${id}`);
   }
 
-  claimLocation(id: string) {
-    return this.request<any>(`/locations/${id}/claim`, { method: 'POST' });
+  claimLocation(id: string, idempotencyKey?: string) {
+    return this.request<any>(`/locations/${id}/claim`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`loc-claim-${id}`) },
+    });
   }
 
   getAvailableBuildings(locationId: string) {
     return this.request<any>(`/locations/${locationId}/available-buildings`);
   }
 
-  buildBuilding(locationId: string, buildingDefId: string) {
+  buildBuilding(locationId: string, buildingDefId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/build`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-${locationId}-${buildingDefId}`) },
       body: JSON.stringify({ buildingDefId }),
     });
   }
 
-  completeBuilding(locationId: string, buildingId: string) {
+  completeBuilding(locationId: string, buildingId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/complete`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-complete-${buildingId}`) },
     });
   }
 
-  upgradeBuilding(locationId: string, buildingId: string) {
+  upgradeBuilding(locationId: string, buildingId: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${locationId}/buildings/${buildingId}/upgrade`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`bld-upgrade-${buildingId}`) },
     });
   }
 
@@ -128,16 +134,18 @@ class ApiClient {
     return this.request<any[]>('/missions/history');
   }
 
-  startMission(defId: string, entityIds: string[]) {
+  startMission(defId: string, entityIds: string[], idempotencyKey?: string) {
     return this.request<any>('/missions/start', {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`mission-start-${defId}`) },
       body: JSON.stringify({ defId, entityIds }),
     });
   }
 
-  completeMission(missionId: string) {
+  completeMission(missionId: string, idempotencyKey?: string) {
     return this.request<any>(`/missions/${missionId}/complete`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`mission-complete-${missionId}`) },
     });
   }
 

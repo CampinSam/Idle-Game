@@ -28,6 +28,9 @@ export class AuthService {
   ) {}
 
   async register(username: string, email: string, password: string) {
+    // Pre-check for nicer UX errors. The DB-level unique constraint is the
+    // source of truth — see the try/catch around user.create below for the
+    // race window where two concurrent registrations slip past this check.
     const existing = await this.prisma.user.findFirst({
       where: { OR: [{ email }, { username }] },
     });
@@ -37,14 +40,31 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await this.prisma.user.create({
-      data: {
-        username,
-        email,
-        passwordHash,
-        authProvider: 'email',
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          username,
+          email,
+          passwordHash,
+          authProvider: 'email',
+        },
+      });
+    } catch (err: any) {
+      // P2002 = Prisma unique constraint violation. Happens when two
+      // concurrent POST /auth/register calls (e.g. user double-clicks the
+      // submit button) both pass the pre-check above before either commits.
+      // We narrow on `meta.target` so that future unique constraints on this
+      // table (e.g. wallet address) don't get a misleading "username or
+      // email already taken" message.
+      if (err?.code === 'P2002') {
+        const target = (err.meta?.target ?? []) as string[];
+        if (target.includes('username') || target.includes('email')) {
+          throw new ConflictException('Username or email already taken');
+        }
+      }
+      throw err;
+    }
 
     try {
       const entityData = await generateEntityData(this.prisma, user.id, 'derp_bird', 'Starter Entity');
