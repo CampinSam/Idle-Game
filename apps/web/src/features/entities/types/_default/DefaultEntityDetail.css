@@ -61,7 +61,6 @@
 .entity-detail__portrait {
   width: 100% !important;
   height: auto !important;
-  max-width: 160px;
   object-fit: contain;
   border-radius: 6px !important;
 }
