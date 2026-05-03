@@ -12,100 +12,102 @@
   align-items: stretch;
 }
 
-/* Portrait card */
+/* Portrait card — no top padding, level badge floats over portrait */
 .entity-detail__portrait-card {
   border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 8px 8px;
+  padding: 0 6px 6px;
   position: relative;
-  min-height: 230px;
 }
 
+/* Level badge — absolute, overlaps portrait top-left */
 .entity-detail__level-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(139,92,246,0.5);
+  gap: 3px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(139,92,246,0.6);
   border-radius: 20px;
-  padding: 4px 10px;
-  align-self: flex-start;
-  z-index: 2;
+  padding: 3px 8px;
+  z-index: 3;
 }
 
 .entity-detail__level-badge-icon {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .entity-detail__level-badge-text {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   color: #fff;
   letter-spacing: 0.5px;
 }
 
+/* Portrait fills available space */
 .entity-detail__portrait-wrap {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 4px 0;
 }
 
 .entity-detail__portrait {
-  width: 130px !important;
-  height: 130px !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 160px;
   object-fit: contain;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
 }
 
-/* Equipment slots */
+/* Equipment slots — equal squares, icon + overlapping + badge */
 .entity-detail__equip-row {
   display: flex;
   gap: 6px;
   width: 100%;
-  justify-content: center;
 }
 
 .entity-detail__equip-slot {
   flex: 1;
+  aspect-ratio: 1;
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(255,255,255,0.15);
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  border: 1.5px dashed rgba(255,255,255,0.25);
   border-radius: 10px;
-  padding: 6px 4px 5px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
 }
 
 .entity-detail__equip-slot:hover {
-  border-color: rgba(139,92,246,0.6);
+  border-color: rgba(139,92,246,0.7);
+  background: rgba(139,92,246,0.1);
 }
 
 .entity-detail__equip-slot-icon {
-  font-size: 18px;
+  font-size: 20px;
+  opacity: 0.5;
   line-height: 1;
 }
 
+/* "+" badge pinned bottom-right of slot */
 .entity-detail__equip-slot-plus {
-  font-size: 10px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.5);
+  position: absolute;
+  bottom: 3px;
+  right: 5px;
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.6);
   line-height: 1;
-}
-
-.entity-detail__equip-slot-label {
-  font-size: 8px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.55);
-  letter-spacing: 0.4px;
 }
 
 /* Power block */
@@ -120,9 +122,8 @@
 
 .entity-detail__power-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 4px;
+  flex-direction: column;
+  gap: 0;
 }
 
 .entity-detail__power-label {
@@ -141,25 +142,11 @@
   letter-spacing: -0.5px;
 }
 
-.entity-detail__power-caption {
-  font-size: 9px;
-  color: rgba(255,255,255,0.45);
-  margin-top: 3px;
-}
-
-.entity-detail__archetype-hex {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  border: 2px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.entity-detail__archetype-hex-emoji {
-  font-size: 20px;
+/* Divider between power score and radar */
+.entity-detail__power-divider {
+  height: 1px;
+  background: rgba(139,92,246,0.2);
+  margin: 10px 0 4px;
 }
 
 .entity-detail__radar-wrap {
@@ -167,7 +154,6 @@
   justify-content: center;
   align-items: center;
   flex: 1;
-  margin-top: 2px;
 }
 
 .stat-radar-chart {
@@ -198,6 +184,7 @@
   border-bottom: 1px solid rgba(139,92,246,0.2);
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 
 .entity-detail__prog-tabs::-webkit-scrollbar {
@@ -205,10 +192,9 @@
 }
 
 .entity-detail__prog-tab {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 2px;
-  font-size: 8.5px;
+  flex: 0 0 auto;
+  padding: 8px 8px;
+  font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.4px;
   color: rgba(255,255,255,0.45);
@@ -226,9 +212,22 @@
   border-bottom-color: #A78BFA;
 }
 
+/* Scrollable content area */
 .entity-detail__prog-content {
-  padding: 12px;
+  padding: 10px;
   flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139,92,246,0.3) transparent;
+}
+
+.entity-detail__prog-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.entity-detail__prog-content::-webkit-scrollbar-thumb {
+  background: rgba(139,92,246,0.3);
+  border-radius: 2px;
 }
 
 .entity-detail__level-tab {
@@ -282,30 +281,6 @@
   text-align: right;
 }
 
-.entity-detail__unlock-chip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(139,92,246,0.15);
-  border: 1px solid rgba(139,92,246,0.4);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #A78BFA;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.entity-detail__unlock-chip:hover {
-  background: rgba(139,92,246,0.25);
-}
-
-.entity-detail__unlock-chip-arrow {
-  font-size: 9px;
-  opacity: 0.7;
-}
-
 .entity-detail__prog-placeholder {
   display: flex;
   flex-direction: column;
@@ -322,31 +297,30 @@
   font-size: 22px;
 }
 
-/* Body slots & traits */
+/* Body slots & traits — no emoji column, tighter rows */
 .entity-detail__body-slots {
   background: linear-gradient(160deg, #1a1640 0%, #1e1850 100%);
   border: 1px solid rgba(139,92,246,0.2);
   border-radius: 14px;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .entity-detail__panel-title {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 1px;
   color: rgba(255,255,255,0.55);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .entity-detail__slot-row {
-  display: grid;
-  grid-template-columns: 20px 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  padding: 6px 0;
+  padding: 4px 0;
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -357,11 +331,6 @@
 
 .entity-detail__slot-row:first-of-type {
   padding-top: 0;
-}
-
-.entity-detail__slot-icon {
-  font-size: 13px;
-  text-align: center;
 }
 
 .entity-detail__slot-name {

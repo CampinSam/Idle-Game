@@ -15,10 +15,11 @@ type ProgressionTab = typeof PROGRESSION_TABS[number];
 
 const MAX_LEVEL = 50;
 
-function getNextUnlockLevel(level: number): number {
-  const milestones = [5, 10, 15, 20, 25, 30, 40, 50];
-  return milestones.find((m) => m > level) ?? MAX_LEVEL;
-}
+const EQUIP_SLOTS = [
+  { icon: '⚔️', label: 'WEAPON' },
+  { icon: '🛡️', label: 'ARMOR' },
+  { icon: '💍', label: 'ACCESSORY' },
+] as const;
 
 export default function DefaultEntityDetail(props: EntityDetailProps) {
   const { entity, variant = 'full', useCase = 'mission', onRemove } = props;
@@ -49,7 +50,6 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
   const xpMax = rawXpMax > 0 ? rawXpMax : 100;
   const xpCurrent = Number(entity.xp || 0);
   const xpPercent = xpMax > 0 ? Math.min((xpCurrent / xpMax) * 100, 100) : 0;
-  const nextUnlock = getNextUnlockLevel(entity.level);
 
   return (
     <div className="entity-detail">
@@ -59,6 +59,7 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
 
         {/* Portrait card */}
         <div className="entity-detail__portrait-card" style={{ background: archetypeDisplay.gradient }}>
+          {/* Level badge overlaps portrait */}
           <div className="entity-detail__level-badge">
             <span className="entity-detail__level-badge-icon">⚡</span>
             <span className="entity-detail__level-badge-text">LEVEL {entity.level}</span>
@@ -76,36 +77,25 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
             />
           </div>
 
+          {/* Equipment slots — equal square, icon + overlapping "+" */}
           <div className="entity-detail__equip-row">
-            {[
-              { icon: '⚔️', label: 'WEAPON' },
-              { icon: '🛡️', label: 'ARMOR' },
-              { icon: '💍', label: 'ACCESSORY' },
-            ].map(({ icon, label }) => (
-              <button key={label} className="entity-detail__equip-slot" type="button">
+            {EQUIP_SLOTS.map(({ icon, label }) => (
+              <button key={label} className="entity-detail__equip-slot" type="button" aria-label={label}>
                 <span className="entity-detail__equip-slot-icon">{icon}</span>
                 <span className="entity-detail__equip-slot-plus">+</span>
-                <span className="entity-detail__equip-slot-label">{label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Power score + radar */}
+        {/* Power score + divider + radar */}
         <div className="entity-detail__power-block">
           <div className="entity-detail__power-header">
-            <div>
-              <div className="entity-detail__power-label">POWER SCORE</div>
-              <div className="entity-detail__power-value">{power.toFixed(2)}</div>
-              <div className="entity-detail__power-caption">Overall effectiveness in missions</div>
-            </div>
-            <div
-              className="entity-detail__archetype-hex"
-              style={{ background: archetypeDisplay.gradient, borderColor: archetypeDisplay.color }}
-            >
-              <span className="entity-detail__archetype-hex-emoji">{archetypeDisplay.emoji}</span>
-            </div>
+            <div className="entity-detail__power-label">POWER SCORE</div>
+            <div className="entity-detail__power-value">{power.toFixed(2)}</div>
           </div>
+
+          <div className="entity-detail__power-divider" />
 
           <div className="entity-detail__radar-wrap">
             <StatRadarChart stats={stats} size={190} />
@@ -151,10 +141,6 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
                   <span className="entity-detail__prog-row-label">Stat Growth</span>
                   <span className="entity-detail__prog-row-value">Normal</span>
                 </div>
-                <button className="entity-detail__unlock-chip" type="button">
-                  <span>Next Unlock: Level {nextUnlock}</span>
-                  <span className="entity-detail__unlock-chip-arrow">▶</span>
-                </button>
               </div>
             ) : (
               <div className="entity-detail__prog-placeholder">
@@ -165,18 +151,16 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
           </div>
         </div>
 
-        {/* Body slots & traits */}
+        {/* Body slots & traits — no emojis, tighter rows */}
         <div className="entity-detail__body-slots">
           <div className="entity-detail__panel-title">BODY SLOTS &amp; TRAITS</div>
           {TRAIT_SLOT_ORDER.map((slot) => {
             const value = traits[slot];
-            const slotDisplay = TRAIT_SLOT_DISPLAY[slot];
             const archetypeColor = value
               ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
               : 'rgba(255,255,255,0.3)';
             return (
               <div key={slot} className="entity-detail__slot-row">
-                <span className="entity-detail__slot-icon">{slotDisplay?.icon ?? '🔹'}</span>
                 <span className="entity-detail__slot-name">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
                 <span className="entity-detail__slot-value" style={{ color: archetypeColor }}>
                   {value ?? '—'}
