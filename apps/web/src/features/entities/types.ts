@@ -43,4 +43,6 @@ export interface EntityDetailProps {
   onBack?: () => void;
   /** Slots for action chips in lightweight mode (e.g. mission Remove button). */
   onRemove?: (entity: Entity) => void;
+  /** Optional badge rendered below the level badge on the portrait card. */
+  portraitBadge?: ReactNode;
 }

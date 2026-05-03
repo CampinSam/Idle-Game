@@ -3,8 +3,16 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
 import { getFilteredSortedEntities } from './entityListUtils';
+import { getEntityKind } from './registry';
+import { isNftEntity } from './types/derp_bird/isNftEntity';
 import type { EntityFilter, EntitySortBy } from './types';
 import './EntityDetailPage.css';
+
+function getCollectionLabel(entity: any): string | null {
+  const kind = getEntityKind(entity);
+  if (kind === 'derp_bird') return 'Derp Bird Collection';
+  return null;
+}
 
 const STORAGE_KEY_FILTER = 'entities_activeFilter';
 const STORAGE_KEY_SORT   = 'entities_sortBy';
@@ -253,7 +261,15 @@ export default function EntityDetailPage() {
           </button>
 
           <div className="entity-detail-page__name-block">
-            <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
+            <div className="entity-detail-page__name-row">
+              {isNftEntity(entity) && (
+                <span className="entity-detail-page__nft-chip">NFT</span>
+              )}
+              <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
+            </div>
+            {getCollectionLabel(entity) && (
+              <div className="entity-detail-page__name-sub">{getCollectionLabel(entity)}</div>
+            )}
           </div>
 
           <span className="entity-detail-page__status-dot" aria-label={entity.status || 'idle'}>

@@ -35,10 +35,10 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
     );
   }
 
-  return <FullEntityDetail entity={entity} />;
+  return <FullEntityDetail entity={entity} portraitBadge={props.portraitBadge} />;
 }
 
-function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
+function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps['entity']; portraitBadge?: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<ProgressionTab>('LEVEL');
   const progress = useAnimatedProgress(800);
 
@@ -66,6 +66,8 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
             <span className="entity-detail__level-badge-icon">⚡</span>
             <span className="entity-detail__level-badge-text">LEVEL {entity.level}</span>
           </div>
+
+          {portraitBadge}
 
           <div className="entity-detail__portrait-wrap">
             <GameImage

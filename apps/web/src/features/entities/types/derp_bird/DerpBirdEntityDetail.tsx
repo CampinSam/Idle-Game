@@ -14,20 +14,18 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
   const trait = getPerfectSpecimenTrait(props.entity);
   const nft = isNftEntity(props.entity);
 
+  const portraitBadge = perfect ? (
+    <div className="entity-detail__perfect-badge">
+      <span className="entity-detail__perfect-badge-star">★</span>
+      PERFECT
+      {trait && <span className="entity-detail__perfect-badge-trait"> · {trait.toUpperCase()}</span>}
+    </div>
+  ) : undefined;
+
   if (perfect) {
     return (
       <div className="entity-detail--derp-bird-perfect">
-        <div className="entity-detail--derp-bird-perfect__banner">
-          <span className="entity-detail--derp-bird-perfect__star" aria-hidden>★</span>
-          PERFECT SPECIMEN
-          {trait && (
-            <span className="entity-detail--derp-bird-perfect__trait">
-              · ALL {trait.toUpperCase()}
-            </span>
-          )}
-          <span className="entity-detail--derp-bird-perfect__star" aria-hidden>★</span>
-        </div>
-        <DefaultEntityDetail {...props} />
+        <DefaultEntityDetail {...props} portraitBadge={portraitBadge} />
       </div>
     );
   }
@@ -38,10 +36,6 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
 
   return (
     <div className="entity-detail--derp-bird">
-      <div className="entity-detail--derp-bird__banner">
-        <span className="entity-detail--derp-bird__chip">NFT</span>
-        DERP BIRD COLLECTION
-      </div>
       <DefaultEntityDetail {...props} />
     </div>
   );
