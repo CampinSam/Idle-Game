@@ -1,17 +1,185 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
 import { getEntityStatusLabel, getTraitCategoryTags } from './utils';
+import { getFilteredSortedEntities } from './entityListUtils';
+import type { EntityFilter, EntitySortBy } from './types';
 import './EntityDetailPage.css';
+
+const STORAGE_KEY_FILTER = 'entities_activeFilter';
+const STORAGE_KEY_SORT   = 'entities_sortBy';
+const STORAGE_KEY_SEARCH = 'entities_searchQuery';
+
+function safeGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function readBrowseFilter(): EntityFilter {
+  const v = safeGet(STORAGE_KEY_FILTER);
+  if (v === 'ALL' || v === 'DERPS' || v === 'VAMPS' || v === 'PREDS') return v;
+  return 'ALL';
+}
+
+function readBrowseSort(): EntitySortBy {
+  const v = safeGet(STORAGE_KEY_SORT);
+  if (v === 'name' || v === 'level' || v === 'power' || v === 'collection') return v;
+  return 'name';
+}
 
 export default function EntityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const mountedRef = useRef(false);
+  const pointerRef = useRef<{
+    startX: number;
+    startY: number;
+    axisLocked: boolean;
+    pointerId: number;
+    cardEl: HTMLDivElement;
+  } | null>(null);
 
   const entity = useAppSelector((s) => s.sync.entities[id ?? '']);
+  const entityMap = useAppSelector((s) => s.sync.entities);
+
+  const browseFilter = useMemo(readBrowseFilter, []);
+  const browseSortBy = useMemo(readBrowseSort, []);
+  const browseSearch = useMemo(() => safeGet(STORAGE_KEY_SEARCH) ?? '', []);
+
+  const allEntities = useMemo(() => Object.values(entityMap), [entityMap]);
+
+  const navList = useMemo(
+    () => getFilteredSortedEntities(allEntities, browseFilter, browseSearch, browseSortBy),
+    [allEntities, browseFilter, browseSearch, browseSortBy],
+  );
+
+  const currentIdx = navList.findIndex((e: any) => e.id === id);
+  const total = navList.length;
+  const prevId = total > 1 ? (navList[(currentIdx - 1 + total) % total] as any)?.id as string : undefined;
+  const nextId = total > 1 ? (navList[(currentIdx + 1) % total] as any)?.id as string : undefined;
+
+  function springBack(card: HTMLDivElement) {
+    card.style.transition = 'transform 0.2s ease-out';
+    card.style.transform = 'translateX(0)';
+    card.addEventListener('transitionend', function onEnd() {
+      card.style.transition = '';
+      card.style.transform = '';
+      card.removeEventListener('transitionend', onEnd);
+    }, { once: true });
+  }
+
+  function doNavigate(card: HTMLDivElement, targetId: string, dir: 'left' | 'right') {
+    const toX = dir === 'left' ? '-110%' : '110%';
+    card.style.transition = 'transform 0.18s ease-out';
+    card.style.transform = `translateX(${toX})`;
+    setTimeout(() => {
+      navigate(`/entities/${targetId}`, { state: { slideDir: dir } });
+    }, 170);
+  }
+
+  function navTo(targetId: string, dir: 'left' | 'right') {
+    const card = cardRef.current;
+    if (card) doNavigate(card, targetId, dir);
+    else navigate(`/entities/${targetId}`, { state: { slideDir: dir } });
+  }
+
+  function handlePrev() {
+    if (prevId) navTo(prevId, 'right');
+  }
+
+  function handleNext() {
+    if (nextId) navTo(nextId, 'left');
+  }
+
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    const dir = (location.state as any)?.slideDir as 'left' | 'right' | undefined;
+    if (!dir) return;
+    const card = cardRef.current;
+    if (!card) return;
+    const fromX = dir === 'left' ? '100%' : '-100%';
+    card.style.transition = 'none';
+    card.style.transform = `translateX(${fromX})`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.style.transition = 'transform 0.22s ease-out';
+        card.style.transform = 'translateX(0)';
+        card.addEventListener('transitionend', function onEnd() {
+          card.style.transition = '';
+          card.style.transform = '';
+          card.removeEventListener('transitionend', onEnd);
+        }, { once: true });
+      });
+    });
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (pointerRef.current) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    pointerRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      axisLocked: false,
+      pointerId: e.pointerId,
+      cardEl: e.currentTarget,
+    };
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const p = pointerRef.current;
+    if (!p) return;
+    const dx = e.clientX - p.startX;
+    const dy = e.clientY - p.startY;
+    if (!p.axisLocked) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        pointerRef.current = null;
+        return;
+      }
+      p.axisLocked = true;
+      p.cardEl.setPointerCapture(p.pointerId);
+    }
+    const card = cardRef.current;
+    if (!card) return;
+    const clamped = Math.max(-90, Math.min(90, dx));
+    card.style.transition = 'none';
+    card.style.transform = `translateX(${clamped}px)`;
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const p = pointerRef.current;
+    pointerRef.current = null;
+    if (!p?.axisLocked) return;
+    const dx = e.clientX - p.startX;
+    const card = cardRef.current;
+    if (!card) return;
+    if (Math.abs(dx) >= 50) {
+      const dir = dx < 0 ? 'left' : 'right';
+      const targetId = dir === 'left' ? nextId : prevId;
+      if (targetId) {
+        doNavigate(card, targetId, dir);
+      } else {
+        springBack(card);
+      }
+    } else {
+      springBack(card);
+    }
+  }
+
+  function handlePointerCancel() {
+    const p = pointerRef.current;
+    pointerRef.current = null;
+    if (!p?.axisLocked) return;
+    const card = cardRef.current;
+    if (card) springBack(card);
+  }
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
@@ -47,7 +215,15 @@ export default function EntityDetailPage() {
 
   return (
     <div className="entity-detail-page">
-      <div className="entity-detail-page__card">
+      <div
+        className="entity-detail-page__card"
+        ref={cardRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        style={{ touchAction: 'pan-y' }}
+      >
         <div className="entity-detail-page__header">
           <button className="entity-detail-page__back-btn" onClick={() => navigate('/entities')}>←</button>
           <div className="entity-detail-page__name-block">
@@ -80,6 +256,31 @@ export default function EntityDetailPage() {
             )}
           </div>
         </div>
+
+        {total > 1 && (
+          <div className="entity-detail-page__nav-row">
+            <button
+              type="button"
+              className="entity-detail-page__nav-btn"
+              onClick={handlePrev}
+              aria-label="Previous entity"
+            >
+              ‹
+            </button>
+            <span className="entity-detail-page__position">
+              {currentIdx >= 0 ? currentIdx + 1 : '–'} / {total}
+            </span>
+            <button
+              type="button"
+              className="entity-detail-page__nav-btn"
+              onClick={handleNext}
+              aria-label="Next entity"
+            >
+              ›
+            </button>
+          </div>
+        )}
+
         <EntityDetail entity={entity} variant="full" />
       </div>
     </div>

@@ -23,8 +23,9 @@ function EntitiesPageSkeleton() {
   );
 }
 
-const STORAGE_KEY_FILTER = 'entities_activeFilter';
-const STORAGE_KEY_SORT = 'entities_sortBy';
+const STORAGE_KEY_FILTER  = 'entities_activeFilter';
+const STORAGE_KEY_SORT    = 'entities_sortBy';
+const STORAGE_KEY_SEARCH  = 'entities_searchQuery';
 
 function safeLocalStorageGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -46,11 +47,15 @@ function readSort(): EntitySortBy {
   return 'name';
 }
 
+function readSearch(): string {
+  return safeLocalStorageGet(STORAGE_KEY_SEARCH) ?? '';
+}
+
 export default function EntitiesPage() {
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
   const [activeFilter, setActiveFilter] = useState<EntityFilter>(readFilter);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>(readSearch);
   const [sortBy, setSortBy] = useState<EntitySortBy>(readSort);
 
   function handleFilterChange(filter: EntityFilter) {
@@ -61,6 +66,11 @@ export default function EntitiesPage() {
   function handleSortChange(sort: EntitySortBy) {
     safeLocalStorageSet(STORAGE_KEY_SORT, sort);
     setSortBy(sort);
+  }
+
+  function handleSearchChange(q: string) {
+    safeLocalStorageSet(STORAGE_KEY_SEARCH, q);
+    setSearchQuery(q);
   }
 
   if (syncStatus === 'disconnected') return <EntitiesPageSkeleton />;
@@ -76,7 +86,7 @@ export default function EntitiesPage() {
           activeFilter={activeFilter}
           onFilterChange={handleFilterChange}
           search={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={handleSearchChange}
           sortBy={sortBy}
           onSortChange={handleSortChange}
           emptyMessage="No entities found."
