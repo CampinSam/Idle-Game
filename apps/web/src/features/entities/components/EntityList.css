@@ -139,6 +139,7 @@
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  align-content: start;
 }
 
 .entity-list--team .entity-list__grid {
