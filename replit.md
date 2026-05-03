@@ -132,9 +132,19 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Web tests.** `apps/web` now has a Vitest + React Testing Library scaffold:
   - `apps/web/vitest.config.ts` — separate from `vite.config.ts` on purpose; `vite-plugin-pwa` injects Workbox / service-worker globals that explode under jsdom, so the test config skips the PWA plugin entirely.
   - `apps/web/src/test/setup.ts` — registers `@testing-library/jest-dom/vitest` matchers and runs RTL `cleanup()` after each test.
-  - First specs live next to their target (`*.test.ts`/`*.test.tsx`). Example: `apps/web/src/utils/formatSeasonRemaining.test.ts` (6 cases, picked up by CI via the existing `pnpm -r test --if-present` step).
+  - `apps/web/src/test/render.tsx` — `renderWithProviders(ui, { preloadedState })` test harness that wraps a component in `<Provider store>` (fresh `configureStore` w/ all 3 slices) + `<MemoryRouter>` + `<ModalProvider>`. Use this for any component that touches Redux, routing, or modals.
   - Scripts: `pnpm --filter @derp/web test` (CI), `test:watch`, `test:ui`.
   - Vitest pinned to `^2.1.0` because Vitest 4 requires Vite 6 and we're on Vite 5.
+  - Specs (4 files, 15 tests):
+    - `src/utils/formatSeasonRemaining.test.ts` — pure date-formatter unit tests.
+    - `src/hooks/useCommand.test.tsx` — happy path: api.sendCommand mocked, asserts patches dispatched into `state.sync.cursor`/`items`, asserts `onUiIntent` callback receives every UI intent, asserts second `execute()` call rejects with "already in progress" while the first is mid-flight.
+    - `src/features/home/HomePage.test.tsx` — renders skeleton when player is null; hides season banner when `state.sync.activeSeason` is null; shows banner with uppercased name when active.
+    - `src/features/inventory/InventoryPage.test.tsx` — renders category tabs; renders an item from the sync store; opening a LOOTBOX dispatches `OpenLootBox` via mocked `api.sendCommand` and proves the `ui.modal` intent path is wired (covers the "lootbox reveal" UX fix).
+  - Mocking patterns to know:
+    - Mock `services/api` per-file with `vi.mock('../../services/api', ...)` — never globally, as different specs need different return shapes.
+    - Mock `services/AudioEngine` per-file too — Web Audio APIs explode under jsdom.
+    - `tick` hooks (`useCurrentTick`/`useTickRate`) need `vi.mock('../../tick', ...)` to return constants — `TickEngineProvider` is too heavy for a smoke test.
+- **Lootbox reveal modal.** `InventoryPage` now passes `onUiIntent` into `useCommand({ onUiIntent: (i) => i.type === 'modal' && pushModal(i.spec) })`. The `OpenLootBox` and `OpenGiftPackage` handlers were already returning a `ui: [{ type: 'modal', spec: {…} }]` intent with the rolled rewards; the page just wasn't surfacing it. Closes the "lootbox vanishes silently" UX gap. Same wiring also surfaces any future modal intents from inventory-issued commands without further work.
 - **Atomicity sweep on economy mutations.** All non-`/v1/commands` paths that touch currency / inventory now run in a single `prisma.$transaction`:
   - `CraftingService.collectCrafting` wraps the credit + add-item + status flip in `$transaction`; name resolution happens BEFORE the tx so the critical section stays small, and outbox `emitEvent` runs AFTER commit (it has its own dedup).
   - `GiftService.claimGift` was refactored: the public method opens a `$transaction` when no caller-supplied tx is available; the actual logic lives in private `_claimGiftWithTx`. Means the REST `/gifts/:id/claim` controller is now atomic too, not just the `/v1/commands` `ClaimGiftHandler` path.
