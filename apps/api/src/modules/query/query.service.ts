@@ -35,6 +35,70 @@ export interface DeltaResult {
   ui: UiIntent[];
 }
 
+/**
+ * Best-effort derivation of a representative iconKey from a reward spec
+ * (gift / quest / checkin reward). Mirrors the frontend
+ * `deriveIconFromRewardSpec` helper so the server can enrich snapshots and
+ * the client can fall back to its own derivation.
+ */
+function deriveIconFromRewardSpec(spec: any): string | null {
+  if (!spec || typeof spec !== 'object') return null;
+  if (typeof spec.iconKey === 'string' && spec.iconKey.trim()) return spec.iconKey;
+  const type = spec.type;
+  if (type === 'currency') return spec.key || spec.currencyId || null;
+  if (type === 'item') return spec.key || spec.itemDefId || null;
+  if (type === 'entity') return spec.definitionId || spec.entityDefId || spec.key || null;
+  if (type === 'bundle' && Array.isArray(spec.entries)) {
+    for (const e of spec.entries) {
+      const sub = deriveIconFromRewardSpec(e);
+      if (sub) return sub;
+    }
+  }
+  return spec.currencyId || spec.itemDefId || spec.definitionId || null;
+}
+
+/**
+ * Mutates each `checkInDef.rewards[i]` entry to include `iconKey` and `name`
+ * fields derived from the linked GiftDef so the daily-login tracker can show
+ * the actual reward icon for each day instead of a generic bow.
+ *
+ * Pure addition — never overwrites an explicit iconKey already on the entry
+ * (lets admins manually override per-day).
+ */
+async function enrichCheckInRewardIcons(prisma: any, instances: any[]): Promise<void> {
+  const giftDefIds = new Set<string>();
+  for (const inst of instances) {
+    const rewards = inst?.checkInDef?.rewards;
+    if (!Array.isArray(rewards)) continue;
+    for (const r of rewards) {
+      if (r && typeof r.giftDefId === 'string') giftDefIds.add(r.giftDefId);
+    }
+  }
+  if (giftDefIds.size === 0) return;
+  const giftDefs = await prisma.giftDef.findMany({
+    where: { id: { in: Array.from(giftDefIds) } },
+    select: { id: true, name: true, presentation: true, rewardSpec: true },
+  });
+  const byId = new Map<string, any>(giftDefs.map((g: any) => [g.id, g]));
+  for (const inst of instances) {
+    const rewards = inst?.checkInDef?.rewards;
+    if (!Array.isArray(rewards)) continue;
+    for (const r of rewards) {
+      if (!r || typeof r !== 'object') continue;
+      if (r.iconKey) continue; // honor explicit override
+      const gift = r.giftDefId ? byId.get(r.giftDefId) : null;
+      if (!gift) continue;
+      const rawPresentationIcon = (gift.presentation as any)?.iconKey;
+      const presentationIcon =
+        typeof rawPresentationIcon === 'string' && rawPresentationIcon.trim()
+          ? rawPresentationIcon.trim()
+          : null;
+      r.iconKey = presentationIcon || deriveIconFromRewardSpec(gift.rewardSpec) || null;
+      if (!r.name) r.name = (gift.presentation as any)?.title || gift.name;
+    }
+  }
+}
+
 function serializeEntity(entity: any) {
   const progression = (entity.progression as any) || {};
   if (progression && typeof progression.xp === 'bigint') {
@@ -202,6 +266,14 @@ export class QueryService {
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
+
+    // Enrich each check-in def's rewards[] with the linked gift's iconKey so
+    // the daily-login tracker shows the actual reward icon per day.
+    try {
+      await enrichCheckInRewardIcons(this.prisma, checkInInstances as any[]);
+    } catch (err) {
+      this.logger.warn(`CheckIn reward icon enrichment failed for ${userId}: ${err}`);
+    }
 
     // Backward-compat for The Forge: pre-Forge CraftingJobs were stored without
     // `data.locationId`. Use the shared adoption helper so this path stays in

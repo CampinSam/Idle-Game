@@ -5,6 +5,7 @@ interface RewardTrackProps {
   cycleLength: number;
   streak: number;
   claimableDays: Record<number, any>;
+  dayIcons?: Record<number, string | null | undefined>;
   onClaimDay: (dayIndex: number) => void;
   claimingDay: number | null;
 }
@@ -17,7 +18,7 @@ function isMilestoneDay(day: number, cycleLength: number): boolean {
   return false;
 }
 
-function RewardTrackInner({ cycleLength, streak, claimableDays, onClaimDay, claimingDay }: RewardTrackProps) {
+function RewardTrackInner({ cycleLength, streak, claimableDays, dayIcons, onClaimDay, claimingDay }: RewardTrackProps) {
   const currentDay = streak % cycleLength;
 
   const nodes = useMemo(() => {
@@ -50,6 +51,7 @@ function RewardTrackInner({ cycleLength, streak, claimableDays, onClaimDay, clai
               day={n.day}
               state={n.state}
               isMilestone={n.milestone}
+              iconKey={dayIcons?.[n.day]}
               onClaim={() => onClaimDay(n.day)}
               claiming={claimingDay === n.day}
             />

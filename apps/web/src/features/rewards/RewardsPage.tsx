@@ -5,6 +5,8 @@ import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import DailyRewardContainer from '../checkin/DailyRewardContainer';
 import QuestList from '../quests/QuestList';
+import GameIcon from '../../components/GameIcon';
+import { deriveIconFromRewardSpec } from '../../utils/iconResolver';
 import './RewardsPage.css';
 
 interface SyncGift {
@@ -15,8 +17,20 @@ interface SyncGift {
     presentation?: {
       title?: string;
       body?: string;
+      iconKey?: string;
     };
+    rewardSpec?: any;
   };
+}
+
+function pickGiftIcon(g: SyncGift): string | null {
+  // Prefer the admin-set presentation icon, then auto-derive from the gift's
+  // contents (currency / item / bundle / entity). Falling all the way through
+  // means the gift truly has nothing resolvable and the row will skip the
+  // icon column.
+  const presentationIcon = g.snapshot?.presentation?.iconKey;
+  if (presentationIcon && presentationIcon.trim()) return presentationIcon;
+  return deriveIconFromRewardSpec(g.snapshot?.rewardSpec);
 }
 
 function PendingGiftsCard() {
@@ -63,8 +77,14 @@ function PendingGiftsCard() {
           const body = pres?.body || '';
           const isClaiming = claimingId === g.id;
           const hasError = errorId === g.id;
+          const icon = pickGiftIcon(g);
           return (
             <div key={g.id} className="pending-gift-row">
+              {icon && (
+                <div className="pending-gift-icon">
+                  <GameIcon src={icon} size={40} />
+                </div>
+              )}
               <div className="pending-gift-info">
                 <span className="pending-gift-title">{title}</span>
                 {body && <span className="pending-gift-body">{body}</span>}

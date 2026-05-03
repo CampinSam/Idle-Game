@@ -89,12 +89,19 @@ function QuestCardInner({ quest }: QuestCardProps) {
 
       <div className="quest-card-footer">
         <div className="quest-reward-chips">
-          {visibleRewards.map((r: any, i: number) => (
-            <span key={i} className="quest-reward-chip">
-              <GameIcon src={r.currencyId ?? r.itemDefId ?? r.type} size={14} />
-              <span>{r.amount}</span>
-            </span>
-          ))}
+          {visibleRewards.map((r: any, i: number) => {
+            // Quest-level iconKey override applies only when the quest hands
+            // out a single reward — otherwise per-reward icons stay distinct.
+            const iconSrc = (rewards.length === 1 && def.iconKey)
+              ? def.iconKey
+              : (r.currencyId ?? r.itemDefId ?? r.type);
+            return (
+              <span key={i} className="quest-reward-chip">
+                <GameIcon src={iconSrc} size={14} />
+                <span>{r.amount}</span>
+              </span>
+            );
+          })}
           {overflowCount > 0 && (
             <span className="quest-reward-overflow">+{overflowCount} more</span>
           )}

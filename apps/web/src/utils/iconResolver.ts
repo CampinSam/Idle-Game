@@ -50,6 +50,37 @@ export function resolveIcon(
   return resolveAssetUrl(outputRefId) ?? DEFAULT_ICON_URL;
 }
 
+/**
+ * Best-effort derivation of a representative icon source from a reward spec
+ * shape (as used by GiftDef.rewardSpec, QuestDef.rewardSpec, etc.). Returns a
+ * value suitable to pass to <GameIcon src={...} /> — typically a currency or
+ * item id, or a bare iconKey shortcut. Returns null when nothing usable is
+ * present (caller should fall back to its own default).
+ *
+ * Recognized shapes:
+ *   { type: 'currency', key|currencyId }
+ *   { type: 'item',     key|itemDefId }
+ *   { type: 'entity',   definitionId|entityDefId }
+ *   { type: 'bundle',   entries: RewardSpec[] }   → first entry's icon
+ *   { iconKey }                                    → explicit override
+ */
+export function deriveIconFromRewardSpec(spec: any): string | null {
+  if (!spec || typeof spec !== 'object') return null;
+  if (typeof spec.iconKey === 'string' && spec.iconKey.trim()) return spec.iconKey;
+  const type = spec.type;
+  if (type === 'currency') return spec.key || spec.currencyId || null;
+  if (type === 'item') return spec.key || spec.itemDefId || null;
+  if (type === 'entity') return spec.definitionId || spec.entityDefId || spec.key || null;
+  if (type === 'bundle' && Array.isArray(spec.entries)) {
+    for (const e of spec.entries) {
+      const sub = deriveIconFromRewardSpec(e);
+      if (sub) return sub;
+    }
+  }
+  // Last-ditch: any *Id field that smells like a reward target
+  return spec.currencyId || spec.itemDefId || spec.definitionId || null;
+}
+
 export function resolveName(
   outputType: string | null | undefined,
   outputRefId: string | null | undefined,
