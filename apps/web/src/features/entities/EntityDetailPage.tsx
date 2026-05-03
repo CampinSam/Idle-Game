@@ -256,27 +256,6 @@ export default function EntityDetailPage() {
             <h1 className="entity-detail-page__name">{entity.name.toUpperCase()}</h1>
           </div>
 
-          {hasNav && (
-            <div className="entity-detail-page__nav-group">
-              <button
-                type="button"
-                className="entity-detail-page__nav-btn"
-                onClick={handlePrev}
-                aria-label="Previous entity"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="entity-detail-page__nav-btn"
-                onClick={handleNext}
-                aria-label="Next entity"
-              >
-                ›
-              </button>
-            </div>
-          )}
-
           <span className="entity-detail-page__status-dot" aria-label={entity.status || 'idle'}>
             {statusEmoji(entity.status)}
           </span>
@@ -297,6 +276,27 @@ export default function EntityDetailPage() {
               </div>
             )}
           </div>
+
+          {hasNav && (
+            <div className="entity-detail-page__nav-group">
+              <button
+                type="button"
+                className="entity-detail-page__nav-btn"
+                onClick={handlePrev}
+                aria-label="Previous entity"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="entity-detail-page__nav-btn"
+                onClick={handleNext}
+                aria-label="Next entity"
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
 
         <EntityDetail entity={entity} variant="full" />
