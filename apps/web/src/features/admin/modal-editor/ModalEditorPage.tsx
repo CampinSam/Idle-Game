@@ -386,7 +386,7 @@ function Section({ title, open, onToggle, badge, children, sectionClass }: {
 // ─── From Field ───────────────────────────────────────────────────────────────
 
 function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: ModalBlock) => void }) {
-  if (block.type === 'divider') return null;
+  if (block.type === 'divider' || block.type === 'list') return null;
   const hint = FROM_HINTS[block.type] || '';
   return (
     <div className="me-from-field">
