@@ -3,7 +3,7 @@
    ============================================ */
 
 .store-wrapper {
-  padding: 8px 12px 100px;
+  padding: 8px 12px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;

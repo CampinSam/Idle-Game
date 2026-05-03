@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-bottom: 100px;
 }
 
 .quest-section-title {
