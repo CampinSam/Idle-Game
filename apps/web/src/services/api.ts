@@ -1,5 +1,14 @@
 const API_BASE = '/api';
 
+let _idemCounter = 0;
+function newIdempotencyKey(scope: string): string {
+  _idemCounter++;
+  // Random + counter + time gives a key the server can dedupe on; same value
+  // is reused if the SAME logical operation is retried by the same call site.
+  const rand = Math.random().toString(36).slice(2, 10);
+  return `${scope}-${Date.now().toString(36)}-${_idemCounter}-${rand}`;
+}
+
 class ApiClient {
   private token: string | null = null;
 
@@ -148,9 +157,10 @@ class ApiClient {
     return this.request<any[]>('/crafting/active');
   }
 
-  collectCrafting(jobId: string) {
+  collectCrafting(jobId: string, idempotencyKey?: string) {
     return this.request<any>(`/crafting/${jobId}/collect`, {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`craft-collect-${jobId}`) },
     });
   }
 
@@ -293,12 +303,18 @@ class ApiClient {
     return this.request<any>(`/jobs/${jobId}`);
   }
 
-  skipJob(jobId: string) {
-    return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, { method: 'POST' });
+  skipJob(jobId: string, idempotencyKey?: string) {
+    return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`job-skip-${jobId}`) },
+    });
   }
 
-  cancelJob(jobId: string) {
-    return this.request<{ cancelled: boolean }>(`/jobs/${jobId}/cancel`, { method: 'POST' });
+  cancelJob(jobId: string, idempotencyKey?: string) {
+    return this.request<{ cancelled: boolean }>(`/jobs/${jobId}/cancel`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`job-cancel-${jobId}`) },
+    });
   }
 
   dismissNotification(id: string) {
@@ -317,8 +333,11 @@ class ApiClient {
     return this.request<any>(`/gifts/${id}`);
   }
 
-  claimGift(id: string) {
-    return this.request<any>(`/gifts/${id}/claim`, { method: 'POST' });
+  claimGift(id: string, idempotencyKey?: string) {
+    return this.request<any>(`/gifts/${id}/claim`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey || newIdempotencyKey(`gift-claim-${id}`) },
+    });
   }
 
   getMetaEnums() {

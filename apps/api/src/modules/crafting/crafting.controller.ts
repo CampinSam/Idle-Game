@@ -1,12 +1,16 @@
-import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards, Headers } from '@nestjs/common';
 import { CraftingService } from './crafting.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 
 @Controller('crafting')
 @UseGuards(JwtAuthGuard)
 export class CraftingController {
-  constructor(private craftingService: CraftingService) {}
+  constructor(
+    private craftingService: CraftingService,
+    private idempotency: IdempotencyService,
+  ) {}
 
   @Get('recipes')
   getRecipes(@CurrentUser() user: { id: string }) {
@@ -44,7 +48,17 @@ export class CraftingController {
   }
 
   @Post(':id/collect')
-  collectCrafting(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.craftingService.collectCrafting(user.id, id);
+  collectCrafting(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/crafting/:id/collect',
+      idempotencyKey,
+      { jobId: id },
+      () => this.craftingService.collectCrafting(user.id, id),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, UseGuards, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, NotFoundException, BadRequestException, Logger, Headers } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -6,6 +6,7 @@ import { TickService } from '../tick/tick.service';
 import { NotificationService } from '../notification/notification.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { IdempotencyService } from '../infrastructure/idempotency.service';
 import { JobService } from './job.service';
 
 const JOB_TYPE_CONFIG: Record<string, { defTable: string; category: string; label: string; screen: string }> = {
@@ -26,11 +27,22 @@ export class JobController {
     private currencyService: CurrencyService,
     private pubsub: PubSubService,
     private jobService: JobService,
+    private idempotency: IdempotencyService,
   ) {}
 
   @Post(':id/cancel')
-  async cancelJob(@CurrentUser() user: { id: string }, @Param('id') id: string) {
-    return this.jobService.cancelJob(user.id, id);
+  async cancelJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/jobs/:id/cancel',
+      idempotencyKey,
+      { jobId: id },
+      () => this.jobService.cancelJob(user.id, id),
+    );
   }
 
   private async getDefForJob(job: any): Promise<any> {
@@ -87,7 +99,21 @@ export class JobController {
   }
 
   @Post(':id/skip')
-  async skipJob(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+  async skipJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.idempotency.executeIdempotent(
+      user.id,
+      'POST:/jobs/:id/skip',
+      idempotencyKey,
+      { jobId: id },
+      () => this._doSkipJob(user, id),
+    );
+  }
+
+  private async _doSkipJob(user: { id: string }, id: string) {
     const job = await (this.prisma as any).job.findFirst({
       where: { id, userId: user.id, status: { in: ['active', 'ready_notified'] } },
     });
@@ -128,36 +154,31 @@ export class JobController {
       amount: Math.max(1, Math.ceil((entry.amount ?? 0) * costMultiplier)),
     }));
 
-    for (const cost of finalCosts) {
-      if (cost.type === 'currency') {
-        const balance = await this.currencyService.getBalance(user.id, cost.id);
-        if (balance < cost.amount) {
-          const currency = await (this.prisma as any).currency.findUnique({ where: { id: cost.id } });
-          const name = currency?.name || cost.id;
-          throw new BadRequestException(`Not enough ${name} (need ${cost.amount}, have ${balance})`);
+    // Atomic write: spend ALL skip costs + update the job timer in ONE
+    // transaction so a crash mid-spend can never leave the player partially
+    // charged with the job not skipped. spendTx itself throws on
+    // insufficient balance, so we don't need a separate preflight loop.
+    await this.prisma.$transaction(async (tx) => {
+      for (const cost of finalCosts) {
+        if (cost.type === 'currency') {
+          await this.currencyService.spendTx(tx as any, {
+            userId: user.id,
+            currencyId: cost.id,
+            amount: cost.amount,
+            reason: `Skip ${JOB_TYPE_CONFIG[job.type]?.label || 'Job'}: ${def.name}`,
+            sourceType: 'job_skip',
+            sourceId: job.id,
+          });
         }
       }
-    }
 
-    for (const cost of finalCosts) {
-      if (cost.type === 'currency') {
-        await this.currencyService.spend({
-          userId: user.id,
-          currencyId: cost.id,
-          amount: cost.amount,
-          reason: `Skip ${JOB_TYPE_CONFIG[job.type]?.label || 'Job'}: ${def.name}`,
-          sourceType: 'job_skip',
-          sourceId: job.id,
-        });
-      }
-    }
-
-    await (this.prisma as any).job.update({
-      where: { id: job.id },
-      data: {
-        timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
-      },
-    });
+      await (tx as any).job.update({
+        where: { id: job.id },
+        data: {
+          timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
+        },
+      });
+    }, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
 
     this.logger.log(`Job ${id} skipped by user ${user.id}. Costs: ${JSON.stringify(finalCosts)}`);
 

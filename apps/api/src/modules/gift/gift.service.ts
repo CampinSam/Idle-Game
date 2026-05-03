@@ -112,7 +112,24 @@ export class GiftService {
   }
 
   async claimGift(userId: string, giftId: string, tx?: any) {
-    const db = tx || this.prisma;
+    // When called from inside an existing transaction (e.g. via the
+    // ClaimGiftHandler under /v1/commands), we participate in that tx.
+    // When called via the standalone /gifts/:id/claim REST endpoint, we
+    // MUST start our own transaction — otherwise the item create, claimTx
+    // create, gift status update and notification become four separate
+    // writes and a crash mid-flow leaves the player in an inconsistent
+    // state (rewards granted but gift still UNCLAIMED, or vice versa).
+    if (!tx) {
+      return this.prisma.$transaction(
+        (innerTx) => this._claimGiftWithTx(userId, giftId, innerTx),
+        { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' },
+      );
+    }
+    return this._claimGiftWithTx(userId, giftId, tx);
+  }
+
+  private async _claimGiftWithTx(userId: string, giftId: string, tx: any) {
+    const db = tx;
     const giftModel = (db as any).giftInstance ?? this.giftInstance;
     const claimTxModel = (db as any).giftClaimTx ?? this.giftClaimTx;
 

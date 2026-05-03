@@ -515,78 +515,109 @@ export class CraftingService {
     const rng = new SeededRng(seed);
     const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
 
-    for (const { entry, amount } of resolved) {
-      if (entry.type === 'emitEvent') {
+    // Resolve currency/item display names BEFORE the transaction so we don't
+    // hold the tx open on metadata reads.
+    const nameCache: Record<string, string> = {};
+    for (const { entry } of resolved) {
+      if ((entry.type === 'currency' || entry.type === 'item') && entry.key && !nameCache[`${entry.type}:${entry.key}`]) {
         try {
-          const idempotencyKey = entry.idempotencyKey
-            ? entry.idempotencyKey.replace('${jobId}', jobId)
-            : undefined;
-          await this.eventService.dispatch(entry.defId, entry.payload || {}, {
-            userId,
-            sourceType: 'CraftingJob',
-            sourceId: jobId,
-            idempotencyKey,
-          });
-          grantedRewards.push({ type: 'emitEvent', defId: entry.defId });
-        } catch (err) {
-          this.logger.warn(`emitEvent "${entry.defId}" failed during crafting ${jobId.slice(0,8)}: ${err}`);
-        }
-        continue;
-      }
-      if (!amount || amount <= 0) continue;
-      switch (entry.type) {
-        case 'entity_xp':
-          await this.entityService.addEntityXp(entity.id, userId, amount);
-          grantedRewards.push({ type: 'entity_xp', amount });
-          break;
-        case 'keeper_xp':
-          await this.playerService.addKeeperXp(userId, amount);
-          grantedRewards.push({ type: 'keeper_xp', amount });
-          break;
-        case 'currency': {
-          await this.currencyService.credit({
-            userId,
-            currencyId: entry.key,
-            amount,
-            reason: `Crafting: ${recipe?.name || recipeId}`,
-            sourceType: 'crafting',
-            sourceId: jobId,
-          });
-          const name = await this.gameRules.resolveName('currency', entry.key);
-          grantedRewards.push({ type: 'currency', key: entry.key, amount, name });
-          break;
-        }
-        case 'item': {
-          await this.inventoryService.addItem({ userId, itemId: entry.key, quantity: amount, reason: `Crafting: ${recipe?.name || recipeId}`, sourceType: 'crafting', sourceId: jobId });
-          const name = await this.gameRules.resolveName('item', entry.key);
-          grantedRewards.push({ type: 'item', key: entry.key, amount, name });
-          break;
+          nameCache[`${entry.type}:${entry.key}`] = await this.gameRules.resolveName(entry.type, entry.key);
+        } catch {
+          nameCache[`${entry.type}:${entry.key}`] = entry.key;
         }
       }
     }
 
-    if (resolvedFlags.length > 0) {
-      await (this.prisma as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
-    }
+    // Atomic write: spend the entire reward burst + entity status flip + job
+    // status update in ONE transaction so a crash mid-loop can never leave
+    // currency/items granted but job still 'active'. emitEvent stays outside
+    // because it goes through the Outbox and has its own idempotency.
+    //
+    // If the caller supplied externalTx (e.g. CollectCraftingHandler running
+    // inside the /v1/commands outer transaction), participate in that tx
+    // instead of opening a nested one — Prisma forbids interactive nesting
+    // and we'd silently break the command's atomicity guarantees.
+    const doWrites = async (tx: any) => {
+      for (const { entry, amount } of resolved) {
+        if (entry.type === 'emitEvent') continue; // handled after commit
+        if (!amount || amount <= 0) continue;
+        switch (entry.type) {
+          case 'entity_xp':
+            await this.entityService.addEntityXp(entity.id, userId, amount, tx);
+            grantedRewards.push({ type: 'entity_xp', amount });
+            break;
+          case 'keeper_xp':
+            await this.playerService.addKeeperXp(userId, amount, tx);
+            grantedRewards.push({ type: 'keeper_xp', amount });
+            break;
+          case 'currency': {
+            await this.currencyService.creditTx(tx as any, {
+              userId,
+              currencyId: entry.key,
+              amount,
+              reason: `Crafting: ${recipe?.name || recipeId}`,
+              sourceType: 'crafting',
+              sourceId: jobId,
+            });
+            grantedRewards.push({ type: 'currency', key: entry.key, amount, name: nameCache[`currency:${entry.key}`] });
+            break;
+          }
+          case 'item': {
+            await this.inventoryService.addItemTx(tx as any, { userId, itemId: entry.key, quantity: amount, reason: `Crafting: ${recipe?.name || recipeId}`, sourceType: 'crafting', sourceId: jobId });
+            grantedRewards.push({ type: 'item', key: entry.key, amount, name: nameCache[`item:${entry.key}`] });
+            break;
+          }
+        }
+      }
 
-    await this.entityService.setEntityStatus(entity.id, userId, 'idle');
+      if (resolvedFlags.length > 0) {
+        await (tx as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
+      }
 
-    const updated = await (this.prisma as any).job.update({
-      where: { id: jobId },
-      data: {
-        status: 'collected',
-        results: {
-          quality,
-          craftingLuck: cl,
-          rawCraftingLuck: rawCl,
-          luckFloor,
-          workshopTier,
-          qualityProbabilities,
-          rewards: grantedRewards,
-          ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
+      await this.entityService.setEntityStatus(entity.id, userId, 'idle', tx);
+
+      return await (tx as any).job.update({
+        where: { id: jobId },
+        data: {
+          status: 'collected',
+          results: {
+            quality,
+            craftingLuck: cl,
+            rawCraftingLuck: rawCl,
+            luckFloor,
+            workshopTier,
+            qualityProbabilities,
+            rewards: grantedRewards,
+            ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
+          },
         },
-      },
-    });
+      });
+    };
+
+    const updated = externalTx
+      ? await doWrites(externalTx)
+      : await this.prisma.$transaction(doWrites, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
+
+    // Post-commit: dispatch emitEvent outcomes through the Outbox. These are
+    // already idempotent at the event-dispatch layer and must NOT block the
+    // economy transaction.
+    for (const { entry } of resolved) {
+      if (entry.type !== 'emitEvent') continue;
+      try {
+        const idempotencyKey = entry.idempotencyKey
+          ? entry.idempotencyKey.replace('${jobId}', jobId)
+          : undefined;
+        await this.eventService.dispatch(entry.defId, entry.payload || {}, {
+          userId,
+          sourceType: 'CraftingJob',
+          sourceId: jobId,
+          idempotencyKey,
+        });
+        grantedRewards.push({ type: 'emitEvent', defId: entry.defId });
+      } catch (err) {
+        this.logger.warn(`emitEvent "${entry.defId}" failed during crafting ${jobId.slice(0,8)}: ${err}`);
+      }
+    }
 
     const rewardSummary = grantedRewards.map(r => `${r.amount}x ${r.name || r.key || r.type}`).join(', ');
     const notifBody = `${recipe?.name || recipeId} — ${quality} quality${rewardSummary ? ` (${rewardSummary})` : ''}`;
