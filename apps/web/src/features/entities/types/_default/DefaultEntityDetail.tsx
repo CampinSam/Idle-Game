@@ -98,7 +98,7 @@ function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
           <div className="entity-detail__power-divider" />
 
           <div className="entity-detail__radar-wrap">
-            <StatRadarChart stats={stats} size={190} />
+            <StatRadarChart stats={stats} size={155} />
           </div>
         </div>
       </div>
