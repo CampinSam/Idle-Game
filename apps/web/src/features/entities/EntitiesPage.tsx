@@ -1,20 +1,17 @@
 import { useState } from 'react';
 import { useSyncEntities, useSyncStatus } from '../../hooks/useSyncSelectors';
 import { EntityList } from './components';
-import type { EntityFilter } from './types';
+import type { EntityFilter, EntitySortBy } from './types';
 import './EntitiesPage.css';
 
 function EntitiesPageSkeleton() {
   return (
     <div className="entities-page page-transition-wrapper">
       <div className="entities-wrapper-card">
-        <div className="entity-list__filter-strip">
-          {['ALL', 'DERPS', 'VAMPS', 'PREDS'].map((t) => (
-            <div key={t} className="entity-list__filter-tab" />
-          ))}
-        </div>
-        <div className="entity-list__search-row">
-          <div className="skeleton" style={{ flex: 1, height: 36, borderRadius: 8 }} />
+        <div className="entity-list__controls">
+          <div className="skeleton" style={{ flex: 1, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 90, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 108, height: 34, borderRadius: 8 }} />
         </div>
         <div className="entity-list__grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -31,6 +28,7 @@ export default function EntitiesPage() {
   const syncStatus = useSyncStatus();
   const [activeFilter, setActiveFilter] = useState<EntityFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<EntitySortBy>('name');
 
   if (syncStatus === 'disconnected') return <EntitiesPageSkeleton />;
 
@@ -41,12 +39,13 @@ export default function EntitiesPage() {
           entities={entities}
           mode="display"
           useCase="browse"
+          showControls
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
-          showFilterTabs
           search={searchQuery}
           onSearchChange={setSearchQuery}
-          showSearchBar
+          sortBy={sortBy}
+          onSortChange={setSortBy}
           emptyMessage="No entities found."
         />
       </div>

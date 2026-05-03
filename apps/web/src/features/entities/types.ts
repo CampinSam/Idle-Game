@@ -5,6 +5,8 @@ export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'pot
 
 export type EntityFilter = 'ALL' | 'DERPS' | 'VAMPS' | 'PREDS';
 
+export type EntitySortBy = 'name' | 'level' | 'power' | 'collection';
+
 export type EntityListMode = 'display' | 'picker';
 
 export type EntityListLayout = 'grid' | 'team' | 'picker' | 'wide';

@@ -3,7 +3,93 @@
   flex-direction: column;
 }
 
-/* ── Filter strip (entities tab) ── */
+/* ── Unified controls bar (search + collection filter + sort) ── */
+.entity-list__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+.entity-list__search-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 34px;
+  min-width: 0;
+}
+
+.entity-list__search-wrap:focus-within {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.entity-list__search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+  font-family: 'Exo 2', system-ui, sans-serif;
+  min-width: 0;
+}
+
+.entity-list__search-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.entity-list__select {
+  height: 34px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Exo 2', system-ui, sans-serif;
+  letter-spacing: 0.3px;
+  padding: 0 8px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(167,139,250,0.7)' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.entity-list__select:focus {
+  border-color: rgba(139, 92, 246, 0.55);
+}
+
+.entity-list__select--collection {
+  width: 90px;
+}
+
+.entity-list__select--sort {
+  width: 108px;
+}
+
+/* ── Legacy search row (kept for backward compat) ── */
+.entity-list__search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+/* ── Filter strip (legacy tab bar) ── */
 .entity-list__filter-strip {
   display: flex;
   background: rgba(0, 0, 0, 0.25);
@@ -33,30 +119,6 @@
 .entity-list__filter-tab--active {
   color: #c4b5fd;
   border-bottom-color: var(--derp-purple);
-}
-
-/* ── Search row ── */
-.entity-list__search-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.1);
-}
-
-.entity-list__search-input {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-  font-family: 'Exo 2', system-ui, sans-serif;
-}
-
-.entity-list__search-input::placeholder {
-  color: var(--text-secondary);
 }
 
 /* ── Grid layouts ── */

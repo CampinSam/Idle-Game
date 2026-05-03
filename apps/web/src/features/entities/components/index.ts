@@ -6,6 +6,7 @@ export type {
   EntityCardProps,
   EntityDetailProps,
   EntityFilter,
+  EntitySortBy,
   EntityListLayout,
   EntityListMode,
   EntityUseCase,
