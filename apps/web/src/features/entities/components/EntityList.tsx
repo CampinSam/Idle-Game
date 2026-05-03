@@ -115,14 +115,16 @@ export default function EntityList({
       list = list.filter((e: any) => (e.name || '').toLowerCase().includes(q));
     }
 
-    if (sortBy === 'name') {
-      list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    } else if (sortBy === 'level') {
-      list = [...list].sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
-    } else if (sortBy === 'power') {
-      list = [...list].sort((a, b) => getEntityPower(b) - getEntityPower(a));
-    } else if (sortBy === 'collection') {
-      list = [...list].sort((a, b) => collectionBucket(a) - collectionBucket(b));
+    if (showControls) {
+      if (sortBy === 'name') {
+        list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      } else if (sortBy === 'level') {
+        list = [...list].sort((a, b) => (b.level ?? 0) - (a.level ?? 0));
+      } else if (sortBy === 'power') {
+        list = [...list].sort((a, b) => getEntityPower(b) - getEntityPower(a));
+      } else if (sortBy === 'collection') {
+        list = [...list].sort((a, b) => collectionBucket(a) - collectionBucket(b));
+      }
     }
 
     return list;
