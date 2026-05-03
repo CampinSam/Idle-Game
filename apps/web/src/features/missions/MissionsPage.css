@@ -740,80 +740,58 @@
   color: var(--text-primary);
 }
 
-.md-stats-card {
-  padding: 14px;
+.md-info-card {
+  padding: 6px 14px;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(139, 92, 246, 0.08);
   border-radius: 10px;
 }
 
-.md-stats-header {
+.md-info-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.md-stats-label {
-  font-size: 12px;
-  font-weight: 800;
-  color: #10B981;
-  letter-spacing: 0.5px;
+.md-info-row:last-child {
+  border-bottom: none;
 }
 
-.md-stats-mp {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--text-primary);
-}
-
-.md-stat-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.md-stat-row:last-child {
-  margin-bottom: 0;
-}
-
-.md-stat-icon {
+.md-info-icon {
   font-size: 14px;
   width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.md-stat-name {
+.md-info-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-  min-width: 80px;
-  flex-shrink: 0;
-}
-
-.md-stat-bar-wrap {
   flex: 1;
-  height: 8px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 4px;
-  overflow: hidden;
 }
 
-.md-stat-bar {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.4s ease;
-}
-
-.md-stat-val {
+.md-info-val {
   font-size: 14px;
   font-weight: 800;
   color: var(--text-primary);
-  min-width: 36px;
   text-align: right;
-  flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.md-info-tier {
+  font-weight: 800;
+}
+
+.md-info-sub {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 .md-success-card {
@@ -848,14 +826,8 @@
   transition: width 0.4s ease;
 }
 
-.md-success-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
 .md-success-pct {
+  flex-shrink: 0;
   font-size: 18px;
   font-weight: 900;
 }
@@ -895,24 +867,6 @@
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: var(--text-secondary);
-}
-
-.md-auto-assign {
-  background: linear-gradient(135deg, #7C3AED, #6D28D9);
-  border: 1px solid rgba(139, 92, 246, 0.4) !important;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
-}
-
-.md-auto-assign:hover {
-  background: linear-gradient(135deg, #8B5CF6, #7C3AED);
-  border-color: rgba(139, 92, 246, 0.6) !important;
-  color: white;
 }
 
 .md-reward-pills {

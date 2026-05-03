@@ -103,6 +103,19 @@ function meetsNonTeamRequirements(def: any): boolean {
   return true;
 }
 
+function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) {
+    const m = Math.floor(s / 60);
+    const rs = s % 60;
+    return rs ? `${m}m ${rs}s` : `${m}m`;
+  }
+  const h = Math.floor(s / 3600);
+  const rm = Math.floor((s % 3600) / 60);
+  return rm ? `${h}h ${rm}m` : `${h}h`;
+}
+
 function getReqValue(reqs: any[], type: string, defaultValue: any = 0, operator?: string): any {
   if (!Array.isArray(reqs)) return defaultValue;
   if (operator) {
@@ -712,52 +725,43 @@ export default function MissionsPage() {
             </div>
           </div>
 
-          <div className="md-stats-card">
-            <div className="md-stats-header">
-              <span className="md-stats-label">Mission Difficulty</span>
-              <span className="md-stats-mp">{selectedDef.difficulty}</span>
-            </div>
-            <div className="md-stat-row">
-              <span className="md-stat-icon">⚡</span>
-              <span className="md-stat-name">Team MP</span>
-              <div className="md-stat-bar-wrap">
-                <div className="md-stat-bar" style={{
-                  width: `${Math.min(100, (teamMP / (teamMP + (selectedDef.difficulty || 1))) * 100)}%`,
-                  background: successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444'
-                }} />
-              </div>
-              <span className="md-stat-val">{Math.round(teamMP)}</span>
-            </div>
-            <div className="md-stat-row">
-              <span className="md-stat-icon">⏱</span>
-              <span className="md-stat-name">Duration</span>
-              <div className="md-stat-bar-wrap">
-                <div className="md-stat-bar" style={{ width: '60%', background: '#3B82F6' }} />
-              </div>
-              <span className="md-stat-val">{selectedDef.timer?.duration >= 60 ? `${Math.round(selectedDef.timer.duration / 60)}m` : `${selectedDef.timer?.duration ?? 0}s`}</span>
-            </div>
-            <div className="md-stat-row">
-              <span className="md-stat-icon">👥</span>
-              <span className="md-stat-name">Team Size{getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') > 1 ? ` (min. ${getReqValue(selectedDef.requirements, 'team_size', 1, 'gte')})` : ''}</span>
-              <div className="md-stat-bar-wrap">
-                <div className="md-stat-bar" style={{
-                  width: `${(selectedEntities.length / getReqValue(selectedDef.requirements, 'team_size', 1, 'lte')) * 100}%`,
-                  background: selectedEntities.length >= getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') ? '#10B981' : '#A855F7'
-                }} />
-              </div>
-              <span className="md-stat-val">{selectedEntities.length}/{getReqValue(selectedDef.requirements, 'team_size', 1, 'lte')}</span>
-            </div>
-            {getReqValue(selectedDef.requirements, 'keeper_level') > 0 && (
-              <div className="md-stat-row">
-                <span className="md-stat-icon">🛡️</span>
-                <span className="md-stat-name">Keeper Level</span>
-                <div className="md-stat-bar-wrap">
-                  <div className="md-stat-bar" style={{ width: '100%', background: '#F59E0B' }} />
+          {(() => {
+            const teamMin = getReqValue(selectedDef.requirements, 'team_size', 1, 'gte');
+            const teamMax = getReqValue(selectedDef.requirements, 'team_size', 1, 'lte');
+            const keeperLvl = getReqValue(selectedDef.requirements, 'keeper_level');
+            const teamSizeText = teamMin > 1
+              ? `${selectedEntities.length} / ${teamMax} (min. ${teamMin})`
+              : `${selectedEntities.length} / ${teamMax}`;
+            return (
+              <div className="md-info-card">
+                <div className="md-info-row">
+                  <span className="md-info-icon">🎯</span>
+                  <span className="md-info-name">Difficulty</span>
+                  <span className="md-info-val">
+                    <span className="md-info-tier" style={{ color: diffInfo.color }}>{diffInfo.tier}</span>
+                    <span className="md-info-sub">· {selectedDef.difficulty}</span>
+                  </span>
                 </div>
-                <span className="md-stat-val">Lv {getReqValue(selectedDef.requirements, 'keeper_level')}</span>
+                <div className="md-info-row">
+                  <span className="md-info-icon">⏱</span>
+                  <span className="md-info-name">Duration</span>
+                  <span className="md-info-val">{formatDuration(selectedDef.timer?.duration ?? 0)}</span>
+                </div>
+                <div className="md-info-row">
+                  <span className="md-info-icon">👥</span>
+                  <span className="md-info-name">Team Size</span>
+                  <span className="md-info-val">{teamSizeText}</span>
+                </div>
+                {keeperLvl > 0 && (
+                  <div className="md-info-row">
+                    <span className="md-info-icon">🛡️</span>
+                    <span className="md-info-name">Keeper Level</span>
+                    <span className="md-info-val">Lv {keeperLvl}</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           <div className="md-success-card">
             <span className="md-success-label">Success Chance</span>
@@ -769,17 +773,9 @@ export default function MissionsPage() {
                   'linear-gradient(90deg, #EF4444, #F87171)'
               }} />
             </div>
-            <div className="md-success-right">
-              <span className="md-success-pct" style={{
-                color: successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444'
-              }}>{successChance}%</span>
-              <button className="md-auto-assign" onClick={() => {
-                const auto = idleEntities.slice(0, getReqValue(selectedDef.requirements, 'team_size', 1, 'lte')).map((b: any) => b.id);
-                setSelectedEntities(auto);
-                setShowEntityPicker(false);
-                setActiveSlotIndex(null);
-              }}>AUTO ASSIGN →</button>
-            </div>
+            <span className="md-success-pct" style={{
+              color: successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444'
+            }}>{successChance}%</span>
           </div>
 
           <div className="md-team-section" ref={teamGridRef}>
