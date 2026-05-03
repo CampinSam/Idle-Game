@@ -4955,6 +4955,52 @@
         ]
       },
       "enabled": true
+    },
+    {
+      "id": "modal_list_smoke",
+      "name": "List Block Smoke Test",
+      "description": "Dev-only modal that demonstrates the new `list` block by iterating over results.rewards.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "modal_list_smoke",
+        "kind": "custom",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": {
+          "title": "Loop Demo",
+          "subtitle": "Renders one row per reward via the list block"
+        },
+        "body": [
+          {
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "You received ${results.rewards.length} reward(s):" }] }
+            ]
+          },
+          {
+            "type": "list",
+            "list": "${results.rewards}",
+            "emptyText": "No rewards this time.",
+            "children": [
+              {
+                "type": "metaRows",
+                "rows": [
+                  { "label": "#${index}", "value": "${item.name} ×${item.qty}" }
+                ]
+              }
+            ]
+          }
+        ],
+        "buttons": [
+          {
+            "id": "btn_close",
+            "label": "Close",
+            "variant": "secondary",
+            "action": { "type": "CLOSE_MODAL" }
+          }
+        ]
+      },
+      "enabled": true
     }
   ]
 }

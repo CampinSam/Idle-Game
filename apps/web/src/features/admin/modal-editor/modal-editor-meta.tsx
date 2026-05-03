@@ -152,6 +152,20 @@ export const BLOCK_META: Record<string, BlockMeta> = {
       </div>
     ),
   },
+  list: {
+    friendlyName: 'List (loop)',
+    description: 'Renders its child blocks once per item in a source array. Inside, use ${item} and ${index}.',
+    group: 'Lists',
+    color: '#60a5fa',
+    fromHint: 'use the "list" field instead of "from"',
+    fromShape: 'list: ${path.to.array}\n→ children render N times with ${item}, ${index}',
+    preview: () => (
+      <div className="me-prev-meta">
+        <div className="me-prev-meta-row"><span>${'{item.name}'}</span><span>×{'${item.qty}'}</span></div>
+        <div className="me-prev-meta-row"><span>(repeats)</span><span>…</span></div>
+      </div>
+    ),
+  },
   error: {
     friendlyName: 'Error Message',
     description: 'Red error banner for failure messages.',

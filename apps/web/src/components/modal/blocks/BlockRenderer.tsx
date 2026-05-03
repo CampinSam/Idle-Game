@@ -45,6 +45,15 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
     case 'giftReveal':
       return <GiftRevealBlock {...block} />;
 
+    case 'list':
+      return (
+        <>
+          {block.children.map((child, idx) => (
+            <BlockRenderer key={idx} block={child} />
+          ))}
+        </>
+      );
+
     case 'error':
       return <div className="gm-error-block">{block.message}</div>;
 

@@ -179,6 +179,30 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
     }
   }
 
+  if (block.type === 'list') {
+    const expr: string = typeof block.list === 'string' ? block.list : '';
+    const trimmed = expr.trim();
+    const m = /^\$\{([^}]+)\}$/.exec(trimmed);
+    const path = m ? m[1].trim() : trimmed;
+    const data = path ? getByPath(ctx, path) : undefined;
+    const childBlocks: any[] = Array.isArray(block.children) ? block.children : [];
+    const out: any[] = [];
+    if (Array.isArray(data) && data.length > 0) {
+      data.forEach((item, index) => {
+        const itemCtx = { ...ctx, item, index };
+        for (const child of childBlocks) {
+          out.push(resolveBlockClient(child, itemCtx));
+        }
+      });
+    } else if (typeof block.emptyText === 'string' && block.emptyText.length > 0) {
+      out.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: resolveTokensClient(block.emptyText, ctx) }] }],
+      });
+    }
+    return { type: 'list', list: expr, children: out };
+  }
+
   if ('from' in resolved) delete resolved.from;
 
   if (resolved.type === 'richText' && Array.isArray(resolved.doc)) {
@@ -249,13 +273,22 @@ const BLOCK_DEFAULTS: Record<string, () => ModalBlock> = {
   rewardsList: () => ({ type: 'rewardsList', title: 'Rewards', items: [{ name: 'Reward', qty: 1 }] }),
   inventoryDelta: () => ({ type: 'inventoryDelta', items: [{ name: 'Item', qtyDelta: 1 }] }),
   giftReveal: () => ({ type: 'giftReveal', gift: { giftId: '', title: 'Gift Name' } }),
+  list: () => ({
+    type: 'list',
+    list: '${results.rewards}',
+    emptyText: '',
+    children: [
+      { type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '${item.name}' }] }] },
+    ],
+  }),
   error: () => ({ type: 'error', message: 'Something went wrong.' }),
 };
 
 const BLOCK_COLORS: Record<string, string> = {
   richText: '#818cf8', divider: '#64748b', image: '#22d3ee', metaRows: '#a78bfa',
   timer: '#fb923c', progress: '#34d399', rewardsPreview: '#fbbf24',
-  rewardsList: '#fbbf24', inventoryDelta: '#f472b6', giftReveal: '#f59e0b', error: '#ef4444',
+  rewardsList: '#fbbf24', inventoryDelta: '#f472b6', giftReveal: '#f59e0b',
+  list: '#60a5fa', error: '#ef4444',
 };
 
 const BUTTON_DEFAULTS: () => ModalButton = () => ({
@@ -535,6 +568,52 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
           <Field label="Rewards (optional)">
             <RewardItemsEditor items={rewards} onChange={v => set({ rewards: v })} />
           </Field>
+        </>
+      );
+    }
+
+    case 'list': {
+      const children = (block as any).children || [];
+      const childTokenPaths = [
+        ...(tokenPaths || []),
+        'item',
+        'item.name',
+        'item.qty',
+        'item.assetKey',
+        'item.rarity',
+        'index',
+      ];
+      return (
+        <>
+          <Field label="Source array" hint="Path or token expression for the array to iterate over. Use ${path} or just path. Examples: ${results.rewards}, results.team, data.members.">
+            <input
+              style={inp}
+              value={(block as any).list || ''}
+              onChange={e => set({ list: e.target.value })}
+              placeholder="${results.rewards}"
+            />
+          </Field>
+          <Field label="Empty text (optional)" hint="Shown as a single line of text when the source array is empty or missing. Leave blank to render nothing.">
+            <input
+              style={inp}
+              value={(block as any).emptyText || ''}
+              onChange={e => set({ emptyText: e.target.value || undefined })}
+              placeholder="No items."
+            />
+          </Field>
+          <div style={{ marginTop: 10 }}>
+            <label style={lbl}>
+              Children (rendered once per item)
+              <HelpHint text="Inside these blocks, ${item} is the current array element and ${index} is its position. e.g. ${item.name}, ${item.qty}." />
+            </label>
+            <div style={{ borderLeft: '2px solid #60a5fa44', paddingLeft: 8, marginTop: 4 }}>
+              <BlockList
+                blocks={children}
+                onChange={next => set({ children: next })}
+                tokenPaths={childTokenPaths}
+              />
+            </div>
+          </div>
         </>
       );
     }

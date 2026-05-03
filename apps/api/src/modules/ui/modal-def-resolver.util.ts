@@ -74,6 +74,32 @@ function mapRewardItem(r: any): { name: string; qty?: number; assetKey?: string;
 
 function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
   const b = block as any;
+
+  if (b.type === 'list') {
+    const expr: string = typeof b.list === 'string' ? b.list : '';
+    const trimmed = expr.trim();
+    const m = /^\$\{([^}]+)\}$/.exec(trimmed);
+    const path = m ? m[1].trim() : trimmed;
+    const data = path ? getByPath(ctx, path) : undefined;
+    const children: ModalBlock[] = Array.isArray(b.children) ? b.children : [];
+    const out: ModalBlock[] = [];
+    if (Array.isArray(data) && data.length > 0) {
+      data.forEach((item, index) => {
+        const itemCtx = { ...ctx, item, index };
+        for (const child of children) {
+          out.push(resolveBlock(child, itemCtx));
+        }
+      });
+    } else if (typeof b.emptyText === 'string' && b.emptyText.length > 0) {
+      const emptyText = resolveTokens(b.emptyText, ctx);
+      out.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: emptyText }] }],
+      } as ModalBlock);
+    }
+    return { type: 'list', list: expr, children: out } as ModalBlock;
+  }
+
   const fromPath: string | undefined = b.from;
 
   let resolved = { ...b };

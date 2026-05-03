@@ -72,6 +72,7 @@ export type ModalBlock =
   | ModalBlockRewardsList
   | ModalBlockInventoryDelta
   | ModalBlockGiftReveal
+  | ModalBlockList
   | ModalBlockError;
 
 export interface ModalBlockRichText {
@@ -138,6 +139,13 @@ export interface ModalBlockGiftReveal {
   from?: string;
 }
 
+export interface ModalBlockList {
+  type: 'list';
+  list: string;
+  children: ModalBlock[];
+  emptyText?: string;
+}
+
 export interface ModalBlockError {
   type: 'error';
   message: string;
@@ -192,6 +200,7 @@ export const MODAL_BLOCK_TYPES = [
   'rewardsList',
   'inventoryDelta',
   'giftReveal',
+  'list',
   'error',
 ] as const;
 
