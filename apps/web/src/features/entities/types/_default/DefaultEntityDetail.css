@@ -100,6 +100,10 @@
   border-radius: 6px !important;
 }
 
+.entity-detail__portrait.game-image--glow {
+  box-shadow: 0 0 8px 1px var(--glow-color, rgba(139, 92, 246, 0.25));
+}
+
 /* Equipment slots — equal squares, icon + overlapping + badge */
 .entity-detail__equip-row {
   display: flex;
@@ -129,7 +133,7 @@
 
 .entity-detail__equip-slot-icon {
   font-size: 20px;
-  opacity: 0.5;
+  opacity: 1;
   line-height: 1;
 }
 
