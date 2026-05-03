@@ -5,12 +5,17 @@ const STAT_LABELS: Record<string, string> = {
   ATK: 'ATK', DEF: 'DEF', SPD: 'SPD', FOC: 'FOC', LCK: 'LCK', VIT: 'VIT',
 };
 
-const MAX_VALUE = 15;
 const TICK_LEVELS = [0.25, 0.5, 0.75, 1.0];
 
 interface StatRadarChartProps {
   stats: Record<string, number>;
   size?: number;
+  /**
+   * Maximum value on each axis. When omitted the chart auto-scales to the
+   * highest observed stat value (minimum ceiling: 10), so the polygon always
+   * fills proportionally regardless of progression stage.
+   */
+  maxValue?: number;
 }
 
 function polarToCart(cx: number, cy: number, r: number, index: number): [number, number] {
@@ -18,7 +23,7 @@ function polarToCart(cx: number, cy: number, r: number, index: number): [number,
   return [cx + r * Math.sin(angle), cy - r * Math.cos(angle)];
 }
 
-export default function StatRadarChart({ stats, size = 200 }: StatRadarChartProps) {
+export default function StatRadarChart({ stats, size = 200, maxValue }: StatRadarChartProps) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.34;
@@ -26,8 +31,10 @@ export default function StatRadarChart({ stats, size = 200 }: StatRadarChartProp
 
   const statValues = STATS.map((s) => Math.max(0, stats[s] || 0));
 
+  const scale = maxValue ?? Math.max(10, ...statValues);
+
   const dataPoints = STATS.map((_, i) => {
-    const ratio = Math.min(statValues[i] / MAX_VALUE, 1);
+    const ratio = Math.min(statValues[i] / scale, 1);
     return polarToCart(cx, cy, maxR * ratio, i);
   });
   const dataPoly = dataPoints.map(([x, y]) => `${x},${y}`).join(' ');
