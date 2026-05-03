@@ -146,7 +146,7 @@
 .entity-detail__power-divider {
   height: 1px;
   background: rgba(139,92,246,0.2);
-  margin: 10px 0 4px;
+  margin: 4px 0 0;
 }
 
 .entity-detail__radar-wrap {
@@ -154,6 +154,7 @@
   justify-content: center;
   align-items: center;
   flex: 1;
+  padding-top: 10px;
 }
 
 .stat-radar-chart {
