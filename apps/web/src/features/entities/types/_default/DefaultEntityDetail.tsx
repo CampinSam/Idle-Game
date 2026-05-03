@@ -40,7 +40,7 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
 
 function FullEntityDetail({ entity }: { entity: EntityDetailProps['entity'] }) {
   const [activeTab, setActiveTab] = useState<ProgressionTab>('LEVEL');
-  const progress = useAnimatedProgress(1500);
+  const progress = useAnimatedProgress(800);
 
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
