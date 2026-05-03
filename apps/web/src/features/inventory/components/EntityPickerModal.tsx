@@ -33,8 +33,16 @@ export default function EntityPickerModal({
   const effectDefsList = useAppSelector((s) => s.game.effectDefs);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState<EntityFilter>('ALL');
-  const [sortBy, setSortBy] = useState<EntitySortBy>('name');
+  const [activeFilter, setActiveFilter] = useState<EntityFilter>(() => {
+    const saved = localStorage.getItem('entityPicker.filter');
+    const validFilters: EntityFilter[] = ['ALL', 'DERPS', 'VAMPS', 'PREDS'];
+    return validFilters.includes(saved as EntityFilter) ? (saved as EntityFilter) : 'ALL';
+  });
+  const [sortBy, setSortBy] = useState<EntitySortBy>(() => {
+    const saved = localStorage.getItem('entityPicker.sort');
+    const validSorts: EntitySortBy[] = ['name', 'level', 'power', 'collection'];
+    return validSorts.includes(saved as EntitySortBy) ? (saved as EntitySortBy) : 'name';
+  });
 
   const effectDefs: Record<string, EffectDefLite> = useMemo(() => {
     const map: Record<string, EffectDefLite> = {};
@@ -56,11 +64,17 @@ export default function EntityPickerModal({
   }, [consumableEffects, effectDefs]);
 
   useEffect(() => {
+    localStorage.setItem('entityPicker.filter', activeFilter);
+  }, [activeFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('entityPicker.sort', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
     if (!isOpen) {
       setSelectedId(null);
       setSearch('');
-      setActiveFilter('ALL');
-      setSortBy('name');
     }
   }, [isOpen, potion?.instanceId]);
 
