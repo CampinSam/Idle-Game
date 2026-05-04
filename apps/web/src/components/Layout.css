@@ -255,6 +255,7 @@
   flex-direction: column;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
   padding: 60px 16px 80px 16px;
   max-width: 520px;
   margin: 0 auto;

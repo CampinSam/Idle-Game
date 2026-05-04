@@ -6,6 +6,7 @@ import { getFilteredSortedEntities } from './entityListUtils';
 import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
+import { useScrollLock } from '../../hooks/useScrollLock';
 import type { EntityFilter, EntitySortBy } from './types';
 import './EntityDetailPage.css';
 
@@ -49,6 +50,7 @@ function statusEmoji(status: string | undefined): string {
 }
 
 export default function EntityDetailPage() {
+  useScrollLock();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
