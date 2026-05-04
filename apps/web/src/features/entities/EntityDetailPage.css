@@ -4,9 +4,9 @@
 }
 
 .entity-detail-page__header-card {
-  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  border-radius: 16px;
+  margin: -14px -14px 14px -14px;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.25);
   overflow: hidden;
   padding: 0;
 }
