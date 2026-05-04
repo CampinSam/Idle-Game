@@ -1,4 +1,6 @@
 .entity-detail-page {
+  flex: 1;
+  min-height: 0;
   padding-top: var(--page-top-gap);
   overflow: hidden;
 }
