@@ -687,202 +687,303 @@ export default function MissionsPage() {
     const canAffordMission = missionCost.every(e => getHaveForEntry(e) >= e.amount);
 
     const heroCss = displayCssVars(display, { hero: true });
+
+    const teamMin = getReqValue(selectedDef.requirements, 'team_size', 1, 'gte');
+    const teamMax = getReqValue(selectedDef.requirements, 'team_size', 1, 'lte');
+    const keeperLvl = getReqValue(selectedDef.requirements, 'keeper_level');
+    const duration = selectedDef.timer?.duration ?? 0;
+    const difficulty = selectedDef.difficulty || 100;
+
+    const powerRatio = teamMP > 0 ? Math.min(1, teamMP / (teamMP + difficulty)) : 0;
+
+    const teamMeetsMin = selectedEntities.length >= teamMin;
+    const teamMeetsMax = selectedEntities.length <= teamMax;
+    const canStart = teamMeetsMin && teamMeetsMax && canAffordMission && selectedEntities.length > 0;
+
+    const grade = successChance >= 90 ? 'A' : successChance >= 75 ? 'B' : successChance >= 55 ? 'C' : successChance >= 35 ? 'D' : 'F';
+    const gradeColor = successChance >= 75 ? '#10B981' : successChance >= 55 ? '#F59E0B' : '#EF4444';
+    const successColor = successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444';
+
+    const reqStatus: any[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
+
+    const costSubtitleParts: string[] = [];
+    if (missionCost.length > 0) {
+      costSubtitleParts.push(`Cost: ${missionCost.map((e) => e.amount.toLocaleString()).join('+')} `);
+    }
+    costSubtitleParts.push(`Duration: ${formatDuration(duration)}`);
+    const costSubtitle = costSubtitleParts.join('• ');
+
+    const handleAutoAssign = () => {
+      const auto = idleEntities.slice(0, teamMax).map((b: any) => b.id);
+      setSelectedEntities(auto);
+      setShowEntityPicker(false);
+      setActiveSlotIndex(null);
+      setTimeout(() => teamGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    };
+
     return (
       <div className="missions-page md-inline page-transition-wrapper">
         <div className="md-unified-card" style={{ borderColor: display.borderColor, ...heroCss.vars } as React.CSSProperties}>
-        <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage) }}>
-          <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
-          <div className="md-hero-gradient" />
-          <div className="md-hero-content">
-            <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name}</h1>
-            <div className="md-badges">
-              <span className="md-badge md-badge-tier">{diffInfo.tier}</span>
-              <span className="md-badge md-badge-diff" style={{ background: diffInfo.color }}>{diffInfo.label}</span>
-              {missionTags.map((tag: any, i: number) => (
-                <span key={i} className="md-badge" style={{ background: tag.color || '#3B82F6' }}>{tag.text}</span>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <div className="md-body">
-          <p className="md-description">{selectedDef.description}</p>
-
-          <div className="md-rewards-section">
-            <div className="md-section-header">
-              <h3 className="md-section-title">Success Rewards</h3>
-            </div>
-            <div className="md-reward-pills">
-              {selectedDef.rewardPreview && selectedDef.rewardPreview.length > 0
-                ? selectedDef.rewardPreview.map((line: string, i: number) => (
-                    <div key={i} className="md-reward-pill">
-                      <span className="md-reward-val">{line}</span>
-                    </div>
-                  ))
-                : <span style={{ opacity: 0.5 }}>None</span>
-              }
-            </div>
-          </div>
-
-          {(() => {
-            const teamMin = getReqValue(selectedDef.requirements, 'team_size', 1, 'gte');
-            const teamMax = getReqValue(selectedDef.requirements, 'team_size', 1, 'lte');
-            const keeperLvl = getReqValue(selectedDef.requirements, 'keeper_level');
-            const teamSizeText = teamMin > 1
-              ? `${selectedEntities.length} / ${teamMax} (min. ${teamMin})`
-              : `${selectedEntities.length} / ${teamMax}`;
-            return (
-              <div className="md-info-card">
-                <div className="md-info-row">
-                  <span className="md-info-icon">🎯</span>
-                  <span className="md-info-name">Difficulty</span>
-                  <span className="md-info-val">
-                    <span className="md-info-tier" style={{ color: diffInfo.color }}>{diffInfo.tier}</span>
-                    <span className="md-info-sub">· {selectedDef.difficulty}</span>
-                  </span>
-                </div>
-                <div className="md-info-row">
-                  <span className="md-info-icon">⏱</span>
-                  <span className="md-info-name">Duration</span>
-                  <span className="md-info-val">{formatDuration(selectedDef.timer?.duration ?? 0)}</span>
-                </div>
-                <div className="md-info-row">
-                  <span className="md-info-icon">👥</span>
-                  <span className="md-info-name">Team Size</span>
-                  <span className="md-info-val">{teamSizeText}</span>
-                </div>
-                {keeperLvl > 0 && (
-                  <div className="md-info-row">
-                    <span className="md-info-icon">🛡️</span>
-                    <span className="md-info-name">Keeper Level</span>
-                    <span className="md-info-val">Lv {keeperLvl}</span>
-                  </div>
-                )}
+          <div className="md-hero" style={{ backgroundImage: bgImageCss(display.backgroundImage) }}>
+            <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
+            <div className="md-hero-gradient" />
+            <div className="md-hero-content">
+              <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name}</h1>
+              <div className="md-badges">
+                <span className="md-badge md-badge-tier">{diffInfo.tier}</span>
+                <span className="md-badge md-badge-diff" style={{ background: diffInfo.color }}>{diffInfo.label}</span>
+                <span className="md-badge md-badge-dur">⏱ {formatDuration(duration)}</span>
+                {missionTags.map((tag: any, i: number) => (
+                  <span key={i} className="md-badge" style={{ background: tag.color || '#3B82F6' }}>{tag.text}</span>
+                ))}
               </div>
-            );
-          })()}
-
-          <div className="md-success-card">
-            <span className="md-success-label">Success Chance</span>
-            <div className="md-success-bar-wrap">
-              <div className="md-success-bar" style={{
-                width: `${successChance}%`,
-                background: successChance >= 70 ? 'linear-gradient(90deg, #10B981, #34D399)' :
-                  successChance >= 40 ? 'linear-gradient(90deg, #F59E0B, #FBBF24)' :
-                  'linear-gradient(90deg, #EF4444, #F87171)'
-              }} />
             </div>
-            <span className="md-success-pct" style={{
-              color: successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444'
-            }}>{successChance}%</span>
+            <div className="md-recommended-strip">
+              👥 RECOMMENDED: {teamMax} {teamMax === 1 ? 'Entity' : 'Entities'}
+              {keeperLvl > 0 && <span className="md-rec-extra"> · Keeper Lv {keeperLvl}+</span>}
+            </div>
           </div>
 
-          <div className="md-team-section" ref={teamGridRef}>
-            <div className="md-team-section-header">
-              <span className="md-team-label">SELECT YOUR TEAM</span>
-            </div>
-            <div className="md-team-grid">
-              {selectedEntities.map((entityId, slotIndex) => {
-                const entity = entities.find((b: any) => b.id === entityId);
-                if (!entity) return null;
-                const isActive = activeSlotIndex === slotIndex;
-                return (
-                  <EntityCard
-                    key={entity.id}
-                    entity={entity}
-                    useCase="mission"
-                    active={isActive}
-                    onClick={() => openSlot(slotIndex)}
-                    onRemove={() => removeEntityFromSlot(slotIndex)}
-                  />
-                );
-              })}
-              {selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'lte') && (
-                <div
-                  className={`md-empty-slot ${activeSlotIndex === selectedEntities.length ? 'md-empty-slot--active' : ''}`}
-                  onClick={() => openSlot(selectedEntities.length)}
-                >
-                  <div className="md-empty-slot__top">
-                    <span className="md-empty-slot__plus">＋</span>
+          <div className="md-body">
+            {selectedDef.description && (
+              <p className="md-description">{selectedDef.description}</p>
+            )}
+
+            <div className="md-two-col">
+              <div className="md-panel">
+                <div className="md-panel-title">Potential Rewards</div>
+                <div className="md-rewards-grid">
+                  {selectedDef.rewardPreview && selectedDef.rewardPreview.length > 0
+                    ? selectedDef.rewardPreview.map((line: string, i: number) => (
+                        <div key={i} className="md-reward-item">
+                          <div className="md-reward-item-icon">🎁</div>
+                          <div className="md-reward-item-label">{line}</div>
+                        </div>
+                      ))
+                    : <span className="md-panel-empty">No reward data</span>
+                  }
+                </div>
+              </div>
+
+              <div className="md-panel">
+                <div className="md-panel-title">Team Power vs Difficulty</div>
+                <div className="md-power-vs">
+                  <div className="md-power-numbers">
+                    <div className="md-power-side md-power-mp">
+                      <span className="md-power-val">{teamMP}</span>
+                      <span className="md-power-lbl">MP</span>
+                    </div>
+                    <div className="md-power-sep">vs</div>
+                    <div className="md-power-side md-power-d">
+                      <span className="md-power-val">{difficulty}</span>
+                      <span className="md-power-lbl">D</span>
+                    </div>
                   </div>
-                  <div className="md-empty-slot__bot">
-                    <span className="md-empty-slot__label">Add Entity</span>
+                  <div className="md-power-bar-wrap">
+                    <div className="md-power-bar-mp" style={{ width: `${powerRatio * 100}%` }} />
+                    <div className="md-power-bar-d" style={{ width: `${(1 - powerRatio) * 100}%` }} />
+                  </div>
+                  <div className="md-success-row">
+                    <span className="md-success-label-sm">SUCCESS CHANCE</span>
+                    <span className="md-success-pct-sm" style={{ color: successColor }}>{successChance}%</span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
+
+            <div className="md-two-col md-two-col--team">
+              <div className="md-panel md-panel--team" ref={teamGridRef}>
+                <div className="md-panel-title-row">
+                  <span className="md-panel-title">Select Your Team</span>
+                  <span className="md-team-count">{selectedEntities.length}/{teamMax}</span>
+                </div>
+                <div className="md-team-grid">
+                  {selectedEntities.map((entityId, slotIndex) => {
+                    const entity = entities.find((b: any) => b.id === entityId);
+                    if (!entity) return null;
+                    const isActive = activeSlotIndex === slotIndex;
+                    return (
+                      <EntityCard
+                        key={entity.id}
+                        entity={entity}
+                        useCase="mission"
+                        active={isActive}
+                        onClick={() => openSlot(slotIndex)}
+                        onRemove={() => removeEntityFromSlot(slotIndex)}
+                      />
+                    );
+                  })}
+                  {selectedEntities.length < teamMax && (
+                    <div
+                      className={`md-empty-slot ${activeSlotIndex === selectedEntities.length ? 'md-empty-slot--active' : ''}`}
+                      onClick={() => openSlot(selectedEntities.length)}
+                    >
+                      <div className="md-empty-slot__top">
+                        <span className="md-empty-slot__plus">＋</span>
+                      </div>
+                      <div className="md-empty-slot__bot">
+                        <span className="md-empty-slot__label">Add Entity</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="md-panel md-panel--readiness">
+                <div className="md-panel-title">Mission Readiness</div>
+                <div className="md-readiness-grade" style={{ color: gradeColor }}>
+                  <span className="md-grade-letter">{grade}</span>
+                  <span className="md-grade-pct">{successChance}%</span>
+                </div>
+                <div className="md-readiness-rows">
+                  <div className="md-readiness-row">
+                    <span className="md-readiness-icon">{teamMeetsMin ? '✅' : '⚠️'}</span>
+                    <span className="md-readiness-name">Team Size</span>
+                    <span className="md-readiness-val">{selectedEntities.length}/{teamMax}</span>
+                  </div>
+                  <div className="md-readiness-row">
+                    <span className="md-readiness-icon">{canAffordMission ? '✅' : '❌'}</span>
+                    <span className="md-readiness-name">Can Afford</span>
+                    <span className="md-readiness-val">{canAffordMission ? 'Yes' : 'No'}</span>
+                  </div>
+                  {keeperLvl > 0 && (
+                    <div className="md-readiness-row">
+                      <span className="md-readiness-icon">🛡️</span>
+                      <span className="md-readiness-name">Keeper Lv</span>
+                      <span className="md-readiness-val">{keeperLvl}+</span>
+                    </div>
+                  )}
+                  <div className="md-readiness-row">
+                    <span className="md-readiness-icon">{successChance >= 70 ? '✅' : successChance >= 40 ? '⚠️' : '❌'}</span>
+                    <span className="md-readiness-name">Power Ratio</span>
+                    <span className="md-readiness-val" style={{ color: successColor }}>
+                      {successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {showEntityPicker && (
+              <div ref={entityPickerRef} className="md-entity-picker">
+                <h4 className="md-picker-label">Select an Entity</h4>
+                <EntityList
+                  entities={idleEntities}
+                  mode="picker"
+                  useCase="mission"
+                  selectedIds={selectedEntities.filter((_id, i) => i !== activeSlotIndex)}
+                  disabledIds={selectedEntities.filter((_id, i) => i !== activeSlotIndex)}
+                  activeId={activeSlotIndex !== null ? selectedEntities[activeSlotIndex] : null}
+                  onSelect={(entity) => selectEntityForSlot(entity.id)}
+                  emptyMessage="No idle entities."
+                />
+              </div>
+            )}
+
+            <div className="md-two-col">
+              <div className="md-panel">
+                <div className="md-panel-title">Requirements</div>
+                <div className="md-req-list">
+                  {reqStatus.length > 0
+                    ? reqStatus.map((r: any, i: number) => (
+                        <div key={i} className={`md-req-row ${r.met ? 'md-req-met' : 'md-req-fail'}`}>
+                          <span className="md-req-icon">{r.met ? '✅' : '❌'}</span>
+                          <span className="md-req-name">{r.label || r.type}</span>
+                        </div>
+                      ))
+                    : (
+                      <>
+                        {teamMin > 1 && (
+                          <div className="md-req-row md-req-neutral">
+                            <span className="md-req-icon">👥</span>
+                            <span className="md-req-name">Team: {teamMin}–{teamMax} entities</span>
+                          </div>
+                        )}
+                        {keeperLvl > 0 && (
+                          <div className="md-req-row md-req-neutral">
+                            <span className="md-req-icon">🛡️</span>
+                            <span className="md-req-name">Keeper Lv {keeperLvl}+</span>
+                          </div>
+                        )}
+                        {teamMin <= 1 && keeperLvl === 0 && (
+                          <span className="md-panel-empty">No special requirements</span>
+                        )}
+                      </>
+                    )
+                  }
+                </div>
+              </div>
+
+              <div className="md-panel">
+                <div className="md-panel-title">Mission Details</div>
+                <div className="md-details-list">
+                  <div className="md-detail-row">
+                    <span className="md-detail-lbl">Category</span>
+                    <span className="md-detail-val">{currentCat.name}</span>
+                  </div>
+                  <div className="md-detail-row">
+                    <span className="md-detail-lbl">Difficulty</span>
+                    <span className="md-detail-val" style={{ color: diffInfo.color }}>{diffInfo.tier} · {difficulty}</span>
+                  </div>
+                  <div className="md-detail-row">
+                    <span className="md-detail-lbl">Duration</span>
+                    <span className="md-detail-val">{formatDuration(duration)}</span>
+                  </div>
+                  <div className="md-detail-row">
+                    <span className="md-detail-lbl">Team Size</span>
+                    <span className="md-detail-val">{teamMin === teamMax ? teamMax : `${teamMin}–${teamMax}`}</span>
+                  </div>
+                  {missionCost.length > 0 && (
+                    <div className="md-detail-row">
+                      <span className="md-detail-lbl">Cost</span>
+                      <span className="md-detail-val">
+                        <div className="md-cost-entries">
+                          {missionCost.map((entry, i) => {
+                            const have = getHaveForEntry(entry);
+                            const canAffordEntry = have >= entry.amount;
+                            return (
+                              <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
+                                <GameIcon src={entry.id} size={13} />
+                                <span>{entry.amount.toLocaleString()}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {error && <div className="mp-error" style={{ marginTop: 4 }}>{error}</div>}
           </div>
 
-          {showEntityPicker && (
-            <div ref={entityPickerRef} className="md-entity-picker">
-              <h4 className="md-picker-label">Select an Entity</h4>
-              <EntityList
-                entities={idleEntities}
-                mode="picker"
-                useCase="mission"
-                selectedIds={selectedEntities.filter((id, i) => i !== activeSlotIndex)}
-                disabledIds={selectedEntities.filter((id, i) => i !== activeSlotIndex)}
-                activeId={activeSlotIndex !== null ? selectedEntities[activeSlotIndex] : null}
-                onSelect={(entity) => selectEntityForSlot(entity.id)}
-                emptyMessage="No idle entities."
-              />
-            </div>
-          )}
-
-          {error && <div className="mp-error" style={{ marginTop: 12 }}>{error}</div>}
-        </div>
-
-        {missionCost.length > 0 && (
-          <div className="md-cost-bar">
-            <span className="md-cost-label">Cost to Start</span>
-            <div className="md-cost-entries">
-              {missionCost.map((entry, i) => {
-                const have = getHaveForEntry(entry);
-                const canAffordEntry = have >= entry.amount;
-                return (
-                  <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
-                    <GameIcon src={entry.id} size={16} />
-                    <span>{entry.amount.toLocaleString()}</span>
-                    <span className="md-cost-have">({have.toLocaleString()})</span>
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="md-launch-bar">
-          {selectedEntities.length === 0 ? (
-            idleEntities.length === 0 ? (
+          <div className="md-launch-bar md-launch-bar--two">
+            {idleEntities.length === 0 && selectedEntities.length === 0 ? (
               <div className="md-launch-unavailable">No entities available</div>
             ) : (
-              <button
-                className="md-launch-btn"
-                onClick={() => {
-                  const auto = idleEntities.slice(0, getReqValue(selectedDef.requirements, 'team_size', 1, 'lte')).map((b: any) => b.id);
-                  setSelectedEntities(auto);
-                  setShowEntityPicker(false);
-                  setActiveSlotIndex(null);
-                  setTimeout(() => teamGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-                }}
-              >
-                AUTO-ASSIGN
-              </button>
-            )
-          ) : (
-            <button
-              className="md-launch-btn"
-              disabled={
-                selectedEntities.length < getReqValue(selectedDef.requirements, 'team_size', 1, 'gte') ||
-                selectedEntities.length > getReqValue(selectedDef.requirements, 'team_size', 1, 'lte') ||
-                !canAffordMission
-              }
-              onClick={handleStart}
-            >
-              START MISSION
-            </button>
-          )}
-        </div>
+              <>
+                <button
+                  className="md-auto-btn"
+                  onClick={handleAutoAssign}
+                  disabled={idleEntities.length === 0}
+                >
+                  <span className="md-btn-main">AUTO BUILD TEAM</span>
+                  <span className="md-btn-sub">Find the best team</span>
+                </button>
+                <button
+                  className="md-start-btn"
+                  disabled={!canStart}
+                  onClick={handleStart}
+                >
+                  <span className="md-btn-main">START MISSION ⚡</span>
+                  <span className="md-btn-sub">{costSubtitle}</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
