@@ -32,7 +32,7 @@ const STORAGE_KEY_RARITY   = 'inv_rarityFilter';
 const STORAGE_KEY_SORT     = 'inv_sortBy';
 
 const VALID_CATEGORIES = new Set(CATEGORY_TABS.map(t => t.key));
-const VALID_RARITIES = new Set(['ALL', 'COMMON', 'UNCOMMON', 'SCARCE', 'ADVANCED', 'RARE', 'ULTRA_RARE', 'EPIC', 'MYTHIC', 'LEGENDARY']);
+const VALID_RARITIES = new Set(['ALL', 'COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'MYTHIC', 'LEGENDARY']);
 const VALID_SORTS = new Set(['rarity', 'name', 'quantity']);
 
 function safeGet(key: string): string | null {
