@@ -5,7 +5,7 @@ import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import { api } from '../../services/api';
-import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab } from './components';
+import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab, type ItemSortBy, type ItemRarityFilter } from './components';
 import { getConsumableTargetType } from './utils/getConsumableTargetType';
 import './InventoryPage.css';
 
@@ -26,6 +26,42 @@ const OPEN_COMMAND: Record<string, string> = {
   GIFT_PACKAGE: 'OpenGiftPackage',
 };
 
+const STORAGE_KEY_CATEGORY = 'inv_activeCategory';
+const STORAGE_KEY_SEARCH   = 'inv_searchQuery';
+const STORAGE_KEY_RARITY   = 'inv_rarityFilter';
+const STORAGE_KEY_SORT     = 'inv_sortBy';
+
+const VALID_CATEGORIES = new Set(CATEGORY_TABS.map(t => t.key));
+const VALID_RARITIES = new Set(['ALL', 'COMMON', 'UNCOMMON', 'SCARCE', 'ADVANCED', 'RARE', 'ULTRA_RARE', 'EPIC', 'MYTHIC', 'LEGENDARY']);
+const VALID_SORTS = new Set(['rarity', 'name', 'quantity']);
+
+function safeGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function safeSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
+function readCategory(): string {
+  const v = safeGet(STORAGE_KEY_CATEGORY);
+  return v && VALID_CATEGORIES.has(v) ? v : 'ALL';
+}
+
+function readSearch(): string {
+  return safeGet(STORAGE_KEY_SEARCH) ?? '';
+}
+
+function readRarity(): ItemRarityFilter {
+  const v = safeGet(STORAGE_KEY_RARITY);
+  return v && VALID_RARITIES.has(v) ? v as ItemRarityFilter : 'ALL';
+}
+
+function readSort(): ItemSortBy {
+  const v = safeGet(STORAGE_KEY_SORT);
+  return v && VALID_SORTS.has(v) ? v as ItemSortBy : 'rarity';
+}
+
 function unsupportedTargetTooltip(target: 'unknown' | 'location' | 'team' | 'job' | 'global', hasEntities: boolean): string {
   if (target === 'location') return 'Location-targeted potions are not yet supported from the inventory.';
   if (target === 'unknown') return 'This consumable is missing target info — please report it.';
@@ -37,10 +73,11 @@ function InventoryPageSkeleton() {
   return (
     <div className="inventory-page page-transition-wrapper">
       <div className="inv-container">
-        <div className="item-list__category-bar" style={{ display: 'flex', gap: 8, padding: '8px 16px' }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ width: 76, height: 30, borderRadius: 20, flexShrink: 0 }} />
-          ))}
+        <div className="item-list__controls" style={{ display: 'flex', gap: 6, padding: '10px 14px', flexWrap: 'wrap' }}>
+          <div className="skeleton" style={{ flex: '1 1 100%', height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
+          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
+          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
         </div>
         <div className="item-list__grid-wrap">
           <div className="item-list__grid">
@@ -63,14 +100,15 @@ export default function InventoryPage() {
   const items = useSyncItems();
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState(readCategory);
+  const [searchQuery, setSearchQuery] = useState(readSearch);
+  const [rarityFilter, setRarityFilter] = useState<ItemRarityFilter>(readRarity);
+  const [sortBy, setSortBy] = useState<ItemSortBy>(readSort);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [forgeLocationId, setForgeLocationId] = useState<string | null>(null);
   const { pushModal } = useModal();
 
-  // Use-Potion flow state. Either the entity picker is open (for entity-targeted
-  // potions) or the confirm/result modal is open. Only one at a time.
   const [entityPickerPotion, setEntityPickerPotion] = useState<any | null>(null);
   const [usePotionState, setUsePotionState] = useState<{ potion: any; targetEntityId?: string; targetEntityName?: string } | null>(null);
 
@@ -111,8 +149,26 @@ export default function InventoryPage() {
   }, []);
 
   const handleCategoryChange = useCallback((key: string) => {
+    safeSet(STORAGE_KEY_CATEGORY, key);
     setActiveTab(key);
     setSelectedId(null);
+  }, []);
+
+  const handleSearchChange = useCallback((q: string) => {
+    safeSet(STORAGE_KEY_SEARCH, q);
+    setSearchQuery(q);
+    setSelectedId(null);
+  }, []);
+
+  const handleRarityChange = useCallback((r: ItemRarityFilter) => {
+    safeSet(STORAGE_KEY_RARITY, r);
+    setRarityFilter(r);
+    setSelectedId(null);
+  }, []);
+
+  const handleSortChange = useCallback((s: ItemSortBy) => {
+    safeSet(STORAGE_KEY_SORT, s);
+    setSortBy(s);
   }, []);
 
   const handleOpen = useCallback(async (item: any) => {
@@ -137,12 +193,6 @@ export default function InventoryPage() {
     }
   }, [opening, execute]);
 
-  /**
-   * Routes the Use button by consumable target type.
-   * - player: open confirm/result modal directly.
-   * - entity: open entity picker first; on confirm hand off to the same modal.
-   * - location/unknown: button is disabled at render time, so this is a no-op.
-   */
   const handleUse = useCallback((item: any) => {
     const target = getConsumableTargetType(item);
     if (target === 'player') {
@@ -153,7 +203,6 @@ export default function InventoryPage() {
       setEntityPickerPotion(item);
       return;
     }
-    // location / unknown — should be disabled, but be explicit just in case.
     console.warn('[InventoryPage] Use button pressed for unsupported target type:', target);
   }, []);
 
@@ -204,10 +253,6 @@ export default function InventoryPage() {
       );
     }
     if (item.type === 'MATERIAL') {
-      // Crafting requires a Workshop building at one of the player's outposts.
-      // ForgePage does the same preflight server-side and redirects away when
-      // it fails — gating the entry button avoids a redirect loop and gives a
-      // clearer reason in the tooltip.
       const hasWorkshop = !!forgeLocationId;
       return (
         <button
@@ -236,9 +281,16 @@ export default function InventoryPage() {
         <ItemList
           items={allItems}
           mode="display"
+          showControls
           categoryTabs={CATEGORY_TABS}
           activeCategory={activeTab}
           onCategoryChange={handleCategoryChange}
+          search={searchQuery}
+          onSearchChange={handleSearchChange}
+          rarityFilter={rarityFilter}
+          onRarityFilterChange={handleRarityChange}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
           selectedId={selectedId}
           selectedItem={selectedItem}
           onSelect={handleSelect}

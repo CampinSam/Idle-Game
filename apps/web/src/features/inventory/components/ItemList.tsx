@@ -16,29 +16,52 @@ const RARITY_ORDER: Record<string, number> = {
   COMMON: 8,
 };
 
+export type ItemSortBy = 'rarity' | 'name' | 'quantity';
+export type ItemRarityFilter = 'ALL' | 'COMMON' | 'UNCOMMON' | 'SCARCE' | 'ADVANCED' | 'RARE' | 'ULTRA_RARE' | 'EPIC' | 'MYTHIC' | 'LEGENDARY';
+
+export const ITEM_RARITY_OPTIONS: Array<{ key: ItemRarityFilter; label: string }> = [
+  { key: 'ALL',       label: 'All' },
+  { key: 'COMMON',    label: 'Common' },
+  { key: 'UNCOMMON',  label: 'Uncommon' },
+  { key: 'SCARCE',    label: 'Scarce' },
+  { key: 'ADVANCED',  label: 'Advanced' },
+  { key: 'RARE',      label: 'Rare' },
+  { key: 'ULTRA_RARE', label: 'Ultra Rare' },
+  { key: 'EPIC',      label: 'Epic' },
+  { key: 'MYTHIC',    label: 'Mythic' },
+  { key: 'LEGENDARY', label: 'Legendary' },
+];
+
+export const ITEM_SORT_OPTIONS: Array<{ key: ItemSortBy; label: string }> = [
+  { key: 'rarity',   label: 'Rarity' },
+  { key: 'name',     label: 'Name (A–Z)' },
+  { key: 'quantity', label: 'Quantity' },
+];
+
 export interface ItemCategoryTab {
   key: string;
   label: string;
-  /** When tab is selected, items are filtered to this/these `type` value(s). 'ALL' = no filter. */
   types?: string[] | null;
 }
 
 export interface ItemListProps {
   items: any[];
   mode: ItemListMode;
-  /** Drives layout/density. 'inventory' = full grid + detail panel; 'potion-picker' = compact 5-col, no detail panel. */
   useCase?: ItemUseCase;
-  /** Optional set of category tabs to render above the grid. */
   categoryTabs?: ItemCategoryTab[];
   activeCategory?: string;
   onCategoryChange?: (key: string) => void;
-  /** When set, items are filtered to these types regardless of activeCategory. */
+  showControls?: boolean;
+  search?: string;
+  onSearchChange?: (q: string) => void;
+  rarityFilter?: ItemRarityFilter;
+  onRarityFilterChange?: (r: ItemRarityFilter) => void;
+  sortBy?: ItemSortBy;
+  onSortChange?: (s: ItemSortBy) => void;
   typeFilter?: string[];
-  /** Picker mode props */
   selectedId?: string | null;
   disabledIds?: string[];
   onSelect?: (item: any) => void;
-  /** When set, an inline detail panel is rendered for the selected item. */
   selectedItem?: any | null;
   detailPanelActions?: (item: any) => ReactNode;
   emptyMessage?: string;
@@ -52,6 +75,13 @@ export default function ItemList({
   categoryTabs,
   activeCategory,
   onCategoryChange,
+  showControls = false,
+  search,
+  onSearchChange,
+  rarityFilter = 'ALL',
+  onRarityFilterChange,
+  sortBy = 'rarity',
+  onSortChange,
   typeFilter,
   selectedId,
   disabledIds,
@@ -75,34 +105,108 @@ export default function ItemList({
       }
     }
 
-    list = [...list].sort((a: any, b: any) => {
-      const ra = RARITY_ORDER[a.rarity] ?? 99;
-      const rb = RARITY_ORDER[b.rarity] ?? 99;
-      if (ra !== rb) return ra - rb;
-      return (a.name || '').localeCompare(b.name || '');
-    });
+    if (showControls && search && search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter((i: any) => (i.name || '').toLowerCase().includes(q));
+    }
+
+    if (showControls && rarityFilter !== 'ALL') {
+      list = list.filter((i: any) => i.rarity === rarityFilter);
+    }
+
+    const effectiveSort = showControls ? sortBy : 'rarity';
+
+    if (effectiveSort === 'rarity') {
+      list = [...list].sort((a: any, b: any) => {
+        const ra = RARITY_ORDER[a.rarity] ?? 99;
+        const rb = RARITY_ORDER[b.rarity] ?? 99;
+        if (ra !== rb) return ra - rb;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    } else if (effectiveSort === 'name') {
+      list = [...list].sort((a: any, b: any) =>
+        (a.name || '').localeCompare(b.name || ''),
+      );
+    } else if (effectiveSort === 'quantity') {
+      list = [...list].sort((a: any, b: any) =>
+        (b.quantity ?? 1) - (a.quantity ?? 1),
+      );
+    }
 
     return list;
-  }, [items, typeFilter, categoryTabs, activeCategory]);
+  }, [items, typeFilter, categoryTabs, activeCategory, showControls, search, rarityFilter, sortBy]);
 
   const isCompactPicker = mode === 'picker' && useCase === 'potion-picker';
   const showDetailPanel = !isCompactPicker && !!selectedItem;
 
   return (
     <div className={`item-list item-list--${useCase} ${className}`.trim()}>
-      {categoryTabs && categoryTabs.length > 0 && (
-        <div className="item-list__category-bar">
-          {categoryTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`item-list__cat-tab ${activeCategory === tab.key ? 'item-list__cat-tab--active' : ''}`}
-              onClick={() => onCategoryChange?.(tab.key)}
+      {showControls ? (
+        <div className="item-list__controls">
+          <div className="item-list__search-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search ?? ''}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="item-list__search-input"
+            />
+          </div>
+
+          {categoryTabs && categoryTabs.length > 0 && (
+            <select
+              className="item-list__select item-list__select--category"
+              value={activeCategory ?? 'ALL'}
+              onChange={(e) => onCategoryChange?.(e.target.value)}
+              aria-label="Filter by category"
             >
-              {tab.label}
-            </button>
-          ))}
+              {categoryTabs.map((tab) => (
+                <option key={tab.key} value={tab.key}>{tab.label}</option>
+              ))}
+            </select>
+          )}
+
+          <select
+            className="item-list__select item-list__select--rarity"
+            value={rarityFilter}
+            onChange={(e) => onRarityFilterChange?.(e.target.value as ItemRarityFilter)}
+            aria-label="Filter by rarity"
+          >
+            {ITEM_RARITY_OPTIONS.map((opt) => (
+              <option key={opt.key} value={opt.key}>{opt.label}</option>
+            ))}
+          </select>
+
+          <select
+            className="item-list__select item-list__select--sort"
+            value={sortBy}
+            onChange={(e) => onSortChange?.(e.target.value as ItemSortBy)}
+            aria-label="Sort by"
+          >
+            {ITEM_SORT_OPTIONS.map((opt) => (
+              <option key={opt.key} value={opt.key}>{opt.label}</option>
+            ))}
+          </select>
         </div>
+      ) : (
+        categoryTabs && categoryTabs.length > 0 && (
+          <div className="item-list__category-bar">
+            {categoryTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`item-list__cat-tab ${activeCategory === tab.key ? 'item-list__cat-tab--active' : ''}`}
+                onClick={() => onCategoryChange?.(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )
       )}
 
       <div className={`item-list__grid-wrap ${showDetailPanel ? 'item-list__grid-wrap--has-detail' : ''}`}>

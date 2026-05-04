@@ -35,6 +35,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Styling**: Plain CSS utility shim.
 - **Performance**: Code splitting for page components, lazy-loaded admin pages, and layout-accurate skeleton screens.
 - **Animations**: Page transitions with fade/rise and staggered card entry.
+- **Unified controls bars**: Entities and Inventory pages share a consistent controls bar pattern (search input + filter dropdowns + sort dropdown) with localStorage persistence. When `showControls` is true on `EntityList` or `ItemList`, the bar replaces legacy tab strips. Legacy tabs remain available for other consumers (e.g. potion picker) via `showControls=false`.
 - **Page layout model** (canonical — do not override per page):
   - Token: `--page-top-gap: 8px` defined in `Layout.css :root`. All page roots use `padding-top: var(--page-top-gap)`.
   - Horizontal gutter: `Layout.css .content` provides `padding: 60px 16px 80px`. No page-level horizontal padding or `max-width` overrides.
