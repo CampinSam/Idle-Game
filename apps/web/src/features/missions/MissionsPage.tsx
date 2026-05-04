@@ -33,7 +33,7 @@ function getCategoryIcon(categoryName: string): string {
   if (n.includes('quick') || n.includes('fast')) return '⚡';
   if (n.includes('outpost') || n.includes('base')) return '🏰';
   if (n.includes('elite') || n.includes('hard')) return '💀';
-  if (n.includes('daily') || n.includes('daily')) return '📅';
+  if (n.includes('daily')) return '📅';
   return '⚔️';
 }
 
@@ -868,7 +868,7 @@ export default function MissionsPage() {
                 </div>
                 <div className="md-readiness-rows">
                   <div className="md-readiness-row">
-                    <span className="md-readiness-icon">{teamMeetsMin ? '✅' : '⚠️'}</span>
+                    <span className="md-readiness-icon">{teamMeetsMin && teamMeetsMax ? '✅' : teamMeetsMax && !teamMeetsMin ? '⚠️' : '❌'}</span>
                     <span className="md-readiness-name">Team Size</span>
                     <span className="md-readiness-val">{selectedEntities.length}/{teamMax}</span>
                   </div>
