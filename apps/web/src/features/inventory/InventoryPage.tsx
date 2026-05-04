@@ -73,11 +73,11 @@ function InventoryPageSkeleton() {
   return (
     <div className="inventory-page page-transition-wrapper">
       <div className="inv-container">
-        <div className="item-list__controls" style={{ display: 'flex', gap: 6, padding: '10px 14px', flexWrap: 'wrap' }}>
-          <div className="skeleton" style={{ flex: '1 1 100%', height: 34, borderRadius: 8 }} />
-          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
-          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
-          <div className="skeleton" style={{ flex: 1, height: 30, borderRadius: 8 }} />
+        <div className="item-list__controls" style={{ display: 'flex', gap: 8, padding: '10px 14px' }}>
+          <div className="skeleton" style={{ flex: 1, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 90, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 90, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 108, height: 34, borderRadius: 8 }} />
         </div>
         <div className="item-list__grid-wrap">
           <div className="item-list__grid">
