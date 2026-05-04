@@ -668,6 +668,15 @@
   letter-spacing: 0.5px;
   line-height: 1.2;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.md-title-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
 }
 
 .md-badges {
@@ -1089,6 +1098,10 @@
 
 .md-req-met .md-req-name {
   color: var(--text-primary);
+}
+
+.md-req-warn .md-req-name {
+  color: #FBBF24;
 }
 
 .md-req-fail .md-req-name {

@@ -27,6 +27,23 @@ import './MissionsPage.css';
 
 const DEFAULT_DISPLAY = { borderColor: '#3B82F6', backgroundImage: '/images/mission-quick.png', cardBackground: '#1a1a2e' };
 
+function getCategoryIcon(categoryName: string): string {
+  const n = (categoryName || '').toLowerCase();
+  if (n.includes('prologue') || n.includes('story')) return '📜';
+  if (n.includes('quick') || n.includes('fast')) return '⚡';
+  if (n.includes('outpost') || n.includes('base')) return '🏰';
+  if (n.includes('elite') || n.includes('hard')) return '💀';
+  if (n.includes('daily') || n.includes('daily')) return '📅';
+  return '⚔️';
+}
+
+interface ReqStatusEntry {
+  type: string;
+  met: boolean;
+  label?: string;
+  [key: string]: unknown;
+}
+
 function bgImageCss(value: string | null | undefined): string {
   const url = resolveAssetUrl(value);
   return url ? `url(${url})` : 'none';
@@ -704,7 +721,16 @@ export default function MissionsPage() {
     const gradeColor = successChance >= 75 ? '#10B981' : successChance >= 55 ? '#F59E0B' : '#EF4444';
     const successColor = successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444';
 
-    const reqStatus: any[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
+    const reqStatus: ReqStatusEntry[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
+
+    const catIcon = getCategoryIcon(currentCat.name);
+
+    const traitReqs = Array.isArray(selectedDef.requirements)
+      ? selectedDef.requirements.filter((r: { type: string }) => r.type === 'trait')
+      : [];
+    const recommendedNote = traitReqs.length > 0
+      ? ` · ${traitReqs.map((r: { key?: string; value?: number }) => `${r.key ?? 'trait'} ${r.value ?? 1}+`).join(', ')} preferred`
+      : null;
 
     const costSubtitleParts: string[] = [];
     if (missionCost.length > 0) {
@@ -729,7 +755,10 @@ export default function MissionsPage() {
             <button className="mp-back-pill md-hero-back-pos" onClick={handleBackFromMissionDetail}>← Back</button>
             <div className="md-hero-gradient" />
             <div className="md-hero-content">
-              <h1 className="md-title" style={heroCss.titleStyle}>{selectedDef.name}</h1>
+              <h1 className="md-title" style={heroCss.titleStyle}>
+                <span className="md-title-icon">{catIcon}</span>
+                {selectedDef.name}
+              </h1>
               <div className="md-badges">
                 <span className="md-badge md-badge-tier">{diffInfo.tier}</span>
                 <span className="md-badge md-badge-diff" style={{ background: diffInfo.color }}>{diffInfo.label}</span>
@@ -742,6 +771,7 @@ export default function MissionsPage() {
             <div className="md-recommended-strip">
               👥 RECOMMENDED: {teamMax} {teamMax === 1 ? 'Entity' : 'Entities'}
               {keeperLvl > 0 && <span className="md-rec-extra"> · Keeper Lv {keeperLvl}+</span>}
+              {recommendedNote && <span className="md-rec-extra">{recommendedNote}</span>}
             </div>
           </div>
 
@@ -886,12 +916,18 @@ export default function MissionsPage() {
                 <div className="md-panel-title">Requirements</div>
                 <div className="md-req-list">
                   {reqStatus.length > 0
-                    ? reqStatus.map((r: any, i: number) => (
-                        <div key={i} className={`md-req-row ${r.met ? 'md-req-met' : 'md-req-fail'}`}>
-                          <span className="md-req-icon">{r.met ? '✅' : '❌'}</span>
-                          <span className="md-req-name">{r.label || r.type}</span>
-                        </div>
-                      ))
+                    ? reqStatus.map((r, i) => {
+                        const isTrait = r.type === 'trait';
+                        const state: 'met' | 'warn' | 'fail' = r.met ? 'met' : isTrait ? 'warn' : 'fail';
+                        const icon = state === 'met' ? '✅' : state === 'warn' ? '⚠️' : '❌';
+                        const cls = `md-req-row ${state === 'met' ? 'md-req-met' : state === 'warn' ? 'md-req-warn' : 'md-req-fail'}`;
+                        return (
+                          <div key={i} className={cls}>
+                            <span className="md-req-icon">{icon}</span>
+                            <span className="md-req-name">{r.label || r.type}</span>
+                          </div>
+                        );
+                      })
                     : (
                       <>
                         {teamMin > 1 && (
@@ -973,14 +1009,16 @@ export default function MissionsPage() {
                   <span className="md-btn-main">AUTO BUILD TEAM</span>
                   <span className="md-btn-sub">Find the best team</span>
                 </button>
-                <button
-                  className="md-start-btn"
-                  disabled={!canStart}
-                  onClick={handleStart}
-                >
-                  <span className="md-btn-main">START MISSION ⚡</span>
-                  <span className="md-btn-sub">{costSubtitle}</span>
-                </button>
+                {selectedEntities.length > 0 && (
+                  <button
+                    className="md-start-btn"
+                    disabled={!canStart}
+                    onClick={handleStart}
+                  >
+                    <span className="md-btn-main">START MISSION ⚡</span>
+                    <span className="md-btn-sub">{costSubtitle}</span>
+                  </button>
+                )}
               </>
             )}
           </div>
