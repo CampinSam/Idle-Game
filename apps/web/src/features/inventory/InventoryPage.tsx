@@ -6,6 +6,7 @@ import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import { api } from '../../services/api';
 import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab, type ItemSortBy, type ItemRarityFilter } from './components';
+import EntityList from '../entities/components/EntityList';
 import { getConsumableTargetType } from './utils/getConsumableTargetType';
 import './InventoryPage.css';
 
@@ -20,6 +21,7 @@ const CATEGORY_TABS: ItemCategoryTab[] = [
 const RARE_RARITIES = new Set(['LEGENDARY', 'MYTHIC', 'EPIC', 'ULTRA_RARE']);
 const OPENABLE_TYPES = new Set(['LOOTBOX', 'GIFT_PACKAGE']);
 const USABLE_TYPES = new Set(['CONSUMABLE']);
+const EQUIPPABLE_TYPES = new Set(['GEAR']);
 
 const OPEN_COMMAND: Record<string, string> = {
   LOOTBOX: 'OpenLootBox',
@@ -111,6 +113,11 @@ export default function InventoryPage() {
 
   const [entityPickerPotion, setEntityPickerPotion] = useState<any | null>(null);
   const [usePotionState, setUsePotionState] = useState<{ potion: any; targetEntityId?: string; targetEntityName?: string } | null>(null);
+  // Gear-equip flow: when a player taps "Equip" on a gear item, we open a
+  // lightweight entity picker (filtered to entities whose equipment schema
+  // supports the gear's slot) and dispatch EquipItem on confirm.
+  const [equipGear, setEquipGear] = useState<any | null>(null);
+  const [equipBusy, setEquipBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -222,6 +229,57 @@ export default function InventoryPage() {
     setEntityPickerPotion(null);
   }, []);
 
+  const handleEquip = useCallback((item: any) => {
+    setEquipGear(item);
+  }, []);
+
+  const handleUnequip = useCallback(async (item: any) => {
+    if (equipBusy) return;
+    if (!item.equippedToId) return;
+    setEquipBusy(true);
+    try {
+      await execute('UnequipItem', {
+        entityId: item.equippedToId,
+        itemInstanceId: item.instanceId,
+      });
+    } catch (err) {
+      console.error('[InventoryPage] UnequipItem failed:', err);
+    } finally {
+      setEquipBusy(false);
+    }
+  }, [equipBusy, execute]);
+
+  const handleEquipPickEntity = useCallback(async (entity: any) => {
+    if (!equipGear || equipBusy) return;
+    setEquipBusy(true);
+    const itemInstanceId = equipGear.instanceId;
+    setEquipGear(null);
+    try {
+      await execute('EquipItem', { entityId: entity.id, itemInstanceId });
+    } catch (err) {
+      console.error('[InventoryPage] EquipItem failed:', err);
+    } finally {
+      setEquipBusy(false);
+    }
+  }, [equipGear, equipBusy, execute]);
+
+  const equipGearSlot: string | null = useMemo(() => {
+    return equipGear?.equipData?.slot ?? equipGear?.definition?.equipData?.slot ?? null;
+  }, [equipGear]);
+
+  // Restrict the picker to entities whose definition.equipmentSchema declares
+  // the gear's slot with non-zero capacity. Entities without an equipment
+  // schema (legacy / non-equippable species) don't appear at all so the
+  // player can't bottom out on a server-side rejection.
+  const equipCandidates = useMemo(() => {
+    if (!equipGearSlot) return [];
+    return (entities as any[]).filter((e) => {
+      const schema = e?.definition?.equipmentSchema?.schema as any;
+      const cap = schema && typeof schema === 'object' ? Number(schema[equipGearSlot] ?? 0) : 0;
+      return cap > 0;
+    });
+  }, [entities, equipGearSlot]);
+
   const renderActions = useCallback((item: any) => {
     if (OPENABLE_TYPES.has(item.type)) {
       return (
@@ -252,6 +310,41 @@ export default function InventoryPage() {
         </button>
       );
     }
+    if (EQUIPPABLE_TYPES.has(item.type)) {
+      if (item.equippedToId) {
+        return (
+          <button
+            className="inv-manage-btn inv-use-btn"
+            disabled={equipBusy}
+            onClick={() => handleUnequip(item)}
+          >
+            {equipBusy ? '…' : 'Unequip'}
+          </button>
+        );
+      }
+      const slot: string | null = item.equipData?.slot ?? item.definition?.equipData?.slot ?? null;
+      const hasTarget =
+        !!slot &&
+        (entities as any[]).some((e) => {
+          const cap = Number(e?.definition?.equipmentSchema?.schema?.[slot] ?? 0);
+          return cap > 0;
+        });
+      const tooltip = !slot
+        ? 'This gear has no slot configured.'
+        : !hasTarget
+        ? 'No entity in your roster can wear this slot.'
+        : undefined;
+      return (
+        <button
+          className="inv-manage-btn inv-use-btn"
+          disabled={equipBusy || !hasTarget}
+          onClick={() => handleEquip(item)}
+          title={tooltip}
+        >
+          Equip
+        </button>
+      );
+    }
     if (item.type === 'MATERIAL') {
       const hasWorkshop = !!forgeLocationId;
       return (
@@ -271,7 +364,7 @@ export default function InventoryPage() {
       );
     }
     return <button className="inv-manage-btn">Manage</button>;
-  }, [opening, entities.length, forgeLocationId, handleOpen, handleUse, navigate]);
+  }, [opening, entities, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
 
   if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
@@ -304,6 +397,57 @@ export default function InventoryPage() {
         onClose={closeEntityPicker}
         onSelectEntity={handlePickerSelectEntity}
       />
+
+      {equipGear && (
+        <div className="epm-overlay" onMouseDown={() => setEquipGear(null)} role="presentation">
+          <div
+            className="epm-modal"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Equip ${equipGear.name ?? 'item'}`}
+          >
+            <button className="epm-close" onClick={() => setEquipGear(null)} aria-label="Close">✕</button>
+            <div className="epm-header">
+              <h2 className="epm-title">Equip On Entity</h2>
+              <div className="epm-potion-row">
+                <div className="epm-potion-text">
+                  <p className="epm-potion-name">{equipGear.name}</p>
+                  {equipGearSlot && (
+                    <p className="epm-potion-summary">
+                      Slot: {equipGearSlot}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="epm-body">
+              {equipCandidates.length === 0 ? (
+                <div className="epm-empty">
+                  No entity in your roster can equip this {equipGearSlot ?? 'item'}.
+                </div>
+              ) : (
+                <EntityList
+                  entities={equipCandidates}
+                  mode="picker"
+                  useCase="potion-picker"
+                  onSelect={handleEquipPickEntity}
+                  emptyMessage="No eligible entities."
+                />
+              )}
+            </div>
+            <div className="epm-footer">
+              <button
+                type="button"
+                className="epm-btn epm-btn--cancel"
+                onClick={() => setEquipGear(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <UsePotionFlowModal
         isOpen={!!usePotionState}

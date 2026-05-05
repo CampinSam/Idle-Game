@@ -1,23 +1,7 @@
 import { Patch } from './command.types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { serializeLocation } from './location-serializer.util';
-
-function serializeEntity(entity: any) {
-  const progression = (entity.progression as any) || {};
-  if (progression && typeof progression.xp === 'bigint') {
-    progression.xp = Number(progression.xp);
-  }
-  const display = (entity.display as any) || {};
-  const state = (entity.state as any) || {};
-  return {
-    ...entity,
-    progression,
-    name: display.name || entity.speciesId || 'Entity',
-    level: progression.level || 1,
-    xp: Number(progression.xp || 0),
-    status: state.status || 'idle',
-  };
-}
+import { serializeEntityFull } from '../entity/entity-stats.util';
 
 function serializeJob(job: any) {
   const timer = job.timer as any;
@@ -57,8 +41,14 @@ export class PatchBuilder {
     return this;
   }
 
-  upsertEntity(entity: any): this {
-    this.patches.push({ op: 'upsert', entity: 'entity', id: entity.id, data: serializeEntity(entity) });
+  /**
+   * Pushes an entity upsert patch using a *pre-serialized* payload. Callers
+   * that want the canonical equipment-aware payload (with `baseStats` and
+   * `equippedStats`) should use `buildEntityPatch` instead, which awaits
+   * `serializeEntityFull` and forwards here.
+   */
+  upsertEntity(entityData: any): this {
+    this.patches.push({ op: 'upsert', entity: 'entity', id: entityData.id, data: entityData });
     return this;
   }
 
@@ -245,7 +235,10 @@ export async function fetchActiveJobs(tx: any, userId: string) {
 export async function fetchEntity(tx: any, entityId: string) {
   return tx.entity.findUnique({
     where: { id: entityId },
-    include: { equipment: true },
+    include: {
+      equipment: true,
+      definition: { include: { equipmentSchema: true } },
+    },
   });
 }
 
@@ -275,7 +268,9 @@ export async function buildItemPatches(pb: PatchBuilder, tx: any, userId: string
 
 export async function buildEntityPatch(pb: PatchBuilder, tx: any, entityId: string) {
   const entity = await fetchEntity(tx, entityId);
-  if (entity) pb.upsertEntity(entity);
+  if (!entity) return;
+  const payload = await serializeEntityFull(tx, entity);
+  pb.upsertEntity(payload);
 }
 
 export async function buildPlayerPatch(pb: PatchBuilder, tx: any, userId: string) {

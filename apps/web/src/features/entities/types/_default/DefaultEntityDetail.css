@@ -126,9 +126,25 @@
   overflow: hidden;
 }
 
-.entity-detail__equip-slot:hover {
+.entity-detail__equip-slot:hover:not(:disabled) {
   border-color: rgba(139,92,246,0.7);
   background: rgba(139,92,246,0.1);
+}
+
+.entity-detail__equip-slot:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+/* Filled slot — solid border in gold to signal an active piece of gear,
+   matching the equipped-overlay polygon colour on the radar chart. */
+.entity-detail__equip-slot--filled {
+  border: 1.5px solid rgba(245, 158, 11, 0.7);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.entity-detail__equip-slot--filled .entity-detail__equip-slot-plus {
+  color: rgba(248, 113, 113, 0.95);
 }
 
 .entity-detail__equip-slot-icon {

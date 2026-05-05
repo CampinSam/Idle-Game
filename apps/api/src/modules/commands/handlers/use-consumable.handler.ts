@@ -135,11 +135,11 @@ export class UseConsumableHandler implements CommandHandler {
     }
 
     if (targetId) {
-      const entity = await txDb(ctx.tx).entity.findFirst({
+      const owned = await txDb(ctx.tx).entity.findFirst({
         where: { id: targetId, ownerUserId: ctx.userId },
-        include: { equipment: true },
+        select: { id: true },
       });
-      if (entity) pb.upsertEntity(entity);
+      if (owned) await buildEntityPatch(pb, ctx.tx, targetId);
     }
 
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);

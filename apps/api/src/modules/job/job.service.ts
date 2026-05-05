@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EntityService } from '../entity/entity.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { PatchBuilder } from '../commands/patch-builder';
+import { serializeEntityFull } from '../entity/entity-stats.util';
 
 @Injectable()
 export class JobService {
@@ -36,7 +37,10 @@ export class JobService {
       const refreshed = ids.length
         ? await tx.entity.findMany({
             where: { id: { in: ids }, ownerUserId: userId },
-            include: { equipment: true },
+            include: {
+              equipment: true,
+              definition: { include: { equipmentSchema: true } },
+            },
           })
         : [];
 
@@ -57,7 +61,10 @@ export class JobService {
 
       const pb = new PatchBuilder();
       pb.deleteJob(jobId);
-      for (const entity of refreshed) pb.upsertEntity(entity);
+      for (const entity of refreshed) {
+        const payload = await serializeEntityFull(tx, entity);
+        pb.upsertEntity(payload);
+      }
       for (const notif of stale) pb.delete('notification', notif.id);
 
       const delta = await tx.playerDelta.create({

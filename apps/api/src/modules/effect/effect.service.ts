@@ -359,22 +359,44 @@ export class EffectService {
 
     const itemInstances = await (db as any).itemInstance.findMany({
       where: { id: { in: equipSlots.map((e: { itemInstanceId: string }) => e.itemInstanceId) } },
-      include: { definition: { select: { id: true, passiveEffects: true } } },
+      include: { definition: { select: { id: true, passiveEffects: true, equipData: true } } },
     });
 
     const rows: ActiveEffectRow[] = [];
     for (const inst of itemInstances) {
+      // 1. Explicit passive effects (rare/named bonuses).
       const passiveEffects = inst.definition?.passiveEffects;
-      if (!passiveEffects || !Array.isArray(passiveEffects)) continue;
-      for (const pe of passiveEffects) {
-        if (!pe.category || !pe.valueMode) continue;
+      if (Array.isArray(passiveEffects)) {
+        for (const pe of passiveEffects) {
+          if (!pe.category || !pe.valueMode) continue;
+          rows.push({
+            effectDefId: `passive:${inst.definition.id}:${pe.category}`,
+            category: pe.category,
+            valueMode: pe.valueMode,
+            value: pe.value ?? 0,
+            stats: pe.stats ?? null,
+            trait: pe.trait ?? null,
+            currentStacks: 1,
+          });
+        }
+      }
+
+      // 2. Synthesize a STAT_BOOST/FLAT_ADD row from the gear's equipData.stats
+      //    so the resolver folds equipped stats into mission power, success
+      //    chance, etc. without anyone having to author a passiveEffects entry
+      //    for the common case. equipData.stats is the canonical "this item
+      //    grants +N to STAT" payload and was already documented in the
+      //    Iron Sword / Ring of Focus seeds.
+      const equipData = inst.definition?.equipData as any;
+      const stats = equipData && typeof equipData === 'object' ? equipData.stats : null;
+      if (stats && typeof stats === 'object' && Object.keys(stats).length > 0) {
         rows.push({
-          effectDefId: `passive:${inst.definition.id}:${pe.category}`,
-          category: pe.category,
-          valueMode: pe.valueMode,
-          value: pe.value ?? 0,
-          stats: pe.stats ?? null,
-          trait: pe.trait ?? null,
+          effectDefId: `equip:${inst.definition.id}:stat_boost`,
+          category: EffectCategory.STAT_BOOST,
+          valueMode: EffectValueMode.FLAT_ADD,
+          value: 0,
+          stats,
+          trait: null,
           currentStacks: 1,
         });
       }

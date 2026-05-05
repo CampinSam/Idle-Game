@@ -24,6 +24,8 @@ import { ClaimAchievementRewardHandler } from './handlers/claim-achievement-rewa
 import { ShopPurchaseHandler } from './handlers/shop-purchase.handler';
 import { UseConsumableHandler } from './handlers/use-consumable.handler';
 import { ClaimGiftHandler } from './handlers/claim-gift.handler';
+import { EquipItemHandler } from './handlers/equip-item.handler';
+import { UnequipItemHandler } from './handlers/unequip-item.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -76,6 +78,8 @@ import { GiftModule } from '../gift/gift.module';
     ShopPurchaseHandler,
     UseConsumableHandler,
     ClaimGiftHandler,
+    EquipItemHandler,
+    UnequipItemHandler,
   ],
   exports: [CommandService],
 })

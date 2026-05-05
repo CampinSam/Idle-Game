@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
+import GameIcon from '../../../../components/GameIcon';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
 import { getArchetypeDisplay, TRAIT_SLOT_DISPLAY } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
 import { getEntityPower, getXpForLevel, normalizeStats } from '../../utils';
+import { useSyncItems } from '../../../../hooks/useSyncSelectors';
+import { useCommand } from '../../../../hooks/useCommand';
+import { useModal } from '../../../../context/ModalContext';
 import StatRadarChart from './StatRadarChart';
 import DefaultEntityCard from './DefaultEntityCard';
+import EquipPickerModal from '../../components/EquipPickerModal';
 import type { EntityDetailProps } from '../../types';
 import './DefaultEntityDetail.css';
 
@@ -17,10 +22,12 @@ type ProgressionTab = typeof PROGRESSION_TABS[number];
 const MAX_LEVEL = 50;
 
 const EQUIP_SLOTS = [
-  { icon: '⚔️', label: 'WEAPON' },
-  { icon: '🛡️', label: 'ARMOR' },
-  { icon: '💍', label: 'ACCESSORY' },
+  { icon: '⚔️', label: 'WEAPON', slot: 'weapon' },
+  { icon: '🛡️', label: 'ARMOR', slot: 'armor' },
+  { icon: '💍', label: 'ACCESSORY', slot: 'accessory' },
 ] as const;
+
+type EquipSlot = typeof EQUIP_SLOTS[number]['slot'];
 
 export default function DefaultEntityDetail(props: EntityDetailProps) {
   const { entity, variant = 'full', useCase = 'mission', onRemove } = props;
@@ -40,13 +47,72 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
 
 function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps['entity']; portraitBadge?: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<ProgressionTab>('LEVEL');
+  const [pickerSlot, setPickerSlot] = useState<EquipSlot | null>(null);
+  const [busy, setBusy] = useState(false);
   const progress = useAnimatedProgress(800);
+  const allItems = useSyncItems();
+  const { pushModal } = useModal();
+  const { execute } = useCommand({
+    onUiIntent: (intent) => {
+      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
+    },
+  });
 
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
   const power = getEntityPower(entity);
-  const stats = normalizeStats(entity.stats);
+  // Server-resolved equipped overlay; falls back to base if absent so this
+  // component still renders for legacy snapshots.
+  const baseStats = useMemo(
+    () => (entity as any).baseStats || normalizeStats(entity.stats),
+    [entity],
+  );
+  const equippedStats = (entity as any).equippedStats as Record<string, number> | undefined;
   const traits = (entity.traits || {}) as Partial<Record<typeof TRAIT_SLOT_ORDER[number], string>>;
+
+  // Build a slot → equipped item map by joining EntityEquipment rows
+  // (shipped on the entity payload) against the sync `items` table. Looking
+  // them up here keeps the per-slot tile a one-line read in the JSX below.
+  const equippedBySlot = useMemo(() => {
+    const map: Record<string, any> = {};
+    const equipment: any[] = Array.isArray((entity as any).equipment) ? (entity as any).equipment : [];
+    for (const eq of equipment) {
+      const item = (allItems as any[]).find((i) => i.id === eq.itemInstanceId);
+      if (!item) continue;
+      const equipData = item.definition?.equipData;
+      const slot: string | undefined = equipData?.slot;
+      if (!slot) continue;
+      // First-write wins per slot — accessory caps at 2 but the UI today
+      // shows a single tile per slot. The picker shows count via "+N" in
+      // the future; for now a single occupant is enough to convey "filled".
+      if (!map[slot]) map[slot] = item;
+    }
+    return map;
+  }, [entity, allItems]);
+
+  const handleSlotClick = useCallback((slot: EquipSlot) => {
+    if (busy) return;
+    const occupant = equippedBySlot[slot];
+    if (occupant) {
+      // Tap-to-unequip when the slot is filled — keeps both equip and
+      // unequip a single tap from the entity sheet. Picker stays closed.
+      setBusy(true);
+      execute('UnequipItem', { entityId: entity.id, itemInstanceId: occupant.id })
+        .catch((err) => console.error('[EntityDetail] UnequipItem failed:', err))
+        .finally(() => setBusy(false));
+      return;
+    }
+    setPickerSlot(slot);
+  }, [busy, equippedBySlot, execute, entity.id]);
+
+  const handlePickerSelect = useCallback((itemInstanceId: string) => {
+    if (!pickerSlot) return;
+    setBusy(true);
+    setPickerSlot(null);
+    execute('EquipItem', { entityId: entity.id, itemInstanceId })
+      .catch((err) => console.error('[EntityDetail] EquipItem failed:', err))
+      .finally(() => setBusy(false));
+  }, [pickerSlot, execute, entity.id]);
 
   const rawXpMax = getXpForLevel(entity.level);
   const xpMax = rawXpMax > 0 ? rawXpMax : 100;
@@ -83,12 +149,30 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
 
           {/* Equipment slots — equal square, icon + overlapping "+" */}
           <div className="entity-detail__equip-row">
-            {EQUIP_SLOTS.map(({ icon, label }) => (
-              <button key={label} className="entity-detail__equip-slot" type="button" aria-label={label}>
-                <span className="entity-detail__equip-slot-icon">{icon}</span>
-                <span className="entity-detail__equip-slot-plus">+</span>
-              </button>
-            ))}
+            {EQUIP_SLOTS.map(({ icon, label, slot }) => {
+              const occupant = equippedBySlot[slot];
+              const occupantIcon = occupant?.definition?.iconKey ?? null;
+              const occupantName = occupant?.definition?.name ?? '';
+              const filled = !!occupant;
+              return (
+                <button
+                  key={label}
+                  className={`entity-detail__equip-slot${filled ? ' entity-detail__equip-slot--filled' : ''}`}
+                  type="button"
+                  aria-label={filled ? `Unequip ${occupantName}` : `Equip ${label}`}
+                  title={filled ? `${occupantName} — tap to unequip` : `Equip ${label.toLowerCase()}`}
+                  disabled={busy}
+                  onClick={() => handleSlotClick(slot)}
+                >
+                  {filled && occupantIcon ? (
+                    <GameIcon src={occupantIcon} size={32} />
+                  ) : (
+                    <span className="entity-detail__equip-slot-icon">{icon}</span>
+                  )}
+                  <span className="entity-detail__equip-slot-plus">{filled ? '×' : '+'}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -102,10 +186,23 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           <div className="entity-detail__power-divider" />
 
           <div className="entity-detail__radar-wrap">
-            <StatRadarChart stats={stats} size={155} progress={progress} />
+            <StatRadarChart
+              stats={baseStats}
+              equippedStats={equippedStats}
+              size={155}
+              progress={progress}
+            />
           </div>
         </div>
       </div>
+
+      <EquipPickerModal
+        isOpen={pickerSlot !== null}
+        slot={pickerSlot}
+        entityId={entity.id}
+        onClose={() => setPickerSlot(null)}
+        onSelect={handlePickerSelect}
+      />
 
       {/* ── Middle section: progression tabs + body slots ── */}
       <div className="entity-detail__middle">

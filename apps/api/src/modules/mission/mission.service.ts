@@ -449,9 +449,27 @@ export class MissionService {
       !e.sessionType || (e.sessionType === 'mission' && e.sessionId === missionId)
     );
 
-    const statMod = this.effectService.resolve(playerEffects, EffectCategory.STAT_BOOST);
+    // Per-entity STAT_BOOST resolution: combine player-scoped boosts (mission
+    // potions, global buffs) with each entity's own equipped-gear passives so
+    // gear actually contributes to mission MP. Other categories below stay
+    // player-scoped because gear today only emits STAT_BOOST/FLAT_ADD.
+    const equipmentEffectsByEntity = new Map<string, any[]>();
+    for (const ent of entities) {
+      const passive = await this.effectService.getPassiveEffectsFromEquipment(
+        userId,
+        EffectTargetType.ENTITY,
+        ent.id,
+        db,
+      );
+      equipmentEffectsByEntity.set(ent.id, passive);
+    }
     const teamForMP: EntityForMP[] = entities.map((b: any) => {
-      const boostedStats = applyStatModifiers(b.stats as any, statMod);
+      const passive = equipmentEffectsByEntity.get(b.id) ?? [];
+      const entityStatMod = this.effectService.resolve(
+        [...playerEffects, ...passive] as any,
+        EffectCategory.STAT_BOOST,
+      );
+      const boostedStats = applyStatModifiers(b.stats as any, entityStatMod);
       return { stats: boostedStats, traits: b.traits as any };
     });
 

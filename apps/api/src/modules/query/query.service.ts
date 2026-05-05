@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
+import { serializeEntityFull } from '../entity/entity-stats.util';
 import {
   adoptLegacyCraftingJobLocations,
   pickFallbackWorkshopLocationId,
@@ -99,25 +100,6 @@ async function enrichCheckInRewardIcons(prisma: any, instances: any[]): Promise<
   }
 }
 
-function serializeEntity(entity: any) {
-  const progression = (entity.progression as any) || {};
-  if (progression && typeof progression.xp === 'bigint') {
-    progression.xp = Number(progression.xp);
-  }
-  const display = (entity.display as any) || {};
-  const state = (entity.state as any) || {};
-  return {
-    ...entity,
-    progression,
-    name: display.name || entity.speciesId || 'Entity',
-    level: progression.level || 1,
-    xp: Number(progression.xp || 0),
-    status: state.status || 'idle',
-    ...(display.imageUrl ? { imageUrl: display.imageUrl } : {}),
-  };
-}
-
-
 @Injectable()
 export class QueryService {
   private readonly logger = new Logger(QueryService.name);
@@ -173,7 +155,12 @@ export class QueryService {
       }),
       (this.prisma as any).entity.findMany({
         where: { ownerUserId: userId },
-        include: { equipment: true },
+        include: {
+          equipment: true,
+          // Surface equipmentSchema so the client can render the right
+          // slot tiles per species without re-fetching the definition.
+          definition: { include: { equipmentSchema: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       (this.prisma as any).locationInstance.findMany({
@@ -286,7 +273,9 @@ export class QueryService {
       this.logger.warn(`Forge legacy job backfill failed for ${userId}: ${err}`);
     }
 
-    const serializedEntities = entities.map(serializeEntity);
+    const serializedEntities = await Promise.all(
+      entities.map((e: any) => serializeEntityFull(this.prisma, e)),
+    );
     const serializedLocations = locations.map((loc: any) =>
       serializeLocation(loc, buildingJobs, currencyIds),
     );
