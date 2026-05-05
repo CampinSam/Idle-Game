@@ -5,12 +5,7 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  animation: item-detail-panel__slide-up 0.28s ease-out both;
-}
-
-@keyframes item-detail-panel__slide-up {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  animation: detail-enter 0.28s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {

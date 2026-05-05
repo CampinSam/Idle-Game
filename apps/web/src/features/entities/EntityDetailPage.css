@@ -21,19 +21,8 @@
   border-radius: 16px;
   overflow: hidden;
   padding: 14px;
-  animation: entity-detail-enter 0.28s ease-out both;
+  animation: detail-enter 0.28s ease-out both;
   will-change: transform;
-}
-
-@keyframes entity-detail-enter {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 /* ── Derp Bird card treatment ── */
@@ -78,7 +67,7 @@
     0 0 20px rgba(244, 114, 182, 0.4),
     0 0 40px rgba(125, 211, 252, 0.2),
     inset 0 0 12px rgba(255, 255, 255, 0.04);
-  animation: entity-detail-enter 0.28s ease-out both, detail-perfect-border-spin 6s linear infinite;
+  animation: detail-enter 0.28s ease-out both, detail-perfect-border-spin 6s linear infinite;
 }
 
 .entity-detail-page__card--perfect::before {

@@ -127,11 +127,6 @@
   animation: card-enter 0.2s ease-out both;
 }
 
-@keyframes card-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 .quest-card.completed {
   border-color: rgba(34, 197, 94, 0.35);
 }

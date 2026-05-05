@@ -622,7 +622,7 @@
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 16px;
   overflow: hidden;
-  animation: md-detail-enter 0.28s ease-out both;
+  animation: detail-enter 0.28s ease-out both;
   display: flex;
   flex-direction: column;
   height: calc(100dvh - 160px);
@@ -1267,17 +1267,6 @@
 .mp-mission-card:nth-child(3) { animation-delay: 100ms; }
 .mp-mission-card:nth-child(4) { animation-delay: 150ms; }
 .mp-mission-card:nth-child(n+5) { animation-delay: 150ms; }
-
-@keyframes md-detail-enter {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .md-unified-card,

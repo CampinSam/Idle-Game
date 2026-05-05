@@ -5,16 +5,11 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  animation: lootbox-detail-slide-up 0.28s ease-out both;
+  animation: detail-enter 0.28s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lootbox-detail { animation: none; }
-}
-
-@keyframes lootbox-detail-slide-up {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .lootbox-detail__icon-wrap {
