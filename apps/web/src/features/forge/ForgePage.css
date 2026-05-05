@@ -675,8 +675,15 @@ body.forge-floating-back-active .content {
   to { opacity: 1; }
 }
 @keyframes forgeSheetSlideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-sheet-backdrop,
+  .forge-sheet {
+    animation: none !important;
+  }
 }
 
 .forge-codex-controls {

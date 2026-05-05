@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
@@ -65,6 +65,17 @@ export default function EntityDetailPage() {
     cardEl: HTMLDivElement;
   } | null>(null);
 
+  const prefersReducedMotion = useSyncExternalStore(
+    (cb) => {
+      if (typeof window === 'undefined') return () => {};
+      const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mql.addEventListener('change', cb);
+      return () => mql.removeEventListener('change', cb);
+    },
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false,
+  );
+
   const entity = useAppSelector((s) => s.sync.entities[id ?? '']);
   const entityMap = useAppSelector((s) => s.sync.entities);
 
@@ -98,6 +109,10 @@ export default function EntityDetailPage() {
   function doNavigate(card: HTMLDivElement, targetId: string, dir: SlideDir) {
     if (navigatingRef.current) return;
     navigatingRef.current = true;
+    if (prefersReducedMotion) {
+      navigate(`/entities/${targetId}`, { state: { slideDir: dir } satisfies LocationState });
+      return;
+    }
     const toX = dir === 'left' ? '-110%' : '110%';
     card.style.transition = 'transform 0.18s ease-out';
     card.style.transform = `translateX(${toX})`;
@@ -131,7 +146,10 @@ export default function EntityDetailPage() {
     }
     const state = location.state as LocationState | null;
     const dir = state?.slideDir;
-    if (!dir) return;
+    if (!dir || prefersReducedMotion) {
+      navigatingRef.current = false;
+      return;
+    }
     const card = cardRef.current;
     if (!card) return;
     const fromX = dir === 'left' ? '100%' : '-100%';
@@ -154,7 +172,7 @@ export default function EntityDetailPage() {
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (pointerRef.current) return;
     if ((e.target as HTMLElement).closest('button')) return;
-    if (!hasNav) return;
+    if (!hasNav || prefersReducedMotion) return;
     pointerRef.current = {
       startX: e.clientX,
       startY: e.clientY,

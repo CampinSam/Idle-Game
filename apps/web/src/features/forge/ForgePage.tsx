@@ -725,6 +725,7 @@ export default function ForgePage() {
         <>
           <div className="forge-sheet-backdrop" onClick={() => setSelectedRecipe(null)} aria-hidden />
         <section
+          key={recipe.id}
           className="forge-section forge-assign forge-sheet"
           role="dialog"
           aria-label={`Recipe details for ${recipe.name}`}

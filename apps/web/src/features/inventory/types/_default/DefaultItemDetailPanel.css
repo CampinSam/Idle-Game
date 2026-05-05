@@ -5,12 +5,16 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  animation: item-detail-panel__slide-up 0.2s ease-out;
+  animation: item-detail-panel__slide-up 0.28s ease-out both;
 }
 
 @keyframes item-detail-panel__slide-up {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-detail-panel { animation: none !important; }
 }
 
 .item-detail-panel__img-wrap {

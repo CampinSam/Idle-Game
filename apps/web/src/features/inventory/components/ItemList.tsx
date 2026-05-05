@@ -233,6 +233,7 @@ export default function ItemList({
 
       {showDetailPanel && (
         <ItemDetailPanel
+          key={selectedItem.instanceId ?? selectedItem.id}
           item={selectedItem}
           actions={detailPanelActions ? detailPanelActions(selectedItem) : undefined}
           className="item-list__detail-panel"
