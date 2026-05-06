@@ -408,44 +408,76 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         return (
           <div className="od-card od-card-workers">
             <h3 className="od-card-title">WORKERS ({workersData.length}/{maxWorkers})</h3>
-            <div className="od-workers-grid">
-              {workersData.map((w: any) => {
-                const entity = entities.find((e: any) => e.id === w.entityId);
-                if (!entity) {
+            <div className="od-workers-split">
+              <div className="od-workers-grid">
+                {workersData.map((w: any) => {
+                  const entity = entities.find((e: any) => e.id === w.entityId);
+                  if (!entity) {
+                    return (
+                      <div key={w.id} className="od-worker-loading-slot">
+                        <span className="od-worker-loading-label">…</span>
+                      </div>
+                    );
+                  }
                   return (
-                    <div key={w.id} className="od-worker-loading-slot">
-                      <span className="od-worker-loading-label">…</span>
-                    </div>
+                    <EntityCard
+                      key={w.id}
+                      entity={entity}
+                      useCase="outpost"
+                      onRemove={() => handleRemoveWorker(entity.id)}
+                    />
                   );
-                }
+                })}
+                {Array.from({ length: emptySlotCount }).map((_, i) => {
+                  const slotIndex = workersData.length + i;
+                  const isActive = activeWorkerSlot === slotIndex;
+                  return (
+                    <button
+                      key={`empty-${i}`}
+                      type="button"
+                      className={`od-worker-empty-slot ${isActive ? 'od-worker-empty-slot--active' : ''}`}
+                      onClick={() => openSlot(slotIndex)}
+                    >
+                      <div className="od-worker-empty-slot__top">
+                        <span className="od-worker-empty-slot__plus">＋</span>
+                      </div>
+                      <div className="od-worker-empty-slot__bot">
+                        <span className="od-worker-empty-slot__label">Add Worker</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {(() => {
+                const prodBps = Number(outpost?.storage?.workerProductionMultBps ?? 10000);
+                const consBps = Number(outpost?.storage?.workerConsumptionMultBps ?? 10000);
+                const fmtPct = (bps: number) => {
+                  const pct = (bps - 10000) / 100;
+                  const rounded = Math.round(pct * 10) / 10;
+                  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '';
+                  return `${sign}${Math.abs(rounded).toFixed(1)}%`;
+                };
+                const prodClass = prodBps > 10000 ? 'pos' : prodBps < 10000 ? 'neg' : 'neu';
+                // Consumption: lower than baseline is *good* for the player.
+                const consClass = consBps < 10000 ? 'pos' : consBps > 10000 ? 'neg' : 'neu';
                 return (
-                  <EntityCard
-                    key={w.id}
-                    entity={entity}
-                    useCase="outpost"
-                    onRemove={() => handleRemoveWorker(entity.id)}
-                  />
-                );
-              })}
-              {Array.from({ length: emptySlotCount }).map((_, i) => {
-                const slotIndex = workersData.length + i;
-                const isActive = activeWorkerSlot === slotIndex;
-                return (
-                  <button
-                    key={`empty-${i}`}
-                    type="button"
-                    className={`od-worker-empty-slot ${isActive ? 'od-worker-empty-slot--active' : ''}`}
-                    onClick={() => openSlot(slotIndex)}
-                  >
-                    <div className="od-worker-empty-slot__top">
-                      <span className="od-worker-empty-slot__plus">＋</span>
+                  <div className="od-workers-summary" aria-label="Combined worker effects">
+                    <div className="od-workers-summary__title">Combined Effects</div>
+                    <div className="od-workers-summary__row">
+                      <span className="od-workers-summary__label">Production</span>
+                      <span className={`od-workers-summary__value od-workers-summary__value--${prodClass}`}>
+                        {fmtPct(prodBps)}
+                      </span>
                     </div>
-                    <div className="od-worker-empty-slot__bot">
-                      <span className="od-worker-empty-slot__label">Add Worker</span>
+                    <div className="od-workers-summary__row">
+                      <span className="od-workers-summary__label">Consumption</span>
+                      <span className={`od-workers-summary__value od-workers-summary__value--${consClass}`}>
+                        {fmtPct(consBps)}
+                      </span>
                     </div>
-                  </button>
+                  </div>
                 );
-              })}
+              })()}
             </div>
             {workersData.length === 0 && emptySlotCount === 0 && (
               <div className="od-empty-tasks">No worker slots on this outpost.</div>
