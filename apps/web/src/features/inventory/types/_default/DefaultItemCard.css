@@ -35,30 +35,24 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
-.item-card__img {
+.item-card__img-wrap .item-qty--badge {
+  width: 100%;
+  height: 100%;
+}
+
+.item-card__img-wrap .game-icon {
   width: 70%;
   height: 70%;
   object-fit: contain;
 }
 
-.item-card__missing {
-  width: 50%;
-  height: 50%;
-  opacity: 0.35;
-}
-
-.item-card__qty {
-  position: absolute;
+.item-card__img-wrap .item-qty__badge-num {
   bottom: 4px;
   right: 4px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
   padding: 2px 6px;
-  border-radius: 10px;
   min-width: 22px;
-  text-align: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.75);
   line-height: 1.3;
 }
 

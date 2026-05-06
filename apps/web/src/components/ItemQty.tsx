@@ -8,6 +8,7 @@ type ItemQtyFormat = 'full' | 'compact';
 interface ItemQtyProps {
   src: string;
   amount: number;
+  alt?: string;
   size?: number;
   format?: ItemQtyFormat;
   variant?: ItemQtyVariant;
@@ -18,6 +19,7 @@ interface ItemQtyProps {
 export default function ItemQty({
   src,
   amount,
+  alt = '',
   size = 14,
   format = 'full',
   variant = 'right',
@@ -29,13 +31,13 @@ export default function ItemQty({
   if (variant === 'badge') {
     return (
       <span className={`item-qty item-qty--badge ${className}`.trim()}>
-        <GameIcon src={src} size={size} />
+        <GameIcon src={src} size={size} alt={alt} />
         {amount > 0 && <span className="item-qty__badge-num">{numStr}</span>}
       </span>
     );
   }
 
-  const icon = <GameIcon src={src} size={size} />;
+  const icon = <GameIcon src={src} size={size} alt={alt} />;
   const num = (
     <span className="item-qty__num">
       {numStr}
