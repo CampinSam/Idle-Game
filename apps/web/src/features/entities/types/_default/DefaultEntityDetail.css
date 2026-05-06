@@ -136,6 +136,18 @@
   opacity: 0.6;
 }
 
+/* Blocked-by-busy: stronger grey-out + not-allowed cursor so the disabled
+   state reads as "can't do this right now" rather than "loading". */
+.entity-detail__equip-slot--blocked,
+.entity-detail__equip-slot--blocked:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.15);
+  background: #0e0c1e;
+}
+
 /* Filled slot — solid border in gold to signal an active piece of gear,
    matching the equipped-overlay polygon colour on the radar chart. */
 .entity-detail__equip-slot--filled {

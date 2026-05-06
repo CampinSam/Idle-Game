@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSyncItems, useSyncStatus, useSyncEntities } from '../../hooks/useSyncSelectors';
+import { useAppSelector } from '../../store';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
@@ -8,6 +9,13 @@ import { api } from '../../services/api';
 import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab, type ItemSortBy, type ItemRarityFilter } from './components';
 import EntityList from '../entities/components/EntityList';
 import { getConsumableTargetType } from './utils/getConsumableTargetType';
+import {
+  isEntityBusy,
+  gearWouldChangeStats,
+  consumableWouldChangeEntityStats,
+  BUSY_EQUIP_TOOLTIP,
+  BUSY_CONSUMABLE_TOOLTIP,
+} from './utils/statChangeHelpers';
 import './InventoryPage.css';
 
 const CATEGORY_TABS: ItemCategoryTab[] = [
@@ -101,7 +109,17 @@ export default function InventoryPage() {
   const navigate = useNavigate();
   const items = useSyncItems();
   const entities = useSyncEntities();
+  const effectDefsList = useAppSelector((s) => s.game.effectDefs);
   const syncStatus = useSyncStatus();
+
+  // Map of effectDefId → def for the consumable stat-change predicate. Built
+  // here once instead of on each item-row render. Used to grey out the Use
+  // button on stat-changing potions when no idle entities are available.
+  const effectDefsById = useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const d of effectDefsList || []) map[d.id] = d;
+    return map;
+  }, [effectDefsList]);
   const [activeTab, setActiveTab] = useState(readCategory);
   const [searchQuery, setSearchQuery] = useState(readSearch);
   const [rarityFilter, setRarityFilter] = useState<ItemRarityFilter>(readRarity);
@@ -296,13 +314,28 @@ export default function InventoryPage() {
       const target = getConsumableTargetType(item);
       const supported =
         target === 'player' || (target === 'entity' && entities.length > 0);
-      const tooltip = supported
-        ? undefined
-        : unsupportedTargetTooltip(target as any, entities.length > 0);
+      // Pre-emptive grey-out: server rejects stat-changing consumables on
+      // any non-idle target entity (Task #182). If every entity in the
+      // roster is busy and the potion is stat-changing, there's no valid
+      // target — disable with a "blocked while busy" hint. Heal / XP /
+      // non-stat consumables remain enabled even when entities are busy.
+      const isStatChanger =
+        target === 'entity' &&
+        consumableWouldChangeEntityStats(item, effectDefsById);
+      const allTargetsBusy =
+        isStatChanger &&
+        entities.length > 0 &&
+        (entities as any[]).every((e) => isEntityBusy(e));
+      const blockedByBusy = isStatChanger && allTargetsBusy;
+      const tooltip = !supported
+        ? unsupportedTargetTooltip(target as any, entities.length > 0)
+        : blockedByBusy
+          ? BUSY_CONSUMABLE_TOOLTIP
+          : undefined;
       return (
         <button
-          className="inv-manage-btn inv-use-btn"
-          disabled={!supported}
+          className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+          disabled={!supported || blockedByBusy}
           onClick={() => handleUse(item)}
           title={tooltip}
         >
@@ -312,32 +345,52 @@ export default function InventoryPage() {
     }
     if (EQUIPPABLE_TYPES.has(item.type)) {
       if (item.equippedToId) {
+        // Pre-emptive grey-out: server rejects unequip of stat-bearing gear
+        // on a busy entity. Cosmetic gear (no stat contribution) stays
+        // unequippable even while the wearer is working / on mission.
+        const wearer = (entities as any[]).find((e) => e.id === item.equippedToId);
+        const blockedByBusy =
+          isEntityBusy(wearer) && gearWouldChangeStats(item);
         return (
           <button
-            className="inv-manage-btn inv-use-btn"
-            disabled={equipBusy}
+            className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+            disabled={equipBusy || blockedByBusy}
             onClick={() => handleUnequip(item)}
+            title={blockedByBusy ? BUSY_EQUIP_TOOLTIP : undefined}
           >
             {equipBusy ? '…' : 'Unequip'}
           </button>
         );
       }
       const slot: string | null = item.equipData?.slot ?? item.definition?.equipData?.slot ?? null;
-      const hasTarget =
-        !!slot &&
-        (entities as any[]).some((e) => {
-          const cap = Number(e?.definition?.equipmentSchema?.schema?.[slot] ?? 0);
-          return cap > 0;
-        });
+      const isStatGear = gearWouldChangeStats(item);
+      const eligibleEntities = !slot
+        ? []
+        : (entities as any[]).filter((e) => {
+            const cap = Number(e?.definition?.equipmentSchema?.schema?.[slot] ?? 0);
+            return cap > 0;
+          });
+      const hasTarget = eligibleEntities.length > 0;
+      // For stat-bearing gear: if every eligible wearer is busy, the equip
+      // picker would only show greyed-out rows — pre-emptively grey the
+      // button and explain. Cosmetic gear stays equippable on busy
+      // entities.
+      const allTargetsBusy =
+        isStatGear &&
+        hasTarget &&
+        eligibleEntities.every((e) => isEntityBusy(e));
+      const blockedByBusy = allTargetsBusy;
       const tooltip = !slot
         ? 'This gear has no slot configured.'
         : !hasTarget
-        ? 'No entity in your roster can wear this slot.'
-        : undefined;
+          ? 'No entity in your roster can wear this slot.'
+          : blockedByBusy
+            ? BUSY_EQUIP_TOOLTIP
+            : undefined;
       return (
         <button
-          className="inv-manage-btn inv-use-btn"
-          disabled={equipBusy || !hasTarget}
+          className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+          disabled={equipBusy || !hasTarget || blockedByBusy}
           onClick={() => handleEquip(item)}
           title={tooltip}
         >
@@ -364,7 +417,17 @@ export default function InventoryPage() {
       );
     }
     return <button className="inv-manage-btn">Manage</button>;
-  }, [opening, entities, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
+  }, [opening, entities, effectDefsById, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
+
+  // Busy entity ids for the equip-flow picker. When the player is equipping
+  // stat-bearing gear, busy wearers are visibly disabled so they can't be
+  // selected (matches the server's busy-entity guard). Cosmetic gear leaves
+  // every eligible entity selectable.
+  const equipDisabledIds = useMemo(() => {
+    if (!equipGear) return [];
+    if (!gearWouldChangeStats(equipGear)) return [];
+    return (equipCandidates as any[]).filter(isEntityBusy).map((e) => e.id);
+  }, [equipGear, equipCandidates]);
 
   if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
@@ -427,13 +490,21 @@ export default function InventoryPage() {
                   No entity in your roster can equip this {equipGearSlot ?? 'item'}.
                 </div>
               ) : (
-                <EntityList
-                  entities={equipCandidates}
-                  mode="picker"
-                  useCase="potion-picker"
-                  onSelect={handleEquipPickEntity}
-                  emptyMessage="No eligible entities."
-                />
+                <>
+                  <EntityList
+                    entities={equipCandidates}
+                    mode="picker"
+                    useCase="potion-picker"
+                    onSelect={handleEquipPickEntity}
+                    disabledIds={equipDisabledIds}
+                    emptyMessage="No eligible entities."
+                  />
+                  {equipDisabledIds.length > 0 && (
+                    <p className="inv-equip-busy-hint">
+                      {BUSY_EQUIP_TOOLTIP}
+                    </p>
+                  )}
+                </>
               )}
             </div>
             <div className="epm-footer">

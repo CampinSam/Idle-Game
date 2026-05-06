@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useSyncItems } from '../../../hooks/useSyncSelectors';
+import { useSyncItems, useSyncEntities } from '../../../hooks/useSyncSelectors';
 import GameIcon from '../../../components/GameIcon';
+import {
+  isEntityBusy,
+  gearWouldChangeStats,
+  BUSY_EQUIP_TOOLTIP,
+} from '../../inventory/utils/statChangeHelpers';
 import './EquipPickerModal.css';
 
 const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
@@ -56,7 +61,18 @@ export default function EquipPickerModal({
   onSelect,
 }: EquipPickerModalProps) {
   const items = useSyncItems();
+  const entities = useSyncEntities();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Server rejects equipping stat-bearing gear onto a busy entity. Mirror
+  // that here so the player sees stat-bearing rows greyed out instead of
+  // bottoming out on a toast after picking. Cosmetic gear (no stat
+  // contribution) stays selectable.
+  const targetEntity = useMemo(
+    () => (entities as any[]).find((e) => e.id === entityId) || null,
+    [entities, entityId],
+  );
+  const targetBusy = isEntityBusy(targetEntity);
 
   useEffect(() => {
     if (!isOpen) setSelectedId(null);
@@ -92,8 +108,20 @@ export default function EquipPickerModal({
     if (!selectedId) return;
     const item = candidates.find((c) => c.id === selectedId);
     if (!item) return;
+    if (targetBusy && gearWouldChangeStats(item)) return;
     onSelect(selectedId, item);
-  }, [selectedId, candidates, onSelect]);
+  }, [selectedId, candidates, onSelect, targetBusy]);
+
+  const isItemBlocked = useCallback(
+    (item: any) => targetBusy && gearWouldChangeStats(item),
+    [targetBusy],
+  );
+
+  const selectedBlocked = useMemo(() => {
+    if (!selectedId) return false;
+    const item = candidates.find((c) => c.id === selectedId);
+    return !!item && isItemBlocked(item);
+  }, [selectedId, candidates, isItemBlocked]);
 
   if (!isOpen || !slot) return null;
 
@@ -126,13 +154,19 @@ export default function EquipPickerModal({
                 const iconKey = getItemIconKey(item);
                 const rarity = getItemRarity(item);
                 const statsLine = summarizeStats(item);
+                const blocked = isItemBlocked(item);
                 return (
                   <li
                     key={item.id}
                     role="option"
                     aria-selected={isSelected}
-                    className={`equip-picker-row${isSelected ? ' equip-picker-row--selected' : ''}`}
-                    onClick={() => setSelectedId((p) => (p === item.id ? null : item.id))}
+                    aria-disabled={blocked}
+                    title={blocked ? BUSY_EQUIP_TOOLTIP : undefined}
+                    className={`equip-picker-row${isSelected ? ' equip-picker-row--selected' : ''}${blocked ? ' equip-picker-row--blocked' : ''}`}
+                    onClick={() => {
+                      if (blocked) return;
+                      setSelectedId((p) => (p === item.id ? null : item.id));
+                    }}
                   >
                     <div className={`equip-picker-icon equip-picker-icon--${(rarity || 'common').toLowerCase()}`}>
                       {iconKey ? <GameIcon src={iconKey} size={32} /> : <span>?</span>}
@@ -159,7 +193,8 @@ export default function EquipPickerModal({
             type="button"
             className="epm-btn epm-btn--apply"
             onClick={handleConfirm}
-            disabled={!selectedId}
+            disabled={!selectedId || selectedBlocked}
+            title={selectedBlocked ? BUSY_EQUIP_TOOLTIP : undefined}
           >
             Equip
           </button>

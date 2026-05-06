@@ -12,6 +12,11 @@ import { useModal } from '../../../../context/ModalContext';
 import StatRadarChart from './StatRadarChart';
 import DefaultEntityCard from './DefaultEntityCard';
 import EquipPickerModal from '../../components/EquipPickerModal';
+import {
+  isEntityBusy,
+  gearWouldChangeStats,
+  BUSY_EQUIP_TOOLTIP,
+} from '../../../inventory/utils/statChangeHelpers';
 import type { EntityDetailProps } from '../../types';
 import './DefaultEntityDetail.css';
 
@@ -69,6 +74,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   );
   const equippedStats = (entity as any).equippedStats as Record<string, number> | undefined;
   const traits = (entity.traits || {}) as Partial<Record<typeof TRAIT_SLOT_ORDER[number], string>>;
+  const entityBusy = isEntityBusy(entity);
 
   // Build a slot → equipped item map by joining EntityEquipment rows
   // (shipped on the entity payload) against the sync `items` table. Looking
@@ -159,14 +165,28 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               const occupantIcon = occupant?.definition?.iconKey ?? null;
               const occupantName = occupant?.definition?.name ?? '';
               const filled = !!occupant;
+              // Pre-emptive grey-out: server rejects unequip of stat-bearing
+              // gear on a busy entity. We don't know what gear the player
+              // would equip into an empty slot, so leave empty slots tappable
+              // — the EquipPickerModal greys out individual stat-bearing
+              // candidates when the entity is busy.
+              const blockedByBusy =
+                entityBusy && filled && gearWouldChangeStats(occupant);
+              const slotDisabled = busy || blockedByBusy;
+              const slotTitle = blockedByBusy
+                ? BUSY_EQUIP_TOOLTIP
+                : filled
+                  ? `${occupantName} — tap to unequip`
+                  : `Equip ${label.toLowerCase()}`;
               return (
                 <button
                   key={label}
-                  className={`entity-detail__equip-slot${filled ? ' entity-detail__equip-slot--filled' : ''}`}
+                  className={`entity-detail__equip-slot${filled ? ' entity-detail__equip-slot--filled' : ''}${blockedByBusy ? ' entity-detail__equip-slot--blocked' : ''}`}
                   type="button"
                   aria-label={filled ? `Unequip ${occupantName}` : `Equip ${label}`}
-                  title={filled ? `${occupantName} — tap to unequip` : `Equip ${label.toLowerCase()}`}
-                  disabled={busy}
+                  aria-disabled={slotDisabled}
+                  title={slotTitle}
+                  disabled={slotDisabled}
                   onClick={() => handleSlotClick(slot)}
                 >
                   {filled && occupantIcon ? (

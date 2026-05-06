@@ -6,6 +6,11 @@ import GameIcon from '../../../components/GameIcon';
 import { summarizeEffect } from '../utils/summarizeEffect';
 import type { EffectDefLite } from '../utils/summarizeEffect';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
+import {
+  isEntityBusy,
+  consumableWouldChangeEntityStats,
+  BUSY_CONSUMABLE_TOOLTIP,
+} from '../utils/statChangeHelpers';
 import './EntityPickerModal.css';
 
 export interface EntityPickerModalProps {
@@ -52,6 +57,20 @@ export default function EntityPickerModal({
 
   const consumableEffects = useMemo(() => getPotionEffects(potion), [potion]);
 
+  // Server rejects stat-changing consumables on busy entities (Task #182).
+  // Compute the disabled-id set so the picker visibly greys out wearers
+  // that the command would refuse, instead of letting the player tap and
+  // bottom out on a toast. Heal / XP / non-stat potions leave every
+  // entity selectable.
+  const isStatChanger = useMemo(
+    () => consumableWouldChangeEntityStats(potion, effectDefs),
+    [potion, effectDefs],
+  );
+  const disabledIds = useMemo(() => {
+    if (!isStatChanger) return [];
+    return (entities as any[]).filter(isEntityBusy).map((e) => e.id);
+  }, [isStatChanger, entities]);
+
   const summary = useMemo(() => {
     if (consumableEffects.length === 0) return null;
     return consumableEffects
@@ -91,12 +110,22 @@ export default function EntityPickerModal({
     setSelectedId((prev) => (prev === entity.id ? null : entity.id));
   }, []);
 
+  const selectedDisabled = !!selectedId && disabledIds.includes(selectedId);
+
+  // If the selected entity flips to busy while the modal is open (e.g. SSE
+  // delta starts a mission for them), drop the selection so the player
+  // can't bottom out on a server rejection by tapping Continue.
+  useEffect(() => {
+    if (selectedDisabled) setSelectedId(null);
+  }, [selectedDisabled]);
+
   const handleConfirm = useCallback(() => {
     if (!selectedId) return;
+    if (disabledIds.includes(selectedId)) return;
     const entity = entities.find((e: any) => e.id === selectedId);
     if (!entity) return;
     onSelectEntity(selectedId, entity);
-  }, [selectedId, entities, onSelectEntity]);
+  }, [selectedId, disabledIds, entities, onSelectEntity]);
 
   if (!isOpen || !potion) return null;
 
@@ -148,21 +177,27 @@ export default function EntityPickerModal({
               You don't own any entities yet. Earn one to use entity-targeted potions.
             </div>
           ) : (
-            <EntityList
-              entities={entities as any[]}
-              mode="picker"
-              useCase="potion-picker"
-              showControls
-              search={search}
-              onSearchChange={setSearch}
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              selectedIds={selectedId ? [selectedId] : []}
-              onSelect={handleSelect}
-              emptyMessage="No entities to show."
-            />
+            <>
+              <EntityList
+                entities={entities as any[]}
+                mode="picker"
+                useCase="potion-picker"
+                showControls
+                search={search}
+                onSearchChange={setSearch}
+                activeFilter={activeFilter}
+                onFilterChange={setActiveFilter}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                selectedIds={selectedId ? [selectedId] : []}
+                disabledIds={disabledIds}
+                onSelect={handleSelect}
+                emptyMessage="No entities to show."
+              />
+              {disabledIds.length > 0 && (
+                <p className="epm-busy-hint">{BUSY_CONSUMABLE_TOOLTIP}</p>
+              )}
+            </>
           )}
         </div>
 
@@ -178,7 +213,7 @@ export default function EntityPickerModal({
             type="button"
             className="epm-btn epm-btn--apply"
             onClick={handleConfirm}
-            disabled={!selectedId}
+            disabled={!selectedId || selectedDisabled}
           >
             Continue
           </button>

@@ -185,3 +185,13 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Hint shown under the entity grid when stat-changing potions can't target
+   busy entities (server-side guard). Mirrors equip-side messaging. */
+.epm-busy-hint {
+  margin: 8px 4px 0;
+  font-size: 11px;
+  font-style: italic;
+  color: rgba(248, 113, 113, 0.85);
+  text-align: center;
+}

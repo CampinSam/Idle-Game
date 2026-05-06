@@ -95,3 +95,15 @@
   color: #fbbf24;
   font-weight: 700;
 }
+
+/* Blocked-by-busy: stat-bearing gear can't be equipped onto a busy entity
+   (server rejects). Mirror the disabled affordance here so the player sees
+   the row is non-actionable before tapping. */
+.equip-picker-row--blocked,
+.equip-picker-row--blocked:hover {
+  cursor: not-allowed;
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  background: rgba(139, 92, 246, 0.04);
+  border-color: rgba(139, 92, 246, 0.12);
+}
