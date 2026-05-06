@@ -5,7 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildEntityPatch, buildItemPatches } from '../patch-builder';
+import { PatchBuilder, buildEntityPatch, buildItemPatches, buildLocationPatches } from '../patch-builder';
+import { LocationSettlementService } from '../../location/location-settlement.service';
 
 function txDb(tx: unknown) {
   return tx as any;
@@ -17,6 +18,8 @@ function txDb(tx: unknown) {
  */
 @Injectable()
 export class UnequipItemHandler implements CommandHandler {
+  constructor(private settlementService: LocationSettlementService) {}
+
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { entityId, itemInstanceId } = payload || {};
     if (!entityId) throw new BadRequestException('entityId is required');
@@ -53,9 +56,21 @@ export class UnequipItemHandler implements CommandHandler {
       data: { equippedToId: null },
     });
 
+    // See EquipItemHandler — recalc outpost meta if this entity is a worker,
+    // so stat-driven production / consumption multipliers stay accurate.
+    const workerAssignments = await txDb(ctx.tx).locationWorkerAssignment.findMany({
+      where: { entityId },
+      select: { locationId: true },
+    });
+
     const pb = new PatchBuilder();
     await buildEntityPatch(pb, ctx.tx, entityId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
+
+    for (const a of workerAssignments) {
+      await this.settlementService.recalculateLocationMeta(a.locationId, ctx.tx);
+      await buildLocationPatches(pb, ctx.tx, ctx.userId, a.locationId);
+    }
 
     return {
       patches: pb.build(),

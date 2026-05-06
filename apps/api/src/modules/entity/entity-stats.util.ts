@@ -11,10 +11,14 @@
  * time, and is mirrored here for UI display.
  */
 
-const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
-type StatKey = typeof STAT_KEYS[number];
+export const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
+export type StatKey = typeof STAT_KEYS[number];
 
 export type StatMap = Record<StatKey, number>;
+
+function emptyStats(): StatMap {
+  return { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 };
+}
 
 export function normalizeStats(stats: unknown): StatMap {
   const s = (stats || {}) as Record<string, unknown>;
@@ -82,4 +86,49 @@ export async function serializeEntityFull(tx: any, entity: any): Promise<any> {
     baseStats,
     equippedStats,
   };
+}
+
+/**
+ * Returns the equipment-aware stat map for a single entity. The entity must
+ * have been loaded with `equipment: true`. Sums `equipData.stats` from each
+ * equipped item instance on top of the entity's `stats` (base) — same math
+ * `serializeEntityFull` runs, but without the wrapping serializer payload.
+ */
+export async function computeEquippedStats(tx: any, entity: any): Promise<StatMap> {
+  const out = normalizeStats(entity?.stats);
+  const equipmentRows: any[] = Array.isArray(entity?.equipment) ? entity.equipment : [];
+  const itemIds = equipmentRows.map((eq) => eq.itemInstanceId).filter(Boolean);
+  if (itemIds.length === 0) return out;
+
+  const items = await tx.itemInstance.findMany({
+    where: { id: { in: itemIds } },
+    include: {
+      definition: { select: { equipData: true } },
+    },
+  });
+  for (const inst of items) {
+    const equipData = inst.definition?.equipData as any;
+    addStats(out, equipData?.stats);
+  }
+  return out;
+}
+
+/**
+ * Loads the given entity ids and returns the elementwise sum of their
+ * equipped stats. Used by location settlement to drive the stat-based
+ * worker production / consumption multipliers.
+ */
+export async function sumEquippedStatsForEntities(tx: any, entityIds: string[]): Promise<StatMap> {
+  const total = emptyStats();
+  if (!entityIds || entityIds.length === 0) return total;
+
+  const entities = await tx.entity.findMany({
+    where: { id: { in: entityIds } },
+    include: { equipment: true },
+  });
+  for (const entity of entities) {
+    const stats = await computeEquippedStats(tx, entity);
+    for (const k of STAT_KEYS) total[k] += stats[k];
+  }
+  return total;
 }

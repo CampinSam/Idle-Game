@@ -60,7 +60,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Tick-Based Timing System**: Global and frontend-specific game timers.
 - **Server-Authoritative Notifications**: Postgres-persisted notifications.
 - **Server-Driven Modal System (ModalSpecV1)**: Dynamic backend-generated modals.
-- **Location Production & Consumption System**: Level-based production with dynamic storage.
+- **Location Production & Consumption System**: Level-based production with dynamic storage. Worker multipliers are stat-driven (not flat per-worker): `productionMultBps = 10000 + 50×(ΣFOC + ΣSPD)` and `consumptionMultBps = max(0, 10000 + 50×(ΣSPD − ΣFOC))`, summed across each assigned worker's *equipped* stats (base + gear). Zero workers → ×1.00 / ×1.00. Worker multipliers no longer scale storage capacity. Recalculation is triggered on assign/unassign, equip/unequip, and level-up of a working entity via `LocationSettlementService.recalcLocationsForWorkerEntity`.
 - **Currency System**: Data-driven currencies with BigInt balances and audit trails.
 - **Editor-Ready Balance System**: JSON fields for data-driven game balancing.
 - **Unified Job System**: Single `Job` table for all timer-based activities.

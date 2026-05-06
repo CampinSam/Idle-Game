@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { EffectService } from '../effect/effect.service';
 import { NotificationService } from '../notification/notification.service';
+import { LocationSettlementService } from '../location/location-settlement.service';
 import { MAX_ENTITY_LEVEL, XP_PER_LEVEL, EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
 import { applyWeightedLevelUp } from '@derp/math';
 
@@ -40,6 +41,7 @@ export class EntityService {
     private prisma: PrismaService,
     private effectService: EffectService,
     private notificationService: NotificationService,
+    private settlementService: LocationSettlementService,
   ) {}
 
   async getEntities(userId: string) {
@@ -155,6 +157,22 @@ export class EntityService {
     });
 
     const leveledUp = newLevel > oldLevel;
+
+    // If this entity gained at least one level *and* is currently working at
+    // an outpost, the outpost's stat-driven worker multipliers may have
+    // shifted (FOC/SPD can change on level-up). Recalc location meta so
+    // displayed and settled rates stay accurate without waiting for the
+    // next assign/unassign event.
+    if (leveledUp) {
+      try {
+        await this.settlementService.recalcLocationsForWorkerEntity(entityId, db);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to recalc worker locations for entity ${entityId} after level-up: ${err}`,
+        );
+      }
+    }
+
     if (leveledUp && !opts?.skipNotification) {
       try {
         await this.notificationService.recordEntityLevelUp(

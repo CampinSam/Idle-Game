@@ -60,7 +60,10 @@ function makeService(prismaApi: any, opts: { xpMultiplier?: number } = {}) {
       return { id: `notif-${notificationCalls.length}` };
     }),
   };
-  const svc = new EntityService(prismaApi as any, effectService, notificationService);
+  const settlementService: any = {
+    recalcLocationsForWorkerEntity: jest.fn(async () => undefined),
+  };
+  const svc = new EntityService(prismaApi as any, effectService, notificationService, settlementService);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return { svc, effectService, notificationService, notificationCalls };
 }

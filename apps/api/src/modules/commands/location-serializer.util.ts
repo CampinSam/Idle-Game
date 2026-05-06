@@ -30,8 +30,12 @@ export function serializeLocation(
   }
 
   const storage = (location.storage as any) || {};
-  const workerCount = (location.workerAssignments || []).length;
-  const workerMult = 10000 + workerCount * 2000;
+  // Worker contribution to throughput is stat-driven (sum of FOC/SPD across
+  // assigned workers' equipped stats). The settlement service caches the
+  // resolved multiplier on `storage.workerProductionMultBps`; the serializer
+  // reads from there rather than recomputing. Falls back to 10000 (×1.00)
+  // when the meta hasn't been recalculated yet.
+  const workerMult = Number(storage.workerProductionMultBps ?? 10000);
   const threatMult = getThreatMult(location.threatLevel || 0);
 
   const locRules = (location.definition?.rules as LevelRules) || {};
@@ -77,6 +81,9 @@ export function serializeLocation(
       productionRates: storage.productionRates || {},
       consumptionRates: storage.consumptionRates || {},
       effectiveProductionRates: storage.effectiveProductionRates || {},
+      effectiveConsumptionRates: storage.effectiveConsumptionRates || {},
+      workerProductionMultBps: Number(storage.workerProductionMultBps ?? 10000),
+      workerConsumptionMultBps: Number(storage.workerConsumptionMultBps ?? 10000),
       resourceTypes,
       lastSettledAt: storage.lastSettledAt ?? location.createdAt?.toISOString() ?? null,
     },

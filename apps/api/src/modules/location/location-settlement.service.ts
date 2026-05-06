@@ -14,6 +14,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { EffectService } from '../effect/effect.service';
 import { EffectCategory, EffectTargetType } from '@derp/shared';
+import { sumEquippedStatsForEntities, StatMap } from '../entity/entity-stats.util';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
@@ -29,8 +30,29 @@ function getThreatMultBps(threat: number): bigint {
   return BigInt(5000);
 }
 
-function getWorkerMultBps(workerCount: number): bigint {
-  return BigInt(10000 + workerCount * 2000);
+/**
+ * Stat-driven worker contribution to outpost throughput.
+ *
+ *   productionMultBps  = 10000 + 50 × (ΣFOC + ΣSPD)
+ *   consumptionMultBps = max(0, 10000 + 50 × (ΣSPD − ΣFOC))
+ *
+ * Stats are the sum across every assigned worker's *equipped* stats so gear
+ * counts. Zero workers → both multipliers are exactly 1.00 (no change), and
+ * consumption is floored at 0 (high-FOC teams can drive consumption to zero
+ * but never refund resources).
+ */
+export function getWorkerMultsBps(stats: StatMap): {
+  productionMultBps: bigint;
+  consumptionMultBps: bigint;
+} {
+  const focPlusSpd = stats.FOC + stats.SPD;
+  const spdMinusFoc = stats.SPD - stats.FOC;
+  const prod = 10000 + Math.round(50 * focPlusSpd);
+  const cons = Math.max(0, 10000 + Math.round(50 * spdMinusFoc));
+  return {
+    productionMultBps: BigInt(prod),
+    consumptionMultBps: BigInt(cons),
+  };
 }
 
 export type BuildingStatus = 'operational' | 'starved' | 'paused';
@@ -188,8 +210,11 @@ export class LocationSettlementService {
       };
     }
 
-    const workerCount = location.workerAssignments.length;
-    const workerMultBps = getWorkerMultBps(workerCount);
+    const workerEntityIds: string[] = (location.workerAssignments || [])
+      .map((w: any) => w.entityId)
+      .filter(Boolean);
+    const workerStatsTotal = await sumEquippedStatsForEntities(tx as any, workerEntityIds);
+    const { productionMultBps, consumptionMultBps } = getWorkerMultsBps(workerStatsTotal);
     const threatMultBps = getThreatMultBps(location.threatLevel);
 
     let effectProductionBps = BigInt(10000);
@@ -218,7 +243,7 @@ export class LocationSettlementService {
     if (!hasAnyConsumption) {
       for (const [resourceId, ratePerHour] of Object.entries(mergedOutputs)) {
         let output = BigInt(Math.floor(ratePerHour * Number(elapsedTicks))) / BigInt(3600);
-        output = output * workerMultBps / BPS_BASE;
+        output = output * productionMultBps / BPS_BASE;
         output = output * threatMultBps / BPS_BASE;
         output = output * effectProductionBps / BPS_BASE;
 
@@ -244,7 +269,8 @@ export class LocationSettlementService {
         walletBalances,
         locStorageCapacity,
         Number(elapsedTicks),
-        workerMultBps,
+        productionMultBps,
+        consumptionMultBps,
         threatMultBps,
         effectProductionBps,
       );
@@ -394,7 +420,8 @@ export class LocationSettlementService {
     walletBalances: Record<string, number>,
     capacity: Record<string, number>,
     totalSeconds: number,
-    workerMultBps: bigint,
+    productionMultBps: bigint,
+    consumptionMultBps: bigint,
     threatMultBps: bigint,
     effectProductionBps: bigint,
   ): {
@@ -433,7 +460,7 @@ export class LocationSettlementService {
         break;
       }
 
-      const netFlows = this.computeNetFlows(bundles, activeSet, workerMultBps, threatMultBps, effectProductionBps);
+      const netFlows = this.computeNetFlows(bundles, activeSet, productionMultBps, consumptionMultBps, threatMultBps, effectProductionBps);
 
       let earliestEventTime = remainingSeconds;
       let eventType: 'exhaustion' | 'restart' | 'none' = 'none';
@@ -518,7 +545,8 @@ export class LocationSettlementService {
   private computeNetFlows(
     bundles: ProductionBundle[],
     activeSet: Set<string>,
-    workerMultBps: bigint,
+    productionMultBps: bigint,
+    consumptionMultBps: bigint,
     threatMultBps: bigint,
     effectProductionBps: bigint,
   ): Record<string, number> {
@@ -526,10 +554,10 @@ export class LocationSettlementService {
     for (const bundle of bundles) {
       if (!activeSet.has(bundle.buildingId)) continue;
       for (const [resId, rate] of Object.entries(bundle.produces)) {
-        netFlows[resId] = (netFlows[resId] || 0) + this.applyProductionMultipliers(rate, workerMultBps, threatMultBps, effectProductionBps);
+        netFlows[resId] = (netFlows[resId] || 0) + this.applyProductionMultipliers(rate, productionMultBps, threatMultBps, effectProductionBps);
       }
       for (const [resId, rate] of Object.entries(bundle.consumes)) {
-        netFlows[resId] = (netFlows[resId] || 0) - this.applyConsumptionMultipliers(rate, workerMultBps, threatMultBps);
+        netFlows[resId] = (netFlows[resId] || 0) - this.applyConsumptionMultipliers(rate, consumptionMultBps, threatMultBps);
       }
     }
     return netFlows;
@@ -694,12 +722,12 @@ export class LocationSettlementService {
 
   private applyProductionMultipliers(
     ratePerHour: number,
-    workerMultBps: bigint,
+    productionMultBps: bigint,
     threatMultBps: bigint,
     effectProductionBps: bigint,
   ): number {
     let val = BigInt(Math.floor(ratePerHour));
-    val = val * workerMultBps / BPS_BASE;
+    val = val * productionMultBps / BPS_BASE;
     val = val * threatMultBps / BPS_BASE;
     val = val * effectProductionBps / BPS_BASE;
     return Number(val);
@@ -707,11 +735,11 @@ export class LocationSettlementService {
 
   private applyConsumptionMultipliers(
     ratePerHour: number,
-    workerMultBps: bigint,
+    consumptionMultBps: bigint,
     threatMultBps: bigint,
   ): number {
     let val = BigInt(Math.floor(ratePerHour));
-    val = val * workerMultBps / BPS_BASE;
+    val = val * consumptionMultBps / BPS_BASE;
     val = val * threatMultBps / BPS_BASE;
     return Number(val);
   }
@@ -882,7 +910,7 @@ export class LocationSettlementService {
     };
   }
 
-  async recalculateLocationMeta(locationId: string, client?: any): Promise<{ capacity: Record<string, number>; productionRates: Record<string, number>; consumptionRates: Record<string, number>; effectiveProductionRates: Record<string, number>; productionBundles: ProductionBundle[]; netFlows: Record<string, number> }> {
+  async recalculateLocationMeta(locationId: string, client?: any): Promise<{ capacity: Record<string, number>; productionRates: Record<string, number>; consumptionRates: Record<string, number>; effectiveProductionRates: Record<string, number>; effectiveConsumptionRates: Record<string, number>; productionBundles: ProductionBundle[]; netFlows: Record<string, number>; workerProductionMultBps: number; workerConsumptionMultBps: number }> {
     const db = client || this.prisma;
     const location = await (db as any).locationInstance.findFirst({
       where: { id: locationId },
@@ -892,7 +920,7 @@ export class LocationSettlementService {
         workerAssignments: true,
       },
     });
-    if (!location) return { capacity: {}, productionRates: {}, consumptionRates: {}, effectiveProductionRates: {}, productionBundles: [], netFlows: {} };
+    if (!location) return { capacity: {}, productionRates: {}, consumptionRates: {}, effectiveProductionRates: {}, effectiveConsumptionRates: {}, productionBundles: [], netFlows: {}, workerProductionMultBps: 10000, workerConsumptionMultBps: 10000 };
 
     const activeJobs = await (db as any).job.findMany({
       where: { userId: location.ownerUserId, type: 'BuildingJob', status: 'active' },
@@ -904,17 +932,31 @@ export class LocationSettlementService {
 
     const { capacity, productionRates, consumptionRates, productionBundles, netFlows } = this.computeLocationMeta(location, buildingIdsUnderConstruction);
 
-    const workerCount: number = (location.workerAssignments || []).length;
-    const workerMultBps = getWorkerMultBps(workerCount);
+    const workerEntityIds: string[] = (location.workerAssignments || [])
+      .map((w: any) => w.entityId)
+      .filter(Boolean);
+    const workerStatsTotal = await sumEquippedStatsForEntities(db, workerEntityIds);
+    const { productionMultBps, consumptionMultBps } = getWorkerMultsBps(workerStatsTotal);
     const threatMultBps = getThreatMultBps(location.threatLevel || 0);
 
     const effectiveProductionRates: Record<string, number> = {};
     for (const [resId, rate] of Object.entries(productionRates)) {
       let effective = rate;
-      effective = Math.floor(effective * Number(workerMultBps) / 10000);
+      effective = Math.floor(effective * Number(productionMultBps) / 10000);
       effective = Math.floor(effective * Number(threatMultBps) / 10000);
       effectiveProductionRates[resId] = effective;
     }
+
+    const effectiveConsumptionRates: Record<string, number> = {};
+    for (const [resId, rate] of Object.entries(consumptionRates)) {
+      let effective = rate;
+      effective = Math.floor(effective * Number(consumptionMultBps) / 10000);
+      effective = Math.floor(effective * Number(threatMultBps) / 10000);
+      effectiveConsumptionRates[resId] = effective;
+    }
+
+    const workerProductionMultBps = Number(productionMultBps);
+    const workerConsumptionMultBps = Number(consumptionMultBps);
 
     const storage = (location.storage as any) || {};
     await (db as any).locationInstance.update({
@@ -926,11 +968,37 @@ export class LocationSettlementService {
           productionRates,
           consumptionRates,
           effectiveProductionRates,
+          effectiveConsumptionRates,
           productionBundles,
           netFlows,
+          workerProductionMultBps,
+          workerConsumptionMultBps,
         },
       },
     });
-    return { capacity, productionRates, consumptionRates, effectiveProductionRates, productionBundles, netFlows };
+    return { capacity, productionRates, consumptionRates, effectiveProductionRates, effectiveConsumptionRates, productionBundles, netFlows, workerProductionMultBps, workerConsumptionMultBps };
+  }
+
+  /**
+   * Re-derives location meta for every outpost the given entity is currently
+   * assigned to as a worker. Called after equip/unequip and on level-up so
+   * the outpost's effective rates (which sum each worker's *equipped* stats)
+   * stay accurate without waiting for the next assign/unassign.
+   */
+  async recalcLocationsForWorkerEntity(entityId: string, client?: any): Promise<void> {
+    const db = client || this.prisma;
+    const assignments = await (db as any).locationWorkerAssignment.findMany({
+      where: { entityId },
+      select: { locationId: true },
+    });
+    for (const a of assignments) {
+      try {
+        await this.recalculateLocationMeta(a.locationId, db);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to recalc location ${a.locationId} after worker ${entityId} stat change: ${err}`,
+        );
+      }
+    }
   }
 }
