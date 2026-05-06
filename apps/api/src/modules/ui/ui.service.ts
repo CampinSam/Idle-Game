@@ -442,12 +442,17 @@ export class UiService {
 
     const allReqsMet = this.gameRulesService.checkRequirements(requirements, reqContext);
 
-    const metaRows: { label: string; value: string }[] = [];
+    const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [];
     if (timerDuration > 0) {
       metaRows.push({ label: 'Build Time', value: this.formatDuration(timerDuration) });
     }
     for (const cost of constructionCost) {
-      metaRows.push({ label: `Cost`, value: `${cost.amount ?? cost.baseAmount ?? 0}× ${cost.id}` });
+      const amt = cost.amount ?? cost.baseAmount ?? 0;
+      metaRows.push({
+        label: 'Cost',
+        value: `${amt}× ${cost.id}`,
+        valueItems: [{ assetKey: cost.id, amount: amt }],
+      });
     }
     for (const req of requirements) {
       const met = this.gameRulesService.checkRequirement(req, reqContext);
@@ -517,7 +522,7 @@ export class UiService {
     const upgradeCosts: any[] = nextLevelConfig.constructionCost || nextLevelConfig.upgradeCost || [];
     const timerDuration: number = nextLevelConfig.timer?.duration ?? 0;
 
-    const metaRows: { label: string; value: string }[] = [
+    const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [
       { label: 'Current Level', value: String(currentLevel) },
       { label: 'Upgrading To', value: String(nextLevel) },
     ];
@@ -525,7 +530,12 @@ export class UiService {
       metaRows.push({ label: 'Build Time', value: this.formatDuration(timerDuration) });
     }
     for (const cost of upgradeCosts) {
-      metaRows.push({ label: 'Cost', value: `${cost.amount ?? cost.baseAmount ?? 0}× ${cost.id}` });
+      const amt = cost.amount ?? cost.baseAmount ?? 0;
+      metaRows.push({
+        label: 'Cost',
+        value: `${amt}× ${cost.id}`,
+        valueItems: [{ assetKey: cost.id, amount: amt }],
+      });
     }
 
     const body: any[] = [];

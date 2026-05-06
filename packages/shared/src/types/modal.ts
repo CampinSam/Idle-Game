@@ -94,9 +94,14 @@ export interface ModalBlockImage {
   from?: string;
 }
 
+export interface MetaRowValueItem {
+  assetKey: string;
+  amount: number;
+}
+
 export interface ModalBlockMetaRows {
   type: 'metaRows';
-  rows: { label: string; value: string }[];
+  rows: { label: string; value: string; valueItems?: MetaRowValueItem[] }[];
   from?: string;
 }
 

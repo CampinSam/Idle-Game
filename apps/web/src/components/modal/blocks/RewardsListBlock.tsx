@@ -1,5 +1,5 @@
 import type { RewardItem } from '@derp/shared';
-import AssetImage from '../AssetImage';
+import ItemQty from '../../ItemQty';
 
 const RARITY_CLASSES: Record<string, string> = {
   COMMON:     'gm-rarity-common',
@@ -31,18 +31,20 @@ export default function RewardsListBlock({ items, title, compact }: RewardsListB
             key={idx}
             className={`gm-reward-card ${RARITY_CLASSES[it.rarity?.toUpperCase() || ''] || ''}`}
           >
-            {it.assetKey ? (
-              <div className="gm-reward-icon-wrap">
-                <AssetImage asset={{ assetKey: it.assetKey }} style={{ width: 32, height: 32, borderRadius: 6 }} />
-              </div>
-            ) : (
-              <div className="gm-reward-icon-placeholder">✨</div>
-            )}
+            <div className="gm-reward-icon-wrap">
+              {it.assetKey ? (
+                <ItemQty
+                  src={it.assetKey}
+                  amount={typeof it.qty === 'number' && it.qty > 1 ? it.qty : 0}
+                  size={32}
+                  variant="badge"
+                />
+              ) : (
+                <span className="gm-reward-icon-placeholder">✨</span>
+              )}
+            </div>
             <div className="gm-reward-info">
-              <div className="gm-reward-name">
-                {it.name}
-                {typeof it.qty === 'number' && it.qty > 0 ? ` ×${it.qty}` : ''}
-              </div>
+              <div className="gm-reward-name">{it.name}</div>
               {it.note && <div className="gm-reward-note">{it.note}</div>}
             </div>
           </div>

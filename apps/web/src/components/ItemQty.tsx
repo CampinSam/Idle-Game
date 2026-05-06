@@ -30,7 +30,7 @@ export default function ItemQty({
     return (
       <span className={`item-qty item-qty--badge ${className}`.trim()}>
         <GameIcon src={src} size={size} />
-        <span className="item-qty__badge-num">{numStr}</span>
+        {amount > 0 && <span className="item-qty__badge-num">{numStr}</span>}
       </span>
     );
   }
