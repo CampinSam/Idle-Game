@@ -853,18 +853,18 @@ export default function MissionsPage() {
                 <div className="md-power-vs">
                   <div className="md-power-numbers">
                     <div className="md-power-side md-power-mp">
-                      <span className="md-power-val">{teamMP}</span>
+                      <span className="md-power-val">{Number(teamMP.toFixed(2))}</span>
                       <span className="md-power-lbl">MP</span>
                     </div>
                     <div className="md-power-sep">vs</div>
                     <div className="md-power-side md-power-d">
-                      <span className="md-power-val">{difficulty}</span>
+                      <span className="md-power-val">{Number(difficulty.toFixed(2))}</span>
                       <span className="md-power-lbl">D</span>
                     </div>
                   </div>
                   <div className="md-power-bar-wrap">
-                    <div className="md-power-bar-mp" style={{ width: `${powerRatio * 100}%` }} />
-                    <div className="md-power-bar-d" style={{ width: `${(1 - powerRatio) * 100}%` }} />
+                    <div className="md-power-bar-mp" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
+                    <div className="md-power-bar-d" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
                   </div>
                   <div className="md-success-row">
                     <span className="md-success-label-sm">SUCCESS CHANCE</span>
