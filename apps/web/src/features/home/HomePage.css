@@ -606,3 +606,10 @@
   font-size: 12px;
 }
 .hp-forge-hero-btn:hover { background: rgba(15, 12, 38, 0.8); }
+
+/* ---- Homescreen variant toggle row ---- */
+.hp-variant-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 4px 6px;
+}

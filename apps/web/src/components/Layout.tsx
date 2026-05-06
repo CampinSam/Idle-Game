@@ -98,18 +98,30 @@ export default function Layout() {
             </div>
             <span className="top-bar-name">{profile.username}</span>
             <div className="top-bar-currencies">
-              <div className="top-bar-currency">
-                <span className="top-bar-currency-icon"><GameIcon src={resolveIcon('CURRENCY', 'soft_arcanium', currencyDefs, [])} size={16} /></span>
-                <span className="top-bar-currency-val">{formatCompact(currencyBalances['soft_arcanium'] ?? 0)}</span>
-              </div>
-              <div className="top-bar-currency">
-                <span className="top-bar-currency-icon"><GameIcon src={resolveIcon('CURRENCY', 'hard_essence', currencyDefs, [])} size={16} /></span>
-                <span className="top-bar-currency-val">{formatCompact(currencyBalances['hard_essence'] ?? 0)}</span>
-              </div>
-              <div className="top-bar-currency">
-                <span className="top-bar-currency-icon"><GameIcon src={resolveIcon('CURRENCY', 'premium_gems', currencyDefs, [])} size={16} /></span>
-                <span className="top-bar-currency-val">{formatCompact(currencyBalances['premium_gems'] ?? 0)}</span>
-              </div>
+              {(() => {
+                // Data-driven currency chips. Pulls every enabled CurrencyDef,
+                // sorts by sortOrder (then id for stability), caps at 6 to
+                // protect the top-bar layout, and falls back to the canonical
+                // trio while definitions are still loading.
+                const FALLBACK = ['soft_arcanium', 'hard_essence', 'premium_gems'];
+                const visible = (currencyDefs ?? [])
+                  .filter((d: any) => d?.enabled !== false)
+                  .slice()
+                  .sort((a: any, b: any) =>
+                    (a?.sortOrder ?? 0) - (b?.sortOrder ?? 0)
+                    || String(a?.id ?? '').localeCompare(String(b?.id ?? '')),
+                  )
+                  .slice(0, 6);
+                const ids = visible.length > 0 ? visible.map((d: any) => d.id) : FALLBACK;
+                return ids.map((id: string) => (
+                  <div key={id} className="top-bar-currency">
+                    <span className="top-bar-currency-icon">
+                      <GameIcon src={resolveIcon('CURRENCY', id, currencyDefs, [])} size={16} />
+                    </span>
+                    <span className="top-bar-currency-val">{formatCompact(currencyBalances[id] ?? 0)}</span>
+                  </div>
+                ));
+              })()}
             </div>
             <button className="top-bar-bell" onClick={() => setShowNotifCenter(true)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">

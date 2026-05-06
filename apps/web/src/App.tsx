@@ -15,6 +15,7 @@ import WalletOnboardingPage from './features/auth/WalletOnboardingPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const HomePage = lazy(() => import('./features/home/HomePage'));
+const HomePageV2 = lazy(() => import('./features/home/HomePageV2'));
 const EntitiesPage = lazy(() => import('./features/entities/EntitiesPage'));
 const EntityDetailPage = lazy(() => import('./features/entities/EntityDetailPage'));
 const LocationsPage = lazy(() => import('./features/locations/LocationsPage'));
@@ -149,6 +150,7 @@ export default function App() {
         <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<ErrorBoundary fallbackTitle="Home page error"><HomePage /></ErrorBoundary>} />
+          <Route path="home/v2" element={<ErrorBoundary fallbackTitle="Home v2 error"><HomePageV2 /></ErrorBoundary>} />
           <Route path="entities" element={<ErrorBoundary fallbackTitle="Entities page error"><EntitiesPage /></ErrorBoundary>} />
           <Route path="entities/:id" element={<ErrorBoundary fallbackTitle="Entity detail error"><EntityDetailPage /></ErrorBoundary>} />
           <Route path="locations" element={<ErrorBoundary fallbackTitle="Locations page error"><LocationsPage /></ErrorBoundary>} />

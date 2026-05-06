@@ -1,0 +1,525 @@
+.hp2 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-top: var(--page-top-gap);
+  gap: 14px;
+}
+
+.hp2__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.hp2__title {
+  margin: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  color: #ede9fe;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.45);
+}
+
+/* ---- Card chassis (principle #9) -------------------------------- */
+.hp2__card {
+  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 16px;
+  padding: 14px;
+  position: relative;
+}
+
+.hp2__card-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #c4b5fd;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* ---- Season banner --------------------------------------------- */
+.hp2-season {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(168, 85, 247, 0.35) 0%, transparent 60%),
+    linear-gradient(135deg, #2a1c66 0%, #3b1f80 100%);
+  border-color: rgba(192, 132, 252, 0.4);
+}
+
+.hp2-season__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hp2-season__name {
+  font-family: 'Cinzel', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fef3c7;
+  letter-spacing: 0.6px;
+  text-shadow: 0 0 8px rgba(252, 211, 77, 0.35);
+}
+
+.hp2-season__countdown {
+  font-size: 12px;
+  color: #c4b5fd;
+  margin-top: 2px;
+}
+
+.hp2-season__countdown strong {
+  color: #fde68a;
+  font-weight: 800;
+}
+
+.hp2-season__sigil {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 30% 30%, #a855f7, #5b21b6);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.55);
+  flex-shrink: 0;
+}
+
+/* ---- Battle pass ----------------------------------------------- */
+.hp2-bp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hp2-bp__tier {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  display: grid;
+  place-items: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #1f1147;
+  border: 2px solid #fde68a;
+  flex-shrink: 0;
+}
+
+.hp2-bp__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hp2-bp__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.hp2-bp__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 12, 38, 0.7);
+  overflow: hidden;
+}
+
+.hp2-bp__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f97316);
+  border-radius: inherit;
+}
+
+.hp2-bp__next {
+  font-size: 11px;
+  color: #a78bfa;
+  margin-top: 4px;
+}
+
+/* ---- Quick-link tiles ------------------------------------------ */
+.hp2-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.hp2-quick__tile {
+  appearance: none;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: linear-gradient(160deg, rgba(45, 32, 100, 0.85), rgba(28, 20, 70, 0.85));
+  border-radius: 12px;
+  padding: 10px 6px 8px;
+  color: #ede9fe;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.hp2-quick__tile:active { transform: scale(0.97); }
+.hp2-quick__tile:hover { border-color: rgba(168, 85, 247, 0.6); }
+
+.hp2-quick__icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.hp2-quick__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.hp2-quick__count {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fef3c7;
+}
+
+.hp2-quick__dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f87171;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.8);
+}
+
+/* ---- Region map card ------------------------------------------- */
+.hp2-region__scene {
+  width: 100%;
+  height: 130px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.hp2-region__scene img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hp2-region__scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 40%, rgba(26, 22, 64, 0.85));
+}
+
+.hp2-region__badges {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  z-index: 1;
+}
+
+.hp2-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.hp2-badge--boost {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.55);
+  color: #86efac;
+}
+
+.hp2-badge--threat {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+}
+
+.hp2-region__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.hp2-region__stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #ede9fe;
+}
+
+.hp2-region__stat strong {
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  color: #fef3c7;
+}
+
+.hp2-region__collect {
+  appearance: none;
+  border: 0;
+  background: linear-gradient(135deg, #fbbf24, #f97316);
+  color: #1f1147;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.45);
+}
+
+.hp2-region__collect:active { transform: scale(0.97); }
+
+/* ---- Active missions list -------------------------------------- */
+.hp2-missions__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+  cursor: pointer;
+}
+
+.hp2-missions__row:last-child { border-bottom: 0; }
+
+.hp2-missions__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.2);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.hp2-missions__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hp2-missions__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ede9fe;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hp2-missions__sub {
+  font-size: 10px;
+  color: #a78bfa;
+  letter-spacing: 0.4px;
+}
+
+.hp2-missions__timer {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4b5fd;
+  background: rgba(15, 12, 38, 0.7);
+  padding: 4px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.hp2-missions__claim {
+  appearance: none;
+  border: 0;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.hp2-missions__empty {
+  text-align: center;
+  color: #a78bfa;
+  font-size: 12px;
+  padding: 16px 8px 4px;
+}
+
+.hp2-missions__cta {
+  display: block;
+  margin: 8px auto 0;
+  appearance: none;
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  background: rgba(139, 92, 246, 0.18);
+  color: #ede9fe;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+/* ---- Boss card ------------------------------------------------- */
+.hp2-boss {
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(220, 38, 38, 0.35) 0%, transparent 65%),
+    linear-gradient(160deg, #2b1235 0%, #1a0f3a 100%);
+  border-color: rgba(220, 38, 38, 0.45);
+}
+
+.hp2-boss__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.hp2-boss__name {
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 1.4px;
+  color: #fecaca;
+  text-shadow: 0 0 10px rgba(220, 38, 38, 0.55);
+}
+
+.hp2-boss__sub {
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-top: 2px;
+}
+
+.hp2-boss__sigil {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 30% 30%, #ef4444, #7f1d1d);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.55);
+  flex-shrink: 0;
+}
+
+.hp2-boss__hp-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #fecaca;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.hp2-boss__hp {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(15, 12, 38, 0.7);
+  overflow: hidden;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.hp2-boss__hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  border-radius: inherit;
+}
+
+.hp2-boss__reward {
+  font-size: 11px;
+  color: #fde68a;
+  margin-top: 8px;
+  text-align: center;
+  letter-spacing: 0.4px;
+}
+
+/* ---- Events strip --------------------------------------------- */
+.hp2-events__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hp2-events__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: rgba(15, 12, 38, 0.55);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.hp2-events__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.hp2-events__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ede9fe;
+  margin-bottom: 2px;
+}
+
+.hp2-events__sub {
+  font-size: 10px;
+  color: #a78bfa;
+  letter-spacing: 0.3px;
+}
+
+.hp2-events__empty {
+  text-align: center;
+  color: #a78bfa;
+  font-size: 12px;
+  padding: 8px;
+}

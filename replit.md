@@ -90,6 +90,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Admin Panel**: Dashboard for player editing, game state manipulation, and definition/modal editors.
 - **App Storage**: Replit App Storage for hosting art and media assets.
 - **Progressive Web App (PWA)**: Built via `vite-plugin-pwa` for offline capabilities and faster loading.
+- **Alternate homescreen (`/home/v2`)**: Mockup-inspired idle-game layout (season banner, battle pass, quick-link tiles, region card with COLLECT ALL, active missions, seasonal boss, events). Frontend-only — proxy values for season/battle-pass/boss live in `apps/web/src/features/home/HomePageV2.proxy.ts` (the only allowed home of mock data for this screen). A `HomescreenToggle` pill sits in the header of both `/` and `/home/v2`; choice persists in `localStorage` (`homescreenVariant`), and `HomePage` redirects to `/home/v2` on mount when the saved preference is `v2`. Bottom-nav HOME still points to `/`. Top-bar currency chips became data-driven (any enabled `CurrencyDef`, sorted by `sortOrder`, capped at 6, with a fallback to the canonical trio while defs are loading).
 
 **Security & Operations Posture:**
 - **Security headers**: `helmet` is used to apply security headers, with CSP deliberately off for flexibility.

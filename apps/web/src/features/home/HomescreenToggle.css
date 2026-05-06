@@ -1,0 +1,35 @@
+.hs-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(15, 12, 38, 0.7);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 999px;
+}
+
+.hs-toggle__pill {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #c4b5fd;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.hs-toggle__pill:hover {
+  color: #ede9fe;
+}
+
+.hs-toggle__pill--active {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
+}
