@@ -185,17 +185,19 @@
 }
 
 /* Glow breathe — ULTRA_RARE and above.
- * Must include card-enter so the enter animation still runs. */
-.item-card.rarity-ULTRA_RARE {
+ * Must include card-enter so the enter animation still runs.
+ * Gated with :not(.item-card--lootbox) to match the shimmer guard —
+ * lootbox cards have their own dedicated visuals and must not be touched. */
+.item-card.rarity-ULTRA_RARE:not(.item-card--lootbox) {
   animation: card-enter 0.25s ease-out both, ic-glow-magenta 3s ease-in-out infinite;
 }
-.item-card.rarity-EPIC {
+.item-card.rarity-EPIC:not(.item-card--lootbox) {
   animation: card-enter 0.25s ease-out both, ic-glow-epic 2.8s ease-in-out infinite;
 }
-.item-card.rarity-MYTHIC {
+.item-card.rarity-MYTHIC:not(.item-card--lootbox) {
   animation: card-enter 0.25s ease-out both, ic-glow-mythic 2.5s ease-in-out infinite;
 }
-.item-card.rarity-LEGENDARY {
+.item-card.rarity-LEGENDARY:not(.item-card--lootbox) {
   animation: card-enter 0.25s ease-out both, ic-glow-legendary 2.2s ease-in-out infinite;
 }
 
@@ -225,10 +227,10 @@
   .item-card.rarity-LEGENDARY:not(.item-card--lootbox) .item-card__img-wrap::before {
     display: none;
   }
-  .item-card.rarity-ULTRA_RARE,
-  .item-card.rarity-EPIC,
-  .item-card.rarity-MYTHIC,
-  .item-card.rarity-LEGENDARY {
+  .item-card.rarity-ULTRA_RARE:not(.item-card--lootbox),
+  .item-card.rarity-EPIC:not(.item-card--lootbox),
+  .item-card.rarity-MYTHIC:not(.item-card--lootbox),
+  .item-card.rarity-LEGENDARY:not(.item-card--lootbox) {
     animation: card-enter 0.25s ease-out both !important;
   }
 }
