@@ -35,7 +35,7 @@ export default function RewardsListBlock({ items, title, compact }: RewardsListB
               {it.assetKey ? (
                 <ItemQty
                   src={it.assetKey}
-                  amount={typeof it.qty === 'number' && it.qty > 1 ? it.qty : 0}
+                  amount={it.qty ?? 1}
                   size={32}
                   variant="badge"
                 />
