@@ -17,8 +17,23 @@ export class UiController {
     @Query('buildingDefId') buildingDefId?: string,
     @Query('locationId') locationId?: string,
     @Query('buildingId') buildingId?: string,
+    @Query('depositXp') depositXp?: string,
+    @Query('levelUp') levelUp?: string,
   ) {
     const userId = user.id || user.userId;
+
+    // Location-scoped intents must be matched BEFORE the generic notificationId
+    // branch — callers from notification taps pass `notificationId` purely as
+    // contextual metadata (so the level-up builder can resolve fromLevel/toLevel
+    // and mark it read), and we don't want that to be swallowed by the generic
+    // notification modal builder.
+    if (locationId && levelUp === 'true') {
+      return this.uiService.buildModalForLocationLevelUp(userId, locationId, notificationId);
+    }
+
+    if (locationId && depositXp === 'true') {
+      return this.uiService.buildModalForLocationDepositXp(userId, locationId);
+    }
 
     if (jobId) {
       return this.uiService.buildModalForJob(userId, jobId);
@@ -40,6 +55,6 @@ export class UiController {
       return this.uiService.buildModalForBuildBuilding(userId, locationId, buildingDefId);
     }
 
-    throw new BadRequestException('One of jobId, notificationId, giftId, or buildingDefId is required');
+    throw new BadRequestException('One of jobId, notificationId, giftId, buildingDefId, or locationId is required');
   }
 }

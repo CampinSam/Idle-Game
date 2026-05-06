@@ -862,6 +862,19 @@
           "type": "number",
           "description": "XP scaling rate"
         },
+        "xpDepositCosts": {
+          "type": "array",
+          "description": "Cost options players may pick from when depositing XP into an instance (LocationDefinition only). Each option spends `amount` of `id` per click and grants `xpPerCharge` XP. Defaults to [{ type:'currency', id:'hard_essence', amount:1, xpPerCharge:1 }] when omitted.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "enum", "enum": ["currency", "item"] },
+              "id": { "type": "string" },
+              "amount": { "type": "number" },
+              "xpPerCharge": { "type": "number" }
+            }
+          }
+        },
         "level": {
           "type": "object",
           "description": "Map of level number (string key) to LevelBlock. Sparse entries inherit downward.",
@@ -2458,6 +2471,12 @@
           "$ref": "#/complexTypes/Requirements",
           "default": [],
           "description": "Visibility conditions"
+        },
+        "levelUpModalDefId": {
+          "type": "ref",
+          "refTable": "ModalDef",
+          "nullable": true,
+          "description": "Optional ModalDef whose spec is merged into the auto-generated level-up modal (header/body overrides + replaced buttons). Resolution: server emits a base modal with the new level + a Continue button; if set, the matching ModalDef.spec layers on top via mergeModalDefSpec()."
         },
         "data": {
           "type": "json",

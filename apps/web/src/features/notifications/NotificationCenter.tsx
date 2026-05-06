@@ -62,7 +62,7 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
   const resolveJobId = (n: AppNotification) =>
     n.deepLink?.jobId || n.deepLink?.missionRunId || n.deepLink?.craftJobId || n.deepLink?.entityId;
 
-  const openModalSpec = async (params: { jobId?: string; notificationId?: string; giftId?: string }) => {
+  const openModalSpec = async (params: { jobId?: string; notificationId?: string; giftId?: string; locationId?: string; levelUp?: boolean }) => {
     try {
       const spec = await api.getModalSpec(params);
       if (spec?.version === 1) {
@@ -78,6 +78,12 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
       dismissNotification(n.id);
       onClose();
       await openModalSpec({ giftId: n.meta.giftId });
+      return;
+    }
+
+    if (n.type === 'location_level_up' && n.meta?.locationId) {
+      onClose();
+      await openModalSpec({ locationId: n.meta.locationId, levelUp: true, notificationId: n.id });
       return;
     }
 

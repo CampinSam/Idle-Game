@@ -12,6 +12,7 @@ import { InventoryService } from "../inventory/inventory.service";
 import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
 import { EffectService } from "../effect/effect.service";
+import { TelemetryService } from "../telemetry/telemetry.service";
 import { ANTI_WHALE_CAPS, EffectCategory, EffectTargetType, applyModifier } from "@derp/shared";
 import { serializeLocation } from "../commands/location-serializer.util";
 import {
@@ -19,8 +20,87 @@ import {
   resolveConstructionCosts,
   resolveAllowedBuildings,
   calcGrowth,
+  calcXpForLevel,
   LevelRules,
 } from "../game-rules/level-config.util";
+
+import { DEFAULT_XP_DEPOSIT_COST, LocationXpCostOption } from './location-xp.constants';
+export { LocationXpCostOption };
+
+export interface LocationLevelUnlocks {
+  workerSlotsAdded: number;
+  buildingSlotsAdded: number;
+  newAllowedBuildings: string[];
+  newAllowedRooms: string[];
+  storageAdded: Array<{ type: string; id: string; addedCapacity: number }>;
+}
+
+export interface AddLocationXpResult {
+  location: any;
+  oldLevel: number;
+  newLevel: number;
+  xpGained: number;
+  leveledUp: boolean;
+  unlocks: LocationLevelUnlocks;
+  /**
+   * Notification record (created or updated) when a level-up occurred.
+   * Returned so command handlers can include it in their patch stream so the
+   * client gets the notification immediately via sync, rather than waiting
+   * for the next bootstrap/poll.
+   */
+  notification?: any;
+  /**
+   * If the requested charges exceeded the remaining XP capacity to reach
+   * maxLevel, the deposit was clamped down to this many charges. The full
+   * cost for this clamped count is what was actually spent.
+   */
+  chargesApplied: number;
+}
+
+function diffLocationLevelUnlocks(
+  rules: LevelRules,
+  fromLevel: number,
+  toLevel: number,
+): LocationLevelUnlocks {
+  const fromCfg = resolveLevelConfig(rules, fromLevel);
+  const toCfg = resolveLevelConfig(rules, toLevel);
+
+  const fromAllowedB = new Set(
+    (fromCfg.buildings?.allowed || []).map((a: any) => a.buildingDefId),
+  );
+  const newAllowedBuildings = (toCfg.buildings?.allowed || [])
+    .map((a: any) => a.buildingDefId)
+    .filter((id: string) => id && !fromAllowedB.has(id));
+
+  const fromAllowedR = new Set(
+    (fromCfg.rooms?.allowed || []).map((a: any) => a.roomDefId),
+  );
+  const newAllowedRooms = (toCfg.rooms?.allowed || [])
+    .map((a: any) => a.roomDefId)
+    .filter((id: string) => id && !fromAllowedR.has(id));
+
+  const fromStorage = new Map<string, number>();
+  for (const s of (fromCfg.storage as any[]) || []) {
+    if (s?.id) fromStorage.set(`${s.type}:${s.id}`, Number(s.baseCapacity ?? 0));
+  }
+  const storageAdded: Array<{ type: string; id: string; addedCapacity: number }> = [];
+  for (const s of (toCfg.storage as any[]) || []) {
+    if (!s?.id) continue;
+    const key = `${s.type}:${s.id}`;
+    const before = fromStorage.get(key) ?? 0;
+    const after = Number(s.baseCapacity ?? 0);
+    const delta = after - before;
+    if (delta > 0) storageAdded.push({ type: s.type, id: s.id, addedCapacity: delta });
+  }
+
+  return {
+    workerSlotsAdded: Math.max(0, (toCfg.workers?.slots ?? 0) - (fromCfg.workers?.slots ?? 0)),
+    buildingSlotsAdded: Math.max(0, (toCfg.buildings?.slots ?? 0) - (fromCfg.buildings?.slots ?? 0)),
+    newAllowedBuildings,
+    newAllowedRooms,
+    storageAdded,
+  };
+}
 
 @Injectable()
 export class LocationService {
@@ -35,7 +115,233 @@ export class LocationService {
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
     private effectService: EffectService,
+    private telemetryService: TelemetryService,
   ) {}
+
+  resolveXpDepositCosts(rules: LevelRules | null | undefined): LocationXpCostOption[] {
+    const raw = (rules as any)?.xpDepositCosts;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw
+        .filter((c: any) =>
+          c && (c.type === 'currency' || c.type === 'item') && typeof c.id === 'string' &&
+          typeof c.amount === 'number' && c.amount > 0,
+        )
+        .map((c: any) => ({
+          type: c.type,
+          id: c.id,
+          amount: c.amount,
+          xpPerCharge: typeof c.xpPerCharge === 'number' && c.xpPerCharge > 0 ? c.xpPerCharge : 1,
+        }));
+    }
+    return [{ ...DEFAULT_XP_DEPOSIT_COST }];
+  }
+
+  /**
+   * Spends the chosen cost option `charges` times to deposit XP into a
+   * LocationInstance. Walks the location's per-level XP curve, recalculating
+   * meta and emitting one collapsed level-up notification (+ telemetry) per
+   * call when one or more levels were gained.
+   *
+   * Mirrors the entity XP authority pattern: callers must always go through
+   * this method — never mutate `location.xp` / `location.level` directly.
+   */
+  async depositLocationXp(
+    userId: string,
+    locationId: string,
+    chosen: { type: 'currency' | 'item'; id: string; amount: number },
+    charges: number,
+    externalTx?: any,
+  ): Promise<AddLocationXpResult> {
+    if (!Number.isFinite(charges) || charges <= 0) {
+      throw new BadRequestException('charges must be a positive integer');
+    }
+    const chargesInt = Math.floor(charges);
+
+    const doWork = async (tx: any): Promise<AddLocationXpResult> => {
+      const loc = await (tx as any).locationInstance.findFirst({
+        where: { id: locationId, ownerUserId: userId },
+        include: { definition: true },
+      });
+      if (!loc) throw new NotFoundException('Location not found');
+
+      const rules = (loc.definition?.rules as LevelRules) || {};
+      const maxLevel = rules.maxLevel ?? 50;
+
+      if (loc.level >= maxLevel) {
+        // Cap-safe: reject at max so we never spend resources for XP that would
+        // be discarded. Frontend mirrors this with a disabled state, but a
+        // direct API caller still needs the explicit error.
+        throw new BadRequestException('Outpost is already at maximum level');
+      }
+
+      const options = this.resolveXpDepositCosts(rules);
+      const match = options.find(
+        (o) => o.type === chosen.type && o.id === chosen.id && o.amount === chosen.amount,
+      );
+      if (!match) {
+        throw new BadRequestException('Selected cost option is not available for this location');
+      }
+
+      const xpPerCharge = match.xpPerCharge ?? 1;
+
+      // Cap-safe spending: compute remaining XP capacity to reach maxLevel
+      // from the current (level, xp), then clamp the requested charge count
+      // so we never spend resources for XP that would be discarded at cap.
+      let remainingXpCapacity = 0;
+      {
+        let lvl = loc.level;
+        let xpInLvl = Number(loc.xp ?? 0);
+        while (lvl < maxLevel) {
+          const need = calcXpForLevel(rules, lvl + 1);
+          remainingXpCapacity += Math.max(0, need - xpInLvl);
+          xpInLvl = 0;
+          lvl++;
+        }
+      }
+      const maxUsefulCharges = Math.max(
+        1,
+        Math.ceil(remainingXpCapacity / Math.max(1, xpPerCharge)),
+      );
+      const chargesApplied = Math.min(chargesInt, maxUsefulCharges);
+
+      const totalCost = match.amount * chargesApplied;
+      const xpDelta = xpPerCharge * chargesApplied;
+
+      if (match.type === 'currency') {
+        await this.currencyService.spendTx(tx, {
+          userId,
+          currencyId: match.id,
+          amount: totalCost,
+          reason: 'location_xp_deposit',
+          sourceType: 'location',
+          sourceId: locationId,
+        });
+      } else {
+        await this.inventoryService.removeItemTx(tx, {
+          userId,
+          itemId: match.id,
+          quantity: totalCost,
+          reason: 'location_xp_deposit',
+          sourceType: 'location',
+          sourceId: locationId,
+        });
+      }
+
+      const oldLevel = loc.level;
+
+      let newLevel = oldLevel;
+      let newXp = Number(loc.xp ?? 0) + xpDelta;
+
+      while (newLevel < maxLevel) {
+        const need = calcXpForLevel(rules, newLevel + 1);
+        if (newXp < need) break;
+        newXp -= need;
+        newLevel++;
+      }
+      if (newLevel >= maxLevel) {
+        // At cap: residual XP is preserved as 0 since no further threshold exists.
+        newXp = 0;
+      }
+
+      const updated = await (tx as any).locationInstance.update({
+        where: { id: locationId },
+        data: { level: newLevel, xp: BigInt(newXp) },
+      });
+
+      const leveledUp = newLevel > oldLevel;
+      const unlocks: LocationLevelUnlocks = leveledUp
+        ? diffLocationLevelUnlocks(rules, oldLevel, newLevel)
+        : {
+            workerSlotsAdded: 0,
+            buildingSlotsAdded: 0,
+            newAllowedBuildings: [],
+            newAllowedRooms: [],
+            storageAdded: [],
+          };
+
+      // Always record the deposit itself for analytics (level-ups get a
+      // separate, more detailed event below).
+      try {
+        await this.telemetryService.record(
+          userId,
+          'location_xp_deposited',
+          locationId,
+          xpDelta,
+          {
+            locationId,
+            definitionId: loc.definitionId,
+            costType: match.type,
+            costId: match.id,
+            costAmount: totalCost,
+            chargesRequested: chargesInt,
+            chargesApplied,
+            xpGained: xpDelta,
+            leveledUp,
+          },
+          tx,
+        );
+      } catch (err) {
+        this.logger.warn(`Failed to record location_xp_deposited telemetry: ${err}`);
+      }
+
+      let levelUpNotification: any = null;
+      if (leveledUp) {
+        try {
+          await this.settlementService.recalculateLocationMeta(locationId, tx);
+        } catch (err) {
+          this.logger.warn(
+            `Failed to recalculate location meta for ${locationId} after level-up: ${err}`,
+          );
+        }
+        try {
+          await this.telemetryService.record(
+            userId,
+            'location_level_up',
+            locationId,
+            newLevel - oldLevel,
+            {
+              locationId,
+              definitionId: loc.definitionId,
+              fromLevel: oldLevel,
+              toLevel: newLevel,
+              unlocks,
+            },
+            tx,
+          );
+        } catch (err) {
+          this.logger.warn(`Failed to record location_level_up telemetry: ${err}`);
+        }
+        try {
+          levelUpNotification = await this.notificationService.recordLocationLevelUp(
+            {
+              userId,
+              locationId,
+              locationName: loc.definitionId || 'Outpost',
+              fromLevel: oldLevel,
+              toLevel: newLevel,
+              unlocks,
+            },
+            tx,
+          );
+        } catch (err) {
+          this.logger.warn(`Failed to record location_level_up notification: ${err}`);
+        }
+      }
+
+      return {
+        location: { ...loc, ...updated, definition: loc.definition },
+        oldLevel,
+        newLevel,
+        xpGained: xpDelta,
+        leveledUp,
+        unlocks,
+        notification: levelUpNotification,
+        chargesApplied,
+      };
+    };
+
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
+  }
 
   /**
    * Enforces the maxActiveOutposts anti-whale cap.

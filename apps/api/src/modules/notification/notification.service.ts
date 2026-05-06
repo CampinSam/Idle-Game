@@ -2,6 +2,58 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { formatLevelUpBody } from '../entity/entity-generator.util';
 
+/**
+ * Cumulatively merge two LocationLevelUnlocks payloads. Used when collapsing
+ * multiple `location_level_up` notifications for the same outpost into a
+ * single grouped record so the modal can display every unlock gained over
+ * the entire `fromLevel -> toLevel` span, not just the most recent increment.
+ *
+ * - Numeric slot deltas are summed.
+ * - Allowed-building / allowed-room ID lists are unioned (preserving order).
+ * - Storage capacity additions are summed per `${type}:${id}`.
+ */
+function mergeLocationUnlocks(prev: any, next: any): any {
+  const a = prev && typeof prev === 'object' ? prev : null;
+  const b = next && typeof next === 'object' ? next : null;
+  if (!a) return b ?? null;
+  if (!b) return a;
+
+  const unionIds = (xa: any, xb: any): string[] => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const arr of [Array.isArray(xa) ? xa : [], Array.isArray(xb) ? xb : []]) {
+      for (const id of arr) {
+        if (typeof id === 'string' && !seen.has(id)) {
+          seen.add(id);
+          out.push(id);
+        }
+      }
+    }
+    return out;
+  };
+
+  const storageMap = new Map<string, { type: string; id: string; addedCapacity: number }>();
+  for (const arr of [a.storageAdded, b.storageAdded]) {
+    if (!Array.isArray(arr)) continue;
+    for (const s of arr) {
+      if (!s || typeof s.id !== 'string' || typeof s.type !== 'string') continue;
+      const key = `${s.type}:${s.id}`;
+      const cur = storageMap.get(key);
+      const add = Number(s.addedCapacity ?? 0);
+      if (cur) cur.addedCapacity += add;
+      else storageMap.set(key, { type: s.type, id: s.id, addedCapacity: add });
+    }
+  }
+
+  return {
+    workerSlotsAdded: Number(a.workerSlotsAdded ?? 0) + Number(b.workerSlotsAdded ?? 0),
+    buildingSlotsAdded: Number(a.buildingSlotsAdded ?? 0) + Number(b.buildingSlotsAdded ?? 0),
+    newAllowedBuildings: unionIds(a.newAllowedBuildings, b.newAllowedBuildings),
+    newAllowedRooms: unionIds(a.newAllowedRooms, b.newAllowedRooms),
+    storageAdded: Array.from(storageMap.values()),
+  };
+}
+
 @Injectable()
 export class NotificationService {
   constructor(private prisma: PrismaService) {}
@@ -101,6 +153,89 @@ export class NotificationService {
           toLevel: data.toLevel,
           totalGains: incomingTotal,
           gainsPerLevel: data.gainsPerLevel,
+          count: 1,
+        },
+        groupKey,
+      },
+    });
+  }
+
+  /**
+   * Records a location level-up notification.
+   *
+   * Uses a per-location `groupKey` so multiple level-ups for the same
+   * outpost within ~90s collapse into a single toast. Priority is `high`
+   * so the client toast pipeline auto-surfaces it; deepLink targets the
+   * outpost detail page so taps land users on the relevant location.
+   */
+  async recordLocationLevelUp(
+    data: {
+      userId: string;
+      locationId: string;
+      locationName: string;
+      fromLevel: number;
+      toLevel: number;
+      unlocks?: any;
+    },
+    tx?: any,
+  ) {
+    const notif = tx ? (tx as any).notification : this.notification;
+    const groupKey = `location_level_up:${data.locationId}`;
+
+    const cutoff = new Date(Date.now() - 90 * 1000);
+    const existing = await notif.findFirst({
+      where: {
+        userId: data.userId,
+        groupKey,
+        readAt: null,
+        archivedAt: null,
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const body = `${data.locationName} reached Level ${data.toLevel}!`;
+
+    if (existing) {
+      const meta = (existing.meta as any) || {};
+      const fromLevel = typeof meta.fromLevel === 'number' ? meta.fromLevel : data.fromLevel;
+      // Merge unlocks cumulatively across grouped level-ups so the modal
+      // reflects everything gained between the original `fromLevel` and the
+      // latest `toLevel`, not just the most recent increment.
+      const mergedUnlocks = mergeLocationUnlocks(meta.unlocks, data.unlocks);
+      return notif.update({
+        where: { id: existing.id },
+        data: {
+          title: 'Outpost Level Up!',
+          body,
+          meta: {
+            ...meta,
+            locationId: data.locationId,
+            locationName: data.locationName,
+            fromLevel,
+            toLevel: data.toLevel,
+            unlocks: mergedUnlocks,
+            count: (meta.count || 1) + 1,
+          },
+        },
+      });
+    }
+
+    return notif.create({
+      data: {
+        userId: data.userId,
+        type: 'location_level_up',
+        category: 'locations',
+        priority: 'high',
+        title: 'Outpost Level Up!',
+        body,
+        deepLink: { screen: `/locations/${data.locationId}`, locationId: data.locationId },
+        meta: {
+          locationId: data.locationId,
+          locationName: data.locationName,
+          fromLevel: data.fromLevel,
+          toLevel: data.toLevel,
+          unlocks: data.unlocks ?? null,
           count: 1,
         },
         groupKey,

@@ -59,6 +59,7 @@ export type ModalAction =
   | { type: 'BUILD_BUILDING'; locationId: string; buildingDefId: string }
   | { type: 'UPGRADE_BUILDING'; locationId: string; buildingId: string }
   | { type: 'SHOP_PURCHASE'; shopItemDefId: string }
+  | { type: 'DEPOSIT_LOCATION_XP'; locationId: string; costOption: { type: 'currency' | 'item'; id: string; amount: number }; charges?: number }
   | { type: 'PRESTIGE' };
 
 export type ModalBlock =
@@ -195,6 +196,7 @@ export const MODAL_ACTION_TYPES = [
   'BUILD_BUILDING',
   'UPGRADE_BUILDING',
   'SHOP_PURCHASE',
+  'DEPOSIT_LOCATION_XP',
   'PRESTIGE',
 ] as const;
 

@@ -167,6 +167,21 @@ export default function GameModalHost() {
           return;
         }
 
+        case 'DEPOSIT_LOCATION_XP': {
+          try {
+            await execute('DepositLocationXp', {
+              locationId: action.locationId,
+              costOption: action.costOption,
+              charges: action.charges ?? 1,
+            });
+            audioEngine.play('sfx.economy.purchase');
+          } catch (err: any) {
+            audioEngine.play('ui.error');
+            console.warn('[GameModalHost] DepositLocationXp failed:', err?.message);
+          }
+          return;
+        }
+
         case 'SHOP_PURCHASE': {
           try {
             const response = await execute('ShopPurchase', { shopItemDefId: action.shopItemDefId });

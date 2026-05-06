@@ -191,6 +191,36 @@
   white-space: nowrap;
 }
 
+.od-xp-deposit-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(109, 40, 217, 0.4));
+  border: 1px solid rgba(167, 139, 250, 0.55);
+  border-radius: 999px;
+  color: #ede9fe;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.od-xp-deposit-btn:hover {
+  filter: brightness(1.15);
+}
+
+.od-xp-deposit-btn:active {
+  transform: scale(0.97);
+}
+
+.od-xp-deposit-btn:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.6) brightness(0.7);
+  opacity: 0.6;
+}
+
 .od-card-timers .od-prod-rate {
   display: flex;
   align-items: baseline;

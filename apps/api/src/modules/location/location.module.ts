@@ -6,9 +6,10 @@ import { TickModule } from '../tick/tick.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { NotificationModule } from '../notification/notification.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 
 @Module({
-  imports: [TickModule, CurrencyModule, InventoryModule, NotificationModule],
+  imports: [TickModule, CurrencyModule, InventoryModule, NotificationModule, TelemetryModule],
   providers: [LocationService, LocationSettlementService],
   controllers: [LocationController],
   exports: [LocationService, LocationSettlementService],

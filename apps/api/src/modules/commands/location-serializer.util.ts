@@ -5,6 +5,7 @@ import {
   resolveStorageCapacity,
   resolveConstructionCosts,
   calcGrowth,
+  calcXpForLevel,
   LevelRules,
 } from '../game-rules/level-config.util';
 
@@ -41,6 +42,8 @@ export function serializeLocation(
   const locRules = (location.definition?.rules as LevelRules) || {};
   const locConfig = resolveLevelConfig(locRules, location.level);
   const maxWorkers = locConfig.workers?.slots ?? 2;
+  const maxLocLevel = locRules.maxLevel ?? 50;
+  const xpToNext = location.level >= maxLocLevel ? 0 : calcXpForLevel(locRules, location.level + 1);
 
   const resourceTypes: Record<string, string> = {};
   for (const b of (location.buildings ?? [])) {
@@ -71,6 +74,8 @@ export function serializeLocation(
     isUnique: location.isUnique,
     level: location.level,
     xp: location.xp?.toString?.() ?? '0',
+    maxLevel: maxLocLevel,
+    xpToNext,
     threatLevel: location.threatLevel,
     corruptionLevel: location.corruptionLevel,
     enabled: location.enabled !== false,

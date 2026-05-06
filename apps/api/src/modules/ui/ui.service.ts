@@ -3,6 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
+import { calcXpForLevel } from '../game-rules/level-config.util';
+import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 
 interface TeamEntitySnapshot {
@@ -36,6 +38,15 @@ interface BuildingContext {
   currentLevel: number;
   nextLevel: number;
   timerDuration: number;
+}
+
+interface LocationContext {
+  location: { id: string; name: string; level: number; xp: number; xpToNext: number; maxLevel: number };
+  def: Record<string, unknown>;
+  fromLevel: number;
+  toLevel: number;
+  options: Array<{ type: string; id: string; amount: number; xpPerCharge: number }>;
+  unlocks?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -625,7 +636,7 @@ export class UiService {
     return null;
   }
 
-  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | BuildingContext): any {
+  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | BuildingContext | LocationContext): any {
     if (!spec || typeof spec !== 'object') return generated;
 
     const resolved = ctx ? resolveSpec(spec, ctx as Record<string, any>) : spec;
@@ -723,5 +734,266 @@ export class UiService {
       nextLevel,
       timerDuration,
     };
+  }
+
+  /**
+   * Builds the deposit-XP modal for an outpost. Renders one button per
+   * configured cost option (`rules.xpDepositCosts`) so players choose
+   * which currency/item to spend; defaults to a single `1× hard_essence`
+   * option when nothing is configured.
+   */
+  async buildModalForLocationDepositXp(userId: string, locationId: string): Promise<any> {
+    const location = await (this.prisma as any).locationInstance.findFirst({
+      where: { id: locationId, ownerUserId: userId },
+      include: { definition: true },
+    });
+    if (!location) throw new NotFoundException('Location not found');
+
+    const rules = (location.definition?.rules as any) || {};
+    const maxLevel = rules.maxLevel ?? 50;
+    const isMaxLevel = location.level >= maxLevel;
+    const xp = Number(location.xp ?? 0);
+
+    // Mirrors LocationService.resolveXpDepositCosts — the validation logic
+    // is duplicated here (rather than importing the service) to keep the UI
+    // module independent, but the fallback default is pulled from the shared
+    // `location-xp.constants` module so the two paths can never silently
+    // drift apart.
+    const rawOptions = Array.isArray(rules.xpDepositCosts) && rules.xpDepositCosts.length > 0
+      ? rules.xpDepositCosts
+      : [{ ...DEFAULT_XP_DEPOSIT_COST }];
+    const options = rawOptions
+      .filter((c: any) => c && (c.type === 'currency' || c.type === 'item') && typeof c.id === 'string' && typeof c.amount === 'number' && c.amount > 0)
+      .map((c: any) => ({
+        type: c.type,
+        id: c.id,
+        amount: c.amount,
+        xpPerCharge: typeof c.xpPerCharge === 'number' && c.xpPerCharge > 0 ? c.xpPerCharge : 1,
+      }));
+
+    const xpToNext = isMaxLevel ? 0 : calcXpForLevel(rules, location.level + 1);
+
+    // Resolve current player balances per option so the modal can preview
+    // affordability and disable any option the player can't pay for. We
+    // batch by type rather than per-option so a 10-option modal is still
+    // 2 round-trips at most.
+    const currencyIds: string[] = Array.from(
+      new Set(options.filter((o: any) => o.type === 'currency').map((o: any) => String(o.id))),
+    );
+    const itemIds: string[] = Array.from(
+      new Set(options.filter((o: any) => o.type === 'item').map((o: any) => String(o.id))),
+    );
+    const balances: Record<string, Record<string, number>> = { currency: {}, item: {} };
+    if (currencyIds.length > 0) {
+      // NOTE: schema model is `UserCurrencyBalance` — accessed via
+      // `prisma.userCurrencyBalance` (matches CurrencyService usage).
+      const rows = await this.prisma.userCurrencyBalance.findMany({
+        where: { userId, currencyId: { in: currencyIds } },
+      });
+      for (const r of rows) balances.currency[r.currencyId] = Number(r.balance ?? 0);
+    }
+    if (itemIds.length > 0) {
+      // Sum across stacks per definition — a player may hold multiple
+      // ItemInstance rows for the same item, so taking just one would
+      // wrongly mark options as unaffordable.
+      const rows = await (this.prisma as any).itemInstance.findMany({
+        where: { userId, definitionId: { in: itemIds } },
+      });
+      for (const r of rows) {
+        balances.item[r.definitionId] = (balances.item[r.definitionId] ?? 0) + Number(r.quantity ?? 0);
+      }
+    }
+
+    const body: any[] = [];
+    body.push({
+      type: 'metaRows',
+      rows: [
+        { label: 'Current Level', value: String(location.level) },
+        { label: 'XP', value: isMaxLevel ? 'MAX' : `${xp} / ${xpToNext}` },
+      ],
+    });
+    if (isMaxLevel) {
+      body.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: `This outpost has reached the maximum level (${maxLevel}). XP deposits are disabled.` }] }],
+      });
+    } else {
+      body.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: 'Spend resources to grant XP. Each click below spends one charge.' }] }],
+      });
+
+      // Per-option preview row: shows current balance + XP gained + projected
+      // post-deposit XP / level so the player can see the result before
+      // committing.
+      const previewRows: Array<{ label: string; value: string }> = [];
+      for (const opt of options) {
+        const have = balances[opt.type]?.[opt.id] ?? 0;
+        const projectedXp = xp + opt.xpPerCharge;
+        const wouldLevel = projectedXp >= xpToNext;
+        previewRows.push({
+          label: `${opt.amount}× ${opt.id}`,
+          value: `Have ${have} • +${opt.xpPerCharge} XP${wouldLevel ? ' (Level Up!)' : ` → ${projectedXp}/${xpToNext}`}`,
+        });
+      }
+      if (previewRows.length > 0) body.push({ type: 'metaRows', rows: previewRows });
+    }
+
+    const buttons: any[] = [];
+    if (!isMaxLevel) {
+      for (const opt of options) {
+        const have = balances[opt.type]?.[opt.id] ?? 0;
+        const canAfford = have >= opt.amount;
+        buttons.push({
+          id: `deposit_${opt.type}_${opt.id}`,
+          label: `Spend ${opt.amount}× ${opt.id} (+${opt.xpPerCharge} XP)`,
+          variant: 'primary',
+          disabled: !canAfford,
+          action: {
+            type: 'DEPOSIT_LOCATION_XP',
+            locationId,
+            costOption: { type: opt.type, id: opt.id, amount: opt.amount },
+            charges: 1,
+          },
+        });
+      }
+    }
+    buttons.push({ id: 'close', label: 'Close', variant: 'ghost', action: { type: 'CLOSE_MODAL' } });
+
+    return {
+      version: 1,
+      id: `location_deposit_xp_${locationId}`,
+      kind: 'location_deposit_xp',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: {
+        title: isMaxLevel ? 'Outpost at Max Level' : 'Deposit XP',
+        subtitle: location.definitionId || 'Outpost',
+      },
+      body,
+      buttons,
+    };
+  }
+
+  /**
+   * Builds a level-up celebration modal for an outpost. If the
+   * LocationDefinition has `levelUpModalDefId` configured, the matching
+   * ModalDef.spec is merged in as the override layer. Marks the
+   * triggering notification as read on serve so taps don't re-fire it.
+   */
+  async buildModalForLocationLevelUp(userId: string, locationId: string, notificationId?: string): Promise<any> {
+    const location = await (this.prisma as any).locationInstance.findFirst({
+      where: { id: locationId, ownerUserId: userId },
+      include: { definition: true },
+    });
+    if (!location) throw new NotFoundException('Location not found');
+
+    let fromLevel = location.level;
+    let toLevel = location.level;
+    let unlocks: any = null;
+
+    if (notificationId) {
+      const notif = await this.prisma.notification.findFirst({
+        where: { id: notificationId, userId },
+      });
+      if (notif) {
+        const meta = (notif.meta as any) || {};
+        if (typeof meta.fromLevel === 'number') fromLevel = meta.fromLevel;
+        if (typeof meta.toLevel === 'number') toLevel = meta.toLevel;
+        if (meta.unlocks && typeof meta.unlocks === 'object') unlocks = meta.unlocks;
+        if (!notif.readAt) {
+          try {
+            await this.prisma.notification.update({
+              where: { id: notif.id },
+              data: { readAt: new Date() },
+            });
+          } catch (err) {
+            this.logger.warn(`Failed to mark location_level_up notification ${notif.id} read: ${err}`);
+          }
+        }
+      }
+    }
+
+    const unlockRows: Array<{ label: string; value: string }> = [];
+    if (unlocks) {
+      if (Number(unlocks.workerSlotsAdded) > 0) {
+        unlockRows.push({ label: 'Worker Slots', value: `+${unlocks.workerSlotsAdded}` });
+      }
+      if (Number(unlocks.buildingSlotsAdded) > 0) {
+        unlockRows.push({ label: 'Building Slots', value: `+${unlocks.buildingSlotsAdded}` });
+      }
+      if (Array.isArray(unlocks.newAllowedBuildings) && unlocks.newAllowedBuildings.length > 0) {
+        unlockRows.push({ label: 'New Buildings', value: unlocks.newAllowedBuildings.join(', ') });
+      }
+      if (Array.isArray(unlocks.newAllowedRooms) && unlocks.newAllowedRooms.length > 0) {
+        unlockRows.push({ label: 'New Rooms', value: unlocks.newAllowedRooms.join(', ') });
+      }
+      if (Array.isArray(unlocks.storageAdded) && unlocks.storageAdded.length > 0) {
+        for (const s of unlocks.storageAdded) {
+          unlockRows.push({ label: `+${s.id} storage`, value: `+${s.addedCapacity}` });
+        }
+      }
+    }
+
+    const body: any[] = [
+      {
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'text', v: `${location.definitionId || 'Your outpost'} reached Level ${toLevel}!` }] }],
+      },
+      {
+        type: 'metaRows',
+        rows: [
+          { label: 'Previous Level', value: String(fromLevel) },
+          { label: 'New Level', value: String(toLevel) },
+        ],
+      },
+    ];
+    if (unlockRows.length > 0) {
+      body.push({
+        type: 'richText',
+        doc: [{ t: 'p', c: [{ t: 'em', c: [{ t: 'text', v: 'Unlocks' }] }] }],
+      });
+      body.push({ type: 'metaRows', rows: unlockRows });
+    }
+
+    const generated: any = {
+      version: 1,
+      id: `location_level_up_${locationId}`,
+      kind: 'location_level_up',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: {
+        title: 'Outpost Level Up!',
+        subtitle: `Level ${fromLevel} → ${toLevel}`,
+      },
+      body,
+      buttons: [
+        { id: 'continue', label: 'Continue', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+      ],
+    };
+
+    const def = location.definition as any;
+    const modalDefId = def?.levelUpModalDefId;
+    if (modalDefId) {
+      const spec = await this.resolveModalDef(modalDefId);
+      if (spec) {
+        const ctx: LocationContext = {
+          location: {
+            id: location.id,
+            name: location.definitionId || 'Outpost',
+            level: location.level,
+            xp: Number(location.xp ?? 0),
+            xpToNext: 0,
+            maxLevel: ((def?.rules as any)?.maxLevel) ?? 50,
+          },
+          def: def || {},
+          fromLevel,
+          toLevel,
+          options: [],
+          unlocks: unlocks || {},
+        };
+        return this.mergeModalDefSpec(generated, spec, ctx);
+      }
+    }
+
+    return generated;
   }
 }

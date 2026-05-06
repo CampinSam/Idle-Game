@@ -324,6 +324,7 @@ model LocationDefinition {
   data                     Json     @default("{}")
   requirements             Json     @default("[]")
   visibilityRequirements   Json     @default("[]")
+  levelUpModalDefId        String?
 
   region            RegionDefinition? @relation(fields: [regionId], references: [id], onDelete: SetNull)
 

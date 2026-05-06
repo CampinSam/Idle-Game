@@ -17,6 +17,7 @@ import {
 } from '../../../../utils/locationProduction';
 import LootPop, { type LootPopItem } from '../../../../components/LootPop';
 import { useModal } from '../../../../context/ModalContext';
+import { useNotifications } from '../../../../context/NotificationContext';
 import { api } from '../../../../services/api';
 import { getRegionDisplay } from '@derp/shared';
 import BuildingCard from './components/BuildingCard';
@@ -37,7 +38,9 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const { pushModal } = useModal();
+  const { notifications, markRead } = useNotifications();
   const entities = useSyncEntities();
+  const autoOpenedLevelUpRef = useRef<Set<string>>(new Set());
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const syncItems = useAppSelector((s) => s.sync.items);
@@ -63,6 +66,30 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   }, [dispatch, currencyDefs.length, itemDefs.length]);
 
   useEffect(() => {
+    const match = notifications.find(
+      (n) =>
+        n.type === 'location_level_up' &&
+        !n.readAt &&
+        n.meta?.locationId === id &&
+        !autoOpenedLevelUpRef.current.has(n.id),
+    );
+    if (!match) return;
+    autoOpenedLevelUpRef.current.add(match.id);
+    (async () => {
+      try {
+        const spec = await api.getModalSpec({ locationId: id, levelUp: true, notificationId: match.id });
+        if (spec?.version === 1) pushModal(spec);
+        markRead([match.id]).catch(() => {});
+      } catch (err) {
+        console.error('[DerpOutpostPage] Failed to auto-open level-up modal:', err);
+      }
+    })();
+  }, [notifications, id, pushModal, markRead]);
+
+  // Refetch whenever the outpost level changes too — newly unlocked
+  // buildings (from rules.level[].buildings.allowed) only become visible
+  // here after this list refreshes, so a level-up must invalidate it.
+  useEffect(() => {
     let cancelled = false;
     setLoadingAvailable(true);
     api.getAvailableBuildings(id)
@@ -74,7 +101,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         if (!cancelled) setLoadingAvailable(false);
       });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, outpost.level]);
 
   const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
   const regionName = regionDisplay.displayName;
@@ -259,17 +286,49 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           <div className="od-badges">
             <span className="od-level-badge">Level {outpost.level}</span>
           </div>
-          {outpost.xp != null && (
-            <div className="od-xp-bar-wrap">
-              <div className="od-xp-bar-track">
-                <div
-                  className="od-xp-bar-fill"
-                  style={{ width: `${Math.min(100, Math.max(0, Number(outpost.xp || 0) % 100))}%` }}
-                />
+          {outpost.xp != null && (() => {
+            const xpNum = Number(outpost.xp || 0);
+            const xpToNext = Number((outpost as any).xpToNext || 0);
+            const maxLevel = Number((outpost as any).maxLevel || 0);
+            const isMax = maxLevel > 0 && Number(outpost.level) >= maxLevel;
+            const pct = isMax ? 100 : (xpToNext > 0 ? (xpNum / xpToNext) * 100 : 0);
+            return (
+              <div className="od-xp-bar-wrap">
+                <div className="od-xp-bar-track">
+                  <div
+                    className="od-xp-bar-fill"
+                    style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                  />
+                </div>
+                <span className="od-xp-bar-label">
+                  {isMax ? 'XP MAX' : `XP ${formatAmount(xpNum)} / ${formatAmount(xpToNext)}`}
+                </span>
               </div>
-              <span className="od-xp-bar-label">XP {formatAmount(Number(outpost.xp || 0))}</span>
-            </div>
-          )}
+            );
+          })()}
+          {(() => {
+            const maxLevel = Number((outpost as any).maxLevel || 0);
+            const isMax = maxLevel > 0 && Number(outpost.level) >= maxLevel;
+            return (
+              <button
+                type="button"
+                className="od-xp-deposit-btn"
+                disabled={isMax}
+                title={isMax ? 'Outpost is at max level' : undefined}
+                onClick={async () => {
+                  if (isMax) return;
+                  try {
+                    const spec = await api.getModalSpec({ locationId: id, depositXp: true });
+                    if (spec?.version === 1) pushModal(spec);
+                  } catch (err: any) {
+                    console.error('[DerpOutpostPage] Failed to load deposit XP modal:', err);
+                  }
+                }}
+              >
+                {isMax ? 'Max Level' : '＋ Deposit XP'}
+              </button>
+            );
+          })()}
         </div>
       </div>
 

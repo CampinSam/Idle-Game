@@ -349,7 +349,10 @@ Defines a type of player-owned location (outpost). Locations contain buildings, 
 | `productionProfile` | JSON | No | `{}` | Additional production configuration |
 | `requirements` | JSON | No | `[]` | Conditions to acquire this location (see [Requirements](#requirements)) |
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for this location to appear (see [Visibility Requirements](#visibility-requirements)) |
+| `levelUpModalDefId` | string | No | — | Optional `ModalDef.id`. When set, its spec is merged into the auto-generated outpost level-up modal (header/body overrides + replaced buttons) so designers can theme each outpost's celebration. |
 | `data` | JSON | No | `{}` | Freeform extra data |
+
+**Outpost XP & level-up.** Players grow an outpost by spending resources via the `DepositLocationXp` command. Cost options are configured under `rules.xpDepositCosts` (see [LevelRules](#levelrules-structure)) and default to `[{ "type": "currency", "id": "hard_essence", "amount": 1, "xpPerCharge": 1 }]` when omitted. XP thresholds use the same `rules.maxLevel` / `rules.xpCurve` / `rules.baseXP` / `rules.xpRate` / `rules.level[].xpThreshold` knobs as every other levelable definition. On level-up the server: recalculates location meta, records a `location_level_up` telemetry event, and emits a `LOCATION_LEVEL_UP` notification (groupKey `location_level_up:${locationId}`, deepLink `/locations/:id`) so the frontend can auto-open the celebration modal.
 
 **Example rules (unified format):**
 
@@ -2183,6 +2186,7 @@ The top-level `rules` JSON on any definition:
 | `xpCurve` | string | `exp` | XP curve type: `linear`, `exp`, or `custom` |
 | `baseXP` | number | 100 | Base XP required for first level-up |
 | `xpRate` | number | 1.5 | Growth rate for XP curve |
+| `xpDepositCosts` | array | — | (LocationDefinition only) Cost options exposed by the deposit-XP modal. Each entry: `{ "type": "currency"\|"item", "id": string, "amount": number, "xpPerCharge"?: number }`. Defaults to one option spending `1× hard_essence` for `+1 XP`. |
 | `level` | object | `{}` | Map of level number (as string) → LevelBlock |
 
 **Sparse level entries inherit downward.** If level 1 defines `workers: { slots: 2 }` and level 5 defines `workers: { slots: 3 }`, then levels 2-4 use `slots: 2`. Resolution is done via `resolveLevelConfig()` which deep-merges all level blocks from 1 up to the current level.
