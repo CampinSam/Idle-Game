@@ -13,11 +13,26 @@
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .game-image--loaded .game-image__img {
   opacity: 1;
+}
+
+/* Low-res placeholder: pinned beneath the main image, painted instantly
+   from the browser cache so navigating list -> detail has no skeleton
+   flash. The main img crossfades on top once it loads. */
+.game-image__placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .game-image__skeleton {

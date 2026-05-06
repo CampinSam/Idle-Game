@@ -138,6 +138,11 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           <div className="entity-detail__portrait-wrap">
             <GameImage
               src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'full')}
+              // Same thumb URL the entities list painted — already in the
+              // browser cache on tap-through, so the detail page shows the
+              // portrait on the first frame and the full-res image just
+              // crossfades in once it finishes downloading.
+              placeholderSrc={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
               category="entities"
               alt={entity.name}
               fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
