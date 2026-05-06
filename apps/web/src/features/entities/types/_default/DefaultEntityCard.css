@@ -314,6 +314,39 @@
   white-space: normal;
 }
 
+.entity-card__crafting-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-card__crafting-portrait-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.entity-card__crafting-portrait {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  border-radius: 50% !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+.entity-card__crafting-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .entity-card__meta {
   font-size: 11px;
   color: #94a3b8;

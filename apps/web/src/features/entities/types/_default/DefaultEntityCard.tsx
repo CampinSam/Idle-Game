@@ -125,8 +125,24 @@ export default function DefaultEntityCard({
   if (useCase === 'crafting') {
     return (
       <button type="button" className={cls} onClick={handleClick} disabled={disabled}>
-        <div className="entity-card__name">{entity.name}</div>
-        <div className="entity-card__meta">Lvl {entity.level}</div>
+        <div className="entity-card__crafting-head">
+          <div
+            className="entity-card__crafting-portrait-wrap"
+            style={{ background: archetypeDisplay.gradient }}
+          >
+            <GameImage
+              src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
+              category="entities"
+              alt={entity.name}
+              fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+              className="entity-card__portrait entity-card__crafting-portrait"
+            />
+          </div>
+          <div className="entity-card__crafting-id">
+            <div className="entity-card__name">{entity.name}</div>
+            <div className="entity-card__meta">Lvl {entity.level}</div>
+          </div>
+        </div>
         {forecast && (
           <div className="entity-card__forecast">
             <span className="entity-card__cl">CL {forecast.craftingLuck.toFixed(0)}</span>

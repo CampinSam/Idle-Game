@@ -9,7 +9,7 @@
   overscroll-behavior: contain;
   gap: 18px;
   padding-top: var(--page-top-gap);
-  padding-bottom: 96px;
+  padding-bottom: 16px;
   background: linear-gradient(180deg, #1a1350 0%, #13103a 100%);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -63,8 +63,10 @@
   to { opacity: 1; transform: translateY(0); }
 }
 /* Reserve room under the floating pill so scrollIntoView jumps (e.g. the
- * Empty Crucible shortcut to the codex) land below it, not behind it. */
-body.forge-floating-back-active .content {
+ * Empty Crucible shortcut to the codex) land below it, not behind it.
+ * The forge-scene is the actual scroll container (per the page-layout
+ * contract), not .content — apply scroll-padding to it. */
+body.forge-floating-back-active .forge-scene {
   scroll-padding-top: 110px;
 }
 .forge-hero-content {
@@ -675,6 +677,18 @@ body.forge-floating-back-active .content {
   line-height: 1;
 }
 .forge-sheet-close:hover { background: rgba(0,0,0,0.7); }
+
+/* The recipe sheet itself is the scroll container — its inner EntityList
+ * must not become a second nested scroll surface (its default
+ * `flex:1; min-height:0; overflow-y:auto` collapses inside the sheet's
+ * flex column and breaks scrolling). Let the picker grow naturally and
+ * scroll with the sheet. */
+.forge-sheet .entity-list {
+  flex: none;
+  min-height: 0;
+  overflow: visible;
+  -webkit-overflow-scrolling: auto;
+}
 
 @keyframes forgeSheetFadeIn {
   from { opacity: 0; }
