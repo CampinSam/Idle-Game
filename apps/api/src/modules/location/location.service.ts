@@ -21,19 +21,15 @@ import {
   resolveAllowedBuildings,
   calcGrowth,
   calcXpForLevel,
+  diffLocationLevelUnlocks,
   LevelRules,
+  LocationLevelUnlocks as LevelConfigLocationLevelUnlocks,
 } from "../game-rules/level-config.util";
 
 import { DEFAULT_XP_DEPOSIT_COST, LocationXpCostOption } from './location-xp.constants';
 export { LocationXpCostOption };
 
-export interface LocationLevelUnlocks {
-  workerSlotsAdded: number;
-  buildingSlotsAdded: number;
-  newAllowedBuildings: string[];
-  newAllowedRooms: string[];
-  storageAdded: Array<{ type: string; id: string; addedCapacity: number }>;
-}
+export type LocationLevelUnlocks = LevelConfigLocationLevelUnlocks;
 
 export interface AddLocationXpResult {
   location: any;
@@ -55,51 +51,6 @@ export interface AddLocationXpResult {
    * cost for this clamped count is what was actually spent.
    */
   chargesApplied: number;
-}
-
-function diffLocationLevelUnlocks(
-  rules: LevelRules,
-  fromLevel: number,
-  toLevel: number,
-): LocationLevelUnlocks {
-  const fromCfg = resolveLevelConfig(rules, fromLevel);
-  const toCfg = resolveLevelConfig(rules, toLevel);
-
-  const fromAllowedB = new Set(
-    (fromCfg.buildings?.allowed || []).map((a: any) => a.buildingDefId),
-  );
-  const newAllowedBuildings = (toCfg.buildings?.allowed || [])
-    .map((a: any) => a.buildingDefId)
-    .filter((id: string) => id && !fromAllowedB.has(id));
-
-  const fromAllowedR = new Set(
-    (fromCfg.rooms?.allowed || []).map((a: any) => a.roomDefId),
-  );
-  const newAllowedRooms = (toCfg.rooms?.allowed || [])
-    .map((a: any) => a.roomDefId)
-    .filter((id: string) => id && !fromAllowedR.has(id));
-
-  const fromStorage = new Map<string, number>();
-  for (const s of (fromCfg.storage as any[]) || []) {
-    if (s?.id) fromStorage.set(`${s.type}:${s.id}`, Number(s.baseCapacity ?? 0));
-  }
-  const storageAdded: Array<{ type: string; id: string; addedCapacity: number }> = [];
-  for (const s of (toCfg.storage as any[]) || []) {
-    if (!s?.id) continue;
-    const key = `${s.type}:${s.id}`;
-    const before = fromStorage.get(key) ?? 0;
-    const after = Number(s.baseCapacity ?? 0);
-    const delta = after - before;
-    if (delta > 0) storageAdded.push({ type: s.type, id: s.id, addedCapacity: delta });
-  }
-
-  return {
-    workerSlotsAdded: Math.max(0, (toCfg.workers?.slots ?? 0) - (fromCfg.workers?.slots ?? 0)),
-    buildingSlotsAdded: Math.max(0, (toCfg.buildings?.slots ?? 0) - (fromCfg.buildings?.slots ?? 0)),
-    newAllowedBuildings,
-    newAllowedRooms,
-    storageAdded,
-  };
 }
 
 @Injectable()
@@ -257,6 +208,7 @@ export class LocationService {
             newAllowedBuildings: [],
             newAllowedRooms: [],
             storageAdded: [],
+            productionAdded: [],
           };
 
       // Always record the deposit itself for analytics (level-ups get a

@@ -45,12 +45,26 @@ function mergeLocationUnlocks(prev: any, next: any): any {
     }
   }
 
+  const productionMap = new Map<string, { type: string; id: string; addedRate: number }>();
+  for (const arr of [a.productionAdded, b.productionAdded]) {
+    if (!Array.isArray(arr)) continue;
+    for (const p of arr) {
+      if (!p || typeof p.id !== 'string' || typeof p.type !== 'string') continue;
+      const key = `${p.type}:${p.id}`;
+      const cur = productionMap.get(key);
+      const add = Number(p.addedRate ?? 0);
+      if (cur) cur.addedRate += add;
+      else productionMap.set(key, { type: p.type, id: p.id, addedRate: add });
+    }
+  }
+
   return {
     workerSlotsAdded: Number(a.workerSlotsAdded ?? 0) + Number(b.workerSlotsAdded ?? 0),
     buildingSlotsAdded: Number(a.buildingSlotsAdded ?? 0) + Number(b.buildingSlotsAdded ?? 0),
     newAllowedBuildings: unionIds(a.newAllowedBuildings, b.newAllowedBuildings),
     newAllowedRooms: unionIds(a.newAllowedRooms, b.newAllowedRooms),
     storageAdded: Array.from(storageMap.values()),
+    productionAdded: Array.from(productionMap.values()),
   };
 }
 

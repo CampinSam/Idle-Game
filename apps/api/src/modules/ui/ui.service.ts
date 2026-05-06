@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
-import { calcXpForLevel } from '../game-rules/level-config.util';
+import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 
@@ -889,7 +889,6 @@ export class UiService {
 
     let fromLevel = location.level;
     let toLevel = location.level;
-    let unlocks: any = null;
 
     if (notificationId) {
       const notif = await this.prisma.notification.findFirst({
@@ -899,7 +898,6 @@ export class UiService {
         const meta = (notif.meta as any) || {};
         if (typeof meta.fromLevel === 'number') fromLevel = meta.fromLevel;
         if (typeof meta.toLevel === 'number') toLevel = meta.toLevel;
-        if (meta.unlocks && typeof meta.unlocks === 'object') unlocks = meta.unlocks;
         if (!notif.readAt) {
           try {
             await this.prisma.notification.update({
@@ -913,31 +911,78 @@ export class UiService {
       }
     }
 
-    const unlockRows: Array<{ label: string; value: string }> = [];
-    if (unlocks) {
-      if (Number(unlocks.workerSlotsAdded) > 0) {
-        unlockRows.push({ label: 'Worker Slots', value: `+${unlocks.workerSlotsAdded}` });
-      }
-      if (Number(unlocks.buildingSlotsAdded) > 0) {
-        unlockRows.push({ label: 'Building Slots', value: `+${unlocks.buildingSlotsAdded}` });
-      }
-      if (Array.isArray(unlocks.newAllowedBuildings) && unlocks.newAllowedBuildings.length > 0) {
-        unlockRows.push({ label: 'New Buildings', value: unlocks.newAllowedBuildings.join(', ') });
-      }
-      if (Array.isArray(unlocks.newAllowedRooms) && unlocks.newAllowedRooms.length > 0) {
-        unlockRows.push({ label: 'New Rooms', value: unlocks.newAllowedRooms.join(', ') });
-      }
-      if (Array.isArray(unlocks.storageAdded) && unlocks.storageAdded.length > 0) {
-        for (const s of unlocks.storageAdded) {
-          unlockRows.push({ label: `+${s.id} storage`, value: `+${s.addedCapacity}` });
-        }
+    const def = location.definition as any;
+    const rules = (def?.rules as any) || {};
+
+    let unlocks: LocationLevelUnlocks = {
+      workerSlotsAdded: 0,
+      buildingSlotsAdded: 0,
+      newAllowedBuildings: [],
+      newAllowedRooms: [],
+      storageAdded: [],
+      productionAdded: [],
+    };
+    if (toLevel > fromLevel) {
+      try {
+        unlocks = diffLocationLevelUnlocks(rules, fromLevel, toLevel);
+      } catch (err) {
+        this.logger.warn(`Failed to diff location level unlocks for ${locationId}: ${err}`);
       }
     }
+
+    const buildingIds = unlocks.newAllowedBuildings;
+    const roomIds = unlocks.newAllowedRooms;
+    const [buildingDefs, roomDefs] = await Promise.all([
+      buildingIds.length > 0
+        ? (this.prisma as any).buildingDef.findMany({
+            where: { id: { in: buildingIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([] as any[]),
+      roomIds.length > 0
+        ? (this.prisma as any).roomDef.findMany({
+            where: { id: { in: roomIds } },
+            select: { id: true, name: true },
+          })
+        : Promise.resolve([] as any[]),
+    ]);
+    const buildingNameById = new Map<string, string>(
+      (buildingDefs as any[]).map((b) => [b.id, b.name || b.id]),
+    );
+    const roomNameById = new Map<string, string>(
+      (roomDefs as any[]).map((r) => [r.id, r.name || r.id]),
+    );
+
+    const bullets: string[] = [];
+    if (unlocks.workerSlotsAdded > 0) {
+      bullets.push(
+        `+${unlocks.workerSlotsAdded} worker slot${unlocks.workerSlotsAdded === 1 ? '' : 's'}`,
+      );
+    }
+    if (unlocks.buildingSlotsAdded > 0) {
+      bullets.push(
+        `+${unlocks.buildingSlotsAdded} building slot${unlocks.buildingSlotsAdded === 1 ? '' : 's'}`,
+      );
+    }
+    for (const id of buildingIds) {
+      bullets.push(`Unlocked: ${buildingNameById.get(id) ?? id}`);
+    }
+    for (const id of roomIds) {
+      bullets.push(`Unlocked room: ${roomNameById.get(id) ?? id}`);
+    }
+    for (const s of unlocks.storageAdded) {
+      bullets.push(`+${s.addedCapacity} ${s.id} storage`);
+    }
+    for (const p of unlocks.productionAdded) {
+      bullets.push(`+${p.addedRate}/hr ${p.id} production`);
+    }
+
+    const headline = `${def?.name || location.definitionId || 'Your outpost'} reached Level ${toLevel}!`;
 
     const body: any[] = [
       {
         type: 'richText',
-        doc: [{ t: 'p', c: [{ t: 'text', v: `${location.definitionId || 'Your outpost'} reached Level ${toLevel}!` }] }],
+        doc: [{ t: 'p', c: [{ t: 'text', v: headline }] }],
       },
       {
         type: 'metaRows',
@@ -947,12 +992,20 @@ export class UiService {
         ],
       },
     ];
-    if (unlockRows.length > 0) {
+    if (bullets.length > 0) {
       body.push({
         type: 'richText',
-        doc: [{ t: 'p', c: [{ t: 'em', c: [{ t: 'text', v: 'Unlocks' }] }] }],
+        doc: [
+          { t: 'p', c: [{ t: 'strong', c: [{ t: 'text', v: 'Unlocks' }] }] },
+          {
+            t: 'ul',
+            c: bullets.map((line) => ({
+              t: 'li',
+              c: [{ t: 'text', v: line }],
+            })),
+          },
+        ],
       });
-      body.push({ type: 'metaRows', rows: unlockRows });
     }
 
     const generated: any = {
@@ -970,7 +1023,6 @@ export class UiService {
       ],
     };
 
-    const def = location.definition as any;
     const modalDefId = def?.levelUpModalDefId;
     if (modalDefId) {
       const spec = await this.resolveModalDef(modalDefId);
@@ -988,7 +1040,7 @@ export class UiService {
           fromLevel,
           toLevel,
           options: [],
-          unlocks: unlocks || {},
+          unlocks: unlocks as unknown as Record<string, unknown>,
         };
         return this.mergeModalDefSpec(generated, spec, ctx);
       }
