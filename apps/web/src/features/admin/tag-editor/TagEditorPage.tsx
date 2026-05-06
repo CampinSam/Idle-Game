@@ -64,7 +64,7 @@ function TagPreview({ tag, effect }: { tag: TagDef; effect: VisualEffectDef | nu
     opacity: tag.opacity,
     fontSize: tag.fontSize || undefined,
   };
-  const fxClass = effect ? `fx-host fx-${effect.cssAnimation}` : '';
+  const fxClass = effect ? `fx-host fx-${effect.cssAnimation} fx-shape-pill` : '';
   const fxStyle: CSSProperties = effect
     ? ({
         '--fx-duration': `${effect.durationMs}ms`,
@@ -92,7 +92,7 @@ function EffectPreview({ effect }: { effect: VisualEffectDef }) {
     '--fx-max-scale': effect.params?.maxScale ?? undefined,
   } as CSSProperties;
   return (
-    <span className={`fx-host fx-${effect.cssAnimation}`} style={fxStyle}>
+    <span className={`fx-host fx-${effect.cssAnimation}`} style={{ ...fxStyle, borderRadius: 6 }}>
       <span className="tag-editor-effect-swatch">A</span>
     </span>
   );
