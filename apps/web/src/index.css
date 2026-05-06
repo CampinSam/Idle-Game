@@ -22,8 +22,8 @@
   display: inline-block;
   vertical-align: middle;
   object-fit: contain;
-  max-width: 128px;
-  max-height: 128px;
+  max-width: 64px;
+  max-height: 64px;
 }
 
 body {
