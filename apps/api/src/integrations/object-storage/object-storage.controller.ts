@@ -1,7 +1,39 @@
 import { Controller, Get, Param, Res, Logger, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ObjectStorageService } from './objectStorage';
 import { NftImageImportService } from '../../modules/nft/nft-image-import.service';
+
+const STATIC_DIR = path.resolve(__dirname, '../../../static');
+
+const MIME_BY_EXT: Record<string, string> = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
+
+function serveLocalFile(filePath: string, res: Response): boolean {
+  const candidates = [
+    path.join(STATIC_DIR, filePath),
+    path.join(STATIC_DIR, filePath.replace(/\.[^.]+$/, '.svg')),
+    path.join(STATIC_DIR, filePath.replace(/\.[^.]+$/, '.png')),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      const ext = path.extname(candidate).toLowerCase();
+      const contentType = MIME_BY_EXT[ext] || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      fs.createReadStream(candidate).pipe(res);
+      return true;
+    }
+  }
+  return false;
+}
 
 const NFT_THUMB_SUFFIX = '.thumb.webp';
 const NFT_PREFIX = 'nft/cardano/';
@@ -55,6 +87,7 @@ export class ObjectStorageController {
       }
 
       if (!file) {
+        if (serveLocalFile(filePath, res)) return;
         return res.status(404).json({ error: 'Asset not found' });
       }
       await this.storageService.downloadObject(file, res, 86400);

@@ -258,7 +258,7 @@ export class UiService {
         items: rewards.map((r: any) => ({
           name: this.resolveRewardName(r),
           qty: r.amount ?? 1,
-          assetKey: r.key ? `icons/${r.key}` : undefined,
+          assetKey: r.key ? `icons/${r.key}` : this.resolveSystemRewardAssetKey(r.type),
         })),
       });
     }
@@ -594,6 +594,14 @@ export class UiService {
         { id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } },
       ],
     };
+  }
+
+  private resolveSystemRewardAssetKey(type: string | undefined): string | undefined {
+    const map: Record<string, string> = {
+      entity_xp: 'images/icons/entity_xp.svg',
+      keeper_xp: 'images/icons/keeper_xp.svg',
+    };
+    return type ? map[type] : undefined;
   }
 
   private resolveRewardName(r: any): string {

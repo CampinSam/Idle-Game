@@ -1,3 +1,23 @@
+/**
+ * Icon keys for built-in reward types that have no dynamic `r.key`.
+ * Values are bucket-relative paths served via the static fallback in the
+ * media controller, so they resolve through the normal resolveAssetUrl
+ * pipeline at runtime.
+ */
+export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
+  entity_xp: 'images/icons/entity_xp.svg',
+  keeper_xp: 'images/icons/keeper_xp.svg',
+};
+
+/**
+ * Returns a media-compatible asset key for a known system reward type, or
+ * undefined when the type has no registered icon.
+ */
+export function resolveSystemRewardIcon(type: string | null | undefined): string | undefined {
+  if (!type) return undefined;
+  return REWARD_TYPE_ICON_MAP[type];
+}
+
 // One mental model for media: the value you save IS the path under the bucket.
 //   "/images/foo.png"  → /media/images/foo.png            (bucket lookup)
 //   "/audio/click.mp3" → /media/audio/click.mp3
