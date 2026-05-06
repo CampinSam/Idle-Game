@@ -1,4 +1,4 @@
-.forge-scene {
+.forge-page {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -15,14 +15,50 @@
   border-radius: 16px;
 }
 
-/* Hero */
+/* ── Sticky back bar ────────────────────────────────────────────────────────
+ * The forge-page IS the scroll container (multi-card layout contract).
+ * Its top edge sits right below the game's fixed top bar at ~60px from the
+ * viewport top. top:0 therefore sticks this bar at y≈60px — always visible
+ * directly beneath the top bar without overlapping it. */
+.forge-sticky-back {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(12, 10, 26, 0.90);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px 16px 0 0;
+  margin: calc(0px - var(--page-top-gap)) 0 0;
+}
+
+.forge-back-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f3ff;
+  border: 1px solid rgba(245, 243, 255, 0.18);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.forge-back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(245, 243, 255, 0.35);
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
 .forge-hero {
   position: relative;
   border-bottom: 1px solid rgba(249, 115, 22, 0.55);
   background-size: cover;
   background-position: center;
   overflow: hidden;
-  min-height: 220px;
+  min-height: 200px;
   flex-shrink: 0;
   isolation: isolate;
   padding-bottom: 24px;
@@ -32,48 +68,10 @@
   inset: 0;
   z-index: 0;
 }
-.forge-back-pill {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 2;
-  background: rgba(12, 10, 26, 0.55);
-  color: #f5f3ff;
-  border: 1px solid rgba(245, 243, 255, 0.25);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-}
-.forge-back-pill:hover { background: rgba(12, 10, 26, 0.75); }
-
-/* Floating variant — sits below the global fixed top bar (z 90, ~60px)
- * and below the recipe sheet/backdrop (z 50/51). */
-.forge-back-pill-floating {
-  position: fixed;
-  top: calc(72px + env(safe-area-inset-top, 0px));
-  left: 16px;
-  z-index: 40;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-  background: rgba(12, 10, 26, 0.82);
-  animation: forgeFloatingBackIn 0.18s ease forwards;
-}
-@keyframes forgeFloatingBackIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-/* Reserve room under the floating pill so scrollIntoView jumps (e.g. the
- * Empty Crucible shortcut to the codex) land below it, not behind it.
- * The forge-scene is the actual scroll container (per the page-layout
- * contract), not .content — apply scroll-padding to it. */
-body.forge-floating-back-active .forge-scene {
-  scroll-padding-top: 110px;
-}
 .forge-hero-content {
   position: relative;
   z-index: 1;
-  padding: 60px 22px 40px;
+  padding: 22px 22px 40px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -126,40 +124,15 @@ body.forge-floating-back-active .forge-scene {
   -webkit-backdrop-filter: blur(6px);
   white-space: nowrap;
 }
-.forge-pill-tier.tier-1 {
-  border-color: rgba(148, 163, 184, 0.55);
-  color: #e2e8f0;
-}
-.forge-pill-tier.tier-2 {
-  border-color: rgba(96, 165, 250, 0.65);
-  color: #bfdbfe;
-  box-shadow: 0 0 12px rgba(96, 165, 250, 0.22);
-}
-.forge-pill-tier.tier-3 {
-  border-color: rgba(192, 132, 252, 0.7);
-  color: #e9d5ff;
-  box-shadow: 0 0 14px rgba(192, 132, 252, 0.3);
-}
-.forge-pill-slots {
-  border-color: rgba(249, 115, 22, 0.5);
-  color: #fed7aa;
-}
-.forge-pill-slots.is-full {
-  border-color: rgba(239, 68, 68, 0.6);
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.18);
-}
-.forge-pill-timer.is-bonus {
-  border-color: rgba(34, 197, 94, 0.55);
-  color: #bbf7d0;
-  background: rgba(34, 197, 94, 0.14);
-}
-.forge-pill-timer.is-base {
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #cbd5e1;
-}
+.forge-pill-tier.tier-1 { border-color: rgba(148, 163, 184, 0.55); color: #e2e8f0; }
+.forge-pill-tier.tier-2 { border-color: rgba(96, 165, 250, 0.65); color: #bfdbfe; box-shadow: 0 0 12px rgba(96, 165, 250, 0.22); }
+.forge-pill-tier.tier-3 { border-color: rgba(192, 132, 252, 0.7); color: #e9d5ff; box-shadow: 0 0 14px rgba(192, 132, 252, 0.3); }
+.forge-pill-slots { border-color: rgba(249, 115, 22, 0.5); color: #fed7aa; }
+.forge-pill-slots.is-full { border-color: rgba(239, 68, 68, 0.6); color: #fecaca; background: rgba(239, 68, 68, 0.18); }
+.forge-pill-timer.is-bonus { border-color: rgba(34, 197, 94, 0.55); color: #bbf7d0; background: rgba(34, 197, 94, 0.14); }
+.forge-pill-timer.is-base { border-color: rgba(255, 255, 255, 0.18); color: #cbd5e1; }
 
-/* Generic section */
+/* ── Generic section ────────────────────────────────────────────────────── */
 .forge-section {
   position: relative;
   background: rgba(15, 12, 38, 0.6);
@@ -173,11 +146,7 @@ body.forge-floating-back-active .forge-scene {
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.forge-section-head h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #f5f3ff;
-}
+.forge-section-head h2 { margin: 0; font-size: 18px; color: #f5f3ff; }
 .forge-section-sub {
   font-size: 12px;
   color: #94a3b8;
@@ -204,7 +173,7 @@ body.forge-floating-back-active .forge-scene {
   font-size: 13px;
 }
 
-/* Active jobs */
+/* ── Active jobs ────────────────────────────────────────────────────────── */
 .forge-jobs {
   display: flex;
   flex-direction: column;
@@ -220,18 +189,9 @@ body.forge-floating-back-active .forge-scene {
   border-radius: 12px;
   color: #f5f3ff;
 }
-.forge-job-card.ready {
-  border-color: rgba(34, 197, 94, 0.6);
-  background: rgba(34, 197, 94, 0.12);
-}
-.forge-job-card.tier-2 {
-  border-color: rgba(96, 165, 250, 0.55);
-  box-shadow: 0 0 14px rgba(96, 165, 250, 0.25), inset 0 0 12px rgba(96, 165, 250, 0.08);
-}
-.forge-job-card.tier-3 {
-  border-color: rgba(192, 132, 252, 0.6);
-  box-shadow: 0 0 18px rgba(192, 132, 252, 0.3), inset 0 0 14px rgba(192, 132, 252, 0.1);
-}
+.forge-job-card.ready { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.12); }
+.forge-job-card.tier-2 { border-color: rgba(96, 165, 250, 0.55); box-shadow: 0 0 14px rgba(96, 165, 250, 0.25), inset 0 0 12px rgba(96, 165, 250, 0.08); }
+.forge-job-card.tier-3 { border-color: rgba(192, 132, 252, 0.6); box-shadow: 0 0 18px rgba(192, 132, 252, 0.3), inset 0 0 14px rgba(192, 132, 252, 0.1); }
 .forge-job-card.is-focused {
   outline: 2px solid #fbbf24;
   outline-offset: 2px;
@@ -243,12 +203,7 @@ body.forge-floating-back-active .forge-scene {
   100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
 }
 .forge-job-name { font-weight: 700; }
-.forge-job-entity {
-  font-size: 12px;
-  color: #cbd5e1;
-  margin-top: 2px;
-  letter-spacing: 0.02em;
-}
+.forge-job-entity { font-size: 12px; color: #cbd5e1; margin-top: 2px; letter-spacing: 0.02em; }
 .forge-job-info { flex: 1 1 auto; min-width: 0; }
 .forge-job-time { color: #cbd5e1; font-variant-numeric: tabular-nums; }
 .forge-job-portrait {
@@ -264,37 +219,11 @@ body.forge-floating-back-active .forge-scene {
   background: rgba(15, 12, 35, 0.85);
   overflow: hidden;
 }
-.forge-job-portrait img {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-.forge-job-portrait-initial {
-  font-size: 22px;
-  font-weight: 800;
-  color: #f5f3ff;
-  letter-spacing: 0.02em;
-  z-index: 1;
-}
-.forge-job-ring {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  transform: rotate(-90deg);
-}
-.forge-job-ring-track {
-  fill: none;
-  stroke: rgba(139, 92, 246, 0.18);
-  stroke-width: 4;
-}
-.forge-job-ring-fill {
-  fill: none;
-  stroke: #f97316;
-  stroke-width: 4;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.4s linear;
-}
+.forge-job-portrait img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.forge-job-portrait-initial { font-size: 22px; font-weight: 800; color: #f5f3ff; letter-spacing: 0.02em; z-index: 1; }
+.forge-job-ring { position: absolute; inset: 0; pointer-events: none; transform: rotate(-90deg); }
+.forge-job-ring-track { fill: none; stroke: rgba(139, 92, 246, 0.18); stroke-width: 4; }
+.forge-job-ring-fill { fill: none; stroke: #f97316; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.4s linear; }
 .forge-job-card.tier-2 .forge-job-ring-fill { stroke: #60a5fa; }
 .forge-job-card.tier-3 .forge-job-ring-fill { stroke: #c084fc; }
 .forge-job-card.ready .forge-job-ring-fill { stroke: #22c55e; }
@@ -306,9 +235,7 @@ body.forge-floating-back-active .forge-scene {
   box-shadow: 0 0 18px rgba(34, 197, 94, 0.35), inset 0 0 14px rgba(34, 197, 94, 0.12);
 }
 .forge-job-card.ready.tier-2 .forge-job-ring-fill,
-.forge-job-card.ready.tier-3 .forge-job-ring-fill {
-  stroke: #22c55e;
-}
+.forge-job-card.ready.tier-3 .forge-job-ring-fill { stroke: #22c55e; }
 .forge-collect-btn {
   background: #16a34a;
   color: #fff;
@@ -321,18 +248,247 @@ body.forge-floating-back-active .forge-scene {
   cursor: pointer;
 }
 
-/* Recipe grid */
+/* ── Crucible tracks container ──────────────────────────────────────────── */
+.forge-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Individual crucible track ──────────────────────────────────────────── */
+.forge-track {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: rgba(20, 16, 50, 0.55);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 14px;
+}
+
+/* Two selector cards side by side, separated by a "+" glyph */
+.forge-track-selectors {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.forge-track-slot {
+  flex: 1;
+  min-width: 0;
+}
+.forge-track-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.3);
+  user-select: none;
+}
+
+/* ── Empty slot prompt ──────────────────────────────────────────────────── */
+.forge-slot-prompt {
+  width: 100%;
+  height: 100%;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  padding: 12px 8px;
+}
+.forge-slot-prompt:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+}
+.forge-slot-prompt.is-open {
+  border-color: rgba(249, 115, 22, 0.6);
+  background: rgba(249, 115, 22, 0.08);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.18);
+}
+.forge-slot-prompt--recipe {
+  border-color: rgba(249, 115, 22, 0.25);
+}
+.forge-slot-prompt--recipe:hover,
+.forge-slot-prompt--recipe.is-open {
+  border-color: rgba(249, 115, 22, 0.65);
+  background: rgba(249, 115, 22, 0.08);
+}
+.forge-slot-prompt--entity {
+  border-color: rgba(139, 92, 246, 0.25);
+}
+.forge-slot-prompt--entity:hover {
+  border-color: rgba(139, 92, 246, 0.55);
+  background: rgba(139, 92, 246, 0.07);
+}
+.forge-slot-prompt--entity.is-open {
+  border-color: rgba(139, 92, 246, 0.65);
+  background: rgba(139, 92, 246, 0.09);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+}
+.forge-slot-prompt__icon {
+  font-size: 22px;
+  line-height: 1;
+  opacity: 0.75;
+}
+.forge-slot-prompt__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Filled slot cards ──────────────────────────────────────────────────── */
+.forge-slot-card {
+  width: 100%;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(34, 24, 88, 0.65));
+  cursor: pointer;
+  text-align: left;
+  color: #f5f3ff;
+  transition: filter 0.15s, box-shadow 0.15s;
+}
+.forge-slot-card:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.22);
+}
+.forge-slot-card--entity {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(34, 24, 88, 0.65));
+}
+.forge-slot-card--entity:hover {
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.22);
+}
+.forge-slot-card__eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(254, 215, 170, 0.65);
+  margin-bottom: 1px;
+}
+.forge-slot-card__title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff7ed;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.forge-slot-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+.forge-slot-card__change {
+  margin-top: auto;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.04em;
+}
+
+/* Entity selected card: portrait + info row */
+.forge-slot-card__entity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+.forge-slot-card__portrait {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(15, 12, 35, 0.85);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.forge-slot-card__portrait img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.forge-slot-card__portrait-initial {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f5f3ff;
+}
+.forge-slot-card__entity-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Picker panel (recipe or entity) ────────────────────────────────────── */
+.forge-track-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(10, 8, 28, 0.7);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 12px;
+}
+.forge-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.forge-picker-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #f5f3ff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.forge-picker-close {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.forge-picker-close:hover { background: rgba(0, 0, 0, 0.65); }
+
+/* ── Recipe grid ────────────────────────────────────────────────────────── */
 .forge-recipe-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
 }
-.forge-recipe-card-wrap {
-  position: relative;
-}
-.forge-recipe-card-wrap > .forge-recipe-card {
-  width: 100%;
-}
+.forge-recipe-card-wrap { position: relative; }
+.forge-recipe-card-wrap > .forge-recipe-card { width: 100%; }
 .forge-recipe-fav {
   position: absolute;
   top: 6px;
@@ -340,7 +496,7 @@ body.forge-floating-back-active .forge-scene {
   width: 28px;
   height: 28px;
   border: none;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   border-radius: 50%;
   color: #cbd5e1;
   font-size: 16px;
@@ -353,8 +509,8 @@ body.forge-floating-back-active .forge-scene {
   padding: 0;
   z-index: 2;
 }
-.forge-recipe-fav:hover { transform: scale(1.1); background: rgba(0,0,0,0.55); }
-.forge-recipe-fav.is-fav { color: #fbbf24; background: rgba(251,191,36,0.15); }
+.forge-recipe-fav:hover { transform: scale(1.1); background: rgba(0, 0, 0, 0.55); }
+.forge-recipe-fav.is-fav { color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
 .forge-codex-pill { white-space: nowrap; }
 .forge-recipe-card {
   text-align: left;
@@ -372,27 +528,11 @@ body.forge-floating-back-active .forge-scene {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(139, 92, 246, 0.3);
 }
-.forge-recipe-card.is-selected {
-  outline: 2px solid #f97316;
-  outline-offset: 2px;
-}
+.forge-recipe-card.is-selected { outline: 2px solid #f97316; outline-offset: 2px; }
 .forge-recipe-card.is-locked,
-.forge-recipe-card:disabled {
-  filter: grayscale(0.5);
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.forge-recipe-title {
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff7ed;
-  letter-spacing: 0.02em;
-}
-.forge-recipe-desc {
-  font-size: 12px;
-  line-height: 1.45;
-  color: #cbd5e1;
-}
+.forge-recipe-card:disabled { filter: grayscale(0.5); opacity: 0.6; cursor: not-allowed; }
+.forge-recipe-title { font-size: 15px; font-weight: 800; color: #fff7ed; letter-spacing: 0.02em; }
+.forge-recipe-desc { font-size: 12px; line-height: 1.45; color: #cbd5e1; }
 .forge-recipe-meta {
   display: flex;
   flex-wrap: wrap;
@@ -417,30 +557,67 @@ body.forge-floating-back-active .forge-scene {
   letter-spacing: 0.04em;
 }
 
-/* Assignment / forecast */
-.forge-assign {
-  border-color: rgba(249, 115, 22, 0.35);
-  overflow: hidden;
+/* ── Search + filter controls (inside picker) ───────────────────────────── */
+.forge-codex-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
-.forge-assign-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
+.forge-codex-search {
+  flex: 1 1 180px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
 }
-.forge-assign-inner {
-  position: relative;
-  z-index: 1;
+.forge-codex-search::placeholder { color: #94a3b8; }
+.forge-codex-search:focus { border-color: rgba(249, 115, 22, 0.85); box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.18); }
+.forge-codex-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.forge-codex-cat {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+}
+.forge-codex-cat:hover { border-color: rgba(249, 115, 22, 0.45); color: #fed7aa; }
+.forge-codex-cat.is-active {
+  background: rgba(249, 115, 22, 0.22);
+  border-color: rgba(249, 115, 22, 0.7);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Track footer: forecast + begin crafting ────────────────────────────── */
+.forge-track-footer {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  /* A small top gap below the sticky sheet header. */
-  margin-top: 10px;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(10, 8, 28, 0.65);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 12px;
 }
-.forge-assign-head h2 { margin: 0 0 4px; font-size: 18px; color: #fff7ed; }
-.forge-assign-head p { margin: 0; font-size: 13px; color: #fde68a; }
 
-/* Forecast bar */
+.forge-track-error {
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fecaca;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* ── Forecast bar ───────────────────────────────────────────────────────── */
 .forge-forecast-box {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
@@ -508,8 +685,35 @@ body.forge-floating-back-active .forge-scene {
   text-align: center;
 }
 
+.forge-forecast-probs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.forge-forecast-prob {
+  display: grid;
+  grid-template-columns: 80px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.forge-forecast-prob-label { font-weight: 600; letter-spacing: 0.04em; }
+.forge-forecast-prob-bar { height: 8px; background: rgba(255, 255, 255, 0.07); border-radius: 4px; overflow: hidden; }
+.forge-forecast-prob-fill { height: 100%; transition: width 0.4s ease; }
+.forge-forecast-prob-pct { text-align: right; font-variant-numeric: tabular-nums; color: #cbd5e1; }
+.forge-forecast-floor-note {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 8px;
+  color: #fed7aa;
+  font-size: 12px;
+}
+
+/* ── Begin Crafting button ──────────────────────────────────────────────── */
 .forge-start-btn {
-  margin-top: 4px;
   padding: 14px 18px;
   border-radius: 12px;
   border: 1px solid rgba(254, 215, 170, 0.55);
@@ -528,106 +732,11 @@ body.forge-floating-back-active .forge-scene {
 }
 .forge-start-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
-@media (max-width: 640px) {
-  .forge-hero { margin: 0 -4px 0; min-height: 180px; }
-  .forge-hero-content { padding: 48px 16px 32px; }
-  .forge-hero-title { font-size: 28px; }
-  .forge-section { padding: 12px; }
-  .forge-recipe-grid { grid-template-columns: 1fr 1fr; }
-}
-
-.forge-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  color: #fed7aa;
-  font-size: 14px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-}
-
-.forge-filter-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 8px 0 12px;
-}
-.forge-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(249, 115, 22, 0.18);
-  border: 1px solid rgba(249, 115, 22, 0.45);
-  color: #fed7aa;
-  padding: 6px 8px 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.forge-filter-chip strong { color: #fff; text-transform: capitalize; margin: 0 4px; }
-.forge-filter-chip button {
-  background: rgba(0,0,0,0.35);
-  border: none;
-  color: #fed7aa;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-}
-.forge-filter-chip button:hover { background: rgba(0,0,0,0.6); color: #fff; }
-.forge-link-btn {
-  background: none;
-  border: none;
-  color: #fbbf24;
-  text-decoration: underline;
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
-  margin-left: 4px;
-}
-
-
-.forge-forecast-probs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-}
-.forge-forecast-prob {
-  display: grid;
-  grid-template-columns: 80px 1fr 48px;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-}
-.forge-forecast-prob-label { font-weight: 600; letter-spacing: 0.04em; }
-.forge-forecast-prob-bar {
-  height: 8px;
-  background: rgba(255,255,255,0.07);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.forge-forecast-prob-fill { height: 100%; transition: width 0.4s ease; }
-.forge-forecast-prob-pct { text-align: right; font-variant-numeric: tabular-nums; color: #cbd5e1; }
-.forge-forecast-floor-note {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: rgba(249,115,22,0.12);
-  border: 1px solid rgba(249,115,22,0.35);
-  border-radius: 8px;
-  color: #fed7aa;
-  font-size: 12px;
-}
-
+/* ── Blocked reasons ────────────────────────────────────────────────────── */
 .forge-blocked-reasons {
   list-style: none;
   padding: 0;
-  margin: 8px 0 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -641,174 +750,26 @@ body.forge-floating-back-active .forge-scene {
   font-size: 12px;
 }
 
-.forge-sheet-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 6, 22, 0.65);
-  backdrop-filter: blur(6px);
-  z-index: 50;
-  animation: forgeSheetFadeIn 0.2s ease forwards;
-}
-.forge-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-  z-index: 51;
-  margin: 0;
-  border-radius: 18px 18px 0 0;
-  max-height: calc(100dvh - 60px - 64px - env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  animation: forgeSheetSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  box-shadow: 0 -16px 40px rgba(0,0,0,0.55);
-}
-/* Sticky header strip — stays pinned to the top of the sheet's scroll
- * viewport so the drag handle and close button are never scrolled behind
- * the game's fixed top bar.  The ::before draws the drag-handle notch. */
-.forge-sheet-header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
+/* ── Loading state ──────────────────────────────────────────────────────── */
+.forge-loading {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px 12px 8px;
-  /* Mask content scrolling underneath */
-  background: rgba(10, 8, 26, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  /* Counteract the section's 16px padding so the header spans edge-to-edge
-   * and the rounded top corners are cleanly covered. */
-  margin: -16px -16px 0;
-  border-radius: 18px 18px 0 0;
-}
-.forge-sheet-header::before {
-  content: '';
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.25);
-  pointer-events: none;
-}
-.forge-sheet-close {
-  background: rgba(0,0,0,0.45);
-  color: #fff;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 22px;
-  cursor: pointer;
-  z-index: 2;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.forge-sheet-close:hover { background: rgba(0,0,0,0.7); }
-
-/* The recipe sheet itself is the scroll container — its inner EntityList
- * must not become a second nested scroll surface (its default
- * `flex:1; min-height:0; overflow-y:auto` collapses inside the sheet's
- * flex column and breaks scrolling). Let the picker grow naturally and
- * scroll with the sheet. */
-.forge-sheet .entity-list {
-  flex: none;
-  min-height: 0;
-  overflow: visible;
-  -webkit-overflow-scrolling: auto;
-}
-
-@keyframes forgeSheetFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes forgeSheetSlideUp {
-  from { opacity: 0; transform: translateY(100%); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .forge-sheet-backdrop,
-  .forge-sheet {
-    animation: none !important;
-  }
-}
-
-.forge-codex-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 10px 0 14px;
-  align-items: center;
-}
-.forge-codex-search {
-  flex: 1 1 200px;
-  min-width: 0;
-  background: rgba(0,0,0,0.45);
-  border: 1px solid rgba(249,115,22,0.35);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  outline: none;
-}
-.forge-codex-search::placeholder { color: #94a3b8; }
-.forge-codex-search:focus { border-color: rgba(249,115,22,0.85); box-shadow: 0 0 0 2px rgba(249,115,22,0.18); }
-
-.forge-codex-cats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.forge-codex-cat {
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #cbd5e1;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  cursor: pointer;
-  text-transform: capitalize;
-  letter-spacing: 0.04em;
-}
-.forge-codex-cat:hover { border-color: rgba(249,115,22,0.45); color: #fed7aa; }
-.forge-codex-cat.is-active {
-  background: rgba(249,115,22,0.22);
-  border-color: rgba(249,115,22,0.7);
-  color: #fff;
-  font-weight: 600;
-}
-
-.forge-job-card-empty {
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.03);
-  color: #94a3b8;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  min-height: 72px;
-}
-.forge-job-card-empty:hover {
-  border-color: rgba(249,115,22,0.55);
-  background: rgba(249,115,22,0.08);
+  height: 60vh;
   color: #fed7aa;
-}
-.forge-job-empty-icon {
-  font-size: 22px;
-  opacity: 0.7;
-  line-height: 1;
-}
-.forge-job-empty-label {
-  margin-top: 4px;
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-size: 14px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .forge-hero { min-height: 180px; }
+  .forge-hero-content { padding: 16px 16px 32px; }
+  .forge-hero-title { font-size: 28px; }
+  .forge-section { padding: 12px; }
+  .forge-recipe-grid { grid-template-columns: 1fr 1fr; }
+  .forge-track { padding: 10px; }
+  .forge-track-picker { padding: 10px; }
 }
