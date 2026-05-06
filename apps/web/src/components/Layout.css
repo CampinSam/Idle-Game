@@ -251,8 +251,14 @@
 /*
  * ── Canonical page layout contract ─────────────────────────────────────────
  * Every routed page must:
- *   1. Page root: `display:flex; flex-direction:column; flex:1; min-height:0;
+ *   1. Page root: `display:flex; flex-direction:column; min-height:0;
  *      padding-top: var(--page-top-gap);`
+ *      Single-card pages (Entities, Inventory, Settings, Profile, Store,
+ *      Entity Detail) add `flex:1` here so their wrapper card has a
+ *      bounded parent height to cap against.
+ *      Multi-card "dashboard" pages (Home, Rewards, Achievements,
+ *      Locations, Location Detail, Forge) do NOT add `flex:1` — the page
+ *      root IS the primary scroll container (see rule 2).
  *   2. Primary scroll container (page root for multi-card "dashboard" pages,
  *      wrapper card for single-card pages) adds:
  *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
