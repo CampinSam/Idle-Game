@@ -27,7 +27,8 @@ export default function AchievementsPage() {
   const pct = total > 0 ? Math.round((unlocked / total) * 100) : 0;
 
   return (
-    <div className="achievement-section">
+    <div className="achievements-page">
+      <div className="achievement-section">
       <div className="achievement-header">
         <div className="achievement-header-title">Achievements</div>
         <div className="achievement-header-stats">
@@ -52,6 +53,7 @@ export default function AchievementsPage() {
         ) : (
           sorted.map((a: any) => <AchievementCard key={a.id} achievement={a} />)
         )}
+      </div>
       </div>
     </div>
   );
