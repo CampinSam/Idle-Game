@@ -132,6 +132,7 @@ Always throw typed NestJS exceptions. Never use `throw new Error(...)` or return
 - Extract any UI element used more than twice into a shared component.
 - Keep components focused on one job. A component that renders a card should not also fetch data.
 - Co-locate component CSS in a `.css` file next to the component file. No Tailwind. Use plain CSS with BEM-style class names and CSS custom properties for theming.
+- **Every page-level section must sit inside a card, not directly against the page background.** When adding a new page, list, or feature region, wrap it in a card container (gradient bg, `rgba(139,92,246,0.25)` border, `border-radius: 16px`, `padding: 14px`) — see `.rewards-card` / `.achievement-section` for the canonical pattern. New top-level content rendered straight on the dark purple backdrop without a card is considered a layout bug.
 
 ---
 
