@@ -5,8 +5,8 @@
  * pipeline at runtime.
  */
 export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
-  entity_xp: 'icons/entity_xp',
-  keeper_xp: 'icons/keeper_xp',
+  entity_xp: 'entity_xp',
+  keeper_xp: 'keeper_xp',
 };
 
 /**
@@ -91,6 +91,7 @@ export function deriveIconFromRewardSpec(spec: any): string | null {
   if (type === 'currency') return spec.key || spec.currencyId || null;
   if (type === 'item') return spec.key || spec.itemDefId || null;
   if (type === 'entity') return spec.definitionId || spec.entityDefId || spec.key || null;
+  if (REWARD_TYPE_ICON_MAP[type]) return REWARD_TYPE_ICON_MAP[type];
   if (type === 'bundle' && Array.isArray(spec.entries)) {
     for (const e of spec.entries) {
       const sub = deriveIconFromRewardSpec(e);
