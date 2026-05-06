@@ -19,6 +19,7 @@ import { HomePageSkeleton } from '../../components/Skeleton';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import { BannerCarousel } from './BannerCarousel';
 import { HomescreenToggle, readHomeVariant } from './HomescreenToggle';
+import { MissionReadyRow, MissionInProgressRow } from './MissionRow';
 import './HomePage.css';
 
 function formatTime(ms: number) {
@@ -204,18 +205,14 @@ export default function HomePage() {
           )}
 
           {completedJobs.map((j: any) => (
-            <div key={j.id} className="hp-mission-row hp-mission-ready" onClick={() => openModalSpec({ jobId: j.id })} style={{ cursor: 'pointer' }}>
-              <div className="hp-mission-icon hp-mission-icon-done">✅</div>
-              <div className="hp-mission-info">
-                <span className="hp-mission-name">{j.name}</span>
-                <span className="hp-mission-status-text">Ready to claim!</span>
-              </div>
-              {j.type === 'MissionJob' && (
-                <button className="hp-claim-btn" onClick={(e) => { e.stopPropagation(); handleClaim(j.id); }} disabled={claimingId === j.id}>
-                  {claimingId === j.id ? '...' : 'CLAIM'}
-                </button>
-              )}
-            </div>
+            <MissionReadyRow
+              key={j.id}
+              name={j.name}
+              showClaim={j.type === 'MissionJob'}
+              claiming={claimingId === j.id}
+              onClick={() => openModalSpec({ jobId: j.id })}
+              onClaim={() => handleClaim(j.id)}
+            />
           ))}
 
           {inProgressJobs.map((j: any) => {
@@ -224,16 +221,14 @@ export default function HomePage() {
             const craftLoc = j.data?.locationId || j.locationId;
             const handleRowClick = isCrafting ? () => goToForge(craftLoc, j.id) : () => openModalSpec({ jobId: j.id });
             return (
-              <div key={j.id} className="hp-mission-row" onClick={handleRowClick} style={{ cursor: 'pointer' }}>
-                <div className="hp-mission-icon">{getJobIcon(j.type)}</div>
-                <div className="hp-mission-info">
-                  <span className="hp-mission-name">{j.name}</span>
-                  {isCrafting && <span className="hp-mission-status-text">Tap to open The Forge →</span>}
-                </div>
-                <div className="hp-mission-timer">
-                  <span className="hp-timer-badge">{timeStr}</span>
-                </div>
-              </div>
+              <MissionInProgressRow
+                key={j.id}
+                name={j.name}
+                icon={getJobIcon(j.type)}
+                subtitle={isCrafting ? 'Tap to open The Forge →' : undefined}
+                timeLabel={timeStr}
+                onClick={handleRowClick}
+              />
             );
           })}
 

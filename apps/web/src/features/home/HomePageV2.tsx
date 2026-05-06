@@ -197,7 +197,7 @@ export default function HomePageV2() {
   const comingSoon = (label: string) => () => alert(`${label} — coming soon`);
 
   return (
-    <div className="hp2 page-transition-wrapper">
+    <div className="hp2">
       <header className="hp2__header">
         <h1 className="hp2__title">Derp Universe</h1>
         <HomescreenToggle current="v2" />
