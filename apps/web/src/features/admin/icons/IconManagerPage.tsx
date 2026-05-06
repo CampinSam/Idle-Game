@@ -9,7 +9,7 @@ interface IconEntry {
   id: string;
   name: string;
   iconKey: string;
-  type: 'item' | 'currency';
+  type: 'item' | 'currency' | 'system';
   exists: boolean;
   url: string | null;
 }
@@ -53,8 +53,80 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+interface IconTableProps {
+  icons: IconEntry[];
+  uploading: string | null;
+  bustTokens: Record<string, number>;
+  onUpload: (iconKey: string) => void;
+  emptyMessage?: string;
+}
+
+function IconTable({ icons, uploading, bustTokens, onUpload, emptyMessage }: IconTableProps) {
+  return (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style={{ width: 56 }}>Icon</th>
+            <th>Name</th>
+            <th>Icon Key</th>
+            <th style={{ width: 110 }}>Status</th>
+            <th style={{ width: 110 }}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {icons.length === 0 && (
+            <tr>
+              <td colSpan={5} style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
+                {emptyMessage ?? 'No icons match the current filter.'}
+              </td>
+            </tr>
+          )}
+          {icons.map(icon => (
+            <tr key={icon.id} className={icon.exists ? '' : 'icon-row-missing'}>
+              <td>
+                <div className="icon-thumb-cell">
+                  {icon.exists && icon.url ? (
+                    <img
+                      src={bustTokens[icon.iconKey] ? `${icon.url}?t=${bustTokens[icon.iconKey]}` : icon.url}
+                      alt={icon.name}
+                      className="icon-thumb"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="icon-thumb-placeholder">?</div>
+                  )}
+                </div>
+              </td>
+              <td className="icon-name">{icon.name}</td>
+              <td className="icon-key">{icon.iconKey}</td>
+              <td>
+                {icon.exists ? (
+                  <span className="icon-status-badge icon-status-present">✓ Present</span>
+                ) : (
+                  <span className="icon-status-badge icon-status-missing">✗ Missing</span>
+                )}
+              </td>
+              <td>
+                <button
+                  className="btn-upload"
+                  onClick={() => onUpload(icon.iconKey)}
+                  disabled={uploading === icon.iconKey}
+                >
+                  {uploading === icon.iconKey ? 'Uploading...' : icon.exists ? 'Replace' : 'Upload'}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function IconManagerContent() {
-  const [icons, setIcons] = useState<IconEntry[]>([]);
+  const [systemIcons, setSystemIcons] = useState<IconEntry[]>([]);
+  const [regularIcons, setRegularIcons] = useState<IconEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -68,8 +140,12 @@ function IconManagerContent() {
     setLoading(true);
     setMsg(null);
     try {
-      const data = await adminApi.listIcons();
-      setIcons(data);
+      const [regular, system] = await Promise.all([
+        adminApi.listIcons(),
+        adminApi.listSystemIcons(),
+      ]);
+      setSystemIcons(system);
+      setRegularIcons(regular);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
@@ -97,11 +173,12 @@ function IconManagerContent() {
       await adminApi.uploadMedia(renamedFile, 'images/icons');
       setMsg({ text: `Uploaded ${iconKey}.png successfully`, type: 'success' });
       const token = Date.now();
-      setIcons(prev => prev.map(i =>
+      const updateEntry = (i: IconEntry) =>
         i.iconKey === iconKey
           ? { ...i, exists: true, url: `/media/images/icons/${iconKey}.png` }
-          : i
-      ));
+          : i;
+      setSystemIcons(prev => prev.map(updateEntry));
+      setRegularIcons(prev => prev.map(updateEntry));
       setBustTokens(prev => ({ ...prev, [iconKey]: token }));
     } catch (e: any) {
       setMsg({ text: `Upload failed: ${e.message}`, type: 'error' });
@@ -111,15 +188,16 @@ function IconManagerContent() {
     }
   };
 
-  const filtered = icons.filter(i => {
+  const filteredRegular = regularIcons.filter(i => {
     if (filter === 'missing' && i.exists) return false;
     if (filter === 'present' && !i.exists) return false;
     if (typeFilter !== 'all' && i.type !== typeFilter) return false;
     return true;
   });
 
-  const total = icons.length;
-  const present = icons.filter(i => i.exists).length;
+  const allIcons = [...systemIcons, ...regularIcons];
+  const total = allIcons.length;
+  const present = allIcons.filter(i => i.exists).length;
   const missing = total - present;
 
   return (
@@ -127,7 +205,7 @@ function IconManagerContent() {
       <div className="icon-manager-header">
         <div>
           <h1>Game Icons</h1>
-          <p className="icon-manager-subtitle">Manage icon images for items and currencies</p>
+          <p className="icon-manager-subtitle">Manage icon images for system rewards, items, and currencies</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <a href="/admin" className="icon-manager-back">← Admin</a>
@@ -137,25 +215,63 @@ function IconManagerContent() {
         </div>
       </div>
 
-      <div className="admin-card">
-        <div className="icon-stats">
-          <div className="icon-stat icon-stat-total">
-            <span className="icon-stat-num">{total}</span>
-            <span className="icon-stat-label">Total</span>
-          </div>
-          <div className="icon-stat icon-stat-present">
-            <span className="icon-stat-num">{present}</span>
-            <span className="icon-stat-label">Present</span>
-          </div>
-          <div className="icon-stat icon-stat-missing">
-            <span className="icon-stat-num">{missing}</span>
-            <span className="icon-stat-label">Missing</span>
-          </div>
+      <div className="icon-stats" style={{ marginBottom: '1.5rem' }}>
+        <div className="icon-stat icon-stat-total">
+          <span className="icon-stat-num">{total}</span>
+          <span className="icon-stat-label">Total</span>
+        </div>
+        <div className="icon-stat icon-stat-present">
+          <span className="icon-stat-num">{present}</span>
+          <span className="icon-stat-label">Present</span>
+        </div>
+        <div className="icon-stat icon-stat-missing">
+          <span className="icon-stat-num">{missing}</span>
+          <span className="icon-stat-label">Missing</span>
+        </div>
+      </div>
+
+      {msg && (
+        <div className={`icon-msg icon-msg-${msg.type}`} style={{ marginBottom: '1rem' }}>{msg.text}</div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      <div className="admin-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="icon-section-header">
+          <h2 className="icon-section-title">System Icons</h2>
+          <p className="icon-section-desc">
+            Built-in reward type icons (e.g. XP gains). Uploading a replacement immediately overrides the bundled fallback.
+          </p>
         </div>
 
-        {msg && (
-          <div className={`icon-msg icon-msg-${msg.type}`}>{msg.text}</div>
+        {loading ? (
+          <div className="loading" style={{ padding: '1.5rem', textAlign: 'center' }}>Loading…</div>
+        ) : (
+          <IconTable
+            icons={systemIcons}
+            uploading={uploading}
+            bustTokens={bustTokens}
+            onUpload={triggerUpload}
+            emptyMessage="No system icons registered."
+          />
         )}
+
+        <div className="icon-path-hint">
+          Stored at: <code>images/icons/&#123;iconKey&#125;.png</code> in object storage.
+        </div>
+      </div>
+
+      <div className="admin-card">
+        <div className="icon-section-header">
+          <h2 className="icon-section-title">Item &amp; Currency Icons</h2>
+          <p className="icon-section-desc">Icons for all item definitions and currencies.</p>
+        </div>
 
         <div className="icon-filters">
           <div className="icon-filter-group">
@@ -176,81 +292,15 @@ function IconManagerContent() {
           </div>
         </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-
-        {loading && <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading icons...</div>}
-
-        {!loading && (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: 56 }}>Icon</th>
-                  <th>Name</th>
-                  <th>Icon Key</th>
-                  <th style={{ width: 90 }}>Type</th>
-                  <th style={{ width: 110 }}>Status</th>
-                  <th style={{ width: 110 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>
-                      No icons match the current filter.
-                    </td>
-                  </tr>
-                )}
-                {filtered.map(icon => (
-                  <tr key={icon.id} className={icon.exists ? '' : 'icon-row-missing'}>
-                    <td>
-                      <div className="icon-thumb-cell">
-                        {icon.exists && icon.url ? (
-                          <img
-                            src={bustTokens[icon.iconKey] ? `${icon.url}?t=${bustTokens[icon.iconKey]}` : icon.url}
-                            alt={icon.name}
-                            className="icon-thumb"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                        ) : (
-                          <div className="icon-thumb-placeholder">?</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="icon-name">{icon.name}</td>
-                    <td className="icon-key">{icon.iconKey}</td>
-                    <td>
-                      <span className={`icon-type-badge icon-type-${icon.type}`}>
-                        {icon.type}
-                      </span>
-                    </td>
-                    <td>
-                      {icon.exists ? (
-                        <span className="icon-status-badge icon-status-present">✓ Present</span>
-                      ) : (
-                        <span className="icon-status-badge icon-status-missing">✗ Missing</span>
-                      )}
-                    </td>
-                    <td>
-                      <button
-                        className="btn-upload"
-                        onClick={() => triggerUpload(icon.iconKey)}
-                        disabled={uploading === icon.iconKey}
-                      >
-                        {uploading === icon.iconKey ? 'Uploading...' : icon.exists ? 'Replace' : 'Upload'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {loading ? (
+          <div className="loading" style={{ padding: '1.5rem', textAlign: 'center' }}>Loading…</div>
+        ) : (
+          <IconTable
+            icons={filteredRegular}
+            uploading={uploading}
+            bustTokens={bustTokens}
+            onUpload={triggerUpload}
+          />
         )}
 
         <div className="icon-path-hint">

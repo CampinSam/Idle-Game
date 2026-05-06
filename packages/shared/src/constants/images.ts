@@ -88,3 +88,8 @@ export function getAvatarImagePath(avatarId?: string): string {
 export function slugifyRegion(region: string): string {
   return region.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
+
+export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
+  entity_xp: 'Entity XP',
+  keeper_xp: 'Keeper XP',
+};

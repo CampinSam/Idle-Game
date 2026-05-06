@@ -88,6 +88,7 @@ export const adminApi = {
     adminRequest<any[]>(`/players/${id}/telemetry?limit=${limit}`),
 
   listIcons: () => adminRequest<any[]>('/media/icons'),
+  listSystemIcons: () => adminRequest<any[]>('/media/system-icons'),
 
   getBalanceBundle: () => adminRequest<{
     entityDefinitions: Array<{ id: string; name: string; speciesId: string; slots: Record<string, string[]> }>;

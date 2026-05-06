@@ -6,6 +6,23 @@
   font-family: 'Exo 2', sans-serif;
 }
 
+.icon-section-header {
+  margin-bottom: 1rem;
+}
+
+.icon-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: #c4b5fd;
+  margin: 0 0 0.25rem;
+}
+
+.icon-section-desc {
+  font-size: 0.82rem;
+  color: #888;
+  margin: 0;
+}
+
 .icon-manager-header {
   display: flex;
   align-items: flex-start;
@@ -198,6 +215,12 @@
   background: rgba(251, 191, 36, 0.12);
   color: #fbbf24;
   border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.icon-type-system {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
 .icon-status-badge {

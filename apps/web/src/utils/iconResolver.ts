@@ -1,3 +1,5 @@
+import { REWARD_TYPE_ICON_MAP as _REWARD_TYPE_ICON_MAP } from '@derp/shared';
+
 /**
  * Icon keys for built-in reward types that have no dynamic `r.key`.
  *
@@ -7,11 +9,13 @@
  * bare names also makes XP icons work in every call-site that passes `r.type`
  * directly as the icon src (e.g. QuestCard, MissionsPage), not only where the
  * backend explicitly emits an assetKey.
+ *
+ * Source of truth: `packages/shared/src/constants/images.ts`
+ * The values are the display names; the keys are used as bare icon identifiers.
  */
-export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
-  entity_xp: 'entity_xp',
-  keeper_xp: 'keeper_xp',
-};
+export const REWARD_TYPE_ICON_MAP: Record<string, string> = Object.fromEntries(
+  Object.keys(_REWARD_TYPE_ICON_MAP).map((k) => [k, k]),
+);
 
 /**
  * Returns a media-compatible asset key for a known system reward type, or

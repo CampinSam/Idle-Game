@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
+import { REWARD_TYPE_ICON_MAP } from '@derp/shared';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { BoostService } from '../tick/boost.service';
@@ -219,6 +220,37 @@ export class AdminController {
         return { assetKey, name: f.name, url: `/media${assetKey}`, contentType: (f.metadata as any)?.contentType || '', size: (f.metadata as any)?.size || 0 };
       })
       .filter(f => f.assetKey !== '/');
+  }
+
+  @Get('media/system-icons')
+  async listSystemIconsStatus() {
+    const pathsStr = process.env.PUBLIC_OBJECT_SEARCH_PATHS || '';
+    const paths = pathsStr.split(',').map(p => p.trim()).filter(Boolean);
+    if (!paths.length) throw new BadRequestException('PUBLIC_OBJECT_SEARCH_PATHS not configured');
+    const firstPath = paths[0];
+    const parts = firstPath.slice(1).split('/');
+    const bucketName = parts[0];
+    const prefix = parts.slice(1).join('/');
+    const bucket = objectStorageClient.bucket(bucketName);
+
+    const results = await Promise.all(
+      Object.entries(REWARD_TYPE_ICON_MAP).map(async ([key, displayName]) => {
+        const relPath = `images/icons/${key}.png`;
+        const objectName = prefix ? `${prefix}/${relPath}` : relPath;
+        const file = bucket.file(objectName);
+        const [exists] = await file.exists();
+        return {
+          id: key,
+          name: displayName,
+          iconKey: key,
+          type: 'system' as const,
+          exists,
+          url: exists ? `/media/${relPath}` : null,
+        };
+      }),
+    );
+
+    return results.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   @Get('media/icons')
