@@ -41,6 +41,10 @@ export const HOME_V2_PROXY = {
     boostLabel: '2× WEEKEND',
     threatLabel: 'CORRUPTION RISING',
   },
+  // PROXY: replace when a real roster cap signal exists on the
+  // player profile (`profile.entitySlots` / similar). Used purely to
+  // render an x/y denominator on the Birds quick-link tile.
+  birdRosterCap: 50,
 } as const;
 
 export function formatProxyCountdown(targetMs: number): string {

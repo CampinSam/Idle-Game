@@ -24,9 +24,9 @@ import {
 import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { getEntityKind } from '../entities/registry';
-import { workshopParallelSlots } from '@derp/math';
 import { HOME_V2_PROXY, formatProxyCountdown } from './HomePageV2.proxy';
 import { HomescreenToggle } from './HomescreenToggle';
+import { MissionReadyRow, MissionInProgressRow } from './MissionRow';
 import './HomePageV2.css';
 
 const MAX_OUTPOST_SLOTS = 5;
@@ -74,19 +74,6 @@ export default function HomePageV2() {
       dispatch(fetchCraftingRecipes());
     }
   }, [dispatch, craftingRecipes]);
-
-  // Workshops are needed to mirror HomePage's "actionable forge" trigger
-  // (slots open + recipe affordability). Loaded once on mount.
-  const [workshops, setWorkshops] = useState<Array<{
-    buildingId: string; locationId: string; name: string; level: number; enabled: boolean;
-  }>>([]);
-  useEffect(() => {
-    let cancelled = false;
-    api.getCraftingWorkshops()
-      .then((list) => { if (!cancelled) setWorkshops(list); })
-      .catch(() => { if (!cancelled) setWorkshops([]); });
-    return () => { cancelled = true; };
-  }, []);
 
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [claimError, setClaimError] = useState('');
@@ -153,35 +140,26 @@ export default function HomePageV2() {
   const outpostCount = locations.length;
   const outpostsAlert = outpostCount < MAX_OUTPOST_SLOTS;
 
-  const birdEntities = entities.filter((e: any) => getEntityKind(e) === 'derp_bird');
-  const birdCount = birdEntities.length;
-  const birdTotal = entities.length;
+  const birdCount = entities.filter((e: any) => getEntityKind(e) === 'derp_bird').length;
 
-  // Crafting trigger — mirrors HomePage's logic so the dot lights up
-  // when there's a job ready, OR a craftable opportunity (slot open +
-  // idle entity + at least one affordable recipe), OR newly-unlocked
-  // recipes the player hasn't seen yet at the primary workshop.
+  // Crafting trigger — mirrors the spirit of HomePage's logic without
+  // pulling in a workshop API call. The dot lights up when there's a
+  // craft ready to claim, OR an idle entity + at least one affordable
+  // visible recipe, OR a newly-unlocked recipe the player hasn't seen.
+  // Workshop-tier capping is a refinement HomePage applies on its own;
+  // here we keep it sync-selector-only so a stray notification at most
+  // nudges the player toward the forge — never blocks them.
   const idleEntityCount = entities.filter((b: any) => b.status === 'idle').length;
-  const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
   const craftingActive = allActiveJobs.filter((j: any) => j.type === 'CraftingJob').length;
   const craftingReady = allActiveJobs.some(
     (j: any) => j.type === 'CraftingJob' && getJobRemaining(j) <= 0,
   );
   const craftingDot = useMemo(() => {
     if (craftingReady) return true;
-    if (!primaryWorkshop) return false;
-    const wsTier = Math.max(1, Number(primaryWorkshop.level || 1));
-    const slotsTotal = workshopParallelSlots(wsTier);
-    const wsActive = allActiveJobs.filter(
-      (j: any) => j.type === 'CraftingJob'
-        && (j.data?.locationId || j.locationId) === primaryWorkshop.locationId,
-    ).length;
-    const slotOpen = wsActive < slotsTotal;
     const keeperLvl = profile?.keeperLevel ?? 1;
-    const passesVisibility = (r: any) =>
-      (r.requiredKeeperLevel || 1) <= keeperLvl && Number(r.tier ?? 1) <= wsTier;
-    const affordable = (craftingRecipes || []).some((r: any) => {
-      if (!passesVisibility(r)) return false;
+    const passesVisibility = (r: any) => (r.requiredKeeperLevel || 1) <= keeperLvl;
+    const visible = (craftingRecipes || []).filter(passesVisibility);
+    const affordable = visible.some((r: any) => {
       const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
       for (const c of cost) {
         if (c.type === 'currency') {
@@ -193,19 +171,16 @@ export default function HomePageV2() {
       }
       return true;
     });
-    if (slotOpen && idleEntityCount > 0 && affordable) return true;
-    const visibleRecipeIds = (craftingRecipes || [])
-      .filter(passesVisibility)
-      .map((r: any) => String(r.id));
-    if (visibleRecipeIds.length === 0) return false;
-    const seenKey = `forge.recipes.seen.${primaryWorkshop.locationId}`;
+    if (idleEntityCount > 0 && affordable) return true;
+    const visibleIds = visible.map((r: any) => String(r.id));
+    if (visibleIds.length === 0) return false;
     let previouslySeen: string[] = [];
-    try { previouslySeen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { previouslySeen = []; }
+    try { previouslySeen = JSON.parse(localStorage.getItem('forge.recipes.seen.global') || '[]'); } catch { previouslySeen = []; }
     const seen = new Set(previouslySeen);
-    return visibleRecipeIds.some((id) => !seen.has(id));
+    return visibleIds.some((id) => !seen.has(id));
   }, [
-    craftingReady, primaryWorkshop, allActiveJobs, profile, craftingRecipes,
-    currencyBalances, syncItemsTable, idleEntityCount,
+    craftingReady, profile, craftingRecipes, currencyBalances,
+    syncItemsTable, idleEntityCount,
   ]);
 
   // -------- Active mission jobs -----------------------------------
@@ -279,7 +254,7 @@ export default function HomePageV2() {
           </button>
           <button className="hp2-quick__tile" onClick={() => navigate('/entities')}>
             <span className="hp2-quick__icon" aria-hidden>🪶</span>
-            <span className="hp2-quick__count">{birdCount}/{birdTotal}</span>
+            <span className="hp2-quick__count">{birdCount}/{HOME_V2_PROXY.birdRosterCap}</span>
             <span className="hp2-quick__label">Birds</span>
           </button>
           <button className="hp2-quick__tile" onClick={() => navigate('/crafting')}>
@@ -341,42 +316,24 @@ export default function HomePageV2() {
           <div style={{ color: '#fca5a5', fontSize: 11, marginBottom: 6 }}>{claimError}</div>
         )}
         {completedMissions.map((j: any) => (
-          <div
+          <MissionReadyRow
             key={j.id}
-            className="hp2-missions__row"
+            name={j.name}
+            showClaim
+            claiming={claimingId === j.id}
             onClick={() => openModalSpec(j.id)}
-          >
-            <div className="hp2-missions__icon" aria-hidden>✅</div>
-            <div className="hp2-missions__info">
-              <span className="hp2-missions__name">{j.name}</span>
-              <span className="hp2-missions__sub">Ready to claim</span>
-            </div>
-            <button
-              className="hp2-missions__claim"
-              onClick={(e) => { e.stopPropagation(); handleClaim(j.id); }}
-              disabled={claimingId === j.id}
-            >
-              {claimingId === j.id ? '...' : 'Claim'}
-            </button>
-          </div>
+            onClaim={() => handleClaim(j.id)}
+          />
         ))}
-        {inProgressMissions.map((j: any) => {
-          const t = formatRemaining(getJobRemaining(j));
-          return (
-            <div
-              key={j.id}
-              className="hp2-missions__row"
-              onClick={() => openModalSpec(j.id)}
-            >
-              <div className="hp2-missions__icon" aria-hidden>🗺️</div>
-              <div className="hp2-missions__info">
-                <span className="hp2-missions__name">{j.name}</span>
-                <span className="hp2-missions__sub">In progress</span>
-              </div>
-              <span className="hp2-missions__timer">{t ?? '...'}</span>
-            </div>
-          );
-        })}
+        {inProgressMissions.map((j: any) => (
+          <MissionInProgressRow
+            key={j.id}
+            name={j.name}
+            subtitle="In progress"
+            timeLabel={formatRemaining(getJobRemaining(j)) ?? '...'}
+            onClick={() => openModalSpec(j.id)}
+          />
+        ))}
         {missionJobs.length === 0 && (
           <div className="hp2-missions__empty">No active missions</div>
         )}
