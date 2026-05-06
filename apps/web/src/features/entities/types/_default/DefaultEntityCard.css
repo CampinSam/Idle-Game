@@ -62,8 +62,8 @@
 }
 
 .entity-card__portrait--round {
-  width: 60px !important;
-  height: 60px !important;
+  width: 82px !important;
+  height: 82px !important;
   border-radius: 50% !important;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
 }

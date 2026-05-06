@@ -179,7 +179,7 @@ export default function DefaultEntityCard({
         </div>
         <div className="entity-card__bot">
           <span className="entity-card__id">{entity.name}</span>
-          <span className="entity-card__sub">ATK {stats.ATK} · DEF {stats.DEF}</span>
+          <span className="entity-card__sub">SPD {stats.SPD} · FOC {stats.FOC}</span>
         </div>
       </div>
     );
