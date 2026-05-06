@@ -325,7 +325,7 @@ export class CraftingService {
     return match;
   }
 
-  async startCrafting(userId: string, recipeId: string, entityId: string, locationId?: string) {
+  async startCrafting(userId: string, recipeId: string, entityId: string, locationId?: string, outerTx?: any) {
     // Crafting is a place: always resolve to a concrete enabled workshop so
     // slot cap / tier-cap / timer mechanics apply uniformly. If the caller
     // didn't pass a locationId, fall back to the player's first enabled
@@ -425,18 +425,18 @@ export class CraftingService {
       }
     }
 
-    const job = await this.prisma.$transaction(async (tx) => {
+    const doWrites = async (tx: any) => {
       for (const cost of costEntries) {
         if (cost.amount <= 0) continue;
         if (cost.type === 'currency') {
-          await this.currencyService.spendTx(tx as any, { userId, currencyId: cost.id, amount: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+          await this.currencyService.spendTx(tx, { userId, currencyId: cost.id, amount: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
         } else {
-          await this.inventoryService.removeItemTx(tx as any, { userId, itemId: cost.id, quantity: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+          await this.inventoryService.removeItemTx(tx, { userId, itemId: cost.id, quantity: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
         }
       }
       await this.entityService.setEntityStatus(entityId, userId, 'working', tx);
 
-      return await (tx as any).job.create({
+      return (tx as any).job.create({
         data: {
           userId,
           type: 'CraftingJob',
@@ -447,7 +447,11 @@ export class CraftingService {
           data: { seed: randomUUID(), locationId: effectiveLocationId },
         },
       });
-    });
+    };
+
+    const job = outerTx
+      ? await doWrites(outerTx)
+      : await this.prisma.$transaction((tx) => doWrites(tx));
 
     return this.mapJobToCraftingResponse(job);
   }
