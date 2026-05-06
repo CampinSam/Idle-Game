@@ -251,19 +251,22 @@
 /*
  * ── Canonical page layout contract ─────────────────────────────────────────
  * Every routed page must:
- *   1. Page root: `display:flex; flex-direction:column; min-height:0;
+ *   1. Page root: `display:flex; flex-direction:column; flex:1; min-height:0;
  *      padding-top: var(--page-top-gap);`
- *      Single-card pages (Entities, Inventory, Settings, Profile, Store,
- *      Entity Detail) add `flex:1` here so their wrapper card has a
- *      bounded parent height to cap against.
- *      Multi-card "dashboard" pages (Home, Rewards, Achievements,
- *      Locations, Location Detail, Forge) do NOT add `flex:1` — the page
- *      root IS the primary scroll container (see rule 2).
- *   2. Primary scroll container (page root for multi-card "dashboard" pages,
- *      wrapper card for single-card pages) adds:
+ *   2. Primary scroll container:
+ *      - For multi-card "dashboard" pages (Home, Rewards, Achievements,
+ *        Locations, Location Detail, Forge) — the page root itself: keep the
+ *        `flex:1; min-height:0` from rule 1 and add
+ *        `overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch;
+ *         overscroll-behavior:contain;`. Flex sizing inside `.content` (which
+ *         is itself flex:1) gives a definite bounded height, so internal
+ *         `overflow-y:auto` scrolls when content is tall and stays at content
+ *         height when short.
+ *      - For single-card pages (Entities, Inventory, Settings, Profile,
+ *        Store, Entity Detail) — the wrapper card inside the page root adds
  *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
  *         -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`
- *      It does NOT set `flex:1` — it sizes to content and caps at body height.
+ *        WITHOUT `flex:1`, so it sizes to content and caps at body height.
  *   3. With every page following the contract, `.content` below never
  *      actually scrolls — its `overflow-y:auto` is a defensive safety net
  *      so the top bar and bottom nav always stay visible.
