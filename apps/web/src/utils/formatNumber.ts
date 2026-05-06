@@ -1,5 +1,14 @@
 const SUFFIXES = ['', 'K', 'M', 'B', 'T'];
 
+export function formatRateValue(value: number): string {
+  const abs = Math.abs(value);
+  if (!isFinite(abs)) return '0';
+  if (abs >= 1000) return `${(abs / 1000).toFixed(1)}k`;
+  if (abs >= 1) return `${Math.round(abs)}`;
+  if (abs > 0) return abs.toFixed(1);
+  return '0';
+}
+
 export function formatCompact(value: number | string | bigint): string {
   let num = typeof value === 'bigint' ? Number(value) : Number(value);
   if (!isFinite(num) || num === 0) return '0';

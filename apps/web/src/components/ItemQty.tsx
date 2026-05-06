@@ -1,9 +1,9 @@
 import GameIcon from './GameIcon';
-import { formatCompact } from '../utils/formatNumber';
+import { formatCompact, formatRateValue } from '../utils/formatNumber';
 import './ItemQty.css';
 
 type ItemQtyVariant = 'right' | 'left' | 'badge';
-type ItemQtyFormat = 'full' | 'compact';
+type ItemQtyFormat = 'full' | 'compact' | 'rate';
 
 interface ItemQtyProps {
   src: string;
@@ -12,6 +12,7 @@ interface ItemQtyProps {
   size?: number;
   format?: ItemQtyFormat;
   variant?: ItemQtyVariant;
+  prefix?: string;
   suffix?: string;
   className?: string;
 }
@@ -23,10 +24,16 @@ export default function ItemQty({
   size = 14,
   format = 'full',
   variant = 'right',
+  prefix,
   suffix,
   className = '',
 }: ItemQtyProps) {
-  const numStr = format === 'compact' ? formatCompact(amount) : amount.toLocaleString();
+  const numStr =
+    format === 'compact'
+      ? formatCompact(amount)
+      : format === 'rate'
+        ? formatRateValue(amount)
+        : amount.toLocaleString();
 
   if (variant === 'badge') {
     return (
@@ -40,6 +47,7 @@ export default function ItemQty({
   const icon = <GameIcon src={src} size={size} alt={alt} />;
   const num = (
     <span className="item-qty__num">
+      {prefix && <span className="item-qty__prefix">{prefix}</span>}
       {numStr}
       {suffix && <span className="item-qty__suffix">{suffix}</span>}
     </span>

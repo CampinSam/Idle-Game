@@ -4,9 +4,8 @@ import { api } from '../../../../../services/api';
 import { audioEngine } from '../../../../../services/AudioEngine';
 import { patchBuildingEnabled } from '../../../../../store/syncSlice';
 import { resolveIcon, resolveName } from '../../../../../utils/iconResolver';
-import GameIcon from '../../../../../components/GameIcon';
 import BuildingProgressBar from '../../../../../components/BuildingProgressBar';
-import { formatRate, formatAmount } from '../../../../../utils/locationProduction';
+import ItemQty from '../../../../../components/ItemQty';
 import { getBuildingCategoryDisplay } from '@derp/shared';
 
 interface BuildingCardProps {
@@ -102,35 +101,35 @@ export default function BuildingCard({
       {!isBuilding && b.category === 'GENERATOR' && (
         <div className={`facility-card-rates ${!isEnabled ? 'rates-disabled' : ''}`}>
           <div className="facility-card-production">
-            <span className="facility-prod-icon">
-              <GameIcon
-                src={resolveIcon(b.outputType, b.outputRefId, currencyDefs, itemDefs)}
-                size={16}
-              />
-            </span>
             <span className="facility-prod-name">
               {resolveName(b.outputType, b.outputRefId, currencyDefs, itemDefs)}
             </span>
-            {genEntry ? (
-              <span className="facility-prod-rate">+{formatRate(genEntry.ratePerHour)}/h</span>
-            ) : (
-              <span className="facility-prod-rate">+{b.resourcePerHour}/h</span>
-            )}
+            <ItemQty
+              src={resolveIcon(b.outputType, b.outputRefId, currencyDefs, itemDefs)}
+              amount={genEntry ? genEntry.ratePerHour : Number(b.resourcePerHour)}
+              format="rate"
+              prefix="+"
+              suffix="/h"
+              size={16}
+              className="facility-prod-rate"
+            />
           </div>
           {b.consumptionRates && Object.entries(b.consumptionRates as Record<string, number>).map(([resourceId, rate]) => {
             const cOutputType = currencyIds.has(resourceId) ? 'CURRENCY' : 'ITEM';
             return (
               <div key={resourceId} className="facility-card-consumption">
-                <span className="facility-consume-icon">
-                  <GameIcon
-                    src={resolveIcon(cOutputType, resourceId, currencyDefs, itemDefs)}
-                    size={16}
-                  />
-                </span>
                 <span className="facility-consume-name">
                   {resolveName(cOutputType, resourceId, currencyDefs, itemDefs)}
                 </span>
-                <span className="facility-consume-rate">-{formatRate(Number(rate))}/h</span>
+                <ItemQty
+                  src={resolveIcon(cOutputType, resourceId, currencyDefs, itemDefs)}
+                  amount={Number(rate)}
+                  format="rate"
+                  prefix="-"
+                  suffix="/h"
+                  size={16}
+                  className="facility-consume-rate"
+                />
               </div>
             );
           })}
@@ -165,16 +164,17 @@ export default function BuildingCard({
               const outputType = currencyIds.has(resourceId) ? 'CURRENCY' : 'ITEM';
               return (
                 <div key={resourceId} className="facility-storage-row">
-                  <span className="facility-storage-icon">
-                    <GameIcon
-                      src={resolveIcon(outputType, resourceId, currencyDefs, itemDefs)}
-                      size={16}
-                    />
-                  </span>
                   <span className="facility-storage-name">
                     {resolveName(outputType, resourceId, currencyDefs, itemDefs)}
                   </span>
-                  <span className="facility-storage-cap">+{formatAmount(cap)}</span>
+                  <ItemQty
+                    src={resolveIcon(outputType, resourceId, currencyDefs, itemDefs)}
+                    amount={Number(cap)}
+                    format="compact"
+                    prefix="+"
+                    size={16}
+                    className="facility-storage-cap"
+                  />
                 </div>
               );
             })

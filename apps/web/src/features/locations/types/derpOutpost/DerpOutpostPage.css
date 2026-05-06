@@ -716,11 +716,6 @@
   border: 1px solid rgba(239, 68, 68, 0.14);
 }
 
-.facility-prod-icon,
-.facility-consume-icon {
-  flex-shrink: 0;
-}
-
 .facility-prod-name,
 .facility-consume-name {
   flex: 1;
@@ -778,10 +773,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.facility-storage-icon {
-  flex-shrink: 0;
 }
 
 .facility-storage-name {
