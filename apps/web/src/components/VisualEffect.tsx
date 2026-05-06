@@ -17,6 +17,15 @@ interface Props {
    * block layout.
    */
   as?: 'span' | 'div';
+  /**
+   * Tells the effect wrapper what silhouette its child has, so effects
+   * that paint *on* the wrapper (shimmer, rainbow) clip to the right
+   * shape and effects that emanate from it (glow box-shadow) follow
+   * the right outline. Without this, the wrapper is a sharp rectangle
+   * and effects bleed past rounded children. Defaults to `'none'`
+   * (legacy pass-through behavior — wrapper has no radius).
+   */
+  shape?: 'pill' | 'circle' | 'square' | 'none';
   className?: string;
   style?: CSSProperties;
   children: ReactNode;
@@ -33,7 +42,7 @@ interface Props {
  * place. Edit `VisualEffectDef.params.color` once and every consumer
  * updates because params are passed through as CSS custom properties.
  */
-export function VisualEffect({ effectKey, as = 'span', className, style, children }: Props) {
+export function VisualEffect({ effectKey, as = 'span', shape = 'none', className, style, children }: Props) {
   const def = useVisualEffectDef(effectKey ?? undefined);
 
   if (!def || !effectKey) {
@@ -54,7 +63,8 @@ export function VisualEffect({ effectKey, as = 'span', className, style, childre
   // matches a `.fx-<animationName>` rule in VisualEffects.css. New
   // animations require a frontend code change — by design (CSS keyframes
   // can't be safely user-authored).
-  const fxClass = `fx-host fx-${def.cssAnimation}`;
+  const shapeClass = shape !== 'none' ? ` fx-shape-${shape}` : '';
+  const fxClass = `fx-host fx-${def.cssAnimation}${shapeClass}`;
   const Tag = as;
 
   return (

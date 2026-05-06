@@ -20,6 +20,19 @@
   isolation: isolate;
 }
 
+/*
+ * Shape modifiers: tell the wrapper what silhouette the child has so
+ * effects that paint *on* the wrapper (shimmer/rainbow) clip correctly
+ * and effects that emanate from the wrapper (glow box-shadow) follow
+ * the right outline. The host already has `position: relative` and the
+ * shimmer/rainbow effects already set `overflow: hidden`, so adding
+ * border-radius here is enough — pseudo-elements get clipped to the
+ * rounded shape, and box-shadow naturally follows border-radius.
+ */
+.fx-host.fx-shape-pill   { border-radius: 9999px; }
+.fx-host.fx-shape-circle { border-radius: 50%; }
+.fx-host.fx-shape-square { border-radius: 0; }
+
 /* ─── Shimmer ─────────────────────────────────────────────────────── */
 .fx-shimmer {
   position: relative;

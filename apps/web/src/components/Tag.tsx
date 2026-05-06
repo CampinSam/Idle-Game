@@ -68,5 +68,5 @@ export function Tag({ tagKey, label, icon, size = 'md', className, noEffect, sty
   );
 
   if (noEffect || !def.effectKey) return inner;
-  return <VisualEffect effectKey={def.effectKey}>{inner}</VisualEffect>;
+  return <VisualEffect effectKey={def.effectKey} shape="pill">{inner}</VisualEffect>;
 }
