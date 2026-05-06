@@ -598,8 +598,8 @@ export class UiService {
 
   private resolveSystemRewardAssetKey(type: string | undefined): string | undefined {
     const map: Record<string, string> = {
-      entity_xp: 'images/icons/entity_xp.svg',
-      keeper_xp: 'images/icons/keeper_xp.svg',
+      entity_xp: 'icons/entity_xp',
+      keeper_xp: 'icons/keeper_xp',
     };
     return type ? map[type] : undefined;
   }

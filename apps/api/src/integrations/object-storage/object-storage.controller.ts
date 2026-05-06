@@ -16,21 +16,24 @@ const MIME_BY_EXT: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
+const STATIC_DIR_RESOLVED = path.resolve(STATIC_DIR);
+
 function serveLocalFile(filePath: string, res: Response): boolean {
-  const candidates = [
-    path.join(STATIC_DIR, filePath),
-    path.join(STATIC_DIR, filePath.replace(/\.[^.]+$/, '.svg')),
-    path.join(STATIC_DIR, filePath.replace(/\.[^.]+$/, '.png')),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      const ext = path.extname(candidate).toLowerCase();
-      const contentType = MIME_BY_EXT[ext] || 'application/octet-stream';
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      fs.createReadStream(candidate).pipe(res);
-      return true;
-    }
+  const hasExt = /\.[a-z0-9]{2,5}$/i.test(filePath);
+  const rawCandidates = hasExt
+    ? [filePath, filePath.replace(/\.[^.]+$/, '.svg'), filePath.replace(/\.[^.]+$/, '.png')]
+    : [filePath, filePath + '.svg', filePath + '.png'];
+
+  for (const raw of rawCandidates) {
+    const resolved = path.resolve(path.join(STATIC_DIR_RESOLVED, raw));
+    if (!resolved.startsWith(STATIC_DIR_RESOLVED + path.sep)) continue;
+    if (!fs.existsSync(resolved)) continue;
+    const ext = path.extname(resolved).toLowerCase();
+    const contentType = MIME_BY_EXT[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    fs.createReadStream(resolved).pipe(res);
+    return true;
   }
   return false;
 }

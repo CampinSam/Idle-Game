@@ -5,8 +5,8 @@
  * pipeline at runtime.
  */
 export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
-  entity_xp: 'images/icons/entity_xp.svg',
-  keeper_xp: 'images/icons/keeper_xp.svg',
+  entity_xp: 'icons/entity_xp',
+  keeper_xp: 'icons/keeper_xp',
 };
 
 /**
