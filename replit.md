@@ -32,7 +32,6 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - `admin-schemas.md`: Admin API documentation.
 - `definition-schemas.json`: Game definition schemas.
 - `apps/web/src/core/theme/`: UI theme files.
-- `apps/web/src/features/home/v2/`: Alternate homescreen implementation.
 
 ## Architecture decisions
 - **Monorepo Structure:** Uses pnpm for a monorepo with `apps/web`, `apps/api`, and shared `packages/`. Shared packages are pre-built to JavaScript.

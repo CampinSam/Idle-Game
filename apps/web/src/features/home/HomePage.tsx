@@ -18,7 +18,6 @@ import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import { BannerCarousel } from './BannerCarousel';
-import { HomescreenToggle, readHomeVariant } from './HomescreenToggle';
 import { MissionReadyRow, MissionInProgressRow } from './MissionRow';
 import './HomePage.css';
 
@@ -75,14 +74,6 @@ export default function HomePage() {
       dispatch(fetchCraftingRecipes());
     }
   }, [dispatch, craftingRecipes]);
-
-  // Honour the saved homescreen preference: bottom-nav HOME always points
-  // to `/`, but if the player previously chose the alternate layout we
-  // bounce them straight there. The toggle pill (rendered on both pages)
-  // overwrites the preference on click before navigating.
-  useEffect(() => {
-    if (readHomeVariant() === 'v2') navigate('/home/v2', { replace: true });
-  }, [navigate]);
 
   const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
   const goToForge = useCallback((locationId?: string, craftJobId?: string) => {
@@ -160,9 +151,6 @@ export default function HomePage() {
 
   return (
     <div className="hp">
-      <div className="hp-variant-toggle-row">
-        <HomescreenToggle current="v1" />
-      </div>
       <BannerCarousel />
 
       <div className="hp-combined-card">

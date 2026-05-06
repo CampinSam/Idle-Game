@@ -2,7 +2,7 @@ import React from 'react';
 import './HomePage.css';
 
 /**
- * Shared mission row used by both `HomePage` and `HomePageV2`. Wraps
+ * Shared mission row used by `HomePage`. Wraps
  * the existing `hp-mission-*` markup so both screens stay visually
  * consistent and any future tweak only happens in one place.
  */
