@@ -105,7 +105,7 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Idempotency**: `IdempotencyService` protects non-command POST endpoints (`/gifts/:id/claim`, `/crafting/:id/collect`, `/jobs/:id/skip`, `/jobs/:id/cancel`, mission and location mutation endpoints) against retries.
 - **Real-DB integration tests**: Jest integration tests using a dedicated schema and `db-harness.ts` for atomic transaction verification.
 - **Connection status banner**: Frontend component to display real-time connection status and retry option.
-- **Unified visual tag system**: `TagDef` and `VisualEffectDef` models provide data-driven styling for badges, pills, and visual effects.
+- **Unified visual tag system**: `TagDef` and `VisualEffectDef` models provide data-driven styling for badges, pills, and visual effects. A TagDef can stack multiple effects via `effectKeys: String[]` (rendered as nested `<VisualEffect>` wrappers — outermost to innermost). Legacy single `effectKey` is still honored as a fallback when `effectKeys` is empty; the admin editor writes both fields in lockstep. Some effect combos won't visually compose (e.g. two `::before`-based effects on the same wrapper) — order matters: put halos (glow) outside, surface effects (shimmer/rainbow) inside.
 
 ## External Dependencies
 - **PostgreSQL**: Primary database.

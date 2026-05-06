@@ -1374,6 +1374,11 @@ model TagDef {
   // chasing UUIDs.
   effectKey       String?
   effect          VisualEffectDef? @relation(fields: [effectKey], references: [key], onDelete: SetNull)
+  // Stacked effect keys (additive, applied via nested wrappers). When
+  // non-empty this wins over the singular `effectKey`. Kept as a plain
+  // string array — VisualEffectDef.key is the lookup, not a hard FK,
+  // matching how `effectKey` is treated in seeds.
+  effectKeys      String[] @default([])
   enabled         Boolean  @default(true)
   sortOrder       Int      @default(0)
 

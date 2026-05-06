@@ -33,6 +33,7 @@ interface TagDef {
   opacity: number;
   fontSize?: string | null;
   effectKey?: string | null;
+  effectKeys?: string[];
   enabled: boolean;
   sortOrder: number;
 }
@@ -53,10 +54,22 @@ interface VisualEffectDef {
 const ANIMATION_OPTIONS = ['shimmer', 'pulse', 'glow', 'shake', 'bounce', 'rainbow'];
 const CATEGORY_OPTIONS = ['rarity', 'ach-tier', 'ach-status', 'quest-status', 'entity-status', 'system'];
 
+function fxVarsFor(effect: VisualEffectDef): CSSProperties {
+  return {
+    '--fx-duration': `${effect.durationMs}ms`,
+    '--fx-easing': effect.easing,
+    '--fx-color': effect.params?.color ?? undefined,
+    '--fx-min-opacity': effect.params?.minOpacity ?? undefined,
+    '--fx-max-scale': effect.params?.maxScale ?? undefined,
+  } as CSSProperties;
+}
+
 // Tiny self-contained preview that does NOT depend on the Redux catalog
 // — it renders straight from the in-flight form state so the admin sees
-// uncommitted edits before they hit the server.
-function TagPreview({ tag, effect }: { tag: TagDef; effect: VisualEffectDef | null }) {
+// uncommitted edits before they hit the server. Mirrors <Tag>: stacked
+// effects render as nested wrappers so each gets its own ::before pseudo
+// and box-shadow halos compose cleanly.
+function TagPreview({ tag, fxStack }: { tag: TagDef; fxStack: VisualEffectDef[] }) {
   const tagStyle: CSSProperties = {
     background: tag.backgroundColor,
     color: tag.color,
@@ -64,38 +77,42 @@ function TagPreview({ tag, effect }: { tag: TagDef; effect: VisualEffectDef | nu
     opacity: tag.opacity,
     fontSize: tag.fontSize || undefined,
   };
-  const fxClass = effect ? `fx-host fx-${effect.cssAnimation} fx-shape-pill` : '';
-  const fxStyle: CSSProperties = effect
-    ? ({
-        '--fx-duration': `${effect.durationMs}ms`,
-        '--fx-easing': effect.easing,
-        '--fx-color': effect.params?.color ?? undefined,
-        '--fx-min-opacity': effect.params?.minOpacity ?? undefined,
-        '--fx-max-scale': effect.params?.maxScale ?? undefined,
-      } as CSSProperties)
-    : {};
+  const pill = (
+    <span className="tag-editor-preview-pill" style={tagStyle}>
+      {tag.label || tag.key || 'preview'}
+    </span>
+  );
+  return (fxStack ?? []).reduceRight<JSX.Element>((children, fx) => (
+    <span
+      key={fx.key}
+      className={`fx-host fx-${fx.cssAnimation} fx-shape-pill`}
+      style={fxVarsFor(fx)}
+    >
+      {children}
+    </span>
+  ), pill);
+}
+
+function EffectPreview({ effect }: { effect: VisualEffectDef }) {
   return (
-    <span className={fxClass} style={fxStyle}>
-      <span className="tag-editor-preview-pill" style={tagStyle}>
-        {tag.label || tag.key || 'preview'}
-      </span>
+    <span
+      className={`fx-host fx-${effect.cssAnimation}`}
+      style={{ ...fxVarsFor(effect), borderRadius: 6 }}
+    >
+      <span className="tag-editor-effect-swatch">A</span>
     </span>
   );
 }
 
-function EffectPreview({ effect }: { effect: VisualEffectDef }) {
-  const fxStyle: CSSProperties = {
-    '--fx-duration': `${effect.durationMs}ms`,
-    '--fx-easing': effect.easing,
-    '--fx-color': effect.params?.color ?? undefined,
-    '--fx-min-opacity': effect.params?.minOpacity ?? undefined,
-    '--fx-max-scale': effect.params?.maxScale ?? undefined,
-  } as CSSProperties;
-  return (
-    <span className={`fx-host fx-${effect.cssAnimation}`} style={{ ...fxStyle, borderRadius: 6 }}>
-      <span className="tag-editor-effect-swatch">A</span>
-    </span>
-  );
+// Resolve the active effect stack for a TagDef: prefer multi-effect array,
+// fall back to legacy single effectKey. Mirrors the runtime <Tag> resolver.
+function resolveStack(t: TagDef, effects: VisualEffectDef[]): VisualEffectDef[] {
+  const keys = (t.effectKeys && t.effectKeys.length > 0)
+    ? t.effectKeys
+    : (t.effectKey ? [t.effectKey] : []);
+  return keys
+    .map((k) => effects.find((e) => e.key === k))
+    .filter((e): e is VisualEffectDef => !!e);
 }
 
 export default function TagEditorPage() {
@@ -154,10 +171,9 @@ export default function TagEditorPage() {
     [effects, filter],
   );
 
-  const draftEffect = useMemo(() => {
-    if (tab !== 'tags' || !draft) return null;
-    const t = draft as TagDef;
-    return effects.find((e) => e.key === t.effectKey) ?? null;
+  const draftStack = useMemo(() => {
+    if (tab !== 'tags' || !draft) return [] as VisualEffectDef[];
+    return resolveStack(draft as TagDef, effects);
   }, [tab, draft, effects]);
 
   const updateDraft = (patch: Partial<TagDef & VisualEffectDef>) => {
@@ -236,19 +252,16 @@ export default function TagEditorPage() {
             <button onClick={handleCreate} disabled={saving}>+ New</button>
           </div>
           {loading && <div className="tag-editor-loading">Loading…</div>}
-          {tab === 'tags' && filteredTags.map((t) => {
-            const fx = effects.find((e) => e.key === t.effectKey) ?? null;
-            return (
-              <button
-                key={t.key}
-                className={`tag-editor-list-row ${selectedKey === t.key ? 'selected' : ''}`}
-                onClick={() => setSelectedKey(t.key)}
-              >
-                <TagPreview tag={t} effect={fx} />
-                <span className="tag-editor-list-meta">{t.category}</span>
-              </button>
-            );
-          })}
+          {tab === 'tags' && filteredTags.map((t) => (
+            <button
+              key={t.key}
+              className={`tag-editor-list-row ${selectedKey === t.key ? 'selected' : ''}`}
+              onClick={() => setSelectedKey(t.key)}
+            >
+              <TagPreview tag={t} fxStack={resolveStack(t, effects)} />
+              <span className="tag-editor-list-meta">{t.category}</span>
+            </button>
+          ))}
           {tab === 'effects' && filteredEffects.map((e) => (
             <button
               key={e.key}
@@ -268,7 +281,7 @@ export default function TagEditorPage() {
           {draft && tab === 'tags' && (
             <TagForm
               draft={draft as TagDef}
-              effect={draftEffect}
+              fxStack={draftStack}
               effects={effects}
               onChange={updateDraft}
               onSave={handleSave}
@@ -293,24 +306,40 @@ export default function TagEditorPage() {
 
 function TagForm({
   draft,
-  effect,
+  fxStack,
   effects,
   onChange,
   onSave,
   saving,
 }: {
   draft: TagDef;
-  effect: VisualEffectDef | null;
+  fxStack: VisualEffectDef[];
   effects: VisualEffectDef[];
   onChange: (p: Partial<TagDef>) => void;
   onSave: () => void;
   saving: boolean;
 }) {
+  // Working copy of the effect stack. Empty entries (`''`) render as a
+  // "— None —" row so admins can clear a slot without removing it.
+  const stackKeys: string[] = (draft.effectKeys && draft.effectKeys.length > 0)
+    ? draft.effectKeys
+    : (draft.effectKey ? [draft.effectKey] : []);
+
+  // Persist both fields in lockstep: `effectKeys` is authoritative, but
+  // `effectKey` is kept as a back-compat fallback (FK still resolves).
+  const writeStack = (next: string[]) => {
+    const cleaned = next.filter((k) => !!k);
+    onChange({
+      effectKeys: cleaned,
+      effectKey: cleaned[0] ?? null,
+    });
+  };
+
   return (
     <>
       <div className="tag-editor-preview-area">
         <span className="tag-editor-preview-label">Live preview</span>
-        <TagPreview tag={draft} effect={effect} />
+        <TagPreview tag={draft} fxStack={fxStack} />
       </div>
 
       <div className="tag-editor-form-grid">
@@ -350,11 +379,62 @@ function TagForm({
         <Field label="Font size (e.g. 11px)">
           <input value={draft.fontSize || ''} onChange={(e) => onChange({ fontSize: e.target.value || null })} />
         </Field>
-        <Field label="Effect">
-          <select value={draft.effectKey || ''} onChange={(e) => onChange({ effectKey: e.target.value || null })}>
-            <option value="">— None —</option>
-            {effects.map((fx) => <option key={fx.key} value={fx.key}>{fx.name}</option>)}
-          </select>
+        <Field label="Effect stack (outermost → innermost)">
+          <div className="tag-editor-fx-stack">
+            {stackKeys.length === 0 && (
+              <div className="tag-editor-fx-empty">No effects. Add one below.</div>
+            )}
+            {stackKeys.map((k, i) => (
+              <div key={i} className="tag-editor-fx-row">
+                <select
+                  value={k}
+                  onChange={(e) => {
+                    const next = stackKeys.slice();
+                    next[i] = e.target.value;
+                    writeStack(next);
+                  }}
+                >
+                  <option value="">— None —</option>
+                  {effects.map((fx) => <option key={fx.key} value={fx.key}>{fx.name}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="tag-editor-fx-btn"
+                  disabled={i === 0}
+                  onClick={() => {
+                    const next = stackKeys.slice();
+                    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                    writeStack(next);
+                  }}
+                  title="Move outward"
+                >↑</button>
+                <button
+                  type="button"
+                  className="tag-editor-fx-btn"
+                  disabled={i === stackKeys.length - 1}
+                  onClick={() => {
+                    const next = stackKeys.slice();
+                    [next[i + 1], next[i]] = [next[i], next[i + 1]];
+                    writeStack(next);
+                  }}
+                  title="Move inward"
+                >↓</button>
+                <button
+                  type="button"
+                  className="tag-editor-fx-btn tag-editor-fx-remove"
+                  onClick={() => writeStack(stackKeys.filter((_, j) => j !== i))}
+                  title="Remove"
+                >×</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="tag-editor-fx-add"
+              onClick={() => writeStack([...stackKeys, effects[0]?.key ?? ''])}
+            >
+              + Add effect
+            </button>
+          </div>
         </Field>
         <Field label="Enabled">
           <input type="checkbox" checked={draft.enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />

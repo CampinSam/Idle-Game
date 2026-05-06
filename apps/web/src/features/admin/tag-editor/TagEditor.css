@@ -273,3 +273,58 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Multi-effect stack editor */
+.tag-editor-fx-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tag-editor-fx-empty {
+  color: #6a6a8a;
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 0;
+}
+.tag-editor-fx-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.tag-editor-fx-row select {
+  flex: 1;
+}
+.tag-editor-fx-btn {
+  background: #1c1830;
+  border: 1px solid #3a3a4a;
+  color: #ffffff;
+  width: 28px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.tag-editor-fx-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.tag-editor-fx-btn.tag-editor-fx-remove {
+  color: #ff8c8c;
+  border-color: #6a2a2a;
+}
+.tag-editor-fx-add {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed #3a3a4a;
+  color: #aaaacc;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.tag-editor-fx-add:hover {
+  border-color: #5a3aaa;
+  color: #ffffff;
+}

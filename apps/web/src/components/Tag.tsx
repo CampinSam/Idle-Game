@@ -67,6 +67,28 @@ export function Tag({ tagKey, label, icon, size = 'md', className, noEffect, sty
     </span>
   );
 
-  if (noEffect || !def.effectKey) return inner;
-  return <VisualEffect effectKey={def.effectKey} shape="pill">{inner}</VisualEffect>;
+  if (noEffect) return inner;
+
+  // Resolve the effect stack: prefer the multi-effect array when set,
+  // fall back to the legacy single effectKey. Effects are applied as
+  // nested <VisualEffect> wrappers so each gets its own ::before pseudo
+  // (avoiding shimmer/rainbow collisions) and box-shadow halos compose.
+  // Order = outermost wrapper first; the pill stays in the center.
+  const stack: string[] =
+    Array.isArray((def as any).effectKeys) && (def as any).effectKeys.length > 0
+      ? ((def as any).effectKeys as string[])
+      : def.effectKey
+        ? [def.effectKey]
+        : [];
+
+  if (stack.length === 0) return inner;
+
+  return stack.reduceRight<ReactNode>(
+    (children, key) => (
+      <VisualEffect key={key} effectKey={key} shape="pill">
+        {children}
+      </VisualEffect>
+    ),
+    inner,
+  );
 }
