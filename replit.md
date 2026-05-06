@@ -36,11 +36,13 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
 - **Performance**: Code splitting for page components, lazy-loaded admin pages, and layout-accurate skeleton screens.
 - **Animations**: Page transitions with fade/rise and staggered card entry.
 - **Unified controls bars**: Entities and Inventory pages share a consistent controls bar pattern (search input + filter dropdowns + sort dropdown) with localStorage persistence. When `showControls` is true on `EntityList` or `ItemList`, the bar replaces legacy tab strips. Legacy tabs remain available for other consumers (e.g. potion picker) via `showControls=false`.
-- **Page layout model** (canonical — do not override per page):
+- **Page layout model** (canonical — do not override per page; full contract in `Layout.css` near `.content`):
   - Token: `--page-top-gap: 8px` defined in `Layout.css :root`. All page roots use `padding-top: var(--page-top-gap)`.
   - Horizontal gutter: `Layout.css .content` provides `padding: 60px 16px 80px`. No page-level horizontal padding or `max-width` overrides.
-  - **Browser pages** (Entities, Inventory, Missions, Store): page root has `display:flex; flex-direction:column; flex:1; min-height:0`. Wrapper card also `flex:1; min-height:0; overflow:hidden` (or `overflow-y:auto`). Inner content area scrolls — nav bar always visible.
-  - **Dashboard pages** (Home, Rewards, Locations, Profile, Settings, Entity Detail, Location Detail): free-flow, cards stack vertically. Global `.content` scroll handles overflow.
+  - **Page root** (every routed page): `display:flex; flex-direction:column; flex:1; min-height:0; padding-top: var(--page-top-gap);`
+  - **Primary scroll container** — page root for multi-card "dashboard" pages (Home, Rewards, Achievements, Locations, Location Detail, Forge), wrapper card for single-card pages (Entities, Inventory, Settings, Profile, Store, Entity Detail) — adds `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`. It does **not** set `flex:1` so it sizes to content and caps at body height.
+  - With every page following the contract, the global `.content` wrapper never actually scrolls — the floating top bar and bottom nav stay visible at all times.
+  - **One explicit exception**: `.mp-browse-shell` (Mission browse views) intentionally fills body via `flex:1` for its sticky-slots / scrollable-middle / collapsable-activity-footer pattern, but is still capped via `max-height:100%`.
 
 **Blockchain Wallet System:**
 - **DB Models**: `LinkedWallet` and `WalletNonce` for user wallets and authentication.

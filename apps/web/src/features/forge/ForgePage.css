@@ -1,12 +1,19 @@
 .forge-scene {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   gap: 18px;
+  padding-top: var(--page-top-gap);
   padding-bottom: 96px;
   background: linear-gradient(180deg, #1a1350 0%, #13103a 100%);
   border: 1px solid var(--border);
   border-radius: 16px;
-  overflow: hidden;
 }
 
 /* Hero */

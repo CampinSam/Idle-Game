@@ -248,6 +248,24 @@
   50% { filter: drop-shadow(0 0 8px rgba(245, 158, 11, 1)); }
 }
 
+/*
+ * ── Canonical page layout contract ─────────────────────────────────────────
+ * Every routed page must:
+ *   1. Page root: `display:flex; flex-direction:column; flex:1; min-height:0;
+ *      padding-top: var(--page-top-gap);`
+ *   2. Primary scroll container (page root for multi-card "dashboard" pages,
+ *      wrapper card for single-card pages) adds:
+ *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
+ *         -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`
+ *      It does NOT set `flex:1` — it sizes to content and caps at body height.
+ *   3. With every page following the contract, `.content` below never
+ *      actually scrolls — its `overflow-y:auto` is a defensive safety net
+ *      so the top bar and bottom nav always stay visible.
+ *   4. One explicit exception: the Mission browse shell intentionally fills
+ *      the body (sticky slots header + scrollable middle + collapsable
+ *      activity footer) but is still capped via `max-height:100%`.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
 .content {
   flex: 1;
   min-height: 0;

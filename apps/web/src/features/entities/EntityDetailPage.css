@@ -1,8 +1,9 @@
 .entity-detail-page {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   padding-top: var(--page-top-gap);
-  overflow: hidden;
 }
 
 .entity-detail-page__header-card {
@@ -19,7 +20,14 @@
   background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 16px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 14px;
   animation: detail-enter 0.28s ease-out both;
   will-change: transform;
