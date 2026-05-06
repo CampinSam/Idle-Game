@@ -7,7 +7,10 @@ import {
   useAllActiveJobs,
   useSyncQuests,
   useHomeBanners,
+  useSyncCurrencyBalances,
 } from '../../hooks/useSyncSelectors';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { fetchCraftingRecipes } from '../../store/gameSlice';
 import { useCurrentTick, useTickRate, createCountdownTimer, useActiveBoosts } from '../../tick';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { useModal } from '../../context/ModalContext';
@@ -16,10 +19,12 @@ import {
   computeGeneratorProduction,
   computeConsumptionFromBuildings,
   aggregateByResource,
+  computeInventoryAmount,
 } from '../../utils/locationProduction';
 import { GameImage } from '../../components/GameImage';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { getEntityKind } from '../entities/registry';
+import { workshopParallelSlots } from '@derp/math';
 import { HOME_V2_PROXY, formatProxyCountdown } from './HomePageV2.proxy';
 import { HomescreenToggle } from './HomescreenToggle';
 import './HomePageV2.css';
@@ -39,6 +44,7 @@ function formatRemaining(ms: number): string | null {
 
 export default function HomePageV2() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const locations = useSyncLocations();
@@ -48,6 +54,9 @@ export default function HomePageV2() {
   const tickRate = useTickRate();
   const banners = useHomeBanners();
   const boostInfo = useActiveBoosts();
+  const currencyBalances = useSyncCurrencyBalances();
+  const syncItemsTable = useAppSelector((s) => s.sync.items);
+  const craftingRecipes = useAppSelector((s) => s.game.craftingRecipes);
   const { collectJob } = useCollectJob();
   const { pushModal } = useModal();
 
@@ -56,6 +65,27 @@ export default function HomePageV2() {
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  // Match HomePage: ensure recipes are loaded so the crafting trigger
+  // reflects affordability instead of always missing.
+  useEffect(() => {
+    if (!craftingRecipes || craftingRecipes.length === 0) {
+      dispatch(fetchCraftingRecipes());
+    }
+  }, [dispatch, craftingRecipes]);
+
+  // Workshops are needed to mirror HomePage's "actionable forge" trigger
+  // (slots open + recipe affordability). Loaded once on mount.
+  const [workshops, setWorkshops] = useState<Array<{
+    buildingId: string; locationId: string; name: string; level: number; enabled: boolean;
+  }>>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api.getCraftingWorkshops()
+      .then((list) => { if (!cancelled) setWorkshops(list); })
+      .catch(() => { if (!cancelled) setWorkshops([]); });
+    return () => { cancelled = true; };
   }, []);
 
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -90,19 +120,8 @@ export default function HomePageV2() {
   };
 
   // -------- Aggregates (server data) ------------------------------
-  const productionByResource = useMemo(() => {
-    return (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
-      const gens = computeGeneratorProduction(loc);
-      const cons = computeConsumptionFromBuildings(loc);
-      const types: Record<string, string> = (loc as any).storage?.resourceTypes || {};
-      for (const s of aggregateByResource(loc, gens, cons, types)) {
-        acc[s.outputRefId] = (acc[s.outputRefId] ?? 0) + s.netRatePerHour;
-      }
-      return acc;
-    }, {});
-  }, [locations]);
-
-  const storageFillPct = useMemo(() => {
+  const { productionByResource, storageUsed, storageCap } = useMemo(() => {
+    const prod: Record<string, number> = {};
     let used = 0;
     let cap = 0;
     for (const loc of locations as any[]) {
@@ -110,33 +129,84 @@ export default function HomePageV2() {
       const cons = computeConsumptionFromBuildings(loc);
       const types: Record<string, string> = (loc as any).storage?.resourceTypes || {};
       for (const s of aggregateByResource(loc, gens, cons, types)) {
+        prod[s.outputRefId] = (prod[s.outputRefId] ?? 0) + s.netRatePerHour;
         used += s.currentAmount;
         cap += s.capacity;
       }
     }
-    if (cap <= 0) return 0;
-    return Math.min(100, Math.round((used / cap) * 100));
+    return { productionByResource: prod, storageUsed: used, storageCap: cap };
   }, [locations]);
 
   const arcaniumRate = productionByResource['soft_arcanium'] ?? 0;
+  const storageFillPct = storageCap > 0
+    ? Math.min(100, Math.round((storageUsed / storageCap) * 100))
+    : 0;
 
   // -------- Quick-link counts (server data) -----------------------
-  const dailyQuestsActionable = quests.filter(
-    (q: any) => q.questDef?.cadence === 'daily' && (q.status === 'active' || q.status === 'completed'),
+  const dailyQuests = quests.filter((q: any) => q.questDef?.cadence === 'daily');
+  const dailyQuestsTotal = dailyQuests.length;
+  const dailyQuestsDone = dailyQuests.filter(
+    (q: any) => q.status === 'completed' || q.status === 'claimed',
   ).length;
-  const dailyQuestsReady = quests.some(
-    (q: any) => q.questDef?.cadence === 'daily' && q.status === 'completed',
-  );
+  const dailyQuestsReady = dailyQuests.some((q: any) => q.status === 'completed');
 
   const outpostCount = locations.length;
   const outpostsAlert = outpostCount < MAX_OUTPOST_SLOTS;
 
-  const birdCount = entities.filter((e: any) => getEntityKind(e) === 'derp_bird').length;
+  const birdEntities = entities.filter((e: any) => getEntityKind(e) === 'derp_bird');
+  const birdCount = birdEntities.length;
+  const birdTotal = entities.length;
 
+  // Crafting trigger — mirrors HomePage's logic so the dot lights up
+  // when there's a job ready, OR a craftable opportunity (slot open +
+  // idle entity + at least one affordable recipe), OR newly-unlocked
+  // recipes the player hasn't seen yet at the primary workshop.
+  const idleEntityCount = entities.filter((b: any) => b.status === 'idle').length;
+  const primaryWorkshop = workshops.find((w) => w.enabled) ?? workshops[0] ?? null;
+  const craftingActive = allActiveJobs.filter((j: any) => j.type === 'CraftingJob').length;
   const craftingReady = allActiveJobs.some(
     (j: any) => j.type === 'CraftingJob' && getJobRemaining(j) <= 0,
   );
-  const craftingActive = allActiveJobs.filter((j: any) => j.type === 'CraftingJob').length;
+  const craftingDot = useMemo(() => {
+    if (craftingReady) return true;
+    if (!primaryWorkshop) return false;
+    const wsTier = Math.max(1, Number(primaryWorkshop.level || 1));
+    const slotsTotal = workshopParallelSlots(wsTier);
+    const wsActive = allActiveJobs.filter(
+      (j: any) => j.type === 'CraftingJob'
+        && (j.data?.locationId || j.locationId) === primaryWorkshop.locationId,
+    ).length;
+    const slotOpen = wsActive < slotsTotal;
+    const keeperLvl = profile?.keeperLevel ?? 1;
+    const passesVisibility = (r: any) =>
+      (r.requiredKeeperLevel || 1) <= keeperLvl && Number(r.tier ?? 1) <= wsTier;
+    const affordable = (craftingRecipes || []).some((r: any) => {
+      if (!passesVisibility(r)) return false;
+      const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];
+      for (const c of cost) {
+        if (c.type === 'currency') {
+          if ((currencyBalances[c.id] ?? 0) < c.amount) return false;
+        } else {
+          const have = computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances);
+          if (have < c.amount) return false;
+        }
+      }
+      return true;
+    });
+    if (slotOpen && idleEntityCount > 0 && affordable) return true;
+    const visibleRecipeIds = (craftingRecipes || [])
+      .filter(passesVisibility)
+      .map((r: any) => String(r.id));
+    if (visibleRecipeIds.length === 0) return false;
+    const seenKey = `forge.recipes.seen.${primaryWorkshop.locationId}`;
+    let previouslySeen: string[] = [];
+    try { previouslySeen = JSON.parse(localStorage.getItem(seenKey) || '[]'); } catch { previouslySeen = []; }
+    const seen = new Set(previouslySeen);
+    return visibleRecipeIds.some((id) => !seen.has(id));
+  }, [
+    craftingReady, primaryWorkshop, allActiveJobs, profile, craftingRecipes,
+    currencyBalances, syncItemsTable, idleEntityCount,
+  ]);
 
   // -------- Active mission jobs -----------------------------------
   const missionJobs = allActiveJobs.filter((j: any) => j.type === 'MissionJob');
@@ -149,6 +219,8 @@ export default function HomePageV2() {
   const bp = HOME_V2_PROXY.battlePass;
   const boss = HOME_V2_PROXY.boss;
 
+  const comingSoon = (label: string) => () => alert(`${label} — coming soon`);
+
   return (
     <div className="hp2 page-transition-wrapper">
       <header className="hp2__header">
@@ -156,37 +228,35 @@ export default function HomePageV2() {
         <HomescreenToggle current="v2" />
       </header>
 
-      {/* ---- Season banner -------------------------------------- */}
-      <section className="hp2__card hp2-season">
-        <div className="hp2__card-eyebrow">Current Season · PROXY</div>
-        <div className="hp2-season__row">
-          <div>
-            <div className="hp2-season__name">{HOME_V2_PROXY.season.name}</div>
-            <div className="hp2-season__countdown">
-              Ends in <strong>{seasonCountdown}</strong>
+      {/* ---- Season + Battle Pass combined strip --------------- */}
+      <section className="hp2__card hp2-strip">
+        <div className="hp2__card-eyebrow">Season &amp; Battle Pass · PROXY</div>
+        <div className="hp2-strip__row">
+          <div className="hp2-strip__season">
+            <div className="hp2-season__sigil" aria-hidden>🌌</div>
+            <div className="hp2-strip__season-info">
+              <div className="hp2-season__name">{HOME_V2_PROXY.season.name}</div>
+              <div className="hp2-season__countdown">
+                Ends in <strong>{seasonCountdown}</strong>
+              </div>
             </div>
           </div>
-          <div className="hp2-season__sigil" aria-hidden>🌌</div>
-        </div>
-      </section>
-
-      {/* ---- Battle pass strip ---------------------------------- */}
-      <section className="hp2__card">
-        <div className="hp2__card-eyebrow">Battle Pass · PROXY</div>
-        <div className="hp2-bp">
-          <div className="hp2-bp__tier">{bp.tier}</div>
-          <div className="hp2-bp__main">
-            <div className="hp2-bp__label">
-              <span>Tier {bp.tier} / {bp.tierMax}</span>
-              <span>{bp.xp} / {bp.xpToNext} XP</span>
+          <div className="hp2-strip__divider" aria-hidden />
+          <div className="hp2-strip__bp hp2-bp">
+            <div className="hp2-bp__tier">{bp.tier}</div>
+            <div className="hp2-bp__main">
+              <div className="hp2-bp__label">
+                <span>T{bp.tier}/{bp.tierMax}</span>
+                <span>{bp.xp}/{bp.xpToNext} XP</span>
+              </div>
+              <div className="hp2-bp__bar">
+                <div
+                  className="hp2-bp__fill"
+                  style={{ width: `${Math.min(100, (bp.xp / bp.xpToNext) * 100)}%` }}
+                />
+              </div>
+              <div className="hp2-bp__next">{bp.nextRewardLabel}</div>
             </div>
-            <div className="hp2-bp__bar">
-              <div
-                className="hp2-bp__fill"
-                style={{ width: `${Math.min(100, (bp.xp / bp.xpToNext) * 100)}%` }}
-              />
-            </div>
-            <div className="hp2-bp__next">Next: {bp.nextRewardLabel}</div>
           </div>
         </div>
       </section>
@@ -198,7 +268,7 @@ export default function HomePageV2() {
           <button className="hp2-quick__tile" onClick={() => navigate('/rewards')}>
             {dailyQuestsReady && <span className="hp2-quick__dot" aria-hidden />}
             <span className="hp2-quick__icon" aria-hidden>📜</span>
-            <span className="hp2-quick__count">{dailyQuestsActionable}</span>
+            <span className="hp2-quick__count">{dailyQuestsDone}/{dailyQuestsTotal}</span>
             <span className="hp2-quick__label">Quests</span>
           </button>
           <button className="hp2-quick__tile" onClick={() => navigate('/locations')}>
@@ -209,11 +279,11 @@ export default function HomePageV2() {
           </button>
           <button className="hp2-quick__tile" onClick={() => navigate('/entities')}>
             <span className="hp2-quick__icon" aria-hidden>🪶</span>
-            <span className="hp2-quick__count">{birdCount}</span>
+            <span className="hp2-quick__count">{birdCount}/{birdTotal}</span>
             <span className="hp2-quick__label">Birds</span>
           </button>
           <button className="hp2-quick__tile" onClick={() => navigate('/crafting')}>
-            {(craftingReady || craftingActive > 0) && <span className="hp2-quick__dot" aria-hidden />}
+            {craftingDot && <span className="hp2-quick__dot" aria-hidden />}
             <span className="hp2-quick__icon" aria-hidden>⚒️</span>
             <span className="hp2-quick__count">{craftingActive}</span>
             <span className="hp2-quick__label">Crafting</span>
@@ -238,14 +308,10 @@ export default function HomePageV2() {
             fallbackSrc="/media/images/regions/fallback.png"
           />
         </div>
-        <div className="hp2-region__stats">
+        <div className="hp2-region__rate-row">
           <div className="hp2-region__stat">
             <span aria-hidden>💎</span>
             <span><strong>{Math.round(arcaniumRate).toLocaleString()}</strong>/h</span>
-          </div>
-          <div className="hp2-region__stat">
-            <span aria-hidden>📦</span>
-            <span>Storage <strong>{storageFillPct}%</strong></span>
           </div>
           <button
             className="hp2-region__collect"
@@ -253,6 +319,18 @@ export default function HomePageV2() {
           >
             Collect All
           </button>
+        </div>
+        <div className="hp2-region__storage">
+          <div className="hp2-region__storage-label">
+            <span>Storage</span>
+            <span>{storageFillPct}%</span>
+          </div>
+          <div className="hp2-region__storage-bar">
+            <div
+              className="hp2-region__storage-fill"
+              style={{ width: `${storageFillPct}%` }}
+            />
+          </div>
         </div>
       </section>
 
@@ -300,13 +378,11 @@ export default function HomePageV2() {
           );
         })}
         {missionJobs.length === 0 && (
-          <>
-            <div className="hp2-missions__empty">No active missions</div>
-            <button className="hp2-missions__cta" onClick={() => navigate('/missions')}>
-              Start a Mission
-            </button>
-          </>
+          <div className="hp2-missions__empty">No active missions</div>
         )}
+        <button className="hp2-missions__cta" onClick={() => navigate('/missions')}>
+          View All Missions
+        </button>
       </section>
 
       {/* ---- Seasonal boss ------------------------------------- */}
@@ -327,6 +403,9 @@ export default function HomePageV2() {
           <div className="hp2-boss__hp-fill" style={{ width: `${boss.hpPercent}%` }} />
         </div>
         <div className="hp2-boss__reward">{boss.rewardLabel}</div>
+        <button className="hp2-boss__cta" onClick={comingSoon('Seasonal Boss')}>
+          View Boss
+        </button>
       </section>
 
       {/* ---- Events list --------------------------------------- */}
@@ -356,6 +435,9 @@ export default function HomePageV2() {
             })}
           </div>
         )}
+        <button className="hp2-events__calendar" onClick={comingSoon('Event Calendar')}>
+          Calendar
+        </button>
       </section>
     </div>
   );
