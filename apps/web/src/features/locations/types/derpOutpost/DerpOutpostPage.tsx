@@ -462,7 +462,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
                 const consClass = consBps < 10000 ? 'pos' : consBps > 10000 ? 'neg' : 'neu';
                 return (
                   <div className="od-workers-summary" aria-label="Combined worker effects">
-                    <div className="od-workers-summary__title">Combined Effects</div>
+                    <h3 className="od-card-title od-workers-summary__title">EFFECTS</h3>
                     <div className="od-workers-summary__row">
                       <span className="od-workers-summary__label">Production</span>
                       <span className={`od-workers-summary__value od-workers-summary__value--${prodClass}`}>

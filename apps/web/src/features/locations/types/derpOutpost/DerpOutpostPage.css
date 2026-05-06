@@ -363,16 +363,6 @@
   align-self: stretch;
 }
 
-.od-card-workers .od-workers-summary__title {
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-  color: var(--accent-text, #93c5fd);
-  margin: 0 0 2px;
-}
-
 .od-card-workers .od-workers-summary__row {
   display: flex;
   align-items: baseline;
