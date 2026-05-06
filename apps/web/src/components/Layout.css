@@ -262,9 +262,11 @@
  *         is itself flex:1) gives a definite bounded height, so internal
  *         `overflow-y:auto` scrolls when content is tall and stays at content
  *         height when short.
- *      - For single-card pages (Entities, Inventory, Settings, Profile,
- *        Store, Entity Detail, Location Detail) — the wrapper card inside
- *        the page root adds
+ *      - For fill-height single-card pages (Inventory, Store) — the wrapper
+ *        card adds `flex:1; min-height:0; overflow-y:auto` so it always
+ *        expands to fill the body; content scrolls inside the card.
+ *      - For shrink-to-content single-card pages (Entities, Settings, Profile,
+ *        Entity Detail, Location Detail) — the wrapper card adds
  *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
  *         -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`
  *        WITHOUT `flex:1`, so it sizes to content and caps at body height.
