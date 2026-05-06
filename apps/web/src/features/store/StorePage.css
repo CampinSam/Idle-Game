@@ -103,15 +103,6 @@
   flex-wrap: wrap;
 }
 
-.store-cost-entry {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 800;
-  font-size: 14px;
-  color: #e2d9f3;
-}
-
 /* ---- Badge ---- */
 
 .store-badge {

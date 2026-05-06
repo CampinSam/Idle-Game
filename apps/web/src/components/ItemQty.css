@@ -1,0 +1,46 @@
+.item-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.item-qty--left {
+  flex-direction: row-reverse;
+}
+
+.item-qty__num {
+  font-weight: 700;
+}
+
+.item-qty__suffix {
+  font-weight: 600;
+  opacity: 0.75;
+  margin-left: 1px;
+  font-size: 0.85em;
+}
+
+/* Badge variant — icon with number overlaid at bottom-right */
+.item-qty--badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-qty__badge-num {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.35;
+  pointer-events: none;
+}

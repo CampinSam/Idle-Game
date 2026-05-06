@@ -2,7 +2,7 @@ import { memo, useState, useCallback } from 'react';
 import { useCommand } from '../../hooks/useCommand';
 import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
-import GameIcon from '../../components/GameIcon';
+import ItemQty from '../../components/ItemQty';
 import { Tag } from '../../components/Tag';
 
 interface QuestCardProps {
@@ -97,8 +97,7 @@ function QuestCardInner({ quest }: QuestCardProps) {
               : (r.currencyId ?? r.itemDefId ?? r.type);
             return (
               <span key={i} className="quest-reward-chip">
-                <GameIcon src={iconSrc} size={14} />
-                <span>{r.amount}</span>
+                <ItemQty src={iconSrc} amount={r.amount} size={14} />
               </span>
             );
           })}

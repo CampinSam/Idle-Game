@@ -185,15 +185,6 @@
   gap: 2px;
 }
 
-.top-bar-currency-icon {
-  font-size: 16px;
-}
-
-.top-bar-currency-val {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f0f0f0;
-}
 
 .top-bar-bell {
   position: relative;
@@ -406,12 +397,6 @@
 @media (max-width: 520px) {
   .top-bar-currencies {
     gap: 6px;
-  }
-  .top-bar-currency-icon {
-    font-size: 11px;
-  }
-  .top-bar-currency-val {
-    font-size: 11px;
   }
 }
 

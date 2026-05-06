@@ -25,6 +25,7 @@ import type { EntityForecast } from '../entities/types';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
 import { GameImage } from '../../components/GameImage';
 import { getEntityImagePath } from '../../config/images';
+import ItemQty from '../../components/ItemQty';
 import './ForgePage.css';
 
 const FORGE_FALLBACK = {
@@ -54,11 +55,6 @@ function fmtSeconds(seconds: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-function costLabel(r: any): string {
-  const cost: Array<{ type: string; id: string; amount: number }> = r?.cost ?? [];
-  if (cost.length === 0) return 'Free';
-  return cost.map((c) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ');
-}
 
 interface QualityProb { key: string; label: string; probability: number }
 interface ForecastResponse {
@@ -437,7 +433,13 @@ function ForgeTrack({
               <div className="forge-slot-card__eyebrow">Recipe</div>
               <div className="forge-slot-card__title">{selectedRecipe.name}</div>
               <div className="forge-slot-card__meta">
-                <span>{costLabel(selectedRecipe)}</span>
+                <span className="forge-slot-card__meta-cost">
+                  {(selectedRecipe.cost ?? []).length === 0
+                    ? 'Free'
+                    : (selectedRecipe.cost ?? []).map((c: any, i: number) => (
+                        <ItemQty key={i} src={c.id} amount={c.amount} size={13} />
+                      ))}
+                </span>
                 <span>{fmtSeconds(selectedRecipe.timer?.duration ?? 0)}</span>
               </div>
               <div className="forge-slot-card__change">Tap to change ↩</div>
@@ -604,8 +606,12 @@ function ForgeTrack({
                       </div>
                     )}
                     <div className="forge-recipe-meta">
-                      <span className={canAfford ? '' : 'is-bad'}>
-                        {cost.length === 0 ? 'Free' : cost.map((c) => `${c.amount} ${c.id.replace('soft_', '').replace('mat_', '')}`).join(' · ')}
+                      <span className={`forge-recipe-meta-cost${canAfford ? '' : ' is-bad'}`}>
+                        {cost.length === 0
+                          ? 'Free'
+                          : cost.map((c, ci) => (
+                              <ItemQty key={ci} src={c.id} amount={c.amount} size={12} />
+                            ))}
                       </span>
                       <span>{fmtSeconds(r.timer?.duration ?? 0)}</span>
                       {!meetsLevel && <span className="is-locked-tag">Lvl {r.requiredKeeperLevel}</span>}
@@ -726,7 +732,7 @@ function ForgeTrack({
               ? 'Igniting…'
               : blockedReasons.length > 0
                 ? blockedReasons[0]
-                : `Begin Crafting (${costLabel(selectedRecipe)})`}
+                : 'Begin Crafting'}
           </button>
         </div>
       )}

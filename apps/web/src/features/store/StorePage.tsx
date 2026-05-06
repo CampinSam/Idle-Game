@@ -3,6 +3,7 @@ import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
 import { useModal } from '../../context/ModalContext';
 import GameIcon from '../../components/GameIcon';
+import ItemQty from '../../components/ItemQty';
 import { resolveName } from '../../utils/iconResolver';
 import './StorePage.css';
 
@@ -58,10 +59,7 @@ function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) 
   return (
     <span className="store-cost">
       {cost.map((e, i) => (
-        <span key={i} className="store-cost-entry">
-          <GameIcon src={e.id} size={size} />
-          <span>{e.amount.toLocaleString()}</span>
-        </span>
+        <ItemQty key={i} src={e.id} amount={e.amount} size={size} />
       ))}
     </span>
   );
@@ -93,8 +91,7 @@ function FeaturedCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopIte
         <div className="store-featured-contents">
           {item.contents.map((c, i) => (
             <span key={i} className="store-content-chip">
-              <GameIcon src={c.id} size={14} />
-              <span>{c.amount.toLocaleString()}</span>
+              <ItemQty src={c.id} amount={c.amount} size={14} />
             </span>
           ))}
         </div>
@@ -152,8 +149,7 @@ function BundleCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem)
       <div className="store-bundle-contents">
         {item.contents.map((c, i) => (
           <span key={i} className="store-content-chip">
-            <GameIcon src={c.id} size={14} />
-            <span>{c.amount.toLocaleString()}</span>
+            <ItemQty src={c.id} amount={c.amount} size={14} />
           </span>
         ))}
       </div>
@@ -278,10 +274,9 @@ export default function StorePage() {
       <div className="store-card">
       <div className="store-balance-bar">
         {mainCurrencies.map((id) => (
-          <div key={id} className="store-balance-chip">
-            <GameIcon src={id} size={16} />
-            <span>{(currencyBalances[id] ?? 0).toLocaleString()}</span>
-          </div>
+          <span key={id} className="store-balance-chip">
+            <ItemQty src={id} amount={currencyBalances[id] ?? 0} size={16} />
+          </span>
         ))}
       </div>
 

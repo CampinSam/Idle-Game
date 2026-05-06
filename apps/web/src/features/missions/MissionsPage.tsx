@@ -19,7 +19,7 @@ import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { getDifficultyDisplay, ANTI_WHALE_CAPS, mergeDisplayStyles, overlayToCss, textStyleToCss, type DisplayStyle } from '@derp/shared';
-import GameIcon from '../../components/GameIcon';
+import ItemQty from '../../components/ItemQty';
 import { EntityCard, EntityList } from '../entities/components';
 import { getEntityMP } from '../entities/utils';
 import { resolveAssetUrl } from '../../utils/iconResolver';
@@ -716,8 +716,7 @@ export default function MissionsPage() {
                           const canAffordEntry = have >= entry.amount;
                           return (
                             <span key={i} className={`md-cost-entry${canAffordEntry ? '' : ' md-cost-unaffordable'}`}>
-                              <GameIcon src={entry.id} size={14} />
-                              <span>{entry.amount.toLocaleString()}</span>
+                              <ItemQty src={entry.id} amount={entry.amount} size={14} />
                             </span>
                           );
                         })}
@@ -1033,8 +1032,7 @@ export default function MissionsPage() {
                             const canAffordEntry = have >= entry.amount;
                             return (
                               <span key={i} className={`md-cost-entry ${canAffordEntry ? '' : 'md-cost-unaffordable'}`}>
-                                <GameIcon src={entry.id} size={13} />
-                                <span>{entry.amount.toLocaleString()}</span>
+                                <ItemQty src={entry.id} amount={entry.amount} size={13} />
                               </span>
                             );
                           })}

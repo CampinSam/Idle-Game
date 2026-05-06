@@ -19,7 +19,7 @@ import ConnectionStatusBanner from './ConnectionStatusBanner';
 import NotificationCenter from '../features/notifications/NotificationCenter';
 import { formatCompact } from '../utils/formatNumber';
 import { resolveIcon } from '../utils/iconResolver';
-import GameIcon from './GameIcon';
+import ItemQty from './ItemQty';
 import { audioEngine } from '../services/AudioEngine';
 import { installButtonSfx } from '../services/buttonSfx';
 import { useAudioNavigation } from '../hooks/useAudioNavigation';
@@ -115,10 +115,12 @@ export default function Layout() {
                 const ids = visible.length > 0 ? visible.map((d: any) => d.id) : FALLBACK;
                 return ids.map((id: string) => (
                   <div key={id} className="top-bar-currency">
-                    <span className="top-bar-currency-icon">
-                      <GameIcon src={resolveIcon('CURRENCY', id, currencyDefs, [])} size={16} />
-                    </span>
-                    <span className="top-bar-currency-val">{formatCompact(currencyBalances[id] ?? 0)}</span>
+                    <ItemQty
+                      src={resolveIcon('CURRENCY', id, currencyDefs, [])}
+                      amount={currencyBalances[id] ?? 0}
+                      size={16}
+                      format="compact"
+                    />
                   </div>
                 ));
               })()}

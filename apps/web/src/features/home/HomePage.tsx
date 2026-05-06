@@ -15,6 +15,7 @@ import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../tick';
 import { GameImage } from '../../components/GameImage';
+import ItemQty from '../../components/ItemQty';
 import { HomePageSkeleton } from '../../components/Skeleton';
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import { BannerCarousel } from './BannerCarousel';
@@ -166,8 +167,7 @@ export default function HomePage() {
           </div>
           <div className="hp-outpost-stats">
             <div className="hp-outpost-stat">
-              <span className="hp-outpost-stat-icon">💎</span>
-              <span className="hp-outpost-stat-val">{arcaniumRate.toLocaleString()} /h</span>
+              <ItemQty src="soft_arcanium" amount={arcaniumRate} size={15} suffix="/h" />
             </div>
             {otherRate > 0 && (
               <div className="hp-outpost-stat">
