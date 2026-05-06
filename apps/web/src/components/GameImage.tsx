@@ -53,7 +53,15 @@ export function GameImage({
   const placeholderHealthy = !!placeholderSrc && !placeholderError;
 
   const handleLoad = useCallback(() => setMainLoaded(true), []);
-  const handleError = useCallback(() => setMainError(true), []);
+  const handleError = useCallback(() => {
+    setMainError((prev) => {
+      // Second error means even the fallback URL failed — promote loaded
+      // so the skeleton can't hang forever. The img tag stays as-is
+      // (broken image) but we no longer block the layout on it.
+      if (prev) setMainLoaded(true);
+      return true;
+    });
+  }, []);
   const handlePlaceholderLoad = useCallback(() => setPlaceholderLoaded(true), []);
   const handlePlaceholderError = useCallback(() => setPlaceholderError(true), []);
 
