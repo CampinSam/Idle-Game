@@ -174,11 +174,6 @@
 }
 
 /* ── Active jobs ────────────────────────────────────────────────────────── */
-.forge-jobs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 .forge-job-card {
   display: flex;
   align-items: center;
@@ -201,6 +196,21 @@
   0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55); }
   70%  { box-shadow: 0 0 0 14px rgba(251, 191, 36, 0); }
   100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+.forge-job-card--inline {
+  border-radius: 14px;
+  padding: 14px;
+}
+.forge-job-eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(254, 215, 170, 0.55);
+  margin-bottom: 2px;
+}
+.forge-job-eyebrow--ready {
+  color: #86efac;
 }
 .forge-job-name { font-weight: 700; }
 .forge-job-entity { font-size: 12px; color: #cbd5e1; margin-top: 2px; letter-spacing: 0.02em; }

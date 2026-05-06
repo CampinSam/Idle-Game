@@ -139,6 +139,99 @@ function ForecastBar({
   );
 }
 
+interface ForgeJobRowProps {
+  job: any;
+  entities: any[];
+  craftingRecipes: any[];
+  tick: number;
+  tickRate: number;
+  focusedJobId: string;
+  focusedJobRef: React.RefObject<HTMLDivElement>;
+  onCollect: (jobId: string) => void;
+}
+
+function ForgeJobRow({
+  job,
+  entities,
+  craftingRecipes,
+  tick,
+  tickRate,
+  focusedJobId,
+  focusedJobRef,
+  onCollect,
+}: ForgeJobRowProps) {
+  const timer = (job.startTick != null && job.durationTicks != null)
+    ? createCountdownTimer({ startTick: job.startTick, durationTicks: job.durationTicks })
+    : null;
+  const remTicks = timer ? timer.getValue(tick) : Infinity;
+  const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
+  const isReady = remMs <= 0;
+  const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
+  const entity = entities.find((e: any) => e.id === job.entityId);
+  const entityName = entity?.name || 'Derp';
+  const portraitInitial = entityName.trim().charAt(0).toUpperCase() || '?';
+  const recipeTier = Number(recipeDef?.tier ?? 1);
+  const tierClass = recipeTier >= 3 ? 'tier-3' : recipeTier >= 2 ? 'tier-2' : 'tier-1';
+  const totalDurationTicks = Number(job.durationTicks ?? 0);
+  const elapsedTicks = totalDurationTicks - (Number.isFinite(remTicks) ? Math.max(0, remTicks) : totalDurationTicks);
+  const progress = totalDurationTicks > 0 ? Math.min(1, Math.max(0, elapsedTicks / totalDurationTicks)) : (isReady ? 1 : 0);
+  const ringCircumference = 2 * Math.PI * 28;
+  const ringDashOffset = ringCircumference * (1 - progress);
+  const isFocused = focusedJobId && job.id === focusedJobId;
+
+  return (
+    <div
+      ref={isFocused ? focusedJobRef : null}
+      className={`forge-job-card forge-job-card--inline ${tierClass} ${isReady ? 'ready' : ''} ${isFocused ? 'is-focused' : ''}`}
+    >
+      <div className="forge-job-portrait">
+        {entity?.imageUrl ? (
+          <GameImage
+            src={getEntityImagePath(entity.id, entity.archetype, entity.imageUrl, 'thumb')}
+            category="entities"
+            alt={entityName}
+            className="forge-job-portrait-img"
+            rounded
+          />
+        ) : (
+          <span className="forge-job-portrait-initial">{portraitInitial}</span>
+        )}
+        <svg
+          className="forge-job-ring"
+          width="64"
+          height="64"
+          viewBox="0 0 64 64"
+          aria-hidden="true"
+        >
+          <circle className="forge-job-ring-track" cx="32" cy="32" r="28" />
+          <circle
+            className="forge-job-ring-fill"
+            cx="32"
+            cy="32"
+            r="28"
+            strokeDasharray={ringCircumference}
+            strokeDashoffset={ringDashOffset}
+          />
+        </svg>
+      </div>
+      <div className="forge-job-info">
+        <div className={`forge-job-eyebrow ${isReady ? 'forge-job-eyebrow--ready' : ''}`}>
+          {isReady ? '✓ Ready to collect' : 'Crafting in progress'}
+        </div>
+        <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
+        <div className="forge-job-entity">{entityName}</div>
+      </div>
+      {isReady ? (
+        <button className="forge-collect-btn" onClick={() => onCollect(job.id)}>
+          Collect
+        </button>
+      ) : (
+        <span className="forge-job-time">{fmtSeconds(remMs / 1000)} left</span>
+      )}
+    </div>
+  );
+}
+
 interface ForgeTrackProps {
   slotId: string;
   outpostId: string | undefined;
@@ -864,95 +957,26 @@ export default function ForgePage() {
 
       {error && <div className="forge-error">{error}</div>}
 
-      {activeCraftingJobs.length > 0 && (
-        <section className="forge-section forge-jobs-section">
+      {maxSlots > 0 && (
+        <section className="forge-section forge-crucibles-section">
           <div className="forge-section-head">
-            <h2>In the Crucible</h2>
-            <span className="forge-section-sub">{usedSlots} / {maxSlots} crucibles</span>
-          </div>
-          <div className="forge-jobs">
-            {activeCraftingJobs.map((job: any) => {
-              const timer = (job.startTick != null && job.durationTicks != null)
-                ? createCountdownTimer({ startTick: job.startTick, durationTicks: job.durationTicks })
-                : null;
-              const remTicks = timer ? timer.getValue(tick) : Infinity;
-              const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
-              const isReady = remMs <= 0;
-              const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
-              const entity = entities.find((e: any) => e.id === job.entityId);
-              const entityName = entity?.name || 'Derp';
-              const portraitInitial = entityName.trim().charAt(0).toUpperCase() || '?';
-              const recipeTier = Number(recipeDef?.tier ?? 1);
-              const tierClass = recipeTier >= 3 ? 'tier-3' : recipeTier >= 2 ? 'tier-2' : 'tier-1';
-              const totalDurationTicks = Number(job.durationTicks ?? 0);
-              const elapsedTicks = totalDurationTicks - (Number.isFinite(remTicks) ? Math.max(0, remTicks) : totalDurationTicks);
-              const progress = totalDurationTicks > 0 ? Math.min(1, Math.max(0, elapsedTicks / totalDurationTicks)) : (isReady ? 1 : 0);
-              const ringCircumference = 2 * Math.PI * 28;
-              const ringDashOffset = ringCircumference * (1 - progress);
-              const isFocused = focusedJobId && job.id === focusedJobId;
-              return (
-                <div
-                  key={job.id}
-                  ref={isFocused ? focusedJobRef : null}
-                  className={`forge-job-card ${tierClass} ${isReady ? 'ready' : ''} ${isFocused ? 'is-focused' : ''}`}
-                >
-                  <div className="forge-job-portrait">
-                    {entity?.imageUrl ? (
-                      <GameImage
-                        src={getEntityImagePath(entity.id, entity.archetype, entity.imageUrl, 'thumb')}
-                        category="entities"
-                        alt={entityName}
-                        className="forge-job-portrait-img"
-                        rounded
-                      />
-                    ) : (
-                      <span className="forge-job-portrait-initial">{portraitInitial}</span>
-                    )}
-                    <svg
-                      className="forge-job-ring"
-                      width="64"
-                      height="64"
-                      viewBox="0 0 64 64"
-                      aria-hidden="true"
-                    >
-                      <circle className="forge-job-ring-track" cx="32" cy="32" r="28" />
-                      <circle
-                        className="forge-job-ring-fill"
-                        cx="32"
-                        cy="32"
-                        r="28"
-                        strokeDasharray={ringCircumference}
-                        strokeDashoffset={ringDashOffset}
-                      />
-                    </svg>
-                  </div>
-                  <div className="forge-job-info">
-                    <div className="forge-job-name">{recipeDef?.name || job.recipeId}</div>
-                    <div className="forge-job-entity">{entityName}</div>
-                  </div>
-                  {isReady ? (
-                    <button className="forge-collect-btn" onClick={() => handleCollect(job.id)}>
-                      Collect
-                    </button>
-                  ) : (
-                    <span className="forge-job-time">{fmtSeconds(remMs / 1000)} left</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {emptySlots > 0 && (
-        <section className="forge-section forge-tracks-section">
-          <div className="forge-section-head">
-            <h2>Open Crucibles</h2>
-            <span className="forge-section-sub">
-              {emptySlots} {emptySlots === 1 ? 'slot' : 'slots'} open
-            </span>
+            <h2>Crucibles</h2>
+            <span className="forge-section-sub">{usedSlots} / {maxSlots} active</span>
           </div>
           <div className="forge-tracks">
+            {activeCraftingJobs.map((job: any) => (
+              <ForgeJobRow
+                key={job.id}
+                job={job}
+                entities={entities}
+                craftingRecipes={craftingRecipes as any[]}
+                tick={tick}
+                tickRate={tickRate}
+                focusedJobId={focusedJobId}
+                focusedJobRef={focusedJobRef}
+                onCollect={handleCollect}
+              />
+            ))}
             {slotIds.map((id) => (
               <ForgeTrack
                 key={id}
@@ -972,14 +996,6 @@ export default function ForgePage() {
                 recipeCategories={recipeCategories}
               />
             ))}
-          </div>
-        </section>
-      )}
-
-      {emptySlots === 0 && maxSlots > 0 && (
-        <section className="forge-section">
-          <div className="forge-empty">
-            All crucible slots are active — collect a finished craft to open a slot.
           </div>
         </section>
       )}
