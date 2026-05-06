@@ -111,13 +111,29 @@
 }
 
 /* ─── Rainbow ─────────────────────────────────────────────────────── */
+/*
+ * Rainbow overlays on the child via a pseudo-element (same pattern as
+ * shimmer) so the child's own background stays visible underneath and
+ * the rainbow tints it instead of being completely hidden by it.
+ * Pair with shape="pill" / "circle" / "square" on <VisualEffect> to
+ * clip the gradient to the child silhouette via the host's overflow.
+ */
 .fx-rainbow {
+  position: relative;
+  overflow: hidden;
+}
+.fx-rainbow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image: linear-gradient(
     90deg, #ff4d6d, #ffb84d, #ffe14d, #6dffb8, #4dc7ff, #b84dff, #ff4d6d
   );
   background-size: 300% 100%;
   animation: fx-rainbow var(--fx-duration, 4s) var(--fx-easing, linear) infinite;
-  background-clip: padding-box;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: var(--fx-intensity, 0.85);
 }
 @keyframes fx-rainbow {
   0% { background-position: 0% 50%; }
@@ -131,5 +147,5 @@
   .fx-glow,
   .fx-shake,
   .fx-bounce,
-  .fx-rainbow { animation: none !important; }
+  .fx-rainbow::before { animation: none !important; }
 }
