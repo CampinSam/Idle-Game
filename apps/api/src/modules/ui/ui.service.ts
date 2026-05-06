@@ -166,6 +166,16 @@ export class UiService {
     }
 
     if (isClaimed) {
+      const claimTx = await (this.prisma as any).giftClaimTx.findUnique({ where: { giftId: gift.id } });
+      const grants: any[] = (claimTx?.grants as any[]) ?? [];
+      const rewards = grants
+        .filter((g: any) => g.type !== 'bundle_ref' && g.type !== 'unknown')
+        .map((g: any) => ({
+          name: this.resolveRewardName(g),
+          qty: g.amount ?? g.qty ?? 1,
+          assetKey: g.key ? `icons/${g.key}` : this.resolveSystemRewardAssetKey(g.type),
+        }));
+
       body.push({
         type: 'giftReveal',
         gift: {
@@ -173,6 +183,7 @@ export class UiService {
           title: presentation.title || 'Gift',
           image: presentation.iconKey ? { assetKey: `icons/${presentation.iconKey}` } : undefined,
         },
+        rewards: rewards.length > 0 ? rewards : undefined,
       });
     }
 

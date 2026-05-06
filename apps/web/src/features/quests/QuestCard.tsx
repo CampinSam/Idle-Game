@@ -4,6 +4,7 @@ import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import ItemQty from '../../components/ItemQty';
 import { Tag } from '../../components/Tag';
+import { resolveSystemRewardIcon } from '../../utils/iconResolver';
 
 interface QuestCardProps {
   quest: any;
@@ -29,6 +30,9 @@ function QuestCardInner({ quest }: QuestCardProps) {
     }
     if (rewardSpec.type === 'item' && rewardSpec.itemDefId) {
       return [{ type: 'item', itemDefId: rewardSpec.itemDefId, amount: rewardSpec.qty ?? 1 }];
+    }
+    if (resolveSystemRewardIcon(rewardSpec.type)) {
+      return [{ type: rewardSpec.type, amount: rewardSpec.amount ?? rewardSpec.qty ?? 1 }];
     }
     if (rewardSpec.type === 'bundle' && Array.isArray(rewardSpec.entries)) {
       return rewardSpec.entries.map((e: any) => ({
@@ -94,7 +98,7 @@ function QuestCardInner({ quest }: QuestCardProps) {
             // out a single reward — otherwise per-reward icons stay distinct.
             const iconSrc = (rewards.length === 1 && def.iconKey)
               ? def.iconKey
-              : (r.currencyId ?? r.itemDefId ?? r.type);
+              : (r.currencyId ?? r.itemDefId ?? resolveSystemRewardIcon(r.type) ?? r.type);
             return (
               <span key={i} className="quest-reward-chip">
                 <ItemQty src={iconSrc} amount={r.amount} size={14} />
