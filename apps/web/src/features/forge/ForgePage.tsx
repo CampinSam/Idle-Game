@@ -320,7 +320,8 @@ function ForgeTrack({
 
   useEffect(() => {
     if (recipeId && entityId) {
-      onRequestForecastRefresh();
+      const t = setTimeout(onRequestForecastRefresh, 300);
+      return () => clearTimeout(t);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipeId, entityId]);

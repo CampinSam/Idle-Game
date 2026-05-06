@@ -447,6 +447,10 @@
 }
 
 /* ── Picker panel (recipe or entity) ────────────────────────────────────── */
+@keyframes forge-picker-expand {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .forge-track-picker {
   display: flex;
   flex-direction: column;
@@ -455,6 +459,7 @@
   background: rgba(10, 8, 28, 0.7);
   border: 1px solid rgba(249, 115, 22, 0.25);
   border-radius: 12px;
+  animation: forge-picker-expand 0.2s ease both;
 }
 .forge-picker-header {
   display: flex;
