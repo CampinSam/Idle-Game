@@ -176,11 +176,13 @@ function renderTags(tags: any[]) {
 function MissionsPageSkeleton() {
   return (
     <div className="missions-page page-transition-wrapper">
-      <div className="missions-wrapper-card">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="skeleton" style={{ width: '100%', height: 110, borderRadius: 12 }} />
-          ))}
+      <div className="mp-browse-shell">
+        <div className="mp-browse-shell__content">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="skeleton" style={{ width: '100%', height: 110, borderRadius: 12 }} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -238,6 +240,17 @@ export default function MissionsPage() {
     try { sessionStorage.setItem('missions_nav_stack', JSON.stringify(categoryStack)); }
     catch {}
   }, [categoryStack]);
+
+  // Activity panel collapse state — persisted across in-session navigation
+  // so the player's choice survives drilling into a category and back out.
+  const [activityCollapsed, setActivityCollapsed] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('missions_activity_collapsed') === '1'; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem('missions_activity_collapsed', activityCollapsed ? '1' : '0'); }
+    catch {}
+  }, [activityCollapsed]);
 
   useEffect(() => {
     if (!missionCategoryDefs.length) return;
@@ -475,11 +488,12 @@ export default function MissionsPage() {
     }
   };
 
-  const renderSlots = () => {
+  // Slots region content (no outer card chrome — the shell wraps it).
+  const renderSlotsInner = () => {
     const maxSlots = ANTI_WHALE_CAPS.maxActiveMissions(profile?.keeperLevel ?? 1);
     const emptyCount = Math.max(0, maxSlots - activeMissions.length);
     return (
-      <div className="mp-activity-box mp-slots-box">
+      <>
         <h3 className="mp-activity-title">MISSION SLOTS</h3>
         <div className="mp-activity-group">
           {activeMissions.map((m: any) => {
@@ -517,27 +531,66 @@ export default function MissionsPage() {
             </div>
           ))}
         </div>
+      </>
+    );
+  };
+
+  // Activity region body. Header + collapse toggle live in the shell.
+  const renderActivityBody = () => {
+    if (missionHistory.length === 0) {
+      return <div className="mp-browse-shell__empty">No mission activity yet.</div>;
+    }
+    return (
+      <div className="mp-activity-group">
+        {missionHistory.slice(0, 5).map((m: any) => (
+          <div key={m.id} className={`mp-activity-item ${m.status}`} onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
+            <span className="mp-activity-name">{missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}</span>
+            <span className={`mp-activity-status ${m.status}`}>
+              {m.status === 'completed' ? '✅' : '❌'}
+            </span>
+            {(m.results?.rewards || m.result?.rewards) && (
+              <span className="mp-activity-rewards">{((m.results?.rewards || m.result?.rewards) as any[]).map((r: any) => `+${r.amount} ${r.name || r.key || r.type}`).join(', ')}</span>
+            )}
+          </div>
+        ))}
       </div>
     );
   };
 
-  const renderActivity = () => {
-    if (missionHistory.length === 0) return null;
+  // Single fixed-size browse card with sticky slots header, scrollable
+  // middle, and collapsable activity footer. Used by all browse views;
+  // the team-build / mission detail view keeps its own layout.
+  const renderShell = (middle: React.ReactNode) => {
+    const hasHistory = missionHistory.length > 0;
+    const collapsed = activityCollapsed && hasHistory;
     return (
-      <div className="mp-activity-box">
-        <h3 className="mp-activity-title">MISSION ACTIVITY</h3>
-        <div className="mp-activity-group">
-          {missionHistory.slice(0, 5).map((m: any) => (
-            <div key={m.id} className={`mp-activity-item ${m.status}`} onClick={() => openModalSpec({ jobId: m.id })} style={{ cursor: 'pointer' }}>
-              <span className="mp-activity-name">{missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}</span>
-              <span className={`mp-activity-status ${m.status}`}>
-                {m.status === 'completed' ? '✅' : '❌'}
+      <div className="mp-browse-shell">
+        <div className="mp-browse-shell__slots">
+          {renderSlotsInner()}
+        </div>
+        <div className="mp-browse-shell__content">
+          {middle}
+        </div>
+        <div className="mp-browse-shell__activity">
+          <button
+            type="button"
+            className="mp-browse-shell__activity-header"
+            onClick={() => hasHistory && setActivityCollapsed(c => !c)}
+            disabled={!hasHistory}
+            aria-expanded={!collapsed}
+          >
+            <h3 className="mp-activity-title">MISSION ACTIVITY</h3>
+            {hasHistory && (
+              <span className="mp-browse-shell__chevron" aria-hidden="true">
+                {collapsed ? '▲' : '▼'}
               </span>
-              {(m.results?.rewards || m.result?.rewards) && (
-                <span className="mp-activity-rewards">{((m.results?.rewards || m.result?.rewards) as any[]).map((r: any) => `+${r.amount} ${r.name || r.key || r.type}`).join(', ')}</span>
-              )}
+            )}
+          </button>
+          {!collapsed && (
+            <div className="mp-browse-shell__activity-body">
+              {renderActivityBody()}
             </div>
-          ))}
+          )}
         </div>
       </div>
     );
@@ -547,15 +600,15 @@ export default function MissionsPage() {
     if (currentCatHasChildren) {
       return (
         <div className="missions-page page-transition-wrapper">
-          {renderSlots()}
-          <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
-            <div className="mp-list-header">
-              <button className="mp-back-pill" onClick={popCategory}>← Back</button>
-              <h2 className="mp-list-label">{currentCat?.name || 'Categories'}</h2>
-              {currentCat && renderTags(currentCat.tags)}
-            </div>
-            <div className="mp-categories">
-              {visibleCategories.map((cat) => {
+          {renderShell(
+            <>
+              <div className="mp-list-header" style={{ borderColor: catDisplay.borderColor }}>
+                <button className="mp-back-pill" onClick={popCategory}>← Back</button>
+                <h2 className="mp-list-label">{currentCat?.name || 'Categories'}</h2>
+                {currentCat && renderTags(currentCat.tags)}
+              </div>
+              <div className="mp-categories">
+                {visibleCategories.map((cat) => {
                 const display = cat.display;
                 const { vars, titleStyle } = displayCssVars(display);
                 const unavailable = cat.locked || !cat.enabled;
@@ -608,24 +661,24 @@ export default function MissionsPage() {
                   </div>
                 );
               })}
-            </div>
-          </div>
-          {renderActivity()}
+              </div>
+            </>
+          )}
         </div>
       );
     }
 
     return (
       <div className="missions-page page-transition-wrapper">
-        {renderSlots()}
-        <div className="mp-list-wrapper" style={{ borderColor: catDisplay.borderColor }}>
-          <div className="mp-list-header">
-            <button className="mp-back-pill" onClick={popCategory}>← Back</button>
-            <h2 className="mp-list-label">{currentCat?.name || 'Missions'}</h2>
-            {currentCat && renderTags(currentCat.tags)}
-          </div>
-          <div className="mp-list-missions">
-            {categoryMissions.map((def: any) => {
+        {renderShell(
+          <>
+            <div className="mp-list-header" style={{ borderColor: catDisplay.borderColor }}>
+              <button className="mp-back-pill" onClick={popCategory}>← Back</button>
+              <h2 className="mp-list-label">{currentCat?.name || 'Missions'}</h2>
+              {currentCat && renderTags(currentCat.tags)}
+            </div>
+            <div className="mp-list-missions">
+              {categoryMissions.map((def: any) => {
               const locked = !meetsNonTeamRequirements(def);
               const missionEnabled = def.enabled ?? true;
               const unavailable = locked || !missionEnabled;
@@ -684,9 +737,9 @@ export default function MissionsPage() {
                 </div>
               );
             })}
-          </div>
-        </div>
-        {renderActivity()}
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -1031,9 +1084,7 @@ export default function MissionsPage() {
     <div className="missions-page page-transition-wrapper">
       {error && <div className="mp-error">{error}</div>}
 
-      {renderSlots()}
-
-      <div className="missions-wrapper-card">
+      {renderShell(
         <div className="mp-categories">
         {visibleCategories.map((cat) => {
           const display = cat.display;
@@ -1093,9 +1144,7 @@ export default function MissionsPage() {
           );
         })}
         </div>
-      </div>
-
-      {renderActivity()}
+      )}
     </div>
   );
 }

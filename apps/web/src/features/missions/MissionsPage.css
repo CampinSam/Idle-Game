@@ -6,19 +6,84 @@
   padding-top: var(--page-top-gap);
 }
 
-.missions-wrapper-card {
+/* Unified browse-card shell used by all missions browse views (root,
+ * sub-category, missions list). One fixed-size card fills the page body
+ * with sticky slots header, scrollable middle, collapsable activity footer.
+ * The mission detail / team-build view does NOT use this shell. */
+.mp-browse-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
   animation: card-enter 0.2s ease-out both;
+}
+
+.mp-browse-shell__slots {
+  flex-shrink: 0;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.18);
+}
+
+.mp-browse-shell__content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mp-browse-shell__activity {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(139, 92, 246, 0.18);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.mp-browse-shell__activity-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.mp-browse-shell__activity-header:disabled {
+  cursor: default;
+}
+
+.mp-browse-shell__activity-header .mp-activity-title {
+  margin-bottom: 0;
+}
+
+.mp-browse-shell__chevron {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.mp-browse-shell__activity-body {
+  padding: 0 14px 14px;
+}
+
+.mp-browse-shell__empty {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  padding: 4px 0 6px;
 }
 
 .mp-tags {
@@ -83,16 +148,6 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 700;
-}
-
-.mp-list-wrapper {
-  position: relative;
-  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  border-radius: 16px;
-  padding: 10px 10px;
-  margin-bottom: 14px;
-  animation: card-enter 0.2s ease-out both;
 }
 
 .mp-list-header {
@@ -444,20 +499,6 @@
   background: linear-gradient(90deg, #F59E0B, #FBBF24);
   border-radius: 3px;
   transition: width 1s;
-}
-
-.mp-activity-box {
-  margin-top: 16px;
-  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  border-radius: 16px;
-  padding: 16px;
-  animation: card-enter 0.2s ease-out both;
-}
-
-.mp-slots-box {
-  margin-top: 0;
-  margin-bottom: 14px;
 }
 
 .mp-slot-empty {
@@ -1271,9 +1312,7 @@
 @media (prefers-reduced-motion: reduce) {
   .md-unified-card,
   .mp-mission-card,
-  .mp-list-wrapper,
-  .mp-activity-box,
-  .missions-wrapper-card {
+  .mp-browse-shell {
     animation: none !important;
   }
 }
