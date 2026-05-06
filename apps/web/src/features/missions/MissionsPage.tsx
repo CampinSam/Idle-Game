@@ -582,7 +582,7 @@ export default function MissionsPage() {
             <h3 className="mp-activity-title">MISSION ACTIVITY</h3>
             {hasHistory && (
               <span className="mp-browse-shell__chevron" aria-hidden="true">
-                {collapsed ? '▲' : '▼'}
+                {collapsed ? '▼' : '▲'}
               </span>
             )}
           </button>
