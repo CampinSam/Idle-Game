@@ -434,10 +434,8 @@ body.forge-floating-back-active .forge-scene {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  /* Clear the absolute close button (32px tall at top:10px = 42px) plus
-   * breathing room so the heading doesn't collide with the close button
-   * or the game's fixed top bar when the sheet is at full height. */
-  padding-top: 46px;
+  /* A small top gap below the sticky sheet header. */
+  margin-top: 10px;
 }
 .forge-assign-head h2 { margin: 0 0 4px; font-size: 18px; color: #fff7ed; }
 .forge-assign-head p { margin: 0; font-size: 13px; color: #fde68a; }
@@ -666,22 +664,39 @@ body.forge-floating-back-active .forge-scene {
   animation: forgeSheetSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   box-shadow: 0 -16px 40px rgba(0,0,0,0.55);
 }
-/* Drag-handle notch — sits above the sheet content so the user has
- * a clear "this scrolls" affordance and visual breathing room. */
-.forge-sheet::before {
+/* Sticky header strip — stays pinned to the top of the sheet's scroll
+ * viewport so the drag handle and close button are never scrolled behind
+ * the game's fixed top bar.  The ::before draws the drag-handle notch. */
+.forge-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 10px 12px 8px;
+  /* Mask content scrolling underneath */
+  background: rgba(10, 8, 26, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Counteract the section's 16px padding so the header spans edge-to-edge
+   * and the rounded top corners are cleanly covered. */
+  margin: -16px -16px 0;
+  border-radius: 18px 18px 0 0;
+}
+.forge-sheet-header::before {
   content: '';
-  display: block;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 40px;
   height: 4px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.25);
-  margin: 10px auto 0;
-  flex-shrink: 0;
+  pointer-events: none;
 }
 .forge-sheet-close {
-  position: absolute;
-  top: 10px;
-  right: 12px;
   background: rgba(0,0,0,0.45);
   color: #fff;
   border: none;
@@ -692,6 +707,7 @@ body.forge-floating-back-active .forge-scene {
   cursor: pointer;
   z-index: 2;
   line-height: 1;
+  flex-shrink: 0;
 }
 .forge-sheet-close:hover { background: rgba(0,0,0,0.7); }
 

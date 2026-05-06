@@ -737,7 +737,7 @@ export default function ForgePage() {
           {recipeOverlay && (
             <div className="forge-assign-overlay" style={{ background: recipeOverlay }} aria-hidden />
           )}
-          <div className="forge-assign-inner">
+          <div className="forge-sheet-header">
             <button
               className="forge-sheet-close"
               onClick={() => { setSelectedRecipe(null); setSelectedEntity(null); }}
@@ -745,6 +745,8 @@ export default function ForgePage() {
             >
               ×
             </button>
+          </div>
+          <div className="forge-assign-inner">
             <div className="forge-assign-head">
               <h2 style={recipeTitleStyle as React.CSSProperties}>Assign a Derp to "{recipe.name}"</h2>
               <p style={recipeBodyStyle as React.CSSProperties}>
