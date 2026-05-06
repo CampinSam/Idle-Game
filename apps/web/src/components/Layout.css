@@ -255,7 +255,7 @@
  *      padding-top: var(--page-top-gap);`
  *   2. Primary scroll container:
  *      - For multi-card "dashboard" pages (Home, Rewards, Achievements,
- *        Locations, Location Detail, Forge) — the page root itself: keep the
+ *        Locations, Forge) — the page root itself: keep the
  *        `flex:1; min-height:0` from rule 1 and add
  *        `overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch;
  *         overscroll-behavior:contain;`. Flex sizing inside `.content` (which
@@ -263,7 +263,8 @@
  *         `overflow-y:auto` scrolls when content is tall and stays at content
  *         height when short.
  *      - For single-card pages (Entities, Inventory, Settings, Profile,
- *        Store, Entity Detail) — the wrapper card inside the page root adds
+ *        Store, Entity Detail, Location Detail) — the wrapper card inside
+ *        the page root adds
  *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
  *         -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`
  *        WITHOUT `flex:1`, so it sizes to content and caps at body height.

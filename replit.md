@@ -41,8 +41,8 @@ The project is organized as a pnpm monorepo, integrating a React+Vite frontend, 
   - Horizontal gutter: `Layout.css .content` provides `padding: 60px 16px 80px`. No page-level horizontal padding or `max-width` overrides.
   - **Page root** (every routed page): `display:flex; flex-direction:column; flex:1; min-height:0; padding-top: var(--page-top-gap);`.
   - **Primary scroll container**:
-    - Multi-card "dashboard" pages (Home, Rewards, Achievements, Locations, Location Detail, Forge) — the page root itself; keeps `flex:1; min-height:0` and adds `overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`. Flex sizing inside `.content` gives it a bounded height so internal scroll kicks in when tall.
-    - Single-card pages (Entities, Inventory, Settings, Profile, Store, Entity Detail) — the wrapper card inside the page root adds `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;` *without* `flex:1`, so it sizes to content and caps at body height.
+    - Multi-card "dashboard" pages (Home, Rewards, Achievements, Locations, Forge) — the page root itself; keeps `flex:1; min-height:0` and adds `overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;`. Flex sizing inside `.content` gives it a bounded height so internal scroll kicks in when tall.
+    - Single-card pages (Entities, Inventory, Settings, Profile, Store, Entity Detail, Location Detail) — the wrapper card inside the page root adds `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;` *without* `flex:1`, so it sizes to content and caps at body height.
   - With every page following the contract, the global `.content` wrapper never actually scrolls — the floating top bar and bottom nav stay visible at all times.
   - **One explicit exception**: `.mp-browse-shell` (Mission browse views) intentionally fills body via `flex:1` for its sticky-slots / scrollable-middle / collapsable-activity-footer pattern, but is still capped via `max-height:100%`.
 
