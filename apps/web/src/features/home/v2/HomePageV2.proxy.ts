@@ -71,6 +71,15 @@ export const HOME_V2_PROXY = {
   // player profile (`profile.entitySlots` / similar). Used purely to
   // render an x/y denominator on the Birds quick-link tile.
   birdRosterCap: 50,
+  // PROXY: replace when a real "new store offers" signal exists
+  // (per-player counter of unseen daily/weekly store rotations,
+  // delivered via the bootstrap snapshot). Used only to surface a
+  // small numeric badge on the STORE tab in the page-local bottom nav.
+  storeBadgeCount: 2,
+  // PROXY: replace when a real workshop slot count exists on the
+  // player profile (`profile.craftingSlots` / similar). Used purely
+  // to render an x/y denominator on the Crafting quick-link tile.
+  craftingSlotCap: 3,
   // PROXY: replace when seasonal events ship as a real list on the
   // server. Rendered when no real `useHomeBanners()` payload exists
   // so the Events card is never empty for design review.

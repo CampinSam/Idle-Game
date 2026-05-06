@@ -498,11 +498,11 @@ const NAV_TABS: Array<{ to: string; label: string; icon: React.ReactNode; badge?
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg> },
 ];
 
-function HpV2BottomNav({ missionsBadge }: { missionsBadge?: number }) {
+function HpV2BottomNav({ missionsBadge, storeBadge }: { missionsBadge?: number; storeBadge?: number }) {
   return (
     <nav className="hpv2-bnav">
       {NAV_TABS.map((t) => {
-        const badge = t.label === 'MISSIONS' ? missionsBadge : undefined;
+        const badge = t.label === 'MISSIONS' ? missionsBadge : t.label === 'STORE' ? storeBadge : undefined;
         return (
           <NavLink
             key={t.to}
@@ -671,7 +671,7 @@ export default function HomePageV2() {
     { to: '/rewards',   icon: '📜', label: 'QUESTS',   cur: dailyQuestsDone, cap: dailyQuestsTotal, alert: dailyQuestsReady },
     { to: '/locations', icon: '🏠', label: 'OUTPOSTS', cur: outpostCount,    cap: MAX_OUTPOST_SLOTS, alert: outpostsAlert },
     { to: '/entities',  icon: '🪶', label: 'BIRDS',    cur: birdCount,       cap: HOME_V2_PROXY.birdRosterCap },
-    { to: '/crafting',  icon: '⚒️', label: 'CRAFTING', cur: craftingActive,                           alert: craftingDot },
+    { to: '/crafting',  icon: '⚒️', label: 'CRAFTING', cur: craftingActive,  cap: HOME_V2_PROXY.craftingSlotCap, alert: craftingDot },
   ];
 
   return (
@@ -710,7 +710,7 @@ export default function HomePageV2() {
         </div>
       </div>
 
-      <HpV2BottomNav missionsBadge={completedMissions.length} />
+      <HpV2BottomNav missionsBadge={completedMissions.length} storeBadge={HOME_V2_PROXY.storeBadgeCount} />
 
       <ToastOverlay />
       {showNotifCenter && (
