@@ -11,6 +11,7 @@ import { InventoryService } from '../../inventory/inventory.service';
 import { EffectService } from '../../effect/effect.service';
 import { EntityService } from '../../entity/entity.service';
 import { CurrencyService } from '../../currency/currency.service';
+import { effectWouldChangeStats } from '../../entity/entity-stats.util';
 import {
   EffectDurationModel,
   EffectCategory,
@@ -54,8 +55,41 @@ export class UseConsumableHandler implements CommandHandler {
     const effects: Array<{ effectDefId: string; targetType?: string }> = consumableData.effects;
     const pb = new PatchBuilder();
 
-    for (const effectSpec of effects) {
-      const def = await this.effectService.getEffectDef(effectSpec.effectDefId);
+    // Pre-resolve all effect defs once so we can both (a) gate on busy
+    // entities before any mutation, and (b) reuse the defs in the apply loop.
+    const resolvedDefs = await Promise.all(
+      effects.map(async (e) => ({
+        spec: e,
+        def: await this.effectService.getEffectDef(e.effectDefId),
+      })),
+    );
+
+    // Block stat-changing consumables on busy entities. Stats are read at
+    // job-resolution time (outpost production, mission outcomes), so a
+    // mid-job stat shift would silently change those calculations. Heal /
+    // XP / currency / non-stat consumables (and consumables that target
+    // the player or a location) are still allowed.
+    const entityTargetedStatChange = resolvedDefs.some(({ spec, def }) => {
+      const tt = (spec.targetType ?? def.targetType) as EffectTargetType;
+      return tt === EffectTargetType.ENTITY && effectWouldChangeStats(def);
+    });
+    if (entityTargetedStatChange) {
+      if (!targetId) throw new BadRequestException('targetId is required for entity effects');
+      const target = await txDb(ctx.tx).entity.findFirst({
+        where: { id: targetId, ownerUserId: ctx.userId },
+        select: { state: true, display: true, speciesId: true },
+      });
+      if (!target) throw new NotFoundException('Target entity not found');
+      const targetStatus = (target.state as any)?.status ?? 'idle';
+      if (targetStatus !== 'idle') {
+        const entityName = (target.display as any)?.name || target.speciesId || 'Entity';
+        throw new BadRequestException(
+          `"${entityName}" is currently ${targetStatus} — finish or cancel the job before using stat-changing items`,
+        );
+      }
+    }
+
+    for (const { spec: effectSpec, def } of resolvedDefs) {
       const effectTargetType = (effectSpec.targetType ?? def.targetType) as EffectTargetType;
 
       let resolvedTargetId = ctx.userId;

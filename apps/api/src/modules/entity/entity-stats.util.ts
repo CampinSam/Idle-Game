@@ -11,6 +11,8 @@
  * time, and is mirrored here for UI display.
  */
 
+import { EffectCategory, EffectDurationModel } from '@derp/shared';
+
 export const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 export type StatKey = typeof STAT_KEYS[number];
 
@@ -18,6 +20,56 @@ export type StatMap = Record<StatKey, number>;
 
 function emptyStats(): StatMap {
   return { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 };
+}
+
+/**
+ * Returns true if the given gear's `equipData.stats` payload would change any
+ * of the six core stat keys (i.e. has a non-zero numeric value for at least
+ * one). Cosmetic gear with no stat contribution returns false.
+ *
+ * Used by EquipItem / UnequipItem handlers to block stat-changing equip
+ * actions on busy entities (worker / mission / injured).
+ */
+export function gearWouldChangeStats(equipData: unknown): boolean {
+  if (!equipData || typeof equipData !== 'object') return false;
+  const stats = (equipData as { stats?: unknown }).stats;
+  if (!stats || typeof stats !== 'object') return false;
+  const s = stats as Record<string, unknown>;
+  for (const key of STAT_KEYS) {
+    const v = s[key];
+    if (typeof v === 'number' && v !== 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if the given effect definition would change any of the six
+ * core stat keys when applied. Two cases:
+ *   - category is STAT_BOOST (handles both INSTANT and TIMED variants which
+ *     write to entity.stats or layer through the resolver).
+ *   - effect is INSTANT and writes to one of the six stat keys via its
+ *     `stats` payload (covers stat-targeting instants in non-STAT_BOOST
+ *     categories should they ever be authored).
+ *
+ * Used by UseConsumable handler to block stat-changing consumables on busy
+ * entities.
+ */
+export function effectWouldChangeStats(def: {
+  category: string;
+  durationModel?: string | null;
+  stats?: Record<string, number> | null;
+}): boolean {
+  if (def.category === EffectCategory.STAT_BOOST) return true;
+  if (def.durationModel === EffectDurationModel.INSTANT) {
+    const s = def.stats;
+    if (s && typeof s === 'object') {
+      for (const key of STAT_KEYS) {
+        const v = (s as Record<string, unknown>)[key];
+        if (typeof v === 'number' && v !== 0) return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function normalizeStats(stats: unknown): StatMap {

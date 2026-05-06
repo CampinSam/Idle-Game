@@ -7,6 +7,7 @@ import {
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildEntityPatch, buildItemPatches, buildLocationPatches } from '../patch-builder';
 import { LocationSettlementService } from '../../location/location-settlement.service';
+import { gearWouldChangeStats } from '../../entity/entity-stats.util';
 
 function txDb(tx: unknown) {
   return tx as any;
@@ -70,6 +71,18 @@ export class EquipItemHandler implements CommandHandler {
     const slotCapacity = Number(schema[slot] ?? 0);
     if (!slotCapacity || slotCapacity <= 0) {
       throw new BadRequestException(`Entity has no '${slot}' slot`);
+    }
+
+    // Block stat-changing equips on busy entities. Stats are read at job
+    // resolution time (outpost production, mission outcomes), so allowing
+    // mid-job changes would silently shift those calculations. Cosmetic
+    // gear (no stat contribution) is still allowed even while busy.
+    const entityStatus = (entity.state as any)?.status ?? 'idle';
+    if (entityStatus !== 'idle' && gearWouldChangeStats(equipData)) {
+      const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
+      throw new BadRequestException(
+        `"${entityName}" is currently ${entityStatus} — finish or cancel the job before changing equipment`,
+      );
     }
 
     // Already equipped to *this* entity in this slot? Treat as no-op success.

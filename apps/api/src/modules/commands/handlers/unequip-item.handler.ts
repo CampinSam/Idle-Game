@@ -7,6 +7,7 @@ import {
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildEntityPatch, buildItemPatches, buildLocationPatches } from '../patch-builder';
 import { LocationSettlementService } from '../../location/location-settlement.service';
+import { gearWouldChangeStats } from '../../entity/entity-stats.util';
 
 function txDb(tx: unknown) {
   return tx as any;
@@ -27,7 +28,7 @@ export class UnequipItemHandler implements CommandHandler {
 
     const entity = await txDb(ctx.tx).entity.findUnique({
       where: { id: entityId },
-      select: { id: true, ownerUserId: true },
+      select: { id: true, ownerUserId: true, state: true, display: true, speciesId: true },
     });
     if (!entity) throw new NotFoundException('Entity not found');
     if (entity.ownerUserId !== ctx.userId) {
@@ -44,10 +45,24 @@ export class UnequipItemHandler implements CommandHandler {
 
     const item = await txDb(ctx.tx).itemInstance.findUnique({
       where: { id: itemInstanceId },
-      include: { definition: { select: { name: true } } },
+      include: { definition: { select: { name: true, equipData: true } } },
     });
     if (!item || item.userId !== ctx.userId) {
       throw new ForbiddenException('Item does not belong to you');
+    }
+
+    // Block stat-changing unequips on busy entities — same reasoning as
+    // EquipItem (mid-job stat shifts would silently change job math).
+    // Cosmetic gear (no stat contribution) can still be unequipped.
+    const entityStatus = (entity.state as any)?.status ?? 'idle';
+    if (
+      entityStatus !== 'idle' &&
+      gearWouldChangeStats(item.definition?.equipData)
+    ) {
+      const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
+      throw new BadRequestException(
+        `"${entityName}" is currently ${entityStatus} — finish or cancel the job before changing equipment`,
+      );
     }
 
     await txDb(ctx.tx).entityEquipment.delete({ where: { id: equipRow.id } });
