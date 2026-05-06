@@ -23,6 +23,8 @@ import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import { EntityList } from '../entities/components';
 import type { EntityForecast } from '../entities/types';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
+import { GameImage } from '../../components/GameImage';
+import { getEntityImagePath } from '../../config/images';
 import './ForgePage.css';
 
 const FORGE_FALLBACK = {
@@ -138,6 +140,7 @@ function ForecastBar({
 }
 
 interface ForgeTrackProps {
+  slotId: string;
   outpostId: string | undefined;
   craftingRecipes: any[];
   idleEntities: any[];
@@ -147,11 +150,14 @@ interface ForgeTrackProps {
   profile: any;
   favorites: Set<string>;
   onToggleFavorite: (id: string) => void;
+  onCraftComplete: (slotId: string) => void;
+  onRequestForecastRefresh: () => void;
   execute: ReturnType<typeof useCommand>['execute'];
   recipeCategories: string[];
 }
 
 function ForgeTrack({
+  slotId,
   outpostId,
   craftingRecipes,
   idleEntities,
@@ -161,6 +167,8 @@ function ForgeTrack({
   profile,
   favorites,
   onToggleFavorite,
+  onCraftComplete,
+  onRequestForecastRefresh,
   execute,
   recipeCategories,
 }: ForgeTrackProps) {
@@ -302,15 +310,20 @@ function ForgeTrack({
     try {
       await execute('StartCrafting', { recipeId, entityId, locationId: outpostId });
       audioEngine.play('sfx.craft.start');
-      setRecipeId(null);
-      setEntityId(null);
+      onCraftComplete(slotId);
     } catch (e: any) {
       audioEngine.play('ui.error');
       setError(e?.message || 'Failed to start crafting');
-    } finally {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (recipeId && entityId) {
+      onRequestForecastRefresh();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeId, entityId]);
 
   const entityInitial = (selectedEntityObj?.name || '?').trim().charAt(0).toUpperCase();
 
@@ -358,7 +371,13 @@ function ForgeTrack({
               <div className="forge-slot-card__entity-row">
                 <div className="forge-slot-card__portrait">
                   {selectedEntityObj.imageUrl ? (
-                    <img src={selectedEntityObj.imageUrl} alt={selectedEntityObj.name} />
+                    <GameImage
+                      src={getEntityImagePath(selectedEntityObj.id, selectedEntityObj.archetype, selectedEntityObj.imageUrl, 'thumb')}
+                      category="entities"
+                      alt={selectedEntityObj.name}
+                      className="forge-slot-card__portrait-img"
+                      rounded
+                    />
                   ) : (
                     <span className="forge-slot-card__portrait-initial">{entityInitial}</span>
                   )}
@@ -648,6 +667,8 @@ export default function ForgePage() {
   const [forecast, setForecast] = useState<ForecastResponse | null>(null);
   const [error, setError] = useState('');
   const [workshopChecked, setWorkshopChecked] = useState(false);
+  const [slotIds, setSlotIds] = useState<string[]>([]);
+  const prevEmptyRef = useRef<number | null>(null);
   const [workshopLevel, setWorkshopLevel] = useState(1);
   const [workshopInfo, setWorkshopInfo] = useState<any>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => {
@@ -701,13 +722,44 @@ export default function ForgePage() {
   }, [focusedJobId, allActiveCraftingJobs.length]);
 
   const forecastBucket = Math.floor(tick / 30);
-  useEffect(() => {
+  const refreshForecast = useCallback(() => {
     let cancelled = false;
     api.getCraftingForecast(true, outpostId)
       .then((data) => { if (!cancelled) setForecast(data); })
       .catch(() => { if (!cancelled) setForecast(null); });
     return () => { cancelled = true; };
+  }, [outpostId]);
+  useEffect(() => {
+    return refreshForecast();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forecastBucket, outpostId]);
+
+  const maxSlots = forecast?.slotsTotal ?? workshopParallelSlots(workshopLevel);
+  const usedSlots = forecast?.slotsUsed ?? activeCraftingJobs.length;
+  const emptySlots = Math.max(0, maxSlots - usedSlots);
+
+  useEffect(() => {
+    if (!workshopChecked) return;
+    const prev = prevEmptyRef.current;
+    prevEmptyRef.current = emptySlots;
+    if (prev === null) {
+      setSlotIds(Array.from({ length: emptySlots }, () => crypto.randomUUID()));
+      return;
+    }
+    if (emptySlots > prev) {
+      setSlotIds((ids) => [
+        ...ids,
+        ...Array.from({ length: emptySlots - prev }, () => crypto.randomUUID()),
+      ]);
+    } else if (emptySlots < prev) {
+      setSlotIds((ids) => (ids.length > emptySlots ? ids.slice(0, emptySlots) : ids));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emptySlots, workshopChecked]);
+
+  const removeSlotId = useCallback((id: string) => {
+    setSlotIds((prev) => prev.filter((s) => s !== id));
+  }, []);
 
   const idleEntities = useMemo(() => {
     const list = entities.filter((e: any) => e.status === 'idle');
@@ -743,10 +795,6 @@ export default function ForgePage() {
       setError(e?.message || 'Failed to collect');
     }
   };
-
-  const maxSlots = forecast?.slotsTotal ?? workshopParallelSlots(workshopLevel);
-  const usedSlots = forecast?.slotsUsed ?? activeCraftingJobs.length;
-  const emptySlots = Math.max(0, maxSlots - usedSlots);
 
   const backDest = outpostId ? `/locations/${outpostId}` : '/locations';
 
@@ -849,7 +897,13 @@ export default function ForgePage() {
                 >
                   <div className="forge-job-portrait">
                     {entity?.imageUrl ? (
-                      <img src={entity.imageUrl} alt={entityName} />
+                      <GameImage
+                        src={getEntityImagePath(entity.id, entity.archetype, entity.imageUrl, 'thumb')}
+                        category="entities"
+                        alt={entityName}
+                        className="forge-job-portrait-img"
+                        rounded
+                      />
                     ) : (
                       <span className="forge-job-portrait-initial">{portraitInitial}</span>
                     )}
@@ -898,9 +952,10 @@ export default function ForgePage() {
             </span>
           </div>
           <div className="forge-tracks">
-            {Array.from({ length: emptySlots }).map((_, i) => (
+            {slotIds.map((id) => (
               <ForgeTrack
-                key={i}
+                key={id}
+                slotId={id}
                 outpostId={outpostId}
                 craftingRecipes={craftingRecipes as any[]}
                 idleEntities={idleEntities}
@@ -910,6 +965,8 @@ export default function ForgePage() {
                 profile={profile}
                 favorites={favorites}
                 onToggleFavorite={toggleFavorite}
+                onCraftComplete={removeSlotId}
+                onRequestForecastRefresh={refreshForecast}
                 execute={execute}
                 recipeCategories={recipeCategories}
               />

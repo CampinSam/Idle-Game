@@ -220,6 +220,7 @@
   overflow: hidden;
 }
 .forge-job-portrait img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.forge-job-portrait-img { width: 48px !important; height: 48px !important; border-radius: 50%; }
 .forge-job-portrait-initial { font-size: 22px; font-weight: 800; color: #f5f3ff; letter-spacing: 0.02em; z-index: 1; }
 .forge-job-ring { position: absolute; inset: 0; pointer-events: none; transform: rotate(-90deg); }
 .forge-job-ring-track { fill: none; stroke: rgba(139, 92, 246, 0.18); stroke-width: 4; }
@@ -429,6 +430,11 @@
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
+}
+.forge-slot-card__portrait-img {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50%;
 }
 .forge-slot-card__portrait-initial {
   font-size: 16px;
@@ -772,4 +778,18 @@
   .forge-recipe-grid { grid-template-columns: 1fr 1fr; }
   .forge-track { padding: 10px; }
   .forge-track-picker { padding: 10px; }
+}
+@media (max-width: 400px) {
+  .forge-track-selectors {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .forge-track-plus {
+    width: auto;
+    height: 24px;
+    writing-mode: horizontal-tb;
+  }
+  .forge-track-slot {
+    width: 100%;
+  }
 }
