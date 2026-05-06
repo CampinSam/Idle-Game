@@ -17,6 +17,15 @@ export default function LoginPage() {
   const autoLoginDone = useRef(false);
 
   const { connecting, error: walletError, detectedCardanoWallets, hasEvm, connectEvm, connectCardano, clearError: clearWalletError } = useWalletConnect();
+  // After ~6s of "Connecting..." with no popup we show a troubleshooting hint.
+  // The most common cause for a hang here is that the wallet extension was
+  // disabled, wedged, or lost focus — which we can't detect from the page.
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    if (!connecting) { setShowHint(false); return; }
+    const t = setTimeout(() => setShowHint(true), 6000);
+    return () => clearTimeout(t);
+  }, [connecting]);
 
   useEffect(() => {
     if (IS_DEV && !autoLoginDone.current && !token) {
@@ -108,6 +117,14 @@ export default function LoginPage() {
           <>
             <div className="auth-divider">or connect a wallet</div>
             {walletError && <div className="auth-error">{walletError}</div>}
+            {showHint && !walletError && (
+              <div className="auth-hint">
+                Don't see a wallet popup? Click your wallet's extension icon
+                in the browser toolbar — it may have a pending request.
+                If that doesn't help, refresh the page and make sure only
+                one Cardano wallet is enabled.
+              </div>
+            )}
             <div className="wallet-btn-group">
               {hasEvm && (
                 <button

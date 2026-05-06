@@ -64,6 +64,23 @@
   font-size: 13px;
 }
 
+.auth-hint {
+  background: rgba(139, 92, 246, 0.10);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #c4b5fd;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  animation: auth-hint-fade 200ms ease-out;
+}
+
+@keyframes auth-hint-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .form-group {
   margin-bottom: 18px;
 }
