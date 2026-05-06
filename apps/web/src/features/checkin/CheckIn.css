@@ -146,8 +146,6 @@
 
 .reward-node-icon.reward-node-icon-img img {
   display: block;
-  width: 100%;
-  height: 100%;
   object-fit: contain;
 }
 
