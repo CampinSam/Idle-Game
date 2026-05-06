@@ -263,8 +263,10 @@
  *         `overflow-y:auto` scrolls when content is tall and stays at content
  *         height when short.
  *      - For fill-height single-card pages (Inventory, Store) — the wrapper
- *        card adds `flex:1; min-height:0; overflow-y:auto` so it always
- *        expands to fill the body; content scrolls inside the card.
+ *        card adds `flex:1; min-height:0` so it always expands to fill the
+ *        body. The scroll surface differs per page: Inventory scrolls the
+ *        whole card (`overflow-y:auto` on the card itself); Store keeps the
+ *        card `overflow:hidden` and scrolls only `.store-content` inside.
  *      - For shrink-to-content single-card pages (Entities, Settings, Profile,
  *        Entity Detail, Location Detail) — the wrapper card adds
  *        `min-height:0; max-height:100%; overflow-x:hidden; overflow-y:auto;
