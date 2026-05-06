@@ -264,8 +264,8 @@
 }
 
 .entity-list--picker .entity-card__portrait--round {
-  width: 44px !important;
-  height: 44px !important;
+  width: 72px !important;
+  height: 72px !important;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
 }
 
