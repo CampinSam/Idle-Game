@@ -1,8 +1,12 @@
 /**
  * Icon keys for built-in reward types that have no dynamic `r.key`.
- * Values are bucket-relative paths served via the static fallback in the
- * media controller, so they resolve through the normal resolveAssetUrl
- * pipeline at runtime.
+ *
+ * Bare names (no slash, no extension) are intentional: resolveAssetUrl expands
+ * them to `/media/images/icons/<name>.png`, which is the canonical path the
+ * static fallback in the media controller serves the bundled SVGs from.  Using
+ * bare names also makes XP icons work in every call-site that passes `r.type`
+ * directly as the icon src (e.g. QuestCard, MissionsPage), not only where the
+ * backend explicitly emits an assetKey.
  */
 export const REWARD_TYPE_ICON_MAP: Record<string, string> = {
   entity_xp: 'entity_xp',

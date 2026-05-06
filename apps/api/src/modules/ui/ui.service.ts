@@ -596,6 +596,13 @@ export class UiService {
     };
   }
 
+  /**
+   * Returns a bare-name icon key for system reward types that carry no r.key.
+   * Bare names resolve via resolveAssetUrl to /media/images/icons/<name>.png,
+   * matching the static fallback served from apps/api/static/images/icons/.
+   * This also makes icons discoverable from any frontend call-site that passes
+   * r.type directly as an icon src (QuestCard, MissionsPage, etc.).
+   */
   private resolveSystemRewardAssetKey(type: string | undefined): string | undefined {
     const map: Record<string, string> = {
       entity_xp: 'entity_xp',
