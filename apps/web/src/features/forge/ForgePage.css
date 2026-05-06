@@ -23,6 +23,7 @@
   background-position: center;
   overflow: hidden;
   min-height: 220px;
+  flex-shrink: 0;
   isolation: isolate;
   padding-bottom: 24px;
 }
