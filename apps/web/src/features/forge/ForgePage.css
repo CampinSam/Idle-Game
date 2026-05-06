@@ -434,6 +434,10 @@ body.forge-floating-back-active .forge-scene {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Clear the absolute close button (32px tall at top:10px = 42px) plus
+   * breathing room so the heading doesn't collide with the close button
+   * or the game's fixed top bar when the sheet is at full height. */
+  padding-top: 46px;
 }
 .forge-assign-head h2 { margin: 0 0 4px; font-size: 18px; color: #fff7ed; }
 .forge-assign-head p { margin: 0; font-size: 13px; color: #fde68a; }
@@ -661,6 +665,18 @@ body.forge-floating-back-active .forge-scene {
   overscroll-behavior: contain;
   animation: forgeSheetSlideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   box-shadow: 0 -16px 40px rgba(0,0,0,0.55);
+}
+/* Drag-handle notch — sits above the sheet content so the user has
+ * a clear "this scrolls" affordance and visual breathing room. */
+.forge-sheet::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 10px auto 0;
+  flex-shrink: 0;
 }
 .forge-sheet-close {
   position: absolute;
