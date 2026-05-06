@@ -320,6 +320,11 @@
   border-radius: 2px;
 }
 
+.balance-chart-swatch-stat {
+  height: 2px;
+  opacity: 0.85;
+}
+
 .balance-chart-legend-primary {
   color: #ffd166;
   font-weight: 600;

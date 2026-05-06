@@ -594,9 +594,9 @@ function Dashboard() {
           <TagIcon size={16} />
           {!collapsed && <span>Tag Editor</span>}
         </a>
-        <a href="/admin/balance" className="sidebar-link" title="Balance Simulator">
+        <a href="/admin/balance" className="sidebar-link" title="Entity Progress Simulator">
           <BarChart3 size={16} />
-          {!collapsed && <span>Balance Simulator</span>}
+          {!collapsed && <span>Entity Progress Simulator</span>}
         </a>
         <button onClick={() => { setAdminKey(''); sessionStorage.removeItem('adminKey'); window.location.reload(); }} className="btn-logout" title="Logout">
           <LogOut size={16} />

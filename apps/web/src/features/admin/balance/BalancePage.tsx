@@ -7,6 +7,7 @@ import {
   type EntityDef,
   type SimulationResult,
 } from './simulator';
+import { STAT_KEYS } from '@derp/math';
 import type React from 'react';
 import '../admin.css';
 import './BalancePage.css';
@@ -63,6 +64,12 @@ export default function BalancePage() {
       setPrimaryId(bundle.entityDefinitions[0].id);
     }
   }, [bundle, primaryId]);
+
+  useEffect(() => {
+    const previous = document.title;
+    document.title = 'Entity Progress Simulator';
+    return () => { document.title = previous; };
+  }, []);
 
   const definitionsById = useMemo(() => {
     const map = new Map<string, EntityDef>();
@@ -137,7 +144,7 @@ export default function BalancePage() {
         <a href="/admin" className="balance-back-link" title="Back to admin">
           <ArrowLeft size={16} /> Admin
         </a>
-        <h1>Bird Power Progression Simulator</h1>
+        <h1>Entity Progress Simulator</h1>
         <p className="balance-subtitle">
           Monte-Carlo simulation of average power score from level 1 to {MAX_LEVEL}.
           Uses the same trait rolling, scaling, and weighted level-up math the server runs.
@@ -236,6 +243,14 @@ export default function BalancePage() {
 
 const PRIMARY_COLOR = '#ffd166';
 const OVERLAY_COLORS = ['#b8b8ff', '#7df9aa', '#ff9f7f', '#ff7fbf', '#9ff7ff', '#c8a2ff'];
+const STAT_COLORS: Record<string, string> = {
+  ATK: '#ff6b6b',
+  DEF: '#4dabf7',
+  SPD: '#51cf66',
+  FOC: '#cc8df0',
+  LCK: '#ffd43b',
+  VIT: '#ff922b',
+};
 
 function niceCeil(value: number): number {
   if (!isFinite(value) || value <= 0) return 1;
@@ -285,6 +300,11 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
     for (const v of primary.result.mean) if (v > m) m = v;
     for (const o of output.overlays) {
       for (const v of o.result.mean) if (v > m) m = v;
+    }
+    for (const k of STAT_KEYS) {
+      const arr = primary.result.statMeans?.[k];
+      if (!arr) continue;
+      for (const v of arr) if (v > m) m = v;
     }
     return niceCeil(m * 1.05);
   }, [primary, output.overlays]);
@@ -338,8 +358,9 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
   const tooltip = hoverLevel != null ? (() => {
     const idx = hoverLevel - 1;
     const tx = xFor(hoverLevel);
-    const tipW = 200;
-    const tipH = 30 + 18 * series.length + 12;
+    const tipW = 220;
+    const rowCount = series.length + STAT_KEYS.length;
+    const tipH = 30 + 18 * rowCount + 12;
     const tipX = tx + 12 + tipW > W - PAD.right ? tx - 12 - tipW : tx + 12;
     const tipY = Math.max(PAD.top, Math.min(PAD.top + innerH - tipH, yFor(primary.result.mean[idx]) - tipH / 2));
     return { idx, tx, tipX, tipY, tipW, tipH };
@@ -354,6 +375,12 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
             <span className={s.isPrimary ? 'balance-chart-legend-primary' : ''}>
               {s.name}{s.isPrimary ? ' (primary, mean ± p10–p90)' : ' (mean)'}
             </span>
+          </span>
+        ))}
+        {STAT_KEYS.map((k) => (
+          <span key={'stat-' + k} className="balance-chart-legend-item">
+            <span className="balance-chart-swatch balance-chart-swatch-stat" style={{ background: STAT_COLORS[k] }} />
+            <span>{k} (mean)</span>
           </span>
         ))}
       </div>
@@ -409,6 +436,23 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
 
         <path d={bandPath} fill={PRIMARY_COLOR} fillOpacity={0.16} stroke="none" />
 
+        {STAT_KEYS.map((k) => {
+          const arr = primary.result.statMeans?.[k];
+          if (!arr || arr.length === 0) return null;
+          return (
+            <path
+              key={'stat-' + k}
+              d={buildLine(arr)}
+              fill="none"
+              stroke={STAT_COLORS[k]}
+              strokeWidth={1.25}
+              strokeOpacity={0.85}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        })}
+
         {output.overlays.map((o, i) => (
           <path
             key={'ov-' + o.defId}
@@ -451,6 +495,21 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
                 strokeWidth={1.5}
               />
             ))}
+            {STAT_KEYS.map((k) => {
+              const arr = primary.result.statMeans?.[k];
+              if (!arr) return null;
+              return (
+                <circle
+                  key={'pt-stat-' + k}
+                  cx={tooltip.tx}
+                  cy={yFor(arr[tooltip.idx])}
+                  r={2.5}
+                  fill={STAT_COLORS[k]}
+                  stroke="#0f0f2e"
+                  strokeWidth={1}
+                />
+              );
+            })}
             <g>
               <rect
                 x={tooltip.tipX}
@@ -476,6 +535,20 @@ function BalanceChart({ output }: { output: SimulationOutput }) {
                     <text x={tooltip.tipX + 24} y={ty} className="balance-chart-tooltip-text">
                       <tspan className="balance-chart-tooltip-name">{s.name}: </tspan>
                       <tspan>{detail}</tspan>
+                    </text>
+                  </g>
+                );
+              })}
+              {STAT_KEYS.map((k, i) => {
+                const arr = primary.result.statMeans?.[k];
+                if (!arr) return null;
+                const ty = tooltip.tipY + 36 + (series.length + i) * 18;
+                return (
+                  <g key={'tt-stat-' + k}>
+                    <rect x={tooltip.tipX + 10} y={ty - 8} width={8} height={8} fill={STAT_COLORS[k]} rx={1.5} />
+                    <text x={tooltip.tipX + 24} y={ty} className="balance-chart-tooltip-text">
+                      <tspan className="balance-chart-tooltip-name">{k}: </tspan>
+                      <tspan>{formatTickValue(arr[tooltip.idx])}</tspan>
                     </text>
                   </g>
                 );

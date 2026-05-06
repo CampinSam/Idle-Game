@@ -34,6 +34,8 @@ export interface SimulationResult {
   p50: number[];
   /** 90th-percentile power score per level. */
   p90: number[];
+  /** Mean per-stat values per level. Keyed by stat (ATK, DEF, SPD, FOC, LCK, VIT). */
+  statMeans: Record<string, number[]>;
 }
 
 /**
@@ -91,14 +93,19 @@ export function simulateEntityProgression(
 ): SimulationResult {
   // powersByLevel[level - 1] is an array of power scores across all sims for that level.
   const powersByLevel: number[][] = Array.from({ length: maxLevel }, () => new Array(sampleSize));
+  // statSumsByLevel[stat][level - 1] = sum of that stat across all sims at that level.
+  const statSumsByLevel: Record<string, number[]> = {};
+  for (const k of STAT_KEYS) statSumsByLevel[k] = new Array<number>(maxLevel).fill(0);
 
   for (let i = 0; i < sampleSize; i++) {
     let stats = rollBirdInitialStats(def, traits);
     powersByLevel[0][i] = getPowerScore(stats);
+    for (const k of STAT_KEYS) statSumsByLevel[k][0] += Number(stats[k] ?? 0);
     for (let level = 2; level <= maxLevel; level++) {
       const result = applyWeightedLevelUp(stats);
       stats = result.stats;
       powersByLevel[level - 1][i] = getPowerScore(stats);
+      for (const k of STAT_KEYS) statSumsByLevel[k][level - 1] += Number(stats[k] ?? 0);
     }
   }
 
@@ -118,7 +125,12 @@ export function simulateEntityProgression(
     p90[l] = percentile(arr, 0.9);
   }
 
-  return { mean, p10, p50, p90 };
+  const statMeans: Record<string, number[]> = {};
+  for (const k of STAT_KEYS) {
+    statMeans[k] = statSumsByLevel[k].map((s) => s / sampleSize);
+  }
+
+  return { mean, p10, p50, p90, statMeans };
 }
 
 function percentile(sortedAsc: number[], q: number): number {
