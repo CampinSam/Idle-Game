@@ -16,7 +16,7 @@ export default function AssetImage({ asset, style, className }: AssetImageProps)
       src={src}
       alt={asset.alt || ''}
       style={style}
-      className={className}
+      className={`game-icon ${className ?? ''}`.trim()}
       draggable={false}
       onError={(e) => {
         const img = e.currentTarget;
