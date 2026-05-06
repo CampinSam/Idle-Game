@@ -15,7 +15,7 @@ import WalletOnboardingPage from './features/auth/WalletOnboardingPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const HomePage = lazy(() => import('./features/home/HomePage'));
-const HomePageV2 = lazy(() => import('./features/home/HomePageV2'));
+const HomePageV2 = lazy(() => import('./features/home/v2/HomePageV2'));
 const EntitiesPage = lazy(() => import('./features/entities/EntitiesPage'));
 const EntityDetailPage = lazy(() => import('./features/entities/EntityDetailPage'));
 const LocationsPage = lazy(() => import('./features/locations/LocationsPage'));
@@ -148,9 +148,13 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
+        {/* /home/v2 renders OUTSIDE the shared Layout so it can own
+            its full viewport, header, and bottom nav (sibling-of-Layout
+            pattern, mirroring `/admin`). Auth + provider stack still
+            wrap it because they live above <Routes>. */}
+        <Route path="/home/v2" element={<ErrorBoundary fallbackTitle="Home v2 error"><Suspense fallback={<PageLoader />}><HomePageV2 /></Suspense></ErrorBoundary>} />
         <Route path="/" element={<Layout />}>
           <Route index element={<ErrorBoundary fallbackTitle="Home page error"><HomePage /></ErrorBoundary>} />
-          <Route path="home/v2" element={<ErrorBoundary fallbackTitle="Home v2 error"><HomePageV2 /></ErrorBoundary>} />
           <Route path="entities" element={<ErrorBoundary fallbackTitle="Entities page error"><EntitiesPage /></ErrorBoundary>} />
           <Route path="entities/:id" element={<ErrorBoundary fallbackTitle="Entity detail error"><EntityDetailPage /></ErrorBoundary>} />
           <Route path="locations" element={<ErrorBoundary fallbackTitle="Locations page error"><LocationsPage /></ErrorBoundary>} />
