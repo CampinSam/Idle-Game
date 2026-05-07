@@ -89,6 +89,10 @@ export const adminApi = {
 
   listIcons: () => adminRequest<any[]>('/media/icons'),
   listSystemIcons: () => adminRequest<any[]>('/media/system-icons'),
+  createSystemIconDef: (data: { id: string; name: string }) =>
+    adminRequest<any>('/media/system-icons', { method: 'POST', body: JSON.stringify(data) }),
+  deleteSystemIconDef: (key: string) =>
+    adminRequest<any>(`/media/system-icons/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 
   getBalanceBundle: () => adminRequest<{
     entityDefinitions: Array<{ id: string; name: string; speciesId: string; slots: Record<string, string[]> }>;

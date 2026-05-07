@@ -1,21 +1,19 @@
-import { REWARD_TYPE_ICON_MAP as _REWARD_TYPE_ICON_MAP } from '@derp/shared';
-
 /**
- * Icon keys for built-in reward types that have no dynamic `r.key`.
+ * Live registry of system icon keys loaded from the server bootstrap snapshot.
+ * Keys are reward-type strings (e.g. `entity_xp`, `keeper_xp`). Bare-name
+ * resolution means each key maps to `/media/images/icons/<key>.png` at render
+ * time via `resolveAssetUrl`.
  *
- * Bare names (no slash, no extension) are intentional: resolveAssetUrl expands
- * them to `/media/images/icons/<name>.png`, which is the canonical path the
- * static fallback in the media controller serves the bundled SVGs from.  Using
- * bare names also makes XP icons work in every call-site that passes `r.type`
- * directly as the icon src (e.g. QuestCard, MissionsPage), not only where the
- * backend explicitly emits an assetKey.
+ * Call `setSystemIconRegistry(keys)` once on bootstrap to activate the live
+ * registry. Until then the set is empty and system-type icons will not resolve.
  *
- * Source of truth: `packages/shared/src/constants/images.ts`
- * The values are the display names; the keys are used as bare icon identifiers.
+ * Source of truth: `system_icon_defs` DB table, managed via the admin panel.
  */
-export const REWARD_TYPE_ICON_MAP: Record<string, string> = Object.fromEntries(
-  Object.keys(_REWARD_TYPE_ICON_MAP).map((k) => [k, k]),
-);
+let _systemIconKeys: Set<string> = new Set();
+
+export function setSystemIconRegistry(keys: string[]): void {
+  _systemIconKeys = new Set(keys);
+}
 
 /**
  * Returns a media-compatible asset key for a known system reward type, or
@@ -23,7 +21,7 @@ export const REWARD_TYPE_ICON_MAP: Record<string, string> = Object.fromEntries(
  */
 export function resolveSystemRewardIcon(type: string | null | undefined): string | undefined {
   if (!type) return undefined;
-  return REWARD_TYPE_ICON_MAP[type];
+  return _systemIconKeys.has(type) ? type : undefined;
 }
 
 // One mental model for media: the value you save IS the path under the bucket.
@@ -99,7 +97,7 @@ export function deriveIconFromRewardSpec(spec: any): string | null {
   if (type === 'currency') return spec.key || spec.currencyId || null;
   if (type === 'item') return spec.key || spec.itemDefId || null;
   if (type === 'entity') return spec.definitionId || spec.entityDefId || spec.key || null;
-  if (REWARD_TYPE_ICON_MAP[type]) return REWARD_TYPE_ICON_MAP[type];
+  if (_systemIconKeys.has(type)) return type;
   if (type === 'bundle' && Array.isArray(spec.entries)) {
     for (const e of spec.entries) {
       const sub = deriveIconFromRewardSpec(e);

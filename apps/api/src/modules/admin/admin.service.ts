@@ -722,6 +722,7 @@ export class AdminService {
       visualEffectDef: (this.prisma as any).visualEffectDef,
       season: (this.prisma as any).season,
       homeBannerDef: (this.prisma as any).homeBannerDef,
+      systemIconDef: (this.prisma as any).systemIconDef,
     };
 
     if (!models[table]) {

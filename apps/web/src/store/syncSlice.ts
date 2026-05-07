@@ -68,6 +68,11 @@ interface SyncState {
   tagDefs: Record<string, any>;
   visualEffectDefs: Record<string, any>;
 
+  // System icon registry — keyed by icon key (e.g. `entity_xp`). Populated
+  // from the bootstrap snapshot; updated without a code deploy when admins
+  // add new SystemIconDef rows via the admin panel.
+  systemIconDefs: Record<string, any>;
+
   tickBroadcast: TickBroadcast | null;
   lastError: string | null;
 }
@@ -98,6 +103,7 @@ const initialState: SyncState = {
 
   tagDefs: {},
   visualEffectDefs: {},
+  systemIconDefs: {},
 
   tickBroadcast: null,
   lastError: null,
@@ -163,6 +169,8 @@ const syncSlice = createSlice({
         const s = snapshot.state;
         if ((s as any).tagDefs) for (const t of (s as any).tagDefs) state.tagDefs[t.key] = t;
         if ((s as any).visualEffectDefs) for (const v of (s as any).visualEffectDefs) state.visualEffectDefs[v.key] = v;
+        state.systemIconDefs = {};
+        if ((s as any).systemIconDefs) for (const d of (s as any).systemIconDefs) state.systemIconDefs[d.id] = d;
         if (s.entities) for (const e of s.entities) state.entities[e.id] = e;
         if (s.locations) for (const l of s.locations) state.locations[l.id] = l;
         if (s.buildings) for (const b of s.buildings) state.buildings[b.id] = b;

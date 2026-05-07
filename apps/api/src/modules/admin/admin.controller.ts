@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
-import { REWARD_TYPE_ICON_MAP } from '@derp/shared';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { BoostService } from '../tick/boost.service';
@@ -60,6 +59,7 @@ export class AdminController {
       { key: 'tagDef', name: 'Visual Tag Definitions', table: 'tag_defs' },
       { key: 'visualEffectDef', name: 'Visual Effect Definitions', table: 'visual_effect_defs' },
       { key: 'homeBannerDef', name: 'Home Banners', table: 'home_banner_defs' },
+      { key: 'systemIconDef', name: 'System Icon Definitions', table: 'system_icon_defs' },
     ];
   }
 
@@ -233,16 +233,20 @@ export class AdminController {
     const prefix = parts.slice(1).join('/');
     const bucket = objectStorageClient.bucket(bucketName);
 
+    const iconDefs = await (this.prisma as any).systemIconDef.findMany({
+      orderBy: { name: 'asc' },
+    });
+
     const results = await Promise.all(
-      Object.entries(REWARD_TYPE_ICON_MAP).map(async ([key, displayName]) => {
-        const relPath = `images/icons/${key}.png`;
+      iconDefs.map(async (def: { id: string; name: string }) => {
+        const relPath = `images/icons/${def.id}.png`;
         const objectName = prefix ? `${prefix}/${relPath}` : relPath;
         const file = bucket.file(objectName);
         const [exists] = await file.exists();
         return {
-          id: key,
-          name: displayName,
-          iconKey: key,
+          id: def.id,
+          name: def.name,
+          iconKey: def.id,
           type: 'system' as const,
           exists,
           url: exists ? `/media/${relPath}` : null,
@@ -250,7 +254,25 @@ export class AdminController {
       }),
     );
 
-    return results.sort((a, b) => a.name.localeCompare(b.name));
+    return results.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }
+
+  @Post('media/system-icons')
+  async createSystemIconDef(@Body() body: { id: string; name: string }) {
+    if (!body.id || typeof body.id !== 'string' || !/^[a-z0-9_]+$/.test(body.id)) {
+      throw new BadRequestException('id must be a lowercase snake_case string');
+    }
+    if (!body.name || typeof body.name !== 'string') {
+      throw new BadRequestException('name is required');
+    }
+    return (this.prisma as any).systemIconDef.create({ data: { id: body.id, name: body.name } });
+  }
+
+  @Delete('media/system-icons/:key')
+  async deleteSystemIconDef(@Param('key') key: string) {
+    const existing = await (this.prisma as any).systemIconDef.findUnique({ where: { id: key } });
+    if (!existing) throw new BadRequestException(`System icon key '${key}' not found`);
+    return (this.prisma as any).systemIconDef.delete({ where: { id: key } });
   }
 
   @Get('media/icons')

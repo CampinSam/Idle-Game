@@ -124,6 +124,72 @@ function IconTable({ icons, uploading, bustTokens, onUpload, emptyMessage }: Ico
   );
 }
 
+function AddSystemIconForm({ onAdded }: { onAdded: () => void }) {
+  const [key, setKey] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimKey = key.trim();
+    const trimName = name.trim();
+    if (!trimKey || !trimName) { setError('Both fields are required.'); return; }
+    if (!/^[a-z0-9_]+$/.test(trimKey)) { setError('Key must be lowercase letters, digits, and underscores only.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await adminApi.createSystemIconDef({ id: trimKey, name: trimName });
+      setKey('');
+      setName('');
+      setExpanded(false);
+      onAdded();
+    } catch (e: any) {
+      setError(e.message || 'Failed to add icon key');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!expanded) {
+    return (
+      <button className="btn-save" style={{ marginTop: 8 }} onClick={() => setExpanded(true)}>
+        + Add New Key
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 11, color: '#aaa' }}>Icon Key (e.g. season_xp)</label>
+        <input
+          type="text"
+          placeholder="season_xp"
+          value={key}
+          onChange={e => setKey(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #444', background: '#1a1a2e', color: '#fff', fontSize: 13, width: 180 }}
+          autoFocus
+        />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <label style={{ fontSize: 11, color: '#aaa' }}>Display Name (e.g. Season XP)</label>
+        <input
+          type="text"
+          placeholder="Season XP"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #444', background: '#1a1a2e', color: '#fff', fontSize: 13, width: 180 }}
+        />
+      </div>
+      <button type="submit" className="btn-save" disabled={loading}>{loading ? 'Adding...' : 'Add'}</button>
+      <button type="button" className="btn-upload" onClick={() => { setExpanded(false); setError(''); }}>Cancel</button>
+      {error && <span style={{ color: '#f87171', fontSize: 12, alignSelf: 'center' }}>{error}</span>}
+    </form>
+  );
+}
+
 function IconManagerContent() {
   const [systemIcons, setSystemIcons] = useState<IconEntry[]>([]);
   const [regularIcons, setRegularIcons] = useState<IconEntry[]>([]);
@@ -246,7 +312,7 @@ function IconManagerContent() {
         <div className="icon-section-header">
           <h2 className="icon-section-title">System Icons</h2>
           <p className="icon-section-desc">
-            Built-in reward type icons (e.g. XP gains). Uploading a replacement immediately overrides the bundled fallback.
+            Reward type icons (e.g. XP gains). Add new keys below — no code deploy required. Upload the matching PNG to activate the icon.
           </p>
         </div>
 
@@ -262,7 +328,9 @@ function IconManagerContent() {
           />
         )}
 
-        <div className="icon-path-hint">
+        <AddSystemIconForm onAdded={load} />
+
+        <div className="icon-path-hint" style={{ marginTop: 12 }}>
           Stored at: <code>images/icons/&#123;iconKey&#125;.png</code> in object storage.
         </div>
       </div>

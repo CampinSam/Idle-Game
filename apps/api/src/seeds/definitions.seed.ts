@@ -187,5 +187,9 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
+  if (defs.systemIconDefs) {
+    await upsertMany(prisma, 'systemIconDef', defs.systemIconDefs);
+  }
+
   logger.log('Definition seeding complete');
 }

@@ -147,6 +147,10 @@ export function useVisualEffectDef(key: string | undefined | null) {
   return useAppSelector((s) => (key ? s.sync.visualEffectDefs[key] : undefined));
 }
 
+export function useSystemIconDefs() {
+  return useAppSelector((s) => s.sync.systemIconDefs);
+}
+
 export function useSyncActiveEffects() {
   const table = useAppSelector((s) => s.sync.activeEffects);
   return useMemo(() => Object.values(table), [table]);

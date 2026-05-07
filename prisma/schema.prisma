@@ -1390,3 +1390,23 @@ model TagDef {
   @@index([effectKey])
   @@map("tag_defs")
 }
+
+// ═══════════════════════════════════════════════════
+// SYSTEM ICON REGISTRY
+// ═══════════════════════════════════════════════════
+//
+// Maps reward-type strings (e.g. `entity_xp`, `keeper_xp`) to a display
+// name. The `id` field IS the icon key — the frontend looks up
+// `/media/images/icons/<id>.png` when rendering a reward of that type.
+// Adding a row here + uploading the matching PNG is sufficient to activate
+// a new system icon type without a code deploy.
+
+model SystemIconDef {
+  id        String   @id
+  name      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_icon_defs")
+}

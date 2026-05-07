@@ -4965,7 +4965,11 @@
         "version": 1,
         "id": "modal_list_smoke",
         "kind": "custom",
-        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "dismiss": {
+          "backdrop": true,
+          "x": true,
+          "escape": true
+        },
         "header": {
           "title": "Loop Demo",
           "subtitle": "Renders one row per reward via the list block"
@@ -4974,7 +4978,15 @@
           {
             "type": "richText",
             "doc": [
-              { "t": "p", "c": [{ "t": "text", "v": "You received ${results.rewards.length} reward(s):" }] }
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "You received ${results.rewards.length} reward(s):"
+                  }
+                ]
+              }
             ]
           },
           {
@@ -4985,7 +4997,10 @@
               {
                 "type": "metaRows",
                 "rows": [
-                  { "label": "#${index}", "value": "${item.name} ×${item.qty}" }
+                  {
+                    "label": "#${index}",
+                    "value": "${item.name} \u00d7${item.qty}"
+                  }
                 ]
               }
             ]
@@ -4996,7 +5011,9 @@
             "id": "btn_close",
             "label": "Close",
             "variant": "secondary",
-            "action": { "type": "CLOSE_MODAL" }
+            "action": {
+              "type": "CLOSE_MODAL"
+            }
           }
         ]
       },
@@ -5005,13 +5022,17 @@
     {
       "id": "modal_clickreveal_smoke",
       "name": "Click Reveal Smoke Test",
-      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list — each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
+      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list \u2014 each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
       "version": 1,
       "spec": {
         "version": 1,
         "id": "modal_clickreveal_smoke",
         "kind": "custom",
-        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "dismiss": {
+          "backdrop": true,
+          "x": true,
+          "escape": true
+        },
         "header": {
           "title": "Reveal Demo",
           "subtitle": "Tap each card to reveal the reward"
@@ -5020,7 +5041,15 @@
           {
             "type": "richText",
             "doc": [
-              { "t": "p", "c": [{ "t": "text", "v": "${results.rewards.length} mystery reward(s):" }] }
+              {
+                "t": "p",
+                "c": [
+                  {
+                    "t": "text",
+                    "v": "${results.rewards.length} mystery reward(s):"
+                  }
+                ]
+              }
             ]
           },
           {
@@ -5038,7 +5067,10 @@
                   {
                     "type": "metaRows",
                     "rows": [
-                      { "label": "${item.rarity}", "value": "${item.name} ×${item.qty}" }
+                      {
+                        "label": "${item.rarity}",
+                        "value": "${item.name} \u00d7${item.qty}"
+                      }
                     ]
                   }
                 ]
@@ -5051,11 +5083,23 @@
             "id": "btn_close",
             "label": "Close",
             "variant": "secondary",
-            "action": { "type": "CLOSE_MODAL" }
+            "action": {
+              "type": "CLOSE_MODAL"
+            }
           }
         ]
       },
       "enabled": true
+    }
+  ],
+  "systemIconDefs": [
+    {
+      "id": "entity_xp",
+      "name": "Entity XP"
+    },
+    {
+      "id": "keeper_xp",
+      "name": "Keeper XP"
     }
   ]
 }

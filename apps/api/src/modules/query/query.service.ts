@@ -137,6 +137,7 @@ export class QueryService {
       unclaimedGifts,
       tagDefs,
       visualEffectDefs,
+      systemIconDefs,
       homeBanners,
       activeSeason,
     ] = await Promise.all([
@@ -244,6 +245,12 @@ export class QueryService {
         where: { enabled: true },
         orderBy: { sortOrder: 'asc' },
       }),
+      // System icon registry: maps reward-type strings to icon keys.
+      // Ships in the bootstrap so components can resolve system icons
+      // without a code change when new types are added via the admin panel.
+      (this.prisma as any).systemIconDef.findMany({
+        orderBy: { id: 'asc' },
+      }),
       this.homeBannerService.listActive(userId),
       this.prisma.season.findFirst({
         where: { status: 'active', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
@@ -311,6 +318,7 @@ export class QueryService {
           gifts: unclaimedGifts,
           tagDefs,
           visualEffectDefs,
+          systemIconDefs,
           missions: jobs
             .filter((j: any) => j.type === 'MissionJob')
             .map((j: any) => {

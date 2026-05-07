@@ -25,6 +25,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   NftCollectionDef: 'nftCollectionDef',
   EffectDef: 'effectDef',
   HomeBannerDef: 'homeBannerDef',
+  SystemIconDef: 'systemIconDef',
 };
 
 export interface FieldDef {
@@ -468,6 +469,14 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       enabled: { type: 'boolean', default: true, description: 'Active?' },
     },
   },
+  SystemIconDef: {
+    color: '#4B5563',
+    group: 'System',
+    fields: {
+      id: { type: 'string', required: true, description: 'Icon key / reward type string (e.g. season_xp). Must be lowercase snake_case.' },
+      name: { type: 'string', required: true, description: 'Display name shown in the Icon Manager (e.g. "Season XP").' },
+    },
+  },
   HomeBannerDef: {
     color: '#22D3EE',
     group: 'UI',
@@ -501,7 +510,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition', 'BodySchema', 'EquipmentSchema', 'ProgressionProfile', 'TraitDefinition'],
   Effects: ['EffectDef'],
-  System: ['EventDefinition'],
+  System: ['EventDefinition', 'SystemIconDef'],
 };
 
 export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];

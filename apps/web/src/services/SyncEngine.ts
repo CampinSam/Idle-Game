@@ -2,6 +2,7 @@ import { Store } from '@reduxjs/toolkit';
 import { api } from './api';
 import type { DeltaResponse } from './api';
 import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickBroadcast, setHomeBanners } from '../store/syncSlice';
+import { setSystemIconRegistry } from '../utils/iconResolver';
 import type { RootState } from '../store';
 
 const HEARTBEAT_TIMEOUT_MS = 45_000;
@@ -30,6 +31,8 @@ export class SyncEngine {
       if (this.destroyed) return;
 
       this.store.dispatch(setSnapshot(response));
+      const systemIconDefs: Array<{ id: string }> = (response.snapshot.state as any)?.systemIconDefs ?? [];
+      setSystemIconRegistry(systemIconDefs.map((d) => d.id));
       this.store.dispatch(setStatus('connected'));
       this.openStream();
     } catch (err: any) {
