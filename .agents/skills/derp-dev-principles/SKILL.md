@@ -131,7 +131,7 @@ Always throw typed NestJS exceptions. Never use `throw new Error(...)` or return
 - Before building a new layout with raw `div` containers, check if an existing component covers it.
 - Extract any UI element used more than twice into a shared component.
 - Keep components focused on one job. A component that renders a card should not also fetch data.
-- Co-locate component CSS in a `.css` file next to the component file. No Tailwind. Use plain CSS with BEM-style class names and CSS custom properties for theming.
+- New `apps/web` UI uses Tailwind utility classes plus the shared kit at `apps/web/src/components/ui/`. CSS variables in `apps/web/src/index.css` remain the source of truth for theme tokens and are mirrored into `tailwind.config.js`. Existing `.css` files alongside legacy components stay until those pages are converted; do not introduce new `.css` files for new pages. See `replit.md` → "Frontend styling convention" for the full reference.
 - **Every page-level section must sit inside a card, not directly against the page background.** When adding a new page, list, or feature region, wrap it in a card container (gradient bg, `rgba(139,92,246,0.25)` border, `border-radius: 16px`, `padding: 14px`) — see `.rewards-card` / `.achievement-section` for the canonical pattern. New top-level content rendered straight on the dark purple backdrop without a card is considered a layout bug.
 
 ---

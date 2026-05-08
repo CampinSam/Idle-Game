@@ -15,7 +15,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - `CORS_ORIGIN` (comma-separated origins; no wildcard in production)
 
 ## Stack
-- **Frontend:** React, Vite
+- **Frontend:** React, Vite, Tailwind CSS v3
 - **Backend:** NestJS
 - **ORM:** Prisma
 - **Database:** PostgreSQL
@@ -32,6 +32,8 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - `admin-schemas.md`: Admin API documentation.
 - `definition-schemas.json`: Game definition schemas.
 - `apps/web/src/core/theme/`: UI theme files.
+- `apps/web/src/components/ui/`: Shared Tailwind UI kit (Card, SectionHeader, Badge, StatPill, Chip, EmptyState, Divider, Row, IconLabel, KeyValue, CostEntry, RewardChip).
+- `apps/web/tailwind.config.js`, `apps/web/postcss.config.js`: Tailwind + PostCSS configuration.
 
 ## Architecture decisions
 - **Monorepo Structure:** Uses pnpm for a monorepo with `apps/web`, `apps/api`, and shared `packages/`. Shared packages are pre-built to JavaScript.
@@ -57,6 +59,13 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - Always prefer to combine and update existing code and functions over create mostly duplicate code
 - Always use the sever for data authority while the frontend simply displays data or does very minor calculations. All formulaic updates should only exist server side
 - Always remove legacy code instead of creating fallbacks. When you do this, make sure to implement proper error handling
+
+## Frontend styling convention
+- **Tailwind-first:** New `apps/web` UI is built with Tailwind utility classes; plain `.css` files for new pages are discouraged. Tailwind preflight is enabled, with `@tailwind base/components/utilities` directives at the top of `apps/web/src/index.css`.
+- **Theme tokens:** All design tokens (`--derp-blue`, `--bg-card`, `--text-primary`, `--page-top-gap`, etc.) remain CSS variables in `apps/web/src/index.css` and are mirrored into `tailwind.config.js` so utilities like `bg-bg-card`, `text-text-secondary`, and `pt-page-top` map to the variables. Update both places when adding a token.
+- **UI kit:** Use the shared primitives in `apps/web/src/components/ui/` (`Card`, `SectionHeader`, `Badge`, `StatPill`, `Chip`, `EmptyState`, `Divider`, `Row`, `IconLabel`, `KeyValue`, `CostEntry`, `RewardChip`) before reaching for raw markup. Add a primitive when a pattern shows up on ≥2 pages or ≥3 times on one page.
+- **Reference page:** `apps/web/src/features/home/HomePage.tsx` (plus `BannerCarousel.tsx`, `MissionRow.tsx`, and `HomePageSkeleton`) is the canonical Tailwind + UI-kit example. The legacy `HomePage.css` has been removed.
+- **Existing page CSS:** Other pages keep their `.css` files for now — convert them in follow-up tasks; do not mass-rewrite.
 
 ## Gotchas
 - Stat-bearing equip/unequip actions are blocked when the target entity is non-idle (`working`, `mission`, `injured`).

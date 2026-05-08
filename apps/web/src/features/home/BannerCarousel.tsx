@@ -28,8 +28,6 @@ const INTERACTION_PAUSE_MS = 10000;
  */
 export function BannerCarousel() {
   const navigate = useNavigate();
-  // Re-tick once a minute so the countdown subtitle and the auto-expiry
-  // filter both refresh without forcing a global tick subscription.
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 60_000);
@@ -47,14 +45,10 @@ export function BannerCarousel() {
     if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
   }, []);
 
-  // Clamp the page index when the banner list shrinks (e.g. one expired).
   useEffect(() => {
     if (page >= banners.length && banners.length > 0) setPage(0);
   }, [banners.length, page]);
 
-  // Auto-advance — uses the longest configured interval among the cards
-  // currently in rotation (sane default if none set). Disabled for a
-  // single banner since there's nowhere to advance to.
   const autoAdvanceMs = useMemo(() => {
     const max = banners.reduce((acc, b) => {
       const v = Number(b.config?.autoAdvanceMs);
@@ -103,15 +97,12 @@ export function BannerCarousel() {
     const delta = touchDeltaX.current;
     const abs = Math.abs(delta);
     if (abs <= TAP_THRESHOLD_PX) {
-      // Touch tap: handle navigation here and suppress the synthetic
-      // click the browser will fire next so we don't double-navigate.
       suppressClickRef.current = true;
       setTimeout(() => { suppressClickRef.current = false; }, 400);
       goTo(banner);
       return;
     }
     if (abs < SWIPE_THRESHOLD_PX) return;
-    // Real swipe — suppress the trailing click the browser may fire.
     suppressClickRef.current = true;
     setTimeout(() => { suppressClickRef.current = false; }, 400);
     if (banners.length < 2) return;
@@ -136,9 +127,9 @@ export function BannerCarousel() {
   const isCarousel = banners.length > 1;
 
   return (
-    <div className="hp-section">
+    <div className="mb-4">
       <div
-        className="hp-banner-card hp-season-banner"
+        className="relative rounded-[14px] overflow-hidden cursor-pointer transition-all border border-[rgba(139,92,246,0.3)] select-none touch-pan-y hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(139,92,246,0.3)]"
         data-testid="home-banner"
         data-banner-id={banner.id}
         onClick={() => handleCardClick(banner)}
@@ -147,15 +138,17 @@ export function BannerCarousel() {
         onTouchEnd={isCarousel ? () => handleTouchEnd(banner) : undefined}
       >
         {banner.backgroundImage && (
-          <img src={banner.backgroundImage} alt="" className="hp-season-bg" />
+          <img src={banner.backgroundImage} alt="" className="w-full h-[170px] object-cover block" />
         )}
-        <div className="hp-season-content">
-          <h3>{String(banner.title || '').toUpperCase()}</h3>
+        <div className="absolute inset-0 p-5 flex flex-col justify-center bg-gradient-to-br from-[rgba(15,10,40,0.85)] via-[rgba(30,20,60,0.5)] to-transparent">
+          <h3 className="font-cinzel text-[22px] max-[520px]:text-[18px] font-black tracking-[0.1em] text-[#f0e6ff] mb-1 [text-shadow:0_2px_8px_rgba(139,92,246,0.5)]">
+            {String(banner.title || '').toUpperCase()}
+          </h3>
           <BannerSubtitle banner={banner} />
-          {tagline && <p className="hp-season-desc">{tagline}</p>}
+          {tagline && <p className="text-[13px] text-white/60 mb-3">{tagline}</p>}
           {banner.ctaLabel && (
             <button
-              className="hp-season-btn"
+              className="self-start bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white border-0 rounded-lg px-4 py-2 text-xs font-extrabold tracking-[0.08em] cursor-pointer transition-transform hover:scale-105"
               onClick={(e) => { e.stopPropagation(); goTo(banner); }}
             >
               {banner.ctaLabel}
@@ -164,7 +157,11 @@ export function BannerCarousel() {
         </div>
 
         {isCarousel && (
-          <div className="hp-banner-dots" role="tablist" aria-label="Banner pagination">
+          <div
+            className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-auto"
+            role="tablist"
+            aria-label="Banner pagination"
+          >
             {banners.map((b, i) => (
               <button
                 key={b.id}
@@ -172,7 +169,11 @@ export function BannerCarousel() {
                 role="tab"
                 aria-selected={i === activeIndex}
                 aria-label={`Banner ${i + 1} of ${banners.length}`}
-                className={`hp-banner-dot${i === activeIndex ? ' hp-banner-dot-active' : ''}`}
+                className={`w-[7px] h-[7px] rounded-full border-0 p-0 cursor-pointer transition-all ${
+                  i === activeIndex
+                    ? 'bg-[#f0e6ff] scale-125 shadow-[0_0_6px_rgba(196,181,253,0.8)]'
+                    : 'bg-white/35 hover:bg-white/60'
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   pauseAutoAdvance();
@@ -200,13 +201,13 @@ function BannerSubtitle({ banner }: { banner: HomeBannerSnapshot }) {
       ? banner.subtitle
       : (banner.seasonId ? 'SEASON ENDS IN' : 'ENDS IN');
     return (
-      <p className="hp-season-sub">
-        {prefix}: <strong>{remaining}</strong>
+      <p className="text-[13px] text-[#c4b5fd] mb-0.5">
+        {prefix}: <strong className="text-[#fbbf24]">{remaining}</strong>
       </p>
     );
   }
   if (banner.subtitle) {
-    return <p className="hp-season-sub">{banner.subtitle}</p>;
+    return <p className="text-[13px] text-[#c4b5fd] mb-0.5">{banner.subtitle}</p>;
   }
   return null;
 }
