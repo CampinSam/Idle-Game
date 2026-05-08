@@ -44,8 +44,9 @@ export function MissionShell({
   const emptyCount = Math.max(0, maxSlots - activeMissions.length);
 
   return (
-    <div className="flex flex-col gap-4">
-      <section>
+    <Card className="flex flex-col flex-1 min-h-0">
+      {/* Mission Slots — sticky at top */}
+      <section className="flex-shrink-0 p-3 border-b border-white/5">
         <SectionHeader title="Mission Slots" />
         <div className="flex flex-col gap-2">
           {activeMissions.map((m: any) => {
@@ -101,15 +102,19 @@ export function MissionShell({
         </div>
       </section>
 
-      <Card className="p-3">{middle}</Card>
+      {/* Categories / mission list — scrollable middle */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-3">
+        {middle}
+      </div>
 
-      <section>
+      {/* Mission Activity — sticky at bottom, collapsible */}
+      <section className="flex-shrink-0 border-t border-white/5">
         <button
           type="button"
           onClick={() => hasHistory && onToggleActivity()}
           disabled={!hasHistory}
           aria-expanded={!collapsed}
-          className="w-full flex items-center justify-between gap-2 px-1 py-1 cursor-pointer disabled:cursor-default"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 cursor-pointer disabled:cursor-default hover:bg-white/[0.02] transition-colors"
         >
           <SectionHeader title="Mission Activity" className="mb-0 px-0" />
           {hasHistory && (
@@ -119,7 +124,7 @@ export function MissionShell({
           )}
         </button>
         {!collapsed && (
-          <div className="mt-2">
+          <div className="px-3 pb-3 max-h-[35vh] overflow-y-auto">
             {missionHistory.length === 0 ? (
               <EmptyState message="No mission activity yet." />
             ) : (
@@ -150,6 +155,6 @@ export function MissionShell({
           </div>
         )}
       </section>
-    </div>
+    </Card>
   );
 }
