@@ -9,8 +9,9 @@
 .entity-detail-page__header-card {
   margin: -14px -14px 14px -14px;
   border-radius: 0;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.25);
-  background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.35);
+  background: linear-gradient(160deg, #251c5e 0%, #2d2270 100%);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   padding: 0;
 }

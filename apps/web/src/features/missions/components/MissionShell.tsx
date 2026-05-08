@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
-import { EmptyState, SectionHeader } from '../../../components/ui';
+import { Card, EmptyState, SectionHeader } from '../../../components/ui';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../tick';
 import { formatTimeShort } from './missionUtils';
 
@@ -101,7 +101,7 @@ export function MissionShell({
         </div>
       </section>
 
-      <div>{middle}</div>
+      <Card className="p-3">{middle}</Card>
 
       <section>
         <button

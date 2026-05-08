@@ -192,7 +192,7 @@ export function MissionDetail(props: MissionDetailProps) {
           </div>
         </div>
 
-        <div className="p-4 flex flex-col gap-3">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3">
           {selectedDef.description && (
             <p className="m-0 text-[13px] leading-relaxed text-text-secondary">{selectedDef.description}</p>
           )}
