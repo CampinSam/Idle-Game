@@ -46,7 +46,7 @@ export function MissionDetailFooter({
 }: MissionDetailFooterProps) {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Panel title="Requirements">
           <div className="flex flex-col gap-1.5">
             {reqStatus.length > 0
