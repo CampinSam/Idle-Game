@@ -197,7 +197,7 @@ export function MissionDetail(props: MissionDetailProps) {
             <p className="m-0 text-[13px] leading-relaxed text-text-secondary">{selectedDef.description}</p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className={panelClass}>
               <div className={panelTitleClass}>Potential Rewards</div>
               <div className="flex flex-col gap-1.5">
@@ -239,7 +239,7 @@ export function MissionDetail(props: MissionDetailProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className={panelClass} ref={teamGridRef}>
               <div className="flex items-center justify-between gap-2">
                 <span className={panelTitleClass}>Select Your Team</span>
