@@ -2,24 +2,23 @@ import { useState, useMemo } from 'react';
 import { useSyncQuests } from '../../hooks/useSyncSelectors';
 import { QuestCard } from './QuestCard';
 import { QuestMetaProgress } from './QuestMetaProgress';
-import './Quests.css';
 
-// Cadence tabs replace the old status tabs (All/Active/Completed/Claimed).
-// Daily/weekly quests are fundamentally different player-facing content
-// from one-off story quests, so they get their own filter dimensions.
-// Within each cadence tab, completed quests sort to the top so the player
-// can claim them at a glance.
 const TABS = ['Daily', 'Weekly', 'Story', 'All'] as const;
 type Tab = typeof TABS[number];
 
 const TAB_FILTER: Record<Tab, (q: any) => boolean> = {
   Daily: (q) => q.questDef?.cadence === 'daily',
   Weekly: (q) => q.questDef?.cadence === 'weekly',
-  // "Story" = legacy one-off quests. Treat missing cadence as oneoff so
-  // pre-migration quests still show up.
   Story: (q) =>
     q.questDef?.cadence === 'oneoff' || q.questDef?.cadence == null,
   All: () => true,
+};
+
+const TAB_EMPTY: Record<Tab, string> = {
+  Daily: 'No daily quests available — check back tomorrow!',
+  Weekly: 'No weekly quests available — check back Monday!',
+  Story: 'No story quests yet.',
+  All: 'No quests available yet.',
 };
 
 export default function QuestList() {
@@ -40,14 +39,18 @@ export default function QuestList() {
   }, [quests, tab]);
 
   return (
-    <div className="quest-section">
+    <div className="flex flex-col gap-2.5">
       <QuestMetaProgress quests={quests} />
 
-      <div className="quest-tab-bar">
+      <div className="flex bg-black/25 border border-[rgba(139,92,246,0.12)] rounded-[10px] overflow-hidden">
         {TABS.map((t) => (
           <button
             key={t}
-            className={`quest-tab-btn${tab === t ? ' active' : ''}`}
+            className={`flex-1 py-2 px-1 text-[11px] font-bold tracking-[0.5px] uppercase bg-transparent border-b-2 cursor-pointer transition-[color,border-color] duration-150 ${
+              tab === t
+                ? 'text-[#c4b5fd] border-b-derp-purple'
+                : 'text-text-secondary border-b-transparent'
+            }`}
             onClick={() => setTab(t)}
           >
             {t}
@@ -55,13 +58,10 @@ export default function QuestList() {
         ))}
       </div>
 
-      <div className="quest-list">
+      <div className="flex flex-col gap-2">
         {filtered.length === 0 ? (
-          <div className="quest-empty">
-            {tab === 'Daily' && 'No daily quests available — check back tomorrow!'}
-            {tab === 'Weekly' && 'No weekly quests available — check back Monday!'}
-            {tab === 'Story' && 'No story quests yet.'}
-            {tab === 'All' && 'No quests available yet.'}
+          <div className="text-center py-8 px-5 text-text-secondary text-sm">
+            {TAB_EMPTY[tab]}
           </div>
         ) : (
           filtered.map((q: any) => <QuestCard key={q.id} quest={q} />)

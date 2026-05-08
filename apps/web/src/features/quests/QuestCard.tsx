@@ -10,6 +10,15 @@ interface QuestCardProps {
   quest: any;
 }
 
+function questCardClass(status: string): string {
+  const base =
+    'bg-gradient-to-br from-[#1a1640] to-[#221a50] border rounded-[14px] p-3.5 ' +
+    'flex flex-col gap-2.5 motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+  if (status === 'completed') return `${base} border-[rgba(34,197,94,0.35)]`;
+  if (status === 'claimed') return `${base} border-[rgba(139,92,246,0.2)] opacity-[0.55]`;
+  return `${base} border-[rgba(139,92,246,0.2)]`;
+}
+
 function QuestCardInner({ quest }: QuestCardProps) {
   const { pushModal } = useModal();
   const { execute } = useCommand({
@@ -64,25 +73,31 @@ function QuestCardInner({ quest }: QuestCardProps) {
   const overflowCount = rewards.length - 3;
 
   return (
-    <div className={`quest-card ${status}`}>
-      <div className="quest-card-header">
-        <span className="quest-card-name">{def.name || 'Quest'}</span>
+    <div className={questCardClass(status)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-bold text-[#e2d9ff]">{def.name || 'Quest'}</span>
         <Tag tagKey={`quest-${status}`} />
       </div>
 
-      <div className="quest-objectives">
+      <div className="flex flex-col gap-1.5">
         {objectives.map((obj: any, i: number) => {
           const prog = progress[i] ?? { current: 0, target: obj.target ?? 1, completed: false };
           const pct = prog.target > 0 ? Math.min(100, (prog.current / prog.target) * 100) : 0;
           return (
-            <div key={i} className="quest-objective-row">
-              <div className="quest-objective-info">
-                <span className="quest-objective-label">{obj.description || obj.eventType || `Objective ${i + 1}`}</span>
-                <span className="quest-objective-progress-text">{prog.current} / {prog.target}</span>
+            <div key={i} className="flex flex-col gap-[3px]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-text-secondary">
+                  {obj.description || obj.eventType || `Objective ${i + 1}`}
+                </span>
+                <span className="text-[11px] font-bold text-[#c4b5fd]">{prog.current} / {prog.target}</span>
               </div>
-              <div className="quest-progress-bar">
+              <div className="h-1.5 bg-black/30 rounded-[3px] overflow-hidden">
                 <div
-                  className={`quest-progress-bar-fill ${prog.completed ? 'done' : 'active'}`}
+                  className={`h-full rounded-[3px] transition-[width] duration-300 ${
+                    prog.completed
+                      ? 'bg-gradient-to-r from-[#22c55e] to-[#4ade80]'
+                      : 'bg-gradient-to-r from-[#8b5cf6] to-[#a78bfa]'
+                  }`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -91,28 +106,29 @@ function QuestCardInner({ quest }: QuestCardProps) {
         })}
       </div>
 
-      <div className="quest-card-footer">
-        <div className="quest-reward-chips">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {visibleRewards.map((r: any, i: number) => {
-            // Quest-level iconKey override applies only when the quest hands
-            // out a single reward — otherwise per-reward icons stay distinct.
             const iconSrc = (rewards.length === 1 && def.iconKey)
               ? def.iconKey
               : (r.currencyId ?? r.itemDefId ?? resolveSystemRewardIcon(r.type) ?? r.type);
             return (
-              <span key={i} className="quest-reward-chip">
+              <span
+                key={i}
+                className="flex items-center gap-[3px] text-[11px] font-bold text-[#e2d9f3] bg-black/30 border border-[rgba(139,92,246,0.15)] rounded-2xl py-0.5 pl-1 pr-2"
+              >
                 <ItemQty src={iconSrc} amount={r.amount} size={14} />
               </span>
             );
           })}
           {overflowCount > 0 && (
-            <span className="quest-reward-overflow">+{overflowCount} more</span>
+            <span className="text-[11px] font-bold text-text-secondary">+{overflowCount} more</span>
           )}
         </div>
 
         {status === 'completed' && (
           <button
-            className="quest-claim-btn ready"
+            className="px-4 py-1.5 text-xs font-bold rounded-lg border-0 cursor-pointer transition-all duration-200 whitespace-nowrap flex-shrink-0 bg-gradient-to-br from-[#22c55e] to-[#16a34a] text-white shadow-[0_0_10px_rgba(34,197,94,0.4)] active:scale-[0.93] disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleClaim}
             disabled={claiming}
           >
