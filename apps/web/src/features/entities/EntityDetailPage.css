@@ -23,15 +23,25 @@
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  max-height: 100%;
+  flex: 1;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overflow: hidden;
   padding: 14px;
   animation: detail-enter 0.28s ease-out both;
   will-change: transform;
+}
+
+.entity-detail-page__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  /* Pull the scroll area out into the card's padding so the visible
+     scrollbar lives at the card edge, matching the previous look. */
+  margin: 0 -14px -14px -14px;
+  padding: 0 14px 14px 14px;
 }
 
 /* ── Derp Bird card treatment ── */

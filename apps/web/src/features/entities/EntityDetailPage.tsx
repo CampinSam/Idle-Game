@@ -348,7 +348,9 @@ export default function EntityDetailPage() {
         </div>
       </div>
 
-        <EntityDetail entity={entity} variant="full" />
+        <div className="entity-detail-page__body">
+          <EntityDetail entity={entity} variant="full" />
+        </div>
       </div>
     </div>
   );
