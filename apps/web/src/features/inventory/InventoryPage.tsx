@@ -474,11 +474,13 @@ export default function InventoryPage() {
           onSelect={handleSelect}
         />
         {selectedItem && (
-          <ItemDetailPanel
-            key={selectedItem.instanceId ?? selectedItem.id}
-            item={selectedItem}
-            actions={renderActions(selectedItem)}
-          />
+          <div className="flex-shrink-0">
+            <ItemDetailPanel
+              key={selectedItem.instanceId ?? selectedItem.id}
+              item={selectedItem}
+              actions={renderActions(selectedItem)}
+            />
+          </div>
         )}
       </div>
 
