@@ -1,0 +1,115 @@
+import { DEFAULT_DISPLAY, bgImageCss, displayCssVars, renderTags } from './missionUtils';
+
+interface CategoryView {
+  id: string;
+  name: string;
+  display: any;
+  tags: any[];
+  locked: boolean;
+  enabled: boolean;
+  hasChildren: boolean;
+  inlineOnly: boolean;
+}
+
+interface CategoriesGridProps {
+  visibleCategories: CategoryView[];
+  getInlineMissions: (catId: string) => any[];
+  getInlineLabel: (def: any) => string;
+  currencyBalances: Record<string, number>;
+  inventoryItems: Record<string, any>;
+  onPushCategory: (catId: string) => void;
+  onSelectInlineMission: (catId: string, missionId: string) => void;
+}
+
+export function CategoriesGrid({
+  visibleCategories,
+  getInlineMissions,
+  getInlineLabel,
+  currencyBalances,
+  inventoryItems,
+  onPushCategory,
+  onSelectInlineMission,
+}: CategoriesGridProps) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      {visibleCategories.map((cat) => {
+        const display = cat.display;
+        const { vars, titleStyle } = displayCssVars(display);
+        const unavailable = cat.locked || !cat.enabled;
+        const inlineMissions = getInlineMissions(cat.id);
+        const navigable = !cat.inlineOnly;
+        const bgImg = bgImageCss(display.backgroundImage);
+        return (
+          <div
+            key={cat.id}
+            className={`relative overflow-hidden rounded-xl border-2 min-h-[110px] transition-all duration-200 motion-safe:animate-[card-enter_0.25s_ease-out_both] ${unavailable ? 'opacity-60' : 'hover:brightness-110 hover:-translate-y-px'}`}
+            style={{
+              backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
+              borderColor: display.borderColor,
+              cursor: navigable && !unavailable ? 'pointer' : 'default',
+              ...vars,
+            } as React.CSSProperties}
+            onClick={() => navigable && !unavailable && onPushCategory(cat.id)}
+          >
+            {bgImg && bgImg !== 'none' && (
+              <div
+                aria-hidden
+                className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat"
+                style={{ backgroundImage: bgImg }}
+              />
+            )}
+            <div
+              aria-hidden
+              className="absolute inset-0 z-0 pointer-events-none"
+              style={{ background: 'linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%)' }}
+            />
+            <div className="relative z-10 p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="m-0 font-cinzel text-[15px] font-extrabold text-white tracking-[0.02em] truncate" style={titleStyle}>
+                  {cat.name}
+                </h3>
+                {cat.hasChildren && navigable && (
+                  <span className="text-white/60 text-lg font-bold leading-none">›</span>
+                )}
+              </div>
+              {cat.tags.length > 0 && renderTags(cat.tags)}
+              {cat.locked && <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">🔒 Requirements not met</div>}
+              {!cat.enabled && !cat.locked && (
+                <div className="text-[11px] text-[#f87171] font-semibold mt-1">🚫 Currently Unavailable</div>
+              )}
+              {!unavailable && inlineMissions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                  {inlineMissions.map((def: any) => {
+                    const inlineCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
+                    const canAffordInline = inlineCost.every((entry) => {
+                      const have = entry.type === 'currency'
+                        ? (currencyBalances[entry.id] ?? 0)
+                        : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
+                      return have >= entry.amount;
+                    });
+                    return (
+                      <button
+                        key={def.id}
+                        disabled={!canAffordInline}
+                        title={!canAffordInline ? "Can't afford this mission" : undefined}
+                        onClick={() => onSelectInlineMission(cat.id, def.id)}
+                        className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 ${
+                          canAffordInline
+                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110 cursor-pointer'
+                            : 'text-white/50 border-white/15 bg-white/5 cursor-not-allowed'
+                        }`}
+                        style={canAffordInline ? { background: 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))' } : undefined}
+                      >
+                        {getInlineLabel(def)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

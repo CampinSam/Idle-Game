@@ -3,27 +3,18 @@ import { useAppDispatch, useAppSelector } from '../../../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../../../store/gameSlice';
 import { useSyncEntities, useAllActiveJobs } from '../../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../../hooks/useCommand';
-import { audioEngine } from '../../../../services/AudioEngine';
-import { resolveIcon, resolveName } from '../../../../utils/iconResolver';
-import GameIcon from '../../../../components/GameIcon';
-import BuildingProgressBar from '../../../../components/BuildingProgressBar';
 import { useTickRate } from '../../../../tick';
 import { useLocationTimers } from '../../../../hooks/useLocationTimers';
-import {
-  formatRate,
-  formatAmount,
-  formatTimeRemaining,
-  computeInventoryAmount,
-} from '../../../../utils/locationProduction';
-import LootPop, { type LootPopItem } from '../../../../components/LootPop';
 import { useModal } from '../../../../context/ModalContext';
 import { useNotifications } from '../../../../context/NotificationContext';
 import { api } from '../../../../services/api';
-import { getRegionDisplay } from '@derp/shared';
 import BuildingCard from './components/BuildingCard';
-import { EntityCard, EntityList } from '../../../entities/components';
+import { OutpostHeader } from './components/OutpostHeader';
+import { OutpostProductionCard } from './components/OutpostProductionCard';
+import { OutpostWorkersCard } from './components/OutpostWorkersCard';
+import { OutpostWarehouseCard } from './components/OutpostWarehouseCard';
+import { AddBuildingCard } from './components/AddBuildingCard';
 import type { LocationPageProps } from '../../registry';
-import './DerpOutpostPage.css';
 
 const WAREHOUSE_DEF_ID = 'stor_warehouse';
 
@@ -43,20 +34,12 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const autoOpenedLevelUpRef = useRef<Set<string>>(new Set());
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
-  const syncItems = useAppSelector((s) => s.sync.items);
-  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
   const allActiveJobs = useAllActiveJobs();
 
-  const [claiming, setClaiming] = useState(false);
-  const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
-  const lootPopKey = useRef(0);
   const [availableData, setAvailableData] = useState<any>(null);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
-  const [activeWorkerSlot, setActiveWorkerSlot] = useState<number | null>(null);
-  const [showWorkerPicker, setShowWorkerPicker] = useState(false);
-  const [workerError, setWorkerError] = useState<string>('');
 
   const id = outpost.id;
 
@@ -86,26 +69,15 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     })();
   }, [notifications, id, pushModal, markRead]);
 
-  // Refetch whenever the outpost level changes too — newly unlocked
-  // buildings (from rules.level[].buildings.allowed) only become visible
-  // here after this list refreshes, so a level-up must invalidate it.
   useEffect(() => {
     let cancelled = false;
     setLoadingAvailable(true);
     api.getAvailableBuildings(id)
-      .then((data) => {
-        if (!cancelled) setAvailableData(data);
-      })
+      .then((data) => { if (!cancelled) setAvailableData(data); })
       .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingAvailable(false);
-      });
+      .finally(() => { if (!cancelled) setLoadingAvailable(false); });
     return () => { cancelled = true; };
   }, [id, outpost.level]);
-
-  const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
-  const regionName = regionDisplay.displayName;
-  const regionImage = regionDisplay.imagePath;
 
   const timerData = locationTimerMap.get(id);
   const resourceSummaries = timerData?.resourceSummaries || [];
@@ -156,9 +128,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   );
 
   const storedResources = Object.values((outpost.storage?.stored as Record<string, number>) || {});
-  const hasClaimable =
-    resourceSummaries.some((res) => Math.floor(res.currentAmount) >= 1) ||
-    storedResources.some((v) => Math.floor(Number(v)) >= 1);
 
   const allWarehouseStorageItems = useMemo(() => {
     const capacityMap = (outpost?.storage?.capacity as Record<string, number>) || {};
@@ -201,41 +170,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     return items;
   }, [outpost, resourceSummaries, currencyDefs]);
 
-  const handleClaim = async () => {
-    if (!id || claiming) return;
-    setClaiming(true);
-    setLootPopItems([]);
-
-    const snapshot = resourceSummaries
-      .map((res): LootPopItem | null => {
-        const amount = res.currentAmount;
-        const floored = Math.floor(amount);
-        if (floored < 1) return null;
-        const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
-        return {
-          key: res.key,
-          icon: <GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} />,
-          label: `+${formatAmount(floored)} ${name}`,
-        };
-      })
-      .filter((item): item is LootPopItem => item !== null);
-
-    try {
-      await execute('ClaimLocation', { locationId: id });
-      audioEngine.play('sfx.location.claim');
-      audioEngine.play('sfx.economy.currency_earn');
-      if (snapshot.length > 0) {
-        lootPopKey.current += 1;
-        setLootPopItems(snapshot);
-      }
-    } catch (err: any) {
-      audioEngine.play('ui.error');
-      alert('Claim failed: ' + (err.message || 'Unknown error'));
-    } finally {
-      setClaiming(false);
-    }
-  };
-
   const handleCompleteBuilding = async (buildingId: string) => {
     try {
       await execute('CompleteBuilding', { locationId: id, buildingId });
@@ -273,368 +207,35 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   );
 
   return (
-    <div className="od-tab-content od-card-stack">
-      <div className="od-card od-card-header">
-        <div className="od-hero-image">
-          <img src={regionImage} alt={regionName} />
-        </div>
-        <div className="od-header-info od-header-info-stacked">
-          <h1 className="od-name">
-            {outpost.name || 'Outpost'}
-            <span className="od-name-region"> &bull; {regionName}</span>
-          </h1>
-          <div className="od-badges">
-            <span className="od-level-badge">Level {outpost.level}</span>
-          </div>
-          {outpost.xp != null && (() => {
-            const xpNum = Number(outpost.xp || 0);
-            const xpToNext = Number((outpost as any).xpToNext || 0);
-            const maxLevel = Number((outpost as any).maxLevel || 0);
-            const isMax = maxLevel > 0 && Number(outpost.level) >= maxLevel;
-            const pct = isMax ? 100 : (xpToNext > 0 ? (xpNum / xpToNext) * 100 : 0);
-            return (
-              <div className="od-xp-bar-wrap">
-                <div className="od-xp-bar-track">
-                  <div
-                    className="od-xp-bar-fill"
-                    style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-                  />
-                </div>
-                <span className="od-xp-bar-label">
-                  {isMax ? 'XP MAX' : `XP ${formatAmount(xpNum)} / ${formatAmount(xpToNext)}`}
-                </span>
-              </div>
-            );
-          })()}
-          {(() => {
-            const maxLevel = Number((outpost as any).maxLevel || 0);
-            const isMax = maxLevel > 0 && Number(outpost.level) >= maxLevel;
-            return (
-              <button
-                type="button"
-                className="od-xp-deposit-btn"
-                disabled={isMax}
-                title={isMax ? 'Outpost is at max level' : undefined}
-                onClick={async () => {
-                  if (isMax) return;
-                  try {
-                    const spec = await api.getModalSpec({ locationId: id, depositXp: true });
-                    if (spec?.version === 1) pushModal(spec);
-                  } catch (err: any) {
-                    console.error('[DerpOutpostPage] Failed to load deposit XP modal:', err);
-                  }
-                }}
-              >
-                {isMax ? 'Max Level' : '＋ Deposit XP'}
-              </button>
-            );
-          })()}
-        </div>
-      </div>
+    <div className="flex flex-col gap-3.5 px-3 pt-page-top pb-6">
+      <OutpostHeader outpost={outpost} />
 
-      <div className="od-card od-card-timers">
-        <h3 className="od-card-title">PRODUCTION</h3>
-        {resourceSummaries.length > 0 && (
-          <>
-            {hasActivity ? (
-              <div className="od-prod-rate">
-                <span className={`od-prod-value ${effectiveRatePerHour < 0 ? 'negative' : ''}`}>
-                  {effectiveRatePerHour >= 0 ? '+' : ''}{formatRate(effectiveRatePerHour)}/h
-                </span>
-              </div>
-            ) : (
-              <div className="od-empty-tasks">No active generators.</div>
-            )}
-            <div className="od-prod-resources">
-              {resourceSummaries.map((res) => {
-                const isFull = res.capacity > 0 && res.currentAmount / res.capacity >= 0.995;
-                const isDepleting = res.netRatePerHour < 0;
-                let depletionLabel = '';
-                if (isDepleting) {
-                  const invAmount = computeInventoryAmount(res.outputType, res.outputRefId, syncItems, currencyBalances);
-                  const totalAvailable = res.currentAmount + invAmount;
-                  const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
-                  depletionLabel = formatTimeRemaining(hoursLeft);
-                }
-                return (
-                  <div key={res.key} className={`od-prod-res ${isDepleting ? 'depleting' : ''}`}>
-                    <span className="od-prod-res-icon">
-                      <GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} />
-                    </span>
-                    <span className="od-prod-res-name">
-                      {resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
-                    </span>
-                    {isFull ? (
-                      <span className="od-prod-res-full">Full</span>
-                    ) : isDepleting ? (
-                      <>
-                        <span className="od-prod-res-negative">{formatRate(res.netRatePerHour)}/h</span>
-                        <span className="od-prod-res-depletion">⚠ {depletionLabel}</span>
-                      </>
-                    ) : (
-                      <span className="od-prod-res-amount">+{formatRate(res.netRatePerHour)}/h</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-        {resourceSummaries.length === 0 && (
-          <div className="od-empty-tasks">No active generators.</div>
-        )}
-        {constructingBuildings.length > 0 && (
-          <div className="od-timers-construction">
-            <div className="od-timers-section-label">Construction</div>
-            {constructingBuildings.map((b: any) => (
-              <BuildingProgressBar
-                key={b.id}
-                name={b.name}
-                startTick={b.startTick}
-                durationTicks={b.durationTicks}
-                tickRate={tickRate}
-                isUpgrade={!!b.jobData?.upgradeToLevel}
-                onComplete={() => handleCompleteBuilding(b.id)}
-              />
-            ))}
-          </div>
-        )}
-        {locationJobs.length > 0 && (
-          <div className="od-timers-construction">
-            <div className="od-timers-section-label">
-              {locationJobs.some((j: any) => j.type === 'CraftingJob') ? 'Crafting' : 'Active Jobs'}
-            </div>
-            {locationJobs.map((j: any) => (
-              <BuildingProgressBar
-                key={j.id}
-                name={(j.name || j.defId || j.recipeId || j.type || 'Job').toString().replace(/_/g, ' ')}
-                startTick={j.startTick}
-                durationTicks={j.durationTicks}
-                tickRate={tickRate}
-              />
-            ))}
-          </div>
-        )}
-        <div className="od-prod-actions" style={{ position: 'relative' }}>
-          <LootPop
-            key={lootPopKey.current}
-            items={lootPopItems}
-            durationMs={1500}
-            onComplete={() => setLootPopItems([])}
-          />
-          <button
-            className={`od-collect-btn ${!hasClaimable ? 'disabled' : ''}`}
-            onClick={handleClaim}
-            disabled={!hasClaimable || claiming}
-          >
-            {claiming ? 'Collecting...' : 'Collect'}
-          </button>
-        </div>
-      </div>
+      <OutpostProductionCard
+        outpost={outpost}
+        resourceSummaries={resourceSummaries}
+        hasActivity={hasActivity}
+        effectiveRatePerHour={effectiveRatePerHour}
+        constructingBuildings={constructingBuildings}
+        locationJobs={locationJobs}
+        tickRate={tickRate}
+        storedResources={storedResources}
+        onCompleteBuilding={handleCompleteBuilding}
+      />
 
-      {(() => {
-        const maxWorkers = Number(outpost.maxWorkers ?? 2);
-        const idleEntities = entities.filter((e: any) => e.status === 'idle');
-        const emptySlotCount = Math.max(0, maxWorkers - workersData.length);
+      <OutpostWorkersCard
+        outpost={outpost}
+        entities={entities}
+        workersData={workersData}
+      />
 
-        const handleAssignWorker = async (entityId: string) => {
-          setWorkerError('');
-          setShowWorkerPicker(false);
-          setActiveWorkerSlot(null);
-          try {
-            await execute('AssignWorker', { locationId: id, entityId });
-          } catch (err: any) {
-            audioEngine.play('ui.error');
-            setWorkerError(err?.message || 'Failed to assign worker');
-          }
-        };
-
-        const handleRemoveWorker = async (entityId: string) => {
-          setWorkerError('');
-          try {
-            await execute('RemoveWorker', { locationId: id, entityId });
-          } catch (err: any) {
-            audioEngine.play('ui.error');
-            setWorkerError(err?.message || 'Failed to remove worker');
-          }
-        };
-
-        const openSlot = (slotIndex: number) => {
-          setActiveWorkerSlot(slotIndex);
-          setShowWorkerPicker(true);
-        };
-
-        return (
-          <div className="od-card od-card-workers">
-            <h3 className="od-card-title">WORKERS ({workersData.length}/{maxWorkers})</h3>
-            <div className="od-workers-split">
-              <div className="od-workers-grid">
-                {workersData.map((w: any) => {
-                  const entity = entities.find((e: any) => e.id === w.entityId);
-                  if (!entity) {
-                    return (
-                      <div key={w.id} className="od-worker-loading-slot">
-                        <span className="od-worker-loading-label">…</span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <EntityCard
-                      key={w.id}
-                      entity={entity}
-                      useCase="outpost"
-                      onRemove={() => handleRemoveWorker(entity.id)}
-                    />
-                  );
-                })}
-                {Array.from({ length: emptySlotCount }).map((_, i) => {
-                  const slotIndex = workersData.length + i;
-                  const isActive = activeWorkerSlot === slotIndex;
-                  return (
-                    <button
-                      key={`empty-${i}`}
-                      type="button"
-                      className={`od-worker-empty-slot ${isActive ? 'od-worker-empty-slot--active' : ''}`}
-                      onClick={() => openSlot(slotIndex)}
-                    >
-                      <div className="od-worker-empty-slot__top">
-                        <span className="od-worker-empty-slot__plus">＋</span>
-                      </div>
-                      <div className="od-worker-empty-slot__bot">
-                        <span className="od-worker-empty-slot__label">Add Worker</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              {(() => {
-                const prodBps = Number(outpost?.storage?.workerProductionMultBps ?? 10000);
-                const consBps = Number(outpost?.storage?.workerConsumptionMultBps ?? 10000);
-                const fmtPct = (bps: number) => {
-                  const pct = (bps - 10000) / 100;
-                  const rounded = Math.round(pct * 10) / 10;
-                  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '';
-                  return `${sign}${Math.abs(rounded).toFixed(1)}%`;
-                };
-                const prodClass = prodBps > 10000 ? 'pos' : prodBps < 10000 ? 'neg' : 'neu';
-                // Consumption: lower than baseline is *good* for the player.
-                const consClass = consBps < 10000 ? 'pos' : consBps > 10000 ? 'neg' : 'neu';
-                return (
-                  <div className="od-workers-summary" aria-label="Combined worker effects">
-                    <h3 className="od-card-title od-workers-summary__title">EFFECTS</h3>
-                    <div className="od-workers-summary__row">
-                      <span className="od-workers-summary__label">Production</span>
-                      <span className={`od-workers-summary__value od-workers-summary__value--${prodClass}`}>
-                        {fmtPct(prodBps)}
-                      </span>
-                    </div>
-                    <div className="od-workers-summary__row">
-                      <span className="od-workers-summary__label">Consumption</span>
-                      <span className={`od-workers-summary__value od-workers-summary__value--${consClass}`}>
-                        {fmtPct(consBps)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-            {workersData.length === 0 && emptySlotCount === 0 && (
-              <div className="od-empty-tasks">No worker slots on this outpost.</div>
-            )}
-            {showWorkerPicker && (
-              <div className="od-worker-picker">
-                <h4 className="od-worker-picker-label">Select an Entity</h4>
-                <EntityList
-                  entities={idleEntities}
-                  mode="picker"
-                  useCase="outpost"
-                  onSelect={(entity) => handleAssignWorker(entity.id)}
-                  emptyMessage="No idle entities. Pull one back from a mission."
-                />
-              </div>
-            )}
-            {workerError && (
-              <div className="od-worker-error">{workerError}</div>
-            )}
-          </div>
-        );
-      })()}
-
-      <div className="od-card od-card-warehouse">
-        <h3 className="od-card-title">WAREHOUSE</h3>
-        {hasWarehouse ? (
-          allWarehouseStorageItems.length > 0 ? (
-            <div className="od-storage-list">
-              {allWarehouseStorageItems.map((res) => {
-                const pct = res.capacity > 0 ? Math.min((res.current / res.capacity) * 100, 100) : 0;
-                const isFull = pct >= 99.5;
-                const resSummary = resourceSummaries.find(
-                  (s) => s.outputRefId === res.outputRefId && s.outputType === res.outputType,
-                );
-                const netRate = resSummary?.netRatePerHour ?? 0;
-                const isDepleting = netRate < 0;
-                let depletionLabel = '';
-                if (isDepleting) {
-                  const invAmount = computeInventoryAmount(res.outputType, res.outputRefId, syncItems, currencyBalances);
-                  const totalAvailable = res.current + invAmount;
-                  const hoursLeft = totalAvailable / Math.abs(netRate);
-                  depletionLabel = formatTimeRemaining(hoursLeft);
-                }
-                return (
-                  <div key={res.key} className="od-storage-item">
-                    <span className="od-storage-icon">
-                      <GameIcon src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)} size={16} />
-                    </span>
-                    <div className="od-storage-info">
-                      <div className="od-storage-name">
-                        {resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
-                      </div>
-                      <div className="od-storage-bar-wrap">
-                        <div
-                          className={`od-storage-bar ${isFull ? 'full' : ''} ${isDepleting ? 'depleting' : ''}`}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
-                      {isDepleting && (
-                        <div className="od-storage-depletion-timer">⚠ {depletionLabel} left</div>
-                      )}
-                    </div>
-                    <span className="od-storage-amount">
-                      {formatAmount(res.current)} / {formatAmount(res.capacity)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="od-empty-tasks">No resources stored yet.</div>
-          )
-        ) : (
-          <div className="od-warehouse-empty">
-            <div className="od-warehouse-empty-blurb">
-              No warehouse on this outpost. Build one to unlock storage capacity for stockpiling resources.
-            </div>
-            {(() => {
-              const slotsBlocked = availableData?.slotsAvailable === false;
-              const ctaDisabled = !warehouseDef || slotsBlocked;
-              const ctaLabel = !warehouseDef
-                ? 'Warehouse not yet available'
-                : slotsBlocked
-                  ? 'No building slots available'
-                  : '🏗️ Build a Warehouse';
-              return (
-                <button
-                  className="od-warehouse-build-cta"
-                  disabled={ctaDisabled}
-                  onClick={() => !ctaDisabled && warehouseDef && openBuildModal(warehouseDef)}
-                >
-                  {ctaLabel}
-                </button>
-              );
-            })()}
-          </div>
-        )}
-      </div>
+      <OutpostWarehouseCard
+        hasWarehouse={hasWarehouse}
+        storageItems={allWarehouseStorageItems}
+        resourceSummaries={resourceSummaries}
+        warehouseDef={warehouseDef}
+        slotsBlocked={availableData?.slotsAvailable === false}
+        onBuild={openBuildModal}
+      />
 
       {sortedBuildings.map((b: any) => (
         <BuildingCard
@@ -650,51 +251,13 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         />
       ))}
 
-      <div className="od-card od-card-add-building">
-        <h3 className="od-card-title">ADD A BUILDING</h3>
-        {loadingAvailable && (
-          <div className="od-empty-tasks">Loading available buildings...</div>
-        )}
-        {!loadingAvailable && (() => {
-          const filteredAvailable = (availableData?.available || []).filter(
-            (def: any) => def.id !== WAREHOUSE_DEF_ID || !hasWarehouse,
-          );
-          if (filteredAvailable.length === 0) {
-            return <div className="od-empty-tasks">No buildings available to build.</div>;
-          }
-          const slotBlocked = availableData?.slotsAvailable === false;
-          return (
-            <div className="facilities-available-list">
-              {slotBlocked && (
-                <div className="facility-slot-warning">
-                  {availableData?.nextSlotRequirement
-                    ? `Requires ${availableData.nextSlotRequirement} for more building slots.`
-                    : 'No additional building slots available.'}
-                </div>
-              )}
-              {filteredAvailable.map((def: any) => (
-                <div key={def.id} className={`available-building-card ${slotBlocked ? 'is-blocked' : ''}`}>
-                  <div className="available-card-top">
-                    <span className="available-card-name">{def.name}</span>
-                    <button
-                      className="build-pill"
-                      onClick={() => openBuildModal(def)}
-                      disabled={slotBlocked}
-                      title={slotBlocked ? 'No building slots available' : undefined}
-                    >
-                      BUILD
-                    </button>
-                  </div>
-                  <div className="available-card-divider" />
-                  <div className="available-card-bottom">
-                    <span className="available-card-desc">{def.description}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
+      <AddBuildingCard
+        loading={loadingAvailable}
+        availableData={availableData}
+        hasWarehouse={hasWarehouse}
+        warehouseDefId={WAREHOUSE_DEF_ID}
+        onBuild={openBuildModal}
+      />
     </div>
   );
 }

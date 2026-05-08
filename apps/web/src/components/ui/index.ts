@@ -10,3 +10,4 @@ export { IconLabel } from './IconLabel';
 export { KeyValue } from './KeyValue';
 export { CostEntry } from './CostEntry';
 export { RewardChip } from './RewardChip';
+export { OutpostCard, OutpostCardTitle } from './OutpostCard';

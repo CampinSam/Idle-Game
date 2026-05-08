@@ -250,3 +250,9 @@ input:focus {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Used by OutpostWarehouseCard depleting bar (animate-[deplete-pulse_...]). */
+@keyframes deplete-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

@@ -18,7 +18,6 @@ const VARIANT_RULES: Array<{ classes: string[]; key: string }> = [
       'gm-btn-primary',
       'btn-save',
       'btn-primary',
-      'forge-collect-btn',
       'unlock-btn',
       'store-price-btn',
       'me-add-btn',
