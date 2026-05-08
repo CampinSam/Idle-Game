@@ -3,8 +3,6 @@ import { useAppSelector } from '../../store';
 import { audioEngine, AudioBusName } from '../../services/AudioEngine';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
-import '../profile/Profile.css';
-import './SettingsPage.css';
 
 type Tab = 'audio' | 'wallet';
 
@@ -44,6 +42,55 @@ const CHAIN_COLORS: Record<string, string> = {
   MATIC: '#8247E5',
   CARDANO: '#0033AD',
 };
+
+const WRAPPER_CARD =
+  'bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] ' +
+  'rounded-2xl flex flex-col max-h-full min-h-0 overflow-x-hidden overflow-y-auto ' +
+  '[-webkit-overflow-scrolling:touch] overscroll-contain motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+
+const TAB_BASE =
+  "flex-1 py-[11px] px-1.5 text-[11px] font-bold tracking-[0.6px] uppercase " +
+  "bg-transparent border-0 border-b-2 cursor-pointer " +
+  "transition-[color,border-color] duration-150 font-['Exo_2',system-ui,sans-serif]";
+
+const SECTION_LABEL =
+  'text-[11px] font-bold tracking-[0.6px] uppercase text-text-secondary mb-3.5 block';
+
+const ACTION_BTN_BASE =
+  "text-xs font-medium px-2.5 py-[5px] rounded-[7px] border cursor-pointer " +
+  "transition-[opacity,background] duration-150 whitespace-nowrap font-['Exo_2',system-ui,sans-serif] " +
+  "disabled:opacity-50 disabled:cursor-not-allowed";
+
+const ACTION_BTN_PRIMARY =
+  ACTION_BTN_BASE +
+  ' bg-[rgba(139,92,246,0.12)] border-[rgba(139,92,246,0.35)] text-[#c4b5fd]' +
+  ' hover:not(:disabled):bg-[rgba(139,92,246,0.22)]';
+
+const ACTION_BTN_REMOVE =
+  ACTION_BTN_BASE +
+  ' bg-[rgba(239,68,68,0.08)] border-[rgba(239,68,68,0.28)] text-[#f87171]' +
+  ' hover:not(:disabled):bg-[rgba(239,68,68,0.18)]';
+
+const WALLET_BTN_BASE =
+  "flex items-center gap-2.5 w-full px-4 py-3 rounded-[11px] border text-sm font-medium " +
+  "cursor-pointer transition-[transform,box-shadow,opacity] duration-150 text-left " +
+  "font-['Exo_2',system-ui,sans-serif] disabled:opacity-60 disabled:cursor-not-allowed " +
+  "enabled:hover:-translate-y-px";
+
+const WALLET_BTN_EVM =
+  WALLET_BTN_BASE +
+  ' bg-[rgba(99,102,241,0.08)] border-[rgba(99,102,241,0.28)] text-[#a5b4fc]' +
+  ' enabled:hover:shadow-[0_4px_12px_rgba(99,102,241,0.18)]';
+
+const WALLET_BTN_CARDANO =
+  WALLET_BTN_BASE +
+  ' bg-[rgba(0,51,173,0.1)] border-[rgba(0,102,255,0.28)] text-[#93c5fd]' +
+  ' enabled:hover:shadow-[0_4px_12px_rgba(0,100,255,0.14)]';
+
+const INPUT_CLASS =
+  "bg-black/25 border border-[rgba(139,92,246,0.25)] rounded-[10px] px-3 py-2.5 " +
+  "text-[#e2d9ff] text-[13px] font-['Exo_2',system-ui,sans-serif] outline-none " +
+  "focus:border-[rgba(139,92,246,0.5)]";
 
 function truncateAddress(address: string): string {
   if (address.length <= 16) return address;
@@ -189,38 +236,40 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="settings-page page-transition-wrapper">
-      <div className="settings-wrapper-card">
+    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top">
+      <div className={WRAPPER_CARD}>
 
-        <div className="settings-header">
-          <h1 className="settings-title">Settings</h1>
+        <div className="px-5 pt-5 pb-[18px] bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">
+          <h1 className="font-['Cinzel',serif] text-xl font-bold text-[#e2d9ff] tracking-[0.05em] m-0">
+            Settings
+          </h1>
         </div>
 
-        <div className="settings-tab-strip">
+        <div className="flex bg-black/25 border-b border-[rgba(139,92,246,0.12)]">
           <button
-            className={`settings-tab ${tab === 'audio' ? 'active' : ''}`}
+            className={`${TAB_BASE} ${tab === 'audio' ? 'text-[#c4b5fd] border-b-[var(--derp-purple)]' : 'text-text-secondary hover:text-[#c4b5fd] border-b-transparent'}`}
             onClick={() => setTab('audio')}
           >
             🎵 Audio
           </button>
           <button
-            className={`settings-tab ${tab === 'wallet' ? 'active' : ''}`}
+            className={`${TAB_BASE} ${tab === 'wallet' ? 'text-[#c4b5fd] border-b-[var(--derp-purple)]' : 'text-text-secondary hover:text-[#c4b5fd] border-b-transparent'}`}
             onClick={() => setTab('wallet')}
           >
             🔗 Wallet
           </button>
         </div>
 
-        <div className="settings-tab-content">
+        <div className="px-5 pb-5 pt-1">
 
           {tab === 'audio' && (
-            <div className="settings-section">
-              <div className="settings-section-label">Volume Controls</div>
-              <div className="settings-volume-sliders">
+            <div className="pt-4">
+              <span className={SECTION_LABEL}>Volume Controls</span>
+              <div className="flex flex-col gap-4">
                 {BUSES.map(bus => (
-                  <div key={bus} className="settings-volume-row">
-                    <span className="settings-volume-icon">{BUS_ICONS[bus]}</span>
-                    <label className="settings-volume-label">{BUS_LABELS[bus]}</label>
+                  <div key={bus} className="grid grid-cols-[1.5rem_5rem_1fr_2.5rem] items-center gap-2">
+                    <span className="text-base text-center">{BUS_ICONS[bus]}</span>
+                    <label className="text-[0.85rem] text-[#b8b8ff] font-semibold">{BUS_LABELS[bus]}</label>
                     <input
                       type="range"
                       min={0}
@@ -229,7 +278,7 @@ export default function SettingsPage() {
                       onChange={e => handleVolumeChange(bus, Number(e.target.value))}
                       className="settings-volume-slider"
                     />
-                    <span className="settings-volume-value">{volumes[bus]}</span>
+                    <span className="text-xs text-[#888] text-right min-w-[2rem]">{volumes[bus]}</span>
                   </div>
                 ))}
               </div>
@@ -237,21 +286,23 @@ export default function SettingsPage() {
           )}
 
           {tab === 'wallet' && (
-            <div className="settings-section">
+            <div className="pt-4">
               {(walletOpError || connectError) && (
-                <div className="settings-error">{walletOpError || connectError}</div>
+                <div className="bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#f87171] px-3.5 py-2.5 rounded-[10px] mb-3.5 text-[13px]">
+                  {walletOpError || connectError}
+                </div>
               )}
               {walletsLoading ? (
-                <div className="settings-loading">Loading wallets...</div>
+                <div className="text-center text-text-secondary py-8 text-sm">Loading wallets...</div>
               ) : (
                 <>
                   {wallets.length > 0 && (
-                    <div className="wallet-resync-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: 13, opacity: 0.8 }}>
+                    <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                      <div className="text-[13px] opacity-80">
                         Reconcile NFTs across all linked wallets — claims new NFTs and removes ones you no longer hold.
                       </div>
                       <button
-                        className="wallet-action-btn wallet-action-primary"
+                        className={ACTION_BTN_PRIMARY}
                         onClick={handleResync}
                         disabled={resyncing}
                       >
@@ -260,13 +311,13 @@ export default function SettingsPage() {
                     </div>
                   )}
                   {resyncResult && (
-                    <div className="wallet-resync-result" style={{ marginBottom: 12, padding: '8px 12px', background: 'rgba(0,180,80,0.08)', border: '1px solid rgba(0,180,80,0.25)', borderRadius: 6, fontSize: 13 }}>
+                    <div className="mb-3 px-3 py-2 bg-[rgba(0,180,80,0.08)] border border-[rgba(0,180,80,0.25)] rounded-[6px] text-[13px]">
                       <strong>Sync complete.</strong>{' '}
                       Claimed {resyncResult.claimed}, unclaimed {resyncResult.unclaimed}
                       {resyncResult.alreadyClaimed > 0 && `, already owned ${resyncResult.alreadyClaimed}`}
                       {resyncResult.notImported > 0 && `, ${resyncResult.notImported} not imported yet`}.
                       {resyncResult.reconciliationSkippedCollections.length > 0 && (
-                        <div style={{ marginTop: 4, color: '#c97a00' }}>
+                        <div className="mt-1 text-[#c97a00]">
                           Note: {resyncResult.reconciliationSkippedCollections.length} collection
                           {resyncResult.reconciliationSkippedCollections.length === 1 ? ' was' : 's were'} skipped from removal due to a chain query failure. Try again in a moment.
                         </div>
@@ -274,27 +325,39 @@ export default function SettingsPage() {
                     </div>
                   )}
                   {wallets.length === 0 ? (
-                    <div className="settings-empty">No wallets linked to this account.</div>
+                    <div className="text-center text-text-secondary py-7 px-4 text-sm">
+                      No wallets linked to this account.
+                    </div>
                   ) : (
-                    <div className="wallet-list">
+                    <div className="flex flex-col gap-2 mb-5">
                       {wallets.map((w) => (
-                        <div key={w.id} className="wallet-item">
-                          <div className="wallet-item-left">
-                            <span className="wallet-chain-badge" style={{ background: CHAIN_COLORS[w.chain] ?? '#555' }}>
+                        <div key={w.id} className="flex items-center justify-between gap-3 bg-black/20 border border-[rgba(139,92,246,0.14)] rounded-[11px] px-3.5 py-[11px]">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span
+                              className="text-[10px] font-bold text-white px-[7px] py-[3px] rounded-[5px] whitespace-nowrap flex-shrink-0 tracking-[0.3px]"
+                              style={{ background: CHAIN_COLORS[w.chain] ?? '#555' }}
+                            >
                               {CHAIN_LABELS[w.chain] ?? w.chain}
                             </span>
-                            <span className="wallet-address" title={w.address}>
+                            <span
+                              className="text-[13px] text-text-primary font-['Fira_Code',monospace] overflow-hidden text-ellipsis whitespace-nowrap min-w-0"
+                              title={w.address}
+                            >
                               {truncateAddress(w.address)}
                             </span>
-                            {w.isPrimary && <span className="wallet-primary-badge">Primary</span>}
+                            {w.isPrimary && (
+                              <span className="text-[10px] font-semibold text-[#a78bfa] bg-[rgba(139,92,246,0.14)] border border-[rgba(139,92,246,0.3)] px-[7px] py-[2px] rounded-[5px] whitespace-nowrap flex-shrink-0">
+                                Primary
+                              </span>
+                            )}
                           </div>
-                          <div className="wallet-item-actions">
+                          <div className="flex gap-1.5 flex-shrink-0">
                             {!w.isPrimary && (
-                              <button className="wallet-action-btn wallet-action-primary" onClick={() => handleSetPrimary(w.id)}>
+                              <button className={ACTION_BTN_PRIMARY} onClick={() => handleSetPrimary(w.id)}>
                                 Set Primary
                               </button>
                             )}
-                            <button className="wallet-action-btn wallet-action-remove" onClick={() => handleRemove(w.id)}>
+                            <button className={ACTION_BTN_REMOVE} onClick={() => handleRemove(w.id)}>
                               Remove
                             </button>
                           </div>
@@ -303,11 +366,13 @@ export default function SettingsPage() {
                     </div>
                   )}
                   {(hasEvm || detectedCardanoWallets.length > 0) && (
-                    <div className="wallet-add-section">
-                      <h3 className="wallet-add-title">Add a wallet</h3>
-                      <div className="wallet-btn-group">
+                    <div className="pt-1.5">
+                      <h3 className="text-[11px] font-bold text-text-secondary m-0 mb-2.5 uppercase tracking-[0.6px]">
+                        Add a wallet
+                      </h3>
+                      <div className="flex flex-col gap-2">
                         {hasEvm && (
-                          <button className="wallet-btn wallet-btn-evm" onClick={handleLinkEvm} disabled={connecting}>
+                          <button className={WALLET_BTN_EVM} onClick={handleLinkEvm} disabled={connecting}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="1" y="4" width="22" height="16" rx="2"/>
                               <line x1="1" y1="10" x2="23" y2="10"/>
@@ -316,9 +381,9 @@ export default function SettingsPage() {
                           </button>
                         )}
                         {detectedCardanoWallets.map((cw) => (
-                          <button key={cw.key} className="wallet-btn wallet-btn-cardano" onClick={() => handleLinkCardano(cw.key)} disabled={connecting}>
+                          <button key={cw.key} className={WALLET_BTN_CARDANO} onClick={() => handleLinkCardano(cw.key)} disabled={connecting}>
                             {cw.icon ? (
-                              <img src={cw.icon} alt={cw.name} width="16" height="16" style={{ borderRadius: 3 }} />
+                              <img src={cw.icon} alt={cw.name} width="16" height="16" className="rounded-[3px]" />
                             ) : (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10"/>
@@ -330,11 +395,13 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   )}
-                  <div className="wallet-add-section wallet-manual-section">
-                    <h3 className="wallet-add-title">Add wallet (no verification — dev only)</h3>
-                    <div className="wallet-manual-row">
+                  <div className="pt-1.5 mt-3.5 border-t border-dashed border-[rgba(139,92,246,0.18)]">
+                    <h3 className="text-[11px] font-bold text-text-secondary m-0 mb-2.5 uppercase tracking-[0.6px]">
+                      Add wallet (no verification — dev only)
+                    </h3>
+                    <div className="flex gap-2">
                       <select
-                        className="wallet-manual-chain"
+                        className={`${INPUT_CLASS} flex-[0_0_120px] cursor-pointer`}
                         value={manualChain}
                         onChange={(e) => setManualChain(e.target.value)}
                         disabled={manualSubmitting}
@@ -345,7 +412,7 @@ export default function SettingsPage() {
                         <option value="CARDANO">Cardano</option>
                       </select>
                       <input
-                        className="wallet-manual-address"
+                        className={`${INPUT_CLASS} flex-1 min-w-0`}
                         type="text"
                         placeholder="Wallet address"
                         value={manualAddress}
@@ -354,10 +421,9 @@ export default function SettingsPage() {
                       />
                     </div>
                     <button
-                      className="wallet-btn wallet-btn-evm"
+                      className={`${WALLET_BTN_EVM} mt-2`}
                       onClick={handleAddManualWallet}
                       disabled={manualSubmitting}
-                      style={{ marginTop: 8 }}
                     >
                       {manualSubmitting ? 'Adding...' : 'Add Wallet'}
                     </button>
