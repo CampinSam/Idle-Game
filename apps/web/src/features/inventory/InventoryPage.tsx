@@ -16,7 +16,29 @@ import {
   BUSY_EQUIP_TOOLTIP,
   BUSY_CONSUMABLE_TOOLTIP,
 } from './utils/statChangeHelpers';
-import './InventoryPage.css';
+
+const PAGE_WRAPPER_CLASS = 'page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top';
+const CARD_CLASS =
+  'bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] ' +
+  'rounded-2xl flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain ' +
+  '[-webkit-overflow-scrolling:touch] relative motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+
+const BTN_BASE =
+  'px-3.5 py-1.5 text-[11px] font-bold rounded-lg text-white border-0 cursor-pointer ' +
+  'whitespace-nowrap transition-all enabled:hover:scale-105 ' +
+  'disabled:opacity-50 disabled:cursor-not-allowed';
+const BTN_GREEN =
+  'bg-gradient-to-br from-[#10b981] to-[#0ea573] enabled:hover:shadow-[0_0_10px_rgba(16,185,129,0.4)]';
+const BTN_AMBER =
+  'bg-gradient-to-br from-[#f59e0b] to-[#d97706] enabled:hover:shadow-[0_0_10px_rgba(245,158,11,0.5)]';
+const BTN_CYAN =
+  'bg-gradient-to-br from-[#06b6d4] to-[#0284c7] enabled:hover:shadow-[0_0_10px_rgba(6,182,212,0.5)]';
+const BTN_BLOCKED = '!opacity-40 grayscale-[0.7] !cursor-not-allowed';
+
+function manageBtn(variant: 'green' | 'amber' | 'cyan', blocked = false): string {
+  const palette = variant === 'amber' ? BTN_AMBER : variant === 'cyan' ? BTN_CYAN : BTN_GREEN;
+  return `${BTN_BASE} ${palette}${blocked ? ` ${BTN_BLOCKED}` : ''}`;
+}
 
 const CATEGORY_TABS: ItemCategoryTab[] = [
   { key: 'ALL', label: 'All', types: null },
@@ -81,8 +103,8 @@ function unsupportedTargetTooltip(target: 'unknown' | 'location' | 'team' | 'job
 
 function InventoryPageSkeleton() {
   return (
-    <div className="inventory-page page-transition-wrapper">
-      <div className="inv-container">
+    <div className={PAGE_WRAPPER_CLASS}>
+      <div className={CARD_CLASS}>
         <div className="item-list__controls" style={{ display: 'flex', gap: 8, padding: '10px 14px' }}>
           <div className="skeleton" style={{ flex: 1, height: 34, borderRadius: 8 }} />
           <div className="skeleton" style={{ width: 90, height: 34, borderRadius: 8 }} />
@@ -302,7 +324,7 @@ export default function InventoryPage() {
     if (OPENABLE_TYPES.has(item.type)) {
       return (
         <button
-          className="inv-manage-btn inv-open-btn"
+          className={manageBtn('amber')}
           disabled={opening}
           onClick={() => handleOpen(item)}
         >
@@ -334,7 +356,7 @@ export default function InventoryPage() {
           : undefined;
       return (
         <button
-          className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+          className={manageBtn('cyan', blockedByBusy)}
           disabled={!supported || blockedByBusy}
           onClick={() => handleUse(item)}
           title={tooltip}
@@ -353,7 +375,7 @@ export default function InventoryPage() {
           isEntityBusy(wearer) && gearWouldChangeStats(item);
         return (
           <button
-            className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+            className={manageBtn('cyan', blockedByBusy)}
             disabled={equipBusy || blockedByBusy}
             onClick={() => handleUnequip(item)}
             title={blockedByBusy ? BUSY_EQUIP_TOOLTIP : undefined}
@@ -389,7 +411,7 @@ export default function InventoryPage() {
             : undefined;
       return (
         <button
-          className={`inv-manage-btn inv-use-btn${blockedByBusy ? ' inv-manage-btn--blocked' : ''}`}
+          className={manageBtn('cyan', blockedByBusy)}
           disabled={equipBusy || !hasTarget || blockedByBusy}
           onClick={() => handleEquip(item)}
           title={tooltip}
@@ -402,7 +424,7 @@ export default function InventoryPage() {
       const hasWorkshop = !!forgeLocationId;
       return (
         <button
-          className="inv-manage-btn inv-craft-btn"
+          className={manageBtn('green')}
           disabled={!hasWorkshop}
           onClick={() => {
             if (!hasWorkshop) return;
@@ -416,7 +438,7 @@ export default function InventoryPage() {
         </button>
       );
     }
-    return <button className="inv-manage-btn">Manage</button>;
+    return <button className={manageBtn('green')}>Manage</button>;
   }, [opening, entities, effectDefsById, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
 
   // Busy entity ids for the equip-flow picker. When the player is equipping
@@ -432,8 +454,8 @@ export default function InventoryPage() {
   if (syncStatus === 'disconnected') return <InventoryPageSkeleton />;
 
   return (
-    <div className="inventory-page page-transition-wrapper">
-      <div className="inv-container">
+    <div className={PAGE_WRAPPER_CLASS}>
+      <div className={CARD_CLASS}>
         <ItemList
           items={allItems}
           mode="display"
@@ -500,7 +522,7 @@ export default function InventoryPage() {
                     emptyMessage="No eligible entities."
                   />
                   {equipDisabledIds.length > 0 && (
-                    <p className="inv-equip-busy-hint">
+                    <p className="mt-2 mx-1 text-[11px] italic text-[rgba(248,113,113,0.85)] text-center">
                       {BUSY_EQUIP_TOOLTIP}
                     </p>
                   )}
