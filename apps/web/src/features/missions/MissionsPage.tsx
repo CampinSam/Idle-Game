@@ -194,7 +194,7 @@ export default function MissionsPage() {
 
   const catBorder = currentCat?.display?.borderColor;
   const errorBanner = error && (
-    <div className="mx-3 px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
+    <div className="mb-2 px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
       {error}
     </div>
   );
@@ -250,7 +250,7 @@ export default function MissionsPage() {
   }
 
   return (
-    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 gap-2 pt-page-top pb-3 px-3">
+    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top">
       {errorBanner}
       <MissionShell {...shellProps} middle={middle} />
     </div>
