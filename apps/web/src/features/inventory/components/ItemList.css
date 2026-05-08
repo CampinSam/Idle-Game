@@ -136,9 +136,6 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.item-list__grid-wrap--has-detail {
-  padding-bottom: 110px;
-}
 
 .item-list__grid {
   display: grid;
@@ -184,15 +181,6 @@
   opacity: 0.5;
 }
 
-/* ── Detail panel positioning when used inline ── */
-.item-list__detail-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  border-radius: 0 0 16px 16px;
-}
 
 /* Stagger animation */
 .item-list__grid > .item-card:nth-child(1)  { animation-delay: 0ms; }

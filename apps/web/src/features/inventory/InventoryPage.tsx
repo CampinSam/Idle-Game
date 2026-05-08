@@ -7,6 +7,7 @@ import { useModal } from '../../context/ModalContext';
 import { audioEngine } from '../../services/AudioEngine';
 import { api } from '../../services/api';
 import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab, type ItemSortBy, type ItemRarityFilter } from './components';
+import ItemDetailPanel from './components/ItemDetailPanel';
 import EntityList from '../entities/components/EntityList';
 import { getConsumableTargetType } from './utils/getConsumableTargetType';
 import {
@@ -20,7 +21,7 @@ import {
 const PAGE_WRAPPER_CLASS = 'page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top';
 const CARD_CLASS =
   'bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] ' +
-  'rounded-2xl flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain ' +
+  'rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden overscroll-contain ' +
   '[-webkit-overflow-scrolling:touch] relative motion-safe:animate-[card-enter_0.2s_ease-out_both]';
 
 const BTN_BASE =
@@ -470,10 +471,15 @@ export default function InventoryPage() {
           sortBy={sortBy}
           onSortChange={handleSortChange}
           selectedId={selectedId}
-          selectedItem={selectedItem}
           onSelect={handleSelect}
-          detailPanelActions={renderActions}
         />
+        {selectedItem && (
+          <ItemDetailPanel
+            key={selectedItem.instanceId ?? selectedItem.id}
+            item={selectedItem}
+            actions={renderActions(selectedItem)}
+          />
+        )}
       </div>
 
       <EntityPickerModal

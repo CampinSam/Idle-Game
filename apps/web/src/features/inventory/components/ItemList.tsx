@@ -1,6 +1,5 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import ItemCard from './ItemCard';
-import ItemDetailPanel from './ItemDetailPanel';
 import type { ItemListMode, ItemUseCase } from '../types';
 import './ItemList.css';
 
@@ -59,8 +58,6 @@ export interface ItemListProps {
   selectedId?: string | null;
   disabledIds?: string[];
   onSelect?: (item: any) => void;
-  selectedItem?: any | null;
-  detailPanelActions?: (item: any) => ReactNode;
   emptyMessage?: string;
   className?: string;
 }
@@ -83,8 +80,6 @@ export default function ItemList({
   selectedId,
   disabledIds,
   onSelect,
-  selectedItem,
-  detailPanelActions,
   emptyMessage = 'No items found',
   className = '',
 }: ItemListProps) {
@@ -132,9 +127,6 @@ export default function ItemList({
 
     return list;
   }, [items, typeFilter, categoryTabs, activeCategory, showControls, search, rarityFilter, sortBy]);
-
-  const isCompactPicker = mode === 'picker' && useCase === 'potion-picker';
-  const showDetailPanel = !isCompactPicker && !!selectedItem;
 
   return (
     <div className={`item-list item-list--${useCase} ${className}`.trim()}>
@@ -206,7 +198,7 @@ export default function ItemList({
         )
       )}
 
-      <div className={`item-list__grid-wrap ${showDetailPanel ? 'item-list__grid-wrap--has-detail' : ''}`}>
+      <div className="item-list__grid-wrap">
         <div className={`item-list__grid item-list__grid--${useCase}`}>
           {filtered.length === 0 && (
             <div className="item-list__empty">
@@ -231,14 +223,6 @@ export default function ItemList({
         </div>
       </div>
 
-      {showDetailPanel && (
-        <ItemDetailPanel
-          key={selectedItem.instanceId ?? selectedItem.id}
-          item={selectedItem}
-          actions={detailPanelActions ? detailPanelActions(selectedItem) : undefined}
-          className="item-list__detail-panel"
-        />
-      )}
     </div>
   );
 }
