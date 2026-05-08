@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { login, clearError, setAuth } from '../../store/authSlice';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
-import './Auth.css';
 
 const IS_DEV = (import.meta as any).env?.DEV;
 

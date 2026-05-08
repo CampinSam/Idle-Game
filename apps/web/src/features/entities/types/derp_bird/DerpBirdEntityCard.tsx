@@ -2,8 +2,6 @@ import DefaultEntityCard from '../_default/DefaultEntityCard';
 import type { EntityCardProps } from '../../types';
 import { isPerfectSpecimen } from './isPerfectSpecimen';
 import { isNftEntity } from './isNftEntity';
-import './DerpBirdEntityCard.css';
-import './PerfectSpecimenCard.css';
 
 export default function DerpBirdEntityCard(props: EntityCardProps) {
   const perfect = isPerfectSpecimen(props.entity);

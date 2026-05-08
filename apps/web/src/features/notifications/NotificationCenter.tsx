@@ -6,7 +6,6 @@ import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 import type { ActiveBoostInfo } from '../../tick';
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
-import './NotificationCenter.css';
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 

@@ -11,14 +11,11 @@ import {
   consumableWouldChangeEntityStats,
   BUSY_CONSUMABLE_TOOLTIP,
 } from '../utils/statChangeHelpers';
-import './EntityPickerModal.css';
 
 export interface EntityPickerModalProps {
   isOpen: boolean;
-  /** The consumable item to apply (already normalised with definition spread). */
   potion: any | null;
   onClose: () => void;
-  /** Called with the chosen entity id once the player confirms. */
   onSelectEntity: (entityId: string, entity: any) => void;
 }
 
@@ -57,11 +54,6 @@ export default function EntityPickerModal({
 
   const consumableEffects = useMemo(() => getPotionEffects(potion), [potion]);
 
-  // Server rejects stat-changing consumables on busy entities (Task #182).
-  // Compute the disabled-id set so the picker visibly greys out wearers
-  // that the command would refuse, instead of letting the player tap and
-  // bottom out on a toast. Heal / XP / non-stat potions leave every
-  // entity selectable.
   const isStatChanger = useMemo(
     () => consumableWouldChangeEntityStats(potion, effectDefs),
     [potion, effectDefs],
@@ -112,9 +104,6 @@ export default function EntityPickerModal({
 
   const selectedDisabled = !!selectedId && disabledIds.includes(selectedId);
 
-  // If the selected entity flips to busy while the modal is open (e.g. SSE
-  // delta starts a mission for them), drop the selection so the player
-  // can't bottom out on a server rejection by tapping Continue.
   useEffect(() => {
     if (selectedDisabled) setSelectedId(null);
   }, [selectedDisabled]);
@@ -136,44 +125,36 @@ export default function EntityPickerModal({
   const noEntities = entities.length === 0;
 
   return (
-    <div
-      className="epm-overlay"
-      onMouseDown={onClose}
-      role="presentation"
-    >
+    <div className="modal-overlay" onMouseDown={onClose} role="presentation">
       <div
-        className="epm-modal"
+        className="modal-box max-w-[480px]"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Choose Target Entity"
       >
-        <button
-          className="epm-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
+        <button className="modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
 
-        <div className="epm-header">
-          <h2 className="epm-title">Apply To Entity</h2>
-          <div className="epm-potion-row">
+        <div className="px-6 pt-[22px] pb-3 text-center shrink-0">
+          <h2 className="text-sm font-extrabold tracking-[1px] mb-3 text-slate-400 uppercase [font-family:'Exo_2',system-ui,sans-serif] m-0">
+            Apply To Entity
+          </h2>
+          <div className="flex items-center gap-3 py-2.5 px-3 bg-purple-500/[0.08] border border-purple-500/20 rounded-xl text-left">
             {potionIconKey && (
-              <div className="epm-potion-icon">
+              <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0 p-0.5">
                 <GameIcon src={potionIconKey} size={28} />
               </div>
             )}
-            <div className="epm-potion-text">
-              <p className="epm-potion-name">{potionName}</p>
-              {summary && <p className="epm-potion-summary">{summary}</p>}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-[#e2e8f0] m-0">{potionName}</p>
+              {summary && <p className="text-xs text-[#c4b5fd] mt-0.5 leading-[1.3] m-0">{summary}</p>}
             </div>
           </div>
         </div>
 
-        <div className="epm-body">
+        <div className="epm-body flex-1 min-h-[200px] flex flex-col px-3 pt-1 pb-0 overflow-y-auto">
           {noEntities ? (
-            <div className="epm-empty">
+            <div className="py-8 px-4 text-slate-400 text-[13px] text-center leading-[1.4]">
               You don't own any entities yet. Earn one to use entity-targeted potions.
             </div>
           ) : (
@@ -195,23 +176,19 @@ export default function EntityPickerModal({
                 emptyMessage="No entities to show."
               />
               {disabledIds.length > 0 && (
-                <p className="epm-busy-hint">{BUSY_CONSUMABLE_TOOLTIP}</p>
+                <p className="mt-2 mx-1 text-[11px] italic text-red-400/85 text-center">{BUSY_CONSUMABLE_TOOLTIP}</p>
               )}
             </>
           )}
         </div>
 
-        <div className="epm-footer">
-          <button
-            type="button"
-            className="epm-btn epm-btn--cancel"
-            onClick={onClose}
-          >
+        <div className="modal-footer">
+          <button type="button" className="modal-btn modal-btn--cancel" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="epm-btn epm-btn--apply"
+            className="modal-btn modal-btn--apply"
             onClick={handleConfirm}
             disabled={!selectedId || selectedDisabled}
           >

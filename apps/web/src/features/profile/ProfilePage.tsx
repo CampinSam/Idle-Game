@@ -1,5 +1,4 @@
 import { useAppSelector } from '../../store';
-import './Profile.css';
 
 function getInitials(username?: string | null, email?: string | null): string {
   const name = username || email || '?';

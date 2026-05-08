@@ -1,6 +1,5 @@
 import DefaultItemCard from '../_default/DefaultItemCard';
 import type { ItemCardProps } from '../../types';
-import './ConsumableItemCard.css';
 
 export default function ConsumableItemCard(props: ItemCardProps) {
   return (

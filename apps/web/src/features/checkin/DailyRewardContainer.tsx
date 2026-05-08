@@ -1,6 +1,5 @@
 import { useSyncCheckIns } from '../../hooks/useSyncSelectors';
 import CheckInTrack from './CheckInTrack';
-import './CheckIn.css';
 
 export default function DailyRewardContainer() {
   const checkins = useSyncCheckIns() as any[];
@@ -8,7 +7,7 @@ export default function DailyRewardContainer() {
   if (checkins.length === 0) return null;
 
   return (
-    <div className="checkin-container">
+    <div className="flex flex-col gap-0">
       {checkins.map((instance) => (
         <CheckInTrack key={instance.checkInDefId} defId={instance.checkInDefId} />
       ))}

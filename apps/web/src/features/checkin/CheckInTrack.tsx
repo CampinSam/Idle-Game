@@ -72,9 +72,6 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
   const frequency = def?.frequency ?? { type: 'daily' };
   const streak = instance?.streak ?? 0;
 
-  // Map per-day icons from the def's rewards array. The server enriches each
-  // entry with `iconKey` (joined from the linked gift def) so we can show the
-  // actual reward instead of a generic bow on every node.
   const dayIcons = useMemo(() => {
     const map: Record<number, string | undefined> = {};
     const rewards: any[] = Array.isArray(def?.rewards) ? def.rewards : [];
@@ -139,10 +136,16 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
   if (!instance || !def) return null;
 
   return (
-    <div className="checkin-track">
-      <div className="checkin-header">
-        <span className="checkin-title">{def.name}</span>
-        {countdown && <span className="checkin-timer">Resets in {countdown}</span>}
+    <div className="checkin-track flex flex-col gap-2.5 py-3">
+      <div className="flex items-center justify-between">
+        <span className="[font-family:'Cinzel',serif] text-[16px] font-bold text-[#e2d9ff]">
+          {def.name}
+        </span>
+        {countdown && (
+          <span className="text-[12px] text-[#a78bfa] font-semibold">
+            Resets in {countdown}
+          </span>
+        )}
       </div>
       <RewardTrack
         cycleLength={cycleLength}

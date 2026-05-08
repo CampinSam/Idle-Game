@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAppDispatch } from '../../store';
 import { setAuth } from '../../store/authSlice';
 import { api } from '../../services/api';
-import './Auth.css';
 
 interface OnboardingState {
   walletToken: string;

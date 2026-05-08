@@ -5,21 +5,12 @@ import {
   type ImageCategory,
 } from '../config/images';
 import { resolveAssetUrl } from '../utils/iconResolver';
-import './GameImage.css';
 
 interface GameImageProps {
   src: string;
   category: ImageCategory;
   alt?: string;
   fallbackSrc?: string;
-  /**
-   * Optional low-cost stand-in (typically the same image at a smaller
-   * variant that's already in the browser cache) shown immediately while
-   * the main `src` loads. When provided, the shimmer skeleton is hidden
-   * — the placeholder takes its place — and the main image crossfades
-   * over the placeholder once it finishes loading. Falls back to the
-   * skeleton if the placeholder itself fails to load.
-   */
   placeholderSrc?: string;
   className?: string;
   style?: CSSProperties;
@@ -28,6 +19,15 @@ interface GameImageProps {
   glowColor?: string;
   onClick?: () => void;
 }
+
+const CATEGORY_RADIUS: Record<ImageCategory, string> = {
+  entities: 'rounded-xl',
+  items: 'rounded-lg',
+  missions: 'rounded-xl',
+  regions: 'rounded-xl',
+  avatars: 'rounded-full',
+  effects: 'rounded-md',
+};
 
 export function GameImage({
   src,
@@ -55,9 +55,6 @@ export function GameImage({
   const handleLoad = useCallback(() => setMainLoaded(true), []);
   const handleError = useCallback(() => {
     setMainError((prev) => {
-      // Second error means even the fallback URL failed — promote loaded
-      // so the skeleton can't hang forever. The img tag stays as-is
-      // (broken image) but we no longer block the layout on it.
       if (prev) setMainLoaded(true);
       return true;
     });
@@ -65,35 +62,18 @@ export function GameImage({
   const handlePlaceholderLoad = useCallback(() => setPlaceholderLoaded(true), []);
   const handlePlaceholderError = useCallback(() => setPlaceholderError(true), []);
 
-  // When the main image fails AND the placeholder is carrying the visual,
-  // leave the broken `src` in place (it stays at opacity 0) — promoting
-  // the fallback would cover the thumb the user just saw on the list.
-  // When there's no usable placeholder, swap to the fallback so the
-  // existing archetype-image fallback chain still kicks in.
   const useFallback = mainError && !placeholderHealthy;
   const imageSrc = (resolveAssetUrl(useFallback ? fallback : src) ?? fallback) as string;
   const resolvedPlaceholder = placeholderHealthy
     ? (resolveAssetUrl(placeholderSrc!) ?? placeholderSrc!)
     : null;
 
-  // Crossfade gate: only promote the main img to opacity:1 when it
-  // actually finished loading. If it errored while a healthy placeholder
-  // exists, keep main hidden so the thumb stays visible.
   const mainVisible = mainLoaded && !(mainError && placeholderHealthy);
-
-  // Skeleton only when neither layer has anything painted yet — preserves
-  // the deep-link behavior (no cached thumb) of skeleton → full image.
   const showSkeleton = !mainLoaded && !placeholderLoaded;
 
-  const classes = [
-    'game-image',
-    `game-image--${category}`,
-    mainVisible ? 'game-image--loaded' : 'game-image--loading',
-    rounded ? 'game-image--rounded' : '',
-    glow ? 'game-image--glow' : '',
-    onClick ? 'game-image--clickable' : '',
-    className,
-  ].filter(Boolean).join(' ');
+  const radiusClass = rounded ? 'rounded-full' : CATEGORY_RADIUS[category] ?? '';
+  const glowClass = glow ? 'shadow-[0_0_16px_2px_var(--glow-color,rgba(139,92,246,0.5))]' : '';
+  const clickableClass = onClick ? 'cursor-pointer group' : '';
 
   const combinedStyle: CSSProperties = {
     ...style,
@@ -102,14 +82,21 @@ export function GameImage({
   };
 
   return (
-    <div className={classes} style={combinedStyle} onClick={onClick}>
-      {showSkeleton && <div className="game-image__skeleton" />}
+    <div
+      className={[
+        'relative overflow-hidden inline-flex items-center justify-center w-full bg-[rgba(139,92,246,0.08)]',
+        radiusClass,
+        glowClass,
+        clickableClass,
+        className,
+      ].filter(Boolean).join(' ')}
+      style={combinedStyle}
+      onClick={onClick}
+    >
+      {showSkeleton && (
+        <div className="absolute inset-0 [background:linear-gradient(110deg,rgba(139,92,246,0.1)_30%,rgba(139,92,246,0.2)_50%,rgba(139,92,246,0.1)_70%)] [background-size:200%_100%] [animation:game-image-shimmer_1.5s_infinite]" />
+      )}
       {resolvedPlaceholder && (
-        // Eager-load the placeholder so it paints from the browser cache on
-        // the very first frame. Sits underneath the main img; once the main
-        // image finishes loading and crossfades to opacity:1, this is
-        // visually covered (we keep it mounted so a hard reload of the
-        // detail page still shows it instead of falling back to skeleton).
         <img
           src={resolvedPlaceholder as string}
           alt=""
@@ -118,7 +105,7 @@ export function GameImage({
           height={spec.height}
           onLoad={handlePlaceholderLoad}
           onError={handlePlaceholderError}
-          className="game-image__placeholder"
+          className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
         />
       )}
       <img
@@ -129,7 +116,11 @@ export function GameImage({
         loading="lazy"
         onLoad={handleLoad}
         onError={handleError}
-        className="game-image__img"
+        className={[
+          'w-full h-full object-cover z-[1] relative transition-opacity duration-[150ms] ease-[ease]',
+          mainVisible ? 'opacity-100' : 'opacity-0',
+          onClick ? 'group-hover:scale-[1.03] group-hover:transition-transform group-hover:duration-200' : '',
+        ].filter(Boolean).join(' ')}
       />
     </div>
   );

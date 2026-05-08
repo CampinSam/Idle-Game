@@ -6,9 +6,11 @@ interface RewardClaimButtonProps {
 }
 
 function RewardClaimButtonInner({ claimedToday, nextWindowLabel }: RewardClaimButtonProps) {
+  const base = 'flex items-center justify-center px-3 py-1.5 rounded-lg text-[13px] font-semibold';
+
   if (claimedToday) {
     return (
-      <div className="reward-claim-footer claimed-state">
+      <div className={`${base} text-[#4ade80] bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)]`}>
         ✓ Claimed today
       </div>
     );
@@ -16,7 +18,7 @@ function RewardClaimButtonInner({ claimedToday, nextWindowLabel }: RewardClaimBu
 
   if (nextWindowLabel) {
     return (
-      <div className="reward-claim-footer waiting-state">
+      <div className={`${base} text-[#a78bfa] bg-[rgba(139,92,246,0.06)] border border-[rgba(139,92,246,0.15)]`}>
         Next reward: {nextWindowLabel}
       </div>
     );

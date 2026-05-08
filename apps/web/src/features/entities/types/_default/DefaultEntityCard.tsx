@@ -5,7 +5,6 @@ import { getArchetypeDisplay, getStatusDisplay } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
 import { getEntityMP, getEntityPower, getStarRating, normalizeStats } from '../../utils';
 import type { EntityCardProps } from '../../types';
-import './DefaultEntityCard.css';
 
 function StarRating({ rating }: { rating: number }) {
   const fullStars = Math.floor(rating);

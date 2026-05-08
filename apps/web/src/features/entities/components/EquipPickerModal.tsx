@@ -6,18 +6,14 @@ import {
   gearWouldChangeStats,
   BUSY_EQUIP_TOOLTIP,
 } from '../../inventory/utils/statChangeHelpers';
-import './EquipPickerModal.css';
 
 const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 
 export interface EquipPickerModalProps {
   isOpen: boolean;
-  /** The slot the player is filling (e.g. 'weapon' / 'armor' / 'accessory'). */
   slot: string | null;
-  /** The entity that will receive the equipment. Used to skip its own equipped items. */
   entityId: string | null;
   onClose: () => void;
-  /** Called with the chosen item instance once the player confirms. */
   onSelect: (itemInstanceId: string, item: any) => void;
 }
 
@@ -53,6 +49,15 @@ function summarizeStats(item: any): string {
   return parts.join(' · ');
 }
 
+const RARITY_COLOR: Record<string, string> = {
+  common: 'text-[#cbd5e1]',
+  uncommon: 'text-[#34d399]',
+  rare: 'text-[#60a5fa]',
+  epic: 'text-[#c084fc]',
+  legendary: 'text-[#fbbf24]',
+  mythic: 'text-[#f472b6]',
+};
+
 export default function EquipPickerModal({
   isOpen,
   slot,
@@ -64,10 +69,6 @@ export default function EquipPickerModal({
   const entities = useSyncEntities();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Server rejects equipping stat-bearing gear onto a busy entity. Mirror
-  // that here so the player sees stat-bearing rows greyed out instead of
-  // bottoming out on a toast after picking. Cosmetic gear (no stat
-  // contribution) stays selectable.
   const targetEntity = useMemo(
     () => (entities as any[]).find((e) => e.id === entityId) || null,
     [entities, entityId],
@@ -94,9 +95,6 @@ export default function EquipPickerModal({
         const def = it.definition;
         if (!def || def.type !== 'GEAR') return false;
         if (getItemSlot(it) !== slot) return false;
-        // Hide items already equipped to *this* entity in this slot — those
-        // are no-ops and would just confuse the player. Items equipped
-        // elsewhere are also hidden so we don't suggest a swap-from-other.
         if (it.equippedToId && it.equippedToId !== entityId) return false;
         if (it.equippedToId === entityId) return false;
         return true;
@@ -128,27 +126,29 @@ export default function EquipPickerModal({
   const slotLabel = slot.toUpperCase();
 
   return (
-    <div className="epm-overlay" onMouseDown={onClose} role="presentation">
+    <div className="modal-overlay" onMouseDown={onClose} role="presentation">
       <div
-        className="epm-modal"
+        className="modal-box max-w-[480px]"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`Equip ${slotLabel}`}
       >
-        <button className="epm-close" onClick={onClose} aria-label="Close">✕</button>
+        <button className="modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
 
-        <div className="epm-header">
-          <h2 className="epm-title">Equip {slotLabel}</h2>
+        <div className="px-6 pt-[22px] pb-3 text-center shrink-0">
+          <h2 className="text-sm font-extrabold tracking-[1px] mb-3 text-slate-400 uppercase [font-family:'Exo_2',system-ui,sans-serif] m-0">
+            Equip {slotLabel}
+          </h2>
         </div>
 
-        <div className="equip-picker-body">
+        <div className="flex-1 min-h-[200px] px-3.5 pb-1 pt-2 overflow-y-auto">
           {candidates.length === 0 ? (
-            <div className="epm-empty">
+            <div className="py-8 px-4 text-slate-400 text-[13px] text-center leading-[1.4]">
               No unequipped {slot} items in your inventory.
             </div>
           ) : (
-            <ul className="equip-picker-list" role="listbox" aria-label={`${slotLabel} candidates`}>
+            <ul className="list-none m-0 p-0 flex flex-col gap-1.5" role="listbox" aria-label={`${slotLabel} candidates`}>
               {candidates.map((item) => {
                 const isSelected = selectedId === item.id;
                 const iconKey = getItemIconKey(item);
@@ -162,20 +162,32 @@ export default function EquipPickerModal({
                     aria-selected={isSelected}
                     aria-disabled={blocked}
                     title={blocked ? BUSY_EQUIP_TOOLTIP : undefined}
-                    className={`equip-picker-row${isSelected ? ' equip-picker-row--selected' : ''}${blocked ? ' equip-picker-row--blocked' : ''}`}
+                    className={[
+                      'flex items-center gap-2.5 px-2.5 py-2 rounded-[10px] cursor-pointer transition-[background,border-color] duration-150',
+                      isSelected
+                        ? 'bg-[rgba(245,158,11,0.14)] border border-[rgba(245,158,11,0.6)] shadow-[0_0_0_1px_rgba(245,158,11,0.4)_inset]'
+                        : 'bg-[rgba(139,92,246,0.06)] border border-[rgba(139,92,246,0.18)] hover:bg-[rgba(139,92,246,0.12)]',
+                      blocked ? 'cursor-not-allowed opacity-45 grayscale-[60%] !bg-[rgba(139,92,246,0.04)] !border-[rgba(139,92,246,0.12)]' : '',
+                    ].filter(Boolean).join(' ')}
                     onClick={() => {
                       if (blocked) return;
                       setSelectedId((p) => (p === item.id ? null : item.id));
                     }}
                   >
-                    <div className={`equip-picker-icon equip-picker-icon--${(rarity || 'common').toLowerCase()}`}>
+                    <div className="w-[42px] h-[42px] rounded-lg bg-[rgba(0,0,0,0.35)] flex items-center justify-center shrink-0 border border-[rgba(255,255,255,0.08)]">
                       {iconKey ? <GameIcon src={iconKey} size={32} /> : <span>?</span>}
                     </div>
-                    <div className="equip-picker-info">
-                      <div className="equip-picker-name">{getItemName(item)}</div>
-                      <div className="equip-picker-meta">
-                        {rarity && <span className={`equip-picker-rarity equip-picker-rarity--${rarity.toLowerCase()}`}>{rarity}</span>}
-                        {statsLine && <span className="equip-picker-stats">{statsLine}</span>}
+                    <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+                      <div className="text-[13px] font-extrabold text-[#e2e8f0] whitespace-nowrap overflow-hidden text-ellipsis">
+                        {getItemName(item)}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-[#c4b5fd]">
+                        {rarity && (
+                          <span className={`font-extrabold tracking-[0.4px] uppercase text-[10px] ${RARITY_COLOR[rarity.toLowerCase()] ?? ''}`}>
+                            {rarity}
+                          </span>
+                        )}
+                        {statsLine && <span className="text-[#fbbf24] font-bold">{statsLine}</span>}
                       </div>
                     </div>
                   </li>
@@ -185,13 +197,13 @@ export default function EquipPickerModal({
           )}
         </div>
 
-        <div className="epm-footer">
-          <button type="button" className="epm-btn epm-btn--cancel" onClick={onClose}>
+        <div className="modal-footer">
+          <button type="button" className="modal-btn modal-btn--cancel" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="epm-btn epm-btn--apply"
+            className="modal-btn modal-btn--apply"
             onClick={handleConfirm}
             disabled={!selectedId || selectedBlocked}
             title={selectedBlocked ? BUSY_EQUIP_TOOLTIP : undefined}

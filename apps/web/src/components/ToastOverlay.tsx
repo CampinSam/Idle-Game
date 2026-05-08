@@ -5,7 +5,6 @@ import { useModal } from '../context/ModalContext';
 import { useCollectJob } from '../hooks/useCollectJob';
 import { api } from '../services/api';
 import { NOTIFICATION_CATEGORY_DISPLAY, NOTIFICATION_PRIORITY_COLORS } from '@derp/shared';
-import './ToastOverlay.css';
 
 function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNotification; onDismiss: () => void; onHide: () => void }) {
   const navigate = useNavigate();
@@ -87,20 +86,9 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
 
   const handleClick = useCallback(() => {
     if (Math.abs(touchDeltaX.current) > 30) return;
-
-    if (isGiftType) {
-      handleGiftView();
-      return;
-    }
-    if (isReadyType) {
-      handleJobView();
-      return;
-    }
-    if (isCompleteType) {
-      handleJobView();
-      return;
-    }
-
+    if (isGiftType) { handleGiftView(); return; }
+    if (isReadyType) { handleJobView(); return; }
+    if (isCompleteType) { handleJobView(); return; }
     markRead([notification.id]).catch(() => {});
     onDismiss();
     if (notification.deepLink?.screen) {
@@ -113,7 +101,14 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
 
   return (
     <div
-      className={`toast-banner ${dismissed ? 'toast-dismissed' : ''}`}
+      className={[
+        'pointer-events-auto flex items-center w-full py-3 px-[14px] rounded-xl border-l-4 cursor-pointer',
+        'bg-gradient-to-br from-[#1e1b3a] to-[#2a1f4e]',
+        'shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(139,92,246,0.2)]',
+        'text-left gap-2.5 touch-pan-y [animation:toast-slide-in_0.3s_ease-out]',
+        'transition-[transform,opacity] duration-200',
+        dismissed ? 'pointer-events-none' : '',
+      ].filter(Boolean).join(' ')}
       style={{
         transform: `translateX(${offsetX}px)`,
         opacity: dismissed ? 0 : 1,
@@ -126,16 +121,16 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
       role="button"
       tabIndex={0}
     >
-      <span className="toast-icon">{icon}</span>
-      <div className="toast-content">
-        <span className="toast-title">{notification.title}</span>
-        <span className="toast-body">
+      <span className="text-xl shrink-0">{icon}</span>
+      <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+        <span className="text-[13px] font-extrabold text-[#f0f0f0]">{notification.title}</span>
+        <span className="text-xs text-white/65 whitespace-nowrap overflow-hidden text-ellipsis">
           {notification.body}
         </span>
       </div>
       {isGiftType ? (
         <button
-          className="toast-action-btn"
+          className="toast-action-btn [background:linear-gradient(135deg,#8B5CF6,#6D28D9)] !border-0 !text-white !text-xs !font-bold !py-1.5 !px-[14px] !rounded-lg cursor-pointer shrink-0 tracking-[0.3px] shadow-[0_2px_8px_rgba(139,92,246,0.4)] transition-[transform,opacity] duration-100 disabled:!opacity-60"
           onClick={handleGiftClaim}
           onTouchEnd={(e) => { e.stopPropagation(); handleGiftClaim(e); }}
         >
@@ -143,7 +138,7 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
         </button>
       ) : isReadyType ? (
         <button
-          className="toast-action-btn"
+          className="toast-action-btn [background:linear-gradient(135deg,#8B5CF6,#6D28D9)] !border-0 !text-white !text-xs !font-bold !py-1.5 !px-[14px] !rounded-lg cursor-pointer shrink-0 tracking-[0.3px] shadow-[0_2px_8px_rgba(139,92,246,0.4)] transition-[transform,opacity] duration-100 disabled:!opacity-60"
           onClick={handleJobComplete}
           onTouchEnd={(e) => { e.stopPropagation(); handleJobComplete(e); }}
         >
@@ -151,7 +146,7 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
         </button>
       ) : (
         <button
-          className="toast-close"
+          className="toast-close !bg-transparent !border-0 !text-white/40 text-xl cursor-pointer !p-0 !px-1 leading-none shrink-0 transition-colors duration-150"
           onClick={(e) => {
             e.stopPropagation();
             markRead([notification.id]).catch(() => {});
@@ -171,7 +166,7 @@ export default function ToastOverlay() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-overlay">
+    <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-1.5 w-full max-w-[500px] px-3 pointer-events-none">
       {toasts.map((t) => (
         <ToastBanner
           key={t.id}

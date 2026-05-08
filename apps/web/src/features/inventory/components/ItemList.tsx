@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import ItemCard from './ItemCard';
 import type { ItemListMode, ItemUseCase } from '../types';
-import './ItemList.css';
 
 const RARITY_ORDER: Record<string, number> = {
   LEGENDARY: 0,

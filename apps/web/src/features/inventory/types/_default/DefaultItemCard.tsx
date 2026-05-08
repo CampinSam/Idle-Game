@@ -1,6 +1,5 @@
 import ItemQty from '../../../../components/ItemQty';
 import type { ItemCardProps } from '../../types';
-import './DefaultItemCard.css';
 
 export default function DefaultItemCard({
   item,

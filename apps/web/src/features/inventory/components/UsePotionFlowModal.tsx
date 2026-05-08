@@ -6,13 +6,10 @@ import { audioEngine } from '../../../services/AudioEngine';
 import GameIcon from '../../../components/GameIcon';
 import { summarizeEffect, summarizeActiveEffect } from '../utils/summarizeEffect';
 import type { EffectDefLite } from '../utils/summarizeEffect';
-import './UsePotionFlowModal.css';
 
 export interface UsePotionFlowModalProps {
   isOpen: boolean;
-  /** The consumable item (with ...definition spread, like InventoryPage normalises). */
   potion: any | null;
-  /** Optional target entity (for entity-targeted potions). */
   targetEntityId?: string | null;
   targetEntityName?: string | null;
   onClose: () => void;
@@ -57,7 +54,6 @@ export default function UsePotionFlowModal({
   const [error, setError] = useState<string | null>(null);
   const [appliedActiveIds, setAppliedActiveIds] = useState<string[]>([]);
 
-  // Reset whenever opened/closed or potion changes.
   useEffect(() => {
     if (!isOpen) {
       setPhase('confirm');
@@ -66,7 +62,6 @@ export default function UsePotionFlowModal({
     }
   }, [isOpen, potion?.instanceId]);
 
-  // Esc to close (when not mid-apply).
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -78,7 +73,6 @@ export default function UsePotionFlowModal({
 
   const consumableEffects = useMemo(() => getPotionEffects(potion), [potion]);
 
-  // Confirm-phase effect lines (built from consumable spec + EffectDefs).
   const confirmLines: ResolvedEffectLine[] = useMemo(() => {
     return consumableEffects.map((spec) => {
       const def = effectDefs[spec.effectDefId];
@@ -89,12 +83,9 @@ export default function UsePotionFlowModal({
     });
   }, [consumableEffects, effectDefs]);
 
-  // Result-phase effect lines: prefer freshly applied active effects (with real
-  // expiresAt), fall back to consumable spec for instant effects.
   const resultLines: ResolvedEffectLine[] = useMemo(() => {
     if (phase !== 'result') return [];
     const lines: ResolvedEffectLine[] = [];
-
     const appliedSet = new Set(appliedActiveIds);
     const seenDefIds = new Set<string>();
 
@@ -106,8 +97,6 @@ export default function UsePotionFlowModal({
       seenDefIds.add(ae.effectDefId);
     }
 
-    // Any consumable effects that didn't produce an active effect (i.e. instant
-    // effects like XP grants or stat boosts) — render them from the EffectDef.
     for (const spec of consumableEffects) {
       if (seenDefIds.has(spec.effectDefId)) continue;
       const def = effectDefs[spec.effectDefId];
@@ -131,16 +120,12 @@ export default function UsePotionFlowModal({
     setError(null);
     setPhase('applying');
 
-    // Snapshot active effect IDs so we can identify newly added ones afterward.
     const snapshot = new Set(Object.keys(activeEffectsTable));
-
     const payload: Record<string, any> = { itemInstanceId: potion.instanceId ?? potion.id };
     if (targetEntityId) payload.targetId = targetEntityId;
 
     try {
       const response = await execute('UseConsumable', payload);
-      // Find newly upserted active effects from the response patches so we don't
-      // race the redux state.
       const newIds: string[] = [];
       for (const p of response.patches || []) {
         if (p.op === 'upsert' && p.entity === 'activeEffect' && p.data?.id) {
@@ -165,60 +150,57 @@ export default function UsePotionFlowModal({
 
   const isResultOrError = phase === 'result' || phase === 'error';
 
-  // Determine target subtitle.
   let subtitle: string | null = null;
   if (targetEntityName) subtitle = `to ${targetEntityName}`;
   else if (targetEntityId) subtitle = 'to selected target';
 
   return (
     <div
-      className="upm-overlay"
+      className="modal-overlay"
       onMouseDown={() => phase !== 'applying' && onClose()}
       role="presentation"
     >
       <div
-        className="upm-modal"
+        className="modal-box max-w-[400px]"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={phase === 'result' ? 'Potion Result' : 'Use Potion'}
       >
         {phase !== 'applying' && (
-          <button
-            className="upm-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
         )}
 
-        <div className="upm-header">
+        <div className="px-6 pt-[22px] pb-[14px] text-center shrink-0 flex flex-col items-center gap-2">
           {potionIconKey && (
-            <div className="upm-icon-wrap">
+            <div className="w-16 h-16 rounded-[14px] bg-purple-500/[0.18] border border-purple-500/30 flex items-center justify-center p-1">
               <GameIcon src={potionIconKey} size={56} />
             </div>
           )}
-          <h2 className="upm-title">
+          <h2 className="text-sm font-extrabold tracking-[1px] m-0 text-slate-400 uppercase [font-family:'Exo_2',system-ui,sans-serif]">
             {phase === 'result' ? 'Potion Used' : phase === 'error' ? 'Potion Failed' : 'Use Potion'}
           </h2>
-          <p className="upm-name">{potionName}</p>
-          {subtitle && <p className="upm-subtitle">{subtitle}</p>}
+          <p className="text-lg font-extrabold m-0 text-[#e2e8f0] [font-family:'Exo_2',system-ui,sans-serif]">{potionName}</p>
+          {subtitle && <p className="text-xs text-slate-400 m-0">{subtitle}</p>}
         </div>
 
-        <div className="upm-body">
+        <div className="flex-1 min-h-[80px] px-5 pt-2 pb-4 overflow-y-auto">
           {phase === 'confirm' && (
             <>
-              {potionDesc && <p className="upm-desc">{potionDesc}</p>}
-              <div className="upm-effects">
-                <p className="upm-effects-label">Effect{confirmLines.length === 1 ? '' : 's'}</p>
+              {potionDesc && (
+                <p className="text-[13px] text-[#cbd5e1] leading-[1.45] mb-[14px] m-0">{potionDesc}</p>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 mb-1 m-0">
+                  Effect{confirmLines.length === 1 ? '' : 's'}
+                </p>
                 {confirmLines.length === 0 && (
-                  <div className="upm-effect-line upm-effect-line--muted">
+                  <div className="px-3 py-2.5 rounded-[10px] bg-slate-400/[0.08] border border-slate-400/[0.18] text-[13px] font-medium text-slate-400 italic flex justify-between items-center gap-2">
                     No effect details available
                   </div>
                 )}
                 {confirmLines.map((line, idx) => (
-                  <div key={`${line.defId}_${idx}`} className="upm-effect-line">
+                  <div key={`${line.defId}_${idx}`} className="px-3 py-2.5 rounded-[10px] bg-purple-500/10 border border-purple-500/20 text-[13px] font-semibold text-[#e2e8f0] flex justify-between items-center gap-2">
                     {line.text}
                   </div>
                 ))}
@@ -227,17 +209,17 @@ export default function UsePotionFlowModal({
           )}
 
           {phase === 'applying' && (
-            <div className="upm-applying">
-              <div className="upm-spinner" />
+            <div className="flex flex-col items-center justify-center py-6 gap-3 text-slate-400 text-[13px]">
+              <div className="w-8 h-8 rounded-full border-[3px] border-purple-500/20 border-t-[#a78bfa] animate-spin" />
               <p>Applying potion…</p>
             </div>
           )}
 
           {phase === 'result' && (
-            <div className="upm-effects">
-              <p className="upm-effects-label">Applied</p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 mb-1 m-0">Applied</p>
               {resultLines.map((line, idx) => (
-                <div key={`${line.defId}_${idx}`} className="upm-effect-line upm-effect-line--success">
+                <div key={`${line.defId}_${idx}`} className="px-3 py-2.5 rounded-[10px] bg-green-500/[0.12] border border-green-500/35 text-[#bbf7d0] text-[13px] font-semibold flex justify-between items-center gap-2">
                   <span>{line.text}</span>
                 </div>
               ))}
@@ -245,37 +227,25 @@ export default function UsePotionFlowModal({
           )}
 
           {phase === 'error' && error && (
-            <div className="upm-error" role="alert">
+            <div className="mt-2 px-[14px] py-3 rounded-[10px] bg-red-500/[0.12] border border-red-500/40 text-[#fca5a5] text-[13px] leading-[1.4]" role="alert">
               {error}
             </div>
           )}
         </div>
 
-        <div className="upm-footer">
+        <div className="modal-footer">
           {phase === 'confirm' && (
             <>
-              <button
-                type="button"
-                className="upm-btn upm-btn--cancel"
-                onClick={onClose}
-              >
+              <button type="button" className="modal-btn modal-btn--cancel" onClick={onClose}>
                 Cancel
               </button>
-              <button
-                type="button"
-                className="upm-btn upm-btn--apply"
-                onClick={handleApply}
-              >
+              <button type="button" className="modal-btn modal-btn--apply" onClick={handleApply}>
                 Use Potion
               </button>
             </>
           )}
           {phase === 'applying' && (
-            <button
-              type="button"
-              className="upm-btn upm-btn--apply"
-              disabled
-            >
+            <button type="button" className="modal-btn modal-btn--apply" disabled>
               Applying…
             </button>
           )}
@@ -284,17 +254,13 @@ export default function UsePotionFlowModal({
               {phase === 'error' && (
                 <button
                   type="button"
-                  className="upm-btn upm-btn--cancel"
+                  className="modal-btn modal-btn--cancel"
                   onClick={() => { setError(null); setPhase('confirm'); }}
                 >
                   Back
                 </button>
               )}
-              <button
-                type="button"
-                className="upm-btn upm-btn--apply"
-                onClick={onClose}
-              >
+              <button type="button" className="modal-btn modal-btn--apply" onClick={onClose}>
                 {phase === 'error' ? 'Close' : 'Done'}
               </button>
             </>

@@ -18,7 +18,6 @@ import {
   BUSY_EQUIP_TOOLTIP,
 } from '../../../inventory/utils/statChangeHelpers';
 import type { EntityDetailProps } from '../../types';
-import './DefaultEntityDetail.css';
 
 const TRAIT_SLOT_ORDER = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY'] as const;

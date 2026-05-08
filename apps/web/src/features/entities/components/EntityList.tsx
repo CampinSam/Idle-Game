@@ -10,37 +10,29 @@ import type {
   EntitySortBy,
   EntityForecast,
 } from '../types';
-import './EntityList.css';
 
 export interface EntityListProps {
   entities: any[];
   mode: EntityListMode;
   useCase?: EntityUseCase;
   layout?: EntityListLayout;
-  /** Sub-filter applied internally when controls are not shown. */
   filter?: EntityFilter;
-  /** Controlled active filter — used when showControls=true. */
   activeFilter?: EntityFilter;
   onFilterChange?: (filter: EntityFilter) => void;
-  /** Show the unified search + collection + sort controls bar. */
   showControls?: boolean;
   sortBy?: EntitySortBy;
   onSortChange?: (sort: EntitySortBy) => void;
-  /** Optional search text. */
   search?: string;
   onSearchChange?: (q: string) => void;
   /** @deprecated use showControls */
   showFilterTabs?: boolean;
   /** @deprecated use showControls */
   showSearchBar?: boolean;
-  /** Picker mode props */
   selectedIds?: string[];
   disabledIds?: string[];
   activeId?: string | null;
   onSelect?: (entity: any) => void;
-  /** For display mode: defaults to navigating to /entities/:id when not provided. */
   onCardClick?: (entity: any) => void;
-  /** Forge use-case forecast lookup (entityId → forecast). */
   forecasts?: Record<string, EntityForecast>;
   qualityColors?: Record<string, string>;
   emptyMessage?: string;
@@ -111,8 +103,8 @@ export default function EntityList({
 
       {/* Unified controls bar */}
       {showControls && (
-        <div className="entity-list__controls">
-          <div className="entity-list__search-wrap">
+        <div className="flex items-center gap-2 px-3.5 py-2.5 bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] shrink-0 sticky top-0 z-10">
+          <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
               <circle cx="11" cy="11" r="8"/>
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -122,7 +114,7 @@ export default function EntityList({
               placeholder="Search..."
               value={search ?? ''}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="entity-list__search-input"
+              className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[12px] outline-none [font-family:'Exo_2',system-ui,sans-serif] min-w-0 placeholder:text-[color:var(--text-secondary)]"
             />
           </div>
 
@@ -152,12 +144,17 @@ export default function EntityList({
 
       {/* Legacy tab strip */}
       {showFilterTabs && !showControls && (
-        <div className="entity-list__filter-strip">
+        <div className="flex bg-[rgba(0,0,0,0.25)] border-b border-[rgba(139,92,246,0.12)] shrink-0">
           {COLLECTION_OPTIONS.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              className={`entity-list__filter-tab ${effectiveFilter === tab.key ? 'entity-list__filter-tab--active' : ''}`}
+              className={[
+                'flex-1 py-[11px] px-1.5 text-[11px] font-bold tracking-[0.6px] uppercase border-b-2 border-transparent cursor-pointer transition-colors duration-150 [font-family:inherit] !rounded-none !p-[11px_6px]',
+                effectiveFilter === tab.key
+                  ? 'text-[#c4b5fd] border-b-[color:var(--derp-purple)] !border-b-2'
+                  : 'text-[color:var(--text-secondary)] hover:text-[#c4b5fd]',
+              ].join(' ')}
               onClick={() => onFilterChange?.(tab.key)}
             >
               {tab.key}
@@ -168,7 +165,7 @@ export default function EntityList({
 
       {/* Legacy search bar */}
       {showSearchBar && !showControls && (
-        <div className="entity-list__search-row">
+        <div className="flex items-center gap-2 px-3.5 py-2.5 bg-[rgba(0,0,0,0.15)] border-b border-[rgba(139,92,246,0.1)] shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -178,14 +175,16 @@ export default function EntityList({
             placeholder="Search entities..."
             value={search ?? ''}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            className="entity-list__search-input"
+            className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[12px] outline-none [font-family:'Exo_2',system-ui,sans-serif] min-w-0 placeholder:text-[color:var(--text-secondary)]"
           />
         </div>
       )}
 
-      <div className="entity-list__grid">
+      <div className="entity-list__grid p-3 grid gap-2">
         {filtered.length === 0 && (
-          <div className="entity-list__empty">{emptyMessage}</div>
+          <div className="col-span-full text-center py-6 px-4 text-[color:var(--text-secondary)] text-[13px]">
+            {emptyMessage}
+          </div>
         )}
         {filtered.map((entity: any) => {
           const isSelected = selectedIds?.includes(entity.id) ?? false;

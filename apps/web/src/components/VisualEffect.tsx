@@ -1,6 +1,5 @@
 import { CSSProperties, ReactNode } from 'react';
 import { useVisualEffectDef } from '../hooks/useSyncSelectors';
-import './VisualEffects.css';
 
 interface Props {
   /**

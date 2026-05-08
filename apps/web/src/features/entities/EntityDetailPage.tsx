@@ -7,7 +7,6 @@ import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
 import type { EntityFilter, EntitySortBy } from './types';
-import './EntityDetailPage.css';
 
 function getCollectionLabel(entity: any): string | null {
   const kind = getEntityKind(entity);

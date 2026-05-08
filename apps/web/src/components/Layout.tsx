@@ -26,7 +26,6 @@ import { useAudioNavigation } from '../hooks/useAudioNavigation';
 import { useLevelUpAudio } from '../hooks/useLevelUpAudio';
 import { useSeasonStartAudio } from '../hooks/useSeasonStartAudio';
 import { useEntityProgressionAudio } from '../hooks/useEntityProgressionAudio';
-import './Layout.css';
 
 export default function Layout() {
   const dispatch = useAppDispatch();

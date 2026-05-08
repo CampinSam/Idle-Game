@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction } from '@derp/shared';
 import BlockRenderer from './blocks/BlockRenderer';
 import AssetImage from './AssetImage';
-import './GameModal.css';
 
 export interface GameModalProps {
   spec: ModalSpecV1;

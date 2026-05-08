@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSyncLocations } from '../../hooks/useSyncSelectors';
 import { getLocationViews } from './registry';
-import './LocationDetailPage.css';
 
 export default function LocationDetailPage() {
   const { id } = useParams<{ id: string }>();

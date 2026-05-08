@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useSyncEntities, useSyncStatus } from "../../hooks/useSyncSelectors";
 import { EntityList } from "./components";
 import type { EntityFilter, EntitySortBy } from "./types";
-import "./EntitiesPage.css";
 
 function EntitiesPageSkeleton() {
   return (
-    <div className="entities-page page-transition-wrapper">
-      <div className="entities-wrapper-card">
+    <div className="flex flex-col flex-1 min-h-0 pt-page-top page-transition-wrapper">
+      <div className="[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)] border border-[rgba(139,92,246,0.25)] rounded-2xl [animation:card-enter_0.2s_ease-out_both] flex flex-col max-h-full min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         <div className="entity-list__controls">
           <div
             className="skeleton"
@@ -112,8 +111,8 @@ export default function EntitiesPage() {
   if (syncStatus === "disconnected") return <EntitiesPageSkeleton />;
 
   return (
-    <div className="entities-page page-transition-wrapper">
-      <div className="entities-wrapper-card">
+    <div className="flex flex-col flex-1 min-h-0 pt-page-top page-transition-wrapper">
+      <div className="[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)] border border-[rgba(139,92,246,0.25)] rounded-2xl [animation:card-enter_0.2s_ease-out_both] flex flex-col max-h-full min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         <EntityList
           entities={entities}
           mode="display"

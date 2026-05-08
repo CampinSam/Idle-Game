@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { register, clearError, setAuth } from '../../store/authSlice';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
-import './Auth.css';
 
 export default function RegisterPage() {
   const dispatch = useAppDispatch();

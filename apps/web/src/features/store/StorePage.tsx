@@ -5,7 +5,6 @@ import { useModal } from '../../context/ModalContext';
 import GameIcon from '../../components/GameIcon';
 import ItemQty from '../../components/ItemQty';
 import { resolveName } from '../../utils/iconResolver';
-import './StorePage.css';
 
 interface CostEntry {
   type: 'currency' | 'item';

@@ -1,6 +1,5 @@
 import GameIcon from './GameIcon';
 import { formatCompact, formatRateValue } from '../utils/formatNumber';
-import './ItemQty.css';
 
 type ItemQtyVariant = 'right' | 'left' | 'badge';
 type ItemQtyFormat = 'full' | 'compact' | 'rate';
@@ -37,24 +36,28 @@ export default function ItemQty({
 
   if (variant === 'badge') {
     return (
-      <span className={`item-qty item-qty--badge ${className}`.trim()}>
+      <span className={`relative inline-flex items-center justify-center ${className}`.trim()}>
         <GameIcon src={src} size={size} alt={alt} />
-        {amount > 0 && <span className="item-qty__badge-num">{numStr}</span>}
+        {amount > 0 && (
+          <span className="absolute -bottom-0.5 -right-0.5 bg-[rgba(0,0,0,0.78)] text-white text-[10px] font-bold px-[5px] py-px rounded-lg min-w-[18px] text-center leading-[1.35] pointer-events-none">
+            {numStr}
+          </span>
+        )}
       </span>
     );
   }
 
   const icon = <GameIcon src={src} size={size} alt={alt} />;
   const num = (
-    <span className="item-qty__num">
-      {prefix && <span className="item-qty__prefix">{prefix}</span>}
+    <span className="font-bold">
+      {prefix && <span className="font-semibold [opacity:0.85] mr-px">{prefix}</span>}
       {numStr}
-      {suffix && <span className="item-qty__suffix">{suffix}</span>}
+      {suffix && <span className="font-semibold [opacity:0.75] ml-px text-[0.85em]">{suffix}</span>}
     </span>
   );
 
   return (
-    <span className={`item-qty item-qty--${variant} ${className}`.trim()}>
+    <span className={`inline-flex items-center gap-1 leading-none whitespace-nowrap ${variant === 'left' ? 'flex-row-reverse' : ''} ${className}`.trim()}>
       {variant === 'left' ? <>{num}{icon}</> : <>{icon}{num}</>}
     </span>
   );

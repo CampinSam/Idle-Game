@@ -40,12 +40,19 @@ function RewardTrackInner({ cycleLength, streak, claimableDays, dayIcons, onClai
   }, [cycleLength, currentDay, claimableDays]);
 
   return (
-    <div className="reward-track-scroll">
-      <div className="reward-track">
+    <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-2 pb-1">
+      <div className="flex items-center gap-0 relative min-w-max">
         {nodes.map((n, idx) => (
-          <div key={n.day} className="reward-node-wrap">
+          <div key={n.day} className="flex items-center">
             {idx > 0 && (
-              <div className={`reward-node-connector${n.state === 'claimed' ? ' filled' : ''}`} />
+              <div
+                className={[
+                  'w-5 h-[3px] shrink-0',
+                  n.state === 'claimed'
+                    ? '[background:linear-gradient(90deg,#8b5cf6,#a78bfa)] shadow-[0_0_4px_rgba(139,92,246,0.4)]'
+                    : 'bg-[rgba(139,92,246,0.2)]',
+                ].join(' ')}
+              />
             )}
             <RewardNode
               day={n.day}
