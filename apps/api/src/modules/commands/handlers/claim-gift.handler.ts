@@ -44,10 +44,14 @@ export class ClaimGiftHandler implements CommandHandler {
             kind: 'gift_claimed',
             dismiss: { backdrop: true, x: true, escape: true },
             header: { title: presentation.title || 'Gift Claimed!' },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

@@ -40,10 +40,14 @@ export class ClaimQuestRewardHandler implements CommandHandler {
             kind: 'quest_reward',
             dismiss: { backdrop: true, x: true, escape: true },
             header: { title: 'Quest Reward Claimed!' },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: questBodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: questBodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

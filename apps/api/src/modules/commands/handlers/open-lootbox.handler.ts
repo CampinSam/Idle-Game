@@ -145,10 +145,14 @@ export class OpenLootBoxHandler implements CommandHandler {
             kind: 'lootbox_opened',
             dismiss: { backdrop: true, x: true, escape: true },
             header: { title: `${lootboxDef.name} Opened!` },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

@@ -4,9 +4,17 @@ export interface ModalSpecV1 {
   kind: string;
   dismiss: { backdrop: boolean; x: boolean; escape: boolean };
   header: ModalHeader;
-  body: ModalBlock[];
   buttons: ModalButton[];
+  pages: ModalPageSpec[];
+  showPageIndicator?: boolean;
   telemetry?: ModalTelemetry;
+}
+
+export interface ModalPageSpec {
+  body: ModalBlock[];
+  header?: Partial<ModalHeader>;
+  buttons?: ModalButton[];
+  dismiss?: { backdrop?: boolean; x?: boolean; escape?: boolean };
 }
 
 export interface ModalHeader {
@@ -46,6 +54,8 @@ export interface ModalButton {
 
 export type ModalAction =
   | { type: 'CLOSE_MODAL' }
+  | { type: 'NEXT_PAGE' }
+  | { type: 'PREV_PAGE' }
   | { type: 'NAVIGATE'; route: string; params?: Record<string, unknown> }
   | { type: 'ACK_NOTIFICATION'; notificationId: string }
   | { type: 'COMPLETE_JOB'; jobId: string }
@@ -199,6 +209,8 @@ export type RichTextNode =
 
 export const MODAL_ACTION_TYPES = [
   'CLOSE_MODAL',
+  'NEXT_PAGE',
+  'PREV_PAGE',
   'NAVIGATE',
   'ACK_NOTIFICATION',
   'COMPLETE_JOB',
@@ -234,6 +246,29 @@ export const MODAL_BLOCK_TYPES = [
   'error',
   'characterEvents',
 ] as const;
+
+/**
+ * Compute the effective header/buttons/dismiss/body for a given page index
+ * by applying page overrides cumulatively from page 0 through pageIdx.
+ */
+export function computeEffectivePage(
+  spec: ModalSpecV1,
+  pageIdx: number,
+): { header: ModalHeader; buttons: ModalButton[]; dismiss: ModalSpecV1['dismiss']; body: ModalBlock[] } {
+  let header: ModalHeader = { ...spec.header };
+  let buttons: ModalButton[] = [...spec.buttons];
+  let dismiss = { ...spec.dismiss };
+
+  const clampedIdx = Math.max(0, Math.min(pageIdx, spec.pages.length - 1));
+  for (let i = 0; i <= clampedIdx; i++) {
+    const page = spec.pages[i];
+    if (page.header) header = { ...header, ...page.header };
+    if (page.buttons !== undefined) buttons = page.buttons;
+    if (page.dismiss) dismiss = { ...dismiss, ...page.dismiss };
+  }
+
+  return { header, buttons, dismiss, body: spec.pages[clampedIdx].body };
+}
 
 /**
  * Parse a "k1=v1, k2=v2, *=fallback" string into ordered [key, value] pairs.

@@ -1,4 +1,4 @@
-import type { ModalSpecV1, ModalBlock, RichTextDoc, RichTextNode } from '@derp/shared';
+import type { ModalSpecV1, ModalPageSpec, ModalBlock, RichTextDoc, RichTextNode } from '@derp/shared';
 
 export function getByPath(obj: any, dotPath: string): any {
   if (obj == null || !dotPath) return undefined;
@@ -225,11 +225,8 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
   return resolved as ModalBlock;
 }
 
-export function resolveSpec(spec: ModalSpecV1, ctx: Record<string, any>): ModalSpecV1 {
-  if (!spec || typeof spec !== 'object') return spec;
-  if (!ctx || typeof ctx !== 'object') return spec;
-
-  const resolved: ModalSpecV1 = { ...spec };
+function resolvePage(page: ModalPageSpec, ctx: Record<string, any>): ModalPageSpec {
+  const resolved: ModalPageSpec = { ...page };
 
   if (resolved.header) {
     resolved.header = resolveAllStrings({ ...resolved.header }, ctx);
@@ -241,6 +238,27 @@ export function resolveSpec(spec: ModalSpecV1, ctx: Record<string, any>): ModalS
 
   if (Array.isArray(resolved.buttons)) {
     resolved.buttons = resolved.buttons.map((btn: any) => resolveAllStrings({ ...btn }, ctx));
+  }
+
+  return resolved;
+}
+
+export function resolveSpec(spec: ModalSpecV1, ctx: Record<string, any>): ModalSpecV1 {
+  if (!spec || typeof spec !== 'object') return spec;
+  if (!ctx || typeof ctx !== 'object') return spec;
+
+  const resolved: ModalSpecV1 = { ...spec };
+
+  if (resolved.header) {
+    resolved.header = resolveAllStrings({ ...resolved.header }, ctx);
+  }
+
+  if (Array.isArray(resolved.buttons)) {
+    resolved.buttons = resolved.buttons.map((btn: any) => resolveAllStrings({ ...btn }, ctx));
+  }
+
+  if (Array.isArray(resolved.pages)) {
+    resolved.pages = resolved.pages.map((page: ModalPageSpec) => resolvePage(page, ctx));
   }
 
   return resolved;

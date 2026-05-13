@@ -38,6 +38,10 @@ export default function GameModalHost() {
   const handleAction = useCallback(
     async (action: ModalAction) => {
       switch (action.type) {
+        case 'NEXT_PAGE':
+        case 'PREV_PAGE':
+          return;
+
         case 'CLOSE_MODAL':
           dismissModal();
           return;

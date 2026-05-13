@@ -73,10 +73,14 @@ export class OpenGiftPackageHandler implements CommandHandler {
             kind: 'gift_opened',
             dismiss: { backdrop: true, x: true, escape: true },
             header: { title: 'Gift Opened!' },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: giftBodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: giftBodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

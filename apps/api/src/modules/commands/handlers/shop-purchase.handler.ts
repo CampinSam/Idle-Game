@@ -98,10 +98,14 @@ export class ShopPurchaseHandler implements CommandHandler {
             kind: 'shop_purchase',
             dismiss: { backdrop: true, x: true, escape: true },
             header: { title: `${item.name} Purchased!` },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

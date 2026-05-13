@@ -215,7 +215,7 @@ export default function StorePage() {
   const tabItems = items.filter((i) => i.tab === activeTab);
 
   const handleOpenModal = useCallback((item: ShopItem) => {
-    const body: ModalSpecV1['body'] = [];
+    const body: ModalSpecV1['pages'][number]['body'] = [];
 
     if (item.description) {
       body.push({
@@ -256,7 +256,7 @@ export default function StorePage() {
       kind: 'shop_item_detail',
       dismiss: { backdrop: true, x: true, escape: true },
       header: { title: item.name },
-      body,
+      pages: [{ body }],
       buttons: [
         { id: 'cancel', label: 'Cancel', variant: 'ghost', action: { type: 'CLOSE_MODAL' } },
         { id: 'buy', label: 'Buy Now', variant: 'primary', action: { type: 'SHOP_PURCHASE', shopItemDefId: item.id } },

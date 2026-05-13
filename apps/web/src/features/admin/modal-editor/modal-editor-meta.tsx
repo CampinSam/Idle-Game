@@ -202,6 +202,8 @@ export interface ActionMeta {
 
 export const ACTION_META: Record<string, ActionMeta> = {
   CLOSE_MODAL: { friendlyName: 'Close Modal', description: 'Dismiss this modal. No side effects.', fields: [] },
+  NEXT_PAGE: { friendlyName: 'Next Page', description: 'Advance to the next page of this modal. Handled client-side — no server call.', fields: [] },
+  PREV_PAGE: { friendlyName: 'Previous Page', description: 'Go back to the previous page of this modal. Handled client-side — no server call.', fields: [] },
   NAVIGATE: { friendlyName: 'Navigate', description: 'Send the player to a route in the app.', fields: [{ name: 'route', required: true, hint: 'e.g. /missions or /shop' }] },
   ACK_NOTIFICATION: { friendlyName: 'Acknowledge Notification', description: 'Mark a notification as read on the server.', fields: [{ name: 'notificationId', required: true, hint: 'often ${notificationId}' }] },
   COMPLETE_JOB: { friendlyName: 'Complete Job', description: 'Mark a long-running job as complete and claim its results.', fields: [{ name: 'jobId', required: true, hint: 'often ${jobId}' }] },

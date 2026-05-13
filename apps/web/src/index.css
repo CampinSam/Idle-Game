@@ -4051,6 +4051,19 @@ input:focus {
 .gm-btn-danger:hover:not(:disabled) {
   box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
 }
+.gm-page-indicator {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
 .gm-divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);

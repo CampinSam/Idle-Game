@@ -62,10 +62,14 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
               title: 'Achievement Unlocked!',
               subtitle: updatedInstance?.achievementDef?.name ?? undefined,
             },
-            body: [
+            pages: [
               {
-                type: 'richText',
-                doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                body: [
+                  {
+                    type: 'richText',
+                    doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
+                  },
+                ],
               },
             ],
             buttons: [

@@ -135,7 +135,7 @@ export class UiService {
         title: notification.title || 'Notification',
         subtitle: notification.body || undefined,
       },
-      body: [],
+      pages: [{ body: [] }],
       buttons: [
         {
           id: 'ack',
@@ -212,7 +212,7 @@ export class UiService {
         title: isClaimed ? 'Gift Claimed!' : (presentation.title || 'You received a gift!'),
         icon: presentation.iconKey ? { assetKey: `icons/${presentation.iconKey}` } : undefined,
       },
-      body,
+      pages: [{ body }],
       buttons,
     };
 
@@ -372,7 +372,7 @@ export class UiService {
         title,
         subtitle: defName,
       },
-      body,
+      pages: [{ body }],
       buttons,
       telemetry: {
         sourceType: 'job',
@@ -444,7 +444,7 @@ export class UiService {
         title: isReady ? `${typeLabel} Ready!` : `${typeLabel} In Progress`,
         subtitle: defName,
       },
-      body,
+      pages: [{ body }],
       buttons,
       telemetry: {
         sourceType: 'job',
@@ -543,7 +543,7 @@ export class UiService {
       kind: 'build_confirm',
       dismiss: { backdrop: true, x: true, escape: true },
       header: { title: `Build ${def.name}`, subtitle: 'Construction' },
-      body,
+      pages: [{ body }],
       buttons: [
         {
           id: 'build',
@@ -612,7 +612,7 @@ export class UiService {
       kind: 'upgrade_confirm',
       dismiss: { backdrop: true, x: true, escape: true },
       header: { title: `Upgrade ${def.name}`, subtitle: isMaxLevel ? 'Max Level Reached' : `Level ${currentLevel} → ${nextLevel}` },
-      body,
+      pages: [{ body }],
       buttons: isMaxLevel
         ? [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }]
         : [
@@ -650,7 +650,7 @@ export class UiService {
         title: typeLabel,
         subtitle: defName,
       },
-      body: [],
+      pages: [{ body: [] }],
       buttons: [
         { id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } },
       ],
@@ -731,10 +731,8 @@ export class UiService {
     if (resolved.header && typeof resolved.header === 'object') {
       merged.header = { ...generated.header, ...resolved.header };
     }
-    if ((resolved as any).replaceBody === true && Array.isArray(resolved.body)) {
-      merged.body = resolved.body;
-    } else if (Array.isArray(resolved.body) && resolved.body.length > 0) {
-      merged.body = [...resolved.body, ...(generated.body || [])];
+    if (Array.isArray(resolved.pages) && resolved.pages.length > 0) {
+      merged.pages = resolved.pages;
     }
     if (Array.isArray(resolved.buttons) && resolved.buttons.length > 0) {
       merged.buttons = resolved.buttons;
@@ -955,7 +953,7 @@ export class UiService {
         title: isMaxLevel ? 'Outpost at Max Level' : 'Deposit XP',
         subtitle: location.definitionId || 'Outpost',
       },
-      body,
+      pages: [{ body }],
       buttons,
     };
   }
@@ -1103,7 +1101,7 @@ export class UiService {
         title: 'Outpost Level Up!',
         subtitle: `Level ${fromLevel} → ${toLevel}`,
       },
-      body,
+      pages: [{ body }],
       buttons: [
         { id: 'continue', label: 'Continue', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
       ],

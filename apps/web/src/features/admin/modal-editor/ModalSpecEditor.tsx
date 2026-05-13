@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   ModalSpecV1,
+  ModalPageSpec,
   ModalBlock,
   ModalButton,
   ModalAction,
@@ -226,13 +227,32 @@ function resolveSpecClient(spec: ModalSpecV1, ctx: Record<string, any>): ModalSp
   if (resolved.header) {
     resolved.header = resolveAllStringsClient({ ...resolved.header }, ctx);
   }
-  if (Array.isArray(resolved.body)) {
-    resolved.body = resolved.body.map((b: any) => resolveBlockClient(b, ctx));
-  }
   if (Array.isArray(resolved.buttons)) {
     resolved.buttons = resolved.buttons.map((btn: any) => resolveAllStringsClient({ ...btn }, ctx));
   }
+  if (Array.isArray(resolved.pages)) {
+    resolved.pages = resolved.pages.map(page => ({
+      ...page,
+      header: page.header ? resolveAllStringsClient({ ...page.header }, ctx) : undefined,
+      body: page.body.map((b: any) => resolveBlockClient(b, ctx)),
+      buttons: page.buttons ? page.buttons.map((btn: any) => resolveAllStringsClient({ ...btn }, ctx)) : undefined,
+    }));
+  }
   return resolved;
+}
+
+function computeEffectivePageClient(spec: ModalSpecV1, pageIdx: number) {
+  let header: ModalHeader = { ...spec.header };
+  let buttons: ModalButton[] = [...spec.buttons];
+  let dismiss = { ...spec.dismiss };
+  const clampedIdx = Math.max(0, Math.min(pageIdx, spec.pages.length - 1));
+  for (let i = 0; i <= clampedIdx; i++) {
+    const page = spec.pages[i];
+    if (page.header) header = { ...header, ...page.header };
+    if (page.buttons !== undefined) buttons = page.buttons;
+    if (page.dismiss) dismiss = { ...dismiss, ...page.dismiss };
+  }
+  return { header, buttons, dismiss, body: spec.pages[clampedIdx].body };
 }
 
 // ─── Flatten payload JSON to dot-notation paths ──────────────────────────────
@@ -312,12 +332,14 @@ export const BUTTON_DEFAULTS: () => ModalButton = () => ({
   id: `btn_${Date.now()}`, label: 'Button', variant: 'secondary', action: { type: 'CLOSE_MODAL' },
 });
 
+export const DEFAULT_PAGE: () => ModalPageSpec = () => ({ body: [] });
+
 export const DEFAULT_SPEC: ModalSpecV1 = {
   version: 1, id: '', kind: 'custom',
   dismiss: { backdrop: true, x: true, escape: true },
   header: { title: '', subtitle: '' },
-  body: [],
   buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+  pages: [{ body: [] }],
 };
 
 const FROM_HINTS: Record<string, string> = {
@@ -416,7 +438,7 @@ function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: Modal
   );
 }
 
-// ─── Tag/Value Map Editor (used for clickReveal soundMap & fxMap) ────────────
+// ─── Tag/Value Map Editor ─────────────────────────────────────────────────────
 
 const FX_BUILTINS = ['shimmer', 'burst', 'glow', 'pulse'];
 
@@ -997,6 +1019,8 @@ function ActionEditor({ action, onChange }: { action: ModalAction; onChange: (a:
 
   const actionTypeFields: Record<string, React.ReactNode> = {
     CLOSE_MODAL: null,
+    NEXT_PAGE: null,
+    PREV_PAGE: null,
     OPEN_INVENTORY: null,
     OPEN_MISSIONS: null,
     OPEN_CRAFTING: null,
@@ -1211,9 +1235,286 @@ function ButtonList({ buttons, onChange }: { buttons: ModalButton[]; onChange: (
   );
 }
 
+// ─── Header Override Editor ───────────────────────────────────────────────────
+
+function HeaderOverrideEditor({
+  header,
+  onChange,
+}: {
+  header: Partial<ModalHeader> | undefined;
+  onChange: (h: Partial<ModalHeader> | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasOverride = !!header;
+
+  const enable = () => onChange({ title: '' });
+  const clear = () => { onChange(undefined); setOpen(false); };
+  const set = (updates: Partial<ModalHeader>) => onChange({ ...(header || {}), ...updates });
+
+  return (
+    <div style={{ marginBottom: 6, borderRadius: 6, border: '1px solid #1a1a3e', background: '#0a0a1e' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px' }}>
+        <button
+          type="button"
+          onClick={() => hasOverride && setOpen(o => !o)}
+          style={{ flex: 1, background: 'none', border: 'none', color: hasOverride ? '#e0e0ff' : '#3a3a5e', cursor: hasOverride ? 'pointer' : 'default', textAlign: 'left', fontSize: 12, padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {hasOverride && <span style={{ color: '#444', fontSize: 9 }}>{open ? '▼' : '▶'}</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Header Override
+          </span>
+          {hasOverride && <span style={{ fontSize: 10, color: '#7c3aed', background: '#3d2a6e', borderRadius: 3, padding: '0 5px' }}>overridden</span>}
+          {!hasOverride && <span style={{ fontSize: 11, color: '#3a3a5e', fontStyle: 'italic' }}>— inheriting from default</span>}
+        </button>
+        {!hasOverride && (
+          <button type="button" onClick={enable} className="me-btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>Override</button>
+        )}
+        {hasOverride && (
+          <button type="button" onClick={clear} style={{ background: 'none', border: 'none', color: '#ef444488', cursor: 'pointer', fontSize: 13, padding: '0 4px' }} title="Clear override">✕</button>
+        )}
+      </div>
+      {hasOverride && open && (
+        <div style={{ padding: '8px 10px', borderTop: '1px solid #1a1a3e' }}>
+          <Row>
+            <div style={{ flex: 2 }}>
+              <Field label="Title"><input style={inp} value={header?.title ?? ''} onChange={e => set({ title: e.target.value })} placeholder="Override title…" /></Field>
+            </div>
+            <div style={{ flex: 2 }}>
+              <Field label="Subtitle"><input style={inp} value={header?.subtitle ?? ''} onChange={e => set({ subtitle: e.target.value })} /></Field>
+            </div>
+          </Row>
+          <Row>
+            <div style={{ flex: 1 }}>
+              <Field label="Icon asset key"><input style={inp} value={header?.icon?.assetKey ?? ''} onChange={e => set({ icon: e.target.value ? { assetKey: e.target.value } : undefined })} /></Field>
+            </div>
+            <div style={{ flex: 1 }}>
+              <Field label="Banner asset key"><input style={inp} value={header?.banner?.assetKey ?? ''} onChange={e => set({ banner: e.target.value ? { assetKey: e.target.value } : undefined })} /></Field>
+            </div>
+          </Row>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Buttons Override Editor ──────────────────────────────────────────────────
+
+function ButtonsOverrideEditor({
+  buttons,
+  onChange,
+}: {
+  buttons: ModalButton[] | undefined;
+  onChange: (b: ModalButton[] | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasOverride = buttons !== undefined;
+
+  const enable = () => { onChange([BUTTON_DEFAULTS()]); setOpen(true); };
+  const clear = () => { onChange(undefined); setOpen(false); };
+
+  return (
+    <div style={{ marginBottom: 6, borderRadius: 6, border: '1px solid #1a1a3e', background: '#0a0a1e' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px' }}>
+        <button
+          type="button"
+          onClick={() => hasOverride && setOpen(o => !o)}
+          style={{ flex: 1, background: 'none', border: 'none', color: hasOverride ? '#e0e0ff' : '#3a3a5e', cursor: hasOverride ? 'pointer' : 'default', textAlign: 'left', fontSize: 12, padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {hasOverride && <span style={{ color: '#444', fontSize: 9 }}>{open ? '▼' : '▶'}</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Buttons Override
+          </span>
+          {hasOverride && <span style={{ fontSize: 10, color: '#7c3aed', background: '#3d2a6e', borderRadius: 3, padding: '0 5px' }}>overridden</span>}
+          {!hasOverride && <span style={{ fontSize: 11, color: '#3a3a5e', fontStyle: 'italic' }}>— inheriting from default</span>}
+        </button>
+        {!hasOverride && (
+          <button type="button" onClick={enable} className="me-btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>Override</button>
+        )}
+        {hasOverride && (
+          <button type="button" onClick={clear} style={{ background: 'none', border: 'none', color: '#ef444488', cursor: 'pointer', fontSize: 13, padding: '0 4px' }} title="Clear override">✕</button>
+        )}
+      </div>
+      {hasOverride && open && (
+        <div style={{ padding: '8px 10px', borderTop: '1px solid #1a1a3e' }}>
+          <ButtonList buttons={buttons!} onChange={b => onChange(b)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dismiss Override Editor ──────────────────────────────────────────────────
+
+function DismissOverrideEditor({
+  dismiss,
+  onChange,
+}: {
+  dismiss: ModalPageSpec['dismiss'];
+  onChange: (d: ModalPageSpec['dismiss']) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasOverride = !!dismiss;
+
+  const enable = () => { onChange({}); setOpen(true); };
+  const clear = () => { onChange(undefined); setOpen(false); };
+  const set = (k: 'backdrop' | 'x' | 'escape', v: boolean) => onChange({ ...(dismiss || {}), [k]: v });
+
+  return (
+    <div style={{ marginBottom: 6, borderRadius: 6, border: '1px solid #1a1a3e', background: '#0a0a1e' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px' }}>
+        <button
+          type="button"
+          onClick={() => hasOverride && setOpen(o => !o)}
+          style={{ flex: 1, background: 'none', border: 'none', color: hasOverride ? '#e0e0ff' : '#3a3a5e', cursor: hasOverride ? 'pointer' : 'default', textAlign: 'left', fontSize: 12, padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          {hasOverride && <span style={{ color: '#444', fontSize: 9 }}>{open ? '▼' : '▶'}</span>}
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Dismiss Override
+          </span>
+          {hasOverride && <span style={{ fontSize: 10, color: '#7c3aed', background: '#3d2a6e', borderRadius: 3, padding: '0 5px' }}>overridden</span>}
+          {!hasOverride && <span style={{ fontSize: 11, color: '#3a3a5e', fontStyle: 'italic' }}>— inheriting from default</span>}
+        </button>
+        {!hasOverride && (
+          <button type="button" onClick={enable} className="me-btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>Override</button>
+        )}
+        {hasOverride && (
+          <button type="button" onClick={clear} style={{ background: 'none', border: 'none', color: '#ef444488', cursor: 'pointer', fontSize: 13, padding: '0 4px' }} title="Clear override">✕</button>
+        )}
+      </div>
+      {hasOverride && open && (
+        <div style={{ padding: '8px 10px', borderTop: '1px solid #1a1a3e' }}>
+          <div style={{ display: 'flex', gap: 16, padding: '4px 0' }}>
+            {(['backdrop', 'x', 'escape'] as const).map(k => (
+              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#94a3b8', fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={dismiss?.[k] ?? false}
+                  onChange={e => set(k, e.target.checked)}
+                />
+                {k}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Page Editor ─────────────────────────────────────────────────────────────
+
+function PageEditor({
+  page,
+  onChange,
+  tokenPaths,
+}: {
+  page: ModalPageSpec;
+  onChange: (p: ModalPageSpec) => void;
+  tokenPaths?: string[];
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div>
+        <div className="me-group-title" style={{ marginBottom: 6 }}>Body Blocks</div>
+        <BlockList
+          blocks={page.body}
+          onChange={body => onChange({ ...page, body })}
+          tokenPaths={tokenPaths}
+        />
+      </div>
+      <HeaderOverrideEditor
+        header={page.header}
+        onChange={header => onChange({ ...page, header })}
+      />
+      <ButtonsOverrideEditor
+        buttons={page.buttons}
+        onChange={buttons => onChange({ ...page, buttons })}
+      />
+      <DismissOverrideEditor
+        dismiss={page.dismiss}
+        onChange={dismiss => onChange({ ...page, dismiss })}
+      />
+    </div>
+  );
+}
+
+// ─── Page Tab Strip ───────────────────────────────────────────────────────────
+
+function PageTabStrip({
+  pageCount,
+  activeIdx,
+  onSelect,
+  onAdd,
+  onDuplicate,
+  onDelete,
+}: {
+  pageCount: number;
+  activeIdx: number;
+  onSelect: (i: number) => void;
+  onAdd: () => void;
+  onDuplicate: (i: number) => void;
+  onDelete: (i: number) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginBottom: 12, padding: '8px 0', borderBottom: '1px solid #1a1a3e' }}>
+      {Array.from({ length: pageCount }, (_, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button
+            type="button"
+            onClick={() => onSelect(i)}
+            style={{
+              padding: '4px 10px', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+              borderRadius: 6, border: activeIdx === i ? '1px solid #7c3aed' : '1px solid #2a2a4e',
+              background: activeIdx === i ? 'rgba(124,58,237,0.2)' : '#0a0a1e',
+              color: activeIdx === i ? '#c4b5fd' : '#64748b',
+              fontWeight: activeIdx === i ? 700 : 400,
+            }}
+          >
+            Page {i + 1}
+          </button>
+          {activeIdx === i && (
+            <>
+              <button
+                type="button"
+                onClick={() => onDuplicate(i)}
+                title="Duplicate this page after current"
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 14, padding: '0 3px', lineHeight: 1 }}
+              >⧉</button>
+              <button
+                type="button"
+                onClick={() => onDelete(i)}
+                disabled={pageCount <= 1}
+                title="Delete this page"
+                style={{ background: 'none', border: 'none', color: pageCount <= 1 ? '#2a2a4e' : '#ef444488', cursor: pageCount <= 1 ? 'not-allowed' : 'pointer', fontSize: 14, padding: '0 3px', lineHeight: 1 }}
+              >×</button>
+            </>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={onAdd}
+        style={{
+          padding: '4px 10px', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer',
+          borderRadius: 6, border: '1px dashed #2a2a4e',
+          background: 'none', color: '#64748b',
+        }}
+      >
+        + Add Page
+      </button>
+    </div>
+  );
+}
+
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
 function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: string }) {
+  const [previewPage, setPreviewPage] = useState(0);
+
+  useEffect(() => {
+    setPreviewPage(0);
+  }, [spec.pages.length]);
+
   const resolvedSpec = useMemo(() => {
     let ctx: Record<string, any> | null = null;
     if (payloadJson) {
@@ -1223,6 +1524,10 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
     return spec;
   }, [spec, payloadJson]);
 
+  const totalPages = resolvedSpec.pages.length;
+  const clampedPage = Math.max(0, Math.min(previewPage, totalPages - 1));
+  const { header, body, buttons, dismiss } = computeEffectivePageClient(resolvedSpec, clampedPage);
+
   return (
     <div className="me-preview-outer">
       <div style={{ width: '100%' }}>
@@ -1231,28 +1536,48 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
             Client-side preview only — tokens resolved from payload above
           </div>
         )}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={() => setPreviewPage(p => Math.max(0, p - 1))}
+              disabled={clampedPage === 0}
+              style={{ background: 'none', border: '1px solid #2a2a4e', color: clampedPage === 0 ? '#2a2a4e' : '#94a3b8', borderRadius: 4, padding: '2px 8px', cursor: clampedPage === 0 ? 'not-allowed' : 'pointer', fontSize: 12 }}
+            >←</button>
+            <span style={{ fontSize: 11, color: '#64748b' }}>Preview: Page {clampedPage + 1} / {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPreviewPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={clampedPage === totalPages - 1}
+              style={{ background: 'none', border: '1px solid #2a2a4e', color: clampedPage === totalPages - 1 ? '#2a2a4e' : '#94a3b8', borderRadius: 4, padding: '2px 8px', cursor: clampedPage === totalPages - 1 ? 'not-allowed' : 'pointer', fontSize: 12 }}
+            >→</button>
+          </div>
+        )}
         <div className="gm-modal me-preview-modal">
-          {resolvedSpec.dismiss.x && (
+          {dismiss.x && (
             <button className="gm-close-btn" style={{ cursor: 'default' }} aria-label="Close">✕</button>
           )}
+          {spec.showPageIndicator && totalPages > 1 && (
+            <div className="gm-page-indicator">{clampedPage + 1} / {totalPages}</div>
+          )}
           <div className="gm-header">
-            {resolvedSpec.header.title ? (
-              <h2 className="gm-title">{resolvedSpec.header.title}</h2>
+            {header.title ? (
+              <h2 className="gm-title">{header.title}</h2>
             ) : (
               <h2 className="gm-title" style={{ color: '#333', fontStyle: 'italic' }}>(no title)</h2>
             )}
-            {resolvedSpec.header.subtitle && <p className="gm-subtitle">{resolvedSpec.header.subtitle}</p>}
+            {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
           </div>
           <div className="gm-body">
-            {resolvedSpec.body.length === 0 ? (
+            {body.length === 0 ? (
               <div style={{ color: '#333', fontSize: 12, textAlign: 'center', padding: '20px 0', fontStyle: 'italic' }}>(no body blocks)</div>
             ) : (
-              resolvedSpec.body.map((block, idx) => <BlockRenderer key={idx} block={block} />)
+              body.map((block, idx) => <BlockRenderer key={idx} block={block} />)
             )}
           </div>
-          {resolvedSpec.buttons.length > 0 && (
+          {buttons.length > 0 && (
             <div className="gm-footer">
-              {resolvedSpec.buttons.map(btn => (
+              {buttons.map(btn => (
                 <button key={btn.id} className={`gm-btn gm-btn-${btn.variant}`} style={{ cursor: 'default' }} disabled={btn.disabled}>
                   {btn.label}
                 </button>
@@ -1278,12 +1603,20 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
     return { ...DEFAULT_SPEC };
   }, [value]);
 
+  const [activePage, setActivePage] = useState(0);
   const [editorOpen, setEditorOpen] = useState(true);
   const [payloadOpen, setPayloadOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(true);
   const [payloadJson, setPayloadJson] = useState('');
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+
+  useEffect(() => {
+    const pages = spec.pages || [];
+    if (activePage >= pages.length && pages.length > 0) {
+      setActivePage(pages.length - 1);
+    }
+  }, [spec.pages?.length, activePage]);
 
   const dynamicTokenPaths = useMemo(() => {
     if (!payloadJson) return [];
@@ -1302,6 +1635,40 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
   const updateDismiss = useCallback((updates: Partial<ModalSpecV1['dismiss']>) => {
     onChange({ ...spec, dismiss: { ...spec.dismiss, ...updates } });
   }, [spec, onChange]);
+
+  const pages = spec.pages ?? [];
+  const currentPageIdx = Math.max(0, Math.min(activePage, pages.length - 1));
+  const currentPage = pages[currentPageIdx] ?? DEFAULT_PAGE();
+
+  const updatePages = useCallback((next: ModalPageSpec[]) => {
+    onChange({ ...spec, pages: next });
+  }, [spec, onChange]);
+
+  const updateCurrentPage = useCallback((page: ModalPageSpec) => {
+    const next = [...pages];
+    next[currentPageIdx] = page;
+    onChange({ ...spec, pages: next });
+  }, [spec, onChange, pages, currentPageIdx]);
+
+  const addPage = () => {
+    const next = [...pages, DEFAULT_PAGE()];
+    updatePages(next);
+    setActivePage(next.length - 1);
+  };
+
+  const duplicatePage = (i: number) => {
+    const clone = JSON.parse(JSON.stringify(pages[i]));
+    const next = [...pages.slice(0, i + 1), clone, ...pages.slice(i + 1)];
+    updatePages(next);
+    setActivePage(i + 1);
+  };
+
+  const deletePage = (i: number) => {
+    if (pages.length <= 1) return;
+    const next = pages.filter((_, j) => j !== i);
+    updatePages(next);
+    setActivePage(Math.min(i, next.length - 1));
+  };
 
   const loadRecentJobs = async () => {
     setJobsLoading(true);
@@ -1324,13 +1691,25 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
         <div className="me-card">
           <div className="me-group-title">Spec Options</div>
           <Row>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 2 }}>
               <Field label="Kind (e.g. mission_complete)">
                 <input style={inp} value={spec.kind} onChange={e => updateSpec({ kind: e.target.value })} />
               </Field>
             </div>
+            <div style={{ flex: 1 }}>
+              <Field label="Show Page Indicator">
+                <div style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!spec.showPageIndicator}
+                    onChange={e => updateSpec({ showPageIndicator: e.target.checked })}
+                  />
+                  <span style={{ color: '#94a3b8', fontSize: 12 }}>Show "N / Total" counter</span>
+                </div>
+              </Field>
+            </div>
           </Row>
-          <Field label="Dismiss Options">
+          <Field label="Default Dismiss Options">
             <div style={{ display: 'flex', gap: 16, padding: '6px 0' }}>
               {(['backdrop', 'x', 'escape'] as const).map(k => (
                 <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#94a3b8', fontSize: 13 }}>
@@ -1343,7 +1722,7 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Header</div>
+          <div className="me-group-title">Default Header</div>
           <Row>
             <div style={{ flex: 2 }}>
               <Field label="Title" hint="Supports ${path} tokens — e.g. ${results.message}, ${defId}, ${data.amount}. They're replaced from the payload at render time.">
@@ -1371,17 +1750,25 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Body Blocks</div>
-          <BlockList
-            blocks={spec.body}
-            onChange={blocks => updateSpec({ body: blocks })}
-            tokenPaths={dynamicTokenPaths}
-          />
+          <div className="me-group-title">Default Buttons</div>
+          <ButtonList buttons={spec.buttons} onChange={buttons => updateSpec({ buttons })} />
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Buttons</div>
-          <ButtonList buttons={spec.buttons} onChange={buttons => updateSpec({ buttons })} />
+          <div className="me-group-title">Pages</div>
+          <PageTabStrip
+            pageCount={pages.length}
+            activeIdx={currentPageIdx}
+            onSelect={setActivePage}
+            onAdd={addPage}
+            onDuplicate={duplicatePage}
+            onDelete={deletePage}
+          />
+          <PageEditor
+            page={currentPage}
+            onChange={updateCurrentPage}
+            tokenPaths={dynamicTokenPaths}
+          />
         </div>
       </Section>
 
