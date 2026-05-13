@@ -66,7 +66,7 @@ function mapRewardItem(r: any): { name: string; qty?: number; assetKey?: string;
   return {
     name: r.name || r.type || r.key || 'Reward',
     qty: r.qty ?? r.amount ?? 1,
-    assetKey: r.assetKey || (r.key ? `icons/${r.key}` : undefined),
+    assetKey: r.assetKey || r.key || undefined,
     rarity: r.rarity,
     note: r.note,
   };

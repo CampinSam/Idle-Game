@@ -173,7 +173,7 @@ export class UiService {
         .map((g: any) => ({
           name: this.resolveRewardName(g),
           qty: g.amount ?? g.qty ?? 1,
-          assetKey: g.key ? `icons/${g.key}` : this.resolveSystemRewardAssetKey(g.type),
+          assetKey: g.key ?? this.resolveSystemRewardAssetKey(g.type),
         }));
 
       body.push({
@@ -269,7 +269,7 @@ export class UiService {
         items: rewards.map((r: any) => ({
           name: this.resolveRewardName(r),
           qty: r.amount ?? 1,
-          assetKey: r.key ? `icons/${r.key}` : this.resolveSystemRewardAssetKey(r.type),
+          assetKey: r.key ?? this.resolveSystemRewardAssetKey(r.type),
         })),
       });
     }
