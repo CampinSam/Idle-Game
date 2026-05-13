@@ -1,8 +1,3 @@
-/* Imported here so the admin Tag Editor renders effects identically to
-   the live app. The shared catalog is the source of truth, but admin
-   doesn't go through Layout, so we re-import the keyframes file. */
-@import '../../../components/VisualEffects.css';
-
 .tag-editor-root {
   background: #0c0a1a;
   color: #e0d8ff;
