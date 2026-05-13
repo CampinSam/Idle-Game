@@ -2,7 +2,6 @@ import React, { useState, useEffect, useReducer, useCallback, useMemo } from 're
 import { adminApi } from '../adminApi';
 import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
 import SmartField from './components/SmartField';
-import ModalPreview from './components/ModalPreview';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount } from './components/structured/validation';
 
@@ -214,8 +213,6 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     }),
     [records, search]
   );
-
-  const isModalDefTable = getSchemaName() === 'ModalDef';
 
   const tableGroupsForSidebar = useMemo(() => {
     const grouped: Array<{ group: string; items: TableEntry[] }> = [];
@@ -641,11 +638,6 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               </div>
             </div>
 
-            {isModalDefTable && !isMobile && (
-              <div style={{ width: 360, borderLeft: '1px solid #1a1a3e', overflowY: 'auto', padding: 16, flexShrink: 0, background: '#0d0d1e' }}>
-                <ModalPreview spec={editorState.record?.spec ?? {}} />
-              </div>
-            )}
           </div>
         )}
       </div>

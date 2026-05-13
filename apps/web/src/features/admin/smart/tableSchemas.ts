@@ -53,7 +53,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, description: 'Admin-facing name' },
       description: { type: 'string', description: 'Notes on what this modal is for' },
       version: { type: 'number', default: 1, description: 'Schema version' },
-      spec: { type: 'json', default: {}, description: 'ModalSpecV1 overrides: { header?, body?, buttons?, replaceBody? }' },
+      spec: { type: 'modalSpec', default: {}, description: 'ModalSpecV1: { kind, dismiss, header, body, buttons }' },
       enabled: { type: 'boolean', default: true, description: 'Active?' },
     },
   },

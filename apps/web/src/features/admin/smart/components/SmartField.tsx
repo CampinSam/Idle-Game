@@ -13,6 +13,7 @@ import EffectListEditor from './structured/EffectListEditor';
 import ConsumableDataEditor from './structured/ConsumableDataEditor';
 import FrequencyEditor from './structured/FrequencyEditor';
 import DisplayStyleEditor from './structured/DisplayStyleEditor';
+import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 
 interface Props {
   fieldName: string;
@@ -304,6 +305,12 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'displayStyle') {
       return renderStructured(
         <DisplayStyleEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'modalSpec') {
+      return renderStructured(
+        <ModalSpecEditor value={value} onChange={onChange} />
       );
     }
 
