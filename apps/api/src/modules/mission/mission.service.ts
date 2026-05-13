@@ -17,7 +17,7 @@ import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, applyModifier, applyStatModifiers } from '@derp/shared';
-import { calculateTeamMP, calculateSuccessChance, SeededRng, durationSecondsToTicks } from '@derp/math';
+import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 
@@ -620,6 +620,39 @@ export class MissionService {
       await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
     }
 
+    const injuredEntityUntilTick = new Map<string, number>();
+    if (!success) {
+      const injuryRate = (def.injuryRate as number | null) ?? 0;
+      const injuryRecoveryTicksBase = (def.injuryRecoveryTicks as number | null) ?? 0;
+      if (injuryRate > 0 && injuryRecoveryTicksBase > 0) {
+        const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate);
+        if (injuryChance > 0) {
+          for (const entity of entities) {
+            if (rng.chance(injuryChance)) {
+              const vit = (entity.stats as any)?.VIT ?? 0;
+              const recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
+              const untilTick = currentTick + recoveryTicks;
+              injuredEntityUntilTick.set(entity.id, untilTick);
+              const existing = entityResultsMap.get(entity.id);
+              if (existing) {
+                existing.injured = true;
+              } else {
+                entityResultsMap.set(entity.id, {
+                  id: entity.id,
+                  name: (entity as any).name || 'Entity',
+                  oldLevel: 0,
+                  newLevel: 0,
+                  xpGained: 0,
+                  leveledUp: false,
+                  injured: true,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
     const entityResults = entityIds
       .map((id: string) => entityResultsMap.get(id))
       .filter((r): r is NonNullable<typeof r> => r != null);
@@ -643,7 +676,17 @@ export class MissionService {
       const ent = await (db as any).entity.findUnique({ where: { id: entityId } });
       if (ent) {
         const st = (ent.state as any) || {};
-        await (db as any).entity.update({ where: { id: entityId }, data: { state: { ...st, status: 'idle' } } });
+        if (injuredEntityUntilTick.has(entityId)) {
+          await (db as any).entity.update({
+            where: { id: entityId },
+            data: {
+              state: { ...st, status: 'injured' },
+              injuredUntilTick: injuredEntityUntilTick.get(entityId),
+            },
+          });
+        } else {
+          await (db as any).entity.update({ where: { id: entityId }, data: { state: { ...st, status: 'idle' } } });
+        }
       }
     }
 

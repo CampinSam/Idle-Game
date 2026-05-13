@@ -1,4 +1,4 @@
-export { calculateMP, calculateTeamMP, type EntityForMP } from './mission-power';
+export { calculateMP, calculateTeamMP, calculateInjuryChance, calculateInjuryRecoveryTicks, type EntityForMP } from './mission-power';
 export {
   STAT_KEYS,
   POWER_SCORE_WEIGHTS,

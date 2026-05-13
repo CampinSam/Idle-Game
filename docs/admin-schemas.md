@@ -578,6 +578,8 @@ Defines a mission or quest that players can send their entities (birds) on.
 | `difficulty` | number | No | 0 | Difficulty rating affecting success calculations |
 | `minSuccessChance` | int | No | 0 | Floor for success chance (0–100) |
 | `maxSuccessChance` | int | No | 100 | Ceiling for success chance (0–100) |
+| `injuryRate` | float | No | 0 | Injury probability modifier on mission failure (0.0–1.0). Per-entity chance = `D / (TMP + D) * IR` where D = difficulty, TMP = total team MP, IR = injuryRate. 0 or absent = no injuries. |
+| `injuryRecoveryTicks` | int | No | 0 | Base recovery duration in ticks. Actual ticks per entity = `round(base * (1 - VIT / (VIT + 100)))`. Must be > 0 for injuries to occur even when injuryRate > 0. |
 | `timer` | JSON | No | (see [Timer](#timer)) | Duration, boost, and skip settings (see [Timer](#timer)) |
 | `success` | JSON | No | `{"rewards":[],"effects":[],"text":[]}` | Outcome block for mission success (see [Outcome Blocks](#outcome-blocks)) |
 | `failure` | JSON | No | `{"rewards":[],"effects":[],"text":[]}` | Outcome block for mission failure (see [Outcome Blocks](#outcome-blocks)) |

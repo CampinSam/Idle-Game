@@ -3,7 +3,7 @@
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "\ud83d\udca0",
+      "symbol": "💠",
       "iconKey": "essence",
       "type": "HARD",
       "seasonId": null,
@@ -15,7 +15,7 @@
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "\ud83d\udc8e",
+      "symbol": "💎",
       "iconKey": "gems",
       "type": "PREMIUM",
       "seasonId": null,
@@ -27,7 +27,7 @@
     {
       "id": "season_frost_coin",
       "name": "Frost Coin",
-      "symbol": "\u2744\ufe0f",
+      "symbol": "❄️",
       "iconKey": "frost_coin",
       "type": "SEASONAL",
       "seasonId": "season_1",
@@ -39,7 +39,7 @@
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "\ud83e\ude99",
+      "symbol": "🪙",
       "iconKey": "soft_arcanium",
       "type": "SOFT",
       "seasonId": null,
@@ -228,7 +228,7 @@
     },
     {
       "id": "reconstruction_zone_alpha",
-      "displayName": "Reconstruction Zone \u2588",
+      "displayName": "Reconstruction Zone █",
       "biome": "urban_ruins",
       "modifiers": {
         "gatherBonus": 0.05
@@ -1127,7 +1127,7 @@
     },
     {
       "id": "display_recipe_default",
-      "name": "Recipe \u2014 Default",
+      "name": "Recipe — Default",
       "borderColor": "#8b5cf6",
       "backgroundImage": null,
       "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
@@ -1654,7 +1654,7 @@
     {
       "id": "bld_forge",
       "name": "The Forge",
-      "description": "A roaring crucible at the heart of the outpost \u2014 where raw materials are refined into wonders.",
+      "description": "A roaring crucible at the heart of the outpost — where raw materials are refined into wonders.",
       "tags": [
         "workshop",
         "crafting"
@@ -2149,7 +2149,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_mana_expedition",
@@ -2230,12 +2232,14 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_perp_1_data_sweep",
       "name": "Data Recovery Sweep",
-      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape\u2019s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They\u2019re not supposed to touch anything important. They\u2019re absolutely going to touch everything.",
+      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
       "difficulty": 1,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -2274,7 +2278,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_perp_2_incubator_extraction",
@@ -2324,7 +2330,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_perp_3_glitch_calibration",
@@ -2382,7 +2390,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_perp_4_first_prank",
@@ -2436,7 +2446,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_quick_gather",
@@ -2549,7 +2561,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_test_flags",
@@ -2680,7 +2694,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "mission_void_rift",
@@ -2760,7 +2776,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "quick_egg_hunt",
@@ -2856,9 +2874,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 10-25 XP",
-        "\ud83d\udee1\ufe0f 5-12 KXP",
-        "\ud83d\udc8e 5-15 soft_arcanium"
+        "⚡ 10-25 XP",
+        "🛡️ 5-12 KXP",
+        "💎 5-15 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -2867,7 +2885,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "quick_mail_run",
@@ -2963,9 +2983,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 8-18 XP",
-        "\ud83d\udee1\ufe0f 4-9 KXP",
-        "\ud83d\udc8e 3-10 soft_arcanium"
+        "⚡ 8-18 XP",
+        "🛡️ 4-9 KXP",
+        "💎 3-10 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -2974,7 +2994,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "quick_mushroom_patrol",
@@ -3070,9 +3092,9 @@
       "visibilityRequirements": [],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 15-35 XP",
-        "\ud83d\udee1\ufe0f 8-18 KXP",
-        "\ud83d\udc8e 8-20 soft_arcanium"
+        "⚡ 15-35 XP",
+        "🛡️ 8-18 KXP",
+        "💎 8-20 soft_arcanium"
       ],
       "enabled": true,
       "displayDefId": "display_quick_mission",
@@ -3081,7 +3103,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "standard_bandit_camp",
@@ -3200,10 +3224,10 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 60-120 XP",
-        "\ud83d\udee1\ufe0f 30-60 KXP",
-        "\ud83d\udc8e 30-70 soft_arcanium",
-        "\ud83c\udf81 1-2 mana_shard (15%)"
+        "⚡ 60-120 XP",
+        "🛡️ 30-60 KXP",
+        "💎 30-70 soft_arcanium",
+        "🎁 1-2 mana_shard (15%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3212,7 +3236,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "standard_cave_explore",
@@ -3324,10 +3350,10 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 40-80 XP",
-        "\ud83d\udee1\ufe0f 20-40 KXP",
-        "\ud83d\udc8e 20-50 soft_arcanium",
-        "\ud83c\udf81 1-3 iron_ore (10%)"
+        "⚡ 40-80 XP",
+        "🛡️ 20-40 KXP",
+        "💎 20-50 soft_arcanium",
+        "🎁 1-3 iron_ore (10%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3336,7 +3362,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     },
     {
       "id": "standard_tower_climb",
@@ -3456,11 +3484,11 @@
       ],
       "tags": [],
       "rewardPreview": [
-        "\u26a1 80-160 XP",
-        "\ud83d\udee1\ufe0f 40-80 KXP",
-        "\ud83d\udc8e 40-100 soft_arcanium",
-        "\ud83c\udf81 1-2 shadow_silk (20%)",
-        "\ud83c\udf81 1 crystal_bloom (10%)"
+        "⚡ 80-160 XP",
+        "🛡️ 40-80 KXP",
+        "💎 40-100 soft_arcanium",
+        "🎁 1-2 shadow_silk (20%)",
+        "🎁 1 crystal_bloom (10%)"
       ],
       "enabled": true,
       "displayDefId": "display_standard_mission",
@@ -3469,7 +3497,9 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
     }
   ],
   "recipeDefs": [
@@ -3959,7 +3989,7 @@
       "name": "Daily Login Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is paying off \u2014 here's a healthy supply of Arcanium.",
+        "body": "Your streak is paying off — here's a healthy supply of Arcanium.",
         "title": "Daily Check-In Reward",
         "rarity": "UNCOMMON",
         "iconKey": "soft_arcanium"
@@ -4022,7 +4052,7 @@
       "name": "Weekly Bonus Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is climbing \u2014 here's a solid Essence reward.",
+        "body": "Your streak is climbing — here's a solid Essence reward.",
         "title": "Weekly Bonus",
         "rarity": "RARE",
         "iconKey": "essence"
@@ -4085,7 +4115,7 @@
       "name": "Seasonal Check-In Reward",
       "version": 1,
       "presentation": {
-        "body": "The frost grows deeper \u2014 so do your rewards.",
+        "body": "The frost grows deeper — so do your rewards.",
         "title": "Seasonal Reward",
         "rarity": "RARE",
         "iconKey": "frost_coin"
@@ -4999,7 +5029,7 @@
                 "rows": [
                   {
                     "label": "#${index}",
-                    "value": "${item.name} \u00d7${item.qty}"
+                    "value": "${item.name} ×${item.qty}"
                   }
                 ]
               }
@@ -5022,7 +5052,7 @@
     {
       "id": "modal_clickreveal_smoke",
       "name": "Click Reveal Smoke Test",
-      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list \u2014 each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
+      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list — each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
       "version": 1,
       "spec": {
         "version": 1,
@@ -5069,7 +5099,7 @@
                     "rows": [
                       {
                         "label": "${item.rarity}",
-                        "value": "${item.name} \u00d7${item.qty}"
+                        "value": "${item.name} ×${item.qty}"
                       }
                     ]
                   }

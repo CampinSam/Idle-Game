@@ -31,3 +31,28 @@ export const calculateTeamMP = (entities: EntityForMP[]): number => {
   const synergyBonus = calculateSynergyBonus(entities.map((b) => b.traits));
   return baseMPTotal * (1 + synergyBonus);
 };
+
+/**
+ * Calculate the per-entity injury chance on mission failure.
+ * Formula: D / (TMP + D) * IR
+ * Returns a float 0–1 for use with rng.chance().
+ */
+export const calculateInjuryChance = (
+  difficulty: number,
+  totalTeamMP: number,
+  injuryRate: number,
+): number => {
+  if (injuryRate <= 0 || totalTeamMP + difficulty <= 0) return 0;
+  return (difficulty / (totalTeamMP + difficulty)) * injuryRate;
+};
+
+/**
+ * Calculate recovery ticks for an injured entity.
+ * Formula: baseRecoveryTicks * (1 - VIT / (VIT + 100)), rounded to nearest integer.
+ */
+export const calculateInjuryRecoveryTicks = (
+  baseRecoveryTicks: number,
+  vit: number,
+): number => {
+  return Math.round(baseRecoveryTicks * (1 - vit / (vit + 100)));
+};

@@ -121,6 +121,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       difficulty: { type: 'number', default: 0, description: 'Difficulty rating' },
       minSuccessChance: { type: 'number', default: 0, description: 'Min success chance (0–100)' },
       maxSuccessChance: { type: 'number', default: 100, description: 'Max success chance (0–100)' },
+      injuryRate: { type: 'number', default: 0, description: 'Injury rate on failure (0.0–1.0). 0 = no injuries. Formula: D/(TMP+D)*IR per entity.' },
+      injuryRecoveryTicks: { type: 'number', default: 0, description: 'Base recovery ticks for injured entities. Reduced by VIT: base*(1-VIT/(VIT+100)).' },
       timer: { type: 'timerSpec', description: 'Duration and skip settings' },
       success: { type: 'outcomeSpec', description: 'Success outcome' },
       failure: { type: 'outcomeSpec', description: 'Failure outcome' },

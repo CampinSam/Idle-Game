@@ -2773,6 +2773,18 @@
           "default": 100,
           "description": "Max success chance (0-100)"
         },
+        "injuryRate": {
+          "type": "number",
+          "default": 0,
+          "nullable": true,
+          "description": "Probability modifier for entity injury on mission failure (0.0–1.0). 0 or absent = no injuries. Per-entity chance = D/(TMP+D)*IR where D=difficulty, TMP=total team mission power, IR=injuryRate."
+        },
+        "injuryRecoveryTicks": {
+          "type": "integer",
+          "default": 0,
+          "nullable": true,
+          "description": "Base recovery duration in ticks for injured entities. Actual ticks = base*(1-VIT/(VIT+100)) rounded to nearest integer. 0 or absent = no injuries even if injuryRate>0."
+        },
         "timer": {
           "$ref": "#/complexTypes/Timer",
           "description": "Duration and skip settings"

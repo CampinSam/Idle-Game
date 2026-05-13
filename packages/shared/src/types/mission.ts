@@ -80,6 +80,8 @@ export interface MissionDefinition {
   name: string;
   description: string;
   difficulty: number;
+  injuryRate?: number;
+  injuryRecoveryTicks?: number;
   timer: import('./timer').Timer;
   success: OutcomeBlock;
   failure: OutcomeBlock;
