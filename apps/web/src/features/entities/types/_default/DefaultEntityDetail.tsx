@@ -47,6 +47,17 @@ type EntityEvent = {
 
 type CollapsedGroup = { event: EntityEvent; count: number };
 
+function timeAgo(dateStr: string): string {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 function collapseEvents(events: EntityEvent[]): CollapsedGroup[] {
   const result: CollapsedGroup[] = [];
   for (const ev of events) {
@@ -440,6 +451,9 @@ function EventRow({ group }: { group: CollapsedGroup }) {
             <span className="text-[10px] text-[rgba(167,139,250,0.7)] ml-1">{gainText}</span>
           )}
         </div>
+        {event.timestamp && (
+          <span className="text-[10px] text-[rgba(255,255,255,0.4)] shrink-0">{timeAgo(event.timestamp)}</span>
+        )}
       </div>
     );
   }
