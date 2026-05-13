@@ -499,16 +499,21 @@ input:focus {
 }
 
 /* ── PerfectSpecimenCard ── */
+@property --card-perfect-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
 .entity-card--derp-bird-perfect {
   border-color: transparent;
   background:
     linear-gradient(180deg, rgba(15, 8, 30, 0.95), rgba(8, 4, 18, 0.95)) padding-box,
-    conic-gradient(from 0deg, #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc) border-box;
+    conic-gradient(from var(--card-perfect-angle), #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc) border-box;
   border: 2px solid transparent;
   box-shadow:
-    0 0 16px rgba(244, 114, 182, 0.45),
-    0 0 32px rgba(125, 211, 252, 0.3),
-    inset 0 0 12px rgba(255, 255, 255, 0.06);
+    0 0 10px rgba(244, 114, 182, 0.35),
+    0 0 20px rgba(125, 211, 252, 0.2),
+    inset 0 0 8px rgba(255, 255, 255, 0.05);
   animation: perfect-spin-border 6s linear infinite;
 }
 .entity-card--derp-bird-perfect:hover {
@@ -563,7 +568,10 @@ input:focus {
   .entity-card--derp-bird-perfect { animation: none; }
   .entity-card--derp-bird-perfect::before { animation: none; }
 }
-@keyframes perfect-spin-border { to { transform: rotate(0deg); } }
+@keyframes perfect-spin-border {
+  from { --card-perfect-angle: 0deg; }
+  to   { --card-perfect-angle: 360deg; }
+}
 @keyframes perfect-twinkle {
   0%, 100% { opacity: 0.55; }
   50%       { opacity: 1; }
