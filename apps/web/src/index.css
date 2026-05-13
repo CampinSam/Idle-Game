@@ -1649,7 +1649,8 @@ input:focus {
   display: flex;
   flex-direction: column;
 }
-.page-outlet > .page-transition-wrapper {
+.page-outlet > .page-transition-wrapper,
+.body-card > .page-transition-wrapper {
   flex: 1;
   min-height: 0;
   display: flex;
