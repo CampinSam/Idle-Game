@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { getDifficultyDisplay } from '@derp/shared';
+import { calculateInjuryChance } from '@derp/math';
 import { Badge } from '../../../components/ui';
 import { EntityCard, EntityList } from '../../entities/components';
 import { getEntityMP } from '../../entities/utils';
@@ -95,6 +96,13 @@ export function MissionDetail(props: MissionDetailProps) {
   const teamMeetsMin = selectedEntities.length >= teamMin;
   const teamMeetsMax = selectedEntities.length <= teamMax;
   const canStart = teamMeetsMin && teamMeetsMax && canAffordMission && selectedEntities.length > 0;
+
+  const injuryRate = selectedDef.injuryRate ?? 0;
+  const injuryChance = useMemo(() => {
+    if (injuryRate <= 0) return 0;
+    return Math.round(calculateInjuryChance(difficulty, teamMP, injuryRate) * 100);
+  }, [difficulty, teamMP, injuryRate]);
+  const injuryColor = injuryChance >= 60 ? '#EF4444' : '#F59E0B';
 
   const grade = successChance >= 90 ? 'A' : successChance >= 75 ? 'B' : successChance >= 55 ? 'C' : successChance >= 35 ? 'D' : 'F';
   const gradeColor = successChance >= 75 ? '#10B981' : successChance >= 55 ? '#F59E0B' : '#EF4444';
@@ -309,6 +317,12 @@ export function MissionDetail(props: MissionDetailProps) {
                     val: successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low',
                     color: successColor,
                   },
+                  ...(injuryRate > 0 ? [{
+                    icon: '⚠️',
+                    name: 'Injury on Failure',
+                    val: `${injuryChance}% chance`,
+                    color: injuryColor,
+                  }] : []),
                 ].map((row, i) => (
                   <div key={i} className="flex items-center gap-2 text-[12px]">
                     <span className="text-base leading-none">{row.icon}</span>
