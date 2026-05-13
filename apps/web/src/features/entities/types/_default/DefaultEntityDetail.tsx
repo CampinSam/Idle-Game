@@ -115,10 +115,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const xpPercent = xpMax > 0 ? Math.min((xpCurrent / xpMax) * 100, 100) : 0;
 
   return (
-    <div className="flex flex-col gap-[10px]">
+    <div className="flex flex-col gap-[10px] flex-1 min-h-0">
 
       {/* ── Top section: portrait card + power/radar ── */}
-      <div className="grid grid-cols-2 gap-[10px] items-stretch">
+      <div className="grid grid-cols-2 gap-[10px] items-stretch shrink-0">
 
         {/* Portrait card — entity-detail__hero retained as CSS hook for variant ::after overlays */}
         <div className="entity-detail__hero [background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col items-center p-[6px] gap-[6px] relative">
@@ -227,10 +227,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       />
 
       {/* ── Middle section: progression tabs + body slots ── */}
-      <div className="grid grid-cols-2 gap-[10px] items-stretch">
+      <div className="grid grid-cols-2 gap-[10px] items-stretch flex-1 min-h-0">
 
         {/* Progression tab panel */}
-        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col">
+        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col min-h-0">
           <div
             className="flex border-b border-[rgba(139,92,246,0.2)] overflow-x-auto shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="tablist"
@@ -256,7 +256,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
             ))}
           </div>
 
-          <div className="p-[10px] flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
+          <div className="p-[10px] flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
             {activeTab === 'LEVEL' ? (
               <div className="flex flex-col gap-[10px]">
                 <div className="flex items-center justify-between gap-2">
@@ -288,26 +288,28 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
         </div>
 
         {/* Body slots & traits */}
-        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col">
-          <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.55)] mb-1.5">BODY SLOTS &amp; TRAITS</div>
-          <div className="h-px bg-[rgba(139,92,246,0.2)] mb-[4px]" />
-          {TRAIT_SLOT_ORDER.map((slot) => {
-            const value = traits[slot];
-            const archetypeColor = value
-              ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
-              : 'rgba(255,255,255,0.3)';
-            const displayValue = value
-              ? value.replace(/\b\w/g, (c) => c.toUpperCase())
-              : '—';
-            return (
-              <div key={slot} className="grid grid-cols-2 items-center py-1 border-b border-[rgba(255,255,255,0.06)] last:border-b-0 last:pb-0 first:pt-0">
-                <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-semibold">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
-                <span className="text-[11px] font-extrabold text-right" style={{ color: archetypeColor }}>
-                  {displayValue}
-                </span>
-              </div>
-            );
-          })}
+        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col min-h-0 overflow-hidden">
+          <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.55)] mb-1.5 shrink-0">BODY SLOTS &amp; TRAITS</div>
+          <div className="h-px bg-[rgba(139,92,246,0.2)] mb-[4px] shrink-0" />
+          <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
+            {TRAIT_SLOT_ORDER.map((slot) => {
+              const value = traits[slot];
+              const archetypeColor = value
+                ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
+                : 'rgba(255,255,255,0.3)';
+              const displayValue = value
+                ? value.replace(/\b\w/g, (c) => c.toUpperCase())
+                : '—';
+              return (
+                <div key={slot} className="grid grid-cols-2 items-center py-1 border-b border-[rgba(255,255,255,0.06)] last:border-b-0 last:pb-0 first:pt-0">
+                  <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-semibold">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+                  <span className="text-[11px] font-extrabold text-right" style={{ color: archetypeColor }}>
+                    {displayValue}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

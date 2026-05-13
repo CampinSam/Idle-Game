@@ -337,7 +337,7 @@ export default function EntityDetailPage() {
     : '';
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 pt-page-top">
       {renameOpen && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,8,30,0.72)] backdrop-blur-sm p-6"
@@ -500,7 +500,7 @@ export default function EntityDetailPage() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <EntityDetail entity={entity} variant="full" />
         </div>
       </div>
