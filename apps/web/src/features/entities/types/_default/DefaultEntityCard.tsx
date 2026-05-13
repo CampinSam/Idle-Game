@@ -6,17 +6,29 @@ import { getEntityArchetype } from '../../registry';
 import { getEntityMP, getEntityPower, getStarRating, normalizeStats } from '../../utils';
 import type { EntityCardProps } from '../../types';
 
+const BASE_CARD = [
+  'relative cursor-pointer rounded-xl overflow-hidden flex flex-col',
+  '[transition:transform_0.2s,border-color_0.2s,box-shadow_0.2s,opacity_0.2s]',
+  '[animation:card-enter_0.25s_ease-out_both]',
+  '[background:linear-gradient(180deg,#1e1850_0%,#151030_100%)]',
+  'border border-[rgba(139,92,246,0.22)] text-text-primary',
+  'hover:border-[rgba(139,92,246,0.6)]',
+].join(' ');
+
+const SELECTED_GLOW = 'border-[#8B5CF6] shadow-[0_0_12px_rgba(139,92,246,0.5),inset_0_0_8px_rgba(139,92,246,0.15)]';
+const ACTIVE_GLOW = '!border-[#8B5CF6] shadow-[0_0_12px_rgba(139,92,246,0.5),inset_0_0_8px_rgba(139,92,246,0.15)] bg-[rgba(139,92,246,0.15)]';
+
 function StarRating({ rating }: { rating: number }) {
   const fullStars = Math.floor(rating);
   const hasHalf = rating % 1 >= 0.5;
   return (
-    <div className="entity-card__stars">
+    <div className="flex">
       {Array.from({ length: fullStars }).map((_, i) => (
-        <span key={i} className="entity-card__star entity-card__star--full">★</span>
+        <span key={i} className="text-xs leading-none text-[#F59E0B]">★</span>
       ))}
-      {hasHalf && <span className="entity-card__star entity-card__star--half">★</span>}
+      {hasHalf && <span className="text-xs leading-none text-[#F59E0B] opacity-60">★</span>}
       {Array.from({ length: 5 - fullStars - (hasHalf ? 1 : 0) }).map((_, i) => (
-        <span key={`e${i}`} className="entity-card__star entity-card__star--empty">★</span>
+        <span key={`e${i}`} className="text-xs leading-none text-[#374151]">★</span>
       ))}
     </div>
   );
@@ -35,6 +47,7 @@ export default function DefaultEntityCard({
   qualityColors,
   extras,
   className = '',
+  compact = false,
 }: EntityCardProps) {
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'Warrior');
@@ -49,44 +62,51 @@ export default function DefaultEntityCard({
     onClick?.(entity);
   };
 
-  const cls = [
-    'entity-card',
-    `entity-card--${useCase}`,
-    selected && 'entity-card--selected',
-    disabled && 'entity-card--disabled',
-    active && 'entity-card--active',
-    className,
-  ].filter(Boolean).join(' ');
-
   if (useCase === 'browse') {
+    const cls = [
+      BASE_CARD,
+      'entity-card--browse',
+      'hover:-translate-y-0.5',
+      selected && ['entity-card--selected', SELECTED_GLOW].join(' '),
+      active && ['entity-card--active', ACTIVE_GLOW].join(' '),
+      disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
+      className,
+    ].filter(Boolean).join(' ');
+
     return (
       <div className={cls} onClick={handleClick}>
-        <div className="entity-card__art" style={{ background: archetypeDisplay.gradient }}>
-          <div className="entity-card__level-badge">
-            <span className="entity-card__level-label">LVL</span>
-            <span className="entity-card__level-num">{entity.level}</span>
+        <div
+          className="relative h-[120px] shrink-0 flex items-center justify-center overflow-hidden"
+          style={{ background: archetypeDisplay.gradient }}
+        >
+          <div className="absolute top-[6px] right-[6px] flex items-center gap-[3px] bg-[rgba(0,0,0,0.62)] border border-[rgba(139,92,246,0.55)] rounded-[20px] px-[7px] py-[2px] z-[2]">
+            <span className="text-[8px] font-black text-[rgba(167,139,250,0.85)] tracking-[0.5px]">LVL</span>
+            <span className="text-sm font-black text-white leading-none">{entity.level}</span>
           </div>
           <GameImage
             src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
             category="entities"
             alt={entity.name}
             fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-            className="entity-card__portrait entity-card__portrait--cover"
+            className="absolute inset-0 !w-full !h-full !rounded-none opacity-85 drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]"
           />
         </div>
-        <div className="entity-card__info">
-          <div className="entity-card__name-row">
-            <span className="entity-card__name">{entity.name}</span>
-            <span className="entity-card__status-dot">{statusDisplay.icon}</span>
+        <div className="p-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-extrabold text-text-primary tracking-[0.3px] whitespace-nowrap overflow-hidden text-ellipsis">{entity.name}</span>
+            <span className="text-[11px] shrink-0 leading-none">{statusDisplay.icon}</span>
           </div>
-          <div className="entity-card__class-row">
-            <span className="entity-card__class-badge" style={{ backgroundColor: archetypeDisplay.color }}>
+          <div className="mb-1.5">
+            <span
+              className="inline-block px-2 py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px]"
+              style={{ backgroundColor: archetypeDisplay.color }}
+            >
               {(archetype || 'UNKNOWN').toUpperCase()}
             </span>
           </div>
-          <div className="entity-card__bottom">
+          <div className="flex items-center justify-between">
             <StarRating rating={stars} />
-            <span className="entity-card__power">{power.toLocaleString()}</span>
+            <span className="text-[13px] font-black text-text-primary">{power.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -94,40 +114,73 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'mission') {
+    const cardWidth = compact ? 'w-[80px]' : 'w-[90px]';
+    const portraitSize = compact ? '!w-[72px] !h-[72px]' : '!w-[82px] !h-[82px]';
+    const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
+    const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
+    const idStyle = compact
+      ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
+      : 'block text-[11px] font-extrabold text-text-primary uppercase tracking-[0.5px] mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis';
+    const subStyle = compact
+      ? 'block text-[9px] text-text-secondary font-semibold'
+      : 'block text-[10px] text-text-secondary font-semibold';
+
+    const cls = [
+      BASE_CARD,
+      'entity-card--mission',
+      cardWidth,
+      'border-2 border-[var(--border)]',
+      active && ['entity-card--active', ACTIVE_GLOW].join(' '),
+      selected
+        ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
+        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
+      className,
+    ].filter(Boolean).join(' ');
+
     return (
       <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
-        <div className="entity-card__top" style={{ background: archetypeDisplay.gradient }}>
+        <div className="relative aspect-square flex items-center justify-center" style={{ background: archetypeDisplay.gradient }}>
           {onRemove && (
             <button
               type="button"
-              className="entity-card__remove"
+              className="absolute top-[6px] left-[6px] w-[22px] h-[22px] rounded-full bg-[rgba(239,68,68,0.85)] text-white text-xs font-black flex items-center justify-center cursor-pointer border-none z-[2] p-0"
               onClick={(e) => { e.stopPropagation(); onRemove(entity); }}
               aria-label="Remove entity"
             >✕</button>
           )}
-          <span className="entity-card__mp-badge">⚡{mp}</span>
+          <span className="absolute top-[6px] right-[6px] bg-[rgba(0,0,0,0.5)] border border-[rgba(255,255,255,0.15)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
           <GameImage
             src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
             category="entities"
             alt={entity.name}
             fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-            className="entity-card__portrait entity-card__portrait--round"
+            className={`${portraitSize} !rounded-full ${portraitShadow}`}
           />
         </div>
-        <div className="entity-card__bot">
-          <span className="entity-card__id">{entity.name}</span>
-          <span className="entity-card__sub">MP {mp}</span>
+        <div className={`${botPadding} bg-bg-card text-center`}>
+          <span className={idStyle}>{entity.name}</span>
+          <span className={subStyle}>MP {mp}</span>
         </div>
       </div>
     );
   }
 
   if (useCase === 'crafting') {
+    const cls = [
+      'entity-card--crafting',
+      'text-left bg-[rgba(15,12,38,0.7)] border border-[rgba(139,92,246,0.35)] rounded-xl p-3',
+      'flex flex-col gap-1 text-[#e2e8f0] cursor-pointer [transition:transform_0.12s_ease] font-[inherit]',
+      'hover:-translate-y-px',
+      selected && 'entity-card--selected outline outline-2 outline-[#f97316] outline-offset-2 !shadow-none',
+      disabled && 'opacity-40 cursor-not-allowed',
+      className,
+    ].filter(Boolean).join(' ');
+
     return (
       <button type="button" className={cls} onClick={handleClick} disabled={disabled}>
-        <div className="entity-card__crafting-head">
+        <div className="flex items-center gap-2.5">
           <div
-            className="entity-card__crafting-portrait-wrap"
+            className="w-14 h-14 rounded-full shrink-0 flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.12)]"
             style={{ background: archetypeDisplay.gradient }}
           >
             <GameImage
@@ -135,28 +188,28 @@ export default function DefaultEntityCard({
               category="entities"
               alt={entity.name}
               fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-              className="entity-card__portrait entity-card__crafting-portrait"
+              className="!w-full !h-full object-cover !rounded-full drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
             />
           </div>
-          <div className="entity-card__crafting-id">
-            <div className="entity-card__name">{entity.name}</div>
-            <div className="entity-card__meta">Lvl {entity.level}</div>
+          <div className="flex flex-col gap-[2px] min-w-0">
+            <div className="text-[13px] font-bold text-[#fff7ed]">{entity.name}</div>
+            <div className="text-[11px] text-[#94a3b8]">Lvl {entity.level}</div>
           </div>
         </div>
         {forecast && (
-          <div className="entity-card__forecast">
-            <span className="entity-card__cl">CL {forecast.craftingLuck.toFixed(0)}</span>
+          <div className="flex flex-wrap items-baseline justify-between mt-1.5 text-xs [font-variant-numeric:tabular-nums] gap-1">
+            <span className="text-[#fde68a] font-bold">CL {forecast.craftingLuck.toFixed(0)}</span>
             <span
-              className="entity-card__quality"
+              className="font-extrabold"
               style={{ color: qualityColors?.[forecast.expectedQuality] || '#94a3b8' }}
             >
               {forecast.expectedQualityLabel}
             </span>
-            <div className="entity-card__probs" aria-hidden>
+            <div className="flex w-full h-1.5 mt-1.5 rounded-[3px] overflow-hidden bg-[rgba(0,0,0,0.35)]" aria-hidden>
               {forecast.probabilities.map((p) => (
                 <div
                   key={p.key}
-                  className="entity-card__prob-seg"
+                  className="h-full [transition:width_0.3s_ease,opacity_0.3s_ease]"
                   style={{
                     width: `${Math.max(2, p.probability * 100)}%`,
                     background: qualityColors?.[p.key] || '#475569',
@@ -174,13 +227,39 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'outpost') {
+    const cardWidth = compact ? 'w-[80px]' : 'w-[90px]';
+    const portraitSize = compact ? '!w-[72px] !h-[72px]' : '!w-[82px] !h-[82px]';
+    const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
+    const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
+    const idStyle = compact
+      ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
+      : 'block text-[11px] font-extrabold text-text-primary uppercase tracking-[0.5px] mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis';
+    const subStyle = compact
+      ? 'block text-[9px] text-text-secondary font-semibold'
+      : 'block text-[10px] text-text-secondary font-semibold';
+
+    const cls = [
+      BASE_CARD,
+      'entity-card--outpost',
+      cardWidth,
+      'border-2 border-[var(--border)]',
+      active && ['entity-card--active', ACTIVE_GLOW].join(' '),
+      selected
+        ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
+        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
+      className,
+    ].filter(Boolean).join(' ');
+
     return (
       <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
-        <div className="entity-card__top entity-card__top--compact" style={{ background: archetypeDisplay.gradient }}>
+        <div
+          className="relative aspect-square flex items-center justify-center [background:linear-gradient(135deg,rgba(30,20,60,0.8),rgba(20,15,45,0.8))]"
+          style={{ background: archetypeDisplay.gradient }}
+        >
           {onRemove && (
             <button
               type="button"
-              className="entity-card__remove"
+              className="absolute top-[6px] left-[6px] w-[22px] h-[22px] rounded-full bg-[rgba(239,68,68,0.85)] text-white text-xs font-black flex items-center justify-center cursor-pointer border-none z-[2] p-0"
               onClick={(e) => { e.stopPropagation(); onRemove(entity); }}
               aria-label="Remove worker"
             >✕</button>
@@ -190,12 +269,12 @@ export default function DefaultEntityCard({
             category="entities"
             alt={entity.name}
             fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-            className="entity-card__portrait entity-card__portrait--round"
+            className={`${portraitSize} !rounded-full ${portraitShadow}`}
           />
         </div>
-        <div className="entity-card__bot">
-          <span className="entity-card__id">{entity.name}</span>
-          <span className="entity-card__sub">SPD {stats.SPD} · FOC {stats.FOC}</span>
+        <div className={`${botPadding} bg-bg-card text-center`}>
+          <span className={idStyle}>{entity.name}</span>
+          <span className={subStyle}>SPD {stats.SPD} · FOC {stats.FOC}</span>
         </div>
       </div>
     );

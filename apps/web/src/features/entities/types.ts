@@ -34,6 +34,7 @@ export interface EntityCardProps {
   qualityColors?: Record<string, string>;
   extras?: ReactNode;
   className?: string;
+  compact?: boolean;
 }
 
 export interface EntityDetailProps {

@@ -65,8 +65,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
   const power = getEntityPower(entity);
-  // Server-resolved equipped overlay; falls back to base if absent so this
-  // component still renders for legacy snapshots.
   const baseStats = useMemo(
     () => (entity as any).baseStats || normalizeStats(entity.stats),
     [entity],
@@ -75,9 +73,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const traits = (entity.traits || {}) as Partial<Record<typeof TRAIT_SLOT_ORDER[number], string>>;
   const entityBusy = isEntityBusy(entity);
 
-  // Build a slot → equipped item map by joining EntityEquipment rows
-  // (shipped on the entity payload) against the sync `items` table. Looking
-  // them up here keeps the per-slot tile a one-line read in the JSX below.
   const equippedBySlot = useMemo(() => {
     const map: Record<string, any> = {};
     const equipment: any[] = Array.isArray((entity as any).equipment) ? (entity as any).equipment : [];
@@ -87,9 +82,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       const equipData = item.definition?.equipData;
       const slot: string | undefined = equipData?.slot;
       if (!slot) continue;
-      // First-write wins per slot — accessory caps at 2 but the UI today
-      // shows a single tile per slot. The picker shows count via "+N" in
-      // the future; for now a single occupant is enough to convey "filled".
       if (!map[slot]) map[slot] = item;
     }
     return map;
@@ -99,8 +91,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     if (busy) return;
     const occupant = equippedBySlot[slot];
     if (occupant) {
-      // Tap-to-unequip when the slot is filled — keeps both equip and
-      // unequip a single tap from the entity sheet. Picker stays closed.
       setBusy(true);
       execute('UnequipItem', { entityId: entity.id, itemInstanceId: occupant.id })
         .catch((err) => console.error('[EntityDetail] UnequipItem failed:', err))
@@ -125,50 +115,41 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const xpPercent = xpMax > 0 ? Math.min((xpCurrent / xpMax) * 100, 100) : 0;
 
   return (
-    <div className="entity-detail">
+    <div className="flex flex-col gap-[10px]">
 
       {/* ── Top section: portrait card + power/radar ── */}
-      <div className="entity-detail__top">
+      <div className="grid grid-cols-2 gap-[10px] items-stretch">
 
-        {/* Portrait card */}
-        <div className="entity-detail__portrait-card">
+        {/* Portrait card — entity-detail__hero retained as CSS hook for variant ::after overlays */}
+        <div className="entity-detail__hero [background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col items-center p-[6px] gap-[6px] relative">
           {/* Level badge overlaps portrait */}
-          <div className="entity-detail__level-badge">
-            <span className="entity-detail__level-badge-icon">⚡</span>
-            <span className="entity-detail__level-badge-text">LEVEL {entity.level}</span>
+          <div className="absolute top-2 left-2 flex items-center gap-[3px] bg-[rgba(0,0,0,0.65)] border border-[rgba(139,92,246,0.6)] rounded-[20px] px-2 py-[3px] z-[3]">
+            <span className="text-[11px]">⚡</span>
+            <span className="text-[10px] font-black text-white tracking-[0.5px]">LEVEL {entity.level}</span>
           </div>
 
           {portraitBadge}
 
-          <div className="entity-detail__portrait-wrap">
+          <div className="flex-1 flex items-start justify-center w-full">
             <GameImage
               src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'full')}
-              // Same thumb URL the entities list painted — already in the
-              // browser cache on tap-through, so the detail page shows the
-              // portrait on the first frame and the full-res image just
-              // crossfades in once it finishes downloading.
               placeholderSrc={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
               category="entities"
               alt={entity.name}
               fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-              className="entity-detail__portrait"
+              className="!w-full !h-auto object-contain !rounded-[6px]"
               glow
               glowColor={archetypeDisplay.color}
             />
           </div>
 
-          {/* Equipment slots — equal square, icon + overlapping "+" */}
-          <div className="entity-detail__equip-row">
+          {/* Equipment slots */}
+          <div className="flex gap-[6px] w-full">
             {EQUIP_SLOTS.map(({ icon, label, slot }) => {
               const occupant = equippedBySlot[slot];
               const occupantIcon = occupant?.definition?.iconKey ?? null;
               const occupantName = occupant?.definition?.name ?? '';
               const filled = !!occupant;
-              // Pre-emptive grey-out: server rejects unequip of stat-bearing
-              // gear on a busy entity. We don't know what gear the player
-              // would equip into an empty slot, so leave empty slots tappable
-              // — the EquipPickerModal greys out individual stat-bearing
-              // candidates when the entity is busy.
               const blockedByBusy =
                 entityBusy && filled && gearWouldChangeStats(occupant);
               const slotDisabled = busy || blockedByBusy;
@@ -177,10 +158,24 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 : filled
                   ? `${occupantName} — tap to unequip`
                   : `Equip ${label.toLowerCase()}`;
+
+              const slotCls = [
+                'flex-1 aspect-square relative flex items-center justify-center',
+                'bg-[#0e0c1e] rounded-[10px] cursor-pointer overflow-hidden',
+                '[transition:border-color_0.15s,background_0.15s]',
+                filled
+                  ? 'border-[1.5px] border-solid border-[rgba(245,158,11,0.7)] bg-[rgba(245,158,11,0.08)]'
+                  : 'border-[1.5px] border-dashed border-[rgba(255,255,255,0.25)]',
+                blockedByBusy
+                  ? 'cursor-not-allowed opacity-40 grayscale-[0.7] !border-dashed !border-[rgba(255,255,255,0.15)] !bg-[#0e0c1e]'
+                  : 'enabled:hover:border-[rgba(139,92,246,0.7)] enabled:hover:bg-[rgba(139,92,246,0.1)]',
+                !blockedByBusy && slotDisabled && 'cursor-wait opacity-60',
+              ].filter(Boolean).join(' ');
+
               return (
                 <button
                   key={label}
-                  className={`entity-detail__equip-slot${filled ? ' entity-detail__equip-slot--filled' : ''}${blockedByBusy ? ' entity-detail__equip-slot--blocked' : ''}`}
+                  className={slotCls}
                   type="button"
                   aria-label={filled ? `Unequip ${occupantName}` : `Equip ${label}`}
                   aria-disabled={slotDisabled}
@@ -191,9 +186,12 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                   {filled && occupantIcon ? (
                     <GameIcon src={occupantIcon} size={32} />
                   ) : (
-                    <span className="entity-detail__equip-slot-icon">{icon}</span>
+                    <span className="text-[20px] opacity-50 leading-none">{icon}</span>
                   )}
-                  <span className="entity-detail__equip-slot-plus">{filled ? '×' : '+'}</span>
+                  <span className={[
+                    'absolute bottom-[3px] right-[5px] text-xs font-black leading-none',
+                    filled ? 'text-[rgba(248,113,113,0.95)]' : 'text-[rgba(255,255,255,0.6)]',
+                  ].join(' ')}>{filled ? '×' : '+'}</span>
                 </button>
               );
             })}
@@ -201,15 +199,15 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
         </div>
 
         {/* Power score + divider + radar */}
-        <div className="entity-detail__power-block">
-          <div className="entity-detail__power-header">
-            <div className="entity-detail__power-label">POWER SCORE</div>
-            <div className="entity-detail__power-value">{(power * progress).toFixed(2)}</div>
+        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] pt-3 px-[10px] pb-2 flex flex-col">
+          <div className="flex flex-col">
+            <div className="text-[10px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.6)] mb-[2px]">POWER SCORE</div>
+            <div className="text-[32px] font-black text-[#F59E0B] leading-none tracking-[-0.5px]">{(power * progress).toFixed(2)}</div>
           </div>
 
-          <div className="entity-detail__power-divider" />
+          <div className="h-px bg-[rgba(139,92,246,0.2)] mt-1" />
 
-          <div className="entity-detail__radar-wrap">
+          <div className="flex justify-center items-center flex-1 pt-[10px]">
             <StatRadarChart
               stats={baseStats}
               equippedStats={equippedStats}
@@ -229,17 +227,27 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       />
 
       {/* ── Middle section: progression tabs + body slots ── */}
-      <div className="entity-detail__middle">
+      <div className="grid grid-cols-2 gap-[10px] items-stretch">
 
         {/* Progression tab panel */}
-        <div className="entity-detail__prog-panel">
-          <div className="entity-detail__prog-tabs" role="tablist">
+        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col">
+          <div
+            className="flex border-b border-[rgba(139,92,246,0.2)] overflow-x-auto shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+          >
             {PROGRESSION_TABS.map((tab) => (
               <button
                 key={tab}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`entity-detail__prog-tab${activeTab === tab ? ' entity-detail__prog-tab--active' : ''}`}
+                className={[
+                  'flex-none py-2 px-2 text-[8px] font-extrabold tracking-[0.4px] bg-transparent border-none',
+                  'border-b-2 cursor-pointer whitespace-nowrap text-center',
+                  '[transition:color_0.15s,border-color_0.15s]',
+                  activeTab === tab
+                    ? 'text-[#A78BFA] border-b-[#A78BFA]'
+                    : 'text-[rgba(255,255,255,0.45)] border-b-transparent',
+                ].join(' ')}
                 onClick={() => setActiveTab(tab)}
                 type="button"
               >
@@ -248,38 +256,41 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
             ))}
           </div>
 
-          <div className="entity-detail__prog-content">
+          <div className="p-[10px] flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
             {activeTab === 'LEVEL' ? (
-              <div className="entity-detail__level-tab">
-                <div className="entity-detail__prog-row">
-                  <span className="entity-detail__prog-row-label">Current Level</span>
-                  <span className="entity-detail__prog-row-value">{entity.level} / {MAX_LEVEL}</span>
+              <div className="flex flex-col gap-[10px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Current Level</span>
+                  <span className="text-xs font-extrabold text-white">{entity.level} / {MAX_LEVEL}</span>
                 </div>
-                <div className="entity-detail__prog-row entity-detail__prog-row--xp">
-                  <span className="entity-detail__prog-row-label">XP</span>
-                  <div className="entity-detail__xp-bar-wrap">
-                    <div className="entity-detail__xp-bar" style={{ width: `${xpPercent * progress}%` }} />
+                <div className="flex flex-col items-stretch gap-[5px]">
+                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">XP</span>
+                  <div className="h-[7px] bg-[rgba(255,255,255,0.08)] rounded-[4px] overflow-hidden">
+                    <div
+                      className="h-full [background:linear-gradient(90deg,#7C3AED,#A78BFA)] rounded-[4px]"
+                      style={{ width: `${xpPercent * progress}%`, transition: 'none' }}
+                    />
                   </div>
-                  <span className="entity-detail__xp-nums">{xpCurrent} / {xpMax}</span>
+                  <span className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">{xpCurrent} / {xpMax}</span>
                 </div>
-                <div className="entity-detail__prog-row">
-                  <span className="entity-detail__prog-row-label">Stat Growth</span>
-                  <span className="entity-detail__prog-row-value">Normal</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Stat Growth</span>
+                  <span className="text-xs font-extrabold text-white">Normal</span>
                 </div>
               </div>
             ) : (
-              <div className="entity-detail__prog-placeholder">
-                <span className="entity-detail__prog-placeholder-icon">🔒</span>
+              <div className="flex flex-col items-center justify-center gap-2 py-5 text-[rgba(255,255,255,0.35)] text-xs italic">
+                <span className="text-[22px]">🔒</span>
                 <span>Coming soon</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Body slots & traits — no emojis, tighter rows */}
-        <div className="entity-detail__body-slots">
-          <div className="entity-detail__panel-title">BODY SLOTS &amp; TRAITS</div>
-          <div className="entity-detail__power-divider" />
+        {/* Body slots & traits */}
+        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col">
+          <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.55)] mb-1.5">BODY SLOTS &amp; TRAITS</div>
+          <div className="h-px bg-[rgba(139,92,246,0.2)] mb-[4px]" />
           {TRAIT_SLOT_ORDER.map((slot) => {
             const value = traits[slot];
             const archetypeColor = value
@@ -289,9 +300,9 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               ? value.replace(/\b\w/g, (c) => c.toUpperCase())
               : '—';
             return (
-              <div key={slot} className="entity-detail__slot-row">
-                <span className="entity-detail__slot-name">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
-                <span className="entity-detail__slot-value" style={{ color: archetypeColor }}>
+              <div key={slot} className="grid grid-cols-2 items-center py-1 border-b border-[rgba(255,255,255,0.06)] last:border-b-0 last:pb-0 first:pt-0">
+                <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-semibold">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+                <span className="text-[11px] font-extrabold text-right" style={{ color: archetypeColor }}>
                   {displayValue}
                 </span>
               </div>

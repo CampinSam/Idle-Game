@@ -70,7 +70,7 @@ export default function StatRadarChart({ stats, equippedStats, size = 200, maxVa
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       aria-hidden="true"
-      className="stat-radar-chart"
+      className="block overflow-visible"
     >
       {TICK_LEVELS.map((t) => {
         const pts = STATS.map((_, i) => {

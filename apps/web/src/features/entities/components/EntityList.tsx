@@ -210,6 +210,7 @@ export default function EntityList({
               forecast={forecast}
               qualityColors={qualityColors}
               onClick={handleCardClick}
+              compact={resolvedLayout === 'picker'}
             />
           );
         })}
