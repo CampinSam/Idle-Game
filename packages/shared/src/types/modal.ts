@@ -250,24 +250,33 @@ export const MODAL_BLOCK_TYPES = [
 /**
  * Compute the effective header/buttons/dismiss/body for a given page index
  * by applying page overrides cumulatively from page 0 through pageIdx.
+ *
+ * Root-level `header`, `buttons`, and `dismiss` are intentional defaults —
+ * they serve as the base that individual pages can override. They are NOT
+ * legacy; this is the intended multi-page inheritance design.
+ *
+ * Defensive: returns safe fallbacks if `spec.pages` is absent or empty
+ * (e.g. a DB record not yet migrated to the pages schema).
  */
 export function computeEffectivePage(
   spec: ModalSpecV1,
   pageIdx: number,
 ): { header: ModalHeader; buttons: ModalButton[]; dismiss: ModalSpecV1['dismiss']; body: ModalBlock[] } {
-  let header: ModalHeader = { ...spec.header };
-  let buttons: ModalButton[] = [...spec.buttons];
-  let dismiss = { ...spec.dismiss };
+  const pages = Array.isArray(spec.pages) && spec.pages.length > 0 ? spec.pages : [{ body: [] as ModalBlock[] }];
 
-  const clampedIdx = Math.max(0, Math.min(pageIdx, spec.pages.length - 1));
+  let header: ModalHeader = { ...(spec.header ?? { title: '' }) };
+  let buttons: ModalButton[] = [...(spec.buttons ?? [])];
+  let dismiss = { ...(spec.dismiss ?? { backdrop: true, x: true, escape: true }) };
+
+  const clampedIdx = Math.max(0, Math.min(pageIdx, pages.length - 1));
   for (let i = 0; i <= clampedIdx; i++) {
-    const page = spec.pages[i];
+    const page = pages[i];
     if (page.header) header = { ...header, ...page.header };
     if (page.buttons !== undefined) buttons = page.buttons;
     if (page.dismiss) dismiss = { ...dismiss, ...page.dismiss };
   }
 
-  return { header, buttons, dismiss, body: spec.pages[clampedIdx].body };
+  return { header, buttons, dismiss, body: pages[clampedIdx].body };
 }
 
 /**
