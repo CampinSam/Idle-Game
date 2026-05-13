@@ -124,10 +124,10 @@ export default function LoginPage() {
                 one Cardano wallet is enabled.
               </div>
             )}
-            <div className="wallet-btn-group">
+            <div className="flex flex-col gap-2">
               {hasEvm && (
                 <button
-                  className="wallet-btn wallet-btn-evm"
+                  className="flex items-center gap-2.5 w-full py-3 px-4 rounded-[11px] border text-sm font-medium cursor-pointer font-exo transition-[transform,box-shadow,opacity] duration-150 text-left bg-[rgba(99,102,241,0.08)] border-[rgba(99,102,241,0.28)] text-[#a5b4fc] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(99,102,241,0.18)] disabled:opacity-60 disabled:cursor-not-allowed"
                   onClick={handleEvmConnect}
                   disabled={connecting}
                 >
@@ -141,7 +141,7 @@ export default function LoginPage() {
               {detectedCardanoWallets.map((w) => (
                 <button
                   key={w.key}
-                  className="wallet-btn wallet-btn-cardano"
+                  className="flex items-center gap-2.5 w-full py-3 px-4 rounded-[11px] border text-sm font-medium cursor-pointer font-exo transition-[transform,box-shadow,opacity] duration-150 text-left bg-[rgba(0,51,173,0.1)] border-[rgba(0,102,255,0.28)] text-[#93c5fd] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(0,100,255,0.14)] disabled:opacity-60 disabled:cursor-not-allowed"
                   onClick={() => handleCardanoConnect(w.key)}
                   disabled={connecting}
                 >
