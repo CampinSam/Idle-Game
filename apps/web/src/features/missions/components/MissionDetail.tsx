@@ -149,14 +149,13 @@ export function MissionDetail(props: MissionDetailProps) {
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-2 page-transition-wrapper">
+    <div className="flex flex-col flex-1 min-h-0 pt-2">
       <div
         key={selectedDef.id}
-        className="overflow-hidden rounded-2xl border flex flex-col relative motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
+        className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0 motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
         style={{
           borderColor: display.borderColor,
           background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)',
-          height: 'calc(100dvh - 160px)',
           ...heroCss.vars,
         } as React.CSSProperties}
       >

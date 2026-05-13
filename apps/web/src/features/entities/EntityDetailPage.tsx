@@ -337,7 +337,7 @@ export default function EntityDetailPage() {
     : '';
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-page-top">
+    <div className="flex flex-col flex-1 min-h-0">
       {renameOpen && (
         <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,8,30,0.72)] backdrop-blur-sm p-6"
@@ -391,7 +391,7 @@ export default function EntityDetailPage() {
 
       <div
         className={[
-          'relative flex flex-col flex-1 min-h-0 rounded-2xl border border-[rgba(139,92,246,0.25)] bg-gradient-to-br from-[#1a1640] to-[#221a50] overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]',
+          'relative flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]',
           cardVariantClass,
         ].filter(Boolean).join(' ')}
         ref={cardRef}

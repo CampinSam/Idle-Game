@@ -160,7 +160,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto pt-page-top [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <BannerCarousel />
 
       <Card className="mb-4">

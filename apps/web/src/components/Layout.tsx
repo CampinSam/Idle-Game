@@ -230,16 +230,18 @@ export default function Layout() {
       )}
 
       <main className="content page-outlet">
-        <div key={location.key} className="page-transition-wrapper">
-          <Suspense
-            fallback={
-              <div className="page-content-loader">
-                <div className="page-content-spinner" />
-              </div>
-            }
-          >
-            <Outlet />
-          </Suspense>
+        <div className="body-card">
+          <div key={location.key} className="page-transition-wrapper">
+            <Suspense
+              fallback={
+                <div className="page-content-loader">
+                  <div className="page-content-spinner" />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </div>
         </div>
       </main>
 

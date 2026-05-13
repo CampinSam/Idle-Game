@@ -18,11 +18,10 @@ import {
   BUSY_CONSUMABLE_TOOLTIP,
 } from './utils/statChangeHelpers';
 
-const PAGE_WRAPPER_CLASS = 'page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top';
+const PAGE_WRAPPER_CLASS = 'flex flex-col flex-1 min-h-0';
 const CARD_CLASS =
-  'bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] ' +
-  'rounded-2xl flex flex-col flex-1 min-h-0 overflow-hidden overscroll-contain ' +
-  '[-webkit-overflow-scrolling:touch] relative motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+  'flex flex-col flex-1 min-h-0 overflow-hidden overscroll-contain ' +
+  '[-webkit-overflow-scrolling:touch] relative';
 
 const BTN_BASE =
   'px-3.5 py-1.5 text-[11px] font-bold rounded-lg text-white border-0 cursor-pointer ' +

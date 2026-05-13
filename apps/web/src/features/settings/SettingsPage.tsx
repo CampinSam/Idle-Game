@@ -44,9 +44,8 @@ const CHAIN_COLORS: Record<string, string> = {
 };
 
 const WRAPPER_CARD =
-  'bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.25)] ' +
-  'rounded-2xl flex flex-col max-h-full min-h-0 overflow-x-hidden overflow-y-auto ' +
-  '[-webkit-overflow-scrolling:touch] overscroll-contain motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+  'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  '[-webkit-overflow-scrolling:touch] overscroll-contain';
 
 const TAB_BASE =
   "flex-1 py-[11px] px-1.5 text-[11px] font-bold tracking-[0.6px] uppercase " +
@@ -236,7 +235,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 overflow-hidden pt-page-top">
+    <div className="flex flex-col flex-1 min-h-0">
       <div className={WRAPPER_CARD}>
 
         <div className="px-5 pt-5 pb-[18px] bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">

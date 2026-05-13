@@ -6,10 +6,8 @@ function getInitials(username?: string | null, email?: string | null): string {
 }
 
 const CARD_CLASS =
-  '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)] ' +
-  'border border-[rgba(139,92,246,0.25)] rounded-2xl flex flex-col max-h-full min-h-0 ' +
-  'overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain ' +
-  'motion-safe:animate-[card-enter_0.2s_ease-out_both]';
+  'flex flex-col flex-1 min-h-0 ' +
+  'overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain';
 
 const FIELD_LABEL_CLASS =
   'text-[12px] text-text-secondary font-semibold tracking-[0.3px] uppercase';
@@ -25,7 +23,7 @@ export default function ProfilePage() {
     : null;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden pt-page-top page-transition-wrapper">
+    <div className="flex flex-col flex-1 min-h-0">
       <div className={CARD_CLASS}>
 
         <div className="flex items-center gap-4 pt-5 pb-[18px] px-5 bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">

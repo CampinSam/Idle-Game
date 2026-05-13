@@ -1625,13 +1625,21 @@ input:focus {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
-  padding: 60px 16px calc(64px + env(safe-area-inset-bottom, 0px) + 16px) 16px;
+  overflow: hidden;
+  padding: 68px 8px calc(64px + env(safe-area-inset-bottom, 0px) + 8px) 8px;
   max-width: 520px;
   margin: 0 auto;
   width: 100%;
+}
+.body-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1a1640 0%, #221a50 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
 }
 .page-outlet {
   position: relative;

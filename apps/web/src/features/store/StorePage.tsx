@@ -303,8 +303,8 @@ export default function StorePage() {
   const mainCurrencies = ['soft_arcanium', 'hard_essence', 'premium_gems'];
 
   return (
-    <div className="pt-page-top flex flex-col flex-1 min-h-0 overflow-hidden page-transition-wrapper">
-      <div className={`${CARD_BG} border border-[rgba(139,92,246,0.25)] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0 motion-safe:animate-[card-enter_0.2s_ease-out_both]`}>
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <div className="overflow-hidden flex flex-col flex-1 min-h-0">
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
           {mainCurrencies.map((id) => (

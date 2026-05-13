@@ -11,7 +11,7 @@ export default function LocationDetailPage() {
 
   if (!outpost) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 pt-page-top">
+      <div className="flex flex-col flex-1 min-h-0">
         <div className="text-center py-[60px] px-5 text-text-secondary text-[15px]">Loading outpost...</div>
       </div>
     );
@@ -24,8 +24,8 @@ export default function LocationDetailPage() {
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-page-top">
-      <div className="flex flex-col min-h-0 max-h-full overflow-x-hidden overflow-y-auto overscroll-contain bg-gradient-to-b from-[#1a1350] to-[#13103a] border border-border rounded-2xl pb-4">
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain pb-4">
         <nav className="flex items-center gap-2 px-3.5 py-2.5 text-xs text-text-secondary bg-white/[0.02] border-b border-border" aria-label="Breadcrumb">
           <button
             type="button"

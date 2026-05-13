@@ -5,7 +5,7 @@ import { getLocationViews } from './registry';
 
 const PAGE_CLASS =
   'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
-  '[-webkit-overflow-scrolling:touch] overscroll-contain pt-page-top';
+  '[-webkit-overflow-scrolling:touch] overscroll-contain';
 
 function LocationsPageSkeleton() {
   return (

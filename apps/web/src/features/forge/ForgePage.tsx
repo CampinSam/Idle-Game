@@ -180,7 +180,7 @@ export default function ForgePage() {
 
   if (!workshopChecked) {
     return (
-      <div className="flex flex-col gap-3 pt-page-top pb-6">
+      <div className="flex flex-col gap-3 overflow-y-auto overscroll-contain pb-6">
         {backButton}
         <div className="text-center text-text-secondary text-[14px] py-12">Validating workshop…</div>
       </div>
@@ -188,7 +188,7 @@ export default function ForgePage() {
   }
 
   return (
-    <div className="flex flex-col gap-3 pt-page-top pb-6">
+    <div className="flex flex-col gap-3 overflow-y-auto overscroll-contain pb-6">
       {backButton}
 
       <div className="px-3">
