@@ -19,6 +19,8 @@ export const BUSY_EQUIP_TOOLTIP =
   'Finish or cancel the current job to change equipment.';
 export const BUSY_CONSUMABLE_TOOLTIP =
   'Finish or cancel the current job to use stat-changing items.';
+export const BUSY_PICKER_TOOLTIP =
+  'Currently busy';
 
 export function getEntityStatus(entity: any): string {
   return ((entity?.status ?? entity?.state?.status) ?? 'idle')

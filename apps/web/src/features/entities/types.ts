@@ -26,6 +26,7 @@ export interface EntityCardProps {
   useCase?: EntityUseCase;
   selected?: boolean;
   disabled?: boolean;
+  disabledTooltip?: string;
   active?: boolean;
   onClick?: (entity: any) => void;
   onRemove?: (entity: any) => void;

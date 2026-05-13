@@ -3,6 +3,7 @@ import { useCommand } from '../../../../../hooks/useCommand';
 import { audioEngine } from '../../../../../services/AudioEngine';
 import { EntityCard, EntityList } from '../../../../entities/components';
 import { EmptyState, OutpostCard, OutpostCardTitle } from '../../../../../components/ui';
+import { BUSY_PICKER_TOOLTIP } from '../../../../inventory/utils/statChangeHelpers';
 
 interface OutpostWorkersCardProps {
   outpost: any;
@@ -18,7 +19,6 @@ export function OutpostWorkersCard({ outpost, entities, workersData }: OutpostWo
 
   const id = outpost.id;
   const maxWorkers = Number(outpost.maxWorkers ?? 2);
-  const idleEntities = entities.filter((e: any) => e.status === 'idle');
   const emptySlotCount = Math.max(0, maxWorkers - workersData.length);
 
   const handleAssignWorker = async (entityId: string) => {
@@ -138,11 +138,12 @@ export function OutpostWorkersCard({ outpost, entities, workersData }: OutpostWo
             Select an Entity
           </h4>
           <EntityList
-            entities={idleEntities}
+            entities={entities}
             mode="picker"
             useCase="outpost"
+            busyDisabledTooltip={BUSY_PICKER_TOOLTIP}
             onSelect={(entity) => handleAssignWorker(entity.id)}
-            emptyMessage="No idle entities. Pull one back from a mission."
+            emptyMessage="No entities available."
           />
         </div>
       )}

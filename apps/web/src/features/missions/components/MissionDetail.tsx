@@ -14,6 +14,7 @@ import {
   resolveDisplay,
   type ReqStatusEntry,
 } from './missionUtils';
+import { BUSY_PICKER_TOOLTIP } from '../../inventory/utils/statChangeHelpers';
 
 interface MissionDetailProps {
   selectedDef: any;
@@ -342,12 +343,13 @@ export function MissionDetail(props: MissionDetailProps) {
                 Select an Entity
               </h4>
               <EntityList
-                entities={idleEntities}
+                entities={entities}
                 mode="picker"
                 useCase="mission"
                 selectedIds={selectedEntities.filter((_id, i) => i !== activeSlotIndex)}
                 disabledIds={selectedEntities.filter((_id, i) => i !== activeSlotIndex)}
                 activeId={activeSlotIndex !== null ? selectedEntities[activeSlotIndex] : null}
+                busyDisabledTooltip={BUSY_PICKER_TOOLTIP}
                 onSelect={(entity) => {
                   setSelectedEntities((prev) => {
                     const next = [...prev];
@@ -361,7 +363,7 @@ export function MissionDetail(props: MissionDetailProps) {
                   setShowEntityPicker(false);
                   setActiveSlotIndex(null);
                 }}
-                emptyMessage="No idle entities."
+                emptyMessage="No entities available."
               />
             </div>
           )}

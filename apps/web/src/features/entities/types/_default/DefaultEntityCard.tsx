@@ -27,6 +27,7 @@ export default function DefaultEntityCard({
   useCase = 'browse',
   selected = false,
   disabled = false,
+  disabledTooltip,
   active = false,
   onClick,
   onRemove,
@@ -94,7 +95,7 @@ export default function DefaultEntityCard({
 
   if (useCase === 'mission') {
     return (
-      <div className={cls} onClick={handleClick}>
+      <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
         <div className="entity-card__top" style={{ background: archetypeDisplay.gradient }}>
           {onRemove && (
             <button
@@ -174,7 +175,7 @@ export default function DefaultEntityCard({
 
   if (useCase === 'outpost') {
     return (
-      <div className={cls} onClick={handleClick}>
+      <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
         <div className="entity-card__top entity-card__top--compact" style={{ background: archetypeDisplay.gradient }}>
           {onRemove && (
             <button

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityCard from './EntityCard';
 import { COLLECTION_OPTIONS, SORT_OPTIONS, passesFilter, getFilteredSortedEntities } from '../entityListUtils';
+import { isEntityBusy } from '../../inventory/utils/statChangeHelpers';
 import type {
   EntityListLayout,
   EntityListMode,
@@ -37,6 +38,8 @@ export interface EntityListProps {
   qualityColors?: Record<string, string>;
   emptyMessage?: string;
   className?: string;
+  /** When set, entities where isEntityBusy() is true are visually disabled with this tooltip. */
+  busyDisabledTooltip?: string;
 }
 
 export default function EntityList({
@@ -63,6 +66,7 @@ export default function EntityList({
   qualityColors,
   emptyMessage = 'No entities found.',
   className = '',
+  busyDisabledTooltip,
 }: EntityListProps) {
   const navigate = useNavigate();
 
@@ -188,9 +192,12 @@ export default function EntityList({
         )}
         {filtered.map((entity: any) => {
           const isSelected = selectedIds?.includes(entity.id) ?? false;
-          const isDisabled = disabledIds?.includes(entity.id) ?? false;
+          const isExplicitlyDisabled = disabledIds?.includes(entity.id) ?? false;
+          const isBusy = busyDisabledTooltip ? isEntityBusy(entity) : false;
+          const isDisabled = isExplicitlyDisabled || isBusy;
           const isActive = activeId === entity.id;
           const forecast = forecasts?.[entity.id] ?? null;
+          const tooltip = isBusy && !isExplicitlyDisabled ? busyDisabledTooltip : undefined;
           return (
             <EntityCard
               key={entity.id}
@@ -198,6 +205,7 @@ export default function EntityList({
               useCase={useCase}
               selected={isSelected}
               disabled={isDisabled}
+              disabledTooltip={tooltip}
               active={isActive}
               forecast={forecast}
               qualityColors={qualityColors}
