@@ -18,9 +18,9 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
 
   useEffect(() => {
     setPageIndex(0);
-  }, [spec.id]);
+  }, [spec]);
 
-  const totalPages = spec.pages.length;
+  const totalPages = Array.isArray(spec.pages) ? spec.pages.length : 0;
   const { header, body, buttons, dismiss } = computeEffectivePage(spec, pageIndex);
 
   useEffect(() => {
