@@ -33,6 +33,15 @@ interface ShopItem {
   limitedUntil?: string;
 }
 
+const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
+
+const BADGE_CLASS =
+  'inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-black tracking-[1px] text-white uppercase';
+
+const CONTENT_CHIP_CLASS =
+  'inline-flex items-center gap-1 bg-black/25 border border-[rgba(139,92,246,0.15)] ' +
+  'rounded-[6px] px-[7px] py-[3px] text-[12px] font-bold text-[#d8b4fe]';
+
 function useCountdown(limitedUntil?: string) {
   const [label, setLabel] = useState('');
   useEffect(() => {
@@ -56,7 +65,7 @@ function useCountdown(limitedUntil?: string) {
 
 function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) {
   return (
-    <span className="store-cost">
+    <span className="inline-flex items-center gap-1.5 flex-wrap">
       {cost.map((e, i) => (
         <ItemQty key={i} src={e.id} amount={e.amount} size={size} />
       ))}
@@ -65,7 +74,14 @@ function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) 
 }
 
 function SkeletonCard({ wide }: { wide?: boolean }) {
-  return <div className={`store-skeleton ${wide ? 'store-skeleton-wide' : ''}`} />;
+  return (
+    <div
+      className={
+        `rounded-[14px] ${CARD_BG} bg-[length:200%_100%] animate-[skeleton-shimmer_1.5s_infinite] ` +
+        (wide ? 'h-[130px]' : 'h-[90px]')
+      }
+    />
+  );
 }
 
 function FeaturedCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
@@ -73,30 +89,32 @@ function FeaturedCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopIte
   const accentColor = item.badgeColor || '#8b5cf6';
   return (
     <div
-      className="store-featured-card"
+      className={`relative ${CARD_BG} border border-[rgba(139,92,246,0.25)] [border-top:2px_solid_var(--accent,#8b5cf6)] rounded-[14px] overflow-hidden cursor-pointer transition-[border-color,transform] duration-150 active:scale-[0.99] motion-safe:animate-[card-enter_0.2s_ease-out_both]`}
       style={{ '--accent': accentColor } as React.CSSProperties}
       onClick={() => onOpen(item)}
     >
-      <div className="store-featured-shimmer" />
+      <div className="absolute top-0 left-0 w-[40%] h-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent pointer-events-none animate-[store-shimmer_3s_infinite_linear]" />
       {item.badge && (
-        <span className="store-badge" style={{ background: accentColor }}>{item.badge}</span>
+        <span className={`absolute top-2.5 left-2.5 ${BADGE_CLASS}`} style={{ background: accentColor }}>
+          {item.badge}
+        </span>
       )}
       {countdown && (
-        <span className="store-countdown">⏱ {countdown}</span>
+        <span className="absolute top-3 right-3 text-[11px] text-[#fbbf24] font-bold">⏱ {countdown}</span>
       )}
-      <div className="store-featured-body">
-        <div className="store-featured-name">{item.name}</div>
-        <div className="store-featured-desc">{item.description}</div>
-        <div className="store-featured-contents">
+      <div className="pt-9 px-3.5 pb-3 flex flex-col gap-1.5">
+        <div className="text-[16px] font-black text-white tracking-[0.3px]">{item.name}</div>
+        <div className="text-[12px] text-text-secondary leading-[1.5]">{item.description}</div>
+        <div className="flex flex-wrap gap-[5px] mt-1">
           {item.contents.map((c, i) => (
-            <span key={i} className="store-content-chip">
+            <span key={i} className={CONTENT_CHIP_CLASS}>
               <ItemQty src={c.id} amount={c.amount} size={14} />
             </span>
           ))}
         </div>
       </div>
-      <div className="store-featured-footer">
-        <button className="store-price-btn">
+      <div className="px-3.5 pt-2.5 pb-3.5 flex justify-end">
+        <button className="store-price-btn bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] rounded-lg px-3.5 py-[7px] cursor-pointer transition-colors duration-150 hover:bg-[rgba(139,92,246,0.25)]">
           <CostDisplay cost={item.cost} size={15} />
         </button>
       </div>
@@ -109,22 +127,34 @@ function CurrencyCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopIte
   const isBestValue = item.badge === 'BEST VALUE';
   return (
     <div
-      className={`store-currency-card ${isBestValue ? 'best-value' : ''}`}
+      className={
+        `relative ${CARD_BG} border rounded-[14px] px-2 py-3.5 flex flex-col items-center gap-2 ` +
+        `cursor-pointer transition-[border-color,transform] duration-150 active:scale-[0.97] ` +
+        `motion-safe:animate-[card-enter_0.2s_ease-out_both] text-center ` +
+        (isBestValue
+          ? 'border-[rgba(139,92,246,0.5)] shadow-[0_0_12px_rgba(139,92,246,0.15)]'
+          : 'border-[rgba(139,92,246,0.2)]')
+      }
       onClick={() => onOpen(item)}
     >
       {item.badge && (
-        <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
+        <span
+          className={`absolute -top-px left-1/2 -translate-x-1/2 ${BADGE_CLASS} !text-[8px] !px-1.5 whitespace-nowrap`}
+          style={{ background: item.badgeColor || '#8b5cf6' }}
+        >
+          {item.badge}
+        </span>
       )}
       {mainContent && (
-        <div className="store-currency-icon">
+        <div className="flex flex-col items-center gap-1">
           <GameIcon src={mainContent.id} size={40} />
-          <div className="store-currency-amount">{mainContent.amount.toLocaleString()}</div>
+          <div className="text-[18px] font-black text-white">{mainContent.amount.toLocaleString()}</div>
         </div>
       )}
-      <div className="store-currency-name">{item.name.replace(/ Pack$/, '')}</div>
-      <div className="store-currency-price">
+      <div className="text-[10px] text-text-secondary font-semibold">{item.name.replace(/ Pack$/, '')}</div>
+      <div className="flex flex-col items-center gap-0.5">
         {item.originalCost && (
-          <div className="store-original-cost">
+          <div className="line-through opacity-50">
             <CostDisplay cost={item.originalCost} size={12} />
           </div>
         )}
@@ -137,22 +167,24 @@ function CurrencyCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopIte
 function BundleCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   return (
     <div
-      className="store-bundle-card"
+      className={`relative ${CARD_BG} border border-[rgba(139,92,246,0.2)] rounded-[14px] pt-7 px-3 pb-3 flex flex-col gap-1.5 cursor-pointer transition-[border-color,transform] duration-150 active:scale-[0.98] motion-safe:animate-[card-enter_0.2s_ease-out_both]`}
       onClick={() => onOpen(item)}
     >
       {item.badge && (
-        <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
+        <span className={`absolute top-2.5 left-2.5 ${BADGE_CLASS}`} style={{ background: item.badgeColor || '#8b5cf6' }}>
+          {item.badge}
+        </span>
       )}
-      <div className="store-bundle-name">{item.name}</div>
-      <div className="store-bundle-desc">{item.description}</div>
-      <div className="store-bundle-contents">
+      <div className="text-[13px] font-extrabold text-white">{item.name}</div>
+      <div className="text-[11px] text-text-secondary leading-[1.5]">{item.description}</div>
+      <div className="flex flex-wrap gap-1 mt-1">
         {item.contents.map((c, i) => (
-          <span key={i} className="store-content-chip">
+          <span key={i} className={CONTENT_CHIP_CLASS}>
             <ItemQty src={c.id} amount={c.amount} size={14} />
           </span>
         ))}
       </div>
-      <div className="store-bundle-price">
+      <div className="mt-auto pt-2 border-t border-[rgba(139,92,246,0.1)]">
         <CostDisplay cost={item.cost} size={14} />
       </div>
     </div>
@@ -162,17 +194,19 @@ function BundleCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem)
 function ItemCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) => void }) {
   return (
     <div
-      className="store-item-card"
+      className={`relative ${CARD_BG} border border-[rgba(139,92,246,0.2)] rounded-[14px] pt-7 px-3 pb-3 flex flex-col items-center gap-2 cursor-pointer text-center transition-[border-color,transform] duration-150 active:scale-[0.98] motion-safe:animate-[card-enter_0.2s_ease-out_both]`}
       onClick={() => onOpen(item)}
     >
       {item.badge && (
-        <span className="store-badge" style={{ background: item.badgeColor || '#8b5cf6' }}>{item.badge}</span>
+        <span className={`absolute top-2.5 left-2.5 ${BADGE_CLASS}`} style={{ background: item.badgeColor || '#8b5cf6' }}>
+          {item.badge}
+        </span>
       )}
-      <div className="store-item-icon">
+      <div className="p-1.5 bg-black/20 rounded-[10px] border border-[rgba(139,92,246,0.1)]">
         {item.contents[0] && <GameIcon src={item.contents[0].id} size={36} />}
       </div>
-      <div className="store-item-name">{item.name}</div>
-      <div className="store-item-price">
+      <div className="text-[13px] font-extrabold text-white">{item.name}</div>
+      <div className="mt-auto">
         <CostDisplay cost={item.cost} size={14} />
       </div>
     </div>
@@ -269,76 +303,83 @@ export default function StorePage() {
   const mainCurrencies = ['soft_arcanium', 'hard_essence', 'premium_gems'];
 
   return (
-    <div className="store-wrapper page-transition-wrapper">
-      <div className="store-card">
-      <div className="store-balance-bar">
-        {mainCurrencies.map((id) => (
-          <span key={id} className="store-balance-chip">
-            <ItemQty src={id} amount={currencyBalances[id] ?? 0} size={16} />
-          </span>
-        ))}
-      </div>
+    <div className="pt-page-top flex flex-col flex-1 min-h-0 overflow-hidden page-transition-wrapper">
+      <div className={`${CARD_BG} border border-[rgba(139,92,246,0.25)] rounded-2xl overflow-hidden flex flex-col flex-1 min-h-0 motion-safe:animate-[card-enter_0.2s_ease-out_both]`}>
 
-      <div className="store-tab-bar">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            className={`store-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {TAB_LABELS[tab]}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
+          {mainCurrencies.map((id) => (
+            <span key={id} className="flex items-center gap-1.5 bg-black/35 border border-[rgba(139,92,246,0.2)] rounded-full px-2.5 py-[5px] text-[13px] font-bold text-[#e2d9f3]">
+              <ItemQty src={id} amount={currencyBalances[id] ?? 0} size={16} />
+            </span>
+          ))}
+        </div>
 
-      <div className="store-content">
-        {loading ? (
-          <div className="store-skeleton-list">
-            {activeTab === 'featured' ? (
-              <>
-                <SkeletonCard wide />
-                <SkeletonCard wide />
-                <SkeletonCard wide />
-              </>
-            ) : (
-              <>
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </>
-            )}
-          </div>
-        ) : tabItems.length === 0 ? (
-          <div className="store-empty">Nothing here yet. Check back soon!</div>
-        ) : activeTab === 'featured' ? (
-          <div className="store-featured-list">
-            {tabItems.map((item) => (
-              <FeaturedCard key={item.id} item={item} onOpen={handleOpenModal} />
-            ))}
-          </div>
-        ) : activeTab === 'currency' ? (
-          <div className="store-currency-grid">
-            {tabItems.map((item) => (
-              <CurrencyCard key={item.id} item={item} onOpen={handleOpenModal} />
-            ))}
-          </div>
-        ) : activeTab === 'bundle' ? (
-          <div className="store-bundle-grid">
-            {tabItems.map((item) => (
-              <BundleCard key={item.id} item={item} onOpen={handleOpenModal} />
-            ))}
-          </div>
-        ) : (
-          <div className="store-item-grid">
-            {tabItems.map((item) => (
-              <ItemCard key={item.id} item={item} onOpen={handleOpenModal} />
-            ))}
-          </div>
-        )}
-      </div>
-      </div>
+        <div className="flex bg-black/25 border-y border-[rgba(139,92,246,0.12)] overflow-hidden">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              className={
+                `flex-1 py-2.5 px-1 text-[11px] font-bold tracking-[0.5px] uppercase bg-transparent ` +
+                `border-0 border-b-2 cursor-pointer transition-[color,border-color] duration-150 ` +
+                (activeTab === tab
+                  ? 'text-[#c4b5fd] border-b-derp-purple'
+                  : 'text-text-secondary border-b-transparent')
+              }
+              onClick={() => setActiveTab(tab)}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-3.5">
+          {loading ? (
+            <div className="flex flex-col gap-2.5">
+              {activeTab === 'featured' ? (
+                <>
+                  <SkeletonCard wide />
+                  <SkeletonCard wide />
+                  <SkeletonCard wide />
+                </>
+              ) : (
+                <>
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </>
+              )}
+            </div>
+          ) : tabItems.length === 0 ? (
+            <div className="text-center py-10 px-5 text-text-secondary text-[14px]">Nothing here yet. Check back soon!</div>
+          ) : activeTab === 'featured' ? (
+            <div className="flex flex-col gap-2.5">
+              {tabItems.map((item) => (
+                <FeaturedCard key={item.id} item={item} onOpen={handleOpenModal} />
+              ))}
+            </div>
+          ) : activeTab === 'currency' ? (
+            <div className="grid grid-cols-3 gap-2">
+              {tabItems.map((item) => (
+                <CurrencyCard key={item.id} item={item} onOpen={handleOpenModal} />
+              ))}
+            </div>
+          ) : activeTab === 'bundle' ? (
+            <div className="grid grid-cols-2 gap-2.5">
+              {tabItems.map((item) => (
+                <BundleCard key={item.id} item={item} onOpen={handleOpenModal} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5">
+              {tabItems.map((item) => (
+                <ItemCard key={item.id} item={item} onOpen={handleOpenModal} />
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }
