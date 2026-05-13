@@ -624,12 +624,20 @@ export class MissionService {
       .map((id: string) => entityResultsMap.get(id))
       .filter((r): r is NonNullable<typeof r> => r != null);
 
+    const characterEvents = entityResults
+      .filter(r => r.leveledUp || r.injured)
+      .map(r => r.leveledUp
+        ? { type: 'level_up' as const, entityName: r.name, newLevel: r.newLevel }
+        : { type: 'injured' as const, entityName: r.name },
+      );
+
     const results = {
       success,
       rewards: grantedRewards,
       seed: mission.data.seed,
       ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
       entityResults,
+      ...(characterEvents.length > 0 ? { characterEvents } : {}),
     };
 
     for (const entityId of entityIds) {

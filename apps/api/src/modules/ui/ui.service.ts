@@ -87,16 +87,16 @@ export class UiService {
         modalDefId = def?.readyModalDefId ?? def?.activeModalDefId ?? null;
         break;
       case 'completed':
-        generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
+        generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
         modalDefId = def?.completedModalDefId ?? null;
         break;
       case 'failed':
-        generated = this.buildCompletedJobModal(job, defName, typeLabel, results);
+        generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
         modalDefId = def?.failedModalDefId ?? def?.completedModalDefId ?? null;
         break;
       default:
         generated = job.status === 'collected'
-          ? this.buildCompletedJobModal(job, defName, typeLabel, results)
+          ? await this.buildCompletedJobModal(job, defName, typeLabel, results)
           : this.buildGenericJobModal(job, defName, typeLabel);
         modalDefId = def?.completedModalDefId ?? null;
     }
@@ -232,12 +232,58 @@ export class UiService {
     return generated;
   }
 
-  private buildCompletedJobModal(job: any, defName: string, typeLabel: string, results: any): any {
+  private async buildCompletedJobModal(job: any, defName: string, typeLabel: string, results: any): Promise<any> {
     const isSuccess = job.type === 'MissionJob' ? results?.success !== false : true;
-    const rewards: any[] = results?.rewards || [];
+    const rawRewards: any[] = results?.rewards || [];
     const texts: string[] = results?.texts || [];
+    const characterEvents: any[] = results?.characterEvents || [];
     const data = job.data as any;
     const isUpgrade = !!data?.upgradeToLevel;
+
+    // --- Merge duplicate reward entries by type+key ---
+    const mergedMap = new Map<string, any>();
+    for (const r of rawRewards) {
+      const key = `${r.type}::${r.key ?? r.type}`;
+      const existing = mergedMap.get(key);
+      if (existing) {
+        existing.amount = (existing.amount ?? 0) + (r.amount ?? 1);
+      } else {
+        mergedMap.set(key, { ...r, amount: r.amount ?? 1 });
+      }
+    }
+    const merged = Array.from(mergedMap.values());
+
+    // --- Fetch sort keys for currencies and items ---
+    const XP_TYPES = new Set(['entity_xp', 'keeper_xp']);
+    const RARITY_ORDER: Record<string, number> = {
+      COMMON: 0, UNCOMMON: 1, SCARCE: 2, ADVANCED: 3,
+      RARE: 4, ULTRA_RARE: 5, EPIC: 6, MYTHIC: 7, LEGENDARY: 8,
+    };
+
+    const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);
+    const itemKeys = merged.filter(r => r.type === 'item' && r.key).map(r => r.key as string);
+
+    const [currencyDefs, itemDefs] = await Promise.all([
+      currencyKeys.length > 0
+        ? (this.prisma as any).currencyDef.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, sortOrder: true } })
+        : Promise.resolve([]),
+      itemKeys.length > 0
+        ? (this.prisma as any).itemDefinition.findMany({ where: { id: { in: itemKeys } }, select: { id: true, rarity: true } })
+        : Promise.resolve([]),
+    ]);
+
+    const currencySortOrder = new Map<string, number>((currencyDefs as any[]).map((c: any) => [c.id, c.sortOrder ?? 0]));
+    const itemRarity = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.id, RARITY_ORDER[d.rarity] ?? 0]));
+
+    // --- Sort: XP → currencies (by sortOrder) → items (by rarity) ---
+    const rewards = merged.sort((a: any, b: any) => {
+      const ga = XP_TYPES.has(a.type) ? 0 : a.type === 'currency' ? 1 : 2;
+      const gb = XP_TYPES.has(b.type) ? 0 : b.type === 'currency' ? 1 : 2;
+      if (ga !== gb) return ga - gb;
+      if (a.type === 'currency') return (currencySortOrder.get(a.key) ?? 0) - (currencySortOrder.get(b.key) ?? 0);
+      if (a.type === 'item') return (itemRarity.get(a.key) ?? 0) - (itemRarity.get(b.key) ?? 0);
+      return 0;
+    });
 
     let title: string;
     if (job.type === 'MissionJob') {
@@ -272,6 +318,10 @@ export class UiService {
           assetKey: r.key ?? this.resolveSystemRewardAssetKey(r.type),
         })),
       });
+    }
+
+    if (characterEvents.length > 0) {
+      body.push({ type: 'characterEvents', items: characterEvents });
     }
 
     if (job.type === 'MissionJob' && !isSuccess) {

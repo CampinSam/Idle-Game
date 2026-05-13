@@ -75,7 +75,8 @@ export type ModalBlock =
   | ModalBlockGiftReveal
   | ModalBlockList
   | ModalBlockClickReveal
-  | ModalBlockError;
+  | ModalBlockError
+  | ModalBlockCharacterEvents;
 
 export interface ModalBlockRichText {
   type: 'richText';
@@ -166,6 +167,16 @@ export interface ModalBlockClickReveal {
 export interface ModalBlockError {
   type: 'error';
   message: string;
+  from?: string;
+}
+
+export type CharacterEvent =
+  | { type: 'level_up'; entityName: string; newLevel: number }
+  | { type: 'injured'; entityName: string };
+
+export interface ModalBlockCharacterEvents {
+  type: 'characterEvents';
+  items: CharacterEvent[];
   from?: string;
 }
 
