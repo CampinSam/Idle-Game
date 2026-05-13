@@ -1,5 +1,6 @@
 import ItemQty from '../../../../components/ItemQty';
 import type { ItemCardProps } from '../../types';
+import { rarityTextClass } from '../../../../utils/rarityColors';
 
 export default function DefaultItemCard({
   item,
@@ -20,6 +21,10 @@ export default function DefaultItemCard({
     ? `Lvl ${item.level ?? 1}`
     : '';
 
+  const rarityLabel = (item.rarity ?? 'COMMON')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c: string) => c.toUpperCase());
+
   return (
     <div className={cls} onClick={() => !disabled && onClick?.(item)}>
       <div className="item-card__img-wrap">
@@ -32,6 +37,7 @@ export default function DefaultItemCard({
         />
       </div>
       <span className="item-card__name">{item.name}</span>
+      <span className={`item-card__rarity ${rarityTextClass(item.rarity)}`}>{rarityLabel}</span>
       <span className="item-card__sub">{sub}</span>
     </div>
   );
