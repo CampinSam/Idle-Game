@@ -1,21 +1,6 @@
 import { resolveAssetUrl, DEFAULT_ICON_URL } from '../../../../utils/iconResolver';
+import { rarityTextClass } from '../../../../utils/rarityColors';
 import type { ItemDetailPanelProps } from '../../types';
-
-const RARITY_COLORS: Record<string, string> = {
-  COMMON:    '#8a8a9a',
-  UNCOMMON:  '#4dcb6a',
-  SCARCE:    '#4db0da',
-  ADVANCED:  '#8a7aee',
-  RARE:      '#a98aff',
-  ULTRA_RARE:'#e060ff',
-  EPIC:      '#ff6090',
-  MYTHIC:    '#ffc040',
-  LEGENDARY: '#ffe040',
-};
-
-function rarityColor(r?: string) {
-  return RARITY_COLORS[(r || 'COMMON').toUpperCase()] ?? RARITY_COLORS.COMMON;
-}
 
 function rarityLabel(r?: string) {
   return (r || 'COMMON').replace(/_/g, ' ');
@@ -60,8 +45,7 @@ export default function DefaultItemDetailPanel({ item, actions, className = '' }
 
       <div className="flex-1 min-w-0">
         <span
-          className="text-[9px] font-bold uppercase tracking-[0.5px] px-[6px] py-[1px] rounded-[4px] inline-block mb-1"
-          style={{ color: rarityColor(item.rarity) }}
+          className={`text-[9px] font-bold uppercase tracking-[0.5px] px-[6px] py-[1px] rounded-[4px] inline-block mb-1 ${rarityTextClass(item.rarity)}`}
         >
           {rarityLabel(item.rarity)}
         </span>

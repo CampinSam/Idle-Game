@@ -1,4 +1,5 @@
 import { resolveAssetUrl, DEFAULT_ICON_URL } from '../../../../utils/iconResolver';
+import { rarityTextClass } from '../../../../utils/rarityColors';
 import type { ItemDetailPanelProps } from '../../types';
 
 function MissingIcon() {
@@ -21,18 +22,6 @@ function MissingIcon() {
 function rarityLabel(r?: string) {
   return (r || 'COMMON').replace(/_/g, ' ');
 }
-
-const RARITY_COLOR: Record<string, string> = {
-  COMMON:     'text-[#8a8a9a]',
-  UNCOMMON:   'text-[#4dcb6a]',
-  SCARCE:     'text-[#4db0da]',
-  ADVANCED:   'text-[#8a7aee]',
-  RARE:       'text-[#a98aff]',
-  ULTRA_RARE: 'text-[#e060ff]',
-  EPIC:       'text-[#ff6090]',
-  MYTHIC:     'text-[#ffc040]',
-  LEGENDARY:  'text-[#ffe040]',
-};
 
 export default function LootboxItemDetailPanel({
   item,
@@ -70,7 +59,7 @@ export default function LootboxItemDetailPanel({
         <span
           className={[
             'text-[9px] font-bold uppercase tracking-[0.5px] px-1.5 py-px rounded inline-block mb-1',
-            RARITY_COLOR[rarity] ?? 'text-[#8a8a9a]',
+            rarityTextClass(rarity),
           ].join(' ')}
         >
           {rarityLabel(rarity)}

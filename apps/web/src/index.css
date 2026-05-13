@@ -15,6 +15,15 @@
   --text-secondary: #9ca3af;
   --border: #2a2055;
   --page-top-gap: 8px;
+  --rarity-common: #8a8a9a;
+  --rarity-uncommon: #4dcb6a;
+  --rarity-scarce: #4db0da;
+  --rarity-advanced: #8a7aee;
+  --rarity-rare: #a98aff;
+  --rarity-ultra-rare: #e060ff;
+  --rarity-epic: #ff6090;
+  --rarity-mythic: #ffc040;
+  --rarity-legendary: #ffe040;
 }
 
 * {

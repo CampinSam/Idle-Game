@@ -6,6 +6,7 @@ import {
   gearWouldChangeStats,
   BUSY_EQUIP_TOOLTIP,
 } from '../../inventory/utils/statChangeHelpers';
+import { rarityTextClass } from '../../../utils/rarityColors';
 
 const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 
@@ -49,14 +50,6 @@ function summarizeStats(item: any): string {
   return parts.join(' · ');
 }
 
-const RARITY_COLOR: Record<string, string> = {
-  common: 'text-[#cbd5e1]',
-  uncommon: 'text-[#34d399]',
-  rare: 'text-[#60a5fa]',
-  epic: 'text-[#c084fc]',
-  legendary: 'text-[#fbbf24]',
-  mythic: 'text-[#f472b6]',
-};
 
 export default function EquipPickerModal({
   isOpen,
@@ -183,7 +176,7 @@ export default function EquipPickerModal({
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-[#c4b5fd]">
                         {rarity && (
-                          <span className={`font-extrabold tracking-[0.4px] uppercase text-[10px] ${RARITY_COLOR[rarity.toLowerCase()] ?? ''}`}>
+                          <span className={`font-extrabold tracking-[0.4px] uppercase text-[10px] ${rarityTextClass(rarity)}`}>
                             {rarity}
                           </span>
                         )}
