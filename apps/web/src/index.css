@@ -1254,9 +1254,14 @@ input:focus {
 }
 
 /* ── EntityDetailPage — card variant pseudo-elements and keyframes ── */
+@property --detail-perfect-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
 @keyframes detail-perfect-border-spin {
-  from { --conic-angle: 0deg; }
-  to   { --conic-angle: 360deg; }
+  from { --detail-perfect-angle: 0deg; }
+  to   { --detail-perfect-angle: 360deg; }
 }
 @keyframes detail-perfect-twinkle {
   0%, 100% { opacity: 0.45; }
@@ -1278,7 +1283,7 @@ input:focus {
   border: 2px solid transparent;
   background:
     linear-gradient(160deg, #1a1640 0%, #221a50 100%) padding-box,
-    conic-gradient(from 0deg, #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc) border-box;
+    conic-gradient(from var(--detail-perfect-angle), #f0abfc, #c4b5fd, #7dd3fc, #6ee7b7, #fde68a, #fda4af, #f0abfc) border-box;
   box-shadow:
     0 0 20px rgba(244,114,182,0.4), 0 0 40px rgba(125,211,252,0.2), inset 0 0 12px rgba(255,255,255,0.04);
   animation: detail-enter 0.28s ease-out both, detail-perfect-border-spin 6s linear infinite;
