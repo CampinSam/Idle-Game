@@ -2259,6 +2259,7 @@ input:focus {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   padding-top: var(--page-top-gap);
 }
 .profile-wrapper-card {
@@ -2695,6 +2696,7 @@ input:focus {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 .store-card {
   background: linear-gradient(160deg, #1a1640 0%, #221a50 100%);

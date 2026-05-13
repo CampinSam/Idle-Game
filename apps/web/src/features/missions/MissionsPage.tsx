@@ -250,7 +250,7 @@ export default function MissionsPage() {
   }
 
   return (
-    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top">
+    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 overflow-hidden pt-page-top">
       {errorBanner}
       <MissionShell {...shellProps} middle={middle} />
     </div>

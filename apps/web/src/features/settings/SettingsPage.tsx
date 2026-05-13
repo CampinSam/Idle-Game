@@ -236,7 +236,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 pt-page-top">
+    <div className="page-transition-wrapper flex flex-col flex-1 min-h-0 overflow-hidden pt-page-top">
       <div className={WRAPPER_CARD}>
 
         <div className="px-5 pt-5 pb-[18px] bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">
