@@ -46,9 +46,7 @@ export default function LootboxItemDetailPanel({
   return (
     <div
       className={[
-        'item-detail-panel',
-        '[background:linear-gradient(180deg,rgba(20,12,38,0.97),rgba(8,5,20,0.97))] border-t border-[rgba(245,158,11,0.35)] p-3.5 flex gap-3.5 items-start [animation:detail-enter_0.28s_ease-out_both]',
-        'motion-reduce:![animation:none]',
+        '[background:linear-gradient(180deg,rgba(20,12,38,0.97),rgba(8,5,20,0.97))] border-t border-[rgba(245,158,11,0.35)] p-3.5 flex gap-3.5 items-start motion-safe:animate-[detail-enter_0.28s_ease-out_both]',
         className,
       ].filter(Boolean).join(' ')}
     >
