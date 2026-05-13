@@ -145,7 +145,7 @@ export class EntityService {
       newLevel++;
       const result = applyWeightedLevelUp(currentStats);
       currentStats = result.stats;
-      levelHistory.push({ level: newLevel, gains: result.gains });
+      levelHistory.push({ level: newLevel, gains: result.gains, at: new Date().toISOString() });
       gainsPerLevel.push({ level: newLevel, gains: result.gains });
     }
 
@@ -316,7 +316,7 @@ export class EntityService {
     for (const entry of levelHistory) {
       events.push({
         type: 'level_up',
-        timestamp: null,
+        timestamp: entry.at ?? null,
         level: entry.level,
         gains: entry.gains || {},
       });
