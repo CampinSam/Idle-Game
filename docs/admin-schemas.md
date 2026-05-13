@@ -1471,7 +1471,7 @@ All collections below are seeded at startup via `BootstrapService.seedNftCollect
 | `nft_cardano_perps` | Perps (Cardano) | CARDANO | `e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0` | `perp` | character |
 | `nft_cardano_outposts` | Derp Outposts (Cardano) | CARDANO | `a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5` | `derp_outpost` | location |
 
-> **Note on Outposts:** `derp_outpost` is a `LocationDefinition`, not an `EntityDefinition`. The `entityDefinitionId` field on the collection row points to it for lookup purposes, but the lazy-sync and import pipelines currently create `Entity` rows. A dedicated location-instance sync path for Outposts is tracked as a follow-up.
+> **Note on Outposts:** `derp_outpost` has both a `LocationDefinition` (for player-owned outpost instances) and a placeholder `EntityDefinition` (id: `derp_outpost`) seeded alongside it. The placeholder EntityDefinition allows the existing admin import pipeline (`POST /nft/collections/nft_cardano_outposts/import`) to function without errors — imported Outpost NFTs will create Entity rows rather than LocationInstance rows. A dedicated location-instance sync path is tracked as a follow-up (task #282).
 
 ---
 

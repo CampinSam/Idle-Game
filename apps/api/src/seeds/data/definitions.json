@@ -237,6 +237,15 @@
       "progressionProfileId": "bird_prog_v1",
       "rules": {},
       "data": {}
+    },
+    {
+      "id": "derp_outpost",
+      "speciesId": "derp_outpost",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
     }
   ],
   "regionDefinitions": [
