@@ -3261,3 +3261,49 @@ Mission "mission_cave_explore" completes successfully
 - `odds: 5` gives a 5% chance per eligible mission completion
 - `requirements` gate the roll behind keeper level 3+
 - `idempotencyKey: "bird-gift-${jobId}"` uses the job ID template variable, replaced at runtime with the actual mission job UUID
+
+---
+
+## Entity Events API
+
+### GET /entities/:id/events
+
+Returns a reverse-chronological list of significant events for a specific entity (mission completions, level-ups, injuries). Protected by JWT auth — only the owning player can query their own entity's events.
+
+**Response:** Array of up to 50 event objects, sorted newest first.
+
+```json
+[
+  {
+    "type": "mission",
+    "timestamp": "2026-05-13T10:30:00.000Z",
+    "missionName": "Cave Exploration",
+    "success": true,
+    "xpGained": 150,
+    "injured": false
+  },
+  {
+    "type": "injury",
+    "timestamp": "2026-05-12T08:00:00.000Z",
+    "missionName": "Dangerous Raid"
+  },
+  {
+    "type": "level_up",
+    "timestamp": null,
+    "level": 3,
+    "gains": { "STR": 2, "VIT": 1 }
+  }
+]
+```
+
+**Event types:**
+
+| type | Fields | Notes |
+|---|---|---|
+| `mission` | `timestamp`, `missionName`, `success`, `xpGained`, `injured` | One entry per completed/failed mission this entity participated in |
+| `injury` | `timestamp`, `missionName` | Emitted alongside `mission` when `injured: true`; enables collapse separation |
+| `level_up` | `timestamp: null`, `level`, `gains` | Sourced from `Entity.progression.levelHistory`; no timestamp available |
+
+**Sorting:** Timestamped events sort newest-first. Level-up events (no timestamp) appear after all timestamped events, sorted by level descending.
+
+**Cap:** Maximum 500 completed mission jobs scanned per call; response capped at 50 events.

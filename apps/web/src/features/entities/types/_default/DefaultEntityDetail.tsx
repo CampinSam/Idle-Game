@@ -1,9 +1,9 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
 import GameIcon from '../../../../components/GameIcon';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
-import { getArchetypeDisplay, TRAIT_SLOT_DISPLAY } from '@derp/shared';
+import { getArchetypeDisplay } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
 import { getEntityPower, getXpForLevel, normalizeStats } from '../../utils';
 import { useSyncItems } from '../../../../hooks/useSyncSelectors';
@@ -18,9 +18,10 @@ import {
   BUSY_EQUIP_TOOLTIP,
 } from '../../../inventory/utils/statChangeHelpers';
 import type { EntityDetailProps } from '../../types';
+import { api } from '../../../../services/api';
 
 const TRAIT_SLOT_ORDER = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;
-const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY'] as const;
+const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
 
 const MAX_LEVEL = 50;
@@ -32,6 +33,54 @@ const EQUIP_SLOTS = [
 ] as const;
 
 type EquipSlot = typeof EQUIP_SLOTS[number]['slot'];
+
+type EntityEvent = {
+  type: 'mission' | 'level_up' | 'injury';
+  timestamp?: string | null;
+  missionName?: string;
+  success?: boolean;
+  xpGained?: number;
+  injured?: boolean;
+  level?: number;
+  gains?: Record<string, number>;
+};
+
+type CollapsedGroup = { event: EntityEvent; count: number };
+
+function collapseEvents(events: EntityEvent[]): CollapsedGroup[] {
+  const result: CollapsedGroup[] = [];
+  for (const ev of events) {
+    const last = result[result.length - 1];
+    if (last && last.event.type === ev.type) {
+      last.count++;
+    } else {
+      result.push({ event: ev, count: 1 });
+    }
+  }
+  return result;
+}
+
+function useEntityEvents(entityId: string) {
+  const [events, setEvents] = useState<EntityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    api.getEntityEvents(entityId)
+      .then((data) => {
+        if (!cancelled) { setEvents(data as EntityEvent[]); setLoading(false); }
+      })
+      .catch((err: any) => {
+        if (!cancelled) { setError(err?.message ?? 'Failed to load events'); setLoading(false); }
+      });
+    return () => { cancelled = true; };
+  }, [entityId]);
+
+  return { events, loading, error };
+}
 
 export default function DefaultEntityDetail(props: EntityDetailProps) {
   const { entity, variant = 'full', useCase = 'mission', onRemove } = props;
@@ -61,6 +110,8 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
     },
   });
+
+  const { events: entityEvents, loading: eventsLoading } = useEntityEvents(entity.id);
 
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
@@ -114,15 +165,16 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const xpCurrent = Number(entity.xp || 0);
   const xpPercent = xpMax > 0 ? Math.min((xpCurrent / xpMax) * 100, 100) : 0;
 
+  const collapsedEvents = useMemo(() => collapseEvents(entityEvents), [entityEvents]);
+
   return (
     <div className="flex flex-col gap-[10px] flex-1 min-h-0">
 
       {/* ── Top section: portrait card + power/radar ── */}
       <div className="grid grid-cols-2 gap-[10px] items-stretch shrink-0">
 
-        {/* Portrait card — entity-detail__hero retained as CSS hook for variant ::after overlays */}
+        {/* Portrait card */}
         <div className="entity-detail__hero [background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col items-center p-[6px] gap-[6px] relative">
-          {/* Level badge overlaps portrait */}
           <div className="absolute top-2 left-2 flex items-center gap-[3px] bg-[rgba(0,0,0,0.65)] border border-[rgba(139,92,246,0.6)] rounded-[20px] px-2 py-[3px] z-[3]">
             <span className="text-[11px]">⚡</span>
             <span className="text-[10px] font-black text-white tracking-[0.5px]">LEVEL {entity.level}</span>
@@ -226,92 +278,191 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
         onSelect={handlePickerSelect}
       />
 
-      {/* ── Middle section: progression tabs + body slots ── */}
-      <div className="grid grid-cols-2 gap-[10px] items-stretch flex-1 min-h-0">
-
-        {/* Progression tab panel */}
-        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col min-h-0">
-          <div
-            className="flex border-b border-[rgba(139,92,246,0.2)] overflow-x-auto shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            role="tablist"
-          >
-            {PROGRESSION_TABS.map((tab) => (
-              <button
-                key={tab}
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={[
-                  'flex-none py-2 px-2 text-[8px] font-extrabold tracking-[0.4px] bg-transparent border-none',
-                  'border-b-2 cursor-pointer whitespace-nowrap text-center',
-                  '[transition:color_0.15s,border-color_0.15s]',
-                  activeTab === tab
-                    ? 'text-[#A78BFA] border-b-[#A78BFA]'
-                    : 'text-[rgba(255,255,255,0.45)] border-b-transparent',
-                ].join(' ')}
-                onClick={() => setActiveTab(tab)}
-                type="button"
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="p-[10px] flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
-            {activeTab === 'LEVEL' ? (
-              <div className="flex flex-col gap-[10px]">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Current Level</span>
-                  <span className="text-xs font-extrabold text-white">{entity.level} / {MAX_LEVEL}</span>
-                </div>
-                <div className="flex flex-col items-stretch gap-[5px]">
-                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">XP</span>
-                  <div className="h-[7px] bg-[rgba(255,255,255,0.08)] rounded-[4px] overflow-hidden">
-                    <div
-                      className="h-full [background:linear-gradient(90deg,#7C3AED,#A78BFA)] rounded-[4px]"
-                      style={{ width: `${xpPercent * progress}%`, transition: 'none' }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">{xpCurrent} / {xpMax}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Stat Growth</span>
-                  <span className="text-xs font-extrabold text-white">Normal</span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 py-5 text-[rgba(255,255,255,0.35)] text-xs italic">
-                <span className="text-[22px]">🔒</span>
-                <span>Coming soon</span>
-              </div>
-            )}
-          </div>
+      {/* ── Full-width progression tab panel ── */}
+      <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col flex-1 min-h-0">
+        <div
+          className="flex border-b border-[rgba(139,92,246,0.2)] overflow-x-auto shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+        >
+          {PROGRESSION_TABS.map((tab) => (
+            <button
+              key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={[
+                'flex-none py-2 px-2.5 text-[8px] font-extrabold tracking-[0.4px] bg-transparent border-none',
+                'border-b-2 cursor-pointer whitespace-nowrap text-center',
+                '[transition:color_0.15s,border-color_0.15s]',
+                activeTab === tab
+                  ? 'text-[#A78BFA] border-b-[#A78BFA]'
+                  : 'text-[rgba(255,255,255,0.45)] border-b-transparent',
+              ].join(' ')}
+              onClick={() => setActiveTab(tab)}
+              type="button"
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-        {/* Body slots & traits */}
-        <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col min-h-0 overflow-hidden">
-          <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.55)] mb-1.5 shrink-0">BODY SLOTS &amp; TRAITS</div>
-          <div className="h-px bg-[rgba(139,92,246,0.2)] mb-[4px] shrink-0" />
-          <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
-            {TRAIT_SLOT_ORDER.map((slot) => {
-              const value = traits[slot];
-              const archetypeColor = value
-                ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
-                : 'rgba(255,255,255,0.3)';
-              const displayValue = value
-                ? value.replace(/\b\w/g, (c) => c.toUpperCase())
-                : '—';
-              return (
-                <div key={slot} className="grid grid-cols-2 items-center py-1 border-b border-[rgba(255,255,255,0.06)] last:border-b-0 last:pb-0 first:pt-0">
-                  <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-semibold">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
-                  <span className="text-[11px] font-extrabold text-right" style={{ color: archetypeColor }}>
-                    {displayValue}
-                  </span>
+        <div className="p-[10px] flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
+          {activeTab === 'LEVEL' && (
+            <div className="flex flex-col gap-[10px]">
+              {/* Level / XP section */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Current Level</span>
+                <span className="text-xs font-extrabold text-white">{entity.level} / {MAX_LEVEL}</span>
+              </div>
+              <div className="flex flex-col items-stretch gap-[5px]">
+                <span className="text-[11px] text-[rgba(255,255,255,0.55)]">XP</span>
+                <div className="h-[7px] bg-[rgba(255,255,255,0.08)] rounded-[4px] overflow-hidden">
+                  <div
+                    className="h-full [background:linear-gradient(90deg,#7C3AED,#A78BFA)] rounded-[4px]"
+                    style={{ width: `${xpPercent * progress}%`, transition: 'none' }}
+                  />
                 </div>
-              );
-            })}
-          </div>
+                <span className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">{xpCurrent} / {xpMax}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Stat Growth</span>
+                <span className="text-xs font-extrabold text-white">Normal</span>
+              </div>
+
+              {/* Recent Events */}
+              <div className="mt-1">
+                <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-2">RECENT EVENTS</div>
+                {eventsLoading ? (
+                  <div className="flex flex-col gap-1.5">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-7 rounded-lg bg-white/[0.04] animate-pulse" />
+                    ))}
+                  </div>
+                ) : collapsedEvents.length === 0 ? (
+                  <div className="text-center py-4 text-[rgba(255,255,255,0.3)] text-[11px] italic">
+                    No recent activity yet
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {collapsedEvents.map((group, i) => (
+                      <EventRow key={i} group={group} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'TRAITS' && (
+            <div className="flex flex-col gap-[6px]">
+              <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-1">BODY SLOTS &amp; TRAITS</div>
+              {TRAIT_SLOT_ORDER.map((slot) => {
+                const value = traits[slot];
+                const archetypeColor = value
+                  ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
+                  : 'rgba(255,255,255,0.3)';
+                const displayValue = value
+                  ? value.replace(/\b\w/g, (c) => c.toUpperCase())
+                  : '—';
+                return (
+                  <div key={slot} className="grid grid-cols-2 items-center py-1.5 px-2 rounded-lg bg-white/[0.03] border border-[rgba(255,255,255,0.05)]">
+                    <span className="text-[11px] text-[rgba(255,255,255,0.6)] font-semibold">{slot.charAt(0).toUpperCase() + slot.slice(1)}</span>
+                    <span className="text-[11px] font-extrabold text-right" style={{ color: archetypeColor }}>
+                      {displayValue}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab !== 'LEVEL' && activeTab !== 'TRAITS' && (
+            <div className="flex flex-col items-center justify-center gap-2 py-5 text-[rgba(255,255,255,0.35)] text-xs italic">
+              <span className="text-[22px]">🔒</span>
+              <span>Coming soon</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function EventRow({ group }: { group: CollapsedGroup }) {
+  const { event, count } = group;
+
+  if (event.type === 'mission') {
+    if (count > 1) {
+      return (
+        <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03] text-[11px]">
+          <span className="text-[13px]">⚔️</span>
+          <span className="text-[rgba(255,255,255,0.7)]">Went on {count} missions</span>
+        </div>
+      );
+    }
+    const icon = event.success ? '✅' : '❌';
+    const label = event.success ? 'Mission completed' : 'Mission failed';
+    return (
+      <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03]">
+        <span className="text-[13px] shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[11px] text-[rgba(255,255,255,0.7)]">{label}</span>
+          {event.missionName && (
+            <span className="text-[10px] text-[rgba(255,255,255,0.4)] ml-1 truncate">· {event.missionName}</span>
+          )}
+        </div>
+        {(event.xpGained ?? 0) > 0 && (
+          <span className="text-[10px] font-bold text-[#A78BFA] shrink-0">+{event.xpGained} XP</span>
+        )}
+      </div>
+    );
+  }
+
+  if (event.type === 'level_up') {
+    if (count > 1) {
+      return (
+        <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03] text-[11px]">
+          <span className="text-[13px]">⬆️</span>
+          <span className="text-[rgba(255,255,255,0.7)]">Levelled up {count} times</span>
+        </div>
+      );
+    }
+    const gains = event.gains ?? {};
+    const gainText = Object.entries(gains)
+      .filter(([, v]) => v > 0)
+      .map(([k, v]) => `${k}+${v}`)
+      .join(' ');
+    return (
+      <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03]">
+        <span className="text-[13px] shrink-0">⬆️</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[11px] text-[rgba(255,255,255,0.7)]">Reached level {event.level}</span>
+          {gainText && (
+            <span className="text-[10px] text-[rgba(167,139,250,0.7)] ml-1">{gainText}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (event.type === 'injury') {
+    if (count > 1) {
+      return (
+        <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03] text-[11px]">
+          <span className="text-[13px]">🩹</span>
+          <span className="text-[rgba(255,255,255,0.7)]">Was injured {count} times</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03] text-[11px]">
+        <span className="text-[13px]">🩹</span>
+        <span className="text-[rgba(255,255,255,0.7)]">Was injured</span>
+        {event.missionName && (
+          <span className="text-[10px] text-[rgba(255,255,255,0.4)] ml-auto shrink-0 truncate max-w-[80px]">· {event.missionName}</span>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }

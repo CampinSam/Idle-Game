@@ -252,6 +252,89 @@ export class EntityService {
     return { scanned: all.length, fixed };
   }
 
+  async getEntityEvents(entityId: string, userId: string): Promise<any[]> {
+    const entity = await (this.prisma as any).entity.findFirst({
+      where: { id: entityId, ownerUserId: userId },
+      select: { id: true, progression: true },
+    });
+    if (!entity) throw new NotFoundException('Entity not found');
+
+    const events: any[] = [];
+
+    // ── Mission events ──────────────────────────────────────────────────────
+    const jobs = await (this.prisma as any).job.findMany({
+      where: {
+        userId,
+        type: 'MissionJob',
+        status: { in: ['completed', 'failed'] },
+      },
+      select: { id: true, defId: true, results: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 500,
+    });
+
+    // Batch-fetch mission names to avoid N+1
+    const defIds = [...new Set(jobs.map((j: any) => j.defId as string))];
+    const defs = defIds.length > 0
+      ? await (this.prisma as any).missionDef.findMany({
+          where: { id: { in: defIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const defNameById = new Map<string, string>(defs.map((d: any) => [d.id, d.name]));
+
+    for (const job of jobs) {
+      const results = job.results as any;
+      if (!results) continue;
+      const entityResult = (Array.isArray(results.entityResults) ? results.entityResults : [])
+        .find((er: any) => er.id === entityId);
+      if (!entityResult) continue;
+
+      const missionName = defNameById.get(job.defId) ?? job.defId;
+
+      events.push({
+        type: 'mission',
+        timestamp: (job.updatedAt as Date).toISOString(),
+        missionName,
+        success: results.success === true,
+        xpGained: entityResult.xpGained || 0,
+        injured: entityResult.injured || false,
+      });
+
+      if (entityResult.injured) {
+        events.push({
+          type: 'injury',
+          timestamp: (job.updatedAt as Date).toISOString(),
+          missionName,
+        });
+      }
+    }
+
+    // ── Level-up events from levelHistory ───────────────────────────────────
+    const progression = (entity.progression as any) || {};
+    const levelHistory: any[] = Array.isArray(progression.levelHistory) ? progression.levelHistory : [];
+    for (const entry of levelHistory) {
+      events.push({
+        type: 'level_up',
+        timestamp: null,
+        level: entry.level,
+        gains: entry.gains || {},
+      });
+    }
+
+    // Sort: timestamped events descending, null-timestamp events after (by level desc)
+    events.sort((a, b) => {
+      if (a.timestamp && b.timestamp) {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      }
+      if (a.timestamp) return -1;
+      if (b.timestamp) return 1;
+      return (b.level || 0) - (a.level || 0);
+    });
+
+    return events.slice(0, 50);
+  }
+
   async setEntityStatus(entityId: string, userId: string, status: string, tx?: any) {
     const db = tx || this.prisma;
     const entity = await (db as any).entity.findFirst({

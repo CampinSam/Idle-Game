@@ -68,6 +68,10 @@ class ApiClient {
     return this.request<any>(`/entities/${id}`);
   }
 
+  getEntityEvents(id: string) {
+    return this.request<any[]>(`/entities/${id}/events`);
+  }
+
   // Locations
   getLocations() {
     return this.request<any[]>('/locations');

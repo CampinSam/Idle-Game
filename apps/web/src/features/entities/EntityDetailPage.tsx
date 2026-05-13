@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
@@ -64,11 +65,14 @@ export default function EntityDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameLoading, setRenameLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const mountedRef = useRef(false);
@@ -249,13 +253,31 @@ export default function EntityDetailPage() {
     if (card) springBack(card);
   }
 
-  const closeMenu = useCallback(() => setMenuOpen(false), []);
-  const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMenuPos(null);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpen((v) => {
+      const next = !v;
+      if (next && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      } else {
+        setMenuPos(null);
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+      const target = e.target as Node;
+      const insideButton = menuRef.current?.contains(target) ?? false;
+      const insideDropdown = dropdownRef.current?.contains(target) ?? false;
+      if (!insideButton && !insideDropdown) closeMenu();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMenu();
@@ -442,6 +464,7 @@ export default function EntityDetailPage() {
 
             <div className="relative flex-shrink-0" ref={menuRef}>
               <button
+                ref={buttonRef}
                 type="button"
                 className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-base cursor-pointer transition-colors"
                 onClick={toggleMenu}
@@ -450,32 +473,35 @@ export default function EntityDetailPage() {
               >
                 ⚙️
               </button>
-              {menuOpen && (
-                <div
-                  className="absolute right-0 top-full mt-1 z-50 bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1 min-w-[140px]"
-                  role="menu"
+            </div>
+            {menuOpen && menuPos && createPortal(
+              <div
+                ref={dropdownRef}
+                className="fixed z-[9999] bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1 min-w-[140px]"
+                style={{ top: menuPos.top, right: menuPos.right }}
+                role="menu"
+              >
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
+                  role="menuitem"
+                  onClick={openRenameModal}
                 >
+                  ✏️ Rename
+                </button>
+                {isNft && nftExplorerUrl && (
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
                     role="menuitem"
-                    onClick={openRenameModal}
+                    onClick={handleViewNft}
                   >
-                    ✏️ Rename
+                    🔗 View NFT
                   </button>
-                  {isNft && nftExplorerUrl && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
-                      role="menuitem"
-                      onClick={handleViewNft}
-                    >
-                      🔗 View NFT
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>,
+              document.body
+            )}
 
             {hasNav && (
               <div className="flex items-center gap-1 flex-shrink-0">
