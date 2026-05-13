@@ -25,6 +25,7 @@ import { ClaimGiftHandler } from './handlers/claim-gift.handler';
 import { EquipItemHandler } from './handlers/equip-item.handler';
 import { UnequipItemHandler } from './handlers/unequip-item.handler';
 import { DepositLocationXpHandler } from './handlers/deposit-location-xp.handler';
+import { RenameEntityHandler } from './handlers/rename-entity.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -56,6 +57,7 @@ export class CommandRouter {
     private equipItem: EquipItemHandler,
     private unequipItem: UnequipItemHandler,
     private depositLocationXp: DepositLocationXpHandler,
+    private renameEntity: RenameEntityHandler,
   ) {
     this.handlers.set('ExampleTestCommand', this.exampleTest);
     this.handlers.set('StartMission', this.startMission);
@@ -82,6 +84,7 @@ export class CommandRouter {
     this.handlers.set('EquipItem', this.equipItem);
     this.handlers.set('UnequipItem', this.unequipItem);
     this.handlers.set('DepositLocationXp', this.depositLocationXp);
+    this.handlers.set('RenameEntity', this.renameEntity);
   }
 
   resolve(commandType: string): CommandHandler {

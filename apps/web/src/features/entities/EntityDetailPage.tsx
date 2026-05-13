@@ -6,6 +6,7 @@ import { getFilteredSortedEntities } from './entityListUtils';
 import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
+import { useCommand } from '../../hooks/useCommand';
 import type { EntityFilter, EntitySortBy } from './types';
 
 function getCollectionLabel(entity: any): string | null {
@@ -14,9 +15,20 @@ function getCollectionLabel(entity: any): string | null {
   return null;
 }
 
+function buildNftExplorerUrl(nftAssetId: string): string | null {
+  const parts = nftAssetId.split(':');
+  if (parts.length < 3) return null;
+  const [chain, policyId, assetId] = parts;
+  if (chain === 'CARDANO') {
+    return `https://pool.pm/${policyId}.${assetId}`;
+  }
+  return null;
+}
+
 const STORAGE_KEY_FILTER = 'entities_activeFilter';
 const STORAGE_KEY_SORT   = 'entities_sortBy';
 const STORAGE_KEY_SEARCH = 'entities_searchQuery';
+const MAX_NAME_LENGTH = 32;
 
 type SlideDir = 'left' | 'right';
 type LocationState = { slideDir?: SlideDir };
@@ -52,8 +64,13 @@ export default function EntityDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameLoading, setRenameLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const renameInputRef = useRef<HTMLInputElement | null>(null);
   const mountedRef = useRef(false);
   const navigatingRef = useRef(false);
   const pointerRef = useRef<{
@@ -63,6 +80,8 @@ export default function EntityDetailPage() {
     pointerId: number;
     cardEl: HTMLDivElement;
   } | null>(null);
+
+  const { execute } = useCommand();
 
   const prefersReducedMotion = useSyncExternalStore(
     (cb) => {
@@ -249,6 +268,50 @@ export default function EntityDetailPage() {
     };
   }, [menuOpen, closeMenu]);
 
+  function openRenameModal() {
+    setRenameValue(entity?.name ?? '');
+    setRenameError(null);
+    setRenameOpen(true);
+    closeMenu();
+    setTimeout(() => renameInputRef.current?.select(), 60);
+  }
+
+  function closeRenameModal() {
+    setRenameOpen(false);
+    setRenameError(null);
+  }
+
+  async function handleRenameSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = renameValue.trim();
+    if (!trimmed) {
+      setRenameError('Name cannot be empty.');
+      return;
+    }
+    if (trimmed.length > MAX_NAME_LENGTH) {
+      setRenameError(`Name must be ${MAX_NAME_LENGTH} characters or fewer.`);
+      return;
+    }
+    setRenameLoading(true);
+    setRenameError(null);
+    try {
+      await execute('RenameEntity', { entityId: id, name: trimmed });
+      closeRenameModal();
+    } catch (err: any) {
+      setRenameError(err?.message ?? 'Rename failed. Please try again.');
+    } finally {
+      setRenameLoading(false);
+    }
+  }
+
+  function handleViewNft() {
+    const nftAssetId: string | undefined = (entity as any)?.nftAssetId;
+    if (!nftAssetId) return;
+    const url = buildNftExplorerUrl(nftAssetId);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    closeMenu();
+  }
+
   if (!entity) {
     return (
       <div className="entity-detail-page">
@@ -258,8 +321,56 @@ export default function EntityDetailPage() {
     );
   }
 
+  const nftAssetId: string | undefined = (entity as any)?.nftAssetId;
+  const isNft = isNftEntity(entity);
+  const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
+
   return (
     <div className="entity-detail-page">
+      {renameOpen && (
+        <div className="entity-detail-page__rename-overlay" role="dialog" aria-modal="true" aria-label="Rename character">
+          <div className="entity-detail-page__rename-dialog">
+            <h2 className="entity-detail-page__rename-title">Rename Character</h2>
+            <form onSubmit={handleRenameSubmit}>
+              <input
+                ref={renameInputRef}
+                className="entity-detail-page__rename-input"
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                maxLength={MAX_NAME_LENGTH}
+                placeholder="Enter a name…"
+                autoComplete="off"
+                disabled={renameLoading}
+              />
+              <div className="entity-detail-page__rename-char-count">
+                {renameValue.trim().length}/{MAX_NAME_LENGTH}
+              </div>
+              {renameError && (
+                <div className="entity-detail-page__rename-error">{renameError}</div>
+              )}
+              <div className="entity-detail-page__rename-actions">
+                <button
+                  type="button"
+                  className="entity-detail-page__rename-cancel"
+                  onClick={closeRenameModal}
+                  disabled={renameLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="entity-detail-page__rename-confirm"
+                  disabled={renameLoading || !renameValue.trim()}
+                >
+                  {renameLoading ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div
         className={[
           'entity-detail-page__card',
@@ -319,7 +430,24 @@ export default function EntityDetailPage() {
             </button>
             {menuOpen && (
               <div className="entity-detail-page__menu" role="menu">
-                <div className="entity-detail-page__menu-empty">No actions yet</div>
+                <button
+                  type="button"
+                  className="entity-detail-page__menu-item"
+                  role="menuitem"
+                  onClick={openRenameModal}
+                >
+                  ✏️ Rename
+                </button>
+                {isNft && nftExplorerUrl && (
+                  <button
+                    type="button"
+                    className="entity-detail-page__menu-item"
+                    role="menuitem"
+                    onClick={handleViewNft}
+                  >
+                    🔗 View NFT
+                  </button>
+                )}
               </div>
             )}
           </div>
