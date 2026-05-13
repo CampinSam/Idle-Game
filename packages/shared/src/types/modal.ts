@@ -232,6 +232,7 @@ export const MODAL_BLOCK_TYPES = [
   'list',
   'clickReveal',
   'error',
+  'characterEvents',
 ] as const;
 
 /**
