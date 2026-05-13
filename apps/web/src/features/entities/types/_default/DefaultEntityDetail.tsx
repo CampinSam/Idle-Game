@@ -179,7 +179,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const collapsedEvents = useMemo(() => collapseEvents(entityEvents), [entityEvents]);
 
   return (
-    <div className="flex flex-col gap-[10px] flex-1 min-h-0">
+    <div className="flex flex-col gap-[10px] flex-1 min-h-0 p-[10px]">
 
       {/* ── Top section: portrait card + power/radar ── */}
       <div className="grid grid-cols-2 gap-[10px] items-stretch shrink-0">
@@ -339,8 +339,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 <span className="text-xs font-extrabold text-white">Normal</span>
               </div>
 
+              <div className="h-px bg-[rgba(139,92,246,0.2)]" />
+
               {/* Recent Events */}
-              <div className="mt-1">
+              <div>
                 <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-2">RECENT EVENTS</div>
                 {eventsLoading ? (
                   <div className="flex flex-col gap-1.5">
@@ -366,6 +368,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           {activeTab === 'TRAITS' && (
             <div className="flex flex-col gap-[6px]">
               <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-1">BODY SLOTS &amp; TRAITS</div>
+              <div className="h-px bg-[rgba(139,92,246,0.2)]" />
               {TRAIT_SLOT_ORDER.map((slot) => {
                 const value = traits[slot];
                 const archetypeColor = value
