@@ -577,6 +577,41 @@ input:focus {
   50%       { opacity: 1; }
 }
 
+/* ── Compact picker (mission / outpost) border-effect overrides ── */
+/* Perfect specimen: static gold border, no spin, no sparkles, no badge */
+.entity-card--mission.entity-card--derp-bird-perfect,
+.entity-card--outpost.entity-card--derp-bird-perfect {
+  border: 2px solid rgba(253, 224, 71, 0.55);
+  background: linear-gradient(180deg, #1e1850 0%, #151030 100%);
+  box-shadow:
+    0 0 6px rgba(253, 224, 71, 0.28),
+    0 0 12px rgba(244, 114, 182, 0.15);
+  animation: none;
+}
+.entity-card--mission.entity-card--derp-bird-perfect::before,
+.entity-card--outpost.entity-card--derp-bird-perfect::before,
+.entity-card--mission.entity-card--derp-bird-perfect::after,
+.entity-card--outpost.entity-card--derp-bird-perfect::after {
+  display: none;
+}
+
+/* NFT Derp Bird: subtle teal border, no pattern overlay, no NFT badge */
+/* Suppress the decorative ::before pattern on all compact Derp Bird cards */
+.entity-card--mission.entity-card--derp-bird::before,
+.entity-card--outpost.entity-card--derp-bird::before {
+  display: none;
+}
+/* Teal accent applies only to NFT cards (non-NFT Derp Birds use the default border) */
+.entity-card--mission.entity-card--derp-bird-nft,
+.entity-card--outpost.entity-card--derp-bird-nft {
+  border-color: rgba(45, 212, 191, 0.55);
+  box-shadow: 0 0 6px rgba(20, 184, 166, 0.22);
+}
+.entity-card--mission.entity-card--derp-bird-nft::after,
+.entity-card--outpost.entity-card--derp-bird-nft::after {
+  display: none;
+}
+
 
 /* ── GameImage shimmer ── */
 @keyframes game-image-shimmer {
