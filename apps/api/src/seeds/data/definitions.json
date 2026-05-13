@@ -201,6 +201,42 @@
       "progressionProfileId": "bird_prog_v1",
       "rules": {},
       "data": {}
+    },
+    {
+      "id": "derpling",
+      "speciesId": "derpling",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
+    },
+    {
+      "id": "derp_ape",
+      "speciesId": "derp_ape",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
+    },
+    {
+      "id": "pred",
+      "speciesId": "pred",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
+    },
+    {
+      "id": "perp",
+      "speciesId": "perp",
+      "bodySchemaId": "avian_7",
+      "equipmentSchemaId": "bird_equip_v1",
+      "progressionProfileId": "bird_prog_v1",
+      "rules": {},
+      "data": {}
     }
   ],
   "regionDefinitions": [

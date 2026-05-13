@@ -92,23 +92,68 @@ export class BootstrapService implements OnModuleInit {
   }
 
   private async seedNftCollections() {
-    const result = await (this.prisma as any).nftCollectionDef.upsert({
-      where: { id: 'nft_cardano_dp' },
-      update: {},
-      create: {
+    const collections = [
+      {
         id: 'nft_cardano_dp',
         name: 'Derp Birds (Cardano)',
-        chain: 'CARDANO',
         collectionId: 'e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0',
         entityDefinitionId: 'derp_bird',
-        mintMode: 'one_per_token',
-        active: true,
-        data: {},
       },
-    });
+      {
+        id: 'nft_cardano_derplings',
+        name: 'Derplings (Cardano)',
+        collectionId: 'b2d25f829ebb7f4c97b5e847923a1115b23ebf78000722c229c9c9f7',
+        entityDefinitionId: 'derpling',
+      },
+      {
+        id: 'nft_cardano_derp_apes',
+        name: 'Derp Apes (Cardano)',
+        collectionId: 'f4873b426a498350c579690bd1f4a369d5d7b521c778acf322f77334',
+        entityDefinitionId: 'derp_ape',
+      },
+      {
+        id: 'nft_cardano_preds',
+        name: 'Preds (Cardano)',
+        collectionId: '73056bffdf28f82da5db1f5ac7c06d030c8a551f43889f7f85746a4a',
+        entityDefinitionId: 'pred',
+      },
+      {
+        id: 'nft_cardano_perps',
+        name: 'Perps (Cardano)',
+        collectionId: 'e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0',
+        entityDefinitionId: 'perp',
+      },
+      {
+        id: 'nft_cardano_outposts',
+        name: 'Derp Outposts (Cardano)',
+        collectionId: 'a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5',
+        entityDefinitionId: 'derp_outpost',
+      },
+    ];
 
-    if (result.createdAt.getTime() === result.updatedAt.getTime()) {
-      this.logger.log('Seeded Derp Birds Cardano NFT collection');
+    let seeded = 0;
+    for (const col of collections) {
+      const result = await (this.prisma as any).nftCollectionDef.upsert({
+        where: { id: col.id },
+        update: {},
+        create: {
+          id: col.id,
+          name: col.name,
+          chain: 'CARDANO',
+          collectionId: col.collectionId,
+          entityDefinitionId: col.entityDefinitionId,
+          mintMode: 'one_per_token',
+          active: true,
+          data: {},
+        },
+      });
+      if (result.createdAt.getTime() === result.updatedAt.getTime()) {
+        seeded++;
+      }
+    }
+
+    if (seeded > 0) {
+      this.logger.log(`Seeded ${seeded} NFT collection(s)`);
     }
   }
 

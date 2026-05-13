@@ -1447,16 +1447,31 @@ Links an on-chain NFT collection to an entity definition, enabling NFT-gated ent
 
 ```json
 {
-  "id": "nft_derp_birds_cardano",
+  "id": "nft_cardano_dp",
   "name": "Derp Birds (Cardano)",
   "chain": "CARDANO",
-  "collectionId": "a1b2c3d4e5f6...",
+  "collectionId": "e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0",
   "entityDefinitionId": "derp_bird",
   "mintMode": "one_per_token",
   "active": true,
   "data": {}
 }
 ```
+
+### Registered Collections
+
+All collections below are seeded at startup via `BootstrapService.seedNftCollections()` and are idempotent (upsert on `id`).
+
+| Collection ID | Name | Chain | Policy ID | Entity/Location Def | Kind |
+|---|---|---|---|---|---|
+| `nft_cardano_dp` | Derp Birds (Cardano) | CARDANO | `e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0` | `derp_bird` | character |
+| `nft_cardano_derplings` | Derplings (Cardano) | CARDANO | `b2d25f829ebb7f4c97b5e847923a1115b23ebf78000722c229c9c9f7` | `derpling` | character |
+| `nft_cardano_derp_apes` | Derp Apes (Cardano) | CARDANO | `f4873b426a498350c579690bd1f4a369d5d7b521c778acf322f77334` | `derp_ape` | character |
+| `nft_cardano_preds` | Preds (Cardano) | CARDANO | `73056bffdf28f82da5db1f5ac7c06d030c8a551f43889f7f85746a4a` | `pred` | character |
+| `nft_cardano_perps` | Perps (Cardano) | CARDANO | `e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0` | `perp` | character |
+| `nft_cardano_outposts` | Derp Outposts (Cardano) | CARDANO | `a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5` | `derp_outpost` | location |
+
+> **Note on Outposts:** `derp_outpost` is a `LocationDefinition`, not an `EntityDefinition`. The `entityDefinitionId` field on the collection row points to it for lookup purposes, but the lazy-sync and import pipelines currently create `Entity` rows. A dedicated location-instance sync path for Outposts is tracked as a follow-up.
 
 ---
 
