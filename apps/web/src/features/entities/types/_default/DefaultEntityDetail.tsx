@@ -424,6 +424,9 @@ function EventRow({ group }: { group: CollapsedGroup }) {
         {(event.xpGained ?? 0) > 0 && (
           <span className="text-[10px] font-bold text-[#A78BFA] shrink-0">+{event.xpGained} XP</span>
         )}
+        {event.timestamp && (
+          <span className="text-[10px] text-[rgba(255,255,255,0.4)] shrink-0">{timeAgo(event.timestamp)}</span>
+        )}
       </div>
     );
   }
@@ -470,9 +473,14 @@ function EventRow({ group }: { group: CollapsedGroup }) {
     return (
       <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg bg-white/[0.03] text-[11px]">
         <span className="text-[13px]">🩹</span>
-        <span className="text-[rgba(255,255,255,0.7)]">Was injured</span>
-        {event.missionName && (
-          <span className="text-[10px] text-[rgba(255,255,255,0.4)] ml-auto shrink-0 truncate max-w-[80px]">· {event.missionName}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-[rgba(255,255,255,0.7)]">Was injured</span>
+          {event.missionName && (
+            <span className="text-[10px] text-[rgba(255,255,255,0.4)] ml-1 truncate">· {event.missionName}</span>
+          )}
+        </div>
+        {event.timestamp && (
+          <span className="text-[10px] text-[rgba(255,255,255,0.4)] shrink-0">{timeAgo(event.timestamp)}</span>
         )}
       </div>
     );
