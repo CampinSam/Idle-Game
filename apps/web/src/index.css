@@ -1289,6 +1289,16 @@ input:focus {
   .edp-card-perfect::before { animation: none; }
 }
 
+/* When the variant is applied to the persistent .body-card shell, skip the
+   one-shot detail-enter animation — body-card is never re-mounted on swipe.
+   Keep only the continuous border-spin and twinkle effects. */
+.body-card.edp-card-perfect {
+  animation: detail-perfect-border-spin 6s linear infinite;
+}
+.body-card.edp-card-derp-bird {
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    G4 — StorePage shimmer keyframe (referenced by Tailwind animate-[store-shimmer…])

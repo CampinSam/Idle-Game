@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
@@ -8,6 +8,7 @@ import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
 import { useCommand } from '../../hooks/useCommand';
+import { useBodyCardVariant } from '../../context/BodyCardVariantContext';
 import type { EntityFilter, EntitySortBy } from './types';
 
 function getCollectionLabel(entity: any): string | null {
@@ -86,6 +87,7 @@ export default function EntityDetailPage() {
   } | null>(null);
 
   const { execute } = useCommand();
+  const { setVariantClass, clearVariantClass } = useBodyCardVariant();
 
   const prefersReducedMotion = useSyncExternalStore(
     (cb) => {
@@ -117,6 +119,23 @@ export default function EntityDetailPage() {
   const hasNav = total > 1 && currentIdx >= 0;
   const prevId: string | undefined = hasNav ? navList[(currentIdx - 1 + total) % total]?.id : undefined;
   const nextId: string | undefined = hasNav ? navList[(currentIdx + 1) % total]?.id : undefined;
+
+  const entityKind = entity ? getEntityKind(entity) : null;
+  const entityIsPerf = entity ? isPerfectSpecimen(entity) : false;
+  const cardVariantClass = entityKind === 'derp_bird'
+    ? (entityIsPerf ? 'edp-card-perfect' : 'edp-card-derp-bird')
+    : '';
+
+  useLayoutEffect(() => {
+    if (cardVariantClass) {
+      setVariantClass(cardVariantClass);
+    } else {
+      clearVariantClass();
+    }
+    return () => {
+      clearVariantClass();
+    };
+  }, [cardVariantClass, setVariantClass, clearVariantClass]);
 
   function springBack(card: HTMLDivElement) {
     card.style.transition = 'transform 0.2s ease-out';
@@ -352,12 +371,6 @@ export default function EntityDetailPage() {
   const isNft = isNftEntity(entity);
   const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
 
-  const kind = getEntityKind(entity);
-  const isPerf = isPerfectSpecimen(entity);
-  const cardVariantClass = kind === 'derp_bird'
-    ? (isPerf ? 'edp-card-perfect' : 'edp-card-derp-bird')
-    : '';
-
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {renameOpen && (
@@ -412,10 +425,7 @@ export default function EntityDetailPage() {
       )}
 
       <div
-        className={[
-          'relative flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]',
-          cardVariantClass,
-        ].filter(Boolean).join(' ')}
+        className="relative flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
         ref={cardRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

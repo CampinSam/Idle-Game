@@ -21,6 +21,7 @@ import { formatCompact } from "../utils/formatNumber";
 import { resolveIcon } from "../utils/iconResolver";
 import ItemQty from "./ItemQty";
 import { audioEngine } from "../services/AudioEngine";
+import { useBodyCardVariant } from "../context/BodyCardVariantContext";
 import { installButtonSfx } from "../services/buttonSfx";
 import { useAudioNavigation } from "../hooks/useAudioNavigation";
 import { useLevelUpAudio } from "../hooks/useLevelUpAudio";
@@ -32,6 +33,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const profile = useSyncPlayer();
+  const { variantClass } = useBodyCardVariant();
   const currencyBalances = useSyncCurrencyBalances();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const { unreadCount } = useNotifications();
@@ -230,7 +232,7 @@ export default function Layout() {
       )}
 
       <main className="content page-outlet">
-        <div className="body-card">
+        <div className={['body-card', variantClass].filter(Boolean).join(' ')}>
           <div key={location.key} className="page-transition-wrapper">
             <Suspense
               fallback={

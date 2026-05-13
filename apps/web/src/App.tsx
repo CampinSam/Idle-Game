@@ -6,6 +6,7 @@ import { fetchCurrencyDefs, fetchItemDefs, fetchEffectDefs } from './store/gameS
 import { useSyncEngine } from './hooks/useSyncEngine';
 import { NotificationProvider } from './context/NotificationContext';
 import { ModalProvider } from './context/ModalContext';
+import { BodyCardVariantProvider } from './context/BodyCardVariantContext';
 import GameModalHost from './components/modal/GameModalHost';
 import { TickEngineProvider } from './tick';
 import Layout from './components/Layout';
@@ -144,6 +145,7 @@ export default function App() {
       <TickEngineProvider>
       <NotificationProvider>
       <ModalProvider>
+      <BodyCardVariantProvider>
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
@@ -165,6 +167,7 @@ export default function App() {
         </Route>
       </Routes>
       <GameModalHost />
+      </BodyCardVariantProvider>
       </ModalProvider>
       </NotificationProvider>
       </TickEngineProvider>
