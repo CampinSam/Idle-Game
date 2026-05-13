@@ -13,7 +13,7 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
 
   if (perfect) {
     return (
-      <div className="entity-detail--derp-bird-perfect">
+      <div className="relative [background:radial-gradient(circle_at_50%_0%,rgba(244,114,182,0.18),transparent_65%)]">
         <DefaultEntityDetail {...props} />
       </div>
     );
@@ -24,7 +24,7 @@ export default function DerpBirdEntityDetail(props: EntityDetailProps) {
   }
 
   return (
-    <div className="entity-detail--derp-bird">
+    <div className="relative">
       <DefaultEntityDetail {...props} />
     </div>
   );

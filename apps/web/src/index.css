@@ -442,43 +442,6 @@ input:focus {
     inset 0 0 8px rgba(45, 212, 191, 0.18);
 }
 
-/* ── DerpBird entity detail ── */
-.entity-detail--derp-bird { position: relative; }
-.entity-detail--derp-bird__banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: linear-gradient(90deg, rgba(20, 184, 166, 0.18), rgba(20, 184, 166, 0.04));
-  border-bottom: 1px solid rgba(45, 212, 191, 0.45);
-  color: #5eead4;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-}
-.entity-detail--derp-bird__chip {
-  padding: 1px 5px;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: #042f2e;
-  background: linear-gradient(135deg, #5eead4, #14b8a6);
-  border-radius: 3px;
-}
-.entity-detail--derp-bird .entity-detail__hero { position: relative; }
-.entity-detail--derp-bird .entity-detail__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(60deg, rgba(45, 212, 191, 0.06) 25%, transparent 25.5%, transparent 75%, rgba(45, 212, 191, 0.06) 75.5%),
-    linear-gradient(120deg, rgba(45, 212, 191, 0.06) 25%, transparent 25.5%, transparent 75%, rgba(45, 212, 191, 0.06) 75.5%);
-  background-size: 16px 28px;
-  pointer-events: none;
-  mix-blend-mode: screen;
-}
-
 /* ── Cyborg entity card ── */
 .entity-card--cyborg {
   border-color: rgba(56, 189, 248, 0.45);
@@ -530,29 +493,9 @@ input:focus {
     inset 0 0 8px rgba(56, 189, 248, 0.18);
 }
 
-/* ── Cyborg entity detail ── */
-.entity-detail--cyborg { position: relative; }
 @keyframes cyborg-detail-blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.35; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .entity-detail--cyborg__banner-dot { animation: none; }
-}
-.entity-detail--cyborg .entity-detail__hero { position: relative; }
-.entity-detail--cyborg .entity-detail__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(56, 189, 248, 0.07) 0px,
-    rgba(56, 189, 248, 0.07) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  pointer-events: none;
-  mix-blend-mode: screen;
 }
 
 /* ── PerfectSpecimenCard ── */
@@ -626,79 +569,6 @@ input:focus {
   50%       { opacity: 1; }
 }
 
-/* ── PerfectSpecimenDetail ── */
-.entity-detail--derp-bird-perfect {
-  position: relative;
-  background: radial-gradient(circle at 50% 0%, rgba(244, 114, 182, 0.18), transparent 65%);
-}
-.entity-detail--derp-bird-perfect__banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: linear-gradient(
-    90deg,
-    rgba(244, 114, 182, 0.22),
-    rgba(125, 211, 252, 0.22),
-    rgba(253, 224, 71, 0.22),
-    rgba(244, 114, 182, 0.22)
-  );
-  background-size: 200% 100%;
-  border-bottom: 1px solid rgba(244, 114, 182, 0.55);
-  color: #fef3c7;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  text-shadow:
-    0 0 6px rgba(253, 224, 71, 0.7),
-    0 1px 2px rgba(0, 0, 0, 0.5);
-  animation: perfect-banner-shine 5s linear infinite;
-}
-.entity-detail--derp-bird-perfect__trait {
-  color: #fde68a;
-  font-weight: 900;
-  letter-spacing: 1.4px;
-}
-.entity-detail--derp-bird-perfect__star {
-  color: #fde68a;
-  font-size: 14px;
-  text-shadow: 0 0 6px rgba(253, 224, 71, 0.9);
-  animation: perfect-star-spin 3s ease-in-out infinite;
-}
-.entity-detail--derp-bird-perfect .entity-detail__hero { position: relative; }
-.entity-detail--derp-bird-perfect .entity-detail__hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(2.5px 2.5px at 14% 22%, rgba(255, 255, 255, 0.95), transparent 60%),
-    radial-gradient(2px 2px at 78% 14%, rgba(253, 224, 71, 0.95), transparent 60%),
-    radial-gradient(2.5px 2.5px at 32% 80%, rgba(125, 211, 252, 0.95), transparent 60%),
-    radial-gradient(2px 2px at 88% 68%, rgba(244, 114, 182, 0.95), transparent 60%),
-    radial-gradient(2px 2px at 8% 64%, rgba(167, 243, 208, 0.95), transparent 60%),
-    radial-gradient(1.5px 1.5px at 56% 38%, rgba(196, 181, 253, 0.95), transparent 60%);
-  pointer-events: none;
-  animation: perfect-twinkle-detail 2.6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .entity-detail--derp-bird-perfect__banner { animation: none; }
-  .entity-detail--derp-bird-perfect__star { animation: none; }
-  .entity-detail--derp-bird-perfect .entity-detail__hero::after { animation: none; }
-}
-@keyframes perfect-banner-shine {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
-}
-@keyframes perfect-star-spin {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  50%       { transform: rotate(20deg) scale(1.18); }
-}
-@keyframes perfect-twinkle-detail {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1; }
-}
 
 /* ── GameImage shimmer ── */
 @keyframes game-image-shimmer {
