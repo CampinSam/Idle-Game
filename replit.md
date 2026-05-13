@@ -69,6 +69,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 
 ## Gotchas
 - Stat-bearing equip/unequip actions are blocked when the target entity is non-idle (`working`, `mission`, `injured`).
+- Equipment slot mutations go through `EquipItem` / `UnequipItem` commands; equipped stats are resolver-layered (no `Entity.stats` mutation).
 - Some visual effect combinations may not compose well; order matters (halos outside, surface effects inside).
 - CSP is deliberately off for flexibility; `helmet` is used for other security headers.
 - Production environment variables `JWT_SECRET`, `ADMIN_SECRET`, and `CORS_ORIGIN` are mandatory.

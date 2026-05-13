@@ -1966,6 +1966,8 @@ Links an equipped item instance to an entity, tracking which body slots the equi
 | `slotClaims` | JSON | No | `[]` | Array of body slots this equipment occupies |
 | `equippedAt` | datetime | Auto | now | When equipped |
 
+**Mutations:** Equip and unequip actions go through `POST /v1/commands` with the `EquipItem` and `UnequipItem` command types. Both commands validate player ownership, slot compatibility against `EquipmentSchema`, and reject stat-changing equip/unequip on non-idle entities. Equipped item stats are layered on top of base entity stats at read time through the effect resolver (`EffectService.getPassiveEffectsFromEquipment`) — `Entity.stats` (the trait-derived base) is never mutated on equip/unequip.
+
 ---
 
 ## LocationInstance

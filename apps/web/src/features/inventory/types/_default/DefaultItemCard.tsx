@@ -17,6 +17,7 @@ export default function DefaultItemCard({
     className,
   ].filter(Boolean).join(' ');
 
+  const isEquipped = !!(item.equippedToId || item.isEquipped);
   const sub = item.kind === 'gear' || item.type === 'GEAR'
     ? `Lvl ${item.level ?? 1}`
     : '';
@@ -38,6 +39,9 @@ export default function DefaultItemCard({
       </div>
       <span className="item-card__name">{item.name}</span>
       <span className={`item-card__rarity ${rarityTextClass(item.rarity)}`}>{rarityLabel}</span>
+      {isEquipped && (
+        <span className="item-card__equipped-badge">Equipped</span>
+      )}
       <span className="item-card__sub">{sub}</span>
     </div>
   );

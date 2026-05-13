@@ -1320,6 +1320,11 @@ input:focus {
   font-size: 9px; color: var(--text-secondary); text-align: center; width: 100%;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.7;
 }
+.item-card__equipped-badge {
+  font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #fbbf24; background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4);
+  border-radius: 4px; padding: 1px 5px; text-align: center;
+}
 .item-card.rarity-COMMON      { background: linear-gradient(135deg, #2a2a3a, #1e1e2e); border-color: #4a4a5a; }
 .item-card.rarity-COMMON.item-card--selected      { border-color: #8a8a9a; }
 .item-card.rarity-UNCOMMON    { background: linear-gradient(135deg, #1a3a2a, #1e2e1e); border-color: #2d8a4e; }
