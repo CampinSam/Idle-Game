@@ -28,7 +28,7 @@ export default function ProfilePage() {
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden pt-page-top page-transition-wrapper">
       <div className={CARD_CLASS}>
 
-        <div className="flex items-center gap-4 px-5 py-[18px] bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">
+        <div className="flex items-center gap-4 pt-5 pb-[18px] px-5 bg-gradient-to-b from-[rgba(139,92,246,0.1)] to-transparent border-b border-[rgba(139,92,246,0.15)]">
           <div className="w-[52px] h-[52px] shrink-0 rounded-full bg-gradient-to-br from-[#6D28D9] to-[#4C1D95] flex items-center justify-center font-['Cinzel',serif] text-[18px] font-bold text-[#e2d9ff] tracking-[0.04em] shadow-[0_0_0_2px_rgba(139,92,246,0.4),0_0_16px_rgba(139,92,246,0.2)]">
             {getInitials(player?.username, player?.email)}
           </div>

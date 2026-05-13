@@ -114,7 +114,7 @@ function FeaturedCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopIte
         </div>
       </div>
       <div className="px-3.5 pt-2.5 pb-3.5 flex justify-end">
-        <button className="store-price-btn bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] rounded-lg px-3.5 py-[7px] cursor-pointer transition-colors duration-150 hover:bg-[rgba(139,92,246,0.25)]">
+        <button data-sfx="ui.button_primary" className="bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] rounded-lg px-3.5 py-[7px] cursor-pointer transition-colors duration-150 hover:bg-[rgba(139,92,246,0.25)]">
           <CostDisplay cost={item.cost} size={15} />
         </button>
       </div>

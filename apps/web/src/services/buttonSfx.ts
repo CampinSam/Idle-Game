@@ -19,7 +19,6 @@ const VARIANT_RULES: Array<{ classes: string[]; key: string }> = [
       'btn-save',
       'btn-primary',
       'unlock-btn',
-      'store-price-btn',
       'me-add-btn',
     ],
     key: 'ui.button_primary',
