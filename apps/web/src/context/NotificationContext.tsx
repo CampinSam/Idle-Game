@@ -60,14 +60,55 @@ export function useNotifications() {
 const MAX_VISIBLE_TOASTS = 2;
 const TOAST_DURATION = 5000;
 const CRITICAL_TOAST_DURATION = 15000;
+const SEEN_IDS_CAP = 200;
+
+function seenStorageKey(userId: string) {
+  return `notif_seen_${userId}`;
+}
+
+function loadSeenIds(userId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(seenStorageKey(userId));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistSeenIds(userId: string, ids: Set<string>) {
+  try {
+    let arr = Array.from(ids);
+    if (arr.length > SEEN_IDS_CAP) arr = arr.slice(arr.length - SEEN_IDS_CAP);
+    localStorage.setItem(seenStorageKey(userId), JSON.stringify(arr));
+  } catch {
+    // localStorage unavailable — fail silently
+  }
+}
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
   const token = useAppSelector((s) => s.auth.token);
+  const userId = useAppSelector((s) => s.auth.player?.id as string | undefined);
   const syncNotifs = useSyncNotifications();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const seenIds = useRef<Set<string>>(new Set());
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Load persisted seen IDs from localStorage when userId becomes available
+  useEffect(() => {
+    if (!userId) return;
+    seenIds.current = loadSeenIds(userId);
+  }, [userId]);
+
+  // Clear seen IDs and remove localStorage entry on logout
+  useEffect(() => {
+    if (!token && userId) {
+      try { localStorage.removeItem(seenStorageKey(userId)); } catch { /* ignore */ }
+      seenIds.current = new Set();
+    }
+  }, [token, userId]);
 
   const notifications: AppNotification[] = (syncNotifs as any[])
     .filter((n) => !n.dismissedAt)
@@ -76,10 +117,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !userId) return;
+    let dirty = false;
     for (const n of notifications) {
       if (seenIds.current.has(n.id)) continue;
       seenIds.current.add(n.id);
+      dirty = true;
       if (n.readAt || n.dismissedAt) continue;
       audioEngine.play('ui.notification');
       if (n.priority === 'critical' || n.priority === 'high') {
@@ -89,7 +132,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         });
       }
     }
-  }, [notifications, token]);
+    if (dirty) persistSeenIds(userId, seenIds.current);
+  }, [notifications, token, userId]);
 
   const scheduleToastDismiss = useCallback((toastId: string, duration: number) => {
     if (toastTimers.current.has(toastId)) return;
