@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useSyncLocations,
@@ -7,7 +7,8 @@ import {
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { getLocationViews } from './registry';
-import { ANTI_WHALE_CAPS, getRegionDisplay, OUTPOST_REGIONS } from '@derp/shared';
+import { ANTI_WHALE_CAPS, getRegionDisplay } from '@derp/shared';
+import { OutpostList } from './components/OutpostList';
 
 const PAGE_CLASS =
   'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
@@ -32,59 +33,6 @@ function LocationsPageSkeleton() {
 interface DeactivateTarget {
   id: string;
   name: string;
-}
-
-interface OutpostListControlsProps {
-  search: string;
-  onSearchChange: (v: string) => void;
-  regionFilter: string;
-  onRegionFilterChange: (v: string) => void;
-}
-
-function OutpostListControls({
-  search,
-  onSearchChange,
-  regionFilter,
-  onRegionFilterChange,
-}: OutpostListControlsProps) {
-  return (
-    <div className="item-list__controls">
-      <div className="item-list__search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search outposts..."
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="item-list__search-input"
-        />
-      </div>
-      <select
-        className="item-list__select"
-        style={{ width: 116 }}
-        value={regionFilter}
-        onChange={(e) => onRegionFilterChange(e.target.value)}
-        aria-label="Filter by region"
-      >
-        <option value="ALL">All Regions</option>
-        {OUTPOST_REGIONS.map((r) => (
-          <option key={r} value={r}>{getRegionDisplay(r).displayName}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function EmptySlotCard() {
-  return (
-    <div className="bg-bg-card border border-dashed border-border rounded-xl p-4 flex flex-col items-center gap-2 text-center min-h-[140px] justify-center">
-      <div className="text-2xl opacity-30">🔒</div>
-      <div className="text-[10px] font-extrabold tracking-[0.8px] text-text-secondary">VACANT SLOT</div>
-    </div>
-  );
 }
 
 interface DeactivateModalProps {
@@ -157,9 +105,6 @@ export default function LocationsPage() {
   const player = useSyncPlayer();
   const { execute } = useCommand();
 
-  const [inactiveExpanded, setInactiveExpanded] = useState(false);
-  const [search, setSearch] = useState('');
-  const [regionFilter, setRegionFilter] = useState('ALL');
   const [deactivateTarget, setDeactivateTarget] = useState<DeactivateTarget | null>(null);
   const [deactivating, setDeactivating] = useState(false);
 
@@ -170,44 +115,26 @@ export default function LocationsPage() {
   const primaryLocationId: string | null = player?.primaryLocationId ?? null;
   const slotBudget = ANTI_WHALE_CAPS.maxActiveOutposts(keeperLevel, bonusSlots);
 
-  const activeLocations = useMemo(
-    () => (allLocations as any[]).filter((l) => l.enabled !== false),
-    [allLocations],
-  );
-  const inactiveLocations = useMemo(
-    () => (allLocations as any[]).filter((l) => l.enabled === false),
-    [allLocations],
-  );
+  const activeLocations = allLocations.filter((l) => l.enabled !== false);
+  const activeCount = activeLocations.length;
 
-  const primaryOutpost = activeLocations.find((l) => l.id === primaryLocationId) ?? activeLocations[0] ?? null;
-  const secondaryActive = activeLocations.filter((l) => l.id !== primaryOutpost?.id);
-  const emptySlots = Math.max(0, slotBudget - activeLocations.length);
+  const primaryOutpost = activeLocations.find((l) => l.id === primaryLocationId)
+    ?? activeLocations[0]
+    ?? null;
 
-  const filteredInactive = useMemo(() => {
-    let list = inactiveLocations;
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      list = list.filter((l: any) => {
-        const name = (l.name || '').toLowerCase();
-        const region = getRegionDisplay(l.regionId || l.region).displayName.toLowerCase();
-        return name.includes(q) || region.includes(q);
-      });
-    }
-    if (regionFilter !== 'ALL') {
-      list = list.filter((l: any) => (l.regionId || l.region) === regionFilter);
-    }
-    return list;
-  }, [inactiveLocations, search, regionFilter]);
+  const nonPrimaryLocations = primaryOutpost
+    ? allLocations.filter((l) => l.id !== primaryOutpost.id)
+    : allLocations;
 
   const handleSetPrimary = async (locationId: string) => {
     try {
       await execute('SetPrimaryOutpost', { locationId });
-    } catch (err: any) {
+    } catch (err) {
       console.error('[LocationsPage] SetPrimaryOutpost failed:', err);
     }
   };
 
-  const handleDeactivateRequest = (outpost: any) => {
+  const handleDeactivateRequest = (outpost: { id: string; name?: string; regionId?: string; region?: string }) => {
     const regionName = getRegionDisplay(outpost.regionId || outpost.region).displayName;
     setDeactivateTarget({ id: outpost.id, name: outpost.name || regionName });
   };
@@ -218,10 +145,18 @@ export default function LocationsPage() {
     try {
       await execute('ToggleLocation', { locationId: deactivateTarget.id, enabled: false });
       setDeactivateTarget(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error('[LocationsPage] ToggleLocation failed:', err);
     } finally {
       setDeactivating(false);
+    }
+  };
+
+  const handleActivate = async (outpost: { id: string }) => {
+    try {
+      await execute('ToggleLocation', { locationId: outpost.id, enabled: true });
+    } catch (err) {
+      console.error('[LocationsPage] ToggleLocation (activate) failed:', err);
     }
   };
 
@@ -235,14 +170,14 @@ export default function LocationsPage() {
             <span
               className="text-[11px] font-black tracking-[0.5px] px-2.5 py-[3px] rounded-full"
               style={{
-                background: activeLocations.length >= slotBudget
+                background: activeCount >= slotBudget
                   ? 'rgba(239,68,68,0.15)'
                   : 'rgba(139,92,246,0.15)',
-                border: `1px solid ${activeLocations.length >= slotBudget ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
-                color: activeLocations.length >= slotBudget ? '#f87171' : '#c4b5fd',
+                border: `1px solid ${activeCount >= slotBudget ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
+                color: activeCount >= slotBudget ? '#f87171' : '#c4b5fd',
               }}
             >
-              {activeLocations.length} / {slotBudget}
+              {activeCount} / {slotBudget}
             </span>
           </div>
           {bonusSlots > 0 && (
@@ -253,7 +188,11 @@ export default function LocationsPage() {
         </div>
 
         {primaryOutpost && (() => {
-          const { Card } = getLocationViews(primaryOutpost.kind || primaryOutpost.region, primaryOutpost.isUnique, primaryOutpost.definitionId);
+          const { Card } = getLocationViews(
+            primaryOutpost.kind || primaryOutpost.region,
+            primaryOutpost.isUnique,
+            primaryOutpost.definitionId,
+          );
           return (
             <div className="flex flex-col gap-2">
               <div className="text-[10px] font-black tracking-[1px] text-[#a78bfa] uppercase">★ Primary Outpost</div>
@@ -269,102 +208,23 @@ export default function LocationsPage() {
           );
         })()}
 
-        {(secondaryActive.length > 0 || emptySlots > 0) && (
-          <div className="flex flex-col gap-2">
-            <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase">
-              Active Outposts
-              {secondaryActive.length > 0 && (
-                <span className="ml-2 font-semibold normal-case tracking-normal text-[10px]">
-                  ({secondaryActive.length})
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {secondaryActive.map((op: any) => {
-                const { Card } = getLocationViews(op.kind || op.region, op.isUnique, op.definitionId);
-                return (
-                  <Card
-                    key={op.id}
-                    outpost={op}
-                    isPrimary={false}
-                    onSetPrimary={() => handleSetPrimary(op.id)}
-                    onDeactivate={() => handleDeactivateRequest(op)}
-                    onClick={() => navigate(`/locations/${op.id}`)}
-                  />
-                );
-              })}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <EmptySlotCard key={`empty-${i}`} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeLocations.length === 0 && (
+        {allLocations.length === 0 && (
           <div className="text-center py-8 text-text-secondary text-sm">
             <div className="text-3xl mb-3 opacity-40">🏚️</div>
-            No active outposts. Activate one below to get started.
+            No outposts yet.
           </div>
         )}
 
-        {inactiveLocations.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setInactiveExpanded((v) => !v)}
-              className="flex items-center justify-between w-full bg-transparent border-0 p-0 cursor-pointer group"
-            >
-              <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase group-hover:text-text-primary transition-colors">
-                Inactive Outposts
-                <span className="ml-2 font-semibold normal-case tracking-normal text-[10px]">
-                  ({inactiveLocations.length})
-                </span>
-              </div>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`text-text-secondary transition-transform duration-200 ${inactiveExpanded ? 'rotate-180' : ''}`}
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-
-            {inactiveExpanded && (
-              <div className="flex flex-col gap-3">
-                <OutpostListControls
-                  search={search}
-                  onSearchChange={setSearch}
-                  regionFilter={regionFilter}
-                  onRegionFilterChange={setRegionFilter}
-                />
-                {filteredInactive.length === 0 ? (
-                  <div className="text-center py-6 text-text-secondary text-sm">
-                    No outposts match your filters.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    {filteredInactive.map((op: any) => {
-                      const { Card } = getLocationViews(op.kind || op.region, op.isUnique, op.definitionId);
-                      return (
-                        <Card
-                          key={op.id}
-                          outpost={op}
-                          isInactive
-                          onClick={() => navigate(`/locations/${op.id}`)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+        {(nonPrimaryLocations.length > 0 || activeCount < slotBudget) && (
+          <OutpostList
+            locations={nonPrimaryLocations}
+            primaryLocationId={primaryLocationId}
+            activeCount={activeCount}
+            slotBudget={slotBudget}
+            onSetPrimary={handleSetPrimary}
+            onDeactivate={handleDeactivateRequest}
+            onActivate={handleActivate}
+          />
         )}
       </div>
 

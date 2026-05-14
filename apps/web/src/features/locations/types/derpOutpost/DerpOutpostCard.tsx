@@ -47,8 +47,10 @@ export default function DerpOutpostCard({
   onClick,
   isPrimary = false,
   isInactive = false,
+  canActivate = false,
   onSetPrimary,
   onDeactivate,
+  onActivate,
 }: LocationCardProps) {
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
@@ -76,7 +78,8 @@ export default function DerpOutpostCard({
     ? 'border-[rgba(139,92,246,0.25)]'
     : 'border-derp-purple';
 
-  const hasActions = (onSetPrimary || onDeactivate) && !isInactive;
+  const hasActiveActions = !isInactive && (onSetPrimary || onDeactivate);
+  const hasInactiveActions = isInactive && onActivate;
 
   return (
     <div
@@ -208,7 +211,7 @@ export default function DerpOutpostCard({
           Object.entries((op.storage?.stored as Record<string, number>) || {})
             .filter(([, amount]) => amount >= 1)
             .map(([resId, amount]) => {
-              const capacity = (op.storage?.capacity as any)?.[resId] || 0;
+              const capacity = (op.storage?.capacity as Record<string, number>)?.[resId] || 0;
               const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
               const isFull = pct >= 99.5;
               const outputType = 'CURRENCY';
@@ -248,7 +251,7 @@ export default function DerpOutpostCard({
           )}
       </div>
 
-      {hasActions && (
+      {hasActiveActions && (
         <div
           className="mt-auto flex gap-1.5 px-2.5 pb-2.5"
           onClick={(e) => e.stopPropagation()}
@@ -271,6 +274,27 @@ export default function DerpOutpostCard({
               Deactivate
             </button>
           )}
+        </div>
+      )}
+
+      {hasInactiveActions && (
+        <div
+          className="mt-auto px-2.5 pb-2.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={canActivate ? onActivate : undefined}
+            disabled={!canActivate}
+            title={canActivate ? undefined : 'Slot budget full — deactivate another outpost first'}
+            className={`w-full text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border transition-colors ${
+              canActivate
+                ? 'border-[rgba(16,185,129,0.4)] text-[#34d399] bg-[rgba(16,185,129,0.08)] hover:bg-[rgba(16,185,129,0.15)] hover:border-[rgba(16,185,129,0.6)] cursor-pointer'
+                : 'border-border text-text-secondary bg-transparent cursor-not-allowed opacity-50'
+            }`}
+          >
+            {canActivate ? 'Activate' : 'Slots Full'}
+          </button>
         </div>
       )}
     </div>
