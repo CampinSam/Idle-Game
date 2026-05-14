@@ -103,13 +103,24 @@ export class NftImageImportService {
     if (this.knownCidCacheLoading) return this.knownCidCacheLoading;
 
     this.knownCidCacheLoading = (async () => {
-      const rows = await this.prisma.entity.findMany({
-        where: { nftAssetId: { not: null } },
-        select: { display: true },
-      });
+      const [entityRows, locationRows] = await Promise.all([
+        this.prisma.entity.findMany({
+          where: { nftAssetId: { not: null } },
+          select: { display: true },
+        }),
+        this.prisma.locationInstance.findMany({
+          where: { nftAssetId: { not: null } },
+          select: { state: true },
+        }),
+      ]);
       const cids = new Set<string>();
-      for (const row of rows) {
+      for (const row of entityRows) {
         const url: string = ((row.display as any) || {}).imageUrl || '';
+        const cid = this.extractCid(url);
+        if (cid) cids.add(cid);
+      }
+      for (const row of locationRows) {
+        const url: string = ((row.state as any) || {}).nftImageUrl || '';
         const cid = this.extractCid(url);
         if (cid) cids.add(cid);
       }
