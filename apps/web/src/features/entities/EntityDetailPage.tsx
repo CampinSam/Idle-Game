@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { FullscreenModal } from '../../components/ui';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
@@ -374,13 +375,13 @@ export default function EntityDetailPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {renameOpen && (
-        <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(10,8,30,0.72)] backdrop-blur-sm p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Rename character"
-        >
-          <div className="bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.4)] rounded-2xl px-5 pt-6 pb-5 w-full max-w-[360px] shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <FullscreenModal onDismiss={closeRenameModal}>
+          <div
+            className="relative z-10 bg-gradient-to-br from-[#1a1640] to-[#221a50] border border-[rgba(139,92,246,0.4)] rounded-2xl px-5 pt-6 pb-5 w-full max-w-[360px] mx-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Rename character"
+          >
             <h2 className="text-[15px] font-bold text-text-primary mb-3.5 tracking-[0.04em] uppercase m-0">
               Rename Character
             </h2>
@@ -421,7 +422,7 @@ export default function EntityDetailPage() {
               </div>
             </form>
           </div>
-        </div>
+        </FullscreenModal>
       )}
 
       <div

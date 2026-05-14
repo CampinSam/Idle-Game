@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { getRegionDisplay } from '@derp/shared';
+import { FullscreenModal } from '../../../../../components/ui';
 import { useCommand } from '../../../../../hooks/useCommand';
 import { useAppDispatch } from '../../../../../store';
 import { patchPlayerOptimistic } from '../../../../../store/syncSlice';
@@ -30,8 +31,7 @@ function buildNftExplorerUrl(nftAssetId: string): string | null {
 
 function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateConfirmProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+    <FullscreenModal onDismiss={onCancel} className="flex items-end sm:items-center justify-center">
       <div className="relative z-10 w-full max-w-sm mx-4 mb-6 sm:mb-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-[rgba(239,68,68,0.4)] rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex items-start gap-3">
           <span className="text-2xl flex-shrink-0">⚠️</span>
@@ -76,7 +76,7 @@ function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateC
           </button>
         </div>
       </div>
-    </div>
+    </FullscreenModal>
   );
 }
 
