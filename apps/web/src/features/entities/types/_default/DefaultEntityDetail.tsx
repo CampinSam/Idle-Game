@@ -290,9 +290,9 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       />
 
       {/* ── Full-width progression tab panel ── */}
-      <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col flex-1 min-h-0">
+      <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col flex-1 min-h-[200px]">
         <div
-          className="flex border-b border-[rgba(139,92,246,0.2)] overflow-x-auto shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex border-b border-[rgba(139,92,246,0.2)] shrink-0"
           role="tablist"
         >
           {PROGRESSION_TABS.map((tab) => (
@@ -301,7 +301,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               role="tab"
               aria-selected={activeTab === tab}
               className={[
-                'flex-none py-2 px-2.5 text-[8px] font-extrabold tracking-[0.4px] bg-transparent border-none',
+                'flex-1 py-2 px-1 text-[8px] font-extrabold tracking-[0.4px] bg-transparent border-none',
                 'border-b-2 cursor-pointer whitespace-nowrap text-center',
                 '[transition:color_0.15s,border-color_0.15s]',
                 activeTab === tab
