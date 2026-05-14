@@ -10,9 +10,6 @@ interface OutpostListProps {
   primaryLocationId: string | null;
   activeCount: number;
   slotBudget: number;
-  onSetPrimary: (locationId: string) => void;
-  onDeactivate: (outpost: any) => void;
-  onActivate: (outpost: any) => void;
 }
 
 function EmptySlotCard() {
@@ -37,17 +34,12 @@ export function OutpostList({
   primaryLocationId,
   activeCount,
   slotBudget,
-  onSetPrimary,
-  onDeactivate,
-  onActivate,
 }: OutpostListProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OutpostStatus>('ALL');
   const [regionFilter, setRegionFilter] = useState('ALL');
   const [inactiveExpanded, setInactiveExpanded] = useState(false);
-
-  const canActivate = activeCount < slotBudget;
 
   const filtered = useMemo(() => {
     let list = locations;
@@ -169,8 +161,6 @@ export function OutpostList({
                   key={op.id}
                   outpost={op}
                   isPrimary={isPrimary}
-                  onSetPrimary={isPrimary ? undefined : () => onSetPrimary(op.id)}
-                  onDeactivate={() => onDeactivate(op)}
                   onClick={() => navigate(`/locations/${op.id}`)}
                 />
               );
@@ -228,8 +218,6 @@ export function OutpostList({
                     key={op.id}
                     outpost={op}
                     isInactive
-                    canActivate={canActivate}
-                    onActivate={() => onActivate(op)}
                     onClick={() => navigate(`/locations/${op.id}`)}
                   />
                 );

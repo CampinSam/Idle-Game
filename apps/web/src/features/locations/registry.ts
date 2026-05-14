@@ -5,10 +5,6 @@ export interface LocationCardProps {
   onClick?: () => void;
   isPrimary?: boolean;
   isInactive?: boolean;
-  canActivate?: boolean;
-  onSetPrimary?: () => void;
-  onDeactivate?: () => void;
-  onActivate?: () => void;
 }
 
 export interface LocationPageProps {

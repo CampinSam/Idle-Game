@@ -1,17 +1,12 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useSyncLocations,
   useSyncStatus,
   useSyncPlayer,
 } from '../../hooks/useSyncSelectors';
-import { useCommand } from '../../hooks/useCommand';
-import { useAppDispatch } from '../../store';
-import { patchPlayerOptimistic } from '../../store/syncSlice';
 import { getLocationViews } from './registry';
-import { outpostSlotBudget, getRegionDisplay } from '@derp/shared';
+import { outpostSlotBudget } from '@derp/shared';
 import { OutpostList } from './components/OutpostList';
-import { FullscreenModal } from '../../components/ui';
 
 const PAGE_CLASS =
   'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
@@ -33,83 +28,11 @@ function LocationsPageSkeleton() {
   );
 }
 
-interface DeactivateTarget {
-  id: string;
-  name: string;
-}
-
-interface DeactivateModalProps {
-  target: DeactivateTarget;
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}
-
-function DeactivateModal({ target, onConfirm, onCancel, isLoading }: DeactivateModalProps) {
-  return (
-    <FullscreenModal onDismiss={onCancel}>
-      <div className="relative z-10 w-full max-w-sm mx-4 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-[rgba(239,68,68,0.4)] rounded-2xl p-5 flex flex-col gap-4">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl flex-shrink-0">⚠️</span>
-          <div>
-            <h3 className="font-cinzel text-base font-black text-text-primary mb-1">
-              Deactivate Outpost?
-            </h3>
-            <p className="text-[12px] text-text-secondary leading-relaxed">
-              <strong className="text-text-primary">{target.name}</strong> will be deactivated.
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.25)] rounded-xl p-3 flex flex-col gap-1.5">
-          <div className="text-[11px] font-bold text-[#f87171] tracking-[0.3px] mb-0.5">THIS WILL IMMEDIATELY:</div>
-          <div className="flex items-center gap-2 text-[11px] text-text-secondary">
-            <span className="text-[#f87171]">•</span>
-            Unassign all workers from this outpost
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-text-secondary">
-            <span className="text-[#f87171]">•</span>
-            Cancel all active jobs for every team member
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-text-secondary">
-            <span className="text-[#f87171]">•</span>
-            Archive related notifications
-          </div>
-        </div>
-
-        <div className="flex gap-2.5">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isLoading}
-            className="flex-1 py-2.5 rounded-xl border border-border text-text-secondary text-[12px] font-bold tracking-[0.3px] bg-transparent hover:border-[rgba(139,92,246,0.4)] hover:text-text-primary transition-colors cursor-pointer disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="flex-1 py-2.5 rounded-xl border border-[rgba(239,68,68,0.5)] text-[#f87171] text-[12px] font-bold tracking-[0.3px] bg-[rgba(239,68,68,0.12)] hover:bg-[rgba(239,68,68,0.2)] transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {isLoading ? 'Deactivating…' : 'Deactivate'}
-          </button>
-        </div>
-      </div>
-    </FullscreenModal>
-  );
-}
-
 export default function LocationsPage() {
   const navigate = useNavigate();
   const allLocations = useSyncLocations();
   const syncStatus = useSyncStatus();
   const player = useSyncPlayer();
-  const dispatch = useAppDispatch();
-  const { execute } = useCommand();
-
-  const [deactivateTarget, setDeactivateTarget] = useState<DeactivateTarget | null>(null);
-  const [deactivating, setDeactivating] = useState(false);
 
   if (syncStatus === 'disconnected') return <LocationsPageSkeleton />;
 
@@ -128,43 +51,6 @@ export default function LocationsPage() {
   const nonPrimaryLocations = primaryOutpost
     ? allLocations.filter((l) => l.id !== primaryOutpost.id)
     : allLocations;
-
-  const handleSetPrimary = async (locationId: string) => {
-    const previous = player?.primaryLocationId ?? null;
-    dispatch(patchPlayerOptimistic({ primaryLocationId: locationId }));
-    try {
-      await execute('SetPrimaryOutpost', { locationId });
-    } catch (err) {
-      dispatch(patchPlayerOptimistic({ primaryLocationId: previous }));
-      console.error('[LocationsPage] SetPrimaryOutpost failed:', err);
-    }
-  };
-
-  const handleDeactivateRequest = (outpost: { id: string; name?: string; regionId?: string; region?: string }) => {
-    const regionName = getRegionDisplay(outpost.regionId || outpost.region).displayName;
-    setDeactivateTarget({ id: outpost.id, name: outpost.name || regionName });
-  };
-
-  const handleDeactivateConfirm = async () => {
-    if (!deactivateTarget) return;
-    setDeactivating(true);
-    try {
-      await execute('ToggleLocation', { locationId: deactivateTarget.id, enabled: false });
-      setDeactivateTarget(null);
-    } catch (err) {
-      console.error('[LocationsPage] ToggleLocation failed:', err);
-    } finally {
-      setDeactivating(false);
-    }
-  };
-
-  const handleActivate = async (outpost: { id: string }) => {
-    try {
-      await execute('ToggleLocation', { locationId: outpost.id, enabled: true });
-    } catch (err) {
-      console.error('[LocationsPage] ToggleLocation (activate) failed:', err);
-    }
-  };
 
   return (
     <div className={PAGE_CLASS}>
@@ -206,7 +92,6 @@ export default function LocationsPage() {
                 <Card
                   outpost={primaryOutpost}
                   isPrimary
-                  onDeactivate={() => handleDeactivateRequest(primaryOutpost)}
                   onClick={() => navigate(`/locations/${primaryOutpost.id}`)}
                 />
               </div>
@@ -227,21 +112,9 @@ export default function LocationsPage() {
             primaryLocationId={primaryLocationId}
             activeCount={activeCount}
             slotBudget={slotBudget}
-            onSetPrimary={handleSetPrimary}
-            onDeactivate={handleDeactivateRequest}
-            onActivate={handleActivate}
           />
         )}
       </div>
-
-      {deactivateTarget && (
-        <DeactivateModal
-          target={deactivateTarget}
-          onConfirm={handleDeactivateConfirm}
-          onCancel={() => setDeactivateTarget(null)}
-          isLoading={deactivating}
-        />
-      )}
     </div>
   );
 }

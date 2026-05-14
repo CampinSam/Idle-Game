@@ -5,12 +5,7 @@ import { GameImage } from '../../../../components/GameImage';
 import GameIcon from '../../../../components/GameIcon';
 import BuildingProgressBar from '../../../../components/BuildingProgressBar';
 import { resolveIcon, resolveName } from '../../../../utils/iconResolver';
-import {
-  formatRate,
-  formatAmount,
-  formatTimeRemaining,
-  computeInventoryAmount,
-} from '../../../../utils/locationProduction';
+import { formatRate } from '../../../../utils/locationProduction';
 import { getRegionDisplay } from '@derp/shared';
 import { getLocationImagePath } from '../../../../config/images';
 import type { LocationCardProps } from '../../registry';
@@ -26,18 +21,20 @@ function buildNftExplorerUrl(nftAssetId: string): string | null {
 }
 
 const CARD_BASE =
-  'flex-1 min-w-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 ' +
-  'rounded-[14px] overflow-hidden flex flex-col motion-safe:animate-[card-enter_0.25s_ease-out_both]';
+  'flex-1 min-w-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border ' +
+  'rounded-[14px] overflow-hidden flex flex-col ' +
+  'motion-safe:animate-[card-enter_0.25s_ease-out_both] ' +
+  'transition-[border-color]';
 
-const STORAGE_BAR_RATE_BASE = 'text-[10px] font-semibold flex-shrink-0';
+const RATE_BASE = 'text-[10px] font-semibold flex-shrink-0';
 
-function storageBarRateClass(isFull: boolean, isDepleting: boolean): string {
-  if (isFull) return `${STORAGE_BAR_RATE_BASE} text-[#F59E0B] bg-[rgba(245,158,11,0.12)] px-1.5 py-[1px] rounded tracking-[0.4px] font-bold`;
-  if (isDepleting) return `${STORAGE_BAR_RATE_BASE} text-[#EF4444]`;
-  return `${STORAGE_BAR_RATE_BASE} text-[#10B981]`;
+function rateClass(isFull: boolean, isDepleting: boolean): string {
+  if (isFull) return `${RATE_BASE} text-[#F59E0B] bg-[rgba(245,158,11,0.12)] px-1.5 py-[1px] rounded tracking-[0.4px] font-bold`;
+  if (isDepleting) return `${RATE_BASE} text-[#EF4444]`;
+  return `${RATE_BASE} text-[#10B981]`;
 }
 
-function storageFillClass(isFull: boolean, isDepleting: boolean): string {
+function fillClass(isFull: boolean, isDepleting: boolean): string {
   if (isDepleting) return 'h-full rounded transition-[width] duration-500 bg-gradient-to-r from-[#EF4444] to-[#DC2626] motion-safe:animate-[deplete-pulse_2s_ease-in-out_infinite]';
   if (isFull) return 'h-full rounded transition-[width] duration-500 bg-gradient-to-r from-[#F59E0B] to-[#FBBF24]';
   return 'h-full rounded transition-[width] duration-500 bg-gradient-to-r from-[#7C3AED] to-[#A855F7]';
@@ -48,15 +45,9 @@ export default function DerpOutpostCard({
   onClick,
   isPrimary = false,
   isInactive = false,
-  canActivate = false,
-  onSetPrimary,
-  onDeactivate,
-  onActivate,
 }: LocationCardProps) {
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
-  const syncItems = useAppSelector((s) => s.sync.items);
-  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
   const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
@@ -74,14 +65,16 @@ export default function DerpOutpostCard({
     return isFull ? s : s + r.netRatePerHour;
   }, 0);
 
-  const borderClass = isPrimary
-    ? 'border-[#a78bfa]'
-    : isInactive
-    ? 'border-[rgba(139,92,246,0.25)]'
-    : 'border-derp-purple';
+  const displayName = (op.nftAssetId ? op.name : regionName) || regionName;
 
-  const hasActiveActions = !isInactive && (onSetPrimary || onDeactivate);
-  const hasInactiveActions = isInactive && onActivate;
+  const borderClass = isPrimary
+    ? 'border-[#a78bfa] hover:border-[#c4b5fd]'
+    : isInactive
+    ? 'border-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.35)]'
+    : 'border-[rgba(139,92,246,0.22)] hover:border-[rgba(139,92,246,0.6)]';
+
+  const hasStorageFallback = resourceSummaries.length === 0 &&
+    Object.values((op.storage?.stored as Record<string, number>) || {}).some((v) => v >= 1);
 
   return (
     <div
@@ -89,16 +82,19 @@ export default function DerpOutpostCard({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {isPrimary && (
-            <span className="flex-shrink-0 bg-gradient-to-br from-[#a78bfa] to-[#7C3AED] text-white text-[9px] font-black px-2 py-[2px] rounded-full tracking-[0.6px] uppercase shadow-[0_0_8px_rgba(167,139,250,0.5)]">
-              ★ Primary
-            </span>
-          )}
-          <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary truncate">{(op.nftAssetId ? op.name : regionName).toUpperCase()}</span>
+      <div className="relative h-[110px] overflow-hidden shrink-0">
+        <GameImage
+          src={cardImageSrc}
+          category="regions"
+          alt={displayName}
+          fallbackSrc={regionImage}
+          className="absolute inset-0 !w-full !h-full !rounded-none"
+        />
+        <div className="absolute top-[6px] right-[6px] flex items-center gap-[3px] bg-[rgba(0,0,0,0.62)] border border-[rgba(139,92,246,0.55)] rounded-[20px] px-[7px] py-[2px] z-[2]">
+          <span className="text-[8px] font-black text-[rgba(167,139,250,0.85)] tracking-[0.5px]">LVL</span>
+          <span className="text-sm font-black text-white leading-none">{op.level}</span>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="absolute top-[6px] left-[6px] flex flex-col gap-1 z-[2]">
           {nftAssetId && (
             nftExplorerUrl ? (
               <a
@@ -116,33 +112,25 @@ export default function DerpOutpostCard({
               </span>
             )
           )}
-          <span className="bg-gradient-to-br from-[#10B981] to-[#059669] text-white text-[11px] font-bold px-2.5 py-[3px] rounded-xl">
-            ⭐ Lv. {op.level}
+          {isPrimary && (
+            <span className="bg-gradient-to-br from-[#a78bfa] to-[#7C3AED] text-white text-[9px] font-black px-1.5 py-[2px] rounded tracking-[0.5px] shadow-[0_0_8px_rgba(167,139,250,0.5)]">
+              ★ Primary
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="px-2.5 pt-2 pb-2.5 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[11px] font-extrabold tracking-[0.4px] text-text-primary truncate">
+            {displayName.toUpperCase()}
+          </span>
+          <span className="text-[11px] font-bold text-text-primary flex-shrink-0 flex items-center gap-0.5">
+            <span className="text-[10px]">⚡</span>
+            {formatRate(totalRatePerHour)}/hr
           </span>
         </div>
-      </div>
 
-      <div className="px-2 mb-2">
-        <GameImage
-          src={cardImageSrc}
-          category="regions"
-          alt={regionName}
-          fallbackSrc={regionImage}
-          nativeRatio
-        />
-      </div>
-
-      <div className="flex items-center justify-between px-3 mb-2">
-        <div className="flex items-center gap-1">
-          <span className="text-sm">⚡</span>
-          <span className="text-sm font-bold text-text-primary">{formatRate(totalRatePerHour)}/hr</span>
-        </div>
-        <div className="text-[13px] text-text-secondary">
-          Level <strong className="text-text-primary text-base">{op.level}</strong>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5 px-2.5 mb-2.5">
         {(op.buildings || [])
           .filter((b: any) => b.status === 'building' && b.jobId)
           .map((b: any) => (
@@ -156,150 +144,69 @@ export default function DerpOutpostCard({
               compact
             />
           ))}
-        {resourceSummaries.length > 0 ? (
-          resourceSummaries.map((res) => {
-            const current = res.currentAmount;
-            const pct = res.capacity > 0
-              ? Math.min(100, (current / res.capacity) * 100)
-              : 0;
-            const isFull = pct >= 99.5;
-            const isDepleting = res.netRatePerHour < 0;
-            let depletionLabel = '';
-            if (isDepleting) {
-              const invAmount = computeInventoryAmount(
-                res.outputType,
-                res.outputRefId,
-                syncItems,
-                currencyBalances,
-              );
-              const totalAvailable = current + invAmount;
-              const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
-              depletionLabel = formatTimeRemaining(hoursLeft);
-            }
 
-            return (
-              <div key={res.key} className="flex flex-col gap-[3px]">
-                <div className="flex items-center gap-1 text-[11px]">
-                  <span className="text-xs flex-shrink-0">
-                    <GameIcon
-                      src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
-                      size={14}
-                    />
-                  </span>
-                  <span className="font-bold text-text-primary flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis">
-                    {resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
-                  </span>
-                  <span className={storageBarRateClass(isFull, isDepleting)}>
-                    {isFull ? 'FULL' : `${res.netRatePerHour >= 0 ? '+' : ''}${formatRate(res.netRatePerHour)}/hr`}
-                  </span>
-                </div>
-                <div className="h-2 bg-white/[0.06] rounded overflow-hidden">
-                  <div
-                    className={storageFillClass(isFull, isDepleting)}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className="flex items-center gap-0.5 text-[10px]">
-                  <span className="font-extrabold text-text-primary">{formatAmount(current)}</span>
-                  <span className="text-text-secondary">/</span>
-                  <span className="text-text-secondary font-semibold">{formatAmount(res.capacity)}</span>
-                  {isDepleting && (
-                    <span className="text-[9px] font-bold text-[#F59E0B] ml-1 whitespace-nowrap">⚠ {depletionLabel}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          Object.entries((op.storage?.stored as Record<string, number>) || {})
-            .filter(([, amount]) => amount >= 1)
-            .map(([resId, amount]) => {
-              const capacity = (op.storage?.capacity as Record<string, number>)?.[resId] || 0;
-              const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
+        <div className="flex flex-col gap-1.5">
+          {resourceSummaries.length > 0 ? (
+            resourceSummaries.map((res) => {
+              const pct = res.capacity > 0
+                ? Math.min(100, (res.currentAmount / res.capacity) * 100)
+                : 0;
               const isFull = pct >= 99.5;
-              const outputType = 'CURRENCY';
-
+              const isDepleting = res.netRatePerHour < 0;
               return (
-                <div key={resId} className="flex flex-col gap-[3px]">
-                  <div className="flex items-center gap-1 text-[11px]">
-                    <span className="text-xs flex-shrink-0">
+                <div key={res.key} className="flex flex-col gap-[3px]">
+                  <div className="flex items-center gap-1">
+                    <span className="flex-shrink-0">
                       <GameIcon
-                        src={resolveIcon(outputType, resId, currencyDefs, itemDefs)}
-                        size={14}
+                        src={resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
+                        size={12}
                       />
                     </span>
-                    <span className="font-bold text-text-primary flex-1 min-w-0 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {resolveName(outputType, resId, currencyDefs, itemDefs)}
+                    <span className="text-[10px] font-bold text-text-primary flex-1 min-w-0 truncate">
+                      {resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs)}
                     </span>
-                    <span className={storageBarRateClass(false, false)}>+0/hr</span>
+                    <span className={rateClass(isFull, isDepleting)}>
+                      {isFull ? 'FULL' : `${res.netRatePerHour >= 0 ? '+' : ''}${formatRate(res.netRatePerHour)}/hr`}
+                    </span>
                   </div>
-                  <div className="h-2 bg-white/[0.06] rounded overflow-hidden">
-                    <div
-                      className={storageFillClass(isFull, false)}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-0.5 text-[10px]">
-                    <span className="font-extrabold text-text-primary">{formatAmount(amount)}</span>
-                    <span className="text-text-secondary">/</span>
-                    <span className="text-text-secondary font-semibold">{formatAmount(capacity)}</span>
+                  <div className="h-1.5 bg-white/[0.06] rounded overflow-hidden">
+                    <div className={fillClass(isFull, isDepleting)} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
             })
-        )}
-        {resourceSummaries.length === 0 &&
-          !Object.values((op.storage?.stored as Record<string, number>) || {}).some((v) => v >= 1) && (
-            <div className="text-[11px] text-text-secondary text-center py-1.5">No generators active</div>
+          ) : hasStorageFallback ? (
+            Object.entries((op.storage?.stored as Record<string, number>) || {})
+              .filter(([, amount]) => amount >= 1)
+              .map(([resId, amount]) => {
+                const capacity = (op.storage?.capacity as Record<string, number>)?.[resId] || 0;
+                const pct = capacity > 0 ? Math.min(100, (amount / capacity) * 100) : 0;
+                const isFull = pct >= 99.5;
+                return (
+                  <div key={resId} className="flex flex-col gap-[3px]">
+                    <div className="flex items-center gap-1">
+                      <span className="flex-shrink-0">
+                        <GameIcon
+                          src={resolveIcon('CURRENCY', resId, currencyDefs, itemDefs)}
+                          size={12}
+                        />
+                      </span>
+                      <span className="text-[10px] font-bold text-text-primary flex-1 min-w-0 truncate">
+                        {resolveName('CURRENCY', resId, currencyDefs, itemDefs)}
+                      </span>
+                      <span className={rateClass(false, false)}>+0/hr</span>
+                    </div>
+                    <div className="h-1.5 bg-white/[0.06] rounded overflow-hidden">
+                      <div className={fillClass(isFull, false)} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })
+          ) : (
+            <div className="text-[10px] text-text-secondary text-center py-0.5">No generators active</div>
           )}
+        </div>
       </div>
-
-      {hasActiveActions && (
-        <div
-          className="mt-auto flex gap-1.5 px-2.5 pb-2.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onSetPrimary && !isPrimary && (
-            <button
-              type="button"
-              onClick={onSetPrimary}
-              className="flex-1 text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border border-[rgba(167,139,250,0.4)] text-[#c4b5fd] bg-[rgba(139,92,246,0.1)] hover:bg-[rgba(139,92,246,0.2)] hover:border-[rgba(167,139,250,0.7)] transition-colors cursor-pointer"
-            >
-              ★ Set Primary
-            </button>
-          )}
-          {onDeactivate && (
-            <button
-              type="button"
-              onClick={onDeactivate}
-              className="flex-1 text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border border-[rgba(239,68,68,0.3)] text-[#f87171] bg-[rgba(239,68,68,0.08)] hover:bg-[rgba(239,68,68,0.15)] hover:border-[rgba(239,68,68,0.5)] transition-colors cursor-pointer"
-            >
-              Deactivate
-            </button>
-          )}
-        </div>
-      )}
-
-      {hasInactiveActions && (
-        <div
-          className="mt-auto px-2.5 pb-2.5"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={canActivate ? onActivate : undefined}
-            disabled={!canActivate}
-            title={canActivate ? undefined : 'Slot budget full — deactivate another outpost first'}
-            className={`w-full text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border transition-colors ${
-              canActivate
-                ? 'border-[rgba(16,185,129,0.4)] text-[#34d399] bg-[rgba(16,185,129,0.08)] hover:bg-[rgba(16,185,129,0.15)] hover:border-[rgba(16,185,129,0.6)] cursor-pointer'
-                : 'border-border text-text-secondary bg-transparent cursor-not-allowed opacity-50'
-            }`}
-          >
-            {canActivate ? 'Activate' : 'Slots Full'}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
