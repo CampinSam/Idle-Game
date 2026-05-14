@@ -18,12 +18,13 @@ export function OutpostHeroSection({ outpost }: OutpostHeroSectionProps) {
   const heroSrc = getLocationImagePath(outpost.nftImageUrl, regionImage, 'thumb');
 
   return (
-    <div className="relative overflow-hidden rounded-xl [&_img]:w-full [&_img]:h-[160px] [&_img]:object-cover">
+    <div className="relative overflow-hidden rounded-xl">
       <GameImage
         src={heroSrc}
         category="regions"
         alt={regionName}
         fallbackSrc={regionImage}
+        className="h-[160px]"
       />
       <div
         className="pointer-events-none absolute inset-0 z-10"
