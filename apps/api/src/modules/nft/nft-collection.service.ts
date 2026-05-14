@@ -45,6 +45,14 @@ export interface SyncResult {
   locations: any[];
 }
 
+function extractDisplayImageUrl(display: unknown): string | undefined {
+  if (display !== null && typeof display === 'object' && !Array.isArray(display)) {
+    const url = (display as Record<string, unknown>).imageUrl;
+    return typeof url === 'string' ? url : undefined;
+  }
+  return undefined;
+}
+
 function serializeEntity(entity: any) {
   const progression = (entity.progression as any) || {};
   if (progression && typeof progression.xp === 'bigint') {
@@ -446,6 +454,7 @@ export class NftCollectionService {
                   data: { ownerUserId: userId },
                 });
                 this.nftImageImport.invalidateKnownCidCache();
+                this.nftImageImport.prewarmThumbnail(extractDisplayImageUrl(updated.display));
                 claimed++;
                 claimedEntityIds.push(updated.id);
                 newEntities.push({
@@ -485,6 +494,7 @@ export class NftCollectionService {
               });
 
               this.nftImageImport.invalidateKnownCidCache();
+              this.nftImageImport.prewarmThumbnail(extractDisplayImageUrl(updated.display));
 
               claimed++;
               claimedEntityIds.push(updated.id);
