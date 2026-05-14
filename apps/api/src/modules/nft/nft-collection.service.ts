@@ -315,6 +315,7 @@ export class NftCollectionService {
                     ownerUserId: userId,
                   },
                 });
+                this.nftImageImport.prewarmThumbnail(meta.imageUrl);
                 claimed++;
                 claimedLocationIds.push(created.id);
                 newLocations.push({
@@ -684,6 +685,7 @@ export class NftCollectionService {
     for (const loc of locations) {
       const state = (loc.state as Record<string, unknown>) ?? {};
       if (state.nftRawMeta !== undefined && state.nftRawMeta !== null) {
+        this.nftImageImport.prewarmThumbnail(state.nftImageUrl as string | undefined);
         skipped++;
         continue;
       }
@@ -717,6 +719,7 @@ export class NftCollectionService {
             },
           },
         });
+        this.nftImageImport.prewarmThumbnail(meta.imageUrl);
         updated++;
       } catch (err) {
         this.logger.error(`backfillNftMetadata: failed for ${loc.nftAssetId}: ${err}`);

@@ -133,6 +133,25 @@ export class NftImageImportService {
     this.knownCidCacheLoadedAt = 0;
   }
 
+  /**
+   * Fire-and-forget thumbnail pre-warm for a given NFT image URL. Extracts the
+   * CID from either an `ipfs://` or `/media/nft/cardano/` URL and calls
+   * {@link ensureThumbnail} in the background so the thumb is cached in object
+   * storage before the first user page-load. Errors are logged but never thrown.
+   */
+  prewarmThumbnail(imageUrl: string | null | undefined): void {
+    if (!imageUrl || typeof imageUrl !== 'string') return;
+    const cid = this.extractCid(imageUrl);
+    if (!cid) return;
+    this.ensureThumbnail(cid).then(({ generated }) => {
+      if (generated) {
+        this.logger.log(`Pre-warmed thumbnail for CID ${cid}`);
+      }
+    }).catch((err: any) => {
+      this.logger.warn(`Thumbnail pre-warm failed for CID ${cid}: ${err?.message || err}`);
+    });
+  }
+
   private async assertCidKnown(cid: string): Promise<void> {
     const known = await this.getKnownCids();
     if (!known.has(cid)) {
