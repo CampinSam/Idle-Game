@@ -7,6 +7,8 @@ export interface Player {
   keeperXp: number;
   prestigeTokens: number;
   createdAt: string;
+  primaryLocationId?: string | null;
+  bonusOutpostSlots?: number;
 }
 
 export interface RegisterDto {

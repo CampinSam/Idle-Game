@@ -24,8 +24,8 @@ function buildNftExplorerUrl(nftAssetId: string): string | null {
   return null;
 }
 
-const CARD_CLASS =
-  'flex-1 min-w-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-derp-purple ' +
+const CARD_BASE =
+  'flex-1 min-w-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 ' +
   'rounded-[14px] overflow-hidden flex flex-col motion-safe:animate-[card-enter_0.25s_ease-out_both]';
 
 const STORAGE_BAR_RATE_BASE = 'text-[10px] font-semibold flex-shrink-0';
@@ -42,7 +42,14 @@ function storageFillClass(isFull: boolean, isDepleting: boolean): string {
   return 'h-full rounded transition-[width] duration-500 bg-gradient-to-r from-[#7C3AED] to-[#A855F7]';
 }
 
-export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardProps) {
+export default function DerpOutpostCard({
+  outpost: op,
+  onClick,
+  isPrimary = false,
+  isInactive = false,
+  onSetPrimary,
+  onDeactivate,
+}: LocationCardProps) {
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const syncItems = useAppSelector((s) => s.sync.items);
@@ -63,15 +70,30 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
     return isFull ? s : s + r.netRatePerHour;
   }, 0);
 
+  const borderClass = isPrimary
+    ? 'border-[#a78bfa]'
+    : isInactive
+    ? 'border-[rgba(139,92,246,0.25)]'
+    : 'border-derp-purple';
+
+  const hasActions = (onSetPrimary || onDeactivate) && !isInactive;
+
   return (
     <div
-      className={CARD_CLASS}
+      className={`${CARD_BASE} ${borderClass} ${isInactive ? 'opacity-60' : ''}`}
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
-        <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary">{regionName.toUpperCase()}</span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {isPrimary && (
+            <span className="flex-shrink-0 bg-gradient-to-br from-[#a78bfa] to-[#7C3AED] text-white text-[9px] font-black px-2 py-[2px] rounded-full tracking-[0.6px] uppercase shadow-[0_0_8px_rgba(167,139,250,0.5)]">
+              ★ Primary
+            </span>
+          )}
+          <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary truncate">{regionName.toUpperCase()}</span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {nftAssetId && (
             nftExplorerUrl ? (
               <a
@@ -225,6 +247,32 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
             <div className="text-[11px] text-text-secondary text-center py-1.5">No generators active</div>
           )}
       </div>
+
+      {hasActions && (
+        <div
+          className="mt-auto flex gap-1.5 px-2.5 pb-2.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onSetPrimary && !isPrimary && (
+            <button
+              type="button"
+              onClick={onSetPrimary}
+              className="flex-1 text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border border-[rgba(167,139,250,0.4)] text-[#c4b5fd] bg-[rgba(139,92,246,0.1)] hover:bg-[rgba(139,92,246,0.2)] hover:border-[rgba(167,139,250,0.7)] transition-colors cursor-pointer"
+            >
+              ★ Set Primary
+            </button>
+          )}
+          {onDeactivate && (
+            <button
+              type="button"
+              onClick={onDeactivate}
+              className="flex-1 text-[10px] font-bold tracking-[0.4px] py-1.5 rounded-lg border border-[rgba(239,68,68,0.3)] text-[#f87171] bg-[rgba(239,68,68,0.08)] hover:bg-[rgba(239,68,68,0.15)] hover:border-[rgba(239,68,68,0.5)] transition-colors cursor-pointer"
+            >
+              Deactivate
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

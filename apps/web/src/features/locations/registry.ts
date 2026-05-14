@@ -3,6 +3,10 @@ import type { ComponentType } from 'react';
 export interface LocationCardProps {
   outpost: any;
   onClick?: () => void;
+  isPrimary?: boolean;
+  isInactive?: boolean;
+  onSetPrimary?: () => void;
+  onDeactivate?: () => void;
 }
 
 export interface LocationPageProps {
