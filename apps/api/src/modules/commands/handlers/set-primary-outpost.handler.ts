@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildPlayerPatch } from '../patch-builder';
-import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class SetPrimaryOutpostHandler implements CommandHandler {
-  constructor(private prisma: PrismaService) {}
+  constructor() {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId } = payload;
