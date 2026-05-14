@@ -18,6 +18,16 @@ interface DeactivateConfirmProps {
   isLoading: boolean;
 }
 
+function buildNftExplorerUrl(nftAssetId: string): string | null {
+  const parts = nftAssetId.split(':');
+  if (parts.length < 3) return null;
+  const [chain, policyId, assetId] = parts;
+  if (chain === 'CARDANO') {
+    return `https://pool.pm/${policyId}.${assetId}`;
+  }
+  return null;
+}
+
 function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateConfirmProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -92,6 +102,16 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
 
   const isPrimary = player?.primaryLocationId === id;
   const isActive = outpost.enabled !== false;
+
+  const nftAssetId: string | undefined = outpost.nftAssetId;
+  const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
+
+  const kindLabel: string = outpost.kind
+    ? String(outpost.kind)
+        .split(/[_\s]+/)
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ')
+    : '';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -176,13 +196,33 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
               {(outpost.name || 'Outpost').toUpperCase()}
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-xs text-text-secondary truncate">{regionName}</span>
-              {isPrimary && (
+              {nftAssetId && (
+                nftExplorerUrl ? (
+                  <a
+                    href={nftExplorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white no-underline transition-opacity hover:opacity-80 flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
+                  >
+                    🔗 NFT
+                  </a>
+                ) : (
+                  <span
+                    className="inline-flex items-center px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
+                  >
+                    NFT
+                  </span>
+                )
+              )}
+
+              {isPrimary ? (
                 <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(167,139,250,0.15)] border border-[rgba(167,139,250,0.4)] text-[#a78bfa] flex-shrink-0">
                   ★ Primary
                 </span>
-              )}
-              {isActive ? (
+              ) : isActive ? (
                 <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(34,197,94,0.12)] border border-[rgba(34,197,94,0.35)] text-[#4ade80] flex-shrink-0">
                   Active
                 </span>
@@ -190,6 +230,15 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
                 <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5 border border-white/20 text-text-secondary flex-shrink-0">
                   Inactive
                 </span>
+              )}
+
+              {kindLabel && (
+                <span className="text-[10px] text-text-secondary truncate">
+                  {kindLabel}{regionName ? ` - ${regionName}` : ''}
+                </span>
+              )}
+              {!kindLabel && regionName && (
+                <span className="text-[10px] text-text-secondary truncate">{regionName}</span>
               )}
             </div>
           </div>
