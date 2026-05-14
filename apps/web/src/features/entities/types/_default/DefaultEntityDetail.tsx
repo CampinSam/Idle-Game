@@ -221,7 +221,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const collapsedEvents = useMemo(() => collapseEvents(entityEvents), [entityEvents]);
 
   return (
-    <div className="flex flex-col gap-[10px] flex-1 min-h-0 p-[10px]">
+    <div className="flex flex-col gap-[10px] flex-1 p-[10px]">
 
       {/* ── Top section: portrait card + power/radar ── */}
       <div className="grid grid-cols-2 gap-[10px] items-stretch shrink-0">
@@ -335,7 +335,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
       />
 
       {/* ── Full-width progression tab panel ── */}
-      <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] overflow-hidden flex flex-col flex-1 min-h-[200px]">
+      <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] flex flex-col flex-1 min-h-[200px]">
         <div
           className="flex border-b border-[rgba(139,92,246,0.2)] shrink-0"
           role="tablist"
@@ -361,7 +361,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           ))}
         </div>
 
-        <div className="p-[10px] flex-1 min-h-0 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(139,92,246,0.3)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[rgba(139,92,246,0.3)] [&::-webkit-scrollbar-thumb]:rounded-[2px]">
+        <div className="p-[10px] flex-1">
           {activeTab === 'LEVEL' && (
             <div className="flex flex-col gap-[10px]">
               {/* Level / XP section */}
