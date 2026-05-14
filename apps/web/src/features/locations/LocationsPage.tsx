@@ -47,8 +47,8 @@ interface DeactivateModalProps {
 
 function DeactivateModal({ target, onConfirm, onCancel, isLoading }: DeactivateModalProps) {
   return (
-    <FullscreenModal onDismiss={onCancel} className="flex items-end sm:items-center justify-center">
-      <div className="relative z-10 w-full max-w-sm mx-4 mb-6 sm:mb-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-[rgba(239,68,68,0.4)] rounded-2xl p-5 flex flex-col gap-4">
+    <FullscreenModal onDismiss={onCancel}>
+      <div className="relative z-10 w-full max-w-sm mx-4 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-[rgba(239,68,68,0.4)] rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex items-start gap-3">
           <span className="text-2xl flex-shrink-0">⚠️</span>
           <div>
