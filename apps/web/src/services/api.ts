@@ -482,7 +482,7 @@ class ApiClient {
 
   // NFT collections
   syncNftCollections() {
-    return this.request<{ claimed: number; alreadyClaimed: number; notImported: number; unclaimed: number; reconciliationSkippedCollections: string[]; entities: any[] }>('/nft/collections/sync', {
+    return this.request<{ claimed: number; alreadyClaimed: number; notImported: number; unclaimed: number; reconciliationSkippedCollections: string[]; entities: any[]; locations: any[] }>('/nft/collections/sync', {
       method: 'POST',
     });
   }

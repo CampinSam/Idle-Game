@@ -125,6 +125,7 @@ export default function SettingsPage() {
     notImported: number;
     unclaimed: number;
     reconciliationSkippedCollections: string[];
+    newLocations: any[];
   } | null>(null);
 
   const {
@@ -204,6 +205,7 @@ export default function SettingsPage() {
         notImported: result.notImported,
         unclaimed: result.unclaimed,
         reconciliationSkippedCollections: result.reconciliationSkippedCollections ?? [],
+        newLocations: result.locations ?? [],
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to resync NFTs';
@@ -315,6 +317,18 @@ export default function SettingsPage() {
                       Claimed {resyncResult.claimed}, unclaimed {resyncResult.unclaimed}
                       {resyncResult.alreadyClaimed > 0 && `, already owned ${resyncResult.alreadyClaimed}`}
                       {resyncResult.notImported > 0 && `, ${resyncResult.notImported} not imported yet`}.
+                      {resyncResult.newLocations.length > 0 && (
+                        <div className="mt-1.5 flex flex-col gap-1">
+                          <span className="font-semibold text-[#a78bfa]">
+                            🏰 {resyncResult.newLocations.length} outpost{resyncResult.newLocations.length === 1 ? '' : 's'} claimed from your wallet:
+                          </span>
+                          {resyncResult.newLocations.map((loc: any) => (
+                            <span key={loc.id} className="ml-2 text-text-secondary">
+                              • {loc.collectionName || 'Outpost'} ({loc.chain}) — {loc.assetId}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {resyncResult.reconciliationSkippedCollections.length > 0 && (
                         <div className="mt-1 text-[#c97a00]">
                           Note: {resyncResult.reconciliationSkippedCollections.length} collection

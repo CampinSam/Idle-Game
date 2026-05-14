@@ -14,6 +14,16 @@ import {
 import { getRegionDisplay } from '@derp/shared';
 import type { LocationCardProps } from '../../registry';
 
+function buildNftExplorerUrl(nftAssetId: string): string | null {
+  const parts = nftAssetId.split(':');
+  if (parts.length < 3) return null;
+  const [chain, policyId, assetId] = parts;
+  if (chain === 'CARDANO') {
+    return `https://pool.pm/${policyId}.${assetId}`;
+  }
+  return null;
+}
+
 const CARD_CLASS =
   'flex-1 min-w-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-derp-purple ' +
   'rounded-[14px] overflow-hidden flex flex-col motion-safe:animate-[card-enter_0.25s_ease-out_both]';
@@ -43,6 +53,8 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
   const regionDisplay = getRegionDisplay(op.regionId || op.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
+  const nftAssetId: string | undefined = op.nftAssetId;
+  const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
   const timerData = locationTimerMap.get(op.id);
   const resourceSummaries = timerData?.resourceSummaries || [];
 
@@ -59,9 +71,28 @@ export default function DerpOutpostCard({ outpost: op, onClick }: LocationCardPr
     >
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5">
         <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary">{regionName.toUpperCase()}</span>
-        <span className="bg-gradient-to-br from-[#10B981] to-[#059669] text-white text-[11px] font-bold px-2.5 py-[3px] rounded-xl">
-          ⭐ Lv. {op.level}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {nftAssetId && (
+            nftExplorerUrl ? (
+              <a
+                href={nftExplorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-0.5 bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] text-white text-[9px] font-bold px-1.5 py-[2px] rounded tracking-[0.5px] no-underline hover:brightness-110 transition-[filter]"
+              >
+                🔗 NFT
+              </a>
+            ) : (
+              <span className="bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] text-white text-[9px] font-bold px-1.5 py-[2px] rounded tracking-[0.5px]">
+                NFT
+              </span>
+            )
+          )}
+          <span className="bg-gradient-to-br from-[#10B981] to-[#059669] text-white text-[11px] font-bold px-2.5 py-[3px] rounded-xl">
+            ⭐ Lv. {op.level}
+          </span>
+        </div>
       </div>
 
       <div className="px-2 mb-2 [&_img]:w-full [&_img]:h-[120px] [&_img]:object-cover [&_img]:rounded-[10px]">

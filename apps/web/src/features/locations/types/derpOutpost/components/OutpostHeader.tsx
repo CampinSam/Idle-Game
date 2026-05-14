@@ -4,6 +4,16 @@ import { api } from '../../../../../services/api';
 import { useModal } from '../../../../../context/ModalContext';
 import { Badge, OutpostCard } from '../../../../../components/ui';
 
+function buildNftExplorerUrl(nftAssetId: string): string | null {
+  const parts = nftAssetId.split(':');
+  if (parts.length < 3) return null;
+  const [chain, policyId, assetId] = parts;
+  if (chain === 'CARDANO') {
+    return `https://pool.pm/${policyId}.${assetId}`;
+  }
+  return null;
+}
+
 interface OutpostHeaderProps {
   outpost: any;
 }
@@ -14,6 +24,8 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
   const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
+  const nftAssetId: string | undefined = outpost.nftAssetId;
+  const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
 
   const xpNum = Number(outpost.xp || 0);
   const xpToNext = Number((outpost as any).xpToNext || 0);
@@ -50,8 +62,29 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
             &bull; {regionName}
           </span>
         </h1>
-        <div className="mt-1">
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
           <Badge tone="info">Level {outpost.level}</Badge>
+          {nftAssetId && (
+            nftExplorerUrl ? (
+              <a
+                href={nftExplorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white no-underline transition-opacity hover:opacity-80"
+                style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
+              >
+                🔗 NFT
+              </a>
+            ) : (
+              <span
+                className="inline-flex items-center px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white"
+                style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
+              >
+                NFT
+              </span>
+            )
+          )}
         </div>
         {outpost.xp != null && (
           <div className="flex items-center gap-2.5 mt-1.5">
