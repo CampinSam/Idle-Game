@@ -10,6 +10,7 @@ import { useNotifications } from '../../../../context/NotificationContext';
 import { api } from '../../../../services/api';
 import BuildingCard from './components/BuildingCard';
 import { OutpostHeader } from './components/OutpostHeader';
+import { OutpostHeroSection } from './components/OutpostHeroSection';
 import { OutpostProductionCard } from './components/OutpostProductionCard';
 import { OutpostWorkersCard } from './components/OutpostWorkersCard';
 import { OutpostWarehouseCard } from './components/OutpostWarehouseCard';
@@ -207,10 +208,13 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   );
 
   return (
-    <div className="flex flex-col gap-3.5 px-3 pt-page-top pb-6">
+    <>
       <OutpostHeader outpost={outpost} />
 
-      <OutpostProductionCard
+      <div className="flex flex-col gap-3.5 px-3 pt-3 pb-6">
+        <OutpostHeroSection outpost={outpost} />
+
+        <OutpostProductionCard
         outpost={outpost}
         resourceSummaries={resourceSummaries}
         hasActivity={hasActivity}
@@ -258,6 +262,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         warehouseDefId={WAREHOUSE_DEF_ID}
         onBuild={openBuildModal}
       />
-    </div>
+      </div>
+    </>
   );
 }

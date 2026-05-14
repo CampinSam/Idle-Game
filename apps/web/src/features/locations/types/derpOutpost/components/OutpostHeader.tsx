@@ -1,23 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { getRegionDisplay } from '@derp/shared';
-import { formatAmount } from '../../../../../utils/locationProduction';
-import { api } from '../../../../../services/api';
-import { useModal } from '../../../../../context/ModalContext';
 import { useCommand } from '../../../../../hooks/useCommand';
 import { useAppDispatch } from '../../../../../store';
 import { patchPlayerOptimistic } from '../../../../../store/syncSlice';
 import { useSyncPlayer } from '../../../../../hooks/useSyncSelectors';
-import { Badge, OutpostCard } from '../../../../../components/ui';
-
-function buildNftExplorerUrl(nftAssetId: string): string | null {
-  const parts = nftAssetId.split(':');
-  if (parts.length < 3) return null;
-  const [chain, policyId, assetId] = parts;
-  if (chain === 'CARDANO') {
-    return `https://pool.pm/${policyId}.${assetId}`;
-  }
-  return null;
-}
 
 interface OutpostHeaderProps {
   outpost: any;
@@ -83,7 +71,7 @@ function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateC
 }
 
 export function OutpostHeader({ outpost }: OutpostHeaderProps) {
-  const { pushModal } = useModal();
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const player = useSyncPlayer();
@@ -91,35 +79,47 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
   const [showDeactivate, setShowDeactivate] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [settingPrimary, setSettingPrimary] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const id = outpost.id;
   const regionDisplay = getRegionDisplay(outpost.regionId || outpost.region);
   const regionName = regionDisplay.displayName;
-  const regionImage = regionDisplay.imagePath;
-  const nftAssetId: string | undefined = outpost.nftAssetId;
-  const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
-
-  const xpNum = Number(outpost.xp || 0);
-  const xpToNext = Number((outpost as any).xpToNext || 0);
-  const maxLevel = Number((outpost as any).maxLevel || 0);
-  const isMax = maxLevel > 0 && Number(outpost.level) >= maxLevel;
-  const pct = isMax ? 100 : (xpToNext > 0 ? (xpNum / xpToNext) * 100 : 0);
 
   const isPrimary = player?.primaryLocationId === id;
   const isActive = outpost.enabled !== false;
 
-  const handleDeposit = async () => {
-    if (isMax) return;
-    try {
-      const spec = await api.getModalSpec({ locationId: id, depositXp: true });
-      if (spec?.version === 1) pushModal(spec);
-    } catch (err: any) {
-      console.error('[DerpOutpostPage] Failed to load deposit XP modal:', err);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleOutside(e: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
     }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [menuOpen]);
+
+  const toggleMenu = () => {
+    if (!menuOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
+    setMenuOpen((o) => !o);
   };
 
   const handleSetPrimary = async () => {
     const previous = player?.primaryLocationId ?? null;
+    setMenuOpen(false);
     setSettingPrimary(true);
     dispatch(patchPlayerOptimistic({ primaryLocationId: id }));
     try {
@@ -132,13 +132,27 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
     }
   };
 
+  const handleDeactivateRequest = () => {
+    setMenuOpen(false);
+    setShowDeactivate(true);
+  };
+
+  const handleActivate = async () => {
+    setMenuOpen(false);
+    try {
+      await execute('ToggleLocation', { locationId: id, enabled: true });
+    } catch (err) {
+      console.error('[OutpostHeader] ToggleLocation activate failed:', err);
+    }
+  };
+
   const handleDeactivateConfirm = async () => {
     setDeactivating(true);
     try {
       await execute('ToggleLocation', { locationId: id, enabled: false });
       setShowDeactivate(false);
-    } catch (err: any) {
-      console.error('[OutpostHeader] ToggleLocation failed:', err);
+    } catch (err) {
+      console.error('[OutpostHeader] ToggleLocation deactivate failed:', err);
     } finally {
       setDeactivating(false);
     }
@@ -146,112 +160,95 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
 
   return (
     <>
-      <OutpostCard accent="header" className="!p-0">
-        <div className="relative overflow-hidden rounded-t-[13px]">
-          <img src={regionImage} alt={regionName} className="block w-full h-[180px] object-cover" />
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(180deg, rgba(21,17,60,0) 35%, rgba(21,17,60,0.8) 80%, #15113c 100%)',
-            }}
-          />
-          {isPrimary && (
-            <div className="absolute top-3 left-3">
-              <span className="bg-gradient-to-br from-[#a78bfa] to-[#7C3AED] text-white text-[9px] font-black px-2.5 py-[3px] rounded-full tracking-[0.6px] uppercase shadow-[0_0_10px_rgba(167,139,250,0.6)]">
-                ★ Primary Outpost
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="relative z-10 -mt-[52px] px-4 pb-3.5 flex flex-col gap-1.5">
-          <h1 className="font-cinzel text-[22px] font-black tracking-[0.04em] leading-[1.15] text-[#f5f3ff] m-0 [text-shadow:0_0_22px_rgba(139,92,246,0.55),0_2px_6px_rgba(0,0,0,0.6)]">
-            {outpost.name || 'Outpost'}
-            <span className="block mt-1 font-sans text-[11px] font-semibold tracking-[0.12em] uppercase text-[rgba(196,181,253,0.75)] [text-shadow:none]">
-              &bull; {regionName}
-            </span>
-          </h1>
-          <div className="mt-1 flex items-center gap-2 flex-wrap">
-            <Badge tone="info">Level {outpost.level}</Badge>
-            {nftAssetId && (
-              nftExplorerUrl ? (
-                <a
-                  href={nftExplorerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white no-underline transition-opacity hover:opacity-80"
-                  style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
-                >
-                  🔗 NFT
-                </a>
-              ) : (
-                <span
-                  className="inline-flex items-center px-2 py-[3px] rounded text-[10px] font-bold tracking-[0.4px] text-white"
-                  style={{ background: 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
-                >
-                  NFT
+      <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+            onClick={() => navigate('/locations')}
+            aria-label="Back to locations"
+          >
+            ←
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold tracking-wide text-text-primary truncate m-0">
+              {(outpost.name || 'Outpost').toUpperCase()}
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-xs text-text-secondary truncate">{regionName}</span>
+              {isPrimary && (
+                <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(167,139,250,0.15)] border border-[rgba(167,139,250,0.4)] text-[#a78bfa] flex-shrink-0">
+                  ★ Primary
                 </span>
-              )
-            )}
-          </div>
-          {outpost.xp != null && (
-            <div className="flex items-center gap-2.5 mt-1.5">
-              <div className="flex-1 h-1.5 bg-black/35 border border-[rgba(139,92,246,0.2)] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-[width] duration-[400ms] ease-linear shadow-[0_0_10px_rgba(167,139,250,0.55)]"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, pct))}%`,
-                    background: 'linear-gradient(90deg, #a78bfa, #8b5cf6 60%, #6d28d9)',
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-bold tracking-[0.08em] text-[#c4b5fd] whitespace-nowrap">
-                {isMax ? 'XP MAX' : `XP ${formatAmount(xpNum)} / ${formatAmount(xpToNext)}`}
-              </span>
+              )}
+              {isActive ? (
+                <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(34,197,94,0.12)] border border-[rgba(34,197,94,0.35)] text-[#4ade80] flex-shrink-0">
+                  Active
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5 border border-white/20 text-text-secondary flex-shrink-0">
+                  Inactive
+                </span>
+              )}
             </div>
-          )}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              disabled={isMax}
-              title={isMax ? 'Outpost is at max level' : undefined}
-              onClick={handleDeposit}
-              className="px-3 py-1.5 rounded-full border border-[rgba(167,139,250,0.55)] text-[#ede9fe] text-[11px] font-bold tracking-[0.06em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:grayscale disabled:brightness-75"
-              style={{
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(109,40,217,0.4))',
-              }}
-            >
-              {isMax ? 'Max Level' : '＋ Deposit XP'}
-            </button>
-            {isActive && !isPrimary && (
-              <button
-                type="button"
-                disabled={settingPrimary}
-                onClick={handleSetPrimary}
-                className="px-3 py-1.5 rounded-full border border-[rgba(167,139,250,0.35)] text-[#c4b5fd] text-[11px] font-bold tracking-[0.06em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(109,40,217,0.25))',
-                }}
-              >
-                {settingPrimary ? 'Setting…' : '★ Set as Primary'}
-              </button>
-            )}
-            {isActive && (
-              <button
-                type="button"
-                onClick={() => setShowDeactivate(true)}
-                className="px-3 py-1.5 rounded-full border border-[rgba(239,68,68,0.3)] text-[#f87171] text-[11px] font-bold tracking-[0.06em] cursor-pointer transition-[filter,opacity] hover:brightness-110 active:scale-[0.97]"
-                style={{
-                  background: 'rgba(239,68,68,0.08)',
-                }}
-              >
-                Deactivate
-              </button>
-            )}
           </div>
+
+          <div className="relative flex-shrink-0" ref={menuRef}>
+            <button
+              ref={buttonRef}
+              type="button"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-base cursor-pointer transition-colors"
+              onClick={toggleMenu}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              ⚙️
+            </button>
+          </div>
+
+          {menuOpen && menuPos && createPortal(
+            <div
+              ref={dropdownRef}
+              className="fixed z-[9999] bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1 min-w-[160px]"
+              style={{ top: menuPos.top, right: menuPos.right }}
+              role="menu"
+            >
+              {isActive && !isPrimary && (
+                <button
+                  type="button"
+                  disabled={settingPrimary}
+                  className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none disabled:opacity-50"
+                  role="menuitem"
+                  onClick={handleSetPrimary}
+                >
+                  {settingPrimary ? '⏳ Setting…' : '★ Set as Primary'}
+                </button>
+              )}
+              {isActive ? (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-[#f87171] text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(239,68,68,0.12)] focus-visible:bg-[rgba(239,68,68,0.12)] focus-visible:outline-none"
+                  role="menuitem"
+                  onClick={handleDeactivateRequest}
+                >
+                  ⏸ Deactivate
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-[#4ade80] text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(34,197,94,0.12)] focus-visible:bg-[rgba(34,197,94,0.12)] focus-visible:outline-none"
+                  role="menuitem"
+                  onClick={handleActivate}
+                >
+                  ▶ Activate
+                </button>
+              )}
+            </div>,
+            document.body,
+          )}
         </div>
-      </OutpostCard>
+      </div>
 
       {showDeactivate && (
         <DeactivateConfirm
