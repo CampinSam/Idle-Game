@@ -24,6 +24,7 @@ export function buildLocationDataFromNftMetadata(
       nftImageUrl: meta.imageUrl,
       nftAttributes: meta.attributes,
       nftRawMeta: meta.rawMeta,
+      ...(meta.attributesRaw !== undefined ? { nftAttributesRaw: meta.attributesRaw } : {}),
     },
     enabled: true,
   };

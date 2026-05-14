@@ -275,8 +275,9 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
         const meta = data.onchain_metadata ?? {};
         const rawAttributes = meta.attributes;
         const decoded = decodeCborAttributes(rawAttributes);
-        if (rawAttributes !== undefined && decoded === null) {
-          this.logger.warn(`CBOR decode failed for attributes on ${unit} — storing raw value`);
+        const decodeFailed = rawAttributes !== undefined && decoded === null;
+        if (decodeFailed) {
+          this.logger.warn(`CBOR decode failed for attributes on ${unit} — preserving raw hex in attributesRaw`);
         }
         const attributes: Record<string, string> = decoded ?? (rawAttributes && typeof rawAttributes === 'object' ? rawAttributes : {});
         return {
@@ -284,6 +285,7 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
           name: meta.name ?? assetId,
           imageUrl: meta.image ?? '',
           attributes,
+          ...(decodeFailed && typeof rawAttributes === 'string' ? { attributesRaw: rawAttributes } : {}),
           rawMeta: meta,
         };
       } catch (err) {

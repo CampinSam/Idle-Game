@@ -13,5 +13,6 @@ export interface NftMetadata {
   name: string;
   imageUrl: string;
   attributes: Record<string, string>;
+  attributesRaw?: string;
   rawMeta: Record<string, any>;
 }

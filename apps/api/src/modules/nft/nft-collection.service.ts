@@ -668,6 +668,10 @@ export class NftCollectionService {
   }
 
   async backfillNftMetadata(): Promise<{ updated: number; skipped: number; failed: number }> {
+    if (!process.env.BLOCKFROST_API_KEY) {
+      throw new BadRequestException('BLOCKFROST_API_KEY is not set — cannot fetch metadata');
+    }
+
     const locations = await (this.prisma as any).locationInstance.findMany({
       where: { nftAssetId: { not: null } },
       select: { id: true, nftAssetId: true, state: true },
@@ -709,6 +713,7 @@ export class NftCollectionService {
               ...state,
               nftAttributes: meta.attributes,
               nftRawMeta: meta.rawMeta,
+              ...(meta.attributesRaw !== undefined ? { nftAttributesRaw: meta.attributesRaw } : {}),
             },
           },
         });
