@@ -95,20 +95,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const seenIds = useRef<Set<string>>(new Set());
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Tracks the last known userId so the logout effect can still reference it
+  // even after player is cleared from the store simultaneously with the token.
+  const lastUserIdRef = useRef<string | undefined>(undefined);
 
   // Load persisted seen IDs from localStorage when userId becomes available
   useEffect(() => {
     if (!userId) return;
+    lastUserIdRef.current = userId;
     seenIds.current = loadSeenIds(userId);
   }, [userId]);
 
-  // Clear seen IDs and remove localStorage entry on logout
+  // Clear seen IDs and remove localStorage entry on logout.
+  // Use lastUserIdRef because token and player are nulled in the same dispatch,
+  // so userId is already undefined when this effect runs.
+  const prevTokenRef = useRef<string | null | undefined>(token);
   useEffect(() => {
-    if (!token && userId) {
-      try { localStorage.removeItem(seenStorageKey(userId)); } catch { /* ignore */ }
+    const wasLoggedIn = !!prevTokenRef.current;
+    prevTokenRef.current = token;
+    if (wasLoggedIn && !token) {
+      const uid = lastUserIdRef.current;
+      if (uid) {
+        try { localStorage.removeItem(seenStorageKey(uid)); } catch { /* ignore */ }
+      }
       seenIds.current = new Set();
     }
-  }, [token, userId]);
+  }, [token]);
 
   const notifications: AppNotification[] = (syncNotifs as any[])
     .filter((n) => !n.dismissedAt)
