@@ -377,15 +377,44 @@ export class AdminService {
     if (!user) throw new NotFoundException(`Player ${userId} not found`);
     if (!itemId) throw new BadRequestException('itemId is required');
     if (!quantity || quantity < 1) throw new BadRequestException('quantity must be >= 1');
-    const newQty = await this.inventoryService.addItem({
-      userId,
-      itemId,
-      quantity,
-      reason: 'Admin grant',
-      sourceType: 'admin',
-      sourceId: 'admin',
+
+    const itemDef = await this.prisma.itemDefinition.findUnique({ where: { id: itemId } });
+    if (!itemDef) throw new NotFoundException(`Item "${itemId}" not found`);
+
+    if (itemDef.stackable) {
+      const newQty = await this.inventoryService.addItem({
+        userId,
+        itemId,
+        quantity,
+        reason: 'Admin grant',
+        sourceType: 'admin',
+        sourceId: 'admin',
+      });
+      return { userId, itemId, quantity, granted: quantity, newQty };
+    }
+
+    const instanceIds: string[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      for (let i = 0; i < quantity; i++) {
+        const inst = await tx.itemInstance.create({
+          data: { userId, definitionId: itemId, quantity: 1 },
+        });
+        instanceIds.push(inst.id);
+      }
+      await tx.itemLedger.create({
+        data: {
+          userId,
+          itemId,
+          delta: BigInt(quantity),
+          reason: 'Admin grant',
+          sourceType: 'admin',
+          sourceId: 'admin',
+          metadata: {},
+        },
+      });
     });
-    return { userId, itemId, quantity, newQty };
+
+    return { userId, itemId, quantity, granted: quantity, instanceIds };
   }
 
   async getPlayerItems(userId: string) {
