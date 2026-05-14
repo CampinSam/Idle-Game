@@ -4,6 +4,8 @@ import { formatAmount } from '../../../../../utils/locationProduction';
 import { api } from '../../../../../services/api';
 import { useModal } from '../../../../../context/ModalContext';
 import { useCommand } from '../../../../../hooks/useCommand';
+import { useAppDispatch } from '../../../../../store';
+import { patchPlayerOptimistic } from '../../../../../store/syncSlice';
 import { useSyncPlayer } from '../../../../../hooks/useSyncSelectors';
 import { Badge, OutpostCard } from '../../../../../components/ui';
 
@@ -82,6 +84,7 @@ function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateC
 
 export function OutpostHeader({ outpost }: OutpostHeaderProps) {
   const { pushModal } = useModal();
+  const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const player = useSyncPlayer();
 
@@ -116,10 +119,13 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
   };
 
   const handleSetPrimary = async () => {
+    const previous = player?.primaryLocationId ?? null;
     setSettingPrimary(true);
+    dispatch(patchPlayerOptimistic({ primaryLocationId: id }));
     try {
       await execute('SetPrimaryOutpost', { locationId: id });
-    } catch (err: any) {
+    } catch (err) {
+      dispatch(patchPlayerOptimistic({ primaryLocationId: previous }));
       console.error('[OutpostHeader] SetPrimaryOutpost failed:', err);
     } finally {
       setSettingPrimary(false);

@@ -81,7 +81,8 @@ export function OutpostList({
   const showingInactive = status !== 'ACTIVE';
   const collapseInactive = status === 'ALL';
 
-  const emptySlots = showingActive ? Math.max(0, slotBudget - activeCount) : 0;
+  const isFiltered = search.trim().length > 0 || regionFilter !== 'ALL';
+  const emptySlots = showingActive && !isFiltered ? Math.max(0, slotBudget - activeCount) : 0;
 
   const hasContent =
     (showingActive && (filteredActive.length > 0 || emptySlots > 0)) ||

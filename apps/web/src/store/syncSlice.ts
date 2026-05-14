@@ -287,6 +287,12 @@ const syncSlice = createSlice({
       state.lastError = action.payload;
     },
 
+    patchPlayerOptimistic(state, action: PayloadAction<Record<string, unknown>>) {
+      if (state.player) {
+        state.player = { ...state.player, ...action.payload };
+      }
+    },
+
     patchBuildingEnabled(state, action: PayloadAction<{ locationId: string; buildingId: string; enabled: boolean }>) {
       const { locationId, buildingId, enabled } = action.payload;
       if (state.buildings[buildingId]) {
@@ -311,5 +317,5 @@ const syncSlice = createSlice({
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchBuildingEnabled, setTickBroadcast, setHomeBanners } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchPlayerOptimistic, patchBuildingEnabled, setTickBroadcast, setHomeBanners } = syncSlice.actions;
 export default syncSlice.reducer;

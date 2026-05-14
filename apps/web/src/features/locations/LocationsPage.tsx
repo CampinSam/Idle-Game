@@ -6,6 +6,8 @@ import {
   useSyncPlayer,
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
+import { useAppDispatch } from '../../store';
+import { patchPlayerOptimistic } from '../../store/syncSlice';
 import { getLocationViews } from './registry';
 import { outpostSlotBudget, getRegionDisplay } from '@derp/shared';
 import { OutpostList } from './components/OutpostList';
@@ -103,6 +105,7 @@ export default function LocationsPage() {
   const allLocations = useSyncLocations();
   const syncStatus = useSyncStatus();
   const player = useSyncPlayer();
+  const dispatch = useAppDispatch();
   const { execute } = useCommand();
 
   const [deactivateTarget, setDeactivateTarget] = useState<DeactivateTarget | null>(null);
@@ -127,9 +130,12 @@ export default function LocationsPage() {
     : allLocations;
 
   const handleSetPrimary = async (locationId: string) => {
+    const previous = player?.primaryLocationId ?? null;
+    dispatch(patchPlayerOptimistic({ primaryLocationId: locationId }));
     try {
       await execute('SetPrimaryOutpost', { locationId });
     } catch (err) {
+      dispatch(patchPlayerOptimistic({ primaryLocationId: previous }));
       console.error('[LocationsPage] SetPrimaryOutpost failed:', err);
     }
   };
