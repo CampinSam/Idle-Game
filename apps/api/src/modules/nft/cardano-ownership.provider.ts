@@ -76,6 +76,47 @@ function bech32Encode(hrp: string, words: number[]): string {
   return hrp + '1' + [...words, ...checksum].map((d) => BECH32_CHARSET[d]).join('');
 }
 
+function decodeCborAttributes(value: unknown): Record<string, string> | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const buf = Buffer.from(value, 'hex');
+    if (buf.length === 0) return null;
+
+    function readLength(offset: number, addInfo: number): { len: number; skip: number } {
+      if (addInfo < 24) return { len: addInfo, skip: 1 };
+      if (addInfo === 24) return { len: buf[offset + 1], skip: 2 };
+      if (addInfo === 25) return { len: buf.readUInt16BE(offset + 1), skip: 3 };
+      throw new Error(`Unsupported CBOR addInfo ${addInfo}`);
+    }
+
+    function decodeValue(offset: number): { value: string; next: number } {
+      const b = buf[offset];
+      const majorType = b >> 5;
+      const addInfo = b & 0x1f;
+      const { len, skip } = readLength(offset, addInfo);
+      if (majorType === 2 || majorType === 3) {
+        return { value: buf.slice(offset + skip, offset + skip + len).toString('utf8'), next: offset + skip + len };
+      }
+      throw new Error(`Unsupported CBOR major type ${majorType}`);
+    }
+
+    const b0 = buf[0];
+    if ((b0 >> 5) !== 5) return null;
+    const addInfo0 = b0 & 0x1f;
+    const { len: count, skip } = readLength(0, addInfo0);
+    let cur = skip;
+    const result: Record<string, string> = {};
+    for (let i = 0; i < count; i++) {
+      const k = decodeValue(cur); cur = k.next;
+      const v = decodeValue(cur); cur = v.next;
+      result[k.value] = v.value;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 @Injectable()
 export class CardanoOwnershipProvider implements NftOwnershipProvider {
   private readonly logger = new Logger(CardanoOwnershipProvider.name);
@@ -232,11 +273,17 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
 
         const data = (await res.json()) as any;
         const meta = data.onchain_metadata ?? {};
+        const rawAttributes = meta.attributes;
+        const decoded = decodeCborAttributes(rawAttributes);
+        if (rawAttributes !== undefined && decoded === null) {
+          this.logger.warn(`CBOR decode failed for attributes on ${unit} — storing raw value`);
+        }
+        const attributes: Record<string, string> = decoded ?? (rawAttributes && typeof rawAttributes === 'object' ? rawAttributes : {});
         return {
           assetId,
           name: meta.name ?? assetId,
           imageUrl: meta.image ?? '',
-          attributes: meta.attributes ?? {},
+          attributes,
           rawMeta: meta,
         };
       } catch (err) {

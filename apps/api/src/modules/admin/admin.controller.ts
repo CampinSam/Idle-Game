@@ -157,6 +157,11 @@ export class AdminController {
     return this.boostService.cancelBoost(id);
   }
 
+  @Post('backfill/nft-metadata')
+  async backfillNftMetadata() {
+    return this.nftCollectionService.backfillNftMetadata();
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates() {
     const locations = await (this.prisma as any).locationInstance.findMany({

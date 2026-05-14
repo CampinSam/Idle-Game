@@ -666,4 +666,59 @@ export class NftCollectionService {
     const { seedNftEntities } = await import('../../seeds/nft-entities.seed');
     return seedNftEntities(this.prisma);
   }
+
+  async backfillNftMetadata(): Promise<{ updated: number; skipped: number; failed: number }> {
+    const locations = await (this.prisma as any).locationInstance.findMany({
+      where: { nftAssetId: { not: null } },
+      select: { id: true, nftAssetId: true, state: true },
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const loc of locations) {
+      const state = (loc.state as Record<string, unknown>) ?? {};
+      if (state.nftRawMeta !== undefined && state.nftRawMeta !== null) {
+        skipped++;
+        continue;
+      }
+
+      const parts: string[] = (loc.nftAssetId as string).split(':');
+      if (parts.length < 3 || parts[0] !== 'CARDANO') {
+        this.logger.warn(`backfillNftMetadata: skipping non-Cardano asset ${loc.nftAssetId}`);
+        skipped++;
+        continue;
+      }
+
+      const policyId = parts[1];
+      const assetId = parts[2];
+
+      try {
+        const meta = await this.cardanoProvider.getAssetMetadata(policyId, assetId);
+        if (!meta) {
+          this.logger.warn(`backfillNftMetadata: no metadata returned for ${loc.nftAssetId}`);
+          failed++;
+          continue;
+        }
+
+        await (this.prisma as any).locationInstance.update({
+          where: { id: loc.id },
+          data: {
+            state: {
+              ...state,
+              nftAttributes: meta.attributes,
+              nftRawMeta: meta.rawMeta,
+            },
+          },
+        });
+        updated++;
+      } catch (err) {
+        this.logger.error(`backfillNftMetadata: failed for ${loc.nftAssetId}: ${err}`);
+        failed++;
+      }
+    }
+
+    return { updated, skipped, failed };
+  }
 }
