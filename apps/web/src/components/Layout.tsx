@@ -187,6 +187,15 @@ export default function Layout() {
                 ));
               })()}
             </div>
+            {hasClaimableRewards && (
+              <button
+                className="top-bar-gift"
+                onClick={() => navigate("/rewards")}
+                aria-label="Claimable rewards"
+              >
+                🎁
+              </button>
+            )}
             <button
               className="top-bar-bell"
               onClick={() => setShowNotifCenter(true)}
@@ -246,16 +255,6 @@ export default function Layout() {
           </div>
         </div>
       </main>
-
-      {hasClaimableRewards && (
-        <button
-          className="reward-badge-fab"
-          onClick={() => navigate("/rewards")}
-          aria-label="Claimable rewards"
-        >
-          🎁
-        </button>
-      )}
 
       <nav className="bottom-nav">
         <NavLink
