@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   useSyncLocations,
@@ -45,8 +46,14 @@ interface DeactivateModalProps {
 }
 
 function DeactivateModal({ target, onConfirm, onCancel, isLoading }: DeactivateModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative z-10 w-full max-w-sm mx-4 mb-6 sm:mb-0 bg-gradient-to-b from-[#1e1850] to-[#151030] border-2 border-[rgba(239,68,68,0.4)] rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex items-start gap-3">
@@ -96,7 +103,8 @@ function DeactivateModal({ target, onConfirm, onCancel, isLoading }: DeactivateM
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
