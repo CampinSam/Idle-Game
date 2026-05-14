@@ -86,6 +86,6 @@ export async function buildEntityDataFromNftMetadata(
     archetypeVector: {},
     affinities: {},
     progression: { level: 1, xp: 0, ascension: 0, levelHistory: [] },
-    state: { status: 'idle' },
+    state: { status: 'idle', nftAttributes: meta.attributes, nftRawMeta: meta.rawMeta },
   };
 }

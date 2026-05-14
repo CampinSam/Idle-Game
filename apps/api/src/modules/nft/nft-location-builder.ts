@@ -22,6 +22,8 @@ export function buildLocationDataFromNftMetadata(
     state: {
       nftName: meta.name,
       nftImageUrl: meta.imageUrl,
+      nftAttributes: meta.attributes,
+      nftRawMeta: meta.rawMeta,
     },
     enabled: true,
   };
