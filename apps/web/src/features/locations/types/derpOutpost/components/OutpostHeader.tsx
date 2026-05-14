@@ -113,6 +113,11 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
         .join(' ')
     : '';
 
+  const nftAttributes = outpost.nftAttributes as Record<string, string> | null | undefined;
+  const nftLocation: string | undefined = nftAttributes
+    ? (Object.entries(nftAttributes).find(([k]) => k.toLowerCase() === 'location')?.[1])
+    : undefined;
+
   useEffect(() => {
     if (!menuOpen) return;
     function handleOutside(e: MouseEvent) {
@@ -233,9 +238,11 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
               )}
 
               {nftAssetId ? (
-                <span className="text-[10px] text-text-secondary truncate">
-                  {outpost.name}{kindLabel ? ` · ${kindLabel}` : ''}
-                </span>
+                (kindLabel || nftLocation) && (
+                  <span className="text-[10px] text-text-secondary truncate">
+                    {kindLabel}{nftLocation ? ` - ${nftLocation}` : ''}
+                  </span>
+                )
               ) : kindLabel ? (
                 <span className="text-[10px] text-text-secondary truncate">
                   {kindLabel}{regionName ? ` - ${regionName}` : ''}

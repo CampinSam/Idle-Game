@@ -179,7 +179,7 @@ export function OutpostProductionCard({
           {locationJobs.map((j: any) => (
             <BuildingProgressBar
               key={j.id}
-              name={(j.name || j.defId || j.recipeId || j.type || 'Job').toString().replace(/_/g, ' ')}
+              name={(j.name || j.recipeId || j.type || 'Job').toString().replace(/_/g, ' ')}
               startTick={j.startTick}
               durationTicks={j.durationTicks}
               tickRate={tickRate}

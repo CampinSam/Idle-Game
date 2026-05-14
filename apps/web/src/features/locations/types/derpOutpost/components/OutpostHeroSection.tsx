@@ -22,7 +22,7 @@ export function OutpostHeroSection({ outpost }: OutpostHeroSectionProps) {
       <GameImage
         src={heroSrc}
         category="regions"
-        alt={regionName}
+        alt={outpost.name || regionName}
         fallbackSrc={regionImage}
         className="h-[160px]"
       />
