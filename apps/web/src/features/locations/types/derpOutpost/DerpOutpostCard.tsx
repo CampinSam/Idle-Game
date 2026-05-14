@@ -122,12 +122,13 @@ export default function DerpOutpostCard({
         </div>
       </div>
 
-      <div className="px-2 mb-2 [&_img]:w-full [&_img]:h-[120px] [&_img]:object-cover [&_img]:rounded-[10px]">
+      <div className="px-2 mb-2">
         <GameImage
           src={cardImageSrc}
           category="regions"
           alt={regionName}
           fallbackSrc={regionImage}
+          nativeRatio
         />
       </div>
 

@@ -18,6 +18,13 @@ interface GameImageProps {
   glow?: boolean;
   glowColor?: string;
   onClick?: () => void;
+  /**
+   * When true the component skips the category's fixed aspect-ratio and lets
+   * the image render at its own natural ratio (width: 100%, height: auto).
+   * Use this for images whose source dimensions differ from the spec default
+   * (e.g. square NFT artwork displayed in a region slot).
+   */
+  nativeRatio?: boolean;
 }
 
 const CATEGORY_RADIUS: Record<ImageCategory, string> = {
@@ -41,6 +48,7 @@ export function GameImage({
   glow = false,
   glowColor,
   onClick,
+  nativeRatio = false,
 }: GameImageProps) {
   const [mainLoaded, setMainLoaded] = useState(false);
   const [mainError, setMainError] = useState(false);
@@ -77,7 +85,7 @@ export function GameImage({
 
   const combinedStyle: CSSProperties = {
     ...style,
-    aspectRatio: `${spec.width} / ${spec.height}`,
+    ...(nativeRatio ? {} : { aspectRatio: `${spec.width} / ${spec.height}` }),
     ...(glow && glowColor ? { '--glow-color': glowColor } as CSSProperties : {}),
   };
 
@@ -85,6 +93,7 @@ export function GameImage({
     <div
       className={[
         'relative overflow-hidden inline-flex items-center justify-center w-full bg-[rgba(139,92,246,0.08)]',
+        nativeRatio ? 'min-h-[40px]' : '',
         radiusClass,
         glowClass,
         clickableClass,
@@ -112,12 +121,15 @@ export function GameImage({
         src={imageSrc}
         alt={alt}
         width={spec.width}
-        height={spec.height}
+        height={nativeRatio ? undefined : spec.height}
         loading="lazy"
         onLoad={handleLoad}
         onError={handleError}
         className={[
-          'w-full h-full object-cover z-[1] relative transition-opacity duration-[150ms] ease-[ease]',
+          nativeRatio
+            ? 'w-full h-auto object-contain'
+            : 'w-full h-full object-cover',
+          'z-[1] relative transition-opacity duration-[150ms] ease-[ease]',
           mainVisible ? 'opacity-100' : 'opacity-0',
           onClick ? 'group-hover:scale-[1.03] group-hover:transition-transform group-hover:duration-200' : '',
         ].filter(Boolean).join(' ')}

@@ -24,7 +24,7 @@ export function OutpostHeroSection({ outpost }: OutpostHeroSectionProps) {
         category="regions"
         alt={outpost.name || regionName}
         fallbackSrc={regionImage}
-        className="h-[160px]"
+        nativeRatio
       />
       <div
         className="pointer-events-none absolute inset-0 z-10"
