@@ -1256,15 +1256,52 @@ export class LocationService {
           throw new BadRequestException("Cannot disable your only active outpost");
         }
 
+        // --- Unassign workers ---
         const assignments = await (tx as any).locationWorkerAssignment.findMany({
           where: { locationId },
           select: { entityId: true },
         });
-        const entityIds: string[] = assignments.map((a: any) => a.entityId);
-
+        const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
         await (tx as any).locationWorkerAssignment.deleteMany({ where: { locationId } });
 
-        for (const entityId of entityIds) {
+        // --- Locate all jobs to cancel ---
+        const buildingAndCraftingJobs = await (tx as any).job.findMany({
+          where: {
+            userId,
+            type: { in: ["BuildingJob", "CraftingJob"] },
+            status: { in: ["active", "ready_notified"] },
+            data: { path: ["locationId"], equals: locationId },
+          },
+          select: { id: true, team: true },
+        });
+
+        const allActiveMissionJobs = workerEntityIds.length > 0
+          ? await (tx as any).job.findMany({
+              where: {
+                userId,
+                type: "MissionJob",
+                status: { in: ["active", "ready_notified"] },
+              },
+              select: { id: true, team: true },
+            })
+          : [];
+        const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
+          const team: string[] = Array.isArray(j.team) ? j.team : [];
+          return workerEntityIds.some((eid) => team.includes(eid));
+        });
+
+        const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
+        const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
+
+        // --- Collect all team entity IDs across every cancelled job plus worker IDs ---
+        const allEntityIdsToIdle = new Set<string>(workerEntityIds);
+        for (const job of allCancelledJobs) {
+          const team: string[] = Array.isArray(job.team) ? job.team : [];
+          for (const eid of team) allEntityIdsToIdle.add(eid);
+        }
+
+        // --- Set all affected entities to idle ---
+        for (const entityId of allEntityIdsToIdle) {
           const entity = await (tx as any).entity.findUnique({
             where: { id: entityId },
             select: { state: true },
@@ -1278,42 +1315,32 @@ export class LocationService {
           }
         }
 
-        const locationJobs = await (tx as any).job.findMany({
-          where: {
-            userId,
-            type: { in: ["BuildingJob", "CraftingJob"] },
-            status: { in: ["active", "ready_notified"] },
-            data: { path: ["locationId"], equals: locationId },
-          },
-          select: { id: true },
-        });
-        const locationJobIds: string[] = locationJobs.map((j: any) => j.id);
-
-        if (entityIds.length > 0) {
-          const allMissionJobs = await (tx as any).job.findMany({
-            where: {
-              userId,
-              type: "MissionJob",
-              status: { in: ["active", "ready_notified"] },
-            },
-            select: { id: true, team: true },
-          });
-          const affectedMissionJobIds: string[] = allMissionJobs
-            .filter((j: any) => {
-              const team: string[] = Array.isArray(j.team) ? j.team : [];
-              return entityIds.some((eid) => team.includes(eid));
-            })
-            .map((j: any) => j.id);
-          locationJobIds.push(...affectedMissionJobIds);
-        }
-
-        if (locationJobIds.length > 0) {
+        // --- Cancel jobs and archive their job_ready notifications ---
+        if (allCancelledJobIds.length > 0) {
           await (tx as any).job.updateMany({
-            where: { id: { in: locationJobIds } },
+            where: { id: { in: allCancelledJobIds } },
             data: { status: "cancelled" },
           });
+
+          const staleNotifs = await (tx as any).notification.findMany({
+            where: {
+              userId,
+              sourceType: "job_ready",
+              sourceId: { in: allCancelledJobIds },
+              archivedAt: null,
+            },
+            select: { id: true },
+          });
+          if (staleNotifs.length > 0) {
+            const now = new Date();
+            await (tx as any).notification.updateMany({
+              where: { id: { in: staleNotifs.map((n: any) => n.id) } },
+              data: { archivedAt: now, dismissedAt: now, readAt: now },
+            });
+          }
         }
 
+        // --- Clear primary outpost if it pointed here ---
         await (tx as any).user.updateMany({
           where: { id: userId, primaryLocationId: locationId },
           data: { primaryLocationId: null },
