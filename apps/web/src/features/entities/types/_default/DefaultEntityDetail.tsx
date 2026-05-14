@@ -109,10 +109,17 @@ export default function DefaultEntityDetail(props: EntityDetailProps) {
   return <FullEntityDetail entity={entity} portraitBadge={props.portraitBadge} />;
 }
 
+const GEAR_STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
+
+function getGearStats(item: any): Record<string, number> {
+  return item?.definition?.equipData?.stats ?? item?.equipData?.stats ?? {};
+}
+
 function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps['entity']; portraitBadge?: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<ProgressionTab>('LEVEL');
   const [pickerSlot, setPickerSlot] = useState<EquipSlot | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hoveredPickerItem, setHoveredPickerItem] = useState<any | null>(null);
   const progress = useAnimatedProgress(800);
   const allItems = useSyncItems();
   const { pushModal } = useModal();
@@ -149,27 +156,62 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     return map;
   }, [entity, allItems]);
 
+  /**
+   * When the player hovers over a candidate item in the picker, compute a
+   * preview of what `equippedStats` would look like if that item were equipped
+   * instead of the current slot occupant. This drives the radar chart overlay.
+   */
+  const previewEquippedStats = useMemo<Record<string, number> | undefined>(() => {
+    if (!pickerSlot || !hoveredPickerItem) return undefined;
+    const base: Record<string, number> = { ...(equippedStats ?? baseStats) };
+    const currentSlotItem = equippedBySlot[pickerSlot] ?? null;
+
+    if (currentSlotItem) {
+      const curStats = getGearStats(currentSlotItem);
+      for (const k of GEAR_STAT_KEYS) {
+        if (typeof curStats[k] === 'number') {
+          base[k] = (base[k] ?? 0) - curStats[k];
+        }
+      }
+    }
+
+    const hoverStats = getGearStats(hoveredPickerItem);
+    for (const k of GEAR_STAT_KEYS) {
+      if (typeof hoverStats[k] === 'number') {
+        base[k] = (base[k] ?? 0) + hoverStats[k];
+      }
+    }
+
+    return base;
+  }, [pickerSlot, hoveredPickerItem, equippedStats, baseStats, equippedBySlot]);
+
   const handleSlotClick = useCallback((slot: EquipSlot) => {
     if (busy) return;
-    const occupant = equippedBySlot[slot];
-    if (occupant) {
-      setBusy(true);
-      execute('UnequipItem', { entityId: entity.id, itemInstanceId: occupant.id })
-        .catch((err) => console.error('[EntityDetail] UnequipItem failed:', err))
-        .finally(() => setBusy(false));
-      return;
-    }
+    // Always open the picker — occupied slots show comparison + unequip option
     setPickerSlot(slot);
-  }, [busy, equippedBySlot, execute, entity.id]);
+  }, [busy]);
 
   const handlePickerSelect = useCallback((itemInstanceId: string) => {
     if (!pickerSlot) return;
     setBusy(true);
     setPickerSlot(null);
+    setHoveredPickerItem(null);
     execute('EquipItem', { entityId: entity.id, itemInstanceId })
       .catch((err) => console.error('[EntityDetail] EquipItem failed:', err))
       .finally(() => setBusy(false));
   }, [pickerSlot, execute, entity.id]);
+
+  const handlePickerUnequip = useCallback(() => {
+    if (!pickerSlot) return;
+    const occupant = equippedBySlot[pickerSlot];
+    if (!occupant) return;
+    setBusy(true);
+    setPickerSlot(null);
+    setHoveredPickerItem(null);
+    execute('UnequipItem', { entityId: entity.id, itemInstanceId: occupant.id })
+      .catch((err) => console.error('[EntityDetail] UnequipItem failed:', err))
+      .finally(() => setBusy(false));
+  }, [pickerSlot, equippedBySlot, execute, entity.id]);
 
   const rawXpMax = getXpForLevel(entity.level);
   const xpMax = rawXpMax > 0 ? rawXpMax : 100;
@@ -219,7 +261,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               const slotTitle = blockedByBusy
                 ? BUSY_EQUIP_TOOLTIP
                 : filled
-                  ? `${occupantName} — tap to unequip`
+                  ? `${occupantName} — tap to manage`
                   : `Equip ${label.toLowerCase()}`;
 
               const slotCls = [
@@ -240,7 +282,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                   key={label}
                   className={slotCls}
                   type="button"
-                  aria-label={filled ? `Unequip ${occupantName}` : `Equip ${label}`}
+                  aria-label={filled ? `Manage ${occupantName} (${label})` : `Equip ${label}`}
                   aria-disabled={slotDisabled}
                   title={slotTitle}
                   disabled={slotDisabled}
@@ -273,7 +315,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           <div className="flex justify-center items-center flex-1 pt-[10px]">
             <StatRadarChart
               stats={baseStats}
-              equippedStats={equippedStats}
+              equippedStats={previewEquippedStats ?? equippedStats}
               size={155}
               progress={progress}
             />
@@ -285,8 +327,11 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
         isOpen={pickerSlot !== null}
         slot={pickerSlot}
         entityId={entity.id}
-        onClose={() => setPickerSlot(null)}
+        equippedItem={pickerSlot ? (equippedBySlot[pickerSlot] ?? undefined) : undefined}
+        onClose={() => { setPickerSlot(null); setHoveredPickerItem(null); }}
         onSelect={handlePickerSelect}
+        onHover={setHoveredPickerItem}
+        onUnequip={handlePickerUnequip}
       />
 
       {/* ── Full-width progression tab panel ── */}
