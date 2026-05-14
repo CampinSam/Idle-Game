@@ -1690,6 +1690,7 @@ input:focus {
   width: 100%;
 }
 .body-card {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
