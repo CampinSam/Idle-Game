@@ -15,6 +15,7 @@ import { OutpostProductionCard } from './components/OutpostProductionCard';
 import { OutpostWorkersCard } from './components/OutpostWorkersCard';
 import { OutpostWarehouseCard } from './components/OutpostWarehouseCard';
 import { AddBuildingCard } from './components/AddBuildingCard';
+import { OutpostNftTraitsCard } from './components/OutpostNftTraitsCard';
 import type { LocationPageProps } from '../../registry';
 
 const WAREHOUSE_DEF_ID = 'stor_warehouse';
@@ -214,6 +215,10 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
       <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain">
         <div className="flex flex-col gap-3.5 px-3 pt-3 pb-6">
           <OutpostHeroSection outpost={outpost} />
+
+          {outpost.nftAssetId && (
+            <OutpostNftTraitsCard nftAttributes={outpost.nftAttributes} />
+          )}
 
         <OutpostProductionCard
         outpost={outpost}
