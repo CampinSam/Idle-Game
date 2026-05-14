@@ -150,6 +150,8 @@ export class QueryService {
           keeperXp: true,
           prestigeTokens: true,
           flags: true,
+          primaryLocationId: true,
+          bonusOutpostSlots: true,
           createdAt: true,
           updatedAt: true,
         },

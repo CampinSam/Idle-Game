@@ -87,6 +87,8 @@ export class PatchBuilder {
         keeperXp: user.keeperXp?.toString?.() ?? user.keeperXp,
         prestigeTokens: user.prestigeTokens,
         flags: user.flags,
+        primaryLocationId: user.primaryLocationId ?? null,
+        bonusOutpostSlots: user.bonusOutpostSlots ?? 0,
       },
     });
     return this;

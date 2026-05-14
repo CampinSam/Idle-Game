@@ -25,10 +25,12 @@ model User {
   providerId     String?
   walletAddress  String?
   ecosystemId    String?
-  keeperLevel    Int      @default(1)
-  keeperXp       BigInt   @default(0)
-  prestigeTokens Int      @default(0)
-  flags          Json     @default("{}")
+  keeperLevel       Int      @default(1)
+  keeperXp          BigInt   @default(0)
+  prestigeTokens    Int      @default(0)
+  flags             Json     @default("{}")
+  primaryLocationId String?
+  bonusOutpostSlots Int      @default(0)
   lastNftSyncAt  DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

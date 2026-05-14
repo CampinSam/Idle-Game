@@ -84,6 +84,19 @@ export class AdminService {
     return serializeBigInts(updated);
   }
 
+  async setBonusOutpostSlots(id: string, slots: number) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Player ${id} not found`);
+    if (typeof slots !== 'number' || !Number.isInteger(slots) || slots < 0 || slots > 3) {
+      throw new BadRequestException('slots must be an integer between 0 and 3');
+    }
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { bonusOutpostSlots: slots },
+    });
+    return serializeBigInts(updated);
+  }
+
   async setPlayerCurrency(userId: string, currencyId: string, balance: string | number) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`Player ${userId} not found`);

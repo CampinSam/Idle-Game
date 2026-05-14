@@ -303,13 +303,13 @@ export class LocationService {
     const client = externalTx || this.prisma;
     const user = await client.user.findUnique({
       where: { id: userId },
-      select: { keeperLevel: true },
+      select: { keeperLevel: true, bonusOutpostSlots: true },
     });
     if (!user) throw new NotFoundException("User not found");
     const activeCount = await (client as any).locationInstance.count({
       where: { ownerUserId: userId, enabled: true },
     });
-    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel);
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, user.bonusOutpostSlots ?? 0);
     if (activeCount >= maxOutposts) {
       throw new BadRequestException(
         `Maximum ${maxOutposts} active outpost(s) allowed at Keeper Level ${user.keeperLevel}`,
@@ -1247,6 +1247,79 @@ export class LocationService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.settlementService.settleLocationTx(tx, locationId, userId, currentTickBig);
+
+      if (!enabled) {
+        const activeCount = await (tx as any).locationInstance.count({
+          where: { ownerUserId: userId, enabled: true },
+        });
+        if (activeCount <= 1) {
+          throw new BadRequestException("Cannot disable your only active outpost");
+        }
+
+        const assignments = await (tx as any).locationWorkerAssignment.findMany({
+          where: { locationId },
+          select: { entityId: true },
+        });
+        const entityIds: string[] = assignments.map((a: any) => a.entityId);
+
+        await (tx as any).locationWorkerAssignment.deleteMany({ where: { locationId } });
+
+        for (const entityId of entityIds) {
+          const entity = await (tx as any).entity.findUnique({
+            where: { id: entityId },
+            select: { state: true },
+          });
+          if (entity) {
+            const entityState = (entity.state as any) || {};
+            await (tx as any).entity.update({
+              where: { id: entityId },
+              data: { state: { ...entityState, status: "idle" } },
+            });
+          }
+        }
+
+        const locationJobs = await (tx as any).job.findMany({
+          where: {
+            userId,
+            type: { in: ["BuildingJob", "CraftingJob"] },
+            status: { in: ["active", "ready_notified"] },
+            data: { path: ["locationId"], equals: locationId },
+          },
+          select: { id: true },
+        });
+        const locationJobIds: string[] = locationJobs.map((j: any) => j.id);
+
+        if (entityIds.length > 0) {
+          const allMissionJobs = await (tx as any).job.findMany({
+            where: {
+              userId,
+              type: "MissionJob",
+              status: { in: ["active", "ready_notified"] },
+            },
+            select: { id: true, team: true },
+          });
+          const affectedMissionJobIds: string[] = allMissionJobs
+            .filter((j: any) => {
+              const team: string[] = Array.isArray(j.team) ? j.team : [];
+              return entityIds.some((eid) => team.includes(eid));
+            })
+            .map((j: any) => j.id);
+          locationJobIds.push(...affectedMissionJobIds);
+        }
+
+        if (locationJobIds.length > 0) {
+          await (tx as any).job.updateMany({
+            where: { id: { in: locationJobIds } },
+            data: { status: "cancelled" },
+          });
+        }
+
+        await (tx as any).user.updateMany({
+          where: { id: userId, primaryLocationId: locationId },
+          data: { primaryLocationId: null },
+        });
+      }
+
       await (tx as any).locationInstance.update({
         where: { id: locationId },
         data: { enabled },

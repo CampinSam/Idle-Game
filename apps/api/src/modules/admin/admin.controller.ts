@@ -503,6 +503,14 @@ export class AdminController {
     return { fileKey, url: `/media${fileKey}` };
   }
 
+  @Put('players/:id/bonus-outpost-slots')
+  setBonusOutpostSlots(
+    @Param('id') id: string,
+    @Body() body: { slots: number },
+  ) {
+    return this.adminService.setBonusOutpostSlots(id, body.slots);
+  }
+
   @Get(':table')
   list(@Param('table') table: string) {
     return this.adminService.listTable(table);

@@ -3329,3 +3329,64 @@ Returns a reverse-chronological list of significant events for a specific entity
 **Sorting:** Timestamped events sort newest-first. Level-up events (no timestamp) appear after all timestamped events, sorted by level descending.
 
 **Cap:** Maximum 500 completed mission jobs scanned per call; response capped at 50 events.
+
+---
+
+## Outpost Slot System — Admin Endpoints
+
+### PUT /admin/players/:id/bonus-outpost-slots
+
+Grants a player bonus outpost slots on top of their level-derived cap.
+
+**Header:** `x-admin-key: <ADMIN_SECRET>`
+
+**Body:**
+```json
+{ "slots": 2 }
+```
+
+| Field | Type | Constraints | Description |
+|---|---|---|---|
+| `slots` | integer | 0–3 | Number of bonus outpost slots to grant. Replaces the current value. |
+
+**Response:** Updated `User` record (BigInts serialized to strings).
+
+**Effect on cap formula:**
+```
+maxActiveOutposts = min(1 + floor(keeperLevel / 20) + min(bonusSlots, 3), 7)
+```
+At level 1 with 0 bonus slots the cap is 1. Each 20 keeper levels adds 1 slot. Bonus slots are capped at 3 and cannot push the total above 7.
+
+---
+
+## Outpost Slot System — Commands
+
+### SetPrimaryOutpost
+
+Sets the player's preferred primary outpost. Pure display preference — no gameplay effect. The frontend uses this to decide which outpost to show first. Clears automatically if the outpost is disabled.
+
+**Payload:**
+```json
+{ "locationId": "uuid" }
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `locationId` | string (UUID) | yes | ID of an enabled LocationInstance owned by the player. |
+
+**Validation:** Location must exist, belong to the calling player, and have `enabled: true`.
+
+**Response patches:** `player` upsert with updated `primaryLocationId`.
+
+---
+
+## ToggleLocation — Deactivation Side-Effects
+
+When `ToggleLocation` is sent with `enabled: false`, the following side-effects run atomically inside the same transaction (in addition to settling production):
+
+1. **Last-outpost guard** — rejected with 400 if it would leave the player with 0 active outposts.
+2. **Worker unassignment** — all `LocationWorkerAssignment` rows for the location are deleted; each affected entity's `state.status` is set to `idle`.
+3. **Job cancellation** — all active `BuildingJob` and `CraftingJob` rows with `data.locationId` matching the location are set to `status: cancelled`. Active `MissionJob` rows whose `team` array overlaps with the unassigned entity IDs are also cancelled.
+4. **Primary outpost clear** — if `User.primaryLocationId` matches this location, it is set to `null`.
+
+Player and entity delta patches for affected jobs/entities should be re-fetched by the frontend via the normal delta/SSE pipeline.

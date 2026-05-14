@@ -19,7 +19,8 @@ export const WORKER_SLOTS_BY_LEVEL = (level: number): number => {
 };
 
 export const ANTI_WHALE_CAPS = {
-  maxActiveOutposts: (keeperLevel: number) => Math.min(Math.floor(keeperLevel / 20) + 1, 6),
+  maxActiveOutposts: (keeperLevel: number, bonusSlots = 0) =>
+    Math.min(1 + Math.floor(keeperLevel / 20) + Math.min(bonusSlots, 3), 7),
   maxActiveMissions: (keeperLevel: number) => Math.min(Math.floor(keeperLevel / 20) + 2, 6),
   mpEffectivenessCap: 500,
   synergyStackingCap: 0.30,
