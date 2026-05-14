@@ -232,14 +232,17 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
                 </span>
               )}
 
-              {kindLabel && (
+              {nftAssetId ? (
+                <span className="text-[10px] text-text-secondary truncate">
+                  {outpost.name}{kindLabel ? ` · ${kindLabel}` : ''}
+                </span>
+              ) : kindLabel ? (
                 <span className="text-[10px] text-text-secondary truncate">
                   {kindLabel}{regionName ? ` - ${regionName}` : ''}
                 </span>
-              )}
-              {!kindLabel && regionName && (
+              ) : regionName ? (
                 <span className="text-[10px] text-text-secondary truncate">{regionName}</span>
-              )}
+              ) : null}
             </div>
           </div>
 

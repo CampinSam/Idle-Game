@@ -96,7 +96,7 @@ export default function DerpOutpostCard({
               ★ Primary
             </span>
           )}
-          <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary truncate">{regionName.toUpperCase()}</span>
+          <span className="text-xs font-extrabold tracking-[0.8px] text-text-primary truncate">{(op.nftAssetId ? op.name : regionName).toUpperCase()}</span>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {nftAssetId && (
