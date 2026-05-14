@@ -12,6 +12,7 @@ import {
   computeInventoryAmount,
 } from '../../../../utils/locationProduction';
 import { getRegionDisplay } from '@derp/shared';
+import { getLocationImagePath } from '../../../../config/images';
 import type { LocationCardProps } from '../../registry';
 
 function buildNftExplorerUrl(nftAssetId: string): string | null {
@@ -62,6 +63,7 @@ export default function DerpOutpostCard({
   const regionDisplay = getRegionDisplay(op.regionId || op.region);
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
+  const cardImageSrc = getLocationImagePath(op.nftImageUrl, regionImage, 'thumb');
   const nftAssetId: string | undefined = op.nftAssetId;
   const nftExplorerUrl = nftAssetId ? buildNftExplorerUrl(nftAssetId) : null;
   const timerData = locationTimerMap.get(op.id);
@@ -122,10 +124,10 @@ export default function DerpOutpostCard({
 
       <div className="px-2 mb-2 [&_img]:w-full [&_img]:h-[120px] [&_img]:object-cover [&_img]:rounded-[10px]">
         <GameImage
-          src={regionImage}
+          src={cardImageSrc}
           category="regions"
           alt={regionName}
-          fallbackSrc="/media/images/regions/fallback.png"
+          fallbackSrc={regionImage}
         />
       </div>
 

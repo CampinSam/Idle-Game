@@ -84,6 +84,39 @@ export function getEntityImagePath(
   return IMAGE_FALLBACKS.entities;
 }
 
+/**
+ * Resolve the display URL for a location (outpost) image.
+ *
+ * When `nftImageUrl` is present the same normalisation used for entity PFPs
+ * applies: `ipfs://<cid>` → `/media/nft/cardano/<cid>`, with `.thumb.webp`
+ * appended for the `'thumb'` variant so list views download a small WebP
+ * instead of the full artwork.
+ *
+ * Falls back to `regionFallback` when there is no NFT image URL.
+ */
+export function getLocationImagePath(
+  nftImageUrl: string | null | undefined,
+  regionFallback: string,
+  variant: EntityImageVariant = 'full',
+): string {
+  if (nftImageUrl) {
+    let normalized = nftImageUrl;
+    if (normalized.startsWith(NFT_IPFS_PREFIX)) {
+      const cid = normalized.slice(NFT_IPFS_PREFIX.length);
+      if (cid) normalized = `${NFT_MEDIA_PREFIX}${cid}`;
+    }
+    if (
+      variant === 'thumb' &&
+      normalized.startsWith(NFT_MEDIA_PREFIX) &&
+      !normalized.endsWith(NFT_THUMB_SUFFIX)
+    ) {
+      return `${normalized}${NFT_THUMB_SUFFIX}`;
+    }
+    return normalized;
+  }
+  return regionFallback;
+}
+
 export function getRegionImagePath(regionSlug?: string): string {
   if (regionSlug) return `/media/images/regions/${regionSlug}.png`;
   return IMAGE_FALLBACKS.regions;
