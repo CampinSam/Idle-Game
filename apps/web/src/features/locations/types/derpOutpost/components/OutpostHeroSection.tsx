@@ -11,10 +11,11 @@ export function OutpostHeroSection({ outpost }: OutpostHeroSectionProps) {
   const regionName = regionDisplay.displayName;
   const regionImage = regionDisplay.imagePath;
 
-  const heroSrc = getLocationImagePath(outpost.nftImageUrl, regionImage, 'full');
-  const thumbSrc = outpost.nftImageUrl
-    ? getLocationImagePath(outpost.nftImageUrl, regionImage, 'thumb')
-    : undefined;
+  // The hero area is only 160 px tall — the 256 px thumb is indistinguishable
+  // from the full image and is faster to load. We intentionally omit
+  // placeholderSrc here so that a load error always surfaces the region
+  // fallback cleanly rather than leaving the thumb visible indefinitely.
+  const heroSrc = getLocationImagePath(outpost.nftImageUrl, regionImage, 'thumb');
 
   return (
     <div className="relative overflow-hidden rounded-xl [&_img]:w-full [&_img]:h-[160px] [&_img]:object-cover">
@@ -22,7 +23,6 @@ export function OutpostHeroSection({ outpost }: OutpostHeroSectionProps) {
         src={heroSrc}
         category="regions"
         alt={regionName}
-        placeholderSrc={thumbSrc}
         fallbackSrc={regionImage}
       />
       <div
