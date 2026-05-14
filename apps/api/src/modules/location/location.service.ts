@@ -1237,124 +1237,127 @@ export class LocationService {
     userId: string,
     locationId: string,
     enabled: boolean,
-    tx?: any,
+    externalTx?: any,
   ) {
-    const db = tx ?? this.prisma;
-
-    const location = await (db as any).locationInstance.findFirst({
-      where: { id: locationId, ownerUserId: userId },
-    });
-    if (!location) throw new NotFoundException("Location not found");
-
+    // getCurrentTick is a non-DB call; fetch it before entering the transaction.
     const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
 
-    await this.settlementService.settleLocationTx(db, locationId, userId, currentTickBig);
-
-    if (!enabled) {
-      const activeCount = await (db as any).locationInstance.count({
-        where: { ownerUserId: userId, enabled: true },
+    const doWork = async (db: any) => {
+      const location = await (db as any).locationInstance.findFirst({
+        where: { id: locationId, ownerUserId: userId },
       });
-      if (activeCount <= 1) {
-        throw new BadRequestException("Cannot disable your only active outpost");
-      }
+      if (!location) throw new NotFoundException("Location not found");
 
-      // --- Unassign workers ---
-      const assignments = await (db as any).locationWorkerAssignment.findMany({
-        where: { locationId },
-        select: { entityId: true },
-      });
-      const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
-      await (db as any).locationWorkerAssignment.deleteMany({ where: { locationId } });
+      await this.settlementService.settleLocationTx(db, locationId, userId, currentTickBig);
 
-      // --- Locate all jobs to cancel ---
-      const buildingAndCraftingJobs = await (db as any).job.findMany({
-        where: {
-          userId,
-          type: { in: ["BuildingJob", "CraftingJob"] },
-          status: { in: ["active", "ready_notified"] },
-          data: { path: ["locationId"], equals: locationId },
-        },
-        select: { id: true, team: true },
-      });
-
-      const allActiveMissionJobs = workerEntityIds.length > 0
-        ? await (db as any).job.findMany({
-            where: {
-              userId,
-              type: "MissionJob",
-              status: { in: ["active", "ready_notified"] },
-            },
-            select: { id: true, team: true },
-          })
-        : [];
-      const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
-        const team: string[] = Array.isArray(j.team) ? j.team : [];
-        return workerEntityIds.some((eid) => team.includes(eid));
-      });
-
-      const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
-      const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
-
-      // --- Collect all team entity IDs across every cancelled job plus worker IDs ---
-      const allEntityIdsToIdle = new Set<string>(workerEntityIds);
-      for (const job of allCancelledJobs) {
-        const team: string[] = Array.isArray(job.team) ? job.team : [];
-        for (const eid of team) allEntityIdsToIdle.add(eid);
-      }
-
-      // --- Set all affected entities to idle ---
-      for (const entityId of allEntityIdsToIdle) {
-        const entity = await (db as any).entity.findUnique({
-          where: { id: entityId },
-          select: { state: true },
+      if (!enabled) {
+        const activeCount = await (db as any).locationInstance.count({
+          where: { ownerUserId: userId, enabled: true },
         });
-        if (entity) {
-          const entityState = (entity.state as any) || {};
-          await (db as any).entity.update({
-            where: { id: entityId },
-            data: { state: { ...entityState, status: "idle" } },
-          });
+        if (activeCount <= 1) {
+          throw new BadRequestException("Cannot disable your only active outpost");
         }
-      }
 
-      // --- Cancel jobs and archive their job_ready notifications ---
-      if (allCancelledJobIds.length > 0) {
-        await (db as any).job.updateMany({
-          where: { id: { in: allCancelledJobIds } },
-          data: { status: "cancelled" },
+        // --- Unassign workers ---
+        const assignments = await (db as any).locationWorkerAssignment.findMany({
+          where: { locationId },
+          select: { entityId: true },
         });
+        const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
+        await (db as any).locationWorkerAssignment.deleteMany({ where: { locationId } });
 
-        const staleNotifs = await (db as any).notification.findMany({
+        // --- Locate all jobs to cancel ---
+        const buildingAndCraftingJobs = await (db as any).job.findMany({
           where: {
             userId,
-            sourceType: "job_ready",
-            sourceId: { in: allCancelledJobIds },
-            archivedAt: null,
+            type: { in: ["BuildingJob", "CraftingJob"] },
+            status: { in: ["active", "ready_notified"] },
+            data: { path: ["locationId"], equals: locationId },
           },
-          select: { id: true },
+          select: { id: true, team: true },
         });
-        if (staleNotifs.length > 0) {
-          const now = new Date();
-          await (db as any).notification.updateMany({
-            where: { id: { in: staleNotifs.map((n: any) => n.id) } },
-            data: { archivedAt: now, dismissedAt: now, readAt: now },
-          });
+
+        const allActiveMissionJobs = workerEntityIds.length > 0
+          ? await (db as any).job.findMany({
+              where: {
+                userId,
+                type: "MissionJob",
+                status: { in: ["active", "ready_notified"] },
+              },
+              select: { id: true, team: true },
+            })
+          : [];
+        const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
+          const team: string[] = Array.isArray(j.team) ? j.team : [];
+          return workerEntityIds.some((eid) => team.includes(eid));
+        });
+
+        const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
+        const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
+
+        // --- Collect all team entity IDs across every cancelled job plus worker IDs ---
+        const allEntityIdsToIdle = new Set<string>(workerEntityIds);
+        for (const job of allCancelledJobs) {
+          const team: string[] = Array.isArray(job.team) ? job.team : [];
+          for (const eid of team) allEntityIdsToIdle.add(eid);
         }
+
+        // --- Set all affected entities to idle ---
+        for (const entityId of allEntityIdsToIdle) {
+          const entity = await (db as any).entity.findUnique({
+            where: { id: entityId },
+            select: { state: true },
+          });
+          if (entity) {
+            const entityState = (entity.state as any) || {};
+            await (db as any).entity.update({
+              where: { id: entityId },
+              data: { state: { ...entityState, status: "idle" } },
+            });
+          }
+        }
+
+        // --- Cancel jobs and archive their job_ready notifications ---
+        if (allCancelledJobIds.length > 0) {
+          await (db as any).job.updateMany({
+            where: { id: { in: allCancelledJobIds } },
+            data: { status: "cancelled" },
+          });
+
+          const staleNotifs = await (db as any).notification.findMany({
+            where: {
+              userId,
+              sourceType: "job_ready",
+              sourceId: { in: allCancelledJobIds },
+              archivedAt: null,
+            },
+            select: { id: true },
+          });
+          if (staleNotifs.length > 0) {
+            const now = new Date();
+            await (db as any).notification.updateMany({
+              where: { id: { in: staleNotifs.map((n: any) => n.id) } },
+              data: { archivedAt: now, dismissedAt: now, readAt: now },
+            });
+          }
+        }
+
+        // --- Clear primary outpost if it pointed here ---
+        await (db as any).user.updateMany({
+          where: { id: userId, primaryLocationId: locationId },
+          data: { primaryLocationId: null },
+        });
       }
 
-      // --- Clear primary outpost if it pointed here ---
-      await (db as any).user.updateMany({
-        where: { id: userId, primaryLocationId: locationId },
-        data: { primaryLocationId: null },
+      await (db as any).locationInstance.update({
+        where: { id: locationId },
+        data: { enabled },
       });
-    }
 
-    await (db as any).locationInstance.update({
-      where: { id: locationId },
-      data: { enabled },
-    });
+      return { id: locationId, enabled };
+    };
 
-    return { id: locationId, enabled };
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
   }
 
   async toggleBuildingEnabled(
