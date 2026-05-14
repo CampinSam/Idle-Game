@@ -1422,7 +1422,13 @@ The `cost`, `originalCost`, and `contents` arrays all use the same `ShopCostEntr
 
 ## NftCollectionDef
 
-Links an on-chain NFT collection to an entity definition, enabling NFT-gated entity claims. When a player syncs their connected wallet, the server checks their NFT holdings against all active collections. Each matched token that has not yet been claimed creates a new entity instance from the linked `entityDefinitionId`.
+Links an on-chain NFT collection to either an [EntityDefinition](#entitydefinition) or a [LocationDefinition](#locationdefinition), enabling NFT-gated claims. When a player syncs their connected wallet, the server checks their NFT holdings against all active collections and creates or transfers the corresponding instance to them.
+
+**Two collection modes:**
+- **Entity mode** (`entityDefinitionId` set): Used for character NFTs (e.g. Derp Birds, Derplings). Entity rows must be pre-imported into the database before wallet sync can claim them. Set `entityDefinitionId` to the target entity definition.
+- **Location mode** (`locationDefinitionId` set): Used for outpost/location NFTs (e.g. Derp Outposts). `LocationInstance` rows are created on-demand during wallet sync — no pre-import step is required. Set `locationDefinitionId` to the target location definition.
+
+Exactly one of `entityDefinitionId` or `locationDefinitionId` should be set on a given collection.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -1430,8 +1436,9 @@ Links an on-chain NFT collection to an entity definition, enabling NFT-gated ent
 | `name` | string | Yes | — | Admin-facing display name |
 | `chain` | string | Yes | — | Blockchain: `CARDANO`, `ETH`, `BASE`, or `MATIC` |
 | `collectionId` | string | Yes | — | On-chain collection or policy ID used to look up tokens |
-| `entityDefinitionId` | string | Yes | — | References an [EntityDefinition](#entitydefinition) — the entity type created when a token is claimed |
-| `mintMode` | string | No | `one_per_token` | How many entity instances one token can claim (only `one_per_token` supported) |
+| `entityDefinitionId` | string | No | — | References an [EntityDefinition](#entitydefinition) — the entity type created when a token is claimed. Mutually exclusive with `locationDefinitionId`. |
+| `locationDefinitionId` | string | No | — | References a [LocationDefinition](#locationdefinition) — the location type created when a token is claimed. Mutually exclusive with `entityDefinitionId`. |
+| `mintMode` | string | No | `one_per_token` | How many instances one token can claim (only `one_per_token` supported) |
 | `active` | boolean | No | true | Whether this collection is active for wallet syncing and claiming |
 | `data` | JSON | No | `{}` | Freeform extra configuration data |
 

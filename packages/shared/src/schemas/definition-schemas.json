@@ -3388,7 +3388,7 @@
       }
     },
     "NftCollectionDef": {
-      "description": "Links an on-chain NFT collection to an entity definition, enabling NFT-gated entity claims. Players sync their wallet's NFT holdings against active collections; each matched token that has not been claimed creates a new entity.",
+      "description": "Links an on-chain NFT collection to either an EntityDefinition or a LocationDefinition, enabling NFT-gated entity or location claims. Players sync their wallet's NFT holdings against active collections; each matched token creates or transfers the corresponding instance to them. Set entityDefinitionId for character/entity NFTs (requires a pre-import step). Set locationDefinitionId for location NFTs (LocationInstances are created on-demand during wallet sync — no pre-import needed). Exactly one of entityDefinitionId or locationDefinitionId should be set.",
       "prismaModel": "NftCollectionDef",
       "tableName": "nft_collection_defs",
       "primaryKey": "id",
@@ -3416,14 +3416,19 @@
         },
         "entityDefinitionId": {
           "type": "string",
-          "required": true,
-          "description": "References an EntityDefinition — the entity type created when a token is claimed"
+          "required": false,
+          "description": "References an EntityDefinition — the entity type created when a token is claimed. Use for character/entity NFT collections. Mutually exclusive with locationDefinitionId."
+        },
+        "locationDefinitionId": {
+          "type": "string",
+          "required": false,
+          "description": "References a LocationDefinition — the location type created when a token is claimed. Use for outpost/location NFT collections (e.g. Derp Outposts). LocationInstances are created on-demand during wallet sync with no pre-import step. Mutually exclusive with entityDefinitionId."
         },
         "mintMode": {
           "type": "enum",
           "enum": ["one_per_token"],
           "default": "one_per_token",
-          "description": "How many entity instances one token can claim (currently only one_per_token is supported)"
+          "description": "How many instances one token can claim (currently only one_per_token is supported)"
         },
         "active": {
           "type": "boolean",

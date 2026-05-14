@@ -127,25 +127,31 @@ export class BootstrapService implements OnModuleInit {
         id: 'nft_cardano_outposts',
         name: 'Derp Outposts (Cardano)',
         collectionId: 'a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5',
-        entityDefinitionId: 'derp_outpost',
+        entityDefinitionId: null,
+        locationDefinitionId: 'derp_outpost',
       },
     ];
 
     let seeded = 0;
     for (const col of collections) {
+      const createData: Record<string, any> = {
+        id: col.id,
+        name: col.name,
+        chain: 'CARDANO',
+        collectionId: col.collectionId,
+        entityDefinitionId: (col as any).entityDefinitionId ?? null,
+        locationDefinitionId: (col as any).locationDefinitionId ?? null,
+        mintMode: 'one_per_token',
+        active: true,
+        data: {},
+      };
       const result = await (this.prisma as any).nftCollectionDef.upsert({
         where: { id: col.id },
-        update: {},
-        create: {
-          id: col.id,
-          name: col.name,
-          chain: 'CARDANO',
-          collectionId: col.collectionId,
-          entityDefinitionId: col.entityDefinitionId,
-          mintMode: 'one_per_token',
-          active: true,
-          data: {},
+        update: {
+          locationDefinitionId: (col as any).locationDefinitionId ?? null,
+          entityDefinitionId: (col as any).entityDefinitionId ?? null,
         },
+        create: createData,
       });
       if (result.createdAt.getTime() === result.updatedAt.getTime()) {
         seeded++;
