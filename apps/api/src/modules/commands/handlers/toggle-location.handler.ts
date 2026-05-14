@@ -10,7 +10,7 @@ export class ToggleLocationHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, enabled } = payload;
 
-    await this.locationService.toggleLocationEnabled(ctx.userId, locationId, enabled);
+    await this.locationService.toggleLocationEnabled(ctx.userId, locationId, enabled, ctx.tx);
 
     const pb = new PatchBuilder();
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
