@@ -7,7 +7,7 @@ import {
 } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { getLocationViews } from './registry';
-import { ANTI_WHALE_CAPS, getRegionDisplay } from '@derp/shared';
+import { outpostSlotBudget, getRegionDisplay } from '@derp/shared';
 import { OutpostList } from './components/OutpostList';
 
 const PAGE_CLASS =
@@ -113,7 +113,7 @@ export default function LocationsPage() {
   const keeperLevel: number = player?.keeperLevel ?? 1;
   const bonusSlots: number = player?.bonusOutpostSlots ?? 0;
   const primaryLocationId: string | null = player?.primaryLocationId ?? null;
-  const slotBudget = ANTI_WHALE_CAPS.maxActiveOutposts(keeperLevel, bonusSlots);
+  const slotBudget = outpostSlotBudget(keeperLevel, bonusSlots);
 
   const activeLocations = allLocations.filter((l) => l.enabled !== false);
   const activeCount = activeLocations.length;

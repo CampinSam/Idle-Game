@@ -29,6 +29,9 @@ export const ANTI_WHALE_CAPS = {
   threatScaling: (outpostCount: number) => outpostCount * 0.1,
 };
 
+export const outpostSlotBudget = (keeperLevel: number, bonusSlots = 0): number =>
+  ANTI_WHALE_CAPS.maxActiveOutposts(keeperLevel, bonusSlots);
+
 export const ENTITY_ARCHETYPES = [
   'Dave', 'Astro', 'Magician', 'Ninja', 'Redneck', 'Stoner', 'DJ',
   'Viking', 'Monk', 'Corpo', 'Cyborg', 'Buff', 'MadScientist', 'Deity',

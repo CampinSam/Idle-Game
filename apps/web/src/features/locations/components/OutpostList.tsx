@@ -45,14 +45,12 @@ export function OutpostList({
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<OutpostStatus>('ALL');
   const [regionFilter, setRegionFilter] = useState('ALL');
+  const [inactiveExpanded, setInactiveExpanded] = useState(false);
 
   const canActivate = activeCount < slotBudget;
 
   const filtered = useMemo(() => {
     let list = locations;
-
-    if (status === 'ACTIVE') list = list.filter((l) => l.enabled !== false);
-    else if (status === 'INACTIVE') list = list.filter((l) => l.enabled === false);
 
     if (regionFilter !== 'ALL') {
       list = list.filter((l) => (l.regionId || l.region) === regionFilter);
@@ -68,19 +66,26 @@ export function OutpostList({
     }
 
     return list;
-  }, [locations, status, regionFilter, search]);
+  }, [locations, regionFilter, search]);
 
-  const filteredActive = filtered.filter((l) => l.enabled !== false);
-  const filteredInactive = filtered.filter((l) => l.enabled === false);
+  const filteredActive = useMemo(
+    () => filtered.filter((l) => l.enabled !== false),
+    [filtered],
+  );
+  const filteredInactive = useMemo(
+    () => filtered.filter((l) => l.enabled === false),
+    [filtered],
+  );
 
   const showingActive = status !== 'INACTIVE';
   const showingInactive = status !== 'ACTIVE';
+  const collapseInactive = status === 'ALL';
 
-  const emptySlots = showingActive
-    ? Math.max(0, slotBudget - activeCount)
-    : 0;
+  const emptySlots = showingActive ? Math.max(0, slotBudget - activeCount) : 0;
 
-  const hasContent = filtered.length > 0 || emptySlots > 0;
+  const hasContent =
+    (showingActive && (filteredActive.length > 0 || emptySlots > 0)) ||
+    (showingInactive && filteredInactive.length > 0);
 
   return (
     <div className="flex flex-col gap-3">
@@ -112,7 +117,10 @@ export function OutpostList({
           className="item-list__select"
           style={{ width: 96 }}
           value={status}
-          onChange={(e) => setStatus(e.target.value as OutpostStatus)}
+          onChange={(e) => {
+            setStatus(e.target.value as OutpostStatus);
+            setInactiveExpanded(false);
+          }}
           aria-label="Filter by status"
         >
           <option value="ALL">All</option>
@@ -143,7 +151,7 @@ export function OutpostList({
 
       {showingActive && (filteredActive.length > 0 || emptySlots > 0) && (
         <div className="flex flex-col gap-2">
-          {(status === 'ALL') && (
+          {status === 'ALL' && (
             <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase">
               Active
               <span className="ml-1.5 font-semibold normal-case tracking-normal">
@@ -175,7 +183,33 @@ export function OutpostList({
 
       {showingInactive && filteredInactive.length > 0 && (
         <div className="flex flex-col gap-2">
-          {(status === 'ALL') && (
+          {collapseInactive ? (
+            <button
+              type="button"
+              onClick={() => setInactiveExpanded((v) => !v)}
+              className="flex items-center justify-between w-full bg-transparent border-0 p-0 cursor-pointer group"
+            >
+              <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase group-hover:text-text-primary transition-colors">
+                Inactive
+                <span className="ml-1.5 font-semibold normal-case tracking-normal">
+                  ({filteredInactive.length})
+                </span>
+              </div>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`text-text-secondary transition-transform duration-200 ${inactiveExpanded ? 'rotate-180' : ''}`}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          ) : (
             <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase">
               Inactive
               <span className="ml-1.5 font-semibold normal-case tracking-normal">
@@ -183,21 +217,24 @@ export function OutpostList({
               </span>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            {filteredInactive.map((op) => {
-              const { Card } = getLocationViews(op.kind || op.region, op.isUnique, op.definitionId);
-              return (
-                <Card
-                  key={op.id}
-                  outpost={op}
-                  isInactive
-                  canActivate={canActivate}
-                  onActivate={() => onActivate(op)}
-                  onClick={() => navigate(`/locations/${op.id}`)}
-                />
-              );
-            })}
-          </div>
+
+          {(!collapseInactive || inactiveExpanded) && (
+            <div className="grid grid-cols-2 gap-3">
+              {filteredInactive.map((op) => {
+                const { Card } = getLocationViews(op.kind || op.region, op.isUnique, op.definitionId);
+                return (
+                  <Card
+                    key={op.id}
+                    outpost={op}
+                    isInactive
+                    canActivate={canActivate}
+                    onActivate={() => onActivate(op)}
+                    onClick={() => navigate(`/locations/${op.id}`)}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
