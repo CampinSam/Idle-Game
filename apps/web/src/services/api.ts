@@ -1,4 +1,5 @@
-const API_BASE = '/api';
+const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const API_BASE = _rawApiUrl ? _rawApiUrl.replace(/\/$/, '') : '/api';
 
 let _idemCounter = 0;
 function newIdempotencyKey(scope: string): string {

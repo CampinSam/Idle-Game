@@ -62,8 +62,10 @@ export class SyncEngine {
     const params = new URLSearchParams({ token });
     if (cursor) params.set('cursor', cursor);
 
-    const url = `/api/v1/stream?${params.toString()}`;
-    // Note: SSE uses /api/v1 directly since EventSource can't set custom headers
+    const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+    const sseBase = _rawApiUrl ? _rawApiUrl.replace(/\/$/, '') : '/api';
+    const url = `${sseBase}/v1/stream?${params.toString()}`;
+    // Note: SSE uses the API base directly since EventSource can't set custom headers
     const es = new EventSource(url);
     this.eventSource = es;
 

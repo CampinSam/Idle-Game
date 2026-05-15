@@ -74,6 +74,24 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - CSP is deliberately off for flexibility; `helmet` is used for other security headers.
 - Production environment variables `JWT_SECRET`, `ADMIN_SECRET`, and `CORS_ORIGIN` are mandatory.
 
+## Deploying the Frontend to Vercel
+
+The frontend (`apps/web`) can be deployed independently to Vercel while the backend continues to run on Replit. This allows frontend-only changes to deploy in ~30 seconds without touching the backend.
+
+### Steps
+
+1. **Create a new Vercel project** pointing at this repository. Set the framework root / source directory to `apps/web`.
+2. **Set these environment variables in Vercel:**
+   - `VITE_API_URL` — the Replit backend's public URL, e.g. `https://derp-idle-game.replit.app/api`
+   - Any other `VITE_*` variables your build requires (none currently beyond the above).
+3. **Update `CORS_ORIGIN` on the Replit backend** to include the Vercel domain, e.g.:
+   `CORS_ORIGIN=https://derp-idle-game.replit.app,https://your-app.vercel.app`
+4. **Trigger a Vercel deploy.** The `apps/web/vercel.json` catch-all rewrite handles client-side routing.
+
+### Local development
+
+`pnpm dev` continues to work as before. When `VITE_API_URL` is not set, the frontend falls back to the Vite dev-server proxy at `/api`, so no extra config is needed locally.
+
 ## Pointers
 - **Development principles skill**: `.agents/skills/derp-dev-principles/SKILL.md`
 - **Prisma Documentation**: `https://www.prisma.io/docs/`
