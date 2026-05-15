@@ -1,11 +1,13 @@
-const STAT_ROWS: { key: string; label: string; color: string; hint?: string }[] = [
-  { key: 'ATK', label: 'ATK', color: '#f87171' },
-  { key: 'DEF', label: 'DEF', color: '#60a5fa' },
-  { key: 'SPD', label: 'SPD', color: '#fbbf24' },
-  { key: 'FOC', label: 'FOC', color: '#c084fc' },
-  { key: 'LCK', label: 'LCK', color: '#4ade80' },
-  { key: 'VIT', label: 'VIT', color: '#2dd4bf' },
-  { key: 'RND', label: 'RND', color: '#9ca3af', hint: 'resolves randomly' },
+import { useState } from 'react';
+
+const STAT_ROWS: { key: string; color: string; hint?: string }[] = [
+  { key: 'ATK', color: '#f87171' },
+  { key: 'DEF', color: '#60a5fa' },
+  { key: 'SPD', color: '#fbbf24' },
+  { key: 'FOC', color: '#c084fc' },
+  { key: 'LCK', color: '#4ade80' },
+  { key: 'VIT', color: '#2dd4bf' },
+  { key: 'RND', color: '#9ca3af', hint: 'resolves randomly' },
 ];
 
 interface Props {
@@ -14,22 +16,49 @@ interface Props {
 }
 
 export default function StatMapEditor({ value, onChange }: Props) {
-  const current: Record<string, number> = (value && typeof value === 'object') ? value : {};
+  const committed: Record<string, number> = (value && typeof value === 'object') ? value : {};
+
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  const displayValue = (key: string): string => {
+    if (key in drafts) return drafts[key];
+    const n = committed[key];
+    return n !== undefined ? String(n) : '';
+  };
 
   const handleChange = (key: string, raw: string) => {
-    const next = { ...current };
+    setDrafts(prev => ({ ...prev, [key]: raw }));
+    if (raw === '' || raw === '-') return;
+    const n = Number(raw);
+    if (!isNaN(n) && raw.trim() !== '') {
+      const next = { ...committed };
+      if (n === 0) {
+        delete next[key];
+      } else {
+        next[key] = n;
+      }
+      onChange(next);
+    }
+  };
+
+  const handleBlur = (key: string) => {
+    const raw = drafts[key];
+    if (raw === undefined) return;
+    const next = { ...committed };
     if (raw === '' || raw === '-') {
       delete next[key];
     } else {
       const n = Number(raw);
       if (!isNaN(n)) {
-        if (n === 0) {
-          delete next[key];
-        } else {
-          next[key] = n;
-        }
+        if (n === 0) delete next[key];
+        else next[key] = n;
       }
     }
+    setDrafts(prev => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
     onChange(next);
   };
 
@@ -43,45 +72,49 @@ export default function StatMapEditor({ value, onChange }: Props) {
       borderRadius: 8,
       padding: '12px 14px',
     }}>
-      {STAT_ROWS.map(({ key, label, color, hint }) => (
-        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 34,
-            fontSize: 11,
-            fontWeight: 800,
-            color,
-            letterSpacing: '0.05em',
-            flexShrink: 0,
-            textAlign: 'right',
-          }}>
-            {label}
-          </span>
-          <input
-            type="number"
-            step={1}
-            value={current[key] ?? ''}
-            placeholder="—"
-            onChange={e => handleChange(key, e.target.value)}
-            style={{
-              flex: 1,
-              padding: '4px 8px',
-              background: '#1a1a2e',
-              border: `1px solid ${current[key] !== undefined ? color + '66' : '#333'}`,
-              borderRadius: 5,
-              color: current[key] !== undefined ? color : '#666',
-              fontSize: 13,
-              fontWeight: current[key] !== undefined ? 700 : 400,
-              boxSizing: 'border-box',
-              minWidth: 0,
-              transition: 'border-color 0.15s, color 0.15s',
-              outline: 'none',
-            }}
-          />
-          {hint && (
-            <span style={{ fontSize: 9, color: '#555', flexShrink: 0 }}>{hint}</span>
-          )}
-        </div>
-      ))}
+      {STAT_ROWS.map(({ key, color, hint }) => {
+        const hasValue = committed[key] !== undefined;
+        return (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              width: 34,
+              fontSize: 11,
+              fontWeight: 800,
+              color,
+              letterSpacing: '0.05em',
+              flexShrink: 0,
+              textAlign: 'right',
+            }}>
+              {key}
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={displayValue(key)}
+              placeholder="—"
+              onChange={e => handleChange(key, e.target.value)}
+              onBlur={() => handleBlur(key)}
+              style={{
+                flex: 1,
+                padding: '4px 8px',
+                background: '#1a1a2e',
+                border: `1px solid ${hasValue ? color + '66' : '#333'}`,
+                borderRadius: 5,
+                color: hasValue ? color : '#666',
+                fontSize: 13,
+                fontWeight: hasValue ? 700 : 400,
+                boxSizing: 'border-box',
+                minWidth: 0,
+                transition: 'border-color 0.15s, color 0.15s',
+                outline: 'none',
+              }}
+            />
+            {hint && (
+              <span style={{ fontSize: 9, color: '#555', flexShrink: 0 }}>{hint}</span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
