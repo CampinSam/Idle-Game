@@ -2263,7 +2263,7 @@
       ]
     },
     "BodySchema": {
-      "description": "Defines body slots and which archetypes are allowed per slot",
+      "description": "Defines body slots and which archetypes are allowed per slot. avian_7 covers the 7-slot avian layout used by Derp Birds and related collections. perp_schema covers the 4-slot layout (body, special, faction, leader) used by the Perps collection.",
       "prismaModel": "BodySchema",
       "tableName": "body_schemas",
       "primaryKey": "id",
@@ -2271,7 +2271,7 @@
         "id": {
           "type": "string",
           "required": true,
-          "description": "Unique identifier (e.g. avian_7)"
+          "description": "Unique identifier (e.g. avian_7, perp_schema)"
         },
         "slots": {
           "$ref": "#/complexTypes/BodySlots",
@@ -3438,7 +3438,7 @@
         "data": {
           "type": "json",
           "default": {},
-          "description": "Freeform extra configuration data"
+          "description": "Freeform extra configuration. Supported keys: attributeMap (object) — maps raw NFT attribute key names (case-insensitive) to body schema slot names. Used when a collection's metadata uses prefixed keys (e.g. meta_Body) rather than slot names directly. Multiple raw keys may map to the same slot (e.g. meta_Leader and meta_Multiverse Leader both mapping to leader). Example: { \"meta_body\": \"body\", \"meta_faction\": \"faction\", \"meta_leader\": \"leader\", \"meta_multiverse leader\": \"leader\" }"
         }
       }
     },

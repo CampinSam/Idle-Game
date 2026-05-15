@@ -10,6 +10,7 @@ export async function buildEntityDataFromNftMetadata(
     chain: string;
     collectionId: string;
     entityDefinitionId: string;
+    data?: Record<string, any> | null;
   },
   meta: NftMetadata,
 ): Promise<Record<string, any>> {
@@ -41,8 +42,26 @@ export async function buildEntityDataFromNftMetadata(
     normalizedAttributes[k.toLowerCase()] = String(v);
   }
 
+  // Build effective attribute lookup by applying the collection's attributeMap.
+  // The map translates raw NFT attribute key names (e.g. "meta_body") to slot
+  // names in the body schema (e.g. "body"). Keys are matched case-insensitively.
+  // Multiple raw keys may map to the same slot (e.g. "meta_leader" and
+  // "meta_multiverse leader" both map to "leader").
+  const effectiveAttributes: Record<string, string> = { ...normalizedAttributes };
+  const rawAttributeMap = collection.data?.attributeMap;
+  if (rawAttributeMap && typeof rawAttributeMap === 'object') {
+    for (const [rawKey, mappedSlot] of Object.entries(rawAttributeMap)) {
+      if (typeof mappedSlot !== 'string') continue;
+      const normalizedKey = rawKey.toLowerCase();
+      const attrValue = normalizedAttributes[normalizedKey];
+      if (attrValue !== undefined) {
+        effectiveAttributes[mappedSlot.toLowerCase()] = attrValue;
+      }
+    }
+  }
+
   for (const slotName of Object.keys(slots)) {
-    const attrValue = normalizedAttributes[slotName.toLowerCase()];
+    const attrValue = effectiveAttributes[slotName.toLowerCase()];
     if (!attrValue) continue;
 
     const archetype = attrValue.toLowerCase();

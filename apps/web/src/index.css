@@ -613,6 +613,277 @@ input:focus {
 }
 
 
+/* ── Perp entity cards ── */
+.entity-card--perp {
+  border-color: rgba(167, 139, 250, 0.4);
+  background:
+    linear-gradient(180deg, rgba(109, 40, 217, 0.06), rgba(0, 0, 0, 0)),
+    var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 92, 246, 0.08),
+    0 0 10px rgba(109, 40, 217, 0.12);
+}
+.entity-card--perp:hover {
+  border-color: rgba(167, 139, 250, 0.65);
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 92, 246, 0.18),
+    0 0 16px rgba(109, 40, 217, 0.28);
+}
+.entity-card--perp-nft::after {
+  content: 'NFT';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 1px 5px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #1e1b4b;
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.55);
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Genovault — tech/corporate, violet */
+.entity-card--perp-genovault {
+  border-color: rgba(139, 92, 246, 0.55);
+  background:
+    linear-gradient(180deg, rgba(109, 40, 217, 0.1), rgba(0, 0, 0, 0)),
+    var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 92, 246, 0.12),
+    0 0 12px rgba(109, 40, 217, 0.22);
+}
+.entity-card--perp-genovault:hover {
+  border-color: rgba(167, 139, 250, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(139, 92, 246, 0.22),
+    0 0 20px rgba(109, 40, 217, 0.4);
+}
+.entity-card--perp-genovault::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(0deg, rgba(139, 92, 246, 0.07) 0px, rgba(139, 92, 246, 0.07) 1px, transparent 1px, transparent 4px);
+  background-size: 100% 4px;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+.entity-card--perp-genovault > * { position: relative; z-index: 3; }
+.entity-card--perp-genovault.entity-card--selected,
+.entity-card--perp-genovault.entity-card--active {
+  border-color: #a78bfa !important;
+  box-shadow:
+    0 0 14px rgba(139, 92, 246, 0.55),
+    inset 0 0 8px rgba(139, 92, 246, 0.18);
+}
+
+/* Astro Schism — space/mind, deep blue */
+.entity-card--perp-astro-schism {
+  border-color: rgba(56, 189, 248, 0.45);
+  background:
+    linear-gradient(180deg, rgba(2, 132, 199, 0.08), rgba(0, 0, 0, 0)),
+    var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.08),
+    0 0 12px rgba(14, 165, 233, 0.15);
+}
+.entity-card--perp-astro-schism:hover {
+  border-color: rgba(125, 211, 252, 0.75);
+  box-shadow:
+    inset 0 0 0 1px rgba(56, 189, 248, 0.18),
+    0 0 20px rgba(14, 165, 233, 0.32);
+}
+.entity-card--perp-astro-schism::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 15% 20%, rgba(125, 211, 252, 0.7), transparent 60%),
+    radial-gradient(1px 1px at 75% 35%, rgba(125, 211, 252, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 45% 75%, rgba(125, 211, 252, 0.65), transparent 60%),
+    radial-gradient(1px 1px at 88% 80%, rgba(125, 211, 252, 0.5), transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+.entity-card--perp-astro-schism > * { position: relative; z-index: 3; }
+.entity-card--perp-astro-schism.entity-card--selected,
+.entity-card--perp-astro-schism.entity-card--active {
+  border-color: #7dd3fc !important;
+  box-shadow:
+    0 0 14px rgba(56, 189, 248, 0.55),
+    inset 0 0 8px rgba(56, 189, 248, 0.18);
+}
+
+/* Kraashers — fighters, red/orange */
+.entity-card--perp-kraashers {
+  border-color: rgba(239, 68, 68, 0.45);
+  background:
+    linear-gradient(180deg, rgba(185, 28, 28, 0.08), rgba(0, 0, 0, 0)),
+    var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(239, 68, 68, 0.08),
+    0 0 12px rgba(220, 38, 38, 0.15);
+}
+.entity-card--perp-kraashers:hover {
+  border-color: rgba(252, 165, 165, 0.75);
+  box-shadow:
+    inset 0 0 0 1px rgba(239, 68, 68, 0.18),
+    0 0 20px rgba(220, 38, 38, 0.32);
+}
+.entity-card--perp-kraashers::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0 1px, transparent 1px) top left / 18px 18px no-repeat,
+    linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0 1px, transparent 1px) top left / 1px 18px no-repeat,
+    linear-gradient(315deg, rgba(239, 68, 68, 0.22) 0 1px, transparent 1px) bottom right / 18px 18px no-repeat,
+    linear-gradient(315deg, rgba(239, 68, 68, 0.22) 0 1px, transparent 1px) bottom right / 1px 18px no-repeat;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+}
+.entity-card--perp-kraashers > * { position: relative; z-index: 3; }
+.entity-card--perp-kraashers.entity-card--selected,
+.entity-card--perp-kraashers.entity-card--active {
+  border-color: #f87171 !important;
+  box-shadow:
+    0 0 14px rgba(239, 68, 68, 0.55),
+    inset 0 0 8px rgba(239, 68, 68, 0.18);
+}
+
+/* Leader — gold frame */
+.entity-card--perp-leader {
+  border-color: rgba(253, 211, 77, 0.55);
+  background:
+    linear-gradient(180deg, rgba(180, 130, 0, 0.1), rgba(0, 0, 0, 0)),
+    var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(253, 211, 77, 0.1),
+    0 0 12px rgba(234, 179, 8, 0.22);
+}
+.entity-card--perp-leader:hover {
+  border-color: rgba(253, 224, 71, 0.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(253, 211, 77, 0.22),
+    0 0 20px rgba(234, 179, 8, 0.4);
+}
+.entity-card--perp-leader::after {
+  content: '★ LEADER';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 1px 5px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #422006;
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(234, 179, 8, 0.6);
+  z-index: 4;
+  pointer-events: none;
+}
+.entity-card--perp-leader > * { position: relative; z-index: 3; }
+.entity-card--perp-leader.entity-card--selected,
+.entity-card--perp-leader.entity-card--active {
+  border-color: #fcd34d !important;
+  box-shadow:
+    0 0 14px rgba(253, 211, 77, 0.6),
+    inset 0 0 8px rgba(253, 211, 77, 0.18);
+}
+
+/* Multiverse Leader — animated gold + purple */
+@property --card-mv-leader-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.entity-card--perp-multiverse-leader {
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(15, 8, 30, 0.95), rgba(8, 4, 18, 0.95)) padding-box,
+    conic-gradient(from var(--card-mv-leader-angle), #fde68a, #c4b5fd, #fde68a, #7dd3fc, #fde68a, #c4b5fd, #fde68a) border-box;
+  border: 2px solid transparent;
+  box-shadow:
+    0 0 10px rgba(253, 224, 71, 0.35),
+    0 0 20px rgba(139, 92, 246, 0.18),
+    inset 0 0 8px rgba(255, 255, 255, 0.04);
+  animation: mv-leader-spin 5s linear infinite;
+}
+.entity-card--perp-multiverse-leader:hover {
+  box-shadow:
+    0 0 22px rgba(253, 224, 71, 0.65),
+    0 0 40px rgba(139, 92, 246, 0.35),
+    inset 0 0 12px rgba(255, 255, 255, 0.06);
+}
+.entity-card--perp-multiverse-leader::after {
+  content: '✦ MV LEADER';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 1px 6px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  color: #1c0a2e;
+  background: linear-gradient(135deg, #fde68a, #c4b5fd 50%, #fde68a);
+  border-radius: 3px;
+  box-shadow:
+    0 1px 4px rgba(253, 224, 71, 0.65),
+    0 0 8px rgba(139, 92, 246, 0.4);
+  z-index: 4;
+  pointer-events: none;
+}
+.entity-card--perp-multiverse-leader > * { position: relative; z-index: 3; }
+.entity-card--perp-multiverse-leader.entity-card--selected,
+.entity-card--perp-multiverse-leader.entity-card--active {
+  box-shadow:
+    0 0 22px rgba(253, 224, 71, 0.75),
+    0 0 44px rgba(139, 92, 246, 0.45),
+    inset 0 0 12px rgba(255, 255, 255, 0.12);
+}
+@keyframes mv-leader-spin {
+  from { --card-mv-leader-angle: 0deg; }
+  to   { --card-mv-leader-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entity-card--perp-multiverse-leader { animation: none; }
+}
+
+/* ── Compact picker overrides for Perp cards ── */
+.entity-card--mission.entity-card--perp-genovault::before,
+.entity-card--outpost.entity-card--perp-genovault::before,
+.entity-card--mission.entity-card--perp-astro-schism::before,
+.entity-card--outpost.entity-card--perp-astro-schism::before,
+.entity-card--mission.entity-card--perp-kraashers::before,
+.entity-card--outpost.entity-card--perp-kraashers::before {
+  display: none;
+}
+.entity-card--mission.entity-card--perp-leader::after,
+.entity-card--outpost.entity-card--perp-leader::after,
+.entity-card--mission.entity-card--perp-multiverse-leader::after,
+.entity-card--outpost.entity-card--perp-multiverse-leader::after,
+.entity-card--mission.entity-card--perp-nft::after,
+.entity-card--outpost.entity-card--perp-nft::after {
+  display: none;
+}
+.entity-card--mission.entity-card--perp-multiverse-leader,
+.entity-card--outpost.entity-card--perp-multiverse-leader {
+  border: 2px solid rgba(253, 224, 71, 0.5);
+  background: linear-gradient(180deg, #1e1850 0%, #151030 100%);
+  box-shadow:
+    0 0 6px rgba(253, 224, 71, 0.28),
+    0 0 12px rgba(139, 92, 246, 0.15);
+  animation: none;
+}
+
 /* ── GameImage shimmer ── */
 @keyframes game-image-shimmer {
   0%   { background-position: 200% 0; }

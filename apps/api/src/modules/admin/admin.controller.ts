@@ -167,6 +167,11 @@ export class AdminController {
     return this.nftCollectionService.backfillNftMetadata();
   }
 
+  @Post('backfill/nft-entity-traits')
+  async rebuildNftEntityTraits(@Query('collectionId') collectionId?: string) {
+    return this.nftCollectionService.rebuildNftEntityTraits(collectionId);
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates() {
     const locations = await (this.prisma as any).locationInstance.findMany({

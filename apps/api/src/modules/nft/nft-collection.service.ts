@@ -678,6 +678,81 @@ export class NftCollectionService {
     return seedNftEntities(this.prisma);
   }
 
+  /**
+   * Rebuild traits, stats, definitionId, and speciesId for all existing NFT
+   * entities in the given collection (or all collections if omitted) using
+   * cached metadata stored in `entity.state.nftAttributes`.  No on-chain
+   * request is made — the rebuild is fully offline.  Useful after an
+   * attributeMap is added or a body schema changes.
+   */
+  async rebuildNftEntityTraits(
+    collectionDefId?: string,
+  ): Promise<{ total: number; updated: number; skipped: number; failed: number }> {
+    const where = collectionDefId ? { id: collectionDefId } : {};
+    const collectionDefs = await (this.prisma as any).nftCollectionDef.findMany({ where });
+
+    let total = 0;
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const collection of collectionDefs) {
+      if (!collection.entityDefinitionId) continue;
+
+      const entities = await (this.prisma as any).entity.findMany({
+        where: { nftCollectionDefId: collection.id },
+        select: { id: true, nftAssetId: true, display: true, state: true },
+      });
+
+      total += entities.length;
+
+      for (const entity of entities) {
+        const state = (entity.state as Record<string, any>) ?? {};
+        const nftAttributes = state.nftAttributes as Record<string, string> | undefined;
+
+        if (!nftAttributes || typeof nftAttributes !== 'object') {
+          skipped++;
+          continue;
+        }
+
+        try {
+          const display = (entity.display as Record<string, any>) ?? {};
+          const meta = {
+            assetId: (entity.nftAssetId as string).split(':')[2] ?? '',
+            name: (display.name as string) ?? '',
+            imageUrl: (display.imageUrl as string) ?? '',
+            attributes: nftAttributes,
+            rawMeta: (state.nftRawMeta as Record<string, any>) ?? {},
+            ...(state.nftAttributesRaw !== undefined ? { attributesRaw: state.nftAttributesRaw as string } : {}),
+          };
+
+          const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
+
+          await (this.prisma as any).entity.update({
+            where: { id: entity.id },
+            data: {
+              definitionId: entityData.definitionId,
+              speciesId: entityData.speciesId,
+              traits: entityData.traits,
+              stats: entityData.stats,
+            },
+          });
+
+          updated++;
+        } catch (err) {
+          this.logger.error(`rebuildNftEntityTraits: failed for entity ${entity.id}: ${err}`);
+          failed++;
+        }
+      }
+
+      this.logger.log(
+        `rebuildNftEntityTraits [${collection.id}]: total=${entities.length}, updated=${updated}, skipped=${skipped}, failed=${failed}`,
+      );
+    }
+
+    return { total, updated, skipped, failed };
+  }
+
   async backfillNftMetadata(): Promise<{ updated: number; skipped: number; failed: number }> {
     if (!process.env.BLOCKFROST_API_KEY) {
       throw new BadRequestException('BLOCKFROST_API_KEY is not set — cannot fetch metadata');

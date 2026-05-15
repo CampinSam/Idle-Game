@@ -190,6 +190,16 @@
         ]
       },
       "data": {}
+    },
+    {
+      "id": "perp_schema",
+      "slots": {
+        "body": ["None", "Yellow", "Cyan", "Grey", "Purple", "Neon", "Blue"],
+        "special": ["None", "Sparkles", "Leaves", "Bubble Show", "Water", "Earthen", "Ice Storm", "Electric Aura", "Low Life", "Crystal Storm", "Press Speech", "Dark Energy", "The Incubator"],
+        "faction": ["None", "Genovault", "Astro Schism", "Kraashers"],
+        "leader": ["None", "Leader", "Multiverse Leader"]
+      },
+      "data": {}
     }
   ],
   "entityDefinitions": [
@@ -232,7 +242,7 @@
     {
       "id": "perp",
       "speciesId": "perp",
-      "bodySchemaId": "avian_7",
+      "bodySchemaId": "perp_schema",
       "equipmentSchemaId": "bird_equip_v1",
       "progressionProfileId": "bird_prog_v1",
       "rules": {},
@@ -1140,6 +1150,388 @@
           "VIT": 1.33
         },
         "rarityMultiplier": 1.06
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_none",
+      "archetype": "None",
+      "slotStats": {},
+      "tags": [],
+      "data": {
+        "rarity": "common",
+        "scaling": { "ATK": 1.0, "DEF": 1.0, "FOC": 1.0, "LCK": 1.0, "SPD": 1.0, "VIT": 1.0 },
+        "rarityMultiplier": 1.0
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_yellow",
+      "archetype": "Yellow",
+      "slotStats": {
+        "body": { "ATK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "common",
+        "scaling": { "ATK": 1.05, "DEF": 0.98, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.0 },
+        "rarityMultiplier": 1.0
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_cyan",
+      "archetype": "Cyan",
+      "slotStats": {
+        "body": { "DEF": 1, "SPD": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.97, "DEF": 1.06, "FOC": 1.0, "LCK": 0.97, "SPD": 1.07, "VIT": 0.98 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_grey",
+      "archetype": "Grey",
+      "slotStats": {
+        "body": { "VIT": 1, "DEF": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.95, "DEF": 1.05, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.08 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_purple",
+      "archetype": "Purple",
+      "slotStats": {
+        "body": { "FOC": 1, "LCK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "scarce",
+        "scaling": { "ATK": 0.93, "DEF": 0.95, "FOC": 1.12, "LCK": 1.08, "SPD": 0.95, "VIT": 0.97 },
+        "rarityMultiplier": 1.02
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_neon",
+      "archetype": "Neon",
+      "slotStats": {
+        "body": { "LCK": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "rare",
+        "scaling": { "ATK": 0.9, "DEF": 0.92, "FOC": 1.05, "LCK": 1.22, "SPD": 0.95, "VIT": 0.95 },
+        "rarityMultiplier": 1.04
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_body_blue",
+      "archetype": "Blue",
+      "slotStats": {
+        "body": { "SPD": 1, "ATK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "advanced",
+        "scaling": { "ATK": 1.1, "DEF": 0.95, "FOC": 0.96, "LCK": 0.95, "SPD": 1.12, "VIT": 0.92 },
+        "rarityMultiplier": 1.03
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_sparkles",
+      "archetype": "Sparkles",
+      "slotStats": {
+        "special": { "LCK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.95, "DEF": 0.95, "FOC": 1.0, "LCK": 1.1, "SPD": 1.0, "VIT": 0.98 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_leaves",
+      "archetype": "Leaves",
+      "slotStats": {
+        "special": { "VIT": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.92, "DEF": 1.0, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.1 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_bubble_show",
+      "archetype": "Bubble Show",
+      "slotStats": {
+        "special": { "FOC": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "scarce",
+        "scaling": { "ATK": 0.93, "DEF": 0.98, "FOC": 1.12, "LCK": 1.0, "SPD": 0.98, "VIT": 0.98 },
+        "rarityMultiplier": 1.02
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_water",
+      "archetype": "Water",
+      "slotStats": {
+        "special": { "DEF": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "scarce",
+        "scaling": { "ATK": 0.92, "DEF": 1.13, "FOC": 0.97, "LCK": 0.96, "SPD": 0.97, "VIT": 1.03 },
+        "rarityMultiplier": 1.02
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_earthen",
+      "archetype": "Earthen",
+      "slotStats": {
+        "special": { "VIT": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "advanced",
+        "scaling": { "ATK": 0.9, "DEF": 1.05, "FOC": 0.93, "LCK": 0.93, "SPD": 0.92, "VIT": 1.2 },
+        "rarityMultiplier": 1.03
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_ice_storm",
+      "archetype": "Ice Storm",
+      "slotStats": {
+        "special": { "SPD": 1, "DEF": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "rare",
+        "scaling": { "ATK": 0.88, "DEF": 1.15, "FOC": 0.97, "LCK": 0.93, "SPD": 1.15, "VIT": 0.95 },
+        "rarityMultiplier": 1.04
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_electric_aura",
+      "archetype": "Electric Aura",
+      "slotStats": {
+        "special": { "ATK": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "ultra_rare",
+        "scaling": { "ATK": 1.25, "DEF": 0.9, "FOC": 1.0, "LCK": 0.92, "SPD": 1.05, "VIT": 0.88 },
+        "rarityMultiplier": 1.06
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_low_life",
+      "archetype": "Low Life",
+      "slotStats": {
+        "special": { "LCK": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "rare",
+        "scaling": { "ATK": 0.87, "DEF": 0.88, "FOC": 1.05, "LCK": 1.28, "SPD": 0.93, "VIT": 0.88 },
+        "rarityMultiplier": 1.04
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_crystal_storm",
+      "archetype": "Crystal Storm",
+      "slotStats": {
+        "special": { "FOC": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "ultra_rare",
+        "scaling": { "ATK": 0.87, "DEF": 0.92, "FOC": 1.28, "LCK": 1.08, "SPD": 0.92, "VIT": 0.88 },
+        "rarityMultiplier": 1.06
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_press_speech",
+      "archetype": "Press Speech",
+      "slotStats": {
+        "special": { "ATK": 1, "LCK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "epic",
+        "scaling": { "ATK": 1.18, "DEF": 0.88, "FOC": 1.05, "LCK": 1.18, "SPD": 0.93, "VIT": 0.85 },
+        "rarityMultiplier": 1.08
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_dark_energy",
+      "archetype": "Dark Energy",
+      "slotStats": {
+        "special": { "ATK": 2, "DEF": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "epic",
+        "scaling": { "ATK": 1.28, "DEF": 1.18, "FOC": 0.92, "LCK": 0.88, "SPD": 0.95, "VIT": 0.88 },
+        "rarityMultiplier": 1.08
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_special_the_incubator",
+      "archetype": "The Incubator",
+      "slotStats": {
+        "special": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "legendary",
+        "scaling": { "ATK": 1.2, "DEF": 1.2, "FOC": 1.2, "LCK": 1.2, "SPD": 1.2, "VIT": 1.2 },
+        "rarityMultiplier": 1.12
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_faction_genovault",
+      "archetype": "Genovault",
+      "slotStats": {
+        "faction": { "DEF": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.95, "DEF": 1.12, "FOC": 1.05, "LCK": 0.97, "SPD": 0.97, "VIT": 1.0 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_faction_astro_schism",
+      "archetype": "Astro Schism",
+      "slotStats": {
+        "faction": { "FOC": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 0.93, "DEF": 0.97, "FOC": 1.15, "LCK": 1.02, "SPD": 0.97, "VIT": 0.97 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_faction_kraashers",
+      "archetype": "Kraashers",
+      "slotStats": {
+        "faction": { "ATK": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "uncommon",
+        "scaling": { "ATK": 1.12, "DEF": 0.93, "FOC": 0.95, "LCK": 0.97, "SPD": 1.05, "VIT": 0.97 },
+        "rarityMultiplier": 1.01
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_leader_leader",
+      "archetype": "Leader",
+      "slotStats": {
+        "leader": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "rare",
+        "scaling": { "ATK": 1.15, "DEF": 1.1, "FOC": 1.12, "LCK": 1.08, "SPD": 1.1, "VIT": 1.1 },
+        "rarityMultiplier": 1.06
+      },
+      "color": null,
+      "emoji": null,
+      "gradient": null
+    },
+    {
+      "id": "perp_leader_multiverse",
+      "archetype": "Multiverse Leader",
+      "slotStats": {
+        "leader": { "ATK": 2, "DEF": 2, "SPD": 1, "FOC": 2, "LCK": 1, "VIT": 2 }
+      },
+      "tags": [],
+      "data": {
+        "rarity": "legendary",
+        "scaling": { "ATK": 1.35, "DEF": 1.28, "FOC": 1.32, "LCK": 1.22, "SPD": 1.28, "VIT": 1.28 },
+        "rarityMultiplier": 1.12
       },
       "color": null,
       "emoji": null,

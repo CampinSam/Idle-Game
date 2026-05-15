@@ -122,6 +122,15 @@ export class BootstrapService implements OnModuleInit {
         name: 'Perps (Cardano)',
         collectionId: 'e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0',
         entityDefinitionId: 'perp',
+        data: {
+          attributeMap: {
+            'meta_body': 'body',
+            'meta_special': 'special',
+            'meta_faction': 'faction',
+            'meta_leader': 'leader',
+            'meta_multiverse leader': 'leader',
+          },
+        },
       },
       {
         id: 'nft_cardano_outposts',
@@ -134,6 +143,7 @@ export class BootstrapService implements OnModuleInit {
 
     let seeded = 0;
     for (const col of collections) {
+      const colData: Record<string, any> | undefined = (col as any).data;
       const createData: Record<string, any> = {
         id: col.id,
         name: col.name,
@@ -143,14 +153,18 @@ export class BootstrapService implements OnModuleInit {
         locationDefinitionId: (col as any).locationDefinitionId ?? null,
         mintMode: 'one_per_token',
         active: true,
-        data: {},
+        data: colData ?? {},
       };
+      const updateData: Record<string, any> = {
+        locationDefinitionId: (col as any).locationDefinitionId ?? null,
+        entityDefinitionId: (col as any).entityDefinitionId ?? null,
+      };
+      if (colData !== undefined) {
+        updateData.data = colData;
+      }
       const result = await (this.prisma as any).nftCollectionDef.upsert({
         where: { id: col.id },
-        update: {
-          locationDefinitionId: (col as any).locationDefinitionId ?? null,
-          entityDefinitionId: (col as any).entityDefinitionId ?? null,
-        },
+        update: updateData,
         create: createData,
       });
       if (result.createdAt.getTime() === result.updatedAt.getTime()) {

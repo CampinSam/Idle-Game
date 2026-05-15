@@ -15,6 +15,7 @@ export interface EntityViews {
 import { defaultEntityViews } from './types/_default';
 import { cyborgEntityViews } from './types/cyborg';
 import { derpBirdEntityViews } from './types/derp_bird';
+import { perpEntityViews } from './types/perp';
 
 const ARCHETYPE_REGISTRY: Record<string, EntityViews> = {
   cyborg: cyborgEntityViews,
@@ -22,6 +23,7 @@ const ARCHETYPE_REGISTRY: Record<string, EntityViews> = {
 
 const KIND_REGISTRY: Record<string, EntityViews> = {
   derp_bird: derpBirdEntityViews,
+  perp: perpEntityViews,
 };
 
 export function getEntityViews(
