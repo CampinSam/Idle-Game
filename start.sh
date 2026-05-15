@@ -10,7 +10,7 @@ cleanup() {
   kill $(jobs -p) 2>/dev/null
   exit "$rc"
 }
-trap 'cleanup $?' SIGTERM SIGINT EXIT
+trap 'rc=$?; cleanup "$rc"' SIGTERM SIGINT EXIT
 
 echo "Building shared packages..."
 pnpm --filter @derp/shared build || { echo "shared build failed"; exit 1; }
