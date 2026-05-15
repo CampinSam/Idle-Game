@@ -3,6 +3,7 @@ export {
   STAT_KEYS,
   POWER_SCORE_WEIGHTS,
   computeScaling,
+  computeCompositRarity,
   applyWeightedLevelUp,
   getPowerScore,
   type StatKey,

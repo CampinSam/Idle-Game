@@ -2,6 +2,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   STAT_KEYS,
   computeScaling,
+  computeCompositRarity,
   applyWeightedLevelUp,
   type ScalingContribution,
   type LevelUpResult,
@@ -10,6 +11,7 @@ import {
 export {
   STAT_KEYS,
   computeScaling,
+  computeCompositRarity,
   applyWeightedLevelUp,
   type ScalingContribution,
   type LevelUpResult,
@@ -86,13 +88,14 @@ export async function generateEntityData(
   }
 
   const scaling = computeScaling(scalingContributions);
+  const compositRarity = computeCompositRarity(scalingContributions);
 
   return {
     ownerUserId: userId,
     definitionId,
     speciesId: entityDef.speciesId,
     display: { name: resolvedName },
-    stats: { ...baseStats, scaling },
+    stats: { ...baseStats, scaling, compositRarity },
     traits,
     progression: { level: 1, xp: 0, ascension: 0, levelHistory: [] },
     state: { status: 'idle' },
@@ -115,9 +118,10 @@ export function levelUpEntityToLevel(
   targetLevel: number,
 ): { stats: Record<string, any>; levelHistory: Array<{ level: number; gains: Record<string, number> }> } {
   let stats: Record<string, any> = { ...baseStats };
+  const compositRarity = typeof stats.compositRarity === 'number' ? stats.compositRarity : 1.0;
   const levelHistory: Array<{ level: number; gains: Record<string, number> }> = [];
   for (let lvl = 2; lvl <= targetLevel; lvl++) {
-    const result = applyWeightedLevelUp(stats);
+    const result = applyWeightedLevelUp(stats, compositRarity, lvl - 1);
     stats = result.stats;
     levelHistory.push({ level: lvl, gains: result.gains });
   }

@@ -45,16 +45,56 @@ export function computeScaling(contributions: ScalingContribution[]): Record<str
   return scaling;
 }
 
+/**
+ * Compute the composite rarity scalar for an entity: the geometric mean of
+ * all trait rarityMultiplier values across contributions. A fully-common bird
+ * (all rarityMultiplier = 1.0) returns exactly 1.0; a fully-legendary bird
+ * returns a value approaching the max rarityMultiplier configured on traits.
+ *
+ * Stored as `stats.compositRarity` during entity generation so it is
+ * available to `applyWeightedLevelUp` without re-reading trait definitions.
+ */
+export function computeCompositRarity(contributions: ScalingContribution[]): number {
+  const n = contributions.length;
+  if (n === 0) return 1.0;
+  const rarityProduct = contributions.reduce((acc, c) => {
+    const v = c.rarityMultiplier;
+    return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
+  }, 1.0);
+  return Math.pow(rarityProduct, 1 / n);
+}
+
 export interface LevelUpResult {
   stats: Record<string, any>;
   gains: Record<string, number>;
 }
 
 /**
- * Apply a single weighted level-up: +1 to every stat, then +14 weighted points
- * distributed by the entity's `scaling` weights. Mutates a copy of the input.
+ * Apply a single weighted level-up to an entity:
+ *
+ * 1. **Guaranteed +1 to every stat** (6 points total, unchanged).
+ * 2. **Rarity-scaled bonus pool** = floor(14 × compositRarity^(currentLevel × 0.16)).
+ *    - A common bird (compositRarity = 1.0) always gets exactly 14 bonus points.
+ *    - A legendary bird (compositRarity ≈ 1.15) earns ~14 at level 1, ~24 at
+ *      level 25, and ~41 at level 49.
+ * 3. **50/50 split**: half the pool (rounded down) is distributed with equal
+ *    probability across all 6 stats; the remaining half follows the entity's
+ *    scaling weights. This preserves trait identity while adding meaningful
+ *    variance at higher rarities.
+ *
+ * @param currentStats  The entity's current stats object (must include `scaling`
+ *                      and `compositRarity` sub-fields set at generation time).
+ * @param compositRarity  Geometric mean of trait rarity multipliers (default 1.0).
+ * @param currentLevel    The entity's level **before** this level-up (default 1).
+ *                        Pass the old level (e.g. `newLevel - 1` after incrementing),
+ *                        not the level being reached. "14 at level 1" means entity
+ *                        was at level 1 when the level-up fired → pass 1.
  */
-export function applyWeightedLevelUp(currentStats: Record<string, any>): LevelUpResult {
+export function applyWeightedLevelUp(
+  currentStats: Record<string, any>,
+  compositRarity = 1.0,
+  currentLevel = 1,
+): LevelUpResult {
   const boosted = { ...currentStats };
   const scaling: Record<string, number> = (boosted.scaling as any) || {};
 
@@ -66,9 +106,20 @@ export function applyWeightedLevelUp(currentStats: Record<string, any>): LevelUp
     gains[k] += 1;
   }
 
+  const bonusPool = Math.floor(14 * Math.pow(compositRarity, currentLevel * 0.16));
+  const unweightedCount = Math.floor(bonusPool * 0.5);
+  const weightedCount = bonusPool - unweightedCount;
+
+  for (let i = 0; i < unweightedCount; i++) {
+    const idx = Math.floor(Math.random() * STAT_KEYS.length);
+    const k = STAT_KEYS[idx];
+    boosted[k] = (boosted[k] || 0) + 1;
+    gains[k] += 1;
+  }
+
   const totalWeight = STAT_KEYS.reduce((sum, k) => sum + (scaling[k] || 1), 0);
 
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < weightedCount; i++) {
     let roll = Math.random() * totalWeight;
     for (const k of STAT_KEYS) {
       roll -= (scaling[k] || 1);

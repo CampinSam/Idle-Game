@@ -1,6 +1,6 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftMetadata } from './nft-ownership.interface';
-import { STAT_KEYS, computeScaling, type ScalingContribution } from '@derp/math';
+import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,
@@ -72,6 +72,7 @@ export async function buildEntityDataFromNftMetadata(
   }
 
   const scaling = computeScaling(scalingContributions);
+  const compositRarity = computeCompositRarity(scalingContributions);
 
   return {
     ownerUserId: null,
@@ -81,7 +82,7 @@ export async function buildEntityDataFromNftMetadata(
       name: meta.name,
       imageUrl: meta.imageUrl,
     },
-    stats: { ...baseStats, scaling },
+    stats: { ...baseStats, scaling, compositRarity },
     traits,
     archetypeVector: {},
     affinities: {},

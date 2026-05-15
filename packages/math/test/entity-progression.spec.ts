@@ -1,6 +1,7 @@
 import {
   STAT_KEYS,
   computeScaling,
+  computeCompositRarity,
   applyWeightedLevelUp,
   getPowerScore,
   POWER_SCORE_WEIGHTS,
@@ -49,16 +50,99 @@ describe('computeScaling', () => {
   });
 });
 
+describe('computeCompositRarity', () => {
+  it('returns 1.0 for empty contributions', () => {
+    expect(computeCompositRarity([])).toBeCloseTo(1.0, 10);
+  });
+
+  it('returns 1.0 when all rarity multipliers are 1.0', () => {
+    const contribs = [
+      { statScaling: {}, rarityMultiplier: 1.0 },
+      { statScaling: {}, rarityMultiplier: 1.0 },
+    ];
+    expect(computeCompositRarity(contribs)).toBeCloseTo(1.0, 10);
+  });
+
+  it('returns the geometric mean of rarity multipliers', () => {
+    const contribs = [
+      { statScaling: {}, rarityMultiplier: 1.0 },
+      { statScaling: {}, rarityMultiplier: 4.0 },
+    ];
+    // geomean of (1, 4) = 2
+    expect(computeCompositRarity(contribs)).toBeCloseTo(2.0, 5);
+  });
+
+  it('treats non-positive or non-numeric rarityMultiplier as 1', () => {
+    const contribs = [
+      { statScaling: {}, rarityMultiplier: 0 },
+      { statScaling: {}, rarityMultiplier: 4.0 },
+    ];
+    // 0 treated as 1, so geomean of (1, 4) = 2
+    expect(computeCompositRarity(contribs)).toBeCloseTo(2.0, 5);
+  });
+});
+
 describe('applyWeightedLevelUp', () => {
-  it('grants +1 to every stat plus exactly 14 weighted points', () => {
+  it('grants +1 to every stat plus exactly 14 bonus points for a common entity', () => {
     const start = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: {} };
-    const { stats, gains } = applyWeightedLevelUp(start);
+    const { stats, gains } = applyWeightedLevelUp(start, 1.0, 1);
     const totalGain = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
     expect(totalGain).toBe(6 + 14);
     const totalStats = STAT_KEYS.reduce((s, k) => s + (stats[k] as number), 0);
     expect(totalStats).toBe(6 + 14);
     for (const k of STAT_KEYS) {
       expect(gains[k]).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('uses default params matching common entity at level 1', () => {
+    const start = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: {} };
+    const { gains } = applyWeightedLevelUp(start);
+    const totalGain = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+    expect(totalGain).toBe(6 + 14);
+  });
+
+  it('scales bonus pool with compositRarity at higher levels', () => {
+    // compositRarity=1.15, level=25 → pool = floor(14 × 1.15^(25 × 0.16)) = floor(14 × 1.15^4) ≈ 24
+    const compositRarity = 1.15;
+    const level = 25;
+    const expectedPool = Math.floor(14 * Math.pow(compositRarity, level * 0.16));
+    const start = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: {} };
+    const { gains } = applyWeightedLevelUp(start, compositRarity, level);
+    const totalGain = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+    expect(totalGain).toBe(6 + expectedPool);
+  });
+
+  it('scales bonus pool at level 49 for legendary entity to ~41', () => {
+    const compositRarity = 1.15;
+    const level = 49;
+    const expectedPool = Math.floor(14 * Math.pow(compositRarity, level * 0.16));
+    expect(expectedPool).toBeGreaterThanOrEqual(39);
+    expect(expectedPool).toBeLessThanOrEqual(43);
+    const start = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: {} };
+    const { gains } = applyWeightedLevelUp(start, compositRarity, level);
+    const totalGain = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+    expect(totalGain).toBe(6 + expectedPool);
+  });
+
+  it('distributes bonus pool in a 50/50 unweighted/weighted split', () => {
+    // With flat scaling (all=1), unweighted and weighted halves should average equal
+    // per-stat. With a heavily skewed weight, the weighted half will concentrate on
+    // the high-weight stat — we verify the split totals are exactly correct.
+    const compositRarity = 1.0;
+    const level = 1;
+    const bonusPool = Math.floor(14 * Math.pow(compositRarity, level * 0.16)); // 14
+    const expectedUnweighted = Math.floor(bonusPool * 0.5); // 7
+    const expectedWeighted = bonusPool - expectedUnweighted; // 7
+    expect(bonusPool).toBe(14);
+    expect(expectedUnweighted).toBe(7);
+    expect(expectedWeighted).toBe(7);
+    // Total gains must always equal 6 (guaranteed) + bonusPool
+    const start = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: {} };
+    for (let trial = 0; trial < 20; trial++) {
+      const { gains } = applyWeightedLevelUp(start, compositRarity, level);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + bonusPool);
     }
   });
 

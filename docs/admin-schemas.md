@@ -1972,7 +1972,18 @@ A player-owned entity instance (e.g. a bird character). Created from an EntityDe
 | `state` | JSON | No | `{}` | Dynamic runtime state |
 | `version` | number | No | 1 | Schema version for migrations |
 
-**Stats computation:** An entity's `stats` are the sum of per-slot bonuses from assigned traits. For each slot in `traits`, the system looks up the corresponding [TraitDefinition](#traitdefinition) and adds the `slotStats[slot]` bonuses to the totals.
+**Stats computation:** An entity's `stats` are the sum of per-slot bonuses from assigned traits. For each slot in `traits`, the system looks up the corresponding [TraitDefinition](#traitdefinition) and adds the `slotStats[slot]` bonuses to the totals. The `stats` object also includes two derived fields set at generation time and read during level-up:
+
+- `stats.scaling` — per-stat weight record (geometric mean of trait `scaling` values × composite rarity scalar). Used by `applyWeightedLevelUp` to bias the weighted bonus-point distribution.
+- `stats.compositRarity` — geometric mean of all assigned trait `rarityMultiplier` values. A fully-common entity (all multipliers = 1.0) has `compositRarity = 1.0`; a fully-legendary entity approaches the maximum configured multiplier.
+
+**Level-up stat distribution:** Every level-up grants:
+
+1. **+1 guaranteed to every stat** (6 points, unchanged).
+2. **Rarity-scaled bonus pool** = `floor(14 × compositRarity^(currentLevel × 0.16))` where `currentLevel` is the entity's level **before** the level-up.
+   - A common entity (`compositRarity = 1.0`) always receives exactly 14 bonus points.
+   - A legendary entity (`compositRarity ≈ 1.15`) scales from 14 when at level 1 to ~24 when at level 25 and ~41 when at level 49.
+3. **50/50 split on bonus points**: `floor(pool × 0.5)` points are distributed with equal probability (1/6 each) across all 6 stats; the remaining points follow the trait-derived `scaling` weights. This preserves trait identity while adding meaningful variance at high rarity.
 
 ---
 

@@ -1,6 +1,7 @@
 import {
   STAT_KEYS,
   computeScaling,
+  computeCompositRarity,
   applyWeightedLevelUp,
   getPowerScore,
   type ScalingContribution,
@@ -40,9 +41,12 @@ export interface SimulationResult {
 
 /**
  * Roll one bird end-to-end: pick a random allowed archetype per slot, sum
- * the trait slot stats into baseStats, and compute the geometric-mean scaling.
+ * the trait slot stats into baseStats, compute the geometric-mean scaling,
+ * and compute the composite rarity scalar stored as `compositRarity`.
  *
  * Mirrors `generateEntityData` in the API generator exactly, minus the DB.
+ * Returns stats including `scaling` and `compositRarity` so the level-up
+ * loop can use the rarity-scaled bonus pool formula.
  */
 function rollBirdInitialStats(def: EntityDef, traits: Record<string, TraitDef>): Record<string, any> {
   const baseStats: Record<string, number> = {};
@@ -77,7 +81,8 @@ function rollBirdInitialStats(def: EntityDef, traits: Record<string, TraitDef>):
   }
 
   const scaling = computeScaling(contributions);
-  return { ...baseStats, scaling };
+  const compositRarity = computeCompositRarity(contributions);
+  return { ...baseStats, scaling, compositRarity };
 }
 
 /**
@@ -99,10 +104,11 @@ export function simulateEntityProgression(
 
   for (let i = 0; i < sampleSize; i++) {
     let stats = rollBirdInitialStats(def, traits);
+    const compositRarity = typeof stats.compositRarity === 'number' ? stats.compositRarity : 1.0;
     powersByLevel[0][i] = getPowerScore(stats);
     for (const k of STAT_KEYS) statSumsByLevel[k][0] += Number(stats[k] ?? 0);
     for (let level = 2; level <= maxLevel; level++) {
-      const result = applyWeightedLevelUp(stats);
+      const result = applyWeightedLevelUp(stats, compositRarity, level - 1);
       stats = result.stats;
       powersByLevel[level - 1][i] = getPowerScore(stats);
       for (const k of STAT_KEYS) statSumsByLevel[k][level - 1] += Number(stats[k] ?? 0);

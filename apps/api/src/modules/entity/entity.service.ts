@@ -140,10 +140,13 @@ export class EntityService {
     const levelHistory: any[] = Array.isArray(progression.levelHistory) ? [...progression.levelHistory] : [];
     const gainsPerLevel: Array<{ level: number; gains: Record<string, number> }> = [];
 
+    const compositRarity = typeof currentStats.compositRarity === 'number' ? currentStats.compositRarity : 1.0;
+
     while (newLevel < MAX_ENTITY_LEVEL && newXp >= XP_PER_LEVEL(newLevel)) {
       newXp -= XP_PER_LEVEL(newLevel);
+      const levelBeforeIncrement = newLevel;
       newLevel++;
-      const result = applyWeightedLevelUp(currentStats);
+      const result = applyWeightedLevelUp(currentStats, compositRarity, levelBeforeIncrement);
       currentStats = result.stats;
       levelHistory.push({ level: newLevel, gains: result.gains, at: new Date().toISOString() });
       gainsPerLevel.push({ level: newLevel, gains: result.gains });
@@ -227,9 +230,10 @@ export class EntityService {
 
       const startLevel = history.length + 2; // levels 2..level are the legitimate entries
       let stats: Record<string, any> = (e.stats as any) || {};
+      const compositRarity = typeof stats.compositRarity === 'number' ? stats.compositRarity : 1.0;
       const newHistory: Array<{ level: number; gains: Record<string, number> }> = [...history];
       for (let lvl = startLevel; lvl <= level; lvl++) {
-        const result = applyWeightedLevelUp(stats);
+        const result = applyWeightedLevelUp(stats, compositRarity, lvl - 1);
         stats = result.stats;
         newHistory.push({ level: lvl, gains: result.gains });
       }
