@@ -3,10 +3,14 @@
 cd /home/runner/workspace
 
 cleanup() {
+  # Preserve the original exit code (passed in as $1) so a failed
+  # `pnpm prisma generate` or build step actually surfaces as a non-zero
+  # workflow exit instead of being masked by `exit 0`.
+  local rc=${1:-0}
   kill $(jobs -p) 2>/dev/null
-  exit 0
+  exit "$rc"
 }
-trap cleanup SIGTERM SIGINT EXIT
+trap 'cleanup $?' SIGTERM SIGINT EXIT
 
 echo "Building shared packages..."
 pnpm --filter @derp/shared build || { echo "shared build failed"; exit 1; }
