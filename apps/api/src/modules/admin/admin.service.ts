@@ -512,15 +512,22 @@ export class AdminService {
       select: { id: true, definitionId: true, traits: true, stats: true },
     });
 
-    const allTraitDefs = await (this.prisma as any).traitDefinition.findMany();
+    const allEntityDefsForTraits = await (this.prisma as any).entityDefinition.findMany({
+      select: { id: true, traits: true },
+    });
+    // Flatten the per-definition trait map into a global archetype lookup.
+    // Archetype names that appear on multiple definitions resolve to the
+    // first occurrence — fine for the back-fill, which only needs the
+    // scaling/rarityMultiplier metadata that is identical across defs.
     const traitByArchetype: Record<string, any> = {};
-    for (const td of allTraitDefs) {
-      traitByArchetype[td.archetype] = td;
+    for (const def of allEntityDefsForTraits) {
+      const traits = (def.traits as any) || {};
+      for (const [archetype, td] of Object.entries(traits)) {
+        if (!traitByArchetype[archetype]) traitByArchetype[archetype] = td;
+      }
     }
 
-    const allEntityDefs = await (this.prisma as any).entityDefinition.findMany({
-      include: { bodySchema: true },
-    });
+    const allEntityDefs = await (this.prisma as any).entityDefinition.findMany();
     const entityDefById: Record<string, any> = {};
     for (const def of allEntityDefs) {
       entityDefById[def.id] = def;
@@ -556,7 +563,7 @@ export class AdminService {
         if (scalingMissing || compositRarityMissing) {
           const traits = (entity.traits as Record<string, string>) || {};
           const entityDef = entityDefById[entity.definitionId];
-          const slots: Record<string, string[]> = (entityDef?.bodySchema?.slots as any) || {};
+          const slots: Record<string, string[]> = (entityDef?.slots as any) || {};
 
           const scalingContributions: ScalingContribution[] = [];
           for (const [slotName] of Object.entries(slots)) {
@@ -594,32 +601,32 @@ export class AdminService {
   }
 
   async getBalanceBundle() {
-    const [entityDefs, traitDefs] = await Promise.all([
-      (this.prisma as any).entityDefinition.findMany({
-        include: { bodySchema: true },
-      }),
-      (this.prisma as any).traitDefinition.findMany(),
-    ]);
+    const entityDefs = await (this.prisma as any).entityDefinition.findMany();
 
-    const entityDefinitions = entityDefs.map((def: any) => {
-      const data = (def.data as any) || {};
-      return {
-        id: def.id,
-        name: data.name || def.id,
-        speciesId: def.speciesId,
-        slots: (def.bodySchema?.slots as any) || {},
-      };
-    });
+    const entityDefinitions = entityDefs.map((def: any) => ({
+      id: def.id,
+      name: def.name || (def.data as any)?.name || def.id,
+      speciesId: def.speciesId,
+      slots: (def.slots as any) || {},
+    }));
 
+    // Flatten the per-definition trait map into a global archetype lookup so
+    // the simulator can resolve traits independent of which species rolled
+    // them. Archetype names that appear on multiple defs collapse to the
+    // first occurrence — they are required to share scaling/slotStats.
     const traitDefinitions: Record<string, any> = {};
-    for (const td of traitDefs) {
-      const data = (td.data as any) || {};
-      traitDefinitions[td.archetype] = {
-        archetype: td.archetype,
-        slotStats: (td.slotStats as any) || {},
-        scaling: (data.scaling as any) || {},
-        rarityMultiplier: typeof data.rarityMultiplier === 'number' ? data.rarityMultiplier : 1.0,
-      };
+    for (const def of entityDefs) {
+      const traits = (def.traits as any) || {};
+      for (const [archetype, td] of Object.entries(traits)) {
+        if (traitDefinitions[archetype]) continue;
+        const t = td as any;
+        traitDefinitions[archetype] = {
+          archetype,
+          slotStats: t.slotStats || {},
+          scaling: t.scaling || {},
+          rarityMultiplier: typeof t.rarityMultiplier === 'number' ? t.rarityMultiplier : 1.0,
+        };
+      }
     }
 
     return { entityDefinitions, traitDefinitions };
@@ -831,10 +838,6 @@ export class AdminService {
       displayDef: (this.prisma as any).displayDef,
       missionCategoryDef: (this.prisma as any).missionCategoryDef,
       entityDefinition: (this.prisma as any).entityDefinition,
-      bodySchema: (this.prisma as any).bodySchema,
-      progressionProfile: (this.prisma as any).progressionProfile,
-      equipmentSchema: (this.prisma as any).equipmentSchema,
-      traitDefinition: (this.prisma as any).traitDefinition,
       regionDefinition: (this.prisma as any).regionDefinition,
       locationDefinition: (this.prisma as any).locationDefinition,
       eventDefinition: (this.prisma as any).eventDefinition,

@@ -11,10 +11,6 @@ const GEMS_CURRENCY_ID = 'premium_gems';
 const TABLE_TO_MODEL: Record<string, string> = {
   Currency: 'currency',
   ItemDef: 'itemDefinition',
-  BodySchema: 'bodySchema',
-  EquipmentSchema: 'equipmentSchema',
-  ProgressionProfile: 'progressionProfile',
-  TraitDefinition: 'traitDefinition',
   EntityDefinition: 'entityDefinition',
   RegionDefinition: 'regionDefinition',
   LocationDefinition: 'locationDefinition',
@@ -31,10 +27,6 @@ const TABLE_TO_MODEL: Record<string, string> = {
 const SEED_ORDER = [
   'Currency',
   'ItemDef',
-  'BodySchema',
-  'EquipmentSchema',
-  'ProgressionProfile',
-  'TraitDefinition',
   'EntityDefinition',
   'RegionDefinition',
   'LocationDefinition',
@@ -88,30 +80,33 @@ async function seedDefinitions() {
   }
 }
 
-function generateEntity(name: string) {
+function generateEntity(name: string, definitionId = 'derp_bird') {
   const seedPath = path.resolve(__dirname, 'seed-data.json');
   const raw = fs.readFileSync(seedPath, 'utf-8');
   const data = JSON.parse(raw);
 
-  const bodySchema = data.BodySchema?.[0];
-  const traitDefs: any[] = data.TraitDefinition ?? [];
+  const entityDef = (data.EntityDefinition ?? []).find((d: any) => d.id === definitionId);
+  if (!entityDef) {
+    throw new Error(`generateEntity: EntityDefinition "${definitionId}" not found in seed-data.json`);
+  }
 
-  const slots = bodySchema ? Object.keys(bodySchema.slots) : ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'];
+  const slotsMap: Record<string, string[]> = entityDef.slots ?? {};
+  const traitMap: Record<string, any> = entityDef.traits ?? {};
+
   const traits: Record<string, string> = {};
   const stats: Record<string, number> = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 };
 
-  for (const slot of slots) {
-    const allowed: string[] = bodySchema?.slots?.[slot] ?? [];
-    const archetype = allowed[Math.floor(Math.random() * allowed.length)] ?? 'Dave';
+  for (const slot of Object.keys(slotsMap)) {
+    const allowed = slotsMap[slot] ?? [];
+    if (allowed.length === 0) continue;
+    const archetype = allowed[Math.floor(Math.random() * allowed.length)];
     traits[slot] = archetype;
 
-    const traitDef = traitDefs.find(t => t.archetype === archetype);
-    if (traitDef) {
-      const slotBonuses = traitDef.slotStats?.[slot];
-      if (slotBonuses) {
-        for (const [stat, val] of Object.entries(slotBonuses)) {
-          stats[stat] = (stats[stat] || 0) + (val as number);
-        }
+    const traitDef = traitMap[archetype];
+    const slotBonuses = traitDef?.slotStats?.[slot];
+    if (slotBonuses) {
+      for (const [stat, val] of Object.entries(slotBonuses)) {
+        if (typeof val === 'number') stats[stat] = (stats[stat] || 0) + val;
       }
     }
   }

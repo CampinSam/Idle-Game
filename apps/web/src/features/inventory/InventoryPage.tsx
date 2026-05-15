@@ -307,14 +307,14 @@ export default function InventoryPage() {
     return equipGear?.equipData?.slot ?? equipGear?.definition?.equipData?.slot ?? null;
   }, [equipGear]);
 
-  // Restrict the picker to entities whose definition.equipmentSchema declares
-  // the gear's slot with non-zero capacity. Entities without an equipment
-  // schema (legacy / non-equippable species) don't appear at all so the
-  // player can't bottom out on a server-side rejection.
+  // Restrict the picker to entities whose definition.equipmentSlots declares
+  // the gear's slot with non-zero capacity. Entities without equipment slots
+  // (legacy / non-equippable species) don't appear at all so the player
+  // can't bottom out on a server-side rejection.
   const equipCandidates = useMemo(() => {
     if (!equipGearSlot) return [];
     return (entities as any[]).filter((e) => {
-      const schema = e?.definition?.equipmentSchema?.schema as any;
+      const schema = e?.definition?.equipmentSlots as any;
       const cap = schema && typeof schema === 'object' ? Number(schema[equipGearSlot] ?? 0) : 0;
       return cap > 0;
     });
@@ -389,7 +389,7 @@ export default function InventoryPage() {
       const eligibleEntities = !slot
         ? []
         : (entities as any[]).filter((e) => {
-            const cap = Number(e?.definition?.equipmentSchema?.schema?.[slot] ?? 0);
+            const cap = Number(e?.definition?.equipmentSlots?.[slot] ?? 0);
             return cap > 0;
           });
       const hasTarget = eligibleEntities.length > 0;

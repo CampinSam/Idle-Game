@@ -43,7 +43,9 @@ const OPERATORS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'exists', 'dne'];
 const TYPE_REF_TABLE: Partial<Record<RequirementType, string>> = {
   currency: 'Currency',
   item: 'ItemDef',
-  trait: 'TraitDefinition',
+  // `trait` requirements take a free-text archetype name — trait metadata
+  // now lives embedded in EntityDefinition.traits and has no standalone
+  // table to pick from.
   building: 'BuildingDef',
 };
 

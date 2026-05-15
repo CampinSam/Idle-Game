@@ -122,15 +122,8 @@ export class BootstrapService implements OnModuleInit {
         name: 'Perps (Cardano)',
         collectionId: 'e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0',
         entityDefinitionId: 'perp',
-        data: {
-          attributeMap: {
-            'meta_body': 'body',
-            'meta_special': 'special',
-            'meta_faction': 'faction',
-            'meta_leader': 'leader',
-            'meta_multiverse leader': 'leader',
-          },
-        },
+        // attributeMap (NFT raw attribute key → slot name) is now part of
+        // the EntityDefinition row (see derp/perp seed in definitions.json).
       },
       {
         id: 'nft_cardano_outposts',

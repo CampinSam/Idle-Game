@@ -239,7 +239,7 @@ export async function fetchEntity(tx: any, entityId: string) {
     where: { id: entityId },
     include: {
       equipment: true,
-      definition: { include: { equipmentSchema: true } },
+      definition: true,
     },
   });
 }

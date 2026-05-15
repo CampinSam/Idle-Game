@@ -161,86 +161,41 @@ model CurrencyLedger {
 // ═══════════════════════════════════════════════════
 
 model EntityDefinition {
-  id                     String   @id
-  speciesId              String
-  bodySchemaId           String
-  equipmentSchemaId      String
-  progressionProfileId   String
-  rules                  Json     @default("{}")
-  data                   Json     @default("{}")
+  id                String   @id
+  name              String
+  speciesId         String
 
-  bodySchema             BodySchema           @relation(fields: [bodySchemaId], references: [id])
-  equipmentSchema        EquipmentSchema      @relation(fields: [equipmentSchemaId], references: [id])
-  progressionProfile     ProgressionProfile   @relation(fields: [progressionProfileId], references: [id])
+  // Body slot layout: { slotName: [allowedArchetype, ...] }
+  slots             Json     @default("{}")
 
-  entities               Entity[]
+  // Equipment slot capacities: { slotName: maxCount }
+  equipmentSlots    Json     @default("{}")
 
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  // Trait map keyed by archetype name:
+  // { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }
+  traits            Json     @default("{}")
+
+  // Optional NFT raw-attribute → slot remap (for NFT-backed collections like Perps)
+  attributeMap      Json     @default("{}")
+
+  // Progression flags + caps (formerly ProgressionProfile)
+  leveling          Boolean  @default(true)
+  ascension         Boolean  @default(true)
+  mastery           Boolean  @default(true)
+  prestigeEligible  Boolean  @default(true)
+  maxLevel          Int      @default(50)
+  ascensionCap      Int      @default(5)
+
+  rules             Json     @default("{}")
+  data              Json     @default("{}")
+
+  entities          Entity[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([speciesId])
   @@map("entity_definitions")
-}
-
-model BodySchema {
-  id    String   @id
-  slots Json     @default("[]")
-  data  Json     @default("{}")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("body_schemas")
-}
-
-model ProgressionProfile {
-  id               String   @id
-  leveling         Boolean  @default(true)
-  ascension        Boolean  @default(true)
-  mastery          Boolean  @default(true)
-  prestigeEligible Boolean  @default(true)
-  maxLevel         Int      @default(50)
-  ascensionCap     Int      @default(5)
-  data             Json     @default("{}")
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("progression_profiles")
-}
-
-model EquipmentSchema {
-  id     String   @id
-  schema Json     @default("{}")
-  data   Json     @default("{}")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  entityDefinitions EntityDefinition[]
-
-  @@map("equipment_schemas")
-}
-
-model TraitDefinition {
-  id            String   @id
-  archetype     String
-  slotStats     Json     @default("{}")
-  tags          Json     @default("[]")
-  emoji         String?
-  color         String?
-  gradient      String?
-  data          Json     @default("{}")
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([archetype])
-  @@map("trait_definitions")
 }
 
 // ═══════════════════════════════════════════════════

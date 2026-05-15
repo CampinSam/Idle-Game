@@ -23,7 +23,6 @@ const TYPE_TO_REF_TABLE: Record<string, string> = {
   item: 'ItemDef',
   entity: 'EntityDefinition',
   building: 'BuildingDef',
-  trait: 'TraitDefinition',
 };
 
 const DIRECT_REF_FIELDS: Record<string, string> = {
@@ -35,9 +34,6 @@ const DIRECT_REF_FIELDS: Record<string, string> = {
   missionCategoryDefId: 'MissionCategoryDef',
   entityDefinitionId: 'EntityDefinition',
   lootboxDefId: 'LootboxDef',
-  bodySchemaId: 'BodySchema',
-  equipmentSchemaId: 'EquipmentSchema',
-  progressionProfileId: 'ProgressionProfile',
   regionId: 'RegionDefinition',
 };
 

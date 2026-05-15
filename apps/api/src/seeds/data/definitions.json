@@ -49,32 +49,11 @@
       "cap": null
     }
   ],
-  "equipmentSchemas": [
+  "entityDefinitions": [
     {
-      "id": "bird_equip_v1",
-      "schema": {
-        "armor": 1,
-        "weapon": 1,
-        "accessory": 2
-      },
-      "data": {}
-    }
-  ],
-  "progressionProfiles": [
-    {
-      "id": "bird_prog_v1",
-      "leveling": true,
-      "ascension": true,
-      "mastery": true,
-      "prestigeEligible": true,
-      "maxLevel": 50,
-      "ascensionCap": 5,
-      "data": {}
-    }
-  ],
-  "bodySchemas": [
-    {
-      "id": "avian_7",
+      "id": "derp_bird",
+      "name": "Derp Bird",
+      "speciesId": "derp_bird",
       "slots": {
         "back": [
           "Dave",
@@ -189,73 +168,4963 @@
           "Deity"
         ]
       },
-      "data": {}
-    },
-    {
-      "id": "perp_schema",
-      "slots": {
-        "body": ["None", "Yellow", "Cyan", "Grey", "Purple", "Neon", "Blue"],
-        "special": ["None", "Sparkles", "Leaves", "Bubble Show", "Water", "Earthen", "Ice Storm", "Electric Aura", "Low Life", "Crystal Storm", "Press Speech", "Dark Energy", "The Incubator"],
-        "faction": ["None", "Genovault", "Astro Schism", "Kraashers"],
-        "leader": ["None", "Leader", "Multiverse Leader"]
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
       },
-      "data": {}
-    }
-  ],
-  "entityDefinitions": [
-    {
-      "id": "derp_bird",
-      "speciesId": "derp_bird",
-      "bodySchemaId": "avian_7",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "traits": {
+        "Dave": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "ATK": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "ATK": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Astro": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "SPD": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "SPD": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.9,
+            "FOC": 1.25,
+            "LCK": 0.9,
+            "SPD": 1.3,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "magic": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "FOC": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "FOC": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.8,
+            "DEF": 0.85,
+            "FOC": 1.35,
+            "LCK": 1.3,
+            "SPD": 1,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Ninja": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.29,
+            "DEF": 0.77,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 1.39,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Redneck": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "head": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.39,
+            "DEF": 0.93,
+            "FOC": 0.72,
+            "LCK": 1.03,
+            "SPD": 0.88,
+            "VIT": 1.24
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Stoner": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "LCK": 1
+            },
+            "beak": {
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "LCK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "tail": {
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 0.82,
+            "FOC": 1.03,
+            "LCK": 1.65,
+            "SPD": 0.93,
+            "VIT": 0.93
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "DJ": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.22,
+            "FOC": 1.33,
+            "LCK": 0.95,
+            "SPD": 1.01,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Viking": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.48,
+            "DEF": 1.01,
+            "FOC": 0.8,
+            "LCK": 0.9,
+            "SPD": 0.85,
+            "VIT": 1.33
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Monk": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 1.47,
+            "FOC": 1.36,
+            "LCK": 0.87,
+            "SPD": 0.93,
+            "VIT": 1.09
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Corpo": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 1.42,
+            "FOC": 1.42,
+            "LCK": 0.82,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Cyborg": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 1.18,
+            "FOC": 1.18,
+            "LCK": 1.01,
+            "SPD": 1.18,
+            "VIT": 1.01
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Buff": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.62,
+            "DEF": 1.06,
+            "FOC": 0.78,
+            "LCK": 0.84,
+            "SPD": 0.78,
+            "VIT": 1.62
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Mad Scientist": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 0.98,
+            "FOC": 1.61,
+            "LCK": 1.55,
+            "SPD": 1.04,
+            "VIT": 0.81
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        },
+        "Deity": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.32,
+            "DEF": 1.32,
+            "FOC": 1.27,
+            "LCK": 1.04,
+            "SPD": 1.27,
+            "VIT": 0.69
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {}
     },
     {
       "id": "derpling",
+      "name": "Derpling",
       "speciesId": "derpling",
-      "bodySchemaId": "avian_7",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "slots": {
+        "back": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "beak": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "body": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "ears": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "eyes": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "head": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "tail": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ]
+      },
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "traits": {
+        "Dave": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "ATK": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "ATK": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Astro": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "SPD": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "SPD": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.9,
+            "FOC": 1.25,
+            "LCK": 0.9,
+            "SPD": 1.3,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "magic": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "FOC": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "FOC": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.8,
+            "DEF": 0.85,
+            "FOC": 1.35,
+            "LCK": 1.3,
+            "SPD": 1,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Ninja": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.29,
+            "DEF": 0.77,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 1.39,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Redneck": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "head": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.39,
+            "DEF": 0.93,
+            "FOC": 0.72,
+            "LCK": 1.03,
+            "SPD": 0.88,
+            "VIT": 1.24
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Stoner": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "LCK": 1
+            },
+            "beak": {
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "LCK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "tail": {
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 0.82,
+            "FOC": 1.03,
+            "LCK": 1.65,
+            "SPD": 0.93,
+            "VIT": 0.93
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "DJ": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.22,
+            "FOC": 1.33,
+            "LCK": 0.95,
+            "SPD": 1.01,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Viking": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.48,
+            "DEF": 1.01,
+            "FOC": 0.8,
+            "LCK": 0.9,
+            "SPD": 0.85,
+            "VIT": 1.33
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Monk": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 1.47,
+            "FOC": 1.36,
+            "LCK": 0.87,
+            "SPD": 0.93,
+            "VIT": 1.09
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Corpo": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 1.42,
+            "FOC": 1.42,
+            "LCK": 0.82,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Cyborg": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 1.18,
+            "FOC": 1.18,
+            "LCK": 1.01,
+            "SPD": 1.18,
+            "VIT": 1.01
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Buff": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.62,
+            "DEF": 1.06,
+            "FOC": 0.78,
+            "LCK": 0.84,
+            "SPD": 0.78,
+            "VIT": 1.62
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Mad Scientist": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 0.98,
+            "FOC": 1.61,
+            "LCK": 1.55,
+            "SPD": 1.04,
+            "VIT": 0.81
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        },
+        "Deity": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.32,
+            "DEF": 1.32,
+            "FOC": 1.27,
+            "LCK": 1.04,
+            "SPD": 1.27,
+            "VIT": 0.69
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {}
     },
     {
       "id": "derp_ape",
+      "name": "Derp Ape",
       "speciesId": "derp_ape",
-      "bodySchemaId": "avian_7",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "slots": {
+        "back": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "beak": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "body": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "ears": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "eyes": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "head": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "tail": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ]
+      },
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "traits": {
+        "Dave": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "ATK": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "ATK": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Astro": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "SPD": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "SPD": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.9,
+            "FOC": 1.25,
+            "LCK": 0.9,
+            "SPD": 1.3,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "magic": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "FOC": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "FOC": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.8,
+            "DEF": 0.85,
+            "FOC": 1.35,
+            "LCK": 1.3,
+            "SPD": 1,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Ninja": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.29,
+            "DEF": 0.77,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 1.39,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Redneck": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "head": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.39,
+            "DEF": 0.93,
+            "FOC": 0.72,
+            "LCK": 1.03,
+            "SPD": 0.88,
+            "VIT": 1.24
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Stoner": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "LCK": 1
+            },
+            "beak": {
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "LCK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "tail": {
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 0.82,
+            "FOC": 1.03,
+            "LCK": 1.65,
+            "SPD": 0.93,
+            "VIT": 0.93
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "DJ": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.22,
+            "FOC": 1.33,
+            "LCK": 0.95,
+            "SPD": 1.01,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Viking": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.48,
+            "DEF": 1.01,
+            "FOC": 0.8,
+            "LCK": 0.9,
+            "SPD": 0.85,
+            "VIT": 1.33
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Monk": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 1.47,
+            "FOC": 1.36,
+            "LCK": 0.87,
+            "SPD": 0.93,
+            "VIT": 1.09
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Corpo": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 1.42,
+            "FOC": 1.42,
+            "LCK": 0.82,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Cyborg": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 1.18,
+            "FOC": 1.18,
+            "LCK": 1.01,
+            "SPD": 1.18,
+            "VIT": 1.01
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Buff": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.62,
+            "DEF": 1.06,
+            "FOC": 0.78,
+            "LCK": 0.84,
+            "SPD": 0.78,
+            "VIT": 1.62
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Mad Scientist": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 0.98,
+            "FOC": 1.61,
+            "LCK": 1.55,
+            "SPD": 1.04,
+            "VIT": 0.81
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        },
+        "Deity": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.32,
+            "DEF": 1.32,
+            "FOC": 1.27,
+            "LCK": 1.04,
+            "SPD": 1.27,
+            "VIT": 0.69
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {}
     },
     {
       "id": "pred",
+      "name": "Pred",
       "speciesId": "pred",
-      "bodySchemaId": "avian_7",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "slots": {
+        "back": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "beak": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "body": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "ears": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "eyes": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "head": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "tail": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ]
+      },
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "traits": {
+        "Dave": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "ATK": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "ATK": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Astro": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "SPD": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "SPD": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.9,
+            "FOC": 1.25,
+            "LCK": 0.9,
+            "SPD": 1.3,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "magic": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "FOC": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "FOC": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.8,
+            "DEF": 0.85,
+            "FOC": 1.35,
+            "LCK": 1.3,
+            "SPD": 1,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Ninja": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.29,
+            "DEF": 0.77,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 1.39,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Redneck": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "head": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.39,
+            "DEF": 0.93,
+            "FOC": 0.72,
+            "LCK": 1.03,
+            "SPD": 0.88,
+            "VIT": 1.24
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Stoner": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "LCK": 1
+            },
+            "beak": {
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "LCK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "tail": {
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 0.82,
+            "FOC": 1.03,
+            "LCK": 1.65,
+            "SPD": 0.93,
+            "VIT": 0.93
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "DJ": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.22,
+            "FOC": 1.33,
+            "LCK": 0.95,
+            "SPD": 1.01,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Viking": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.48,
+            "DEF": 1.01,
+            "FOC": 0.8,
+            "LCK": 0.9,
+            "SPD": 0.85,
+            "VIT": 1.33
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Monk": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 1.47,
+            "FOC": 1.36,
+            "LCK": 0.87,
+            "SPD": 0.93,
+            "VIT": 1.09
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Corpo": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 1.42,
+            "FOC": 1.42,
+            "LCK": 0.82,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Cyborg": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 1.18,
+            "FOC": 1.18,
+            "LCK": 1.01,
+            "SPD": 1.18,
+            "VIT": 1.01
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Buff": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.62,
+            "DEF": 1.06,
+            "FOC": 0.78,
+            "LCK": 0.84,
+            "SPD": 0.78,
+            "VIT": 1.62
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Mad Scientist": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 0.98,
+            "FOC": 1.61,
+            "LCK": 1.55,
+            "SPD": 1.04,
+            "VIT": 0.81
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        },
+        "Deity": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.32,
+            "DEF": 1.32,
+            "FOC": 1.27,
+            "LCK": 1.04,
+            "SPD": 1.27,
+            "VIT": 0.69
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {}
     },
     {
       "id": "perp",
+      "name": "Perp",
       "speciesId": "perp",
-      "bodySchemaId": "perp_schema",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "slots": {
+        "body": [
+          "None",
+          "Yellow",
+          "Cyan",
+          "Grey",
+          "Purple",
+          "Neon",
+          "Blue"
+        ],
+        "special": [
+          "None",
+          "Sparkles",
+          "Leaves",
+          "Bubble Show",
+          "Water",
+          "Earthen",
+          "Ice Storm",
+          "Electric Aura",
+          "Low Life",
+          "Crystal Storm",
+          "Press Speech",
+          "Dark Energy",
+          "The Incubator"
+        ],
+        "faction": [
+          "None",
+          "Genovault",
+          "Astro Schism",
+          "Kraashers"
+        ],
+        "leader": [
+          "None",
+          "Leader",
+          "Multiverse Leader"
+        ]
+      },
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "traits": {
+        "None": {
+          "slotStats": {},
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Yellow": {
+          "slotStats": {
+            "body": {
+              "ATK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.05,
+            "DEF": 0.98,
+            "FOC": 0.98,
+            "LCK": 0.98,
+            "SPD": 0.98,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Cyan": {
+          "slotStats": {
+            "body": {
+              "DEF": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.97,
+            "DEF": 1.06,
+            "FOC": 1,
+            "LCK": 0.97,
+            "SPD": 1.07,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Grey": {
+          "slotStats": {
+            "body": {
+              "VIT": 1,
+              "DEF": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 1.05,
+            "FOC": 0.98,
+            "LCK": 0.98,
+            "SPD": 0.98,
+            "VIT": 1.08
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Purple": {
+          "slotStats": {
+            "body": {
+              "FOC": 1,
+              "LCK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 0.95,
+            "FOC": 1.12,
+            "LCK": 1.08,
+            "SPD": 0.95,
+            "VIT": 0.97
+          },
+          "rarityMultiplier": 1.02,
+          "rarity": "scarce"
+        },
+        "Neon": {
+          "slotStats": {
+            "body": {
+              "LCK": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 0.92,
+            "FOC": 1.05,
+            "LCK": 1.22,
+            "SPD": 0.95,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.04,
+          "rarity": "rare"
+        },
+        "Blue": {
+          "slotStats": {
+            "body": {
+              "SPD": 1,
+              "ATK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.1,
+            "DEF": 0.95,
+            "FOC": 0.96,
+            "LCK": 0.95,
+            "SPD": 1.12,
+            "VIT": 0.92
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "advanced"
+        },
+        "Sparkles": {
+          "slotStats": {
+            "special": {
+              "LCK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.95,
+            "FOC": 1,
+            "LCK": 1.1,
+            "SPD": 1,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Leaves": {
+          "slotStats": {
+            "special": {
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 1,
+            "FOC": 0.98,
+            "LCK": 0.98,
+            "SPD": 0.98,
+            "VIT": 1.1
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Bubble Show": {
+          "slotStats": {
+            "special": {
+              "FOC": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 0.98,
+            "FOC": 1.12,
+            "LCK": 1,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.02,
+          "rarity": "scarce"
+        },
+        "Water": {
+          "slotStats": {
+            "special": {
+              "DEF": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 1.13,
+            "FOC": 0.97,
+            "LCK": 0.96,
+            "SPD": 0.97,
+            "VIT": 1.03
+          },
+          "rarityMultiplier": 1.02,
+          "rarity": "scarce"
+        },
+        "Earthen": {
+          "slotStats": {
+            "special": {
+              "VIT": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.05,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 0.92,
+            "VIT": 1.2
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "advanced"
+        },
+        "Ice Storm": {
+          "slotStats": {
+            "special": {
+              "SPD": 1,
+              "DEF": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.88,
+            "DEF": 1.15,
+            "FOC": 0.97,
+            "LCK": 0.93,
+            "SPD": 1.15,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.04,
+          "rarity": "rare"
+        },
+        "Electric Aura": {
+          "slotStats": {
+            "special": {
+              "ATK": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.25,
+            "DEF": 0.9,
+            "FOC": 1,
+            "LCK": 0.92,
+            "SPD": 1.05,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "ultra_rare"
+        },
+        "Low Life": {
+          "slotStats": {
+            "special": {
+              "LCK": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.87,
+            "DEF": 0.88,
+            "FOC": 1.05,
+            "LCK": 1.28,
+            "SPD": 0.93,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.04,
+          "rarity": "rare"
+        },
+        "Crystal Storm": {
+          "slotStats": {
+            "special": {
+              "FOC": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.87,
+            "DEF": 0.92,
+            "FOC": 1.28,
+            "LCK": 1.08,
+            "SPD": 0.92,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "ultra_rare"
+        },
+        "Press Speech": {
+          "slotStats": {
+            "special": {
+              "ATK": 1,
+              "LCK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 0.88,
+            "FOC": 1.05,
+            "LCK": 1.18,
+            "SPD": 0.93,
+            "VIT": 0.85
+          },
+          "rarityMultiplier": 1.08,
+          "rarity": "epic"
+        },
+        "Dark Energy": {
+          "slotStats": {
+            "special": {
+              "ATK": 2,
+              "DEF": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.28,
+            "DEF": 1.18,
+            "FOC": 0.92,
+            "LCK": 0.88,
+            "SPD": 0.95,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.08,
+          "rarity": "epic"
+        },
+        "The Incubator": {
+          "slotStats": {
+            "special": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.2,
+            "DEF": 1.2,
+            "FOC": 1.2,
+            "LCK": 1.2,
+            "SPD": 1.2,
+            "VIT": 1.2
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "legendary"
+        },
+        "Genovault": {
+          "slotStats": {
+            "faction": {
+              "DEF": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 1.12,
+            "FOC": 1.05,
+            "LCK": 0.97,
+            "SPD": 0.97,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Astro Schism": {
+          "slotStats": {
+            "faction": {
+              "FOC": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 0.97,
+            "FOC": 1.15,
+            "LCK": 1.02,
+            "SPD": 0.97,
+            "VIT": 0.97
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Kraashers": {
+          "slotStats": {
+            "faction": {
+              "ATK": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.12,
+            "DEF": 0.93,
+            "FOC": 0.95,
+            "LCK": 0.97,
+            "SPD": 1.05,
+            "VIT": 0.97
+          },
+          "rarityMultiplier": 1.01,
+          "rarity": "uncommon"
+        },
+        "Leader": {
+          "slotStats": {
+            "leader": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.15,
+            "DEF": 1.1,
+            "FOC": 1.12,
+            "LCK": 1.08,
+            "SPD": 1.1,
+            "VIT": 1.1
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Multiverse Leader": {
+          "slotStats": {
+            "leader": {
+              "ATK": 2,
+              "DEF": 2,
+              "SPD": 1,
+              "FOC": 2,
+              "LCK": 1,
+              "VIT": 2
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.35,
+            "DEF": 1.28,
+            "FOC": 1.32,
+            "LCK": 1.22,
+            "SPD": 1.28,
+            "VIT": 1.28
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {
+        "meta_body": "body",
+        "meta_special": "special",
+        "meta_faction": "faction",
+        "meta_leader": "leader",
+        "meta_multiverse leader": "leader"
+      }
     },
     {
       "id": "derp_outpost",
+      "name": "Derp Outpost",
       "speciesId": "derp_outpost",
-      "bodySchemaId": "avian_7",
-      "equipmentSchemaId": "bird_equip_v1",
-      "progressionProfileId": "bird_prog_v1",
+      "slots": {
+        "back": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "beak": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "body": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "ears": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "eyes": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "head": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ],
+        "tail": [
+          "Dave",
+          "Astro",
+          "magic",
+          "Ninja",
+          "Redneck",
+          "Stoner",
+          "DJ",
+          "Viking",
+          "Monk",
+          "Corpo",
+          "Cyborg",
+          "Buff",
+          "Mad Scientist",
+          "Deity"
+        ]
+      },
+      "equipmentSlots": {
+        "armor": 1,
+        "weapon": 1,
+        "accessory": 2
+      },
+      "traits": {
+        "Dave": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "ATK": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "ATK": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1,
+            "DEF": 1,
+            "FOC": 1,
+            "LCK": 1,
+            "SPD": 1,
+            "VIT": 1
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Astro": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "SPD": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "SPD": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.95,
+            "DEF": 0.9,
+            "FOC": 1.25,
+            "LCK": 0.9,
+            "SPD": 1.3,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "magic": {
+          "slotStats": {
+            "back": {
+              "DEF": 1
+            },
+            "beak": {
+              "FOC": 1
+            },
+            "body": {
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1
+            },
+            "eyes": {
+              "FOC": 1
+            },
+            "head": {
+              "FOC": 1
+            },
+            "tail": {
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.8,
+            "DEF": 0.85,
+            "FOC": 1.35,
+            "LCK": 1.3,
+            "SPD": 1,
+            "VIT": 0.7
+          },
+          "rarityMultiplier": 1,
+          "rarity": "common"
+        },
+        "Ninja": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.29,
+            "DEF": 0.77,
+            "FOC": 0.93,
+            "LCK": 0.93,
+            "SPD": 1.39,
+            "VIT": 0.88
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Redneck": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "LCK": 1
+            },
+            "head": {
+              "ATK": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.39,
+            "DEF": 0.93,
+            "FOC": 0.72,
+            "LCK": 1.03,
+            "SPD": 0.88,
+            "VIT": 1.24
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "Stoner": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "LCK": 1
+            },
+            "beak": {
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "LCK": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1
+            },
+            "tail": {
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 0.82,
+            "FOC": 1.03,
+            "LCK": 1.65,
+            "SPD": 0.93,
+            "VIT": 0.93
+          },
+          "rarityMultiplier": 1.03,
+          "rarity": "scare"
+        },
+        "DJ": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.9,
+            "DEF": 1.22,
+            "FOC": 1.33,
+            "LCK": 0.95,
+            "SPD": 1.01,
+            "VIT": 0.95
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Viking": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.48,
+            "DEF": 1.01,
+            "FOC": 0.8,
+            "LCK": 0.9,
+            "SPD": 0.85,
+            "VIT": 1.33
+          },
+          "rarityMultiplier": 1.06,
+          "rarity": "rare"
+        },
+        "Monk": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.82,
+            "DEF": 1.47,
+            "FOC": 1.36,
+            "LCK": 0.87,
+            "SPD": 0.93,
+            "VIT": 1.09
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Corpo": {
+          "slotStats": {
+            "back": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1
+            },
+            "body": {
+              "DEF": 1,
+              "FOC": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.93,
+            "DEF": 1.42,
+            "FOC": 1.42,
+            "LCK": 0.82,
+            "SPD": 0.98,
+            "VIT": 0.98
+          },
+          "rarityMultiplier": 1.09,
+          "rarity": "epic"
+        },
+        "Cyborg": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.18,
+            "DEF": 1.18,
+            "FOC": 1.18,
+            "LCK": 1.01,
+            "SPD": 1.18,
+            "VIT": 1.01
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Buff": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.62,
+            "DEF": 1.06,
+            "FOC": 0.78,
+            "LCK": 0.84,
+            "SPD": 0.78,
+            "VIT": 1.62
+          },
+          "rarityMultiplier": 1.12,
+          "rarity": "mystic"
+        },
+        "Mad Scientist": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 0.92,
+            "DEF": 0.98,
+            "FOC": 1.61,
+            "LCK": 1.55,
+            "SPD": 1.04,
+            "VIT": 0.81
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        },
+        "Deity": {
+          "slotStats": {
+            "back": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "beak": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "body": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "ears": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "eyes": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "head": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            },
+            "tail": {
+              "ATK": 1,
+              "DEF": 1,
+              "FOC": 1,
+              "LCK": 1,
+              "SPD": 1,
+              "VIT": 1
+            }
+          },
+          "tags": [],
+          "emoji": null,
+          "color": null,
+          "gradient": null,
+          "scaling": {
+            "ATK": 1.32,
+            "DEF": 1.32,
+            "FOC": 1.27,
+            "LCK": 1.04,
+            "SPD": 1.27,
+            "VIT": 0.69
+          },
+          "rarityMultiplier": 1.15,
+          "rarity": "legendary"
+        }
+      },
+      "leveling": true,
+      "ascension": true,
+      "mastery": true,
+      "prestigeEligible": true,
+      "maxLevel": 50,
+      "ascensionCap": 5,
       "rules": {},
-      "data": {}
+      "data": {},
+      "attributeMap": {}
     }
   ],
   "regionDefinitions": [
@@ -333,1209 +5202,6 @@
       "data": {},
       "accentColor": null,
       "imageKey": null
-    }
-  ],
-  "traitDefinitions": [
-    {
-      "id": "astro",
-      "archetype": "Astro",
-      "slotStats": {
-        "back": {
-          "DEF": 1
-        },
-        "beak": {
-          "SPD": 1
-        },
-        "body": {
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1
-        },
-        "eyes": {
-          "FOC": 1
-        },
-        "head": {
-          "SPD": 1
-        },
-        "tail": {
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "common",
-        "scaling": {
-          "ATK": 0.95,
-          "DEF": 0.9,
-          "FOC": 1.25,
-          "LCK": 0.9,
-          "SPD": 1.3,
-          "VIT": 0.7
-        },
-        "rarityMultiplier": 1
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "buff",
-      "archetype": "Buff",
-      "slotStats": {
-        "back": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "body": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "head": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "mystic",
-        "scaling": {
-          "ATK": 1.62,
-          "DEF": 1.06,
-          "FOC": 0.78,
-          "LCK": 0.84,
-          "SPD": 0.78,
-          "VIT": 1.62
-        },
-        "rarityMultiplier": 1.12
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "corpo",
-      "archetype": "Corpo",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1
-        },
-        "body": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "eyes": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "head": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "tail": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "epic",
-        "scaling": {
-          "ATK": 0.93,
-          "DEF": 1.42,
-          "FOC": 1.42,
-          "LCK": 0.82,
-          "SPD": 0.98,
-          "VIT": 0.98
-        },
-        "rarityMultiplier": 1.09
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "cyborg",
-      "archetype": "Cyborg",
-      "slotStats": {
-        "back": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "body": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "head": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "mystic",
-        "scaling": {
-          "ATK": 1.18,
-          "DEF": 1.18,
-          "FOC": 1.18,
-          "LCK": 1.01,
-          "SPD": 1.18,
-          "VIT": 1.01
-        },
-        "rarityMultiplier": 1.12
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "dave",
-      "archetype": "Dave",
-      "slotStats": {
-        "back": {
-          "DEF": 1
-        },
-        "beak": {
-          "ATK": 1
-        },
-        "body": {
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1
-        },
-        "eyes": {
-          "FOC": 1
-        },
-        "head": {
-          "ATK": 1
-        },
-        "tail": {
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "common",
-        "scaling": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "rarityMultiplier": 1
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "deity",
-      "archetype": "Deity",
-      "slotStats": {
-        "back": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "body": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "head": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "legendary",
-        "scaling": {
-          "ATK": 1.32,
-          "DEF": 1.32,
-          "FOC": 1.27,
-          "LCK": 1.04,
-          "SPD": 1.27,
-          "VIT": 0.69
-        },
-        "rarityMultiplier": 1.15
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "dj",
-      "archetype": "DJ",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1
-        },
-        "beak": {
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "body": {
-          "DEF": 1,
-          "FOC": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "eyes": {
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "head": {
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        },
-        "tail": {
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": {
-          "ATK": 0.9,
-          "DEF": 1.22,
-          "FOC": 1.33,
-          "LCK": 0.95,
-          "SPD": 1.01,
-          "VIT": 0.95
-        },
-        "rarityMultiplier": 1.06
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "mad_scientist",
-      "archetype": "Mad Scientist",
-      "slotStats": {
-        "back": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "body": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "head": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "SPD": 1,
-          "VIT": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "legendary",
-        "scaling": {
-          "ATK": 0.92,
-          "DEF": 0.98,
-          "FOC": 1.61,
-          "LCK": 1.55,
-          "SPD": 1.04,
-          "VIT": 0.81
-        },
-        "rarityMultiplier": 1.15
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "magician",
-      "archetype": "magic",
-      "slotStats": {
-        "back": {
-          "DEF": 1
-        },
-        "beak": {
-          "FOC": 1
-        },
-        "body": {
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1
-        },
-        "eyes": {
-          "FOC": 1
-        },
-        "head": {
-          "FOC": 1
-        },
-        "tail": {
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "common",
-        "scaling": {
-          "ATK": 0.8,
-          "DEF": 0.85,
-          "FOC": 1.35,
-          "LCK": 1.3,
-          "SPD": 1,
-          "VIT": 0.7
-        },
-        "rarityMultiplier": 1
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "monk",
-      "archetype": "Monk",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "beak": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "body": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "DEF": 1,
-          "FOC": 1,
-          "LCK": 1,
-          "VIT": 1
-        },
-        "eyes": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "head": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        },
-        "tail": {
-          "DEF": 1,
-          "FOC": 1,
-          "SPD": 1,
-          "VIT": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "epic",
-        "scaling": {
-          "ATK": 0.82,
-          "DEF": 1.47,
-          "FOC": 1.36,
-          "LCK": 0.87,
-          "SPD": 0.93,
-          "VIT": 1.09
-        },
-        "rarityMultiplier": 1.09
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "ninja",
-      "archetype": "Ninja",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "SPD": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "SPD": 1
-        },
-        "body": {
-          "SPD": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1,
-          "SPD": 1
-        },
-        "eyes": {
-          "FOC": 1,
-          "SPD": 1
-        },
-        "head": {
-          "ATK": 1,
-          "SPD": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scare",
-        "scaling": {
-          "ATK": 1.29,
-          "DEF": 0.77,
-          "FOC": 0.93,
-          "LCK": 0.93,
-          "SPD": 1.39,
-          "VIT": 0.88
-        },
-        "rarityMultiplier": 1.03
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "redneck",
-      "archetype": "Redneck",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "VIT": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "VIT": 1
-        },
-        "body": {
-          "ATK": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "LCK": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "LCK": 1
-        },
-        "head": {
-          "ATK": 1,
-          "VIT": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scare",
-        "scaling": {
-          "ATK": 1.39,
-          "DEF": 0.93,
-          "FOC": 0.72,
-          "LCK": 1.03,
-          "SPD": 0.88,
-          "VIT": 1.24
-        },
-        "rarityMultiplier": 1.03
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "stoner",
-      "archetype": "Stoner",
-      "slotStats": {
-        "back": {
-          "DEF": 1,
-          "LCK": 1
-        },
-        "beak": {
-          "LCK": 1,
-          "SPD": 1
-        },
-        "body": {
-          "LCK": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "FOC": 1,
-          "LCK": 1
-        },
-        "eyes": {
-          "FOC": 1,
-          "LCK": 1
-        },
-        "head": {
-          "FOC": 1,
-          "LCK": 1
-        },
-        "tail": {
-          "LCK": 1,
-          "SPD": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scare",
-        "scaling": {
-          "ATK": 0.82,
-          "DEF": 0.82,
-          "FOC": 1.03,
-          "LCK": 1.65,
-          "SPD": 0.93,
-          "VIT": 0.93
-        },
-        "rarityMultiplier": 1.03
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "viking",
-      "archetype": "Viking",
-      "slotStats": {
-        "back": {
-          "ATK": 1,
-          "DEF": 1,
-          "VIT": 1
-        },
-        "beak": {
-          "ATK": 1,
-          "DEF": 1,
-          "VIT": 1
-        },
-        "body": {
-          "ATK": 1,
-          "DEF": 1,
-          "VIT": 1
-        },
-        "ears": {
-          "ATK": 1,
-          "DEF": 1,
-          "VIT": 1
-        },
-        "eyes": {
-          "ATK": 1,
-          "DEF": 1,
-          "SPD": 1
-        },
-        "head": {
-          "ATK": 1,
-          "DEF": 1,
-          "VIT": 1
-        },
-        "tail": {
-          "ATK": 1,
-          "SPD": 1,
-          "VIT": 1
-        }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": {
-          "ATK": 1.48,
-          "DEF": 1.01,
-          "FOC": 0.8,
-          "LCK": 0.9,
-          "SPD": 0.85,
-          "VIT": 1.33
-        },
-        "rarityMultiplier": 1.06
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_none",
-      "archetype": "None",
-      "slotStats": {},
-      "tags": [],
-      "data": {
-        "rarity": "common",
-        "scaling": { "ATK": 1.0, "DEF": 1.0, "FOC": 1.0, "LCK": 1.0, "SPD": 1.0, "VIT": 1.0 },
-        "rarityMultiplier": 1.0
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_yellow",
-      "archetype": "Yellow",
-      "slotStats": {
-        "body": { "ATK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "common",
-        "scaling": { "ATK": 1.05, "DEF": 0.98, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.0 },
-        "rarityMultiplier": 1.0
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_cyan",
-      "archetype": "Cyan",
-      "slotStats": {
-        "body": { "DEF": 1, "SPD": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.97, "DEF": 1.06, "FOC": 1.0, "LCK": 0.97, "SPD": 1.07, "VIT": 0.98 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_grey",
-      "archetype": "Grey",
-      "slotStats": {
-        "body": { "VIT": 1, "DEF": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.95, "DEF": 1.05, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.08 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_purple",
-      "archetype": "Purple",
-      "slotStats": {
-        "body": { "FOC": 1, "LCK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scarce",
-        "scaling": { "ATK": 0.93, "DEF": 0.95, "FOC": 1.12, "LCK": 1.08, "SPD": 0.95, "VIT": 0.97 },
-        "rarityMultiplier": 1.02
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_neon",
-      "archetype": "Neon",
-      "slotStats": {
-        "body": { "LCK": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": { "ATK": 0.9, "DEF": 0.92, "FOC": 1.05, "LCK": 1.22, "SPD": 0.95, "VIT": 0.95 },
-        "rarityMultiplier": 1.04
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_body_blue",
-      "archetype": "Blue",
-      "slotStats": {
-        "body": { "SPD": 1, "ATK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "advanced",
-        "scaling": { "ATK": 1.1, "DEF": 0.95, "FOC": 0.96, "LCK": 0.95, "SPD": 1.12, "VIT": 0.92 },
-        "rarityMultiplier": 1.03
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_sparkles",
-      "archetype": "Sparkles",
-      "slotStats": {
-        "special": { "LCK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.95, "DEF": 0.95, "FOC": 1.0, "LCK": 1.1, "SPD": 1.0, "VIT": 0.98 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_leaves",
-      "archetype": "Leaves",
-      "slotStats": {
-        "special": { "VIT": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.92, "DEF": 1.0, "FOC": 0.98, "LCK": 0.98, "SPD": 0.98, "VIT": 1.1 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_bubble_show",
-      "archetype": "Bubble Show",
-      "slotStats": {
-        "special": { "FOC": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scarce",
-        "scaling": { "ATK": 0.93, "DEF": 0.98, "FOC": 1.12, "LCK": 1.0, "SPD": 0.98, "VIT": 0.98 },
-        "rarityMultiplier": 1.02
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_water",
-      "archetype": "Water",
-      "slotStats": {
-        "special": { "DEF": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "scarce",
-        "scaling": { "ATK": 0.92, "DEF": 1.13, "FOC": 0.97, "LCK": 0.96, "SPD": 0.97, "VIT": 1.03 },
-        "rarityMultiplier": 1.02
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_earthen",
-      "archetype": "Earthen",
-      "slotStats": {
-        "special": { "VIT": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "advanced",
-        "scaling": { "ATK": 0.9, "DEF": 1.05, "FOC": 0.93, "LCK": 0.93, "SPD": 0.92, "VIT": 1.2 },
-        "rarityMultiplier": 1.03
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_ice_storm",
-      "archetype": "Ice Storm",
-      "slotStats": {
-        "special": { "SPD": 1, "DEF": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": { "ATK": 0.88, "DEF": 1.15, "FOC": 0.97, "LCK": 0.93, "SPD": 1.15, "VIT": 0.95 },
-        "rarityMultiplier": 1.04
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_electric_aura",
-      "archetype": "Electric Aura",
-      "slotStats": {
-        "special": { "ATK": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "ultra_rare",
-        "scaling": { "ATK": 1.25, "DEF": 0.9, "FOC": 1.0, "LCK": 0.92, "SPD": 1.05, "VIT": 0.88 },
-        "rarityMultiplier": 1.06
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_low_life",
-      "archetype": "Low Life",
-      "slotStats": {
-        "special": { "LCK": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": { "ATK": 0.87, "DEF": 0.88, "FOC": 1.05, "LCK": 1.28, "SPD": 0.93, "VIT": 0.88 },
-        "rarityMultiplier": 1.04
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_crystal_storm",
-      "archetype": "Crystal Storm",
-      "slotStats": {
-        "special": { "FOC": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "ultra_rare",
-        "scaling": { "ATK": 0.87, "DEF": 0.92, "FOC": 1.28, "LCK": 1.08, "SPD": 0.92, "VIT": 0.88 },
-        "rarityMultiplier": 1.06
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_press_speech",
-      "archetype": "Press Speech",
-      "slotStats": {
-        "special": { "ATK": 1, "LCK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "epic",
-        "scaling": { "ATK": 1.18, "DEF": 0.88, "FOC": 1.05, "LCK": 1.18, "SPD": 0.93, "VIT": 0.85 },
-        "rarityMultiplier": 1.08
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_dark_energy",
-      "archetype": "Dark Energy",
-      "slotStats": {
-        "special": { "ATK": 2, "DEF": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "epic",
-        "scaling": { "ATK": 1.28, "DEF": 1.18, "FOC": 0.92, "LCK": 0.88, "SPD": 0.95, "VIT": 0.88 },
-        "rarityMultiplier": 1.08
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_special_the_incubator",
-      "archetype": "The Incubator",
-      "slotStats": {
-        "special": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "legendary",
-        "scaling": { "ATK": 1.2, "DEF": 1.2, "FOC": 1.2, "LCK": 1.2, "SPD": 1.2, "VIT": 1.2 },
-        "rarityMultiplier": 1.12
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_faction_genovault",
-      "archetype": "Genovault",
-      "slotStats": {
-        "faction": { "DEF": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.95, "DEF": 1.12, "FOC": 1.05, "LCK": 0.97, "SPD": 0.97, "VIT": 1.0 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_faction_astro_schism",
-      "archetype": "Astro Schism",
-      "slotStats": {
-        "faction": { "FOC": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 0.93, "DEF": 0.97, "FOC": 1.15, "LCK": 1.02, "SPD": 0.97, "VIT": 0.97 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_faction_kraashers",
-      "archetype": "Kraashers",
-      "slotStats": {
-        "faction": { "ATK": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "uncommon",
-        "scaling": { "ATK": 1.12, "DEF": 0.93, "FOC": 0.95, "LCK": 0.97, "SPD": 1.05, "VIT": 0.97 },
-        "rarityMultiplier": 1.01
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_leader_leader",
-      "archetype": "Leader",
-      "slotStats": {
-        "leader": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "rare",
-        "scaling": { "ATK": 1.15, "DEF": 1.1, "FOC": 1.12, "LCK": 1.08, "SPD": 1.1, "VIT": 1.1 },
-        "rarityMultiplier": 1.06
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
-    },
-    {
-      "id": "perp_leader_multiverse",
-      "archetype": "Multiverse Leader",
-      "slotStats": {
-        "leader": { "ATK": 2, "DEF": 2, "SPD": 1, "FOC": 2, "LCK": 1, "VIT": 2 }
-      },
-      "tags": [],
-      "data": {
-        "rarity": "legendary",
-        "scaling": { "ATK": 1.35, "DEF": 1.28, "FOC": 1.32, "LCK": 1.22, "SPD": 1.28, "VIT": 1.28 },
-        "rarityMultiplier": 1.12
-      },
-      "color": null,
-      "emoji": null,
-      "gradient": null
     }
   ],
   "displayDefs": [

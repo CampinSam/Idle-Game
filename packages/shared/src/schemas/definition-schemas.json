@@ -2208,7 +2208,7 @@
       }
     },
     "EntityDefinition": {
-      "description": "Character/entity blueprints referencing body, equipment, and progression schemas",
+      "description": "Self-contained character/entity blueprint. As of Task #367, body slots, equipment slot capacities, per-archetype traits, NFT attribute remapping, and progression flags/caps are all stored inline on this record (formerly split across BodySchema, EquipmentSchema, ProgressionProfile, TraitDefinition, and NftCollectionDef.data.attributeMap).",
       "prismaModel": "EntityDefinition",
       "tableName": "entity_definitions",
       "primaryKey": "id",
@@ -2216,116 +2216,37 @@
         "id": {
           "type": "string",
           "required": true,
-          "description": "Unique identifier"
+          "description": "Unique identifier (e.g. derp_bird)"
+        },
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Human-readable display name"
         },
         "speciesId": {
           "type": "string",
           "required": true,
           "description": "Species identifier"
         },
-        "bodySchemaId": {
-          "type": "ref",
-          "refTable": "BodySchema",
-          "required": true,
-          "description": "References BodySchema"
-        },
-        "equipmentSchemaId": {
-          "type": "ref",
-          "refTable": "EquipmentSchema",
-          "required": true,
-          "description": "References EquipmentSchema"
-        },
-        "progressionProfileId": {
-          "type": "ref",
-          "refTable": "ProgressionProfile",
-          "required": true,
-          "description": "References ProgressionProfile"
-        },
-        "rules": {
-          "$ref": "#/complexTypes/LevelRules",
-          "default": {},
-          "description": "Level-based rules"
-        },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      },
-      "relations": {
-        "bodySchema": {
-          "model": "BodySchema",
-          "field": "bodySchemaId"
-        },
-        "equipmentSchema": {
-          "model": "EquipmentSchema",
-          "field": "equipmentSchemaId"
-        },
-        "progressionProfile": {
-          "model": "ProgressionProfile",
-          "field": "progressionProfileId"
-        }
-      },
-      "indexes": [
-        "speciesId"
-      ]
-    },
-    "BodySchema": {
-      "description": "Defines body slots and which archetypes are allowed per slot. avian_7 covers the 7-slot avian layout used by Derp Birds and related collections. perp_schema covers the 4-slot layout (body, special, faction, leader) used by the Perps collection.",
-      "prismaModel": "BodySchema",
-      "tableName": "body_schemas",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier (e.g. avian_7, perp_schema)"
-        },
         "slots": {
           "$ref": "#/complexTypes/BodySlots",
           "default": {},
-          "description": "Map of slot to allowed archetypes"
+          "description": "Body slot layout: { slotName: [allowedArchetype, ...] }"
         },
-        "data": {
-          "type": "json",
-          "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "EquipmentSchema": {
-      "description": "Defines equipment slot types and max counts per slot",
-      "prismaModel": "EquipmentSchema",
-      "tableName": "equipment_schemas",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
-        },
-        "schema": {
+        "equipmentSlots": {
           "$ref": "#/complexTypes/EquipmentSlotSchema",
           "default": {},
-          "description": "Map of slot to max count"
+          "description": "Equipment slot capacities: { slotName: maxCount }"
         },
-        "data": {
+        "traits": {
           "type": "json",
           "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "ProgressionProfile": {
-      "description": "Defines leveling, ascension, mastery, and prestige capabilities for entities",
-      "prismaModel": "ProgressionProfile",
-      "tableName": "progression_profiles",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
+          "description": "Per-archetype trait map keyed by archetype name: { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }"
+        },
+        "attributeMap": {
+          "type": "json",
+          "default": {},
+          "description": "Optional NFT raw-attribute → slot remap (e.g. { 'meta_body': 'body' }). Used by NFT-backed collections like Perps. Empty for non-NFT or 1:1 attribute species."
         },
         "leveling": {
           "type": "boolean",
@@ -2357,38 +2278,10 @@
           "default": 5,
           "description": "Maximum ascension tier"
         },
-        "data": {
-          "type": "json",
+        "rules": {
+          "$ref": "#/complexTypes/LevelRules",
           "default": {},
-          "description": "Extra data"
-        }
-      }
-    },
-    "TraitDefinition": {
-      "description": "Trait archetypes with per-slot stat bonuses. One record per archetype.",
-      "prismaModel": "TraitDefinition",
-      "tableName": "trait_definitions",
-      "primaryKey": "id",
-      "fields": {
-        "id": {
-          "type": "string",
-          "required": true,
-          "description": "Unique identifier"
-        },
-        "archetype": {
-          "type": "string",
-          "required": true,
-          "description": "Display name of archetype (e.g. Dave, Astro)"
-        },
-        "slotStats": {
-          "$ref": "#/complexTypes/SlotStats",
-          "default": {},
-          "description": "Nested map of slot to stat bonuses"
-        },
-        "tags": {
-          "type": "string[]",
-          "default": [],
-          "description": "Classification tags"
+          "description": "Level-based rules"
         },
         "data": {
           "type": "json",
@@ -2397,7 +2290,7 @@
         }
       },
       "indexes": [
-        "archetype"
+        "speciesId"
       ]
     },
     "RegionDefinition": {
@@ -3827,10 +3720,6 @@
     "Currency",
     "ItemDef",
     "EntityDefinition",
-    "BodySchema",
-    "EquipmentSchema",
-    "ProgressionProfile",
-    "TraitDefinition",
     "RegionDefinition",
     "LocationDefinition",
     "BuildingDef",
@@ -3855,18 +3744,6 @@
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
     "references": [
-      {
-        "from": "EntityDefinition.bodySchemaId",
-        "to": "BodySchema.id"
-      },
-      {
-        "from": "EntityDefinition.equipmentSchemaId",
-        "to": "EquipmentSchema.id"
-      },
-      {
-        "from": "EntityDefinition.progressionProfileId",
-        "to": "ProgressionProfile.id"
-      },
       {
         "from": "LocationDefinition.regionId",
         "to": "RegionDefinition.id"

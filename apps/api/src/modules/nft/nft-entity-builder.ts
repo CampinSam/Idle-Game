@@ -16,19 +16,17 @@ export async function buildEntityDataFromNftMetadata(
 ): Promise<Record<string, any>> {
   const entityDef = await (prisma as any).entityDefinition.findUnique({
     where: { id: collection.entityDefinitionId },
-    include: { bodySchema: true },
   });
 
   if (!entityDef) {
     throw new Error(`EntityDefinition "${collection.entityDefinitionId}" not found`);
   }
 
-  const slots: Record<string, string[]> = (entityDef.bodySchema?.slots as any) || {};
-
-  const allTraitDefs = await (prisma as any).traitDefinition.findMany();
+  const slots: Record<string, string[]> = (entityDef.slots as any) || {};
+  const traitsRaw: Record<string, any> = (entityDef.traits as any) || {};
   const traitByArchetype: Record<string, any> = {};
-  for (const td of allTraitDefs) {
-    traitByArchetype[td.archetype.toLowerCase()] = td;
+  for (const [archetype, td] of Object.entries(traitsRaw)) {
+    traitByArchetype[archetype.toLowerCase()] = td;
   }
 
   const baseStats: Record<string, number> = {};
@@ -48,7 +46,10 @@ export async function buildEntityDataFromNftMetadata(
   // Multiple raw keys may map to the same slot (e.g. "meta_leader" and
   // "meta_multiverse leader" both map to "leader").
   const effectiveAttributes: Record<string, string> = { ...normalizedAttributes };
-  const rawAttributeMap = collection.data?.attributeMap;
+  // attributeMap now lives on EntityDefinition (was previously on
+  // NftCollectionDef.data.attributeMap). It maps raw NFT attribute keys
+  // (e.g. "meta_body") to the body-schema slot names ("body").
+  const rawAttributeMap = (entityDef.attributeMap as any) || {};
   if (rawAttributeMap && typeof rawAttributeMap === 'object') {
     for (const [rawKey, mappedSlot] of Object.entries(rawAttributeMap)) {
       if (typeof mappedSlot !== 'string') continue;
@@ -79,14 +80,14 @@ export async function buildEntityDataFromNftMetadata(
       }
     }
 
-    const traitData = (traitDef.data as any) || {};
+    const traitScaling = (traitDef.scaling as any) || {};
     const statScaling: Record<string, number> = {};
     for (const k of STAT_KEYS) {
-      statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
+      statScaling[k] = typeof traitScaling[k] === 'number' ? traitScaling[k] : 1.0;
     }
     scalingContributions.push({
       statScaling,
-      rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+      rarityMultiplier: typeof traitDef.rarityMultiplier === 'number' ? traitDef.rarityMultiplier : 1.0,
     });
   }
 

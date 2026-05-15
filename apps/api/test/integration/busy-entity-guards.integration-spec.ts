@@ -52,22 +52,16 @@ describe('Busy-entity stat-change guards [integration]', () => {
       },
     });
 
-    await (prisma as any).bodySchema.create({
-      data: { id: 'body_test', slots: [], data: {} },
-    });
-    await (prisma as any).progressionProfile.create({
-      data: { id: 'prog_test', maxLevel: 50, ascensionCap: 5 },
-    });
-    await (prisma as any).equipmentSchema.create({
-      data: { id: 'equip_test', schema: { weapon: 1, cosmetic: 1 } },
-    });
     await (prisma as any).entityDefinition.create({
       data: {
         id: 'edef_test',
+        name: 'Test Entity',
         speciesId: 'species_test',
-        bodySchemaId: 'body_test',
-        equipmentSchemaId: 'equip_test',
-        progressionProfileId: 'prog_test',
+        slots: {},
+        equipmentSlots: { weapon: 1, cosmetic: 1 },
+        traits: {},
+        maxLevel: 50,
+        ascensionCap: 5,
       },
     });
 

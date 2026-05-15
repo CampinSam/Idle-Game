@@ -69,10 +69,6 @@ export async function seedDefinitions(prisma: any) {
     await upsertMany(prisma, 'regionDefinition', defs.regionDefinitions);
   }
 
-  if (defs.traitDefinitions) {
-    await upsertMany(prisma, 'traitDefinition', defs.traitDefinitions);
-  }
-
   if (defs.displayDefs) {
     await upsertMany(prisma, 'displayDef', defs.displayDefs);
   }
@@ -87,20 +83,10 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
-  if (defs.equipmentSchemas) {
-    await upsertMany(prisma, 'equipmentSchema', defs.equipmentSchemas);
-  }
-
-  if (defs.progressionProfiles) {
-    await upsertMany(prisma, 'progressionProfile', defs.progressionProfiles);
-  }
-
-  if (defs.bodySchemas) {
-    await upsertMany(prisma, 'bodySchema', defs.bodySchemas);
-  }
-
   if (defs.entityDefinitions) {
-    await upsertMany(prisma, 'entityDefinition', defs.entityDefinitions);
+    // Force-update so changes to slots/equipmentSlots/traits/progression caps
+    // propagate to existing rows on every boot.
+    await upsertManyForce(prisma, 'entityDefinition', defs.entityDefinitions);
   }
 
   if (defs.missionCategoryDefs) {

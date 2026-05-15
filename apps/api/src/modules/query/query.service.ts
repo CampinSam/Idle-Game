@@ -160,9 +160,9 @@ export class QueryService {
         where: { ownerUserId: userId },
         include: {
           equipment: true,
-          // Surface equipmentSchema so the client can render the right
-          // slot tiles per species without re-fetching the definition.
-          definition: { include: { equipmentSchema: true } },
+          // Surface the full definition so the client can render the right
+          // equipment slot tiles per species without re-fetching.
+          definition: true,
         },
         orderBy: { createdAt: 'desc' },
       }),

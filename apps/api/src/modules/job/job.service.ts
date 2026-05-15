@@ -39,7 +39,7 @@ export class JobService {
             where: { id: { in: ids }, ownerUserId: userId },
             include: {
               equipment: true,
-              definition: { include: { equipmentSchema: true } },
+              definition: true,
             },
           })
         : [];

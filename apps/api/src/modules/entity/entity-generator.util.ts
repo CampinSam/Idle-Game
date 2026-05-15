@@ -37,21 +37,16 @@ export async function generateEntityData(
 ): Promise<GeneratedEntityData> {
   const entityDef = await (prisma as any).entityDefinition.findUnique({
     where: { id: definitionId },
-    include: { bodySchema: true },
   });
 
   if (!entityDef) {
     throw new Error(`EntityDefinition "${definitionId}" not found`);
   }
 
-  const resolvedName = displayName || (entityDef.data as any)?.name || entityDef.id;
-  const slots: Record<string, string[]> = (entityDef.bodySchema?.slots as any) || {};
-
-  const allTraitDefs = await (prisma as any).traitDefinition.findMany();
-  const traitByArchetype: Record<string, any> = {};
-  for (const td of allTraitDefs) {
-    traitByArchetype[td.archetype] = td;
-  }
+  const resolvedName =
+    displayName || entityDef.name || (entityDef.data as any)?.name || entityDef.id;
+  const slots: Record<string, string[]> = (entityDef.slots as any) || {};
+  const traitByArchetype: Record<string, any> = (entityDef.traits as any) || {};
 
   const baseStats: Record<string, number> = {};
   for (const k of STAT_KEYS) baseStats[k] = 10;
@@ -83,20 +78,20 @@ export async function generateEntityData(
       }
     }
 
-    const traitData = (traitDef.data as any) || {};
+    const traitScaling = (traitDef.scaling as any) || {};
     const statScaling: Record<string, number> = {};
     for (const k of STAT_KEYS) {
-      statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
+      statScaling[k] = typeof traitScaling[k] === 'number' ? traitScaling[k] : 1.0;
     }
     // Preserve RND as a valid scaling weight — it stays in statScaling and is
     // resolved at level-up time (each individual bonus point that draws RND
     // picks a random visible stat).
-    if (typeof traitData.scaling?.['RND'] === 'number' && traitData.scaling['RND'] > 0) {
-      statScaling['RND'] = traitData.scaling['RND'];
+    if (typeof traitScaling['RND'] === 'number' && traitScaling['RND'] > 0) {
+      statScaling['RND'] = traitScaling['RND'];
     }
     scalingContributions.push({
       statScaling,
-      rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+      rarityMultiplier: typeof traitDef.rarityMultiplier === 'number' ? traitDef.rarityMultiplier : 1.0,
     });
   }
 

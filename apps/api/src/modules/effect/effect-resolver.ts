@@ -80,7 +80,9 @@ const VISIBLE_STAT_KEYS: (keyof EffectStatMap)[] = ['ATK', 'DEF', 'SPD', 'FOC', 
 function applyStatAdd(target: EffectStatMap, source: EffectStatMap, stacks: number) {
   for (const key of VISIBLE_STAT_KEYS) {
     if (source[key] !== undefined) {
-      target[key] = (target[key] ?? 0) + source[key]! * stacks;
+      const t = (target[key] as number | undefined) ?? 0;
+      const s = source[key] as number;
+      (target as any)[key] = t + s * stacks;
     }
   }
   // Safety net: RND must be resolved before effects are stored or applied.
@@ -94,8 +96,9 @@ function applyStatAdd(target: EffectStatMap, source: EffectStatMap, stacks: numb
 function applyStatMultiply(target: EffectStatMap, source: EffectStatMap, stacks: number) {
   for (const key of VISIBLE_STAT_KEYS) {
     if (source[key] !== undefined) {
-      const base = target[key] ?? 1;
-      target[key] = base * Math.pow(source[key]!, stacks);
+      const base = (target[key] as number | undefined) ?? 1;
+      const s = source[key] as number;
+      (target as any)[key] = base * Math.pow(s, stacks);
     }
   }
 }

@@ -10,50 +10,46 @@ This document describes each definition table editable through the Admin Panel, 
 1. [Currency](#currency)
 2. [ItemDef (Items)](#itemdef)
 3. [EntityDefinition](#entitydefinition)
-4. [BodySchema](#bodyschema)
-5. [EquipmentSchema](#equipmentschema)
-6. [ProgressionProfile](#progressionprofile)
-7. [TraitDefinition](#traitdefinition)
-8. [RegionDefinition](#regiondefinition)
-9. [LocationDefinition](#locationdefinition)
-10. [BuildingDef (Buildings)](#buildingdef)
-11. [RoomDef (Rooms)](#roomdef)
-12. [DisplayDef](#displaydef)
-13. [MissionCategoryDef](#missioncategorydef)
-14. [MissionDef (Missions / Quests)](#missiondef)
-15. [RecipeDef (Crafting Recipes)](#recipedef)
-16. [BundleDef (Reusable Outcome Bundles)](#bundledef)
-17. [EventDefinition](#eventdefinition)
-18. [GiftDef](#giftdef)
-19. [ModalDef](#modaldef)
-20. [LootboxDef](#lootboxdef)
-21. [CheckInDef](#checkindef)
-22. [QuestDef](#questdef)
-23. [ShopItemDef](#shopitemdef)
-24. [NftCollectionDef](#nftcollectiondef)
-25. [EffectDef](#effectdef)
+4. [RegionDefinition](#regiondefinition)
+5. [LocationDefinition](#locationdefinition)
+6. [BuildingDef (Buildings)](#buildingdef)
+7. [RoomDef (Rooms)](#roomdef)
+8. [DisplayDef](#displaydef)
+9. [MissionCategoryDef](#missioncategorydef)
+10. [MissionDef (Missions / Quests)](#missiondef)
+11. [RecipeDef (Crafting Recipes)](#recipedef)
+12. [BundleDef (Reusable Outcome Bundles)](#bundledef)
+13. [EventDefinition](#eventdefinition)
+14. [GiftDef](#giftdef)
+15. [ModalDef](#modaldef)
+16. [LootboxDef](#lootboxdef)
+17. [CheckInDef](#checkindef)
+18. [QuestDef](#questdef)
+19. [ShopItemDef](#shopitemdef)
+20. [NftCollectionDef](#nftcollectiondef)
+21. [EffectDef](#effectdef)
 
 ### Audio System Tables
-25. [SoundDef](#sounddef)
-26. [SoundMapping](#soundmapping)
+22. [SoundDef](#sounddef)
+23. [SoundMapping](#soundmapping)
 
 ### Runtime Tables
-25. [Job (Unified Job System)](#job)
-26. [Notification](#notification)
-27. [TickRateInterval](#tickrateinterval)
-28. [BoostEvent](#boostevent)
-29. [ActiveEffect](#activeeffect)
+24. [Job (Unified Job System)](#job)
+25. [Notification](#notification)
+26. [TickRateInterval](#tickrateinterval)
+27. [BoostEvent](#boostevent)
+28. [ActiveEffect](#activeeffect)
 
 ### Instance Tables
-30. [Entity (Instance)](#entity-instance)
-31. [EntityEquipment](#entityequipment)
-32. [LocationInstance](#locationinstance)
-33. [LocationBuildingInstance](#locationbuildinginstance)
-34. [LocationRoomInstance](#locationroominstance)
-35. [LocationWorkerAssignment](#locationworkerassignment)
-36. [ItemInstance](#iteminstance)
-37. [GiftInstance](#giftinstance)
-38. [GiftClaimTx](#giftclaimtx)
+29. [Entity (Instance)](#entity-instance)
+30. [EntityEquipment](#entityequipment)
+31. [LocationInstance](#locationinstance)
+32. [LocationBuildingInstance](#locationbuildinginstance)
+33. [LocationRoomInstance](#locationroominstance)
+34. [LocationWorkerAssignment](#locationworkerassignment)
+35. [ItemInstance](#iteminstance)
+36. [GiftInstance](#giftinstance)
+37. [GiftClaimTx](#giftclaimtx)
 
 ### Shared JSON Formats
 39. [Unified Level-Based Rules System](#unified-level-based-rules-system)
@@ -205,36 +201,32 @@ Used in the `passiveEffects` JSON array field on items. Passive effects are reso
 
 ## EntityDefinition
 
-Defines a species/type of game entity (character). Each entity definition references schemas for body, equipment, and progression.
+Self-contained blueprint for a species/type of game entity (character). As of Task #367, body slots, equipment slot capacities, per-archetype traits, NFT attribute remapping, and progression flags/caps all live inline on this row — the former `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, and `TraitDefinition` tables (and the `attributeMap` blob on `NftCollectionDef.data`) have been collapsed into this single record.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `id` | string | Yes | — | Unique identifier (e.g. `derp_bird`) |
+| `name` | string | Yes | — | Human-readable display name |
 | `speciesId` | string | Yes | — | Species identifier for grouping |
-| `bodySchemaId` | string | Yes | — | References a [BodySchema](#bodyschema) |
-| `equipmentSchemaId` | string | Yes | — | References an [EquipmentSchema](#equipmentschema) |
-| `progressionProfileId` | string | Yes | — | References a [ProgressionProfile](#progressionprofile) |
+| `slots` | JSON | No | `{}` | Body slot layout: `{ slotName: [allowedArchetype, ...] }` |
+| `equipmentSlots` | JSON | No | `{}` | Equipment slot capacities: `{ slotName: maxCount }` |
+| `traits` | JSON | No | `{}` | Per-archetype trait map keyed by archetype name (see below) |
+| `attributeMap` | JSON | No | `{}` | Optional NFT raw-attribute → slot remap (e.g. `{ "meta_body": "body" }`). Used by NFT-backed collections like Perps. Empty for non-NFT or 1:1 attribute species. |
+| `leveling` | boolean | No | true | Whether entities can level up |
+| `ascension` | boolean | No | true | Whether entities can ascend |
+| `mastery` | boolean | No | true | Whether entities can gain mastery |
+| `prestigeEligible` | boolean | No | true | Whether entities are eligible for prestige |
+| `maxLevel` | number | No | 50 | Maximum level cap |
+| `ascensionCap` | number | No | 5 | Maximum ascension tier |
 | `rules` | JSON | No | `{}` | Level-based rules (see [Unified Level-Based Rules System](#unified-level-based-rules-system)) |
 | `data` | JSON | No | `{}` | Freeform extra data |
 
----
-
-## BodySchema
-
-Defines the body slot structure for an entity type. Determines which slots exist and which archetypes (trait types) are allowed per slot.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `id` | string | Yes | — | Unique identifier (e.g. `avian_7`) |
-| `slots` | JSON | No | `[]` | Map of slot name → array of allowed archetype names (stored as JSON, default is empty array `[]` but populated as an object map) |
-| `data` | JSON | No | `{}` | Freeform extra data |
-
-**Slots format** — a map where keys are slot names and values are arrays of allowed archetype strings:
+**`slots` format** — keys are slot names, values are arrays of allowed archetype strings. Example for the 7-slot avian layout used by Derp Birds:
 
 ```json
 {
   "head": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
-  "ears": ["Dave", "Astro", "Magician", "Ninja", "Redneck", "Stoner", "DJ", "Viking", "Monk", "Corpo", "Cyborg", "Buff", "Mad Scientist", "Deity"],
+  "ears": ["..."],
   "beak": ["..."],
   "eyes": ["..."],
   "body": ["..."],
@@ -243,21 +235,9 @@ Defines the body slot structure for an entity type. Determines which slots exist
 }
 ```
 
-The current body schema `avian_7` defines 7 slots: `head`, `ears`, `beak`, `eyes`, `body`, `back`, `tail`. All 14 archetypes are allowed in every slot.
+The Perps definition uses a 4-slot layout: `body`, `special`, `faction`, `leader`.
 
----
-
-## EquipmentSchema
-
-Defines the equipment slot layout for an entity type. Controls how many items can be equipped in each slot category.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `id` | string | Yes | — | Unique identifier (e.g. `bird_equip_v1`) |
-| `schema` | JSON | No | `{}` | Map of equipment slot → max count |
-| `data` | JSON | No | `{}` | Freeform extra data |
-
-**Schema format:**
+**`equipmentSlots` format** — equipment slot → max count:
 
 ```json
 {
@@ -267,55 +247,38 @@ Defines the equipment slot layout for an entity type. Controls how many items ca
 }
 ```
 
----
-
-## ProgressionProfile
-
-Defines the leveling, ascension, and mastery rules for an entity type.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `id` | string | Yes | — | Unique identifier (e.g. `bird_prog_v1`) |
-| `leveling` | boolean | No | true | Whether entities can level up |
-| `ascension` | boolean | No | true | Whether entities can ascend |
-| `mastery` | boolean | No | true | Whether entities can gain mastery |
-| `prestigeEligible` | boolean | No | true | Whether entities are eligible for prestige |
-| `maxLevel` | number | No | 50 | Maximum level cap |
-| `ascensionCap` | number | No | 5 | Maximum ascension tier |
-| `data` | JSON | No | `{}` | Freeform extra data |
-
----
-
-## TraitDefinition
-
-Defines an archetype trait that can be assigned to entity body slots. Each trait provides per-slot stat bonuses.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `id` | string | Yes | — | Unique identifier (e.g. `dave`, `ninja`, `deity`) |
-| `archetype` | string | Yes | — | Display name of the archetype (e.g. `Dave`, `Ninja`, `Deity`) |
-| `slotStats` | JSON | No | `{}` | Nested map of slot → stat bonuses (see below) |
-| `tags` | JSON | No | `[]` | Classification tags |
-| `data` | JSON | No | `{}` | Freeform extra data |
-
-**slotStats format** — a nested map where the outer key is the body slot name and the inner map is stat ID → bonus value:
+**`traits` format** — keyed by archetype name; each entry carries per-slot stat bonuses, classification tags, presentation hints, and optional scaling/rarity metadata:
 
 ```json
 {
-  "head": { "ATK": 1, "DEF": 1 },
-  "beak": { "SPD": 2 },
-  "eyes": { "FOC": 1 },
-  "body": { "VIT": 1 },
-  "ears": { "FOC": 1 },
-  "back": { "DEF": 1 },
-  "tail": { "SPD": 1 }
+  "Ninja": {
+    "slotStats": { "head": { "SPD": 1, "ATK": 1 }, "tail": { "SPD": 1 } },
+    "tags": ["agile"],
+    "emoji": "🥷",
+    "color": "#0F172A",
+    "gradient": "linear-gradient(135deg, #0F172A, #1E293B)",
+    "scaling": { "ATK": 1.0, "SPD": 1.1 },
+    "rarityMultiplier": 1.0,
+    "rarity": null
+  }
 }
 ```
 
-Entity stats are computed by summing the per-slot bonuses from each trait assigned to each slot. For example, if a `Ninja` trait is assigned to the `head` slot, the entity gains `{ SPD: 1, ATK: 1 }` from that slot.
+Entity stats are computed by summing the per-slot bonuses from each archetype assigned to each slot. Trait metadata is now sourced from this embedded map — there is no longer a standalone trait table to look up.
 
-**Current archetypes (14 total):**
-Dave, Astro, Magician, Ninja, Redneck, Stoner, DJ, Viking, Monk, Corpo, Cyborg, Buff, Mad Scientist, Deity
+**`attributeMap` format** — used only when an NFT collection's raw on-chain attribute keys differ from the body-slot names. For example the Perps Cardano collection ships with these keys:
+
+```json
+{
+  "meta_body": "body",
+  "meta_special": "special",
+  "meta_faction": "faction",
+  "meta_leader": "leader",
+  "meta_multiverse leader": "leader"
+}
+```
+
+Leave empty (`{}`) when raw attributes already match slot names.
 
 **Stat IDs:** `ATK` (Attack), `DEF` (Defense), `SPD` (Speed), `FOC` (Focus), `LCK` (Luck), `VIT` (Vitality)
 

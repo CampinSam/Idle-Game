@@ -40,7 +40,7 @@ export class EquipItemHandler implements CommandHandler {
     const entity = await txDb(ctx.tx).entity.findUnique({
       where: { id: entityId },
       include: {
-        definition: { include: { equipmentSchema: true } },
+        definition: true,
         equipment: true,
       },
     });
@@ -67,7 +67,7 @@ export class EquipItemHandler implements CommandHandler {
       throw new BadRequestException('Item has no equipData.slot configured');
     }
 
-    const schema = (entity.definition?.equipmentSchema?.schema as any) || {};
+    const schema = (entity.definition?.equipmentSlots as any) || {};
     const slotCapacity = Number(schema[slot] ?? 0);
     if (!slotCapacity || slotCapacity <= 0) {
       throw new BadRequestException(`Entity has no '${slot}' slot`);

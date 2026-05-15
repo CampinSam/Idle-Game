@@ -96,6 +96,9 @@ export const adminApi = {
 
   getBalanceBundle: () => adminRequest<{
     entityDefinitions: Array<{ id: string; name: string; speciesId: string; slots: Record<string, string[]> }>;
+    // Flattened trait lookup derived from EntityDefinition.traits across all
+    // species — same shape the simulator expects regardless of which entity
+    // def the archetype originated from.
     traitDefinitions: Record<string, { archetype: string; slotStats: Record<string, Record<string, number>>; scaling: Record<string, number>; rarityMultiplier: number }>;
   }>('/balance/bundle'),
 
