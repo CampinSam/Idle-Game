@@ -175,16 +175,14 @@ model EntityDefinition {
   // { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }
   traits            Json     @default("{}")
 
-  // Optional NFT raw-attribute → slot remap (for NFT-backed collections like Perps)
-  attributeMap      Json     @default("{}")
-
-  // Progression flags + caps (formerly ProgressionProfile)
-  leveling          Boolean  @default(true)
-  ascension         Boolean  @default(true)
-  mastery           Boolean  @default(true)
-  prestigeEligible  Boolean  @default(true)
-  maxLevel          Int      @default(50)
-  ascensionCap      Int      @default(5)
+  // Progression rules: { enabled, maxLevel, xpCurve, statGain }
+  progression       Json     @default("{}")
+  // Ascension rules: { enabled, cap, costPerStep, effects } (gameplay TBD)
+  ascension         Json     @default("{\"enabled\": false}")
+  // Mastery rules: { enabled, branches } (gameplay TBD)
+  mastery           Json     @default("{\"enabled\": false}")
+  // Initialization rules: { scratch: {...}, nft: { attributeMap, ... } }
+  init              Json     @default("{}")
 
   rules             Json     @default("{}")
   data              Json     @default("{}")

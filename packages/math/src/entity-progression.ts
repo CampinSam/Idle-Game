@@ -91,6 +91,33 @@ export interface LevelUpResult {
 }
 
 /**
+ * Stat-gain rules sourced from EntityDefinition.progression.statGain.
+ * Passed in by the caller so the math package stays definition-agnostic.
+ *
+ * Defaults reproduce the legacy hardcoded behavior exactly:
+ *   - guaranteed +1 to every visible stat
+ *   - bonus pool = floor(14 * compositRarity^(currentLevel * 0.16))
+ *   - 50/50 split between uniform-random and scaling-weighted distribution
+ */
+export interface StatGainConfig {
+  guaranteed?: Partial<Record<StatKey, number>>;
+  bonusPool?:
+    | { kind: 'rarityScaled'; base: number; exponent: number; rarityField?: string }
+    | { kind: 'flat'; amount: number };
+  distribution?: {
+    uniformShare?: number;
+    weightedShare?: number;
+    weightsField?: string;
+  };
+}
+
+const DEFAULT_STAT_GAIN: Required<StatGainConfig> = {
+  guaranteed: { ATK: 1, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 },
+  bonusPool: { kind: 'rarityScaled', base: 14, exponent: 0.16, rarityField: 'compositRarity' },
+  distribution: { uniformShare: 0.5, weightedShare: 0.5, weightsField: 'scaling' },
+};
+
+/**
  * Apply a single weighted level-up to an entity:
  *
  * 1. **Guaranteed +1 to every stat** (6 points total, unchanged).
@@ -116,22 +143,43 @@ export function applyWeightedLevelUp(
   compositRarity = 1.0,
   currentLevel = 1,
   randomStatPicker?: (visibleStats: readonly StatKey[]) => StatKey,
+  config?: StatGainConfig,
 ): LevelUpResult {
   const pickRandom = randomStatPicker ?? ((stats) => stats[Math.floor(Math.random() * stats.length)]);
+  const cfgGuaranteed = (config?.guaranteed ?? DEFAULT_STAT_GAIN.guaranteed) as Partial<Record<StatKey, number>>;
+  const cfgBonus = config?.bonusPool ?? DEFAULT_STAT_GAIN.bonusPool;
+  const cfgDist = config?.distribution ?? DEFAULT_STAT_GAIN.distribution;
+  const uniformShare = typeof cfgDist.uniformShare === 'number' ? cfgDist.uniformShare : 0.5;
+  const weightsField =
+    typeof cfgDist.weightsField === 'string' && cfgDist.weightsField.length > 0
+      ? cfgDist.weightsField
+      : 'scaling';
+  const rarityField =
+    cfgBonus.kind === 'rarityScaled' && typeof cfgBonus.rarityField === 'string' && cfgBonus.rarityField.length > 0
+      ? cfgBonus.rarityField
+      : null;
 
   const boosted = { ...currentStats };
-  const scaling: Record<string, number> = (boosted.scaling as any) || {};
+  const scaling: Record<string, number> = (boosted[weightsField] as any) || {};
+  const effectiveRarity = rarityField
+    ? (typeof boosted[rarityField] === 'number' ? boosted[rarityField] : compositRarity)
+    : compositRarity;
 
   const gains: Record<string, number> = {};
   for (const k of STAT_KEYS) gains[k] = 0;
 
   for (const k of STAT_KEYS) {
-    boosted[k] = (boosted[k] || 0) + 1;
-    gains[k] += 1;
+    const g = cfgGuaranteed[k] ?? 0;
+    if (g > 0) {
+      boosted[k] = (boosted[k] || 0) + g;
+      gains[k] += g;
+    }
   }
 
-  const bonusPool = Math.floor(14 * Math.pow(compositRarity, currentLevel * 0.16));
-  const unweightedCount = Math.floor(bonusPool * 0.5);
+  const bonusPool = cfgBonus.kind === 'flat'
+    ? Math.floor(cfgBonus.amount)
+    : Math.floor(cfgBonus.base * Math.pow(effectiveRarity, currentLevel * cfgBonus.exponent));
+  const unweightedCount = Math.floor(bonusPool * uniformShare);
   const weightedCount = bonusPool - unweightedCount;
 
   for (let i = 0; i < unweightedCount; i++) {
@@ -167,7 +215,7 @@ export function applyWeightedLevelUp(
     gains[target] += 1;
   }
 
-  boosted.scaling = scaling;
+  boosted[weightsField] = scaling;
   return { stats: boosted, gains };
 }
 

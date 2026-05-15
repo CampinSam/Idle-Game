@@ -6,6 +6,7 @@ import {
   applyWeightedLevelUp,
   type ScalingContribution,
   type LevelUpResult,
+  type StatGainConfig,
 } from '@derp/math';
 import { resolveRnd } from './rnd-resolver.util';
 
@@ -43,13 +44,30 @@ export async function generateEntityData(
     throw new Error(`EntityDefinition "${definitionId}" not found`);
   }
 
+  const initRules = (entityDef.init as any) || {};
+  const scratchRules = (initRules.scratch as any) || {};
+  const slotFill = (scratchRules.slotFill as any) || { kind: 'singleRandomArchetype' };
+  const startingLevel: number = typeof scratchRules.startingLevel === 'number' ? scratchRules.startingLevel : 1;
+  if (startingLevel !== 1) {
+    // Synthesizing N-1 weighted level-ups from scratch is not yet wired through
+    // generateEntityData; if/when a definition needs startingLevel > 1, the
+    // caller should follow up with levelUpEntityToLevel(stats, startingLevel,
+    // progression.statGain) and persist the resulting history. Failing loudly
+    // beats silently shipping a level-vs-stats mismatch.
+    throw new Error(
+      `EntityDefinition "${definitionId}" sets init.scratch.startingLevel=${startingLevel}; ` +
+        `only startingLevel=1 is currently supported by generateEntityData.`,
+    );
+  }
+  const initBaseStats: Record<string, number> = (scratchRules.baseStats as any) || {};
+
   const resolvedName =
     displayName || entityDef.name || (entityDef.data as any)?.name || entityDef.id;
   const slots: Record<string, string[]> = (entityDef.slots as any) || {};
   const traitByArchetype: Record<string, any> = (entityDef.traits as any) || {};
 
   const baseStats: Record<string, number> = {};
-  for (const k of STAT_KEYS) baseStats[k] = 10;
+  for (const k of STAT_KEYS) baseStats[k] = typeof initBaseStats[k] === 'number' ? initBaseStats[k] : 0;
 
   const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, string> = {};
@@ -57,7 +75,13 @@ export async function generateEntityData(
   for (const [slotName, allowedArchetypes] of Object.entries(slots)) {
     if (!Array.isArray(allowedArchetypes) || allowedArchetypes.length === 0) continue;
 
-    const chosen = allowedArchetypes[Math.floor(Math.random() * allowedArchetypes.length)];
+    let chosen: string;
+    if (slotFill.kind === 'fixed' && slotFill.fixed && typeof slotFill.fixed[slotName] === 'string') {
+      chosen = slotFill.fixed[slotName];
+    } else {
+      // singleRandomArchetype (default) — multiRandomArchetype is reserved for future use.
+      chosen = allowedArchetypes[Math.floor(Math.random() * allowedArchetypes.length)];
+    }
     traits[slotName] = chosen;
 
     const traitDef = traitByArchetype[chosen];
@@ -105,7 +129,7 @@ export async function generateEntityData(
     display: { name: resolvedName },
     stats: { ...baseStats, scaling, compositRarity },
     traits,
-    progression: { level: 1, xp: 0, ascension: 0, levelHistory: [] },
+    progression: { level: startingLevel, xp: 0, ascension: 0, levelHistory: [] },
     state: { status: 'idle' },
   };
 }
@@ -124,12 +148,13 @@ export async function generateEntityData(
 export function levelUpEntityToLevel(
   baseStats: Record<string, any>,
   targetLevel: number,
+  statGainConfig?: StatGainConfig,
 ): { stats: Record<string, any>; levelHistory: Array<{ level: number; gains: Record<string, number> }> } {
   let stats: Record<string, any> = { ...baseStats };
   const compositRarity = typeof stats.compositRarity === 'number' ? stats.compositRarity : 1.0;
   const levelHistory: Array<{ level: number; gains: Record<string, number> }> = [];
   for (let lvl = 2; lvl <= targetLevel; lvl++) {
-    const result = applyWeightedLevelUp(stats, compositRarity, lvl - 1);
+    const result = applyWeightedLevelUp(stats, compositRarity, lvl - 1, undefined, statGainConfig);
     stats = result.stats;
     levelHistory.push({ level: lvl, gains: result.gains });
   }

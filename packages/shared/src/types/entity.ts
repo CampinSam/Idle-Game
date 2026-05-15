@@ -62,6 +62,8 @@ export interface Entity {
   name: string;
   level: number;
   xp: number;
+  /** Server-derived from the entity's definition.progression.maxLevel. Null when the definition is not joined. */
+  maxLevel?: number | null;
   ascensionTier: number;
   stats: EntityStats;
   traits: EntityTraits;

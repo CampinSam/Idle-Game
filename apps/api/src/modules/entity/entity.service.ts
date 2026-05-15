@@ -3,7 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EffectService } from '../effect/effect.service';
 import { NotificationService } from '../notification/notification.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
-import { MAX_ENTITY_LEVEL, XP_PER_LEVEL, EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
+import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
+import { getProgressionRules, xpForNextLevel } from './entity-progression-rules.util';
 import { applyWeightedLevelUp } from '@derp/math';
 
 function serializeEntity(entity: any) {
@@ -13,6 +14,8 @@ function serializeEntity(entity: any) {
   }
   const display = (entity.display as any) || {};
   const state = (entity.state as any) || {};
+  const defProgression = (entity.definition?.progression as any) || {};
+  const maxLevel = typeof defProgression.maxLevel === 'number' ? defProgression.maxLevel : null;
   return {
     ...entity,
     progression,
@@ -20,6 +23,7 @@ function serializeEntity(entity: any) {
     level: progression.level || 1,
     xp: Number(progression.xp || 0),
     status: state.status || 'idle',
+    maxLevel,
     ...(display.imageUrl ? { imageUrl: display.imageUrl } : {}),
   };
 }
@@ -47,7 +51,7 @@ export class EntityService {
   async getEntities(userId: string) {
     const entities = await (this.prisma as any).entity.findMany({
       where: { ownerUserId: userId },
-      include: { equipment: true },
+      include: { equipment: true, definition: { select: { progression: true } } },
     });
     return entities.map(serializeEntity);
   }
@@ -55,14 +59,17 @@ export class EntityService {
   async getEntity(entityId: string, userId: string) {
     const entity = await (this.prisma as any).entity.findFirst({
       where: { id: entityId, ownerUserId: userId },
-      include: { equipment: true },
+      include: { equipment: true, definition: { select: { progression: true } } },
     });
     if (!entity) throw new NotFoundException('Entity not found');
     return serializeEntity(entity);
   }
 
   async createEntity(data: any) {
-    const created = await (this.prisma as any).entity.create({ data, include: { equipment: true } });
+    const created = await (this.prisma as any).entity.create({
+      data,
+      include: { equipment: true, definition: { select: { progression: true } } },
+    });
     return serializeEntity(created);
   }
 
@@ -102,16 +109,20 @@ export class EntityService {
     const db = tx || this.prisma;
     const entity = await (db as any).entity.findFirst({
       where: { id: entityId, ownerUserId: userId },
-      include: { equipment: true },
+      include: { equipment: true, definition: true },
     });
     if (!entity) throw new NotFoundException('Entity not found');
+
+    const progressionRules = getProgressionRules(entity.definition, entity.definitionId);
+    const maxLevel = progressionRules.maxLevel!;
+    const statGainConfig = progressionRules.statGain;
 
     const progression = (entity.progression as any) || {};
     const oldLevel = progression.level || 1;
     const currentXp = Number(progression.xp || 0);
     const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
 
-    if (oldLevel >= MAX_ENTITY_LEVEL) {
+    if (oldLevel >= maxLevel) {
       return {
         entity: serializeEntity(entity),
         oldLevel,
@@ -142,11 +153,11 @@ export class EntityService {
 
     const compositRarity = typeof currentStats.compositRarity === 'number' ? currentStats.compositRarity : 1.0;
 
-    while (newLevel < MAX_ENTITY_LEVEL && newXp >= XP_PER_LEVEL(newLevel)) {
-      newXp -= XP_PER_LEVEL(newLevel);
+    while (newLevel < maxLevel && newXp >= xpForNextLevel(progressionRules, newLevel)) {
+      newXp -= xpForNextLevel(progressionRules, newLevel);
       const levelBeforeIncrement = newLevel;
       newLevel++;
-      const result = applyWeightedLevelUp(currentStats, compositRarity, levelBeforeIncrement);
+      const result = applyWeightedLevelUp(currentStats, compositRarity, levelBeforeIncrement, undefined, statGainConfig);
       currentStats = result.stats;
       levelHistory.push({ level: newLevel, gains: result.gains, at: new Date().toISOString() });
       gainsPerLevel.push({ level: newLevel, gains: result.gains });

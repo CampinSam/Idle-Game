@@ -2208,7 +2208,7 @@
       }
     },
     "EntityDefinition": {
-      "description": "Self-contained character/entity blueprint. As of Task #367, body slots, equipment slot capacities, per-archetype traits, NFT attribute remapping, and progression flags/caps are all stored inline on this record (formerly split across BodySchema, EquipmentSchema, ProgressionProfile, TraitDefinition, and NftCollectionDef.data.attributeMap).",
+      "description": "Self-contained character/entity blueprint. Task #367 collapsed BodySchema, EquipmentSchema, ProgressionProfile, TraitDefinition, and NftCollectionDef.data.attributeMap into this record. Task #371 re-introduced structured progression rules: the legacy boolean/int columns (leveling, ascension, mastery, prestigeEligible, maxLevel, ascensionCap, attributeMap) were replaced by four JSON sub-objects — `progression`, `ascension`, `mastery`, and `init` (which holds both `init.scratch` for fresh mints and `init.nft` for NFT-backed builds, including the renamed attributeMap).",
       "prismaModel": "EntityDefinition",
       "tableName": "entity_definitions",
       "primaryKey": "id",
@@ -2243,40 +2243,25 @@
           "default": {},
           "description": "Per-archetype trait map keyed by archetype name: { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }"
         },
-        "attributeMap": {
+        "progression": {
           "type": "json",
           "default": {},
-          "description": "Optional NFT raw-attribute → slot remap (e.g. { 'meta_body': 'body' }). Used by NFT-backed collections like Perps. Empty for non-NFT or 1:1 attribute species."
-        },
-        "leveling": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can level up?"
+          "description": "Progression rules. Shape: { enabled:boolean, maxLevel:int, xpCurve: { kind:'geometric', base:int, ratio:float } | { kind:'table', perLevel:int[] }, statGain: { guaranteed: { ATK,DEF,SPD,FOC,LCK,VIT:int }, bonusPool: { kind:'rarityScaled', base:int, exponent:float, rarityField?:string } | { kind:'flat', amount:int }, distribution: { uniformShare:float, weightedShare:float, weightsField?:string } } }. Required: maxLevel, xpCurve. Defaults reproduce the legacy 50/100*1.15^L curve and 14-pool 50-50 split when fields are present."
         },
         "ascension": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can ascend?"
+          "type": "json",
+          "default": { "enabled": false },
+          "description": "Ascension rules. Shape: { enabled:boolean, cap:int, costPerStep?:object, effects?:object[] }. Currently { enabled:false } for all entities — no in-game ascension flow ships yet."
         },
         "mastery": {
-          "type": "boolean",
-          "default": true,
-          "description": "Can gain mastery?"
+          "type": "json",
+          "default": { "enabled": false },
+          "description": "Mastery rules. Shape: { enabled:boolean, branches?:object[] }. Currently { enabled:false } for all entities — no in-game mastery flow ships yet."
         },
-        "prestigeEligible": {
-          "type": "boolean",
-          "default": true,
-          "description": "Eligible for prestige?"
-        },
-        "maxLevel": {
-          "type": "integer",
-          "default": 50,
-          "description": "Maximum level cap"
-        },
-        "ascensionCap": {
-          "type": "integer",
-          "default": 5,
-          "description": "Maximum ascension tier"
+        "init": {
+          "type": "json",
+          "default": {},
+          "description": "Initialization rules used when minting a new entity. Shape: { scratch: { startingLevel:int, baseStats: { ATK,DEF,SPD,FOC,LCK,VIT:int }, slotFill: { kind:'singleRandomArchetype' } | { kind:'fixed', fixed: { slot: archetype } } }, nft: { attributeMap: { rawNftKey: slotName }, missingSlotPolicy: 'skip'|'error'|'default', defaults: { slot: archetype } } }. The nft.attributeMap was previously stored as a top-level column (#367) and before that on NftCollectionDef.data."
         },
         "rules": {
           "$ref": "#/complexTypes/LevelRules",

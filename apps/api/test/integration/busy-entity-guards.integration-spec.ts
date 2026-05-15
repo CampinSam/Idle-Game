@@ -60,8 +60,14 @@ describe('Busy-entity stat-change guards [integration]', () => {
         slots: {},
         equipmentSlots: { weapon: 1, cosmetic: 1 },
         traits: {},
-        maxLevel: 50,
-        ascensionCap: 5,
+        progression: {
+          enabled: true,
+          maxLevel: 50,
+          xpCurve: { kind: 'geometric', base: 100, ratio: 1.15 },
+        },
+        ascension: { enabled: false, cap: 5 },
+        mastery: { enabled: false },
+        init: { scratch: { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } }, nft: {} },
       },
     });
 

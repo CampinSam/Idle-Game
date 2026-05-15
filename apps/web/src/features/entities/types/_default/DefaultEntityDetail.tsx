@@ -24,7 +24,6 @@ const TRAIT_SLOT_ORDER = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
 
-const MAX_LEVEL = 50;
 
 const EQUIP_SLOTS = [
   { icon: '⚔️', label: 'WEAPON', slot: 'weapon' },
@@ -367,7 +366,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               {/* Level / XP section */}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Current Level</span>
-                <span className="text-xs font-extrabold text-white">{entity.level} / {MAX_LEVEL}</span>
+                <span className="text-xs font-extrabold text-white">{entity.level} / {entity.maxLevel ?? '—'}</span>
               </div>
               <div className="flex flex-col items-stretch gap-[5px]">
                 <span className="text-[11px] text-[rgba(255,255,255,0.55)]">XP</span>

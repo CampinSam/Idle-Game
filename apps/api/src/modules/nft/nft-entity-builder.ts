@@ -41,16 +41,21 @@ export async function buildEntityDataFromNftMetadata(
     normalizedAttributes[k.toLowerCase()] = String(v);
   }
 
-  // Build effective attribute lookup by applying the collection's attributeMap.
+  // Build effective attribute lookup by applying the definition's NFT attributeMap.
   // The map translates raw NFT attribute key names (e.g. "meta_body") to slot
   // names in the body schema (e.g. "body"). Keys are matched case-insensitively.
   // Multiple raw keys may map to the same slot (e.g. "meta_leader" and
   // "meta_multiverse leader" both map to "leader").
   const effectiveAttributes: Record<string, string> = { ...normalizedAttributes };
-  // attributeMap now lives on EntityDefinition (was previously on
-  // NftCollectionDef.data.attributeMap). It maps raw NFT attribute keys
-  // (e.g. "meta_body") to the body-schema slot names ("body").
-  const rawAttributeMap = (entityDef.attributeMap as any) || {};
+  // attributeMap lives on EntityDefinition.init.nft.attributeMap as of
+  // task #371 (was a top-level column briefly after #367; before that on
+  // NftCollectionDef.data).
+  const initRules = (entityDef.init as any) || {};
+  const nftRules = (initRules.nft as any) || {};
+  const rawAttributeMap = (nftRules.attributeMap as any) || {};
+  const missingSlotPolicy: 'error' | 'skip' | 'default' =
+    (nftRules.missingSlotPolicy as any) || 'skip';
+  const slotDefaults: Record<string, string> = (nftRules.defaults as any) || {};
   if (rawAttributeMap && typeof rawAttributeMap === 'object') {
     for (const [rawKey, mappedSlot] of Object.entries(rawAttributeMap)) {
       if (typeof mappedSlot !== 'string') continue;
@@ -63,8 +68,20 @@ export async function buildEntityDataFromNftMetadata(
   }
 
   for (const slotName of Object.keys(slots)) {
-    const attrValue = effectiveAttributes[slotName.toLowerCase()];
-    if (!attrValue) continue;
+    let attrValue = effectiveAttributes[slotName.toLowerCase()];
+    if (!attrValue) {
+      if (missingSlotPolicy === 'error') {
+        throw new Error(
+          `NFT "${meta.name}" is missing required attribute for slot "${slotName}" ` +
+            `(definition "${entityDef.id}" missingSlotPolicy=error)`,
+        );
+      }
+      if (missingSlotPolicy === 'default' && slotDefaults[slotName]) {
+        attrValue = slotDefaults[slotName];
+      } else {
+        continue; // 'skip'
+      }
+    }
 
     const archetype = attrValue.toLowerCase();
     traits[slotName] = archetype;

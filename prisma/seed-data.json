@@ -1089,13 +1089,22 @@
           "rarity": null
         }
       },
-      "attributeMap": {},
-      "leveling": true,
-      "ascension": true,
-      "mastery": true,
-      "prestigeEligible": true,
-      "maxLevel": 50,
-      "ascensionCap": 5,
+      "progression": {
+        "enabled": true,
+        "maxLevel": 50,
+        "xpCurve": { "kind": "geometric", "base": 100, "ratio": 1.15 },
+        "statGain": {
+          "guaranteed": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+          "bonusPool": { "kind": "rarityScaled", "base": 14, "exponent": 0.16, "rarityField": "compositRarity" },
+          "distribution": { "uniformShare": 0.5, "weightedShare": 0.5, "weightsField": "scaling" }
+        }
+      },
+      "ascension": { "enabled": false, "cap": 5 },
+      "mastery": { "enabled": false },
+      "init": {
+        "scratch": { "startingLevel": 1, "baseStats": {}, "slotFill": { "kind": "singleRandomArchetype" } },
+        "nft": { "attributeMap": {}, "missingSlotPolicy": "skip", "defaults": {} }
+      },
       "rules": {},
       "data": {}
     }

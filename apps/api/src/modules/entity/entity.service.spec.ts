@@ -5,10 +5,26 @@ import { XP_PER_LEVEL, EffectCategory, EffectTargetType } from '@derp/shared';
 
 const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 
+const TEST_DEFINITION = {
+  id: 'derp_bird',
+  progression: {
+    enabled: true,
+    maxLevel: 50,
+    xpCurve: { kind: 'geometric', base: 100, ratio: 1.15 },
+    statGain: {
+      guaranteed: { ATK: 1, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 },
+      bonusPool: { kind: 'rarityScaled', base: 14, exponent: 0.16, rarityField: 'compositRarity' },
+      distribution: { uniformShare: 0.5, weightedShare: 0.5, weightsField: 'scaling' },
+    },
+  },
+};
+
 function makeEntity(overrides: Partial<any> = {}) {
   return {
     id: 'ent-1',
     ownerUserId: 'user-1',
+    definitionId: 'derp_bird',
+    definition: TEST_DEFINITION,
     speciesId: 'derp_bird',
     display: { name: 'Sparrow' },
     stats: { ATK: 5, DEF: 5, SPD: 5, FOC: 5, LCK: 5, VIT: 5, scaling: { ATK: 1, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 } },
