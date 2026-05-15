@@ -15,3 +15,4 @@ prisma/migrations/migration_lock.toml
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo
+.tsbuild/
