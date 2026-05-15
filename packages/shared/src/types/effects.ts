@@ -82,6 +82,12 @@ export interface EffectStatMap {
   FOC?: number;
   LCK?: number;
   VIT?: number;
+  /**
+   * Resolution directive: each unit of RND resolves to a randomly chosen
+   * visible stat (ATK/DEF/SPD/FOC/LCK/VIT) at the moment the effect is
+   * applied. RND is never stored on an entity or shown in any UI.
+   */
+  RND?: number;
 }
 
 export interface EffectDefData {

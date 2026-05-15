@@ -7,6 +7,7 @@ import {
   type ScalingContribution,
   type LevelUpResult,
 } from '@derp/math';
+import { resolveRnd } from './rnd-resolver.util';
 
 export {
   STAT_KEYS,
@@ -69,10 +70,14 @@ export async function generateEntityData(
 
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
-      for (const [stat, value] of Object.entries(slotStats)) {
-        if (typeof value === 'number') {
-          baseStats[stat] = (baseStats[stat] || 0) + value;
-        }
+      // Resolve RND immediately so it never lands in baseStats as 'RND'.
+      const resolved = resolveRnd(
+        Object.fromEntries(
+          Object.entries(slotStats).filter(([, v]) => typeof v === 'number'),
+        ) as Record<string, number>,
+      );
+      for (const [stat, value] of Object.entries(resolved)) {
+        baseStats[stat] = (baseStats[stat] || 0) + value;
       }
     }
 
@@ -80,6 +85,12 @@ export async function generateEntityData(
     const statScaling: Record<string, number> = {};
     for (const k of STAT_KEYS) {
       statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
+    }
+    // Preserve RND as a valid scaling weight — it stays in statScaling and is
+    // resolved at level-up time (each individual bonus point that draws RND
+    // picks a random visible stat).
+    if (typeof traitData.scaling?.['RND'] === 'number' && traitData.scaling['RND'] > 0) {
+      statScaling['RND'] = traitData.scaling['RND'];
     }
     scalingContributions.push({
       statScaling,

@@ -75,18 +75,24 @@ export function resolveEffects(
   return mod;
 }
 
+const VISIBLE_STAT_KEYS: (keyof EffectStatMap)[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
+
 function applyStatAdd(target: EffectStatMap, source: EffectStatMap, stacks: number) {
-  const keys: (keyof EffectStatMap)[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
-  for (const key of keys) {
+  for (const key of VISIBLE_STAT_KEYS) {
     if (source[key] !== undefined) {
       target[key] = (target[key] ?? 0) + source[key]! * stacks;
     }
   }
+  // Safety net: RND must be resolved before effects are stored or applied.
+  // If it still appears here something went wrong upstream — log and drop it
+  // rather than re-randomizing (which would produce non-deterministic reads).
+  if (source.RND !== undefined && source.RND !== 0) {
+    console.warn('[EffectResolver] Unresolved RND stat encountered in applyStatAdd — dropping value. Ensure resolveRnd() is called before effect application.');
+  }
 }
 
 function applyStatMultiply(target: EffectStatMap, source: EffectStatMap, stacks: number) {
-  const keys: (keyof EffectStatMap)[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
-  for (const key of keys) {
+  for (const key of VISIBLE_STAT_KEYS) {
     if (source[key] !== undefined) {
       const base = target[key] ?? 1;
       target[key] = base * Math.pow(source[key]!, stacks);

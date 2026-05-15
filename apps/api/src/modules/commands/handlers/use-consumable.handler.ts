@@ -12,6 +12,7 @@ import { EffectService } from '../../effect/effect.service';
 import { EntityService } from '../../entity/entity.service';
 import { CurrencyService } from '../../currency/currency.service';
 import { effectWouldChangeStats } from '../../entity/entity-stats.util';
+import { resolveRnd } from '../../entity/rnd-resolver.util';
 import {
   EffectDurationModel,
   EffectCategory,
@@ -217,7 +218,9 @@ export class UseConsumableHandler implements CommandHandler {
           if (!entity) break;
           const currentStats = (entity.stats as Record<string, number>) || {};
           const newStats = { ...currentStats };
-          for (const [key, val] of Object.entries(stats)) {
+          // Resolve RND before applying so it never persists as a stat key.
+          const resolvedStats = resolveRnd(stats);
+          for (const [key, val] of Object.entries(resolvedStats)) {
             newStats[key] = (newStats[key] ?? 0) + val;
           }
           await txDb(ctx.tx).entity.update({

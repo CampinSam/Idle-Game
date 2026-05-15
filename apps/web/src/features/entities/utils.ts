@@ -2,11 +2,11 @@
  * Stat helpers used by entity views. Only presentation-layer math lives here
  * (already mirrored from server formulas in the @derp/math package).
  */
-import { getPowerScore } from '@derp/math';
+import { getPowerScore, HIDDEN_STATS } from '@derp/math';
 
 export function normalizeStats(stats: any): Record<string, number> {
   const s = stats || {};
-  return {
+  const result: Record<string, number> = {
     ATK: s.ATK ?? s.atk ?? 0,
     DEF: s.DEF ?? s.def ?? 0,
     SPD: s.SPD ?? s.spd ?? 0,
@@ -14,6 +14,11 @@ export function normalizeStats(stats: any): Record<string, number> {
     LCK: s.LCK ?? s.lck ?? 0,
     VIT: s.VIT ?? s.vit ?? 0,
   };
+  // Defensively strip any hidden stat keys that should never reach the UI.
+  for (const hidden of HIDDEN_STATS) {
+    delete result[hidden];
+  }
+  return result;
 }
 
 export function getEntityPower(entity: any): number {

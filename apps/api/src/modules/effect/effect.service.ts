@@ -11,6 +11,7 @@ import {
   ResolvedModifier,
 } from '@derp/shared';
 import { resolveEffects, ActiveEffectRow } from './effect-resolver';
+import { resolveRnd } from '../entity/rnd-resolver.util';
 
 type PrismaTx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
 type DbClient = PrismaService | PrismaTx;
@@ -193,6 +194,10 @@ export class EffectService {
       expiresAtTick = currentTick + def.durationTicks;
     }
 
+    // Resolve RND in the effect's stat map before persisting so randomness is
+    // locked in at creation time rather than re-rolled on every resolution tick.
+    const resolvedStats = def.stats ? resolveRnd(def.stats as Record<string, number>) : undefined;
+
     const created: ActiveEffectRecord = await this.activeEffectModel(db).create({
       data: {
         effectDefId: def.id,
@@ -204,7 +209,7 @@ export class EffectService {
         category: def.category,
         valueMode: def.valueMode,
         value: def.value ?? 0,
-        stats: def.stats ?? undefined,
+        stats: resolvedStats ?? undefined,
         trait: def.trait ?? null,
         currentStacks: 1,
         remainingUses: def.maxUses ?? null,

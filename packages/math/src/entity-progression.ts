@@ -1,6 +1,10 @@
 export const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
 export type StatKey = typeof STAT_KEYS[number];
 
+// Re-exported from @derp/shared so the math package is the single consumer-facing
+// import for both stat-key lists, but the authoritative definition lives in shared.
+export { VISIBLE_STATS, HIDDEN_STATS } from '@derp/shared';
+
 export const POWER_SCORE_WEIGHTS: Record<StatKey, number> = {
   ATK: 0.40,
   DEF: 0.30,
@@ -32,6 +36,18 @@ export function computeScaling(contributions: ScalingContribution[]): Record<str
     scaling[k] = Math.pow(product, 1 / n);
   }
 
+  // Compute geometric mean for RND if any contribution authored a positive RND weight.
+  // RND is preserved in the output scaling map so it can be used as a level-up
+  // weight at level-up time — it is never resolved here.
+  const hasRnd = contributions.some((c) => typeof c.statScaling['RND'] === 'number' && c.statScaling['RND'] > 0);
+  if (hasRnd) {
+    const rndProduct = contributions.reduce((acc, c) => {
+      const v = c.statScaling['RND'];
+      return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
+    }, 1.0);
+    scaling['RND'] = Math.pow(rndProduct, 1 / n);
+  }
+
   const rarityProduct = contributions.reduce((acc, c) => {
     const v = c.rarityMultiplier;
     return acc * (typeof v === 'number' && v > 0 ? v : 1.0);
@@ -40,6 +56,11 @@ export function computeScaling(contributions: ScalingContribution[]): Record<str
 
   for (const k of STAT_KEYS) {
     scaling[k] *= rarityGeoMean;
+  }
+  // Apply rarity multiplier to RND weight as well so chaos entities benefit from
+  // the same rarity scaling bonus as all other weighted stats.
+  if (hasRnd) {
+    scaling['RND'] *= rarityGeoMean;
   }
 
   return scaling;
@@ -94,7 +115,10 @@ export function applyWeightedLevelUp(
   currentStats: Record<string, any>,
   compositRarity = 1.0,
   currentLevel = 1,
+  randomStatPicker?: (visibleStats: readonly StatKey[]) => StatKey,
 ): LevelUpResult {
+  const pickRandom = randomStatPicker ?? ((stats) => stats[Math.floor(Math.random() * stats.length)]);
+
   const boosted = { ...currentStats };
   const scaling: Record<string, number> = (boosted.scaling as any) || {};
 
@@ -111,24 +135,36 @@ export function applyWeightedLevelUp(
   const weightedCount = bonusPool - unweightedCount;
 
   for (let i = 0; i < unweightedCount; i++) {
-    const idx = Math.floor(Math.random() * STAT_KEYS.length);
-    const k = STAT_KEYS[idx];
+    const k = pickRandom(STAT_KEYS);
     boosted[k] = (boosted[k] || 0) + 1;
     gains[k] += 1;
   }
 
-  const totalWeight = STAT_KEYS.reduce((sum, k) => sum + (scaling[k] || 1), 0);
+  // Build the weight map including RND if present in scaling.
+  // When the weighted draw lands on RND, a random visible stat receives the point.
+  const weightEntries: Array<{ key: string; weight: number }> = [];
+  for (const k of STAT_KEYS) {
+    weightEntries.push({ key: k, weight: scaling[k] || 1 });
+  }
+  const rndWeight = typeof scaling['RND'] === 'number' && scaling['RND'] > 0 ? scaling['RND'] : 0;
+  if (rndWeight > 0) {
+    weightEntries.push({ key: 'RND', weight: rndWeight });
+  }
+  const totalWeight = weightEntries.reduce((sum, e) => sum + e.weight, 0);
 
   for (let i = 0; i < weightedCount; i++) {
     let roll = Math.random() * totalWeight;
-    for (const k of STAT_KEYS) {
-      roll -= (scaling[k] || 1);
+    let chosen = weightEntries[weightEntries.length - 1].key;
+    for (const entry of weightEntries) {
+      roll -= entry.weight;
       if (roll <= 0) {
-        boosted[k] = (boosted[k] || 0) + 1;
-        gains[k] += 1;
+        chosen = entry.key;
         break;
       }
     }
+    const target: StatKey = chosen === 'RND' ? pickRandom(STAT_KEYS) : (chosen as StatKey);
+    boosted[target] = (boosted[target] || 0) + 1;
+    gains[target] += 1;
   }
 
   boosted.scaling = scaling;

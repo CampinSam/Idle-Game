@@ -83,6 +83,20 @@ Defines stat bonuses and scaling multipliers for a named trait archetype. Each a
 | data.scaling | json | Per-stat scaling multipliers applied to the global scaling formula |
 | data.rarityMultiplier | number | Bonus multiplier applied to the compositRarity score |
 
+### RND — hidden randomness stat
+
+`RND` is a valid stat key in trait and effect definitions but is **never stored as a base entity stat**.
+
+| Context | Behaviour |
+|---------|-----------|
+| `slotStats` (trait definition) | RND is resolved immediately during entity generation: the entire bonus is added to a single randomly chosen visible stat (ATK/DEF/SPD/FOC/LCK/VIT). |
+| `data.scaling.RND` (trait definition) | Preserved as a scaling weight. At each level-up, any bonus points whose weighted draw lands on RND are redirected individually to a randomly chosen visible stat. |
+| `stats.RND` (effect definition) | Resolved at the moment the effect is applied (instant) or stored (persistent). The full RND value lands on one randomly chosen visible stat and is locked in for the lifetime of the effect. |
+
+Multiple separate `RND` entries (e.g. two effect specs each with `RND: 3`) each pick independently and may land on the same stat. A single `RND: N` entry always picks one stat and adds the full N to it.
+
+RND is excluded from: PowerScore, Mission Power, role determination, and all stat display UI.
+
 ### Perp trait definitions
 
 | ID | Archetype | Slot | Stats | Rarity |

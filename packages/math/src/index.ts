@@ -1,6 +1,8 @@
 export { calculateMP, calculateTeamMP, calculateInjuryChance, calculateInjuryRecoveryTicks, type EntityForMP } from './mission-power';
 export {
   STAT_KEYS,
+  VISIBLE_STATS,
+  HIDDEN_STATS,
   POWER_SCORE_WEIGHTS,
   computeScaling,
   computeCompositRarity,
