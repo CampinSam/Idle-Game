@@ -15,41 +15,63 @@ function loadJson(filename: string) {
   }
 }
 
+// Any per-row upsert that takes longer than this gets a warning. Catches the
+// "boot silently hangs on a single seed call" failure mode that swallowed the
+// EntityDefinition regression after the Task #367 schema collapse.
+const SLOW_UPSERT_WARN_MS = 30_000;
+
+async function upsertOneInstrumented(
+  prisma: any,
+  model: string,
+  data: any,
+  force: boolean,
+) {
+  const { id, ...rest } = data;
+  const start = Date.now();
+  const warnTimer = setTimeout(() => {
+    logger.warn(
+      `Upsert for ${model} id=${id} is taking longer than ${SLOW_UPSERT_WARN_MS}ms — boot is likely stuck on this row`,
+    );
+  }, SLOW_UPSERT_WARN_MS);
+  try {
+    await prisma[model].upsert({
+      where: { id },
+      update: force ? rest : {},
+      create: data,
+    });
+  } catch (err: any) {
+    logger.error(
+      `Failed to upsert ${model} id=${id} after ${Date.now() - start}ms: ${err?.message ?? err}`,
+    );
+    throw err;
+  } finally {
+    clearTimeout(warnTimer);
+  }
+}
+
 async function upsertMany(prisma: any, model: string, rows: any[], transform?: (r: any) => any) {
-  let seeded = 0;
   const countBefore = await prisma[model].count();
   for (const row of rows) {
     const data = transform ? transform(row) : row;
     normalizeOutcomeFieldsForModel(model, data);
-    const { id, ...rest } = data;
-    await prisma[model].upsert({
-      where: { id },
-      update: {},
-      create: data,
-    });
+    await upsertOneInstrumented(prisma, model, data, false);
   }
   const countAfter = await prisma[model].count();
-  seeded = countAfter - countBefore;
+  const seeded = countAfter - countBefore;
   if (seeded > 0) {
     logger.log(`Seeded ${seeded} ${model} records`);
   }
 }
 
 async function upsertManyForce(prisma: any, model: string, rows: any[], transform?: (r: any) => any) {
-  let seeded = 0;
   const countBefore = await prisma[model].count();
   for (const row of rows) {
     const data = transform ? transform(row) : row;
     normalizeOutcomeFieldsForModel(model, data);
-    const { id, ...rest } = data;
-    await prisma[model].upsert({
-      where: { id },
-      update: rest,
-      create: data,
-    });
+    await upsertOneInstrumented(prisma, model, data, true);
   }
   const countAfter = await prisma[model].count();
-  seeded = countAfter - countBefore;
+  const seeded = countAfter - countBefore;
   if (seeded > 0) {
     logger.log(`Seeded ${seeded} ${model} records`);
   }

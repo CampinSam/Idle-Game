@@ -41,7 +41,13 @@ async function bootstrap() {
     }
   }
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // bufferLogs swallows every log line until `app.useLogger()` is called.
+  // In production we still want the structured pino logger for the boot
+  // sequence, but in development a hung bootstrap (e.g. a stuck seed) leaves
+  // the process alive with no output at all and the Vite proxy returns
+  // ECONNREFUSED forever. Disabling the buffer in dev means seed/upsert
+  // failures surface immediately in the workflow log.
+  const app = await NestFactory.create(AppModule, { bufferLogs: isProduction });
 
   // Trust the first proxy hop so `req.ip` reflects the real client IP
   // (forwarded via `x-forwarded-for` by Replit's edge / Cloudflare-style
@@ -129,4 +135,12 @@ async function bootstrap() {
   new NestLogger('Bootstrap').log(`Derp Universe API running on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  // Last-ditch surface for any error thrown before `app.listen` resolves —
+  // including OnModuleInit failures from the bootstrap seed pipeline. Without
+  // this, a thrown promise inside Nest's init phase logs nothing at all when
+  // bufferLogs is on, and the process either exits silently or hangs.
+  // eslint-disable-next-line no-console
+  console.error('[bootstrap] fatal error during startup:', err);
+  process.exit(1);
+});
