@@ -2,7 +2,9 @@
 
 Human-readable documentation for definition tables managed via the admin panel at `/admin/def`.
 
-> **Task #367 update:** the former `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, and `TraitDefinition` tables (and the `attributeMap` blob on `NftCollectionDef.data`) have been collapsed into a single self-contained `EntityDefinition` row. Body slots, equipment slot capacities, per-archetype trait metadata, NFT raw-attribute remapping, and progression flags/caps now all live inline on `EntityDefinition`.
+> **Task #367 update:** the former `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, and `TraitDefinition` tables (and the `attributeMap` blob on `NftCollectionDef.data`) were collapsed into a single self-contained `EntityDefinition` row.
+>
+> **Task #371 update:** the legacy boolean/int progression columns (`leveling`, `ascension`, `mastery`, `prestigeEligible`, `maxLevel`, `ascensionCap`) and the top-level `attributeMap` column have been replaced with four structured JSON sub-objects: `progression`, `ascension`, `mastery`, and `init`. The old `attributeMap` now lives at `init.nft.attributeMap`.
 
 ---
 
@@ -18,13 +20,10 @@ Self-contained blueprint for a species/type of game entity. One row per species 
 | slots | json | Body slot layout: `{ slotName: [allowedArchetype, ...] }` |
 | equipmentSlots | json | Equipment slot capacities: `{ slotName: maxCount }` |
 | traits | json | Per-archetype trait metadata, keyed by archetype name (see below) |
-| attributeMap | json | Optional NFT raw-attribute → slot remap (e.g. `{ "meta_body": "body" }`). Empty for non-NFT or 1:1 attribute species. |
-| leveling | boolean | Can entities of this type level up? (default true) |
-| ascension | boolean | Can entities of this type ascend? (default true) |
-| mastery | boolean | Can entities of this type gain mastery? (default true) |
-| prestigeEligible | boolean | Eligible for prestige? (default true) |
-| maxLevel | number | Maximum level cap (default 50) |
-| ascensionCap | number | Maximum ascension tier (default 5) |
+| progression | json | Progression rules: `{ enabled, maxLevel, xpCurve, statGain? }` (see [`progression` format](#progression-format)) |
+| ascension | json | Ascension rules: `{ enabled, cap?, ... }` (see [`ascension` format](#ascension-format)). Currently `{ "enabled": false }` for all entities. |
+| mastery | json | Mastery rules: `{ enabled, branches? }` (see [`mastery` format](#mastery-format)). Currently `{ "enabled": false }` for all entities. |
+| init | json | Init rules used when minting an entity: `{ scratch, nft }` (see [`init` format](#init-format)). The renamed `attributeMap` lives at `init.nft.attributeMap`. |
 | rules | json | Entity-type-specific rule overrides |
 | data | json | Extra configuration |
 
@@ -97,11 +96,69 @@ Keyed by archetype name; each entry carries per-slot stat bonuses, classificatio
 
 Entity stats are computed by summing the per-slot bonuses from each archetype assigned to each slot.
 
-### `attributeMap` format
+### `progression` format
 
-Used only when an NFT collection's raw on-chain attribute keys differ from the body-slot names. Keys are matched case-insensitively. Multiple raw keys may point to the same slot. Leave empty (`{}`) when raw attributes already match slot names.
+```json
+{
+  "enabled": true,
+  "maxLevel": 50,
+  "xpCurve": { "kind": "geometric", "base": 100, "ratio": 1.15 },
+  "statGain": {
+    "guaranteed": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+    "bonusPool": { "kind": "rarityScaled", "base": 14, "exponent": 0.16, "rarityField": "compositRarity" },
+    "distribution": { "uniformShare": 0.5, "weightedShare": 0.5, "weightsField": "scaling" }
+  }
+}
+```
 
-**Example (Cardano Perps, embedded on the `perp` EntityDefinition):**
+`xpCurve` is one of `{ "kind": "geometric", "base": int, "ratio": float }` (XP for level L → L+1 = `floor(base × ratio^(L-1))`) or `{ "kind": "table", "perLevel": int[] }` (`perLevel[L-1]` is the XP needed to leave level L). `bonusPool` is either `{ "kind": "rarityScaled", base, exponent, rarityField? }` or `{ "kind": "flat", "amount": int }`. Omitting `statGain` reproduces the legacy 14-pool / 50-50 split exactly.
+
+### `ascension` format
+
+```json
+{ "enabled": false, "cap": 5 }
+```
+
+Reserved for future gameplay (`enabled: true` will eventually unlock `costPerStep` and effect grants). All seeded entities ship with `{ "enabled": false }`.
+
+### `mastery` format
+
+```json
+{ "enabled": false }
+```
+
+Reserved for future gameplay (`branches: object[]` will declare per-branch unlocks). All seeded entities ship with `{ "enabled": false }`.
+
+### `init` format
+
+```json
+{
+  "scratch": {
+    "startingLevel": 1,
+    "baseStats": { "ATK": 10, "DEF": 10, "SPD": 10, "FOC": 10, "LCK": 10, "VIT": 10 },
+    "slotFill": { "kind": "singleRandomArchetype" }
+  },
+  "nft": {
+    "attributeMap": { "meta_body": "body" },
+    "missingSlotPolicy": "skip",
+    "defaults": {}
+  }
+}
+```
+
+`init.scratch` controls non-NFT mints. `slotFill.kind` is one of:
+- `singleRandomArchetype` (default) — one random archetype per slot.
+- `multiRandomArchetype` with `count: int` — combines stat / scaling contributions from N distinct random archetypes per slot (the slot itself still stores one visible archetype).
+- `fixed` with `fixed: { slot: archetype }` — pins specific archetypes per slot.
+
+`startingLevel > 1` is supported: the generator runs the canonical weighted level-up loop using `progression.statGain` so stats and `levelHistory` match an entity that earned its way to that level.
+
+`init.nft` controls NFT-backed claims. `attributeMap` translates raw on-chain attribute keys (case-insensitively; multiple raw keys may point to the same slot) to body-slot names. `missingSlotPolicy` is one of:
+- `skip` — drop the slot from the build (preserves the legacy NFT-builder behavior; this is the default for collections that were already on this code path).
+- `default` — use the slot's entry in `defaults`.
+- `error` — throw if any allowed slot is missing.
+
+**Example (Cardano Perps, embedded on the `perp` EntityDefinition under `init.nft.attributeMap`):**
 
 ```json
 {

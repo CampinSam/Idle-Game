@@ -201,7 +201,7 @@ Used in the `passiveEffects` JSON array field on items. Passive effects are reso
 
 ## EntityDefinition
 
-Self-contained blueprint for a species/type of game entity (character). As of Task #367, body slots, equipment slot capacities, per-archetype traits, NFT attribute remapping, and progression flags/caps all live inline on this row — the former `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, and `TraitDefinition` tables (and the `attributeMap` blob on `NftCollectionDef.data`) have been collapsed into this single record.
+Self-contained blueprint for a species/type of game entity (character). Task #367 collapsed `BodySchema`, `EquipmentSchema`, `ProgressionProfile`, and `TraitDefinition` (and the `attributeMap` blob on `NftCollectionDef.data`) into this single record. Task #371 then replaced the legacy boolean/int progression columns (`leveling`, `ascension`, `mastery`, `prestigeEligible`, `maxLevel`, `ascensionCap`, `attributeMap`) with four structured JSON sub-objects: `progression`, `ascension`, `mastery`, and `init`. The `attributeMap` previously at the top level now lives under `init.nft.attributeMap`.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -211,15 +211,66 @@ Self-contained blueprint for a species/type of game entity (character). As of Ta
 | `slots` | JSON | No | `{}` | Body slot layout: `{ slotName: [allowedArchetype, ...] }` |
 | `equipmentSlots` | JSON | No | `{}` | Equipment slot capacities: `{ slotName: maxCount }` |
 | `traits` | JSON | No | `{}` | Per-archetype trait map keyed by archetype name (see below) |
-| `attributeMap` | JSON | No | `{}` | Optional NFT raw-attribute → slot remap (e.g. `{ "meta_body": "body" }`). Used by NFT-backed collections like Perps. Empty for non-NFT or 1:1 attribute species. |
-| `leveling` | boolean | No | true | Whether entities can level up |
-| `ascension` | boolean | No | true | Whether entities can ascend |
-| `mastery` | boolean | No | true | Whether entities can gain mastery |
-| `prestigeEligible` | boolean | No | true | Whether entities are eligible for prestige |
-| `maxLevel` | number | No | 50 | Maximum level cap |
-| `ascensionCap` | number | No | 5 | Maximum ascension tier |
+| `progression` | JSON | No | `{}` | Progression rules (see [`progression` format](#progression-format)). Required keys: `maxLevel`, `xpCurve`. |
+| `ascension` | JSON | No | `{ "enabled": false }` | Ascension rules (see [`ascension` format](#ascension-format)). Currently `{ "enabled": false }` for all entities. |
+| `mastery` | JSON | No | `{ "enabled": false }` | Mastery rules (see [`mastery` format](#mastery-format)). Currently `{ "enabled": false }` for all entities. |
+| `init` | JSON | No | `{}` | Initialization rules used when minting an entity (see [`init` format](#init-format)). Holds both `init.scratch` (fresh mints) and `init.nft` (NFT-backed builds, including the renamed `attributeMap`). |
 | `rules` | JSON | No | `{}` | Level-based rules (see [Unified Level-Based Rules System](#unified-level-based-rules-system)) |
 | `data` | JSON | No | `{}` | Freeform extra data |
+
+#### `progression` format
+
+```json
+{
+  "enabled": true,
+  "maxLevel": 50,
+  "xpCurve": { "kind": "geometric", "base": 100, "ratio": 1.15 },
+  "statGain": {
+    "guaranteed": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+    "bonusPool": { "kind": "rarityScaled", "base": 14, "exponent": 0.16, "rarityField": "compositRarity" },
+    "distribution": { "uniformShare": 0.5, "weightedShare": 0.5, "weightsField": "scaling" }
+  }
+}
+```
+
+`xpCurve` is one of `{ "kind": "geometric", "base": int, "ratio": float }` (XP for level L → L+1 = `floor(base × ratio^(L-1))`) or `{ "kind": "table", "perLevel": int[] }` (`perLevel[L-1]` is the XP needed to leave level L). `bonusPool` is either `{ "kind": "rarityScaled", base, exponent, rarityField? }` or `{ "kind": "flat", "amount": int }`. The defaults reproduce the legacy 14-pool / 50-50 split exactly when `statGain` is omitted.
+
+#### `ascension` format
+
+```json
+{ "enabled": false, "cap": 5 }
+```
+
+Reserved for future gameplay. Setting `enabled: true` will eventually unlock per-step ascension costs (`costPerStep`) and effect grants (`effects`). All seeded entities ship with `{ "enabled": false }`.
+
+#### `mastery` format
+
+```json
+{ "enabled": false }
+```
+
+Reserved for future gameplay (`branches: object[]` will declare per-branch unlocks). All seeded entities ship with `{ "enabled": false }`.
+
+#### `init` format
+
+```json
+{
+  "scratch": {
+    "startingLevel": 1,
+    "baseStats": { "ATK": 10, "DEF": 10, "SPD": 10, "FOC": 10, "LCK": 10, "VIT": 10 },
+    "slotFill": { "kind": "singleRandomArchetype" }
+  },
+  "nft": {
+    "attributeMap": { "meta_body": "body" },
+    "missingSlotPolicy": "skip",
+    "defaults": {}
+  }
+}
+```
+
+`init.scratch` controls non-NFT mints: `slotFill.kind` is `singleRandomArchetype` (default), `multiRandomArchetype` (with `count: int` to combine N archetype contributions per slot), or `fixed` (with `fixed: { slot: archetype }`). `startingLevel > 1` is supported — the generator runs the canonical weighted level-up loop using `progression.statGain` so stats and `levelHistory` match an entity that earned its way to that level.
+
+`init.nft` controls NFT-backed claims: `attributeMap` translates raw on-chain attribute keys (case-insensitive) to body-slot names, `missingSlotPolicy` is one of `skip` (drop the slot — preserves the legacy NFT-builder behavior), `default` (use the slot's entry in `defaults`), or `error` (throw on the missing slot).
 
 **`slots` format** — keys are slot names, values are arrays of allowed archetype strings. Example for the 7-slot avian layout used by Derp Birds:
 
@@ -266,7 +317,7 @@ The Perps definition uses a 4-slot layout: `body`, `special`, `faction`, `leader
 
 Entity stats are computed by summing the per-slot bonuses from each archetype assigned to each slot. Trait metadata is now sourced from this embedded map — there is no longer a standalone trait table to look up.
 
-**`attributeMap` format** — used only when an NFT collection's raw on-chain attribute keys differ from the body-slot names. For example the Perps Cardano collection ships with these keys:
+**`init.nft.attributeMap` format** — used only when an NFT collection's raw on-chain attribute keys differ from the body-slot names. For example the Perps Cardano collection ships with these keys (now nested under `init.nft.attributeMap` after Task #371):
 
 ```json
 {

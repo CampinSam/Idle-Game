@@ -48,18 +48,8 @@ export async function generateEntityData(
   const scratchRules = (initRules.scratch as any) || {};
   const slotFill = (scratchRules.slotFill as any) || { kind: 'singleRandomArchetype' };
   const startingLevel: number = typeof scratchRules.startingLevel === 'number' ? scratchRules.startingLevel : 1;
-  if (startingLevel !== 1) {
-    // Synthesizing N-1 weighted level-ups from scratch is not yet wired through
-    // generateEntityData; if/when a definition needs startingLevel > 1, the
-    // caller should follow up with levelUpEntityToLevel(stats, startingLevel,
-    // progression.statGain) and persist the resulting history. Failing loudly
-    // beats silently shipping a level-vs-stats mismatch.
-    throw new Error(
-      `EntityDefinition "${definitionId}" sets init.scratch.startingLevel=${startingLevel}; ` +
-        `only startingLevel=1 is currently supported by generateEntityData.`,
-    );
-  }
   const initBaseStats: Record<string, number> = (scratchRules.baseStats as any) || {};
+  const progressionStatGain = (entityDef.progression as any)?.statGain;
 
   const resolvedName =
     displayName || entityDef.name || (entityDef.data as any)?.name || entityDef.id;
@@ -75,17 +65,41 @@ export async function generateEntityData(
   for (const [slotName, allowedArchetypes] of Object.entries(slots)) {
     if (!Array.isArray(allowedArchetypes) || allowedArchetypes.length === 0) continue;
 
-    let chosen: string;
+    // Resolve the list of archetypes that contribute to this slot. The visible
+    // trait stored on `traits[slotName]` is always the first entry (slots only
+    // hold a single archetype today), but `multiRandomArchetype` lets a slot
+    // contribute trait stats / scaling from N distinct archetypes — used for
+    // hybrid species without changing the slot shape.
+    let chosenList: string[];
     if (slotFill.kind === 'fixed' && slotFill.fixed && typeof slotFill.fixed[slotName] === 'string') {
-      chosen = slotFill.fixed[slotName];
+      chosenList = [slotFill.fixed[slotName]];
+    } else if (slotFill.kind === 'multiRandomArchetype') {
+      const requested = typeof slotFill.count === 'number' && slotFill.count > 0 ? slotFill.count : 1;
+      const count = Math.min(requested, allowedArchetypes.length);
+      const pool = [...allowedArchetypes];
+      chosenList = [];
+      for (let i = 0; i < count; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        chosenList.push(pool[idx]);
+        pool.splice(idx, 1);
+      }
     } else {
-      // singleRandomArchetype (default) — multiRandomArchetype is reserved for future use.
-      chosen = allowedArchetypes[Math.floor(Math.random() * allowedArchetypes.length)];
+      // singleRandomArchetype (default).
+      chosenList = [allowedArchetypes[Math.floor(Math.random() * allowedArchetypes.length)]];
     }
-    traits[slotName] = chosen;
+    traits[slotName] = chosenList[0];
 
-    const traitDef = traitByArchetype[chosen];
-    if (!traitDef) continue;
+    for (const chosen of chosenList) {
+      const traitDef = traitByArchetype[chosen];
+      if (!traitDef) continue;
+      applyTraitContribution(slotName, traitDef);
+    }
+    continue; // contributions already applied above
+  }
+
+  function applyTraitContribution(slotName: string, traitDef: any) {
+    void slotName;
+    void traitDef;
 
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
@@ -122,14 +136,26 @@ export async function generateEntityData(
   const scaling = computeScaling(scalingContributions);
   const compositRarity = computeCompositRarity(scalingContributions);
 
+  // For startingLevel > 1, run the canonical weighted level-up loop so that
+  // stats and levelHistory are consistent with an entity that earned its way
+  // to that level. Uses the definition's progression.statGain so the synthesis
+  // matches the live XP path exactly.
+  let initialStats: Record<string, any> = { ...baseStats, scaling, compositRarity };
+  let initialHistory: Array<{ level: number; gains: Record<string, number> }> = [];
+  if (startingLevel > 1) {
+    const leveled = levelUpEntityToLevel(initialStats, startingLevel, progressionStatGain);
+    initialStats = leveled.stats;
+    initialHistory = leveled.levelHistory;
+  }
+
   return {
     ownerUserId: userId,
     definitionId,
     speciesId: entityDef.speciesId,
     display: { name: resolvedName },
-    stats: { ...baseStats, scaling, compositRarity },
+    stats: initialStats,
     traits,
-    progression: { level: startingLevel, xp: 0, ascension: 0, levelHistory: [] },
+    progression: { level: startingLevel, xp: 0, ascension: 0, levelHistory: initialHistory },
     state: { status: 'idle' },
   };
 }
