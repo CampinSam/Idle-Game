@@ -147,6 +147,11 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
   async getOwnedAssets(address: string, policyId: string): Promise<OwnedAsset[]> {
     if (!this.apiKey) return [];
 
+    if (address.startsWith('stake1') || address.startsWith('stake_test1')) {
+      const assets = await this.getAssetsByStakeAddress(address, policyId);
+      return assets ?? [];
+    }
+
     const stakeAddress = this.extractStakeAddress(address);
     if (stakeAddress) {
       try {
