@@ -24,22 +24,45 @@ export class BootstrapService implements OnModuleInit {
     private entityService: EntityService,
   ) {}
 
+  /**
+   * Wrap a single boot step so any throw is attributed to a named stage
+   * before being rethrown. Without this, a failure deep inside (say)
+   * `seedDefinitions` surfaces as a bare Prisma error with no context about
+   * which OnModuleInit phase was running — the exact failure mode that made
+   * Task #368's silent bootstrap hang so hard to diagnose. We rethrow so
+   * Nest still aborts startup; main.ts's top-level catch then surfaces it.
+   */
+  private async runStep<T>(name: string, fn: () => Promise<T>): Promise<T> {
+    const start = Date.now();
+    try {
+      const result = await fn();
+      this.logger.log(`Boot step ${name} completed in ${Date.now() - start}ms`);
+      return result;
+    } catch (err: any) {
+      this.logger.error(
+        `Boot step ${name} failed after ${Date.now() - start}ms: ${err?.message ?? err}`,
+        err?.stack,
+      );
+      throw err;
+    }
+  }
+
   async onModuleInit() {
-    await this.seedTickRateIntervals();
-    await this.seedNftCollections();
-    await this.seedEffectDefinitions();
-    await this.seedConsumableItems();
-    await seedDefinitions(this.prisma);
-    await seedSounds(this.prisma);
+    await this.runStep('seedTickRateIntervals', () => this.seedTickRateIntervals());
+    await this.runStep('seedNftCollections', () => this.seedNftCollections());
+    await this.runStep('seedEffectDefinitions', () => this.seedEffectDefinitions());
+    await this.runStep('seedConsumableItems', () => this.seedConsumableItems());
+    await this.runStep('seedDefinitions', () => seedDefinitions(this.prisma));
+    await this.runStep('seedSounds', () => seedSounds(this.prisma));
     // Retention loop content (daily/weekly quests + achievements). Kept
     // separate from `seedDefinitions` so the giant definitions.json file
     // doesn't have to know about cadence-aware quest defs or the new
     // AchievementDef table.
-    await seedRetention(this.prisma);
+    await this.runStep('seedRetention', () => seedRetention(this.prisma));
     // Visual tag + reusable effect catalog. Cheap; seeded last so any
     // earlier failure (which is far more likely to be schema-related)
     // surfaces before we get into UI catalog territory.
-    await seedTags(this.prisma);
+    await this.runStep('seedTags', () => seedTags(this.prisma));
     // Idempotent: rewrite any historical `consumableData` rows that still
     // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
     // targetType enum values, or a redundant top-level `targetType`. After
