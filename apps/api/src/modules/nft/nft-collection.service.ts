@@ -433,13 +433,53 @@ export class NftCollectionService {
             const nftAssetId = `${collection.chain}:${collection.collectionId}:${asset.assetId}`;
             ownedAssetIdsThisCollection.add(nftAssetId);
 
-            const existingEntity = await (this.prisma as any).entity.findFirst({
+            let existingEntity = await (this.prisma as any).entity.findFirst({
               where: { nftAssetId },
             });
 
             if (!existingEntity) {
-              notImported++;
-              continue;
+              if (collection.chain !== 'CARDANO') {
+                notImported++;
+                continue;
+              }
+              try {
+                const meta = await this.cardanoProvider.getAssetMetadata(collection.collectionId, asset.assetId);
+                if (!meta) {
+                  this.logger.warn(`No metadata returned for Cardano NFT ${nftAssetId}, skipping lazy import`);
+                  notImported++;
+                  continue;
+                }
+                const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
+                try {
+                  existingEntity = await (this.prisma as any).entity.create({
+                    data: {
+                      ...entityData,
+                      nftAssetId,
+                      nftCollectionDefId: collection.id,
+                    },
+                  });
+                  this.nftImageImport.invalidateKnownCidCache();
+                  this.nftImageImport.prewarmThumbnail(meta.imageUrl);
+                } catch (createErr: any) {
+                  // Another concurrent sync won the race and created the row first.
+                  // Re-fetch so we can still claim/transfer it below.
+                  if (createErr?.code === 'P2002') {
+                    this.logger.warn(`Concurrent lazy-create race for ${nftAssetId}, re-fetching existing row`);
+                    existingEntity = await (this.prisma as any).entity.findFirst({ where: { nftAssetId } });
+                    if (!existingEntity) {
+                      this.logger.error(`Re-fetch after P2002 returned null for ${nftAssetId}`);
+                      notImported++;
+                      continue;
+                    }
+                  } else {
+                    throw createErr;
+                  }
+                }
+              } catch (err) {
+                this.logger.error(`Failed to lazy-create entity for Cardano NFT ${nftAssetId}: ${err}`);
+                notImported++;
+                continue;
+              }
             }
 
             if (existingEntity.ownerUserId === userId) {
