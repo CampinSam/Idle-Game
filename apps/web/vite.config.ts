@@ -3,6 +3,133 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// Mirrors src/services/api.ts: API_BASE = VITE_API_URL?.replace(/\/$/, '') ?? '/api'
+const rawApiUrl = (process.env.VITE_API_URL ?? '').replace(/\/$/, '');
+
+// Only absolute URLs (http/https) indicate a cross-origin backend.
+// new URL() throws on relative paths, so guard before calling it.
+const isCrossOrigin =
+  rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://');
+
+function reEscape(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Build runtimeCaching using RegExp urlPatterns constructed at config time.
+// Workbox serialises function urlPatterns via .toString() — any closure variable
+// captured from this module scope is lost in the generated SW.  RegExps are
+// embedded verbatim and always resolve correctly.
+function buildRuntimeCaching() {
+  if (isCrossOrigin) {
+    const parsed = new URL(rawApiUrl);
+    const eo = reEscape(parsed.origin);
+    const ep = reEscape(parsed.pathname.replace(/\/?$/, ''));
+
+    return [
+      {
+        urlPattern: new RegExp(`^${eo}/media/`),
+        handler: 'CacheFirst' as const,
+        options: {
+          cacheName: 'derp-media',
+          expiration: { maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+      {
+        urlPattern: new RegExp(`^${eo}${ep}/audio/config(?:\\?.*)?$`),
+        handler: 'StaleWhileRevalidate' as const,
+        options: {
+          cacheName: 'derp-audio-config',
+          expiration: { maxEntries: 4, maxAgeSeconds: 24 * 60 * 60 },
+        },
+      },
+      {
+        urlPattern: new RegExp(`^${eo}${ep}/`),
+        handler: 'NetworkOnly' as const,
+      },
+      {
+        urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+        handler: 'CacheFirst' as const,
+        options: {
+          cacheName: 'derp-google-fonts',
+          expiration: { maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+      {
+        urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+        handler: 'CacheFirst' as const,
+        options: {
+          cacheName: 'derp-google-fonts',
+          expiration: { maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+    ];
+  }
+
+  // Same-origin: VITE_API_URL unset or relative (e.g. /api, /v1).
+  // Path known at build time — embed as a RegExp literal so no closure is needed.
+  const apiPath = rawApiUrl || '/api';
+  const ep = reEscape(apiPath);
+
+  return [
+    {
+      urlPattern: /\/media\//,
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'derp-media',
+        expiration: { maxEntries: 500, maxAgeSeconds: 30 * 24 * 60 * 60 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      urlPattern: new RegExp(`${ep}/audio/config(?:\\?.*)?$`),
+      handler: 'StaleWhileRevalidate' as const,
+      options: {
+        cacheName: 'derp-audio-config',
+        expiration: { maxEntries: 4, maxAgeSeconds: 24 * 60 * 60 },
+      },
+    },
+    {
+      urlPattern: new RegExp(`${ep}/`),
+      handler: 'NetworkOnly' as const,
+    },
+    {
+      urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'derp-google-fonts',
+        expiration: { maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'derp-google-fonts',
+        expiration: { maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+  ];
+}
+
+// navigateFallbackDenylist: pathnames that must never fall back to index.html.
+// For cross-origin deployments the frontend has no /api/ routes, so the static
+// defaults suffice.  For same-origin, derive the API path from VITE_API_URL so
+// a non-default prefix (e.g. /v2) is also covered.
+function buildNavigateFallbackDenylist(): RegExp[] {
+  const base = [/^\/media\//, /^\/v1\//];
+  if (isCrossOrigin) {
+    // API is on a different origin — the SPA origin won't receive /api/ navigates.
+    return [/^\/api\//, ...base];
+  }
+  const apiPath = rawApiUrl || '/api';
+  return [new RegExp(`^${reEscape(apiPath)}/`), ...base];
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -54,56 +181,11 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff,woff2,ttf}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/media\//, /^\/v1\//],
+        navigateFallbackDenylist: buildNavigateFallbackDenylist(),
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: false,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              url.origin === self.location.origin &&
-              url.pathname.startsWith('/media/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'derp-media',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 30 * 24 * 60 * 60,
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.origin === self.location.origin &&
-              url.pathname === '/api/audio/config',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'derp-audio-config',
-              expiration: { maxEntries: 4, maxAgeSeconds: 24 * 60 * 60 },
-            },
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.origin === self.location.origin &&
-              url.pathname.startsWith('/api/'),
-            handler: 'NetworkOnly',
-          },
-          {
-            urlPattern: ({ url }) =>
-              url.origin === 'https://fonts.googleapis.com' ||
-              url.origin === 'https://fonts.gstatic.com',
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'derp-google-fonts',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 365 * 24 * 60 * 60,
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
+        runtimeCaching: buildRuntimeCaching(),
       },
       devOptions: {
         enabled: false,
