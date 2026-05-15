@@ -82,13 +82,13 @@ export default function DerpOutpostCard({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <div className="relative h-[110px] overflow-hidden shrink-0">
+      <div className="relative overflow-hidden">
         <GameImage
           src={cardImageSrc}
           category="regions"
           alt={displayName}
           fallbackSrc={regionImage}
-          className="absolute inset-0 !w-full !h-full !rounded-none"
+          nativeRatio
         />
         <div className="absolute top-[6px] right-[6px] flex items-center gap-[3px] bg-[rgba(0,0,0,0.62)] border border-[rgba(139,92,246,0.55)] rounded-[20px] px-[7px] py-[2px] z-[2]">
           <span className="text-[8px] font-black text-[rgba(167,139,250,0.85)] tracking-[0.5px]">LVL</span>
