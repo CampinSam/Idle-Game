@@ -238,9 +238,18 @@ async function seedTestAccount() {
 }
 
 async function main() {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   await seedDefinitions();
   await seedTickSystem();
-  await seedTestAccount();
+
+  // Test account is development-only — never run in production to avoid
+  // creating a known-credential account on the live database.
+  if (!isProduction) {
+    await seedTestAccount();
+  } else {
+    console.log('Production environment — skipping test account seed.');
+  }
 }
 
 main()

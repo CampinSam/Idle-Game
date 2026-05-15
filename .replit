@@ -60,7 +60,7 @@ externalPort = 3003
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "NODE_ENV=production PORT=5000 node apps/api/dist/main.js"]
-build = ["bash", "-c", "pnpm install --frozen-lockfile && node scripts/prisma-deploy.js && npx prisma generate --schema=prisma/schema.prisma && pnpm --filter @derp/shared build && pnpm --filter @derp/math build && pnpm --filter @derp/web build && pnpm --filter @derp/api build"]
+build = ["bash", "-c", "pnpm install --frozen-lockfile && node scripts/prisma-deploy.js && pnpm --filter @derp/shared build && pnpm --filter @derp/math build && pnpm --filter @derp/web build && pnpm --filter @derp/api build"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-bdb73ea8-5bc7-48a6-859f-1e1c58b98d1c"

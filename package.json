@@ -16,6 +16,9 @@
     "prisma:migrate": "pnpm --filter @derp/api prisma:migrate",
     "prisma:studio": "pnpm --filter @derp/api prisma:studio"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"

@@ -139,6 +139,26 @@ function runMigrateDeploy() {
   execSync(`npx prisma migrate deploy --schema=${SCHEMA_PATH}`, { stdio: 'inherit' });
 }
 
+function runPrismaGenerate() {
+  console.log('[prisma-deploy] Running prisma generate');
+  execSync(`npx prisma generate --schema=${SCHEMA_PATH}`, { stdio: 'inherit' });
+}
+
+function runSeed() {
+  // Seed runs after migrations and generate so the Prisma client reflects the
+  // current schema. All seeders use upsert / createMany+skipDuplicates so this
+  // step is fully idempotent — running it multiple times against the same
+  // database produces no errors and no duplicate data.
+  //
+  // NODE_ENV=production is passed explicitly so prisma/seed.ts skips the
+  // dev-only test-account seeder — only definition/content tables are touched.
+  console.log('[prisma-deploy] Running prisma db seed (production mode)');
+  execSync(`npx prisma db seed --schema=${SCHEMA_PATH}`, {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'production' },
+  });
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     console.error('[prisma-deploy] DATABASE_URL not set');
@@ -194,7 +214,16 @@ async function main() {
     await client.end();
   }
 
+  // Step 1: apply pending migrations (baselining handled above)
   runMigrateDeploy();
+
+  // Step 2: regenerate the Prisma client so the seed script sees the
+  // up-to-date types produced by the migrations we just applied.
+  runPrismaGenerate();
+
+  // Step 3: upsert all game definition data so dev and prod stay in sync
+  // without manual intervention. Runs on every deploy; fully idempotent.
+  runSeed();
 }
 
 main().catch((err) => {

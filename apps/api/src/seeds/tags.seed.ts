@@ -15,9 +15,9 @@ const logger = new Logger('TagsSeed');
  * config — change the color in the admin Tag Editor once and both
  * the "epic" tag and the "epic" item icon glow update together.
  *
- * Upserts are idempotent: editing a row in the admin Tag Editor wins
- * over a re-seed because we only `create` if the row is missing
- * (mirrors `BootstrapService.seedEffectDefinitions`).
+ * Upserts are idempotent: re-running the seed will not overwrite
+ * admin-edited rows (update: {} means existing data is preserved).
+ * Identity is by `key` (the stable functional lookup contract).
  */
 
 const VISUAL_EFFECTS = [
@@ -158,25 +158,27 @@ export async function seedTags(prisma: any): Promise<void> {
   let createdEffects = 0;
   for (const fx of VISUAL_EFFECTS) {
     const existing = await prisma.visualEffectDef.findUnique({ where: { key: fx.key } });
-    if (!existing) {
-      await prisma.visualEffectDef.create({ data: { ...fx, enabled: true } });
-      createdEffects++;
-    }
+    await prisma.visualEffectDef.upsert({
+      where: { key: fx.key },
+      update: {},
+      create: { ...fx, enabled: true },
+    });
+    if (!existing) createdEffects++;
   }
 
   let createdTags = 0;
   for (const t of TAGS) {
     const existing = await prisma.tagDef.findUnique({ where: { key: t.key } });
-    if (!existing) {
-      await prisma.tagDef.create({
-        data: {
-          opacity: 1.0,
-          enabled: true,
-          ...t,
-        },
-      });
-      createdTags++;
-    }
+    await prisma.tagDef.upsert({
+      where: { key: t.key },
+      update: {},
+      create: {
+        opacity: 1.0,
+        enabled: true,
+        ...t,
+      },
+    });
+    if (!existing) createdTags++;
   }
 
   if (createdEffects || createdTags) {

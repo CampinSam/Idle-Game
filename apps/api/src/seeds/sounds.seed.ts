@@ -11,17 +11,18 @@ function loadSoundDefs(): Array<{ key: string; name: string; bus: string; descri
 }
 
 export async function seedSounds(prisma: PrismaService) {
-  const count = await (prisma as any).soundDef.count();
-  if (count > 0) return;
-
   const soundDefs = loadSoundDefs();
-  logger.log('Seeding placeholder sound definitions...');
+  let created = 0;
   for (const def of soundDefs) {
+    const existing = await (prisma as any).soundDef.findUnique({ where: { key: def.key } });
     await (prisma as any).soundDef.upsert({
       where: { key: def.key },
       update: {},
       create: def,
     });
+    if (!existing) created++;
   }
-  logger.log(`Seeded ${soundDefs.length} placeholder sound defs`);
+  if (created > 0) {
+    logger.log(`Seeded ${created} new sound defs`);
+  }
 }
