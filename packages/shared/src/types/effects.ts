@@ -83,11 +83,14 @@ export interface EffectStatMap {
   LCK?: number;
   VIT?: number;
   /**
-   * Resolution directive: each unit of RND resolves to a randomly chosen
-   * visible stat (ATK/DEF/SPD/FOC/LCK/VIT) at the moment the effect is
-   * applied. RND is never stored on an entity or shown in any UI.
+   * Resolution directive. May be a single number or an array of numbers.
+   * Each entry independently picks a random visible stat (ATK/DEF/SPD/FOC/
+   * LCK/VIT) and awards its full value to that stat. The same stat may be
+   * chosen more than once by chance. Serialize as a plain number when only
+   * one entry exists (backwards compat); use an array for two or more.
+   * RND is never stored on an entity or shown in any UI.
    */
-  RND?: number;
+  RND?: number | number[];
 }
 
 export interface EffectDefData {

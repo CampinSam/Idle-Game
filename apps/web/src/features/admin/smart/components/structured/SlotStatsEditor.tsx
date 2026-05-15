@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import StatMapEditor from './StatMapEditor';
 
+type SlotStatMap = Record<string, number | number[]>;
+
 interface Props {
-  value: Record<string, Record<string, number>> | null | undefined;
-  onChange: (v: Record<string, Record<string, number>>) => void;
+  value: Record<string, SlotStatMap> | null | undefined;
+  onChange: (v: Record<string, SlotStatMap>) => void;
 }
 
 export default function SlotStatsEditor({ value, onChange }: Props) {
   const [newSlot, setNewSlot] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const current: Record<string, Record<string, number>> =
+  const current: Record<string, SlotStatMap> =
     (value && typeof value === 'object') ? value : {};
   const slots = Object.keys(current);
 
@@ -19,7 +21,7 @@ export default function SlotStatsEditor({ value, onChange }: Props) {
   const toggleSlot = (slot: string) =>
     setExpanded(prev => ({ ...prev, [slot]: !isExpanded(slot) }));
 
-  const handleSlotChange = (slot: string, stats: Record<string, number>) => {
+  const handleSlotChange = (slot: string, stats: SlotStatMap) => {
     onChange({ ...current, [slot]: stats });
   };
 

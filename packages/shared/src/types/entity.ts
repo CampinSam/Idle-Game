@@ -18,8 +18,11 @@ export type VisibleStatKey = typeof VISIBLE_STATS[number];
  * Hidden stats that act as resolution directives in definitions.
  * RND: when present in a definition (trait slotStats, effect stats, scaling
  * weights), resolves to a randomly chosen visible stat at the moment the
- * value is applied. RND is never stored as a base entity stat, never
- * shown in any UI, and never contributes to PowerScore.
+ * value is applied. RND may be a single number or an array of numbers —
+ * each element independently picks a random visible stat and awards its
+ * full value to it (the same stat can be chosen more than once by chance).
+ * RND is never stored as a base entity stat, never shown in any UI, and
+ * never contributes to PowerScore.
  */
 export const HIDDEN_STATS = ['RND'] as const;
 export type HiddenStatKey = typeof HIDDEN_STATS[number];

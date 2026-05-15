@@ -2018,14 +2018,21 @@
       }
     },
     "EffectStatMap": {
-      "description": "Per-stat modifier values. Keys are stat IDs, values are numbers.",
+      "description": "Per-stat modifier values. Keys are stat IDs (ATK/DEF/SPD/FOC/LCK/VIT), values are numbers. The special key RND may be a single number or an array of numbers — each element independently picks a random visible stat at resolution time and awards its full point value to it (the same stat may be chosen more than once by chance). RND is stripped from the resolved output and is never stored as an entity stat.",
       "properties": {
         "ATK": { "type": "number", "description": "Attack modifier" },
         "DEF": { "type": "number", "description": "Defense modifier" },
         "SPD": { "type": "number", "description": "Speed modifier" },
         "FOC": { "type": "number", "description": "Focus modifier" },
         "LCK": { "type": "number", "description": "Luck modifier" },
-        "VIT": { "type": "number", "description": "Vitality modifier" }
+        "VIT": { "type": "number", "description": "Vitality modifier" },
+        "RND": {
+          "oneOf": [
+            { "type": "number", "description": "Single random pick: one randomly chosen visible stat gains this many points" },
+            { "type": "array", "items": { "type": "number" }, "description": "Multiple independent random picks: each element picks its own random visible stat and awards its value. Same stat may be chosen more than once by chance." }
+          ],
+          "description": "Random stat award(s). Each value independently picks a random visible stat at resolution time. Serialize as a plain number when only one entry exists (backwards compatible); serialize as an array when there are two or more entries."
+        }
       }
     }
   },

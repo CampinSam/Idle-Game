@@ -71,10 +71,12 @@ export async function generateEntityData(
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
       // Resolve RND immediately so it never lands in baseStats as 'RND'.
+      // Pass RND through regardless of whether it is a number or array —
+      // resolveRnd handles both forms. Filter out any other non-numeric values.
       const resolved = resolveRnd(
         Object.fromEntries(
-          Object.entries(slotStats).filter(([, v]) => typeof v === 'number'),
-        ) as Record<string, number>,
+          Object.entries(slotStats).filter(([k, v]) => k === 'RND' || typeof v === 'number'),
+        ) as Record<string, number | number[]>,
       );
       for (const [stat, value] of Object.entries(resolved)) {
         baseStats[stat] = (baseStats[stat] || 0) + value;
