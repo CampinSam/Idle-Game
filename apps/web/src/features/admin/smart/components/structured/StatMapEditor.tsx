@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 const STAT_ROWS: { key: string; color: string; hint?: string }[] = [
   { key: 'ATK', color: '#f87171' },
   { key: 'DEF', color: '#60a5fa' },
@@ -18,47 +16,14 @@ interface Props {
 export default function StatMapEditor({ value, onChange }: Props) {
   const committed: Record<string, number> = (value && typeof value === 'object') ? value : {};
 
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
-
-  const displayValue = (key: string): string => {
-    if (key in drafts) return drafts[key];
-    const n = committed[key];
-    return n !== undefined ? String(n) : '';
-  };
-
-  const handleChange = (key: string, raw: string) => {
-    setDrafts(prev => ({ ...prev, [key]: raw }));
-    if (raw === '' || raw === '-') return;
-    const n = Number(raw);
-    if (!isNaN(n) && raw.trim() !== '') {
-      const next = { ...committed };
-      if (n === 0) {
-        delete next[key];
-      } else {
-        next[key] = n;
-      }
-      onChange(next);
-    }
-  };
-
-  const handleBlur = (key: string) => {
-    const raw = drafts[key];
-    if (raw === undefined) return;
+  const commit = (key: string, rawValue: string) => {
+    const n = Number(rawValue);
     const next = { ...committed };
-    if (raw === '' || raw === '-') {
+    if (rawValue.trim() === '' || isNaN(n) || n === 0) {
       delete next[key];
     } else {
-      const n = Number(raw);
-      if (!isNaN(n)) {
-        if (n === 0) delete next[key];
-        else next[key] = n;
-      }
+      next[key] = n;
     }
-    setDrafts(prev => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
-    });
     onChange(next);
   };
 
@@ -87,16 +52,22 @@ export default function StatMapEditor({ value, onChange }: Props) {
             }}>
               {key}
             </span>
-            {/* type="text" + inputMode="numeric" is intentional: type="number" causes
-                browsers to emit "" for a bare "-" keystroke, breaking negative entry.
-                Draft state handles the intermediate "-" so blur commits the final value. */}
+            {/* Uncontrolled input so React doesn't clear the browser's intermediate
+                "-" character while typing negative numbers (Chrome normalises
+                type="number" value to "" for bare "-", which would wipe the draft
+                in a controlled input on re-render). key forces a re-mount when the
+                committed value changes from outside (e.g. raw-JSON paste). */}
             <input
-              type="text"
-              inputMode="numeric"
-              value={displayValue(key)}
+              key={`${key}-${String(committed[key] ?? '')}`}
+              type="number"
+              step={1}
+              defaultValue={hasValue ? committed[key] : ''}
               placeholder="—"
-              onChange={e => handleChange(key, e.target.value)}
-              onBlur={() => handleBlur(key)}
+              onChange={e => {
+                const n = e.target.valueAsNumber;
+                if (!isNaN(n)) commit(key, String(n));
+              }}
+              onBlur={e => commit(key, e.target.value)}
               style={{
                 flex: 1,
                 padding: '4px 8px',
@@ -108,7 +79,6 @@ export default function StatMapEditor({ value, onChange }: Props) {
                 fontWeight: hasValue ? 700 : 400,
                 boxSizing: 'border-box',
                 minWidth: 0,
-                transition: 'border-color 0.15s, color 0.15s',
                 outline: 'none',
               }}
             />
