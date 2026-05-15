@@ -7,6 +7,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
+import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser } from '../game-rules/game-rules.service';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { SeededRng } from '@derp/math';
@@ -504,6 +505,92 @@ export class AdminService {
     if (table === 'currency' && data.cap !== undefined) {
       data.cap = this.safeBigInt(data.cap);
     }
+  }
+
+  async backfillEntityStats(): Promise<{ total: number; updated: number; skipped: number; failed: number }> {
+    const entities = await (this.prisma as any).entity.findMany({
+      select: { id: true, definitionId: true, traits: true, stats: true },
+    });
+
+    const allTraitDefs = await (this.prisma as any).traitDefinition.findMany();
+    const traitByArchetype: Record<string, any> = {};
+    for (const td of allTraitDefs) {
+      traitByArchetype[td.archetype] = td;
+    }
+
+    const allEntityDefs = await (this.prisma as any).entityDefinition.findMany({
+      include: { bodySchema: true },
+    });
+    const entityDefById: Record<string, any> = {};
+    for (const def of allEntityDefs) {
+      entityDefById[def.id] = def;
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const entity of entities) {
+      try {
+        const currentStats = (entity.stats as Record<string, any>) || {};
+
+        // Determine what needs patching
+        const statsBelowFloor = STAT_KEYS.filter((k) => (currentStats[k] ?? 0) < 10);
+        const scalingMissing = !currentStats.scaling || typeof currentStats.scaling !== 'object';
+        const compositRarityMissing = typeof currentStats.compositRarity !== 'number';
+
+        const needsUpdate = statsBelowFloor.length > 0 || scalingMissing || compositRarityMissing;
+        if (!needsUpdate) {
+          skipped++;
+          continue;
+        }
+
+        // Build patch: clamp stats at 10, preserve everything else
+        const patch: Record<string, any> = { ...currentStats };
+
+        for (const k of statsBelowFloor) {
+          patch[k] = 10;
+        }
+
+        // Compute scaling/compositRarity from traits only when missing
+        if (scalingMissing || compositRarityMissing) {
+          const traits = (entity.traits as Record<string, string>) || {};
+          const entityDef = entityDefById[entity.definitionId];
+          const slots: Record<string, string[]> = (entityDef?.bodySchema?.slots as any) || {};
+
+          const scalingContributions: ScalingContribution[] = [];
+          for (const [slotName] of Object.entries(slots)) {
+            const chosenArchetype = traits[slotName];
+            if (!chosenArchetype) continue;
+            const traitDef = traitByArchetype[chosenArchetype];
+            if (!traitDef) continue;
+            const traitData = (traitDef.data as any) || {};
+            const statScaling: Record<string, number> = {};
+            for (const k of STAT_KEYS) {
+              statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
+            }
+            scalingContributions.push({
+              statScaling,
+              rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+            });
+          }
+
+          if (scalingMissing) patch.scaling = computeScaling(scalingContributions);
+          if (compositRarityMissing) patch.compositRarity = computeCompositRarity(scalingContributions);
+        }
+
+        await (this.prisma as any).entity.update({
+          where: { id: entity.id },
+          data: { stats: patch },
+        });
+        updated++;
+      } catch (err) {
+        this.logger.warn(`backfillEntityStats failed for entity ${entity.id}: ${err}`);
+        failed++;
+      }
+    }
+
+    return { total: entities.length, updated, skipped, failed };
   }
 
   async getBalanceBundle() {

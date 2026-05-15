@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon } from 'lucide-react';
+import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -57,8 +57,6 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     </div>
   );
 }
-
-type Tab = 'players' | 'boosts' | 'notifications' | 'events';
 
 function StatusMsg({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -547,11 +545,66 @@ function EventGiftPanel() {
   );
 }
 
+function ToolsPanel() {
+  const [statResult, setStatResult] = useState<{ total: number; updated: number; skipped: number; failed: number } | null>(null);
+  const [statLoading, setStatLoading] = useState(false);
+  const [statMsg, setStatMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const runStatBackfill = async () => {
+    if (!confirm('Raise any stat below 10 to exactly 10 for all entities, and fill in missing scaling/compositRarity? Existing stats above 10 and all progression data are preserved. Safe to re-run.')) return;
+    setStatLoading(true);
+    setStatMsg(null);
+    setStatResult(null);
+    try {
+      const result = await adminApi.backfillEntityStats();
+      setStatResult(result);
+      setStatMsg({ text: `Done — ${result.updated} updated, ${result.skipped} already up-to-date, ${result.failed} failed`, type: 'success' });
+    } catch (e: any) {
+      setStatMsg({ text: e.message, type: 'error' });
+    } finally {
+      setStatLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 1rem', fontSize: '1.3rem' }}>Admin Tools</h2>
+
+      <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1.25rem' }}>
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: '#b8b8ff' }}>Apply Stat Floor to Existing Entities</h3>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#888', lineHeight: 1.5 }}>
+          Raises any stat currently below 10 up to exactly 10. Stats already at or above 10 are left untouched.
+          Also fills in missing <code>scaling</code> and <code>compositRarity</code> fields for older entities that pre-date those fields.
+          XP, level, levelHistory, and all other progression data are never modified.
+          Safe to run multiple times — entities already meeting the baseline are skipped.
+        </p>
+        <button onClick={runStatBackfill} disabled={statLoading} className="btn-save">
+          {statLoading ? 'Running...' : 'Apply Stat Floor'}
+        </button>
+
+        {statResult && !statLoading && (
+          <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1.5rem', fontSize: '0.875rem', color: '#e0e0ff' }}>
+            <span>Total: <strong>{statResult.total}</strong></span>
+            <span style={{ color: '#4caf50' }}>Updated: <strong>{statResult.updated}</strong></span>
+            <span style={{ color: '#888' }}>Skipped: <strong>{statResult.skipped}</strong></span>
+            {statResult.failed > 0 && <span style={{ color: '#ff6b6b' }}>Failed: <strong>{statResult.failed}</strong></span>}
+          </div>
+        )}
+
+        {statMsg && <StatusMsg msg={statMsg.text} type={statMsg.type} />}
+      </div>
+    </div>
+  );
+}
+
+type Tab = 'players' | 'boosts' | 'notifications' | 'events' | 'tools';
+
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'players', label: 'Player Editor', icon: Users },
   { key: 'boosts', label: 'Tick Boosts', icon: Zap },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'events', label: 'Events & Gifts', icon: Gift },
+  { key: 'tools', label: 'Tools', icon: Wrench },
 ];
 
 function Dashboard() {
@@ -608,6 +661,7 @@ function Dashboard() {
         {tab === 'boosts' && <BoostPanel />}
         {tab === 'notifications' && <NotificationPanel />}
         {tab === 'events' && <EventGiftPanel />}
+        {tab === 'tools' && <ToolsPanel />}
       </div>
     </div>
   );

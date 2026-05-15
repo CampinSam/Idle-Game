@@ -157,6 +157,11 @@ export class AdminController {
     return this.boostService.cancelBoost(id);
   }
 
+  @Post('backfill/entity-stats')
+  async backfillEntityStats() {
+    return this.adminService.backfillEntityStats();
+  }
+
   @Post('backfill/nft-metadata')
   async backfillNftMetadata() {
     return this.nftCollectionService.backfillNftMetadata();

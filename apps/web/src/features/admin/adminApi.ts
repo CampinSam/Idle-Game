@@ -141,6 +141,12 @@ export const adminApi = {
   deleteSoundDef: (id: string) =>
     adminRequest<any>(`/audio/sounds/${id}`, { method: 'DELETE' }),
 
+  backfillEntityStats: () =>
+    adminRequest<{ total: number; updated: number; skipped: number; failed: number }>(
+      '/backfill/entity-stats',
+      { method: 'POST' },
+    ),
+
   listLocationDefs: () => adminRequest<any[]>('/locationDefinition'),
   listSeasons: () => adminRequest<any[]>('/season'),
 
