@@ -423,7 +423,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     fields: {
       id: { type: 'string', required: true, description: 'Unique identifier' },
       archetype: { type: 'string', required: true, description: 'Display name of archetype' },
-      slotStats: { type: 'json', default: {}, description: 'Nested map of slot → stat bonuses' },
+      slotStats: { type: 'slotStatsMap', default: {}, description: 'Nested map of slot → stat bonuses' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       emoji: { type: 'string', description: 'Emoji icon for this archetype (e.g. 🥷)' },
       color: { type: 'color', description: 'Accent color for this archetype' },
@@ -458,7 +458,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       ], default: 'no_stack', description: 'What happens when applied again' },
       targetType: { type: 'options', options: ['player', 'entity', 'location', 'job', 'global'], required: true, description: 'What this effect targets' },
       value: { type: 'number', description: 'Primary numeric value' },
-      stats: { type: 'json', description: 'Stat map: { ATK?, DEF?, SPD?, FOC?, LCK?, VIT? }' },
+      stats: { type: 'statMap', description: 'Per-stat modifier values (ATK, DEF, SPD, FOC, LCK, VIT, RND)' },
       trait: { type: 'string', description: 'Trait to add while active' },
       durationSec: { type: 'number', description: 'Duration in seconds (TIMED model)' },
       durationTicks: { type: 'number', description: 'Duration in ticks (TICK_BASED model)' },

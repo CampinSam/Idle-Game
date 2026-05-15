@@ -13,6 +13,8 @@ import EffectListEditor from './structured/EffectListEditor';
 import ConsumableDataEditor from './structured/ConsumableDataEditor';
 import FrequencyEditor from './structured/FrequencyEditor';
 import DisplayStyleEditor from './structured/DisplayStyleEditor';
+import StatMapEditor from './structured/StatMapEditor';
+import SlotStatsEditor from './structured/SlotStatsEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 
 interface Props {
@@ -305,6 +307,20 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'displayStyle') {
       return renderStructured(
         <DisplayStyleEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'statMap') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <StatMapEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'slotStatsMap') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <SlotStatsEditor value={safeVal} onChange={onChange} />
       );
     }
 
