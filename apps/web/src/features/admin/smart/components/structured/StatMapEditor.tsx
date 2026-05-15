@@ -87,6 +87,9 @@ export default function StatMapEditor({ value, onChange }: Props) {
             }}>
               {key}
             </span>
+            {/* type="text" + inputMode="numeric" is intentional: type="number" causes
+                browsers to emit "" for a bare "-" keystroke, breaking negative entry.
+                Draft state handles the intermediate "-" so blur commits the final value. */}
             <input
               type="text"
               inputMode="numeric"
