@@ -75,15 +75,15 @@ export function resolveEffects(
   return mod;
 }
 
-const VISIBLE_STAT_KEYS: (keyof EffectStatMap)[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
+type VisibleStatKey = Exclude<keyof EffectStatMap, 'RND'>;
+const VISIBLE_STAT_KEYS: VisibleStatKey[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
 
 function applyStatAdd(target: EffectStatMap, source: EffectStatMap, stacks: number) {
   for (const key of VISIBLE_STAT_KEYS) {
-    if (source[key] !== undefined) {
-      const t = (target[key] as number | undefined) ?? 0;
-      const s = source[key] as number;
-      (target as any)[key] = t + s * stacks;
-    }
+    const s = source[key];
+    if (typeof s !== 'number') continue;
+    const t = target[key] ?? 0;
+    target[key] = t + s * stacks;
   }
   // Safety net: RND must be resolved before effects are stored or applied.
   // If it still appears here something went wrong upstream — log and drop it
@@ -95,10 +95,9 @@ function applyStatAdd(target: EffectStatMap, source: EffectStatMap, stacks: numb
 
 function applyStatMultiply(target: EffectStatMap, source: EffectStatMap, stacks: number) {
   for (const key of VISIBLE_STAT_KEYS) {
-    if (source[key] !== undefined) {
-      const base = (target[key] as number | undefined) ?? 1;
-      const s = source[key] as number;
-      (target as any)[key] = base * Math.pow(s, stacks);
-    }
+    const s = source[key];
+    if (typeof s !== 'number') continue;
+    const base = target[key] ?? 1;
+    target[key] = base * Math.pow(s, stacks);
   }
 }

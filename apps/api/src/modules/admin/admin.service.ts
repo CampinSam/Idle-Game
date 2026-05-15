@@ -571,14 +571,14 @@ export class AdminService {
             if (!chosenArchetype) continue;
             const traitDef = traitByArchetype[chosenArchetype];
             if (!traitDef) continue;
-            const traitData = (traitDef.data as any) || {};
+            const traitScaling = (traitDef.scaling as Record<string, number> | undefined) || {};
             const statScaling: Record<string, number> = {};
             for (const k of STAT_KEYS) {
-              statScaling[k] = typeof traitData.scaling?.[k] === 'number' ? traitData.scaling[k] : 1.0;
+              statScaling[k] = typeof traitScaling[k] === 'number' ? traitScaling[k] : 1.0;
             }
             scalingContributions.push({
               statScaling,
-              rarityMultiplier: typeof traitData.rarityMultiplier === 'number' ? traitData.rarityMultiplier : 1.0,
+              rarityMultiplier: typeof traitDef.rarityMultiplier === 'number' ? traitDef.rarityMultiplier : 1.0,
             });
           }
 

@@ -1,6 +1,7 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftMetadata } from './nft-ownership.interface';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
+import { resolveRnd } from '../entity/rnd-resolver.util';
 
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,
@@ -73,10 +74,16 @@ export async function buildEntityDataFromNftMetadata(
 
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
-      for (const [stat, value] of Object.entries(slotStats)) {
-        if (typeof value === 'number') {
-          baseStats[stat] = (baseStats[stat] || 0) + value;
-        }
+      // Resolve RND immediately so it never lands in baseStats as 'RND'.
+      // Mirrors entity-generator.util.ts so NFT-built entities follow the
+      // same stat-resolution path as randomly generated ones.
+      const resolved = resolveRnd(
+        Object.fromEntries(
+          Object.entries(slotStats).filter(([k, v]) => k === 'RND' || typeof v === 'number'),
+        ) as Record<string, number | number[]>,
+      );
+      for (const [stat, value] of Object.entries(resolved)) {
+        baseStats[stat] = (baseStats[stat] || 0) + value;
       }
     }
 
@@ -84,6 +91,10 @@ export async function buildEntityDataFromNftMetadata(
     const statScaling: Record<string, number> = {};
     for (const k of STAT_KEYS) {
       statScaling[k] = typeof traitScaling[k] === 'number' ? traitScaling[k] : 1.0;
+    }
+    // Preserve RND scaling weight — resolved at level-up time.
+    if (typeof traitScaling['RND'] === 'number' && traitScaling['RND'] > 0) {
+      statScaling['RND'] = traitScaling['RND'];
     }
     scalingContributions.push({
       statScaling,
