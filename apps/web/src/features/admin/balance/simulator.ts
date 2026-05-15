@@ -50,7 +50,7 @@ export interface SimulationResult {
  */
 function rollBirdInitialStats(def: EntityDef, traits: Record<string, TraitDef>): Record<string, any> {
   const baseStats: Record<string, number> = {};
-  for (const k of STAT_KEYS) baseStats[k] = 0;
+  for (const k of STAT_KEYS) baseStats[k] = 10;
 
   const contributions: ScalingContribution[] = [];
 

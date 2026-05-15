@@ -53,7 +53,7 @@ export async function generateEntityData(
   }
 
   const baseStats: Record<string, number> = {};
-  for (const k of STAT_KEYS) baseStats[k] = 0;
+  for (const k of STAT_KEYS) baseStats[k] = 10;
 
   const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, string> = {};
