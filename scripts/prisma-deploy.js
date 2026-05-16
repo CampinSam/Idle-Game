@@ -86,6 +86,13 @@ async function ensureMigrationsTable(client) {
   return r.rows[0].exists;
 }
 
+async function hasAnyUserTables(client) {
+  const r = await client.query(
+    "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name != '_prisma_migrations' LIMIT 1",
+  );
+  return r.rowCount > 0;
+}
+
 async function appliedMigrations(client) {
   const r = await client.query(
     "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL",
@@ -172,9 +179,23 @@ async function main() {
     const hasMigrationsTable = await ensureMigrationsTable(client);
 
     if (!hasMigrationsTable) {
-      console.log(
-        '[prisma-deploy] _prisma_migrations table not present yet — nothing to baseline',
-      );
+      const nonEmpty = await hasAnyUserTables(client);
+      if (nonEmpty) {
+        // Schema exists (e.g. copied from dev via db push) but has no migration
+        // history. Baseline every migration as applied so migrate deploy doesn't
+        // hit P3005 ("schema is not empty").
+        const all = listMigrations();
+        console.log(
+          `[prisma-deploy] No _prisma_migrations table but schema is non-empty — baselining all ${all.length} migrations`,
+        );
+        for (const name of all) {
+          resolveAsApplied(name);
+        }
+      } else {
+        console.log(
+          '[prisma-deploy] Empty database, no _prisma_migrations table — prisma migrate deploy will create it',
+        );
+      }
     } else {
       const applied = await appliedMigrations(client);
       const all = listMigrations();
