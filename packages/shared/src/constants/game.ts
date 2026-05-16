@@ -52,8 +52,7 @@ export const RARITY_DISPLAY_LABEL: Record<Rarity, string> = {
   epic: 'Epic', mythic: 'Mythic', legendary: 'Legendary', unique: 'Unique',
 };
 
-export const ARCHETYPE_RARITY_TIERS = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
-export type ArchetypeRarity = typeof ARCHETYPE_RARITY_TIERS[number];
+export type ArchetypeRarity = Rarity;
 
 export const ARCHETYPE_RARITY: Record<EntityArchetype, ArchetypeRarity> = {
   Dave: 'common',
@@ -72,12 +71,15 @@ export const ARCHETYPE_RARITY: Record<EntityArchetype, ArchetypeRarity> = {
   Deity: 'legendary',
 };
 
-export const RARITY_WEIGHTS: Record<ArchetypeRarity, number> = {
-  common: 40,
-  uncommon: 25,
-  rare: 15,
-  epic: 8,
-  legendary: 2,
+export const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common:    40,
+  uncommon:  25,
+  scare:     18,
+  rare:      15,
+  epic:       8,
+  mythic:     4,
+  legendary:  2,
+  unique:     0,
 };
 
 export const ENTITY_TRAIT_SLOTS = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;

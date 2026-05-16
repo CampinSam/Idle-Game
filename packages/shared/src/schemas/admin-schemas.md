@@ -180,12 +180,12 @@ Reserved for future gameplay (`branches: object[]` will declare per-branch unloc
 | Grey | body | VIT+1, DEF+1 | uncommon |
 | Purple | body | FOC+1, LCK+1 | scare  |
 | Neon | body | LCK+2 | rare |
-| Blue | body | SPD+1, ATK+1 | scare    |
+| Blue | body | SPD+1, ATK+1 | rare |
 | Sparkles | special | LCK+1 | uncommon |
 | Leaves | special | VIT+1 | uncommon |
 | Bubble Show | special | FOC+1 | scare  |
 | Water | special | DEF+1 | scare  |
-| Earthen | special | VIT+2 | scare    |
+| Earthen | special | VIT+2 | rare |
 | Ice Storm | special | SPD+1, DEF+1 | rare |
 | Electric Aura | special | ATK+2 | epic      |
 | Low Life | special | LCK+2 | rare |
