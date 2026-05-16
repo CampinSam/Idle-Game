@@ -6,7 +6,7 @@ import GameIcon from '../../../../components/GameIcon';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
 import { getArchetypeDisplay } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
-import { getEntityPower, getXpForLevel, normalizeStats, getEntityStatusLabel } from '../../utils';
+import { getEntityPower, getXpForLevel, normalizeStats } from '../../utils';
 import { useSyncItems } from '../../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../../hooks/useCommand';
 import { useModal } from '../../../../context/ModalContext';
@@ -136,6 +136,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
   const allJobs = useAppSelector((s) => s.sync.jobs);
+  const allLocations = useAppSelector((s) => s.sync.locations);
 
   const entityActiveJob = useMemo(() => {
     return Object.values(allJobs).find((j: any) =>
@@ -417,7 +418,13 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 // Deeplink targets
                 let link: string | null = null;
                 if (st === 'mission') {
-                  link = '/missions';
+                  // Mission jobs don't carry a locationId — use the player's
+                  // first active outpost as the nearest relevant location, or
+                  // fall back to the missions list page.
+                  const firstLocation = Object.values(allLocations).find(
+                    (l: any) => l.enabled !== false,
+                  ) as any;
+                  link = firstLocation ? `/locations/${firstLocation.id}` : '/missions';
                 } else if (st === 'working') {
                   const locationId = entityActiveJob?.data?.locationId;
                   link = locationId ? `/locations/${locationId}/workshop` : '/crafting';
