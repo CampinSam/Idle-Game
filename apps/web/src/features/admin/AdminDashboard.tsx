@@ -735,6 +735,14 @@ function GlobalPowerPanel() {
   );
 }
 
+interface ImportProgress {
+  status: 'idle' | 'running' | 'done' | 'error';
+  total: number;
+  processed: number;
+  upserted: number;
+  failed: number;
+}
+
 function NftCollectionsPanel() {
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -744,6 +752,8 @@ function NftCollectionsPanel() {
   const [assetsTotal, setAssetsTotal] = useState(0);
   const [assetsPage, setAssetsPage] = useState(1);
   const [assetsLoading, setAssetsLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const importPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ASSETS_LIMIT = 50;
 
   const loadCollections = useCallback(async () => {
@@ -783,11 +793,45 @@ function NftCollectionsPanel() {
     loadAssets(col.id, 1);
   };
 
+  const stopImportPoll = () => {
+    if (importPollRef.current) {
+      clearInterval(importPollRef.current);
+      importPollRef.current = null;
+    }
+  };
+
+  const startImportPoll = (collectionId: string) => {
+    stopImportPoll();
+    importPollRef.current = setInterval(async () => {
+      try {
+        const status = await adminApi.getImportCacheStatus(collectionId);
+        const knownStatus: ImportProgress['status'] =
+          status.status === 'running' || status.status === 'done' || status.status === 'error'
+            ? status.status
+            : 'idle';
+        setImportProgress({
+          status: knownStatus,
+          total: status.total,
+          processed: status.processed,
+          upserted: status.upserted,
+          failed: status.failed,
+        });
+        if (knownStatus !== 'running') {
+          stopImportPoll();
+        }
+      } catch {
+        stopImportPoll();
+      }
+    }, 2000);
+  };
+
   const handleImport = async (col: any) => {
     setMsg(null);
+    setImportProgress(null);
     try {
       const result = await adminApi.importNftCollectionCache(col.id);
-      setMsg({ text: `Import started — ${result.total} tokens queued`, type: 'success' });
+      setImportProgress({ status: 'running', total: result.total, processed: 0, upserted: 0, failed: 0 });
+      startImportPoll(col.id);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     }
@@ -803,6 +847,8 @@ function NftCollectionsPanel() {
     }
   };
 
+  useEffect(() => () => stopImportPoll(), []);
+
   const totalPages = Math.ceil(assetsTotal / ASSETS_LIMIT);
 
   const formatDate = (iso: string | null) => {
@@ -811,11 +857,15 @@ function NftCollectionsPanel() {
   };
 
   if (selectedCollection) {
+    const pct = importProgress && importProgress.total > 0
+      ? Math.round((importProgress.processed / importProgress.total) * 100)
+      : 0;
+
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
           <button
-            onClick={() => { setSelectedCollection(null); setAssets([]); setMsg(null); loadCollections(); }}
+            onClick={() => { stopImportPoll(); setImportProgress(null); setSelectedCollection(null); setAssets([]); setMsg(null); loadCollections(); }}
             style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}
           >
             ← Back
@@ -834,7 +884,7 @@ function NftCollectionsPanel() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
-          <button onClick={() => handleImport(selectedCollection)} className="btn-save">
+          <button onClick={() => handleImport(selectedCollection)} className="btn-save" disabled={importProgress?.status === 'running'}>
             Import to Cache
           </button>
           <button onClick={() => handleRefresh(selectedCollection)} className="btn-save" style={{ background: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.5)', color: '#93c5fd' }}>
@@ -844,6 +894,36 @@ function NftCollectionsPanel() {
             Reload Assets
           </button>
         </div>
+
+        {importProgress && (
+          <div style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <span style={{ color: importProgress.status === 'error' || importProgress.status === 'idle' ? '#ff6b6b' : importProgress.status === 'done' ? '#4caf50' : '#b8b8ff', fontWeight: 600 }}>
+                {importProgress.status === 'running' && `Importing… ${importProgress.processed} / ${importProgress.total}`}
+                {importProgress.status === 'done' && `Import complete — ${importProgress.total} tokens`}
+                {importProgress.status === 'error' && 'Import failed'}
+                {importProgress.status === 'idle' && 'Import status unavailable — server may have restarted'}
+              </span>
+              <span style={{ color: '#888' }}>
+                {importProgress.status === 'running' ? `${pct}%` : ''}
+              </span>
+            </div>
+            <div style={{ background: '#0d1421', borderRadius: 4, height: 8, overflow: 'hidden', marginBottom: '0.5rem' }}>
+              <div style={{
+                height: '100%',
+                width: `${importProgress.status === 'done' ? 100 : pct}%`,
+                background: importProgress.status === 'error' ? '#ff6b6b' : importProgress.status === 'done' ? '#4caf50' : '#7c3aed',
+                borderRadius: 4,
+                transition: 'width 0.4s ease',
+              }} />
+            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', color: '#888' }}>
+              <span>Upserted: <strong style={{ color: '#4caf50' }}>{importProgress.upserted}</strong></span>
+              <span>Failed: <strong style={{ color: importProgress.failed > 0 ? '#ff6b6b' : '#888' }}>{importProgress.failed}</strong></span>
+              <span>Total: <strong style={{ color: '#e0e0ff' }}>{importProgress.total}</strong></span>
+            </div>
+          </div>
+        )}
 
         {msg && <StatusMsg msg={msg.text} type={msg.type} />}
 

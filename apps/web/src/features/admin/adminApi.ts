@@ -184,6 +184,8 @@ export const adminApi = {
     nftAdminRequest<any[]>('/nft/collections'),
   importNftCollectionCache: (id: string) =>
     nftAdminRequest<any>(`/nft/collections/${id}/import`, { method: 'POST' }),
+  getImportCacheStatus: (id: string) =>
+    nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; upserted: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/import/status`),
   refreshNftOwnership: (id: string) =>
     nftAdminRequest<any>(`/nft/collections/${id}/refresh`, { method: 'POST' }),
   listNftAssets: (id: string, page = 1, limit = 50) =>

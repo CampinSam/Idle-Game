@@ -77,6 +77,15 @@ export class NftCollectionController {
   }
 
   /**
+   * Return the current progress of a running (or completed) cache import job.
+   */
+  @Get(':id/import/status')
+  @UseGuards(AdminGuard)
+  getImportStatus(@Param('id') id: string) {
+    return this.nftAssetCache.getImportStatus(id);
+  }
+
+  /**
    * (Renamed from POST /:id/import) Create game entity instances for all tokens
    * in the given collection. Reads metadata from the NftAsset cache — run
    * POST /:id/import first to populate it.

@@ -6,6 +6,16 @@ import { NftMetadata } from './nft-ownership.interface';
 const IMPORT_BATCH_SIZE = 5;
 const IMPORT_BATCH_DELAY_MS = 300;
 
+export interface CacheImportStatus {
+  status: 'idle' | 'running' | 'done' | 'error';
+  total: number;
+  processed: number;
+  upserted: number;
+  failed: number;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
 export function nftAssetRowToMetadata(asset: any): NftMetadata {
   return {
     assetId: asset.tokenName,
@@ -19,11 +29,16 @@ export function nftAssetRowToMetadata(asset: any): NftMetadata {
 @Injectable()
 export class NftAssetCacheService {
   private readonly logger = new Logger(NftAssetCacheService.name);
+  private readonly importJobs = new Map<string, CacheImportStatus>();
 
   constructor(
     private prisma: PrismaService,
     private cardanoProvider: CardanoOwnershipProvider,
   ) {}
+
+  getImportStatus(collectionId: string): CacheImportStatus {
+    return this.importJobs.get(collectionId) ?? { status: 'idle', total: 0, processed: 0, upserted: 0, failed: 0 };
+  }
 
   /**
    * Bulk-fetch all tokens in a Cardano policy from Blockfrost and upsert them
@@ -46,9 +61,22 @@ export class NftAssetCacheService {
       `Starting background cache import of ${total} tokens for collection "${collectionId}"`,
     );
 
-    this.runBulkImport(collection, allAssetIds).catch((err) =>
-      this.logger.error(`Background cache import failed for collection "${collectionId}": ${err}`),
-    );
+    this.importJobs.set(collectionId, {
+      status: 'running',
+      total,
+      processed: 0,
+      upserted: 0,
+      failed: 0,
+      startedAt: new Date().toISOString(),
+    });
+
+    this.runBulkImport(collection, allAssetIds).catch((err) => {
+      this.logger.error(`Background cache import failed for collection "${collectionId}": ${err}`);
+      const prev = this.importJobs.get(collectionId);
+      if (prev) {
+        this.importJobs.set(collectionId, { ...prev, status: 'error', finishedAt: new Date().toISOString() });
+      }
+    });
 
     return { started: true, total };
   }
@@ -103,6 +131,12 @@ export class NftAssetCacheService {
       );
 
       const processed = Math.min(i + IMPORT_BATCH_SIZE, assetIds.length);
+
+      const currentJob = this.importJobs.get(collection.id);
+      if (currentJob) {
+        this.importJobs.set(collection.id, { ...currentJob, processed, upserted, failed });
+      }
+
       if (processed % 100 === 0 || processed === assetIds.length) {
         this.logger.log(
           `Cache import progress [${collection.id}]: ${processed}/${assetIds.length} — upserted: ${upserted}, failed: ${failed}`,
@@ -113,6 +147,16 @@ export class NftAssetCacheService {
         await new Promise((r) => setTimeout(r, IMPORT_BATCH_DELAY_MS));
       }
     }
+
+    this.importJobs.set(collection.id, {
+      status: 'done',
+      total: assetIds.length,
+      processed: assetIds.length,
+      upserted,
+      failed,
+      startedAt: this.importJobs.get(collection.id)?.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
 
     this.logger.log(
       `Cache import complete [${collection.id}]: upserted=${upserted}, failed=${failed}`,
