@@ -1,0 +1,5156 @@
+{
+  "_meta": {
+    "exportedAt": "2026-05-16T14:44:26.060Z",
+    "source": "production",
+    "description": "Production definition data export — items, recipes, missions, mission categories, loot bundles"
+  },
+  "item_defs": [
+    {
+      "id": "mat_iron_ore",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Iron Ore",
+      "description": "Common ore used in basic crafting.",
+      "iconKey": "iron_ore",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "ore",
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.609",
+      "updatedAt": "2026-02-17T15:54:39.683",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_mana_shard",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Mana Shard",
+      "description": "Glimmering shard infused with arcane energy.",
+      "iconKey": "mana_shard",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "arcane",
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.617",
+      "updatedAt": "2026-02-17T15:54:39.578",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_feather_dust",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Feather Dust",
+      "description": "Fine dust gathered from enchanted feathers.",
+      "iconKey": "feather_dust",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.623",
+      "updatedAt": "2026-02-17T15:54:39.467",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_shadow_silk",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Shadow Silk",
+      "description": "Rare silk woven from shadow threads.",
+      "iconKey": "shadow_silk",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "rare",
+        "textile"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.629",
+      "updatedAt": "2026-02-17T15:54:39.345",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_crystal_bloom",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Crystal Bloom",
+      "description": "A flower that grows near ley lines.",
+      "iconKey": "crystal_bloom",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "arcane",
+        "botanical"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.634",
+      "updatedAt": "2026-02-17T15:54:39.227",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_void_essence",
+      "type": "MATERIAL",
+      "rarity": "RARE",
+      "name": "Void Essence",
+      "description": "Concentrated essence from the void between realms.",
+      "iconKey": "void_essence",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "rare",
+        "arcane"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.64",
+      "updatedAt": "2026-02-17T15:54:39.121",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_starlight_dust",
+      "type": "MATERIAL",
+      "rarity": "ADVANCED",
+      "name": "Starlight Dust",
+      "description": "Glittering particles that fall from the night sky.",
+      "iconKey": "starlight_dust",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "rare",
+        "arcane"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.646",
+      "updatedAt": "2026-02-17T15:54:39.003",
+      "lootboxDefId": null
+    },
+    {
+      "id": "potion_heal_small",
+      "type": "CONSUMABLE",
+      "rarity": "COMMON",
+      "name": "Minor Healing Potion",
+      "description": "Restores a small amount of health.",
+      "iconKey": "potion_heal",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "healing"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "entity",
+            "effectDefId": "eff_heal_minor"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.653",
+      "updatedAt": "2026-04-30T17:26:14.842",
+      "lootboxDefId": null
+    },
+    {
+      "id": "potion_heal_medium",
+      "type": "CONSUMABLE",
+      "rarity": "UNCOMMON",
+      "name": "Healing Potion",
+      "description": "Restores a moderate amount of health.",
+      "iconKey": "potion_heal",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "healing"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "entity",
+            "effectDefId": "eff_heal"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.658",
+      "updatedAt": "2026-04-30T17:26:14.812",
+      "lootboxDefId": null
+    },
+    {
+      "id": "potion_speed_small",
+      "type": "CONSUMABLE",
+      "rarity": "COMMON",
+      "name": "Swift Draught",
+      "description": "Temporarily increases movement speed.",
+      "iconKey": "potion_speed",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [
+        "buff",
+        "speed"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_speed_boost"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.663",
+      "updatedAt": "2026-04-30T17:26:14.782",
+      "lootboxDefId": null
+    },
+    {
+      "id": "consumable_lucky_charm",
+      "type": "CONSUMABLE",
+      "rarity": "UNCOMMON",
+      "name": "Lucky Charm",
+      "description": "Boosts luck for the next mission.",
+      "iconKey": "lucky_charm",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [
+        "buff",
+        "luck"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 10,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_success_chance"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.668",
+      "updatedAt": "2026-04-30T17:26:14.664",
+      "lootboxDefId": null
+    },
+    {
+      "id": "consumable_xp_scroll",
+      "type": "CONSUMABLE",
+      "rarity": "SCARCE",
+      "name": "XP Scroll",
+      "description": "Doubles experience gained for the next mission.",
+      "iconKey": "xp_scroll",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [
+        "buff",
+        "xp"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 5,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_xp_scroll"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.673",
+      "updatedAt": "2026-04-30T17:26:14.543",
+      "lootboxDefId": null
+    },
+    {
+      "id": "quest_ancient_map",
+      "type": "QUEST",
+      "rarity": "SCARCE",
+      "name": "Ancient Map Fragment",
+      "description": "A piece of a larger map leading to forgotten treasure.",
+      "iconKey": "ancient_map",
+      "uiColor": null,
+      "category": "QUEST_ITEMS",
+      "groups": [
+        "treasure"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 5,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-14T22:09:56.678",
+      "updatedAt": "2026-02-17T15:54:38.167",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_fake_badge",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Fake Security Badge",
+      "description": "Convincing at a glance. Catastrophic under inspection.",
+      "iconKey": null,
+      "uiColor": null,
+      "category": "QUEST_ITEMS",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 50,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-16T21:13:19.191",
+      "updatedAt": "2026-02-17T15:54:37.666",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_glitch_residue",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "GL!TCH Residue",
+      "description": null,
+      "iconKey": null,
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 100,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-16T21:13:19.44",
+      "updatedAt": "2026-02-17T15:54:37.548",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_proto_egg",
+      "type": "QUEST",
+      "rarity": "RARE",
+      "name": "Prototype Egg",
+      "description": null,
+      "iconKey": null,
+      "uiColor": null,
+      "category": "MISC",
+      "groups": [],
+      "tags": [],
+      "stackable": false,
+      "maxStack": null,
+      "uniqueInstance": true,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-02-16T21:13:19.701",
+      "updatedAt": "2026-02-17T15:54:37.432",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_xp_potion_small",
+      "type": "CONSUMABLE",
+      "rarity": "COMMON",
+      "name": "Minor XP Potion",
+      "description": "Grants 50 XP to a target entity.",
+      "iconKey": "potion_xp",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "entity",
+            "effectDefId": "eff_xp_potion_small"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-13T21:15:38.811",
+      "updatedAt": "2026-04-30T17:26:14.694",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_xp_boost_elixir",
+      "type": "CONSUMABLE",
+      "rarity": "UNCOMMON",
+      "name": "XP Boost Elixir",
+      "description": "Increases all XP gains by 25% for 30 minutes.",
+      "iconKey": "potion_xp_timed",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 10,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_xp_boost_timed"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-13T21:15:39.051",
+      "updatedAt": "2026-04-30T17:26:14.723",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_attack_tonic",
+      "type": "CONSUMABLE",
+      "rarity": "UNCOMMON",
+      "name": "Attack Tonic",
+      "description": "Boosts ATK by 10 for 15 minutes. Stacks up to 3 times.",
+      "iconKey": "potion_atk",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 10,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_stat_boost_atk"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-13T21:15:39.069",
+      "updatedAt": "2026-04-30T17:26:14.6",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_production_surge",
+      "type": "CONSUMABLE",
+      "rarity": "RARE",
+      "name": "Production Surge Potion",
+      "description": "Increases production rates by 50% for 1 hour at a target location.",
+      "iconKey": "potion_production",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 5,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "location",
+            "effectDefId": "eff_production_boost"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-13T21:15:39.086",
+      "updatedAt": "2026-04-30T17:26:14.635",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_gold_rush_potion",
+      "type": "CONSUMABLE",
+      "rarity": "UNCOMMON",
+      "name": "Gold Rush Potion",
+      "description": "Increases currency rewards by 20% for 30 minutes.",
+      "iconKey": "potion_gold",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 10,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_currency_boost"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-13T21:15:39.092",
+      "updatedAt": "2026-04-30T17:26:14.753",
+      "lootboxDefId": null
+    },
+    {
+      "id": "potion_keeper_xp_medium",
+      "type": "CONSUMABLE",
+      "rarity": "RARE",
+      "name": "Player XP Potion (M)",
+      "description": "Drink to instantly gain 250xp",
+      "iconKey": null,
+      "uiColor": null,
+      "category": "MISC",
+      "groups": [
+        "Potions"
+      ],
+      "tags": [
+        "Potions"
+      ],
+      "stackable": true,
+      "maxStack": 3,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_player_xp_250"
+          }
+        ]
+      },
+      "data": {},
+      "seasonId": null,
+      "createdAt": "2026-03-17T04:15:22.336",
+      "updatedAt": "2026-05-06T12:38:12.146",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_common_chest",
+      "type": "LOOTBOX",
+      "rarity": "COMMON",
+      "name": "Common Chest",
+      "description": "A sturdy chest filled with everyday supplies. Open it to receive resources.",
+      "iconKey": "common_chest",
+      "uiColor": "#6b7280",
+      "category": "MISC",
+      "groups": [
+        "lootbox"
+      ],
+      "tags": [
+        "lootbox",
+        "chest"
+      ],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-17T21:45:00.119",
+      "updatedAt": "2026-03-17T21:45:00.119",
+      "lootboxDefId": "lootbox_common_chest"
+    },
+    {
+      "id": "item_rare_crate",
+      "type": "LOOTBOX",
+      "rarity": "RARE",
+      "name": "Rare Crate",
+      "description": "A reinforced crate stamped with arcane sigils. Contains rare materials and premium currency.",
+      "iconKey": "rare_crate",
+      "uiColor": "#3b82f6",
+      "category": "MISC",
+      "groups": [
+        "lootbox"
+      ],
+      "tags": [
+        "lootbox",
+        "crate"
+      ],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-17T21:45:00.228",
+      "updatedAt": "2026-03-17T21:45:00.228",
+      "lootboxDefId": "lootbox_rare_crate"
+    },
+    {
+      "id": "item_mystery_egg",
+      "type": "LOOTBOX",
+      "rarity": "EPIC",
+      "name": "Mystery Egg",
+      "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
+      "iconKey": "mystery_egg",
+      "uiColor": "#a78bfa",
+      "category": "MISC",
+      "groups": [
+        "lootbox"
+      ],
+      "tags": [
+        "lootbox",
+        "egg",
+        "mystery"
+      ],
+      "stackable": true,
+      "maxStack": 99,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-03-17T21:45:00.233",
+      "updatedAt": "2026-03-17T21:45:00.233",
+      "lootboxDefId": "lootbox_mystery_egg"
+    },
+    {
+      "id": "mat_meadow_thread",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Meadow Thread",
+      "description": "Common material used in basic crafting.",
+      "iconKey": "/images/icons/mat_meadow_thread.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:08:13.034",
+      "updatedAt": "2026-05-04T16:06:54.733",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_shiny_rock",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Polished Shiny Rock",
+      "description": "Uncommon material used in basic crafting.",
+      "iconKey": "/images/icons/mat_polished_shiny_rock.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:09:03.874",
+      "updatedAt": "2026-05-02T22:57:06.077",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_golden_hay_core",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Golden Hay Core",
+      "description": "A scar(c)e material used in basic crafting. Found in Derpshire Valley.",
+      "iconKey": "images/icons/mat_golden_hay_core.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:10:08.594",
+      "updatedAt": "2026-05-04T16:17:06.32",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_frost_thread",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Frost Thread",
+      "description": "A common material used in basic crafting. Found in Chillarctica Drifts",
+      "iconKey": "images/icons/mat_frost_thread.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:12:43.159",
+      "updatedAt": "2026-05-04T16:17:18.437",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_polar_arcane_dust",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Polar Arcane Dust",
+      "description": "An uncommon material used in basic crafting. Found in Chillarctica Drifts",
+      "iconKey": "images/icons/mat_polar_arcane_dust.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:13:56.41",
+      "updatedAt": "2026-05-04T16:22:50.126",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_cryostone_prism",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Cryostone Prism",
+      "description": "A scar(c)e material used in basic crafting. Found in Chillarctica Drifts",
+      "iconKey": "images/icons/mat_cryostone_prism.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:14:56.303",
+      "updatedAt": "2026-05-04T16:24:23.141",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_bone_chips",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Sunbaked Bone Chips",
+      "description": "A common material used in basic crafting. Found in Sandcrypt Badlands",
+      "iconKey": "images/icons/mat_sunbaked_bone_chips.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:16:17.024",
+      "updatedAt": "2026-05-04T16:17:35.669",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_sandcrypt_vellum",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Sandcrypt Vellum",
+      "description": "An uncommon material used in basic crafting. Found in Sandcrypt Badlands",
+      "iconKey": "images/icons/mat_sandcrypt_vellum.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:17:06.028",
+      "updatedAt": "2026-05-04T16:17:41.744",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_ember_gland",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Ember Scorpion Gland",
+      "description": "A scar(c)e material used in basic crafting. Found in Sandcrypt Badlands",
+      "iconKey": "images/icons/mat_scorpion_ember_gland.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:18:12.839",
+      "updatedAt": "2026-05-04T16:19:55.599",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_chillvine_fiber",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Chillvine Fiber",
+      "description": "An uncommon material used in basic crafting. Found in Chillvine Jungle",
+      "iconKey": "images/icons/mat_chillvine_fiber.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:19:31.049",
+      "updatedAt": "2026-05-04T16:17:53.396",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_luminous_resin",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Luminous Resin",
+      "description": "A scar(c)e material used in basic crafting. Found in Chillvine Jungle",
+      "iconKey": "images/icons/mat_luminous_resin.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:21:47.086",
+      "updatedAt": "2026-05-04T16:18:00.215",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_whisper_scale",
+      "type": "MATERIAL",
+      "rarity": "RARE",
+      "name": "Whisper Serpent Scale",
+      "description": "A rare material used in basic crafting. Found in Chillvine Jungle",
+      "iconKey": "images/icons/mat_whispher_scale.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:22:24.867",
+      "updatedAt": "2026-05-04T16:23:20.737",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_skyfeather_filament",
+      "type": "MATERIAL",
+      "rarity": "UNCOMMON",
+      "name": "Skyfeather Filament",
+      "description": "An uncommon material used in basic crafting. Found in Pinnacle Perch",
+      "iconKey": "images/icons/mat_skyfeather_filament.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:23:36.412",
+      "updatedAt": "2026-05-04T16:23:08.047",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_tradeglass_shard",
+      "type": "MATERIAL",
+      "rarity": "RARE",
+      "name": "Tradeglass Shard",
+      "description": "A rare material used in basic crafting. Found in Pinnacle Perch",
+      "iconKey": "images/icons/mat_tradeglass_shard.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:24:09.654",
+      "updatedAt": "2026-05-04T16:18:20.16",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_beacon_core",
+      "type": "MATERIAL",
+      "rarity": "EPIC",
+      "name": "Resonance Beacon Core",
+      "description": "An epic material used in basic crafting. Found in Pinnacle Perch",
+      "iconKey": "images/icons/mat_resonance_beacon_core.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:25:11.432",
+      "updatedAt": "2026-05-04T16:23:50.024",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_sludge_fiber",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Bog Sludge Fiber",
+      "description": "A scar(c)e material used in basic crafting. Found in Baldo's Bog",
+      "iconKey": "images/icons/mat_bog_sludge_fiber.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:26:26.893",
+      "updatedAt": "2026-05-04T16:18:31.067",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_resin_cluster",
+      "type": "MATERIAL",
+      "rarity": "EPIC",
+      "name": "Toxic Resin Cluster",
+      "description": "An epic material used in basic crafting. Found in Baldo's Bog",
+      "iconKey": "images/icons/mat_toxic_resin_cluster.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:27:07.633",
+      "updatedAt": "2026-05-04T16:18:36.472",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_eye_pearl",
+      "type": "MATERIAL",
+      "rarity": "MYTHIC",
+      "name": "Mutagenic Eye Pearl",
+      "description": "A mythic material used in basic crafting. Found in Baldo's Bog",
+      "iconKey": "/images/icons/mat_mat_mutagenic_eye_pearl.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:28:43.86",
+      "updatedAt": "2026-05-04T16:18:42.588",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_magma_thread",
+      "type": "MATERIAL",
+      "rarity": "RARE",
+      "name": "Magma Thread",
+      "description": "A rare material used in basic crafting. Found in Baldo's Bog",
+      "iconKey": "images/icons/mat_magma_thread.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:29:23.643",
+      "updatedAt": "2026-05-04T16:18:48.119",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_ember_plate",
+      "type": "MATERIAL",
+      "rarity": "MYTHIC",
+      "name": "Alloyed Ember Plate",
+      "description": "A mythic material used in basic crafting. Found in Lavalode Peaks",
+      "iconKey": "images/icons/mat_alloyed_ember_plate.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:30:20.184",
+      "updatedAt": "2026-05-04T16:18:54.71",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_core_fragment",
+      "type": "MATERIAL",
+      "rarity": "LEGENDARY",
+      "name": "Divine Core Fragment",
+      "description": "A legendary material used in basic crafting. Found in Lavalode Peaks",
+      "iconKey": "images/icons/mat_divine_core_fragment.png",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-18T17:31:21.396",
+      "updatedAt": "2026-05-04T16:19:01.309",
+      "lootboxDefId": null
+    },
+    {
+      "id": "gear_iron_sword",
+      "type": "GEAR",
+      "rarity": "COMMON",
+      "name": "Iron Sword",
+      "description": "A sturdy blade forged from iron ore.",
+      "iconKey": "iron_sword",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "weapon",
+        "melee"
+      ],
+      "tags": [],
+      "stackable": false,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": {
+        "slot": "weapon",
+        "stats": {
+          "ATK": 5
+        }
+      },
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-20T21:28:26.662",
+      "updatedAt": "2026-04-20T21:28:26.662",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_silver_dust",
+      "type": "MATERIAL",
+      "rarity": "COMMON",
+      "name": "Silver Dust",
+      "description": "Fine metallic powder used in enchanting and alchemy.",
+      "iconKey": "silver_dust",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "basic",
+        "metal"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-20T21:28:28.881",
+      "updatedAt": "2026-04-20T21:28:28.881",
+      "lootboxDefId": null
+    },
+    {
+      "id": "item_luck_charm",
+      "type": "CONSUMABLE",
+      "rarity": "RARE",
+      "name": "Luck Charm",
+      "description": "Increases item rewards by 10% for 1 hour.",
+      "iconKey": "charm_luck",
+      "uiColor": null,
+      "category": "ENHANCEMENT",
+      "groups": [],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 5,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "player",
+            "effectDefId": "eff_reward_boost"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-27T03:07:17.639",
+      "updatedAt": "2026-04-30T17:26:14.874",
+      "lootboxDefId": null
+    },
+    {
+      "id": "gear_mana_ring",
+      "type": "GEAR",
+      "rarity": "UNCOMMON",
+      "name": "Ring of Focus",
+      "description": "A ring that sharpens the wearer's focus.",
+      "iconKey": "mana_ring",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "accessory",
+        "arcane"
+      ],
+      "tags": [],
+      "stackable": false,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": {
+        "slot": "accessory",
+        "stats": {
+          "FOC": 3,
+          "LCK": 1
+        }
+      },
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-27T03:07:33.522",
+      "updatedAt": "2026-04-27T03:07:33.522",
+      "lootboxDefId": null
+    },
+    {
+      "id": "consumable_revival_token",
+      "type": "CONSUMABLE",
+      "rarity": "RARE",
+      "name": "Revival Token",
+      "description": "Instantly revives a defeated keeper mid-mission.",
+      "iconKey": "revival_token",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "revival",
+        "combat"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": 5,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": {
+        "effects": [
+          {
+            "targetType": "entity",
+            "effectDefId": "eff_revival"
+          }
+        ]
+      },
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-27T03:07:35.945",
+      "updatedAt": "2026-04-30T17:26:14.903",
+      "lootboxDefId": null
+    },
+    {
+      "id": "gear_shadow_cloak",
+      "type": "GEAR",
+      "rarity": "SCARCE",
+      "name": "Shadow Cloak",
+      "description": "A cloak woven from shadow silk that improves stealth and evasion.",
+      "iconKey": "shadow_cloak",
+      "uiColor": null,
+      "category": "COMBAT",
+      "groups": [
+        "armor",
+        "stealth"
+      ],
+      "tags": [],
+      "stackable": false,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": {
+        "slot": "armor",
+        "stats": {
+          "DEF": 3,
+          "SPD": 2
+        }
+      },
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-04-27T03:07:36.094",
+      "updatedAt": "2026-04-27T03:07:36.094",
+      "lootboxDefId": null
+    },
+    {
+      "id": "mat_ember_crystal",
+      "type": "MATERIAL",
+      "rarity": "SCARCE",
+      "name": "Ember Crystal",
+      "description": "A fragment of condensed flame energy found near volcanic vents.",
+      "iconKey": "ember_crystal",
+      "uiColor": null,
+      "category": "CRAFTING",
+      "groups": [
+        "rare",
+        "elemental"
+      ],
+      "tags": [],
+      "stackable": true,
+      "maxStack": null,
+      "uniqueInstance": false,
+      "equipData": null,
+      "passiveEffects": null,
+      "consumableData": null,
+      "data": null,
+      "seasonId": null,
+      "createdAt": "2026-05-05T03:11:14.168",
+      "updatedAt": "2026-05-05T03:11:14.168",
+      "lootboxDefId": null
+    }
+  ],
+  "recipe_defs": [
+    {
+      "id": "recipe_iron_sword",
+      "name": "Forge Iron Sword",
+      "description": "Forge a basic iron sword from ore.",
+      "category": "weapons",
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 50
+        },
+        {
+          "id": "mat_iron_ore",
+          "type": "item",
+          "amount": 10
+        }
+      ],
+      "timer": {
+        "duration": 600,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 2,
+      "rewards": {
+        "items": [
+          {
+            "id": "gear_iron_sword",
+            "amount": 1
+          }
+        ]
+      },
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.989",
+      "updatedAt": "2026-05-16T14:18:29.367",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": "display_recipe_default"
+    },
+    {
+      "id": "recipe_mana_ring",
+      "name": "Enchant Ring of Focus",
+      "description": "Imbue a ring with concentrated mana energy.",
+      "category": "accessories",
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 100
+        },
+        {
+          "id": "mat_mana_shard",
+          "type": "item",
+          "amount": 8
+        },
+        {
+          "id": "mat_crystal_bloom",
+          "type": "item",
+          "amount": 3
+        }
+      ],
+      "timer": {
+        "duration": 1200,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 3,
+      "rewards": {
+        "items": [
+          {
+            "id": "gear_mana_ring",
+            "amount": 1
+          }
+        ]
+      },
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.995",
+      "updatedAt": "2026-05-16T14:18:29.386",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": "display_recipe_default"
+    },
+    {
+      "id": "recipe_heal_potion",
+      "name": "Brew Healing Potion",
+      "description": "Brew a moderate healing potion from crystal blooms.",
+      "category": "potions",
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 30
+        },
+        {
+          "id": "mat_feather_dust",
+          "type": "item",
+          "amount": 5
+        },
+        {
+          "id": "mat_crystal_bloom",
+          "type": "item",
+          "amount": 2
+        }
+      ],
+      "timer": {
+        "duration": 300,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 2,
+      "rewards": {
+        "items": [
+          {
+            "id": "potion_heal_medium",
+            "amount": 2
+          }
+        ]
+      },
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {},
+      "createdAt": "2026-02-14T22:10:28",
+      "updatedAt": "2026-05-16T14:18:29.334",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": "display_recipe_default"
+    },
+    {
+      "id": "health_potion",
+      "name": "Sketchy Health Potion",
+      "description": "Heals your bird. Side effects may include temporary feather loss.",
+      "category": null,
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 20
+        }
+      ],
+      "timer": {
+        "duration": 600,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 15
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 1,
+      "rewards": [
+        {
+          "key": "potion_heal_small",
+          "max": 1,
+          "min": 1,
+          "odds": 100,
+          "type": "item"
+        }
+      ],
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {},
+      "createdAt": "2026-02-14T22:10:28.005",
+      "updatedAt": "2026-05-16T14:18:29.263",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": null
+    },
+    {
+      "id": "speed_potion",
+      "name": "Turbo Juice",
+      "description": "Makes birds go ZOOM. They may forget how to stop.",
+      "category": null,
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 30
+        }
+      ],
+      "timer": {
+        "duration": 900,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 25
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 5,
+      "rewards": [
+        {
+          "key": "potion_speed_small",
+          "max": 1,
+          "min": 1,
+          "odds": 100,
+          "type": "item"
+        }
+      ],
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 5
+        }
+      ],
+      "effects": [],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 3
+        }
+      ],
+      "data": {
+        "tier": 2
+      },
+      "createdAt": "2026-02-14T22:10:28.011",
+      "updatedAt": "2026-05-16T14:18:29.424",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": null
+    },
+    {
+      "id": "luck_potion",
+      "name": "Liquid Four-Leaf Clover",
+      "description": "Statistically questionable, but birds love the taste.",
+      "category": null,
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 40
+        }
+      ],
+      "timer": {
+        "duration": 1200,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 35
+          }
+        ],
+        "skip_type": "scaling"
+      },
+      "requiredKeeperLevel": 10,
+      "rewards": [
+        {
+          "key": "consumable_lucky_charm",
+          "max": 1,
+          "min": 1,
+          "odds": 100,
+          "type": "item"
+        }
+      ],
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 10
+        }
+      ],
+      "effects": [],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 7
+        }
+      ],
+      "data": {
+        "tier": 3
+      },
+      "createdAt": "2026-02-14T22:10:28.017",
+      "updatedAt": "2026-05-16T14:18:29.298",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": null
+    },
+    {
+      "id": "power_potion",
+      "name": "Buff Bird Brew",
+      "description": "Guaranteed to make your bird feel swole. Temporary gains only.",
+      "category": null,
+      "group": null,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 50
+        }
+      ],
+      "timer": {
+        "duration": 1500,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "requiredKeeperLevel": 15,
+      "rewards": [
+        {
+          "max": 50,
+          "min": 20,
+          "odds": 100,
+          "type": "entity_xp"
+        },
+        {
+          "key": "mat_feather_dust",
+          "max": 5,
+          "min": 2,
+          "odds": 100,
+          "type": "item"
+        }
+      ],
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 15
+        }
+      ],
+      "effects": [],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 10
+        }
+      ],
+      "data": {
+        "tier": 3
+      },
+      "createdAt": "2026-02-14T22:10:28.022",
+      "updatedAt": "2026-05-16T14:18:29.316",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": null
+    },
+    {
+      "id": "recipe_reverse_incubator",
+      "name": "Reverse-Engineer Incubator",
+      "description": null,
+      "category": null,
+      "group": null,
+      "cost": [
+        {
+          "id": "item_glitch_residue",
+          "type": "item",
+          "amount": 10
+        }
+      ],
+      "timer": {
+        "duration": 300,
+        "boostable": true
+      },
+      "requiredKeeperLevel": 2,
+      "rewards": {
+        "type": "bundle",
+        "entries": [
+          {
+            "qty": 1,
+            "type": "item",
+            "itemDefId": "item_proto_egg"
+          }
+        ]
+      },
+      "requirements": [],
+      "effects": [],
+      "visibilityRequirements": [],
+      "data": {},
+      "createdAt": "2026-02-16T21:13:32.15",
+      "updatedAt": "2026-05-16T14:18:29.404",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "displayDefId": "display_recipe_default"
+    }
+  ],
+  "mission_defs": [
+    {
+      "id": "mission_quick_gather",
+      "name": "Quick Gather",
+      "description": "Send your birds on a short foraging trip.",
+      "difficulty": 5,
+      "minSuccessChance": 100,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 10,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 5
+          }
+        ],
+        "skip_type": "scaling"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "key": "soft_arcanium",
+            "max": 10,
+            "min": 5,
+            "type": "currency"
+          },
+          {
+            "id": "mat_feather_dust",
+            "max": 15,
+            "min": 10,
+            "type": "keeper_xp",
+            "chance": 0.6
+          },
+          {
+            "key": "",
+            "max": 100,
+            "min": 50,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Woohoo!"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "max": 5,
+            "min": 1,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        "Test Preview Item"
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.905",
+      "updatedAt": "2026-04-28T16:01:58.686",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_iron_run",
+      "name": "Iron Mining Run",
+      "description": "Venture into the caves to mine iron ore.",
+      "difficulty": 10,
+      "minSuccessChance": 5,
+      "maxSuccessChance": 95,
+      "timer": {
+        "duration": 90,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 10
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "text": [
+          "Rich iron veins discovered!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "mat_iron_ore",
+            "key": "mat_iron_ore",
+            "max": 10,
+            "min": 5,
+            "type": "item"
+          },
+          {
+            "odds": 50,
+            "bundle": [
+              {
+                "key": "soft_arcanium",
+                "max": 10,
+                "min": 1,
+                "odds": 100,
+                "type": "currency"
+              },
+              {
+                "key": "mat_iron_ore",
+                "max": 5,
+                "min": 1,
+                "odds": 100,
+                "type": "item"
+              },
+              {
+                "key": "",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "text",
+                "message": "You found some extra iron!"
+              }
+            ]
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The caves were mostly empty."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "mat_iron_ore",
+            "max": 2,
+            "min": 2,
+            "type": "item"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 2,
+          "operator": "gte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        "Some Iron Ore",
+        "A touch of Arcanium"
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.912",
+      "updatedAt": "2026-04-28T16:01:58.653",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_mana_expedition",
+      "name": "Mana Expedition",
+      "description": "Explore ley line convergences to collect mana shards.",
+      "difficulty": 3,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 1800,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "text": [
+          "The ley lines pulsed with energy!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "mat_mana_shard",
+            "max": 5,
+            "min": 5,
+            "type": "item"
+          },
+          {
+            "id": "mat_crystal_bloom",
+            "max": 2,
+            "min": 2,
+            "type": "item",
+            "chance": 0.4
+          },
+          {
+            "id": "soft_arcanium",
+            "max": 60,
+            "min": 60,
+            "type": "currency"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The ley lines were dormant today."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "max": 10,
+            "min": 10,
+            "type": "currency"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 3,
+          "operator": "gte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        {
+          "id": "mat_mana_shard",
+          "type": "item",
+          "amount": 5
+        },
+        {
+          "id": "mat_crystal_bloom",
+          "type": "item",
+          "amount": 2
+        }
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.92",
+      "updatedAt": "2026-04-28T16:01:58.591",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "quick_egg_hunt",
+      "name": "The Great Egg Hunt",
+      "description": "Scramble around Derpshire looking for shiny eggs. Try not to sit on them.",
+      "difficulty": 5,
+      "minSuccessChance": 100,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 10,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 5
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 100,
+            "min": 50,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 12,
+            "min": 5,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 15,
+            "min": 5,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 6,
+            "min": 3,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 3,
+            "min": 1,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 1,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 1,
+          "operator": "lte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 10-25 XP",
+        "🛡️ 5-12 KXP",
+        "💎 5-15 soft_arcanium"
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.934",
+      "updatedAt": "2026-02-17T19:20:17.09",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "quick_mushroom_patrol",
+      "name": "Suspicious Mushroom Patrol",
+      "description": "Those mushrooms are looking a bit too happy. Investigate immediately.",
+      "difficulty": 75,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 300,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 10
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 35,
+            "min": 15,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 18,
+            "min": 8,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 20,
+            "min": 8,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 9,
+            "min": 4,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 5,
+            "min": 2,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 1,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 2,
+          "operator": "lte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 15-35 XP",
+        "🛡️ 8-18 KXP",
+        "💎 8-20 soft_arcanium"
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.942",
+      "updatedAt": "2026-02-17T15:54:50.36",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "quick_mail_run",
+      "name": "Derp Mail Express",
+      "description": "Deliver very important letters. Contents: mostly doodles and snack requests.",
+      "difficulty": 40,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 180,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 8
+          }
+        ],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 18,
+            "min": 8,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 9,
+            "min": 4,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 10,
+            "min": 3,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 5,
+            "min": 2,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 2,
+            "min": 1,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 1,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 1,
+          "operator": "lte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 8-18 XP",
+        "🛡️ 4-9 KXP",
+        "💎 3-10 soft_arcanium"
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.949",
+      "updatedAt": "2026-02-17T15:54:50.154",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "standard_cave_explore",
+      "name": "The Somewhat Scary Cave",
+      "description": "A cave that is definitely not haunted. Probably. Send a team to find out.",
+      "difficulty": 120,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 1800,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 50
+          }
+        ],
+        "skip_type": "scaling"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 80,
+            "min": 40,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 40,
+            "min": 20,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 50,
+            "min": 20,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "key": "mat_iron_ore",
+            "max": 3,
+            "min": 1,
+            "odds": 10,
+            "type": "item"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 20,
+            "min": 10,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 10,
+            "min": 5,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 2,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 3,
+          "operator": "lte"
+        },
+        {
+          "type": "keeper_level",
+          "value": 2
+        }
+      ],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 2
+        }
+      ],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 40-80 XP",
+        "🛡️ 20-40 KXP",
+        "💎 20-50 soft_arcanium",
+        "🎁 1-3 iron_ore (10%)"
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.955",
+      "updatedAt": "2026-02-17T15:54:49.95",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "standard_bandit_camp",
+      "name": "Bandit Camp Buffet Raid",
+      "description": "The bandits stole the village snack supply. This cannot stand.",
+      "difficulty": 150,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 2700,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "soft_arcanium",
+            "type": "currency",
+            "amount": 75
+          }
+        ],
+        "skip_type": "scaling"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 120,
+            "min": 60,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 60,
+            "min": 30,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 70,
+            "min": 30,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "key": "mat_mana_shard",
+            "max": 2,
+            "min": 1,
+            "odds": 15,
+            "type": "item"
+          },
+          {
+            "key": "completed_bandit_camp",
+            "odds": 100,
+            "type": "flag",
+            "value": true,
+            "operation": "set"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 30,
+            "min": 15,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 15,
+            "min": 8,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 2,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 3,
+          "operator": "lte"
+        },
+        {
+          "type": "keeper_level",
+          "value": 3
+        }
+      ],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 3
+        }
+      ],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 60-120 XP",
+        "🛡️ 30-60 KXP",
+        "💎 30-70 soft_arcanium",
+        "🎁 1-2 mana_shard (15%)"
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.962",
+      "updatedAt": "2026-02-17T15:54:49.744",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "standard_tower_climb",
+      "name": "The Leaning Tower of Derp",
+      "description": "Climb a suspiciously wobbly tower. Rumor has it there's treasure at the top. Also vertigo.",
+      "difficulty": 200,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3600,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 160,
+            "min": 80,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 80,
+            "min": 40,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "soft_arcanium",
+            "max": 100,
+            "min": 40,
+            "odds": 100,
+            "type": "currency"
+          },
+          {
+            "key": "mat_shadow_silk",
+            "max": 2,
+            "min": 1,
+            "odds": 20,
+            "type": "item"
+          },
+          {
+            "key": "mat_crystal_bloom",
+            "max": 1,
+            "min": 1,
+            "odds": 10,
+            "type": "item"
+          },
+          {
+            "key": "completed_tower_climb",
+            "odds": 100,
+            "type": "flag",
+            "value": true,
+            "operation": "set"
+          },
+          {
+            "odds": 70,
+            "type": "text",
+            "message": "Mission accomplished!"
+          },
+          {
+            "odds": 30,
+            "type": "text",
+            "message": "Flawless victory!"
+          }
+        ]
+      },
+      "failure": {
+        "rewards": [
+          {
+            "max": 40,
+            "min": 20,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "max": 20,
+            "min": 10,
+            "odds": 100,
+            "type": "keeper_xp"
+          },
+          {
+            "odds": 60,
+            "type": "text",
+            "message": "Better luck next time..."
+          },
+          {
+            "odds": 40,
+            "type": "text",
+            "message": "That was embarrassing."
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "team_size",
+          "value": 3,
+          "operator": "gte"
+        },
+        {
+          "type": "team_size",
+          "value": 4,
+          "operator": "lte"
+        },
+        {
+          "type": "keeper_level",
+          "value": 5
+        }
+      ],
+      "visibilityRequirements": [
+        {
+          "type": "keeper_level",
+          "value": 5
+        }
+      ],
+      "tags": [],
+      "rewardPreview": [
+        "⚡ 80-160 XP",
+        "🛡️ 40-80 KXP",
+        "💎 40-100 soft_arcanium",
+        "🎁 1-2 shadow_silk (20%)",
+        "🎁 1 crystal_bloom (10%)"
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.981",
+      "updatedAt": "2026-02-17T15:54:49.564",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_perp_1_data_sweep",
+      "name": "Data Recovery Sweep",
+      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
+      "difficulty": 1,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 60,
+        "boostable": true
+      },
+      "success": {
+        "rewards": [
+          {
+            "max": 20,
+            "min": 10,
+            "type": "entity_xp"
+          },
+          {
+            "key": "item_glitch_residue",
+            "max": 3,
+            "min": 1,
+            "type": "item"
+          }
+        ]
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_perp1",
+      "missionCategoryDefId": "cat_prologue",
+      "data": {},
+      "createdAt": "2026-02-16T23:29:21.215",
+      "updatedAt": "2026-02-17T15:54:49.34",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_perp_2_incubator_extraction",
+      "name": "Incubator Extraction",
+      "description": null,
+      "difficulty": 2,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 300
+      },
+      "success": {
+        "rewards": [
+          {
+            "key": "item_glitch_residue",
+            "max": 5,
+            "min": 3,
+            "type": "item"
+          },
+          {
+            "key": "incubator_secured",
+            "type": "flag",
+            "value": true,
+            "operation": "set"
+          }
+        ]
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [
+        {
+          "key": "item_fake_badge",
+          "type": "item",
+          "value": 1
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_perp2",
+      "missionCategoryDefId": "cat_prologue",
+      "data": {},
+      "createdAt": "2026-02-16T23:30:08.002",
+      "updatedAt": "2026-02-17T15:54:49.124",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_perp_3_glitch_calibration",
+      "name": "GL!TCH-BIO Calibration",
+      "description": null,
+      "difficulty": 3,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 600,
+        "skipable": true,
+        "boostable": true,
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "emitEvent",
+            "defId": "evt_new_guest_arrived",
+            "payload": {
+              "giftDefId": "gift_perp_clone"
+            },
+            "idempotencyKey": "clone-${jobId}"
+          },
+          {
+            "key": "clone_created",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "true"
+          }
+        ]
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [
+        {
+          "key": "incubator_secured",
+          "type": "flag",
+          "value": true
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_perp3",
+      "missionCategoryDefId": "cat_prologue",
+      "data": {},
+      "createdAt": "2026-02-16T23:30:38.196",
+      "updatedAt": "2026-02-17T15:54:48.926",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_perp_4_first_prank",
+      "name": "The First Prank",
+      "description": null,
+      "difficulty": 2,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 120,
+        "skipable": true,
+        "boostable": true,
+        "skip_type": "absolute"
+      },
+      "success": {
+        "rewards": [
+          {
+            "key": "soft_arcanium",
+            "max": 40,
+            "min": 20,
+            "type": "currency"
+          },
+          {
+            "key": "pranks_completed",
+            "type": "flag",
+            "value": 1,
+            "operation": "increment"
+          }
+        ]
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [
+        {
+          "key": "clone_created",
+          "type": "flag",
+          "value": true,
+          "operator": "eq"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_perp4",
+      "missionCategoryDefId": "cat_prologue",
+      "data": {},
+      "createdAt": "2026-02-16T23:30:51.755",
+      "updatedAt": "2026-02-17T15:54:48.716",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "scav_derpshire_short",
+      "name": "Derpshire Valley - Quick Scout",
+      "description": null,
+      "difficulty": 10,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 300,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": null,
+      "data": {},
+      "createdAt": "2026-04-18T15:43:08.064",
+      "updatedAt": "2026-04-18T15:45:33.654",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "5m",
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scav_base",
+      "name": "Base Scout Mission",
+      "description": "",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 300,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 5
+          }
+        ],
+        "skip_type": "scaling"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "key": "soft_arcanium",
+            "max": 10,
+            "min": 5,
+            "type": "currency"
+          },
+          {
+            "id": "mat_feather_dust",
+            "max": 15,
+            "min": 10,
+            "type": "keeper_xp",
+            "chance": 0.6
+          },
+          {
+            "key": "",
+            "max": 100,
+            "min": 50,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Woohoo!"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "max": 5,
+            "min": 1,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [
+        {
+          "key": "Show",
+          "type": "flag",
+          "value": true,
+          "operator": "exists"
+        }
+      ],
+      "tags": [],
+      "rewardPreview": [
+        "Test Preview Item"
+      ],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_quick",
+      "data": {},
+      "createdAt": "2026-04-18T15:52:35.291",
+      "updatedAt": "2026-04-28T16:01:58.752",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_test_flags",
+      "name": "Test Flags",
+      "description": "A mission to test flags.",
+      "difficulty": 0,
+      "minSuccessChance": 100,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 5
+      },
+      "success": {
+        "rewards": [
+          {
+            "odds": 100,
+            "bundle": [
+              {
+                "key": "test",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "flag",
+                "value": "1",
+                "operation": "increment"
+              },
+              {
+                "key": "",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "text",
+                "message": "Flag increased by one."
+              }
+            ],
+            "requirements": [
+              {
+                "key": "test",
+                "type": "flag",
+                "value": 1,
+                "operator": "lte"
+              }
+            ]
+          },
+          {
+            "odds": 100,
+            "bundle": [
+              {
+                "key": "test",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "flag",
+                "value": "0"
+              },
+              {
+                "key": "",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "text",
+                "message": "Flag \"test\" reset."
+              },
+              {
+                "key": "",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "emitEvent",
+                "defId": "evt_new_guest_arrived",
+                "payload": {
+                  "giftDefId": "gift_starter_bird"
+                }
+              }
+            ],
+            "requirements": [
+              {
+                "key": "test",
+                "type": "flag",
+                "value": 1,
+                "operator": "gt"
+              }
+            ]
+          },
+          {
+            "odds": 100,
+            "bundle": [
+              {
+                "key": "test",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "flag",
+                "value": "0"
+              },
+              {
+                "key": "",
+                "max": 1,
+                "min": 1,
+                "odds": 100,
+                "type": "text",
+                "message": "Flag \"test\" set to 0."
+              }
+            ],
+            "requirements": [
+              {
+                "key": "test",
+                "type": "flag",
+                "value": 1,
+                "operator": "dne"
+              }
+            ]
+          }
+        ]
+      },
+      "failure": {
+        "text": [],
+        "effects": [],
+        "rewards": []
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_quick_mission",
+      "missionCategoryDefId": "cat_test",
+      "data": {},
+      "createdAt": "2026-04-18T16:32:15.099",
+      "updatedAt": "2026-04-18T16:32:15.099",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_void_rift",
+      "name": "Void Rift Exploration",
+      "description": "Brave the dangerous void rifts for rare materials.",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3600,
+        "skipable": false,
+        "boostable": true,
+        "skip_cost": [],
+        "skip_type": "absolute"
+      },
+      "success": {
+        "text": [
+          "You navigated the rift successfully!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "mat_void_essence",
+            "max": 2,
+            "min": 2,
+            "type": "item"
+          },
+          {
+            "id": "mat_shadow_silk",
+            "max": 3,
+            "min": 3,
+            "type": "item"
+          },
+          {
+            "id": "soft_arcanium",
+            "max": 100,
+            "min": 100,
+            "type": "currency"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The rift collapsed before you could gather much."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "max": 15,
+            "min": 15,
+            "type": "currency"
+          }
+        ]
+      },
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 5,
+          "operator": "gte"
+        }
+      ],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [
+        {
+          "id": "mat_void_essence",
+          "type": "item",
+          "amount": 2
+        },
+        {
+          "id": "mat_shadow_silk",
+          "type": "item",
+          "amount": 3
+        }
+      ],
+      "enabled": true,
+      "displayDefId": "display_standard_mission",
+      "missionCategoryDefId": "cat_standard",
+      "data": {},
+      "createdAt": "2026-04-18T16:32:15.267",
+      "updatedAt": "2026-04-28T16:01:58.719",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": false,
+      "inlineLabel": null,
+      "sortOrder": 0,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_dv_1hr",
+      "name": "Scout - Derpshire Valley",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3600,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 5
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 4,
+            "pickMin": 3,
+            "bundleDefId": "derpshire_valley_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "missionCategoryDefId": "cat_scout_derpshire_valley",
+      "data": {},
+      "createdAt": "2026-04-20T21:31:00.202",
+      "updatedAt": "2026-04-27T02:44:31.132",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "1hr",
+      "sortOrder": 2,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_dv_5m",
+      "name": "Scout - Derpshire Valley",
+      "description": "A brisk scout of the area",
+      "difficulty": 1,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 1
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "type": "bundle_ref",
+            "bundleDefId": "derpshire_valley_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "missionCategoryDefId": "cat_scout_derpshire_valley",
+      "data": {},
+      "createdAt": "2026-04-25T23:14:03.583",
+      "updatedAt": "2026-05-06T13:44:54.597",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "5min",
+      "sortOrder": 0,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 10
+        }
+      ],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_dv_30m",
+      "name": "Scout - Derpshire Valley",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 1800,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 3
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 2,
+            "pickMin": 2,
+            "bundleDefId": "derpshire_valley_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "missionCategoryDefId": "cat_scout_derpshire_valley",
+      "data": {},
+      "createdAt": "2026-04-25T23:17:37.474",
+      "updatedAt": "2026-04-27T02:44:18.425",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "30min",
+      "sortOrder": 1,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 20
+        }
+      ],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_dv_8hr",
+      "name": "Scout - Derpshire Valley",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 28800,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 40
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 7,
+            "pickMin": 5,
+            "bundleDefId": "derpshire_valley_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "missionCategoryDefId": "cat_scout_derpshire_valley",
+      "data": {},
+      "createdAt": "2026-04-25T23:20:06.253",
+      "updatedAt": "2026-04-27T02:45:12.728",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "8hr",
+      "sortOrder": 3,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_dv_24hr",
+      "name": "Scout - Derpshire Valley",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 86400,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 100
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 15,
+            "pickMin": 10,
+            "bundleDefId": "derpshire_valley_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "id": "soft_arcanium",
+            "max": 5,
+            "min": 1,
+            "type": "keeper_xp"
+          },
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "missionCategoryDefId": "cat_scout_derpshire_valley",
+      "data": {},
+      "createdAt": "2026-04-25T23:21:41.388",
+      "updatedAt": "2026-04-28T16:01:58.784",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "24hr",
+      "sortOrder": 4,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_chillartica_5m",
+      "name": "Scout - Chillartica Drifts",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 1
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "type": "bundle_ref",
+            "bundleDefId": "chillartica_drifts_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 10,
+            "min": 2,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_chillartica_drifts",
+      "missionCategoryDefId": "cat_scout_chillartica_drifts",
+      "data": {},
+      "createdAt": "2026-05-11T21:45:36.05",
+      "updatedAt": "2026-05-13T18:53:02.687",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "5min",
+      "sortOrder": 0,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 100
+        }
+      ],
+      "injuryRate": 50,
+      "injuryRecoveryTicks": 60000
+    },
+    {
+      "id": "mission_scout_chillartice_30m",
+      "name": "Scout - Chillartica Drifts",
+      "description": "A brisk scout of the area",
+      "difficulty": 5,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 1800,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 3
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 2,
+            "pickMin": 2,
+            "bundleDefId": "chillartica_drifts_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 5,
+            "min": 1,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_chillartica_drifts",
+      "missionCategoryDefId": "cat_scout_chillartica_drifts",
+      "data": {},
+      "createdAt": "2026-05-11T21:49:14.594",
+      "updatedAt": "2026-05-11T21:58:48.634",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "30min",
+      "sortOrder": 1,
+      "cost": [
+        {
+          "id": "soft_arcanium",
+          "type": "currency",
+          "amount": 20
+        }
+      ],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    },
+    {
+      "id": "mission_scout_chillartica_1hr",
+      "name": "Scout - Chillartica Drifts",
+      "description": "A brisk scout of the area",
+      "difficulty": 10,
+      "minSuccessChance": 0,
+      "maxSuccessChance": 100,
+      "timer": {
+        "duration": 3600,
+        "skipable": true,
+        "boostable": true,
+        "skip_cost": [
+          {
+            "id": "premium_gems",
+            "type": "currency",
+            "amount": 5
+          }
+        ],
+        "skip_type": "relative"
+      },
+      "success": {
+        "text": [
+          "Your birds returned with supplies!"
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "odds": 100,
+            "type": "bundle_ref",
+            "pickMax": 4,
+            "pickMin": 3,
+            "bundleDefId": "chillartica_drifts_loot"
+          }
+        ]
+      },
+      "failure": {
+        "text": [
+          "The trip was uneventful."
+        ],
+        "effects": [],
+        "rewards": [
+          {
+            "key": "",
+            "max": 10,
+            "min": 2,
+            "odds": 100,
+            "type": "entity_xp"
+          },
+          {
+            "key": "",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "text",
+            "message": "Well that could have gone better."
+          },
+          {
+            "key": "mission_failures",
+            "max": 1,
+            "min": 1,
+            "odds": 100,
+            "type": "flag",
+            "value": "1",
+            "operation": "increment"
+          }
+        ]
+      },
+      "requirements": [],
+      "visibilityRequirements": [],
+      "tags": [],
+      "rewardPreview": [],
+      "enabled": true,
+      "displayDefId": "display_mission_scout_chillartica_drifts",
+      "missionCategoryDefId": "cat_scout_chillartica_drifts",
+      "data": {},
+      "createdAt": "2026-05-11T21:59:34.775",
+      "updatedAt": "2026-05-11T22:23:21.663",
+      "activeModalDefId": null,
+      "completedModalDefId": null,
+      "failedModalDefId": null,
+      "readyModalDefId": null,
+      "inline": true,
+      "inlineLabel": "1hr",
+      "sortOrder": 2,
+      "cost": [],
+      "injuryRate": 0,
+      "injuryRecoveryTicks": 0
+    }
+  ],
+  "mission_category_defs": [
+    {
+      "id": "cat_quick",
+      "name": "Quick Missions",
+      "parentId": null,
+      "displayDefId": "display_quick_mission",
+      "tags": [
+        "quick"
+      ],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 0,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.876",
+      "updatedAt": "2026-04-18T15:46:34.598",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_standard",
+      "name": "Standard Missions",
+      "parentId": null,
+      "displayDefId": "display_standard_mission",
+      "tags": [
+        "standard"
+      ],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 1,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.883",
+      "updatedAt": "2026-04-18T15:46:48.388",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_outpost",
+      "name": "Outpost Missions",
+      "parentId": null,
+      "displayDefId": "display_outpost_mission",
+      "tags": [
+        "outpost"
+      ],
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 5
+        }
+      ],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 3,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.888",
+      "updatedAt": "2026-02-17T15:54:48.214",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scavenging",
+      "name": "Scavenging",
+      "parentId": null,
+      "displayDefId": "display_scavenging_mission",
+      "tags": [
+        "scavenging"
+      ],
+      "requirements": [
+        {
+          "type": "keeper_level",
+          "value": 1
+        }
+      ],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 2,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.893",
+      "updatedAt": "2026-04-18T15:46:59.086",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_seasonal",
+      "name": "Seasonal Events",
+      "parentId": null,
+      "displayDefId": "display_seasonal_mission",
+      "tags": [
+        "seasonal"
+      ],
+      "requirements": [],
+      "visibilityRequirements": [
+        {
+          "key": "Hide",
+          "type": "flag",
+          "value": true,
+          "operator": "exists"
+        }
+      ],
+      "enabled": false,
+      "sortOrder": 5,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.899",
+      "updatedAt": "2026-04-18T15:34:48.198",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_prologue",
+      "name": "PERPs Prologue",
+      "parentId": null,
+      "displayDefId": "display_perps_cat",
+      "tags": [
+        "story"
+      ],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 4,
+      "data": {},
+      "createdAt": "2026-02-16T21:13:27.725",
+      "updatedAt": "2026-04-18T15:47:09.309",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_test",
+      "name": "Test Missions",
+      "parentId": "cat_quick",
+      "displayDefId": "display_quick_mission",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 0,
+      "data": {},
+      "createdAt": "2026-04-18T16:32:11.485",
+      "updatedAt": "2026-04-18T16:32:11.485",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_sandcrypt_badlands",
+      "name": "Sandcrypt Badlands",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_sandcrypt_badlands",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 2,
+      "data": {},
+      "createdAt": "2026-04-23T13:29:03.694",
+      "updatedAt": "2026-04-23T13:29:03.694",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_chillvine_jungle",
+      "name": "Chillvine Jungle",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_chillvine_jungle",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 3,
+      "data": {},
+      "createdAt": "2026-04-23T13:29:52.246",
+      "updatedAt": "2026-04-23T13:29:52.246",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_pinnacle_perch",
+      "name": "Pinnacle Perch",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_pinnacle_perch",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 4,
+      "data": {},
+      "createdAt": "2026-04-23T13:30:37.054",
+      "updatedAt": "2026-04-23T13:30:37.054",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_baldos_bog",
+      "name": "Baldo's Bog",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_baldos_bog",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 5,
+      "data": {},
+      "createdAt": "2026-04-23T13:31:11.139",
+      "updatedAt": "2026-04-23T13:31:11.139",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_lavalode_peaks",
+      "name": "Lavalode Peaks",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_lavalode_peaks",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 6,
+      "data": {},
+      "createdAt": "2026-04-23T13:31:47.131",
+      "updatedAt": "2026-04-23T13:31:47.131",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_chillartica_drifts",
+      "name": "Chillartica Drifts",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_chillartica_drifts",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 1,
+      "data": {},
+      "createdAt": "2026-04-23T13:32:15.711",
+      "updatedAt": "2026-04-23T13:32:15.711",
+      "inlineOnly": false
+    },
+    {
+      "id": "cat_scout_derpshire_valley",
+      "name": "Derpshire Valley",
+      "parentId": "cat_scavenging",
+      "displayDefId": "display_mission_scout_derpshire_valley",
+      "tags": [],
+      "requirements": [],
+      "visibilityRequirements": [],
+      "enabled": true,
+      "sortOrder": 0,
+      "data": {},
+      "createdAt": "2026-04-23T13:32:40.181",
+      "updatedAt": "2026-04-26T21:41:21.889",
+      "inlineOnly": true
+    }
+  ],
+  "bundle_defs": [
+    {
+      "id": "bundle_starter_pack",
+      "name": "Starter Pack",
+      "description": "Basic onboarding bundle: a small currency stipend plus one common item. Reused as a building block in early-game missions, gifts, and check-ins.",
+      "version": 1,
+      "bundle": [
+        {
+          "key": "soft_arcanium",
+          "max": 100,
+          "min": 50,
+          "odds": 100,
+          "type": "currency"
+        },
+        {
+          "key": "consumable_xp_potion_small",
+          "max": 1,
+          "min": 1,
+          "odds": 100,
+          "type": "item"
+        }
+      ],
+      "odds": null,
+      "pickMin": null,
+      "pickMax": null,
+      "enabled": true,
+      "createdAt": "2026-04-26T18:34:40.134",
+      "updatedAt": "2026-05-16T14:18:33.962"
+    },
+    {
+      "id": "bundle_pick_one_currency",
+      "name": "Pick One Currency",
+      "description": "Reusable 'pick 1 of N currencies' bundle. Default behaviour picks one entry weighted by entry odds; callers can override pickMin/pickMax to grant more.",
+      "version": 1,
+      "bundle": [
+        {
+          "key": "soft_arcanium",
+          "max": 100,
+          "min": 100,
+          "odds": 60,
+          "type": "currency"
+        },
+        {
+          "key": "soft_arcanium",
+          "max": 250,
+          "min": 250,
+          "odds": 30,
+          "type": "currency"
+        },
+        {
+          "key": "soft_arcanium",
+          "max": 1000,
+          "min": 1000,
+          "odds": 10,
+          "type": "currency"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-04-26T18:34:40.192",
+      "updatedAt": "2026-05-16T14:18:33.997"
+    },
+    {
+      "id": "derpshire_valley_loot",
+      "name": "Derpshire Valley Loot",
+      "description": "The base Derpshire Valley Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_meadow_thread",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_shiny_rock",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_golden_hay_core",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-04-26T21:06:50.701",
+      "updatedAt": "2026-04-27T18:30:27.929"
+    },
+    {
+      "id": "chillartica_drifts_loot",
+      "name": "Chillartica Drifts Loot",
+      "description": "The base Chillartica Drifts Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "bundle": [
+            {
+              "bundle": [
+                {
+                  "key": "mat_frost_thread",
+                  "max": 5,
+                  "min": 1,
+                  "odds": 60,
+                  "type": "item"
+                },
+                {
+                  "key": "mat_polar_arcane_dust",
+                  "max": 3,
+                  "min": 1,
+                  "odds": 30,
+                  "type": "item"
+                },
+                {
+                  "key": "mat_cryostone_prism",
+                  "max": 2,
+                  "min": 1,
+                  "odds": 10,
+                  "type": "item"
+                }
+              ],
+              "pickMax": "1",
+              "pickMin": "1"
+            },
+            {
+              "max": 5,
+              "min": 1,
+              "type": "keeper_xp"
+            },
+            {
+              "max": 20,
+              "min": 10,
+              "type": "entity_xp"
+            }
+          ]
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T20:30:15.057",
+      "updatedAt": "2026-05-13T12:09:59.397"
+    },
+    {
+      "id": "sandcrypt_badlands_loot",
+      "name": "Sandcrypt Badlands Loot",
+      "description": "The base Sandcrypt Badlands Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_bone_chips",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_sandcrypt_vellum",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_ember_gland",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T21:39:40.458",
+      "updatedAt": "2026-05-11T21:39:40.458"
+    },
+    {
+      "id": "chillvine_jungle_loot",
+      "name": "Chillvine Jungle Loot",
+      "description": "The base Chillvine Jungle Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_chillvine_fiber",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_luminous_resin",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_whisper_scale",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T21:40:43.99",
+      "updatedAt": "2026-05-11T21:40:43.99"
+    },
+    {
+      "id": "pinnacle_perch_loot",
+      "name": "Pinnacle Perch Loot",
+      "description": "The base Pinnacle Perch Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_skyfeather_filament",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_tradeglass_shard",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_beacon_core",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T21:41:45.922",
+      "updatedAt": "2026-05-11T21:41:45.922"
+    },
+    {
+      "id": "baldos_bog_loot",
+      "name": "Baldo's Bog Loot",
+      "description": "The base Baldo's Bog Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_sludge_fiber",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_resin_cluster",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_eye_pearl",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T21:42:46.222",
+      "updatedAt": "2026-05-11T21:42:46.222"
+    },
+    {
+      "id": "lavalode_peaks_loot",
+      "name": "Lavalode Peaks Loot",
+      "description": "The base Lavalode Peaks Lootpool",
+      "version": 1,
+      "bundle": [
+        {
+          "odds": 100,
+          "bundle": [
+            {
+              "key": "mat_magma_thread",
+              "max": 5,
+              "min": 1,
+              "odds": 60,
+              "type": "item"
+            },
+            {
+              "key": "mat_ember_plate",
+              "max": 3,
+              "min": 1,
+              "odds": 30,
+              "type": "item"
+            },
+            {
+              "key": "mat_core_fragment",
+              "max": 2,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "pickMax": "1",
+          "pickMin": "1"
+        },
+        {
+          "max": 5,
+          "min": 1,
+          "type": "keeper_xp"
+        },
+        {
+          "max": 20,
+          "min": 10,
+          "type": "entity_xp"
+        }
+      ],
+      "odds": null,
+      "pickMin": 1,
+      "pickMax": 1,
+      "enabled": true,
+      "createdAt": "2026-05-11T21:43:45.499",
+      "updatedAt": "2026-05-11T21:43:45.499"
+    }
+  ],
+  "lootbox_defs": [
+    {
+      "id": "lootbox_common_chest",
+      "name": "Common Chest",
+      "description": "A sturdy chest filled with everyday supplies. Contains resources useful to any keeper.",
+      "version": 1,
+      "iconKey": null,
+      "outcomes": [
+        {
+          "bundle": [
+            {
+              "key": "soft_arcanium",
+              "max": 50,
+              "min": 50,
+              "odds": 40,
+              "type": "currency"
+            },
+            {
+              "key": "soft_arcanium",
+              "max": 100,
+              "min": 100,
+              "odds": 25,
+              "type": "currency"
+            },
+            {
+              "key": "hard_essence",
+              "max": 5,
+              "min": 5,
+              "odds": 20,
+              "type": "currency"
+            },
+            {
+              "key": "mat_iron_ore",
+              "max": 3,
+              "min": 3,
+              "odds": 10,
+              "type": "item"
+            },
+            {
+              "key": "mat_feather_dust",
+              "max": 2,
+              "min": 2,
+              "odds": 5,
+              "type": "item"
+            }
+          ],
+          "maxChoices": 1,
+          "minChoices": 1
+        }
+      ],
+      "rollCount": 1,
+      "enabled": true,
+      "createdAt": "2026-03-17T21:26:14.178",
+      "updatedAt": "2026-05-16T14:18:33.839"
+    },
+    {
+      "id": "lootbox_rare_crate",
+      "name": "Rare Crate",
+      "description": "A reinforced crate stamped with arcane sigils. Rare materials and premium currency await inside.",
+      "version": 1,
+      "iconKey": null,
+      "outcomes": [
+        {
+          "bundle": [
+            {
+              "key": "hard_essence",
+              "max": 15,
+              "min": 15,
+              "odds": 35,
+              "type": "currency"
+            },
+            {
+              "key": "premium_gems",
+              "max": 5,
+              "min": 5,
+              "odds": 25,
+              "type": "currency"
+            },
+            {
+              "key": "premium_gems",
+              "max": 15,
+              "min": 15,
+              "odds": 15,
+              "type": "currency"
+            },
+            {
+              "key": "mat_mana_shard",
+              "max": 2,
+              "min": 2,
+              "odds": 15,
+              "type": "item"
+            },
+            {
+              "key": "mat_starlight_dust",
+              "max": 1,
+              "min": 1,
+              "odds": 10,
+              "type": "item"
+            }
+          ],
+          "maxChoices": 1,
+          "minChoices": 1
+        }
+      ],
+      "rollCount": 1,
+      "enabled": true,
+      "createdAt": "2026-03-17T21:26:14.183",
+      "updatedAt": "2026-05-16T14:18:33.874"
+    },
+    {
+      "id": "lootbox_mystery_egg",
+      "name": "Mystery Egg",
+      "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
+      "version": 1,
+      "iconKey": null,
+      "outcomes": [
+        {
+          "bundle": [
+            {
+              "key": "premium_gems",
+              "max": 10,
+              "min": 10,
+              "odds": 30,
+              "type": "currency"
+            },
+            {
+              "key": "premium_gems",
+              "max": 25,
+              "min": 25,
+              "odds": 20,
+              "type": "currency"
+            },
+            {
+              "key": "hard_essence",
+              "max": 30,
+              "min": 30,
+              "odds": 20,
+              "type": "currency"
+            },
+            {
+              "key": "mat_void_essence",
+              "max": 1,
+              "min": 1,
+              "odds": 15,
+              "type": "item"
+            },
+            {
+              "key": "mat_crystal_bloom",
+              "max": 2,
+              "min": 2,
+              "odds": 10,
+              "type": "item"
+            },
+            {
+              "key": "gear_mana_ring",
+              "max": 1,
+              "min": 1,
+              "odds": 5,
+              "type": "item"
+            }
+          ],
+          "maxChoices": 1,
+          "minChoices": 1
+        }
+      ],
+      "rollCount": 1,
+      "enabled": true,
+      "createdAt": "2026-03-17T21:26:14.187",
+      "updatedAt": "2026-05-16T14:18:33.891"
+    }
+  ]
+}

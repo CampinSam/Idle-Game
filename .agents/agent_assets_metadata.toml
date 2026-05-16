@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "BJGuzLXQq9qw-FZnxrrk0"
+uri = "file://prod-export.json"
+type = "unspecified"
+title = "Production definition data export"
