@@ -256,8 +256,7 @@ export class UiService {
     // --- Fetch sort keys for currencies and items ---
     const XP_TYPES = new Set(['entity_xp', 'keeper_xp']);
     const RARITY_ORDER: Record<string, number> = {
-      COMMON: 0, UNCOMMON: 1, SCARCE: 2, ADVANCED: 3,
-      RARE: 4, ULTRA_RARE: 5, EPIC: 6, MYTHIC: 7, LEGENDARY: 8,
+      COMMON: 0, UNCOMMON: 1, SCARE: 2, RARE: 3, EPIC: 4, MYTHIC: 5, LEGENDARY: 6, UNIQUE: 7,
     };
 
     const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);

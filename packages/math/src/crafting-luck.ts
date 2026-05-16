@@ -23,10 +23,11 @@ export const calculateCraftingLuck = (
 };
 
 export const QUALITY_TIERS: Array<{ key: string; label: string; minCl: number; center: number }> = [
-  { key: 'common', label: 'Common', minCl: 0, center: 15 },
-  { key: 'uncommon', label: 'Uncommon', minCl: 30, center: 45 },
-  { key: 'rare', label: 'Rare', minCl: 60, center: 80 },
-  { key: 'epic', label: 'Epic', minCl: 100, center: 125 },
+  { key: 'common',   label: 'Common',   minCl: 0,   center: 15  },
+  { key: 'uncommon', label: 'Uncommon', minCl: 30,  center: 45  },
+  { key: 'scare',    label: 'Scare',    minCl: 55,  center: 68  },
+  { key: 'rare',     label: 'Rare',     minCl: 80,  center: 100 },
+  { key: 'epic',     label: 'Epic',     minCl: 120, center: 138 },
 ];
 
 export interface QualityProbability {

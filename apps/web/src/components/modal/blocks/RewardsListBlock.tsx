@@ -2,15 +2,14 @@ import type { RewardItem } from '@derp/shared';
 import ItemQty from '../../ItemQty';
 
 const RARITY_CLASSES: Record<string, string> = {
-  COMMON:     'gm-rarity-common',
-  UNCOMMON:   'gm-rarity-uncommon',
-  SCARCE:     'gm-rarity-scarce',
-  ADVANCED:   'gm-rarity-advanced',
-  RARE:       'gm-rarity-rare',
-  ULTRA_RARE: 'gm-rarity-ultra_rare',
-  EPIC:       'gm-rarity-epic',
-  MYTHIC:     'gm-rarity-mythic',
-  LEGENDARY:  'gm-rarity-legendary',
+  COMMON:    'gm-rarity-common',
+  UNCOMMON:  'gm-rarity-uncommon',
+  SCARE:     'gm-rarity-scare',
+  RARE:      'gm-rarity-rare',
+  EPIC:      'gm-rarity-epic',
+  MYTHIC:    'gm-rarity-mythic',
+  LEGENDARY: 'gm-rarity-legendary',
+  UNIQUE:    'gm-rarity-unique',
 };
 
 interface RewardsListBlockProps {

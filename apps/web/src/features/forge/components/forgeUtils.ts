@@ -5,10 +5,14 @@ export const FORGE_FALLBACK = {
 };
 
 export const QUALITY_COLOURS: Record<string, string> = {
-  common: '#94a3b8',
-  uncommon: '#34d399',
-  rare: '#60a5fa',
-  epic: '#c084fc',
+  common:    '#94a3b8',
+  uncommon:  '#34d399',
+  scare:     '#4db0da',
+  rare:      '#a98aff',
+  epic:      '#ff6090',
+  mythic:    '#ffc040',
+  legendary: '#ffe040',
+  unique:    '#ffffff',
 };
 
 export function bgImageCss(bg?: string | null): string {

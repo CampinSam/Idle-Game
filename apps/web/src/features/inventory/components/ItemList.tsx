@@ -3,28 +3,29 @@ import ItemCard from './ItemCard';
 import type { ItemListMode, ItemUseCase } from '../types';
 
 const RARITY_ORDER: Record<string, number> = {
-  LEGENDARY: 0,
-  MYTHIC: 1,
-  EPIC: 2,
-  ULTRA_RARE: 3,
-  RARE: 4,
-  ADVANCED: 5,
-  SCARCE: 6,
-  UNCOMMON: 7,
-  COMMON: 8,
+  UNIQUE:    0,
+  LEGENDARY: 1,
+  MYTHIC:    2,
+  EPIC:      3,
+  RARE:      4,
+  SCARE:     5,
+  UNCOMMON:  6,
+  COMMON:    7,
 };
 
 export type ItemSortBy = 'rarity' | 'name' | 'quantity';
-export type ItemRarityFilter = 'ALL' | 'COMMON' | 'UNCOMMON' | 'SCARCE' | 'ADVANCED' | 'RARE' | 'ULTRA_RARE' | 'EPIC' | 'MYTHIC' | 'LEGENDARY';
+export type ItemRarityFilter = 'ALL' | 'COMMON' | 'UNCOMMON' | 'SCARE' | 'RARE' | 'EPIC' | 'MYTHIC' | 'LEGENDARY' | 'UNIQUE';
 
 export const ITEM_RARITY_OPTIONS: Array<{ key: ItemRarityFilter; label: string }> = [
   { key: 'ALL',       label: 'All' },
   { key: 'COMMON',    label: 'Common' },
   { key: 'UNCOMMON',  label: 'Uncommon' },
+  { key: 'SCARE',     label: 'Scare' },
   { key: 'RARE',      label: 'Rare' },
   { key: 'EPIC',      label: 'Epic' },
   { key: 'MYTHIC',    label: 'Mythic' },
   { key: 'LEGENDARY', label: 'Legendary' },
+  { key: 'UNIQUE',    label: 'Unique' },
 ];
 
 export const ITEM_SORT_OPTIONS: Array<{ key: ItemSortBy; label: string }> = [

@@ -6,7 +6,7 @@ export class MetaService {
     return {
       currencyType: ['SOFT', 'HARD', 'PREMIUM', 'SEASONAL', 'EVENT', 'GUILD'],
       itemType: ['MATERIAL', 'CONSUMABLE', 'GEAR', 'QUEST'],
-      itemRarity: ['COMMON', 'UNCOMMON', 'SCARCE', 'ADVANCED', 'RARE', 'ULTRA_RARE', 'EPIC', 'MYTHIC', 'LEGENDARY'],
+      itemRarity: ['COMMON', 'UNCOMMON', 'SCARE', 'RARE', 'EPIC', 'MYTHIC', 'LEGENDARY', 'UNIQUE'],
       itemCategory: ['MISC', 'CRAFTING', 'COMBAT', 'EXPLORATION', 'QUEST_ITEMS', 'ENHANCEMENT'],
       xpCurve: ['linear', 'exp', 'custom'],
       growthRate: ['flat', 'linear', 'exp'],

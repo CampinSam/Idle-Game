@@ -48,7 +48,7 @@ const CATEGORY_TABS: ItemCategoryTab[] = [
   { key: 'QUEST', label: 'Quest', types: ['QUEST'] },
 ];
 
-const RARE_RARITIES = new Set(['LEGENDARY', 'MYTHIC', 'EPIC', 'ULTRA_RARE']);
+const RARE_RARITIES = new Set(['UNIQUE', 'LEGENDARY', 'MYTHIC', 'EPIC']);
 const OPENABLE_TYPES = new Set(['LOOTBOX', 'GIFT_PACKAGE']);
 const USABLE_TYPES = new Set(['CONSUMABLE']);
 const EQUIPPABLE_TYPES = new Set(['GEAR']);

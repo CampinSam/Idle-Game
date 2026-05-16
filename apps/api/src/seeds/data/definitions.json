@@ -708,7 +708,7 @@
             "VIT": 1.01
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Buff": {
           "slotStats": {
@@ -775,7 +775,7 @@
             "VIT": 1.62
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Mad Scientist": {
           "slotStats": {
@@ -1662,7 +1662,7 @@
             "VIT": 1.01
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Buff": {
           "slotStats": {
@@ -1729,7 +1729,7 @@
             "VIT": 1.62
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Mad Scientist": {
           "slotStats": {
@@ -2616,7 +2616,7 @@
             "VIT": 1.01
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Buff": {
           "slotStats": {
@@ -2683,7 +2683,7 @@
             "VIT": 1.62
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Mad Scientist": {
           "slotStats": {
@@ -3570,7 +3570,7 @@
             "VIT": 1.01
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Buff": {
           "slotStats": {
@@ -3637,7 +3637,7 @@
             "VIT": 1.62
           },
           "rarityMultiplier": 1.12,
-          "rarity": "mystic"
+          "rarity": "mythic"
         },
         "Mad Scientist": {
           "slotStats": {
@@ -4003,7 +4003,7 @@
             "VIT": 0.97
           },
           "rarityMultiplier": 1.02,
-          "rarity": "scarce"
+          "rarity": "scare"
         },
         "Neon": {
           "slotStats": {
@@ -4046,7 +4046,7 @@
             "VIT": 0.92
           },
           "rarityMultiplier": 1.03,
-          "rarity": "advanced"
+          "rarity": "rare"
         },
         "Sparkles": {
           "slotStats": {
@@ -4109,7 +4109,7 @@
             "VIT": 0.98
           },
           "rarityMultiplier": 1.02,
-          "rarity": "scarce"
+          "rarity": "scare"
         },
         "Water": {
           "slotStats": {
@@ -4130,7 +4130,7 @@
             "VIT": 1.03
           },
           "rarityMultiplier": 1.02,
-          "rarity": "scarce"
+          "rarity": "scare"
         },
         "Earthen": {
           "slotStats": {
@@ -4151,7 +4151,7 @@
             "VIT": 1.2
           },
           "rarityMultiplier": 1.03,
-          "rarity": "advanced"
+          "rarity": "rare"
         },
         "Ice Storm": {
           "slotStats": {
@@ -4194,7 +4194,7 @@
             "VIT": 0.88
           },
           "rarityMultiplier": 1.06,
-          "rarity": "ultra_rare"
+          "rarity": "epic"
         },
         "Low Life": {
           "slotStats": {
@@ -4236,7 +4236,7 @@
             "VIT": 0.88
           },
           "rarityMultiplier": 1.06,
-          "rarity": "ultra_rare"
+          "rarity": "epic"
         },
         "Press Speech": {
           "slotStats": {

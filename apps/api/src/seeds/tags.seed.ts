@@ -112,17 +112,15 @@ const VISUAL_EFFECTS = [
 ];
 
 const TAGS = [
-  // ─── Item rarity (9 tiers, mirrors the existing rarity color palette
-  // in DefaultItemCard.css; effect added on the top end). ───
-  { id: 'tag_rarity_common',     key: 'rarity-common',     label: 'Common',     category: 'rarity', color: '#cccccc', backgroundColor: '#2a2a3a', borderColor: '#3a3a4a', sortOrder: 10 },
-  { id: 'tag_rarity_uncommon',   key: 'rarity-uncommon',   label: 'Uncommon',   category: 'rarity', color: '#5cdc8c', backgroundColor: '#1a3a2a', borderColor: '#2a5a3a', sortOrder: 20 },
-  { id: 'tag_rarity_scarce',     key: 'rarity-scarce',     label: 'Scarce',     category: 'rarity', color: '#7cc8ff', backgroundColor: '#1a2a3a', borderColor: '#2a4a6a', sortOrder: 30 },
-  { id: 'tag_rarity_advanced',   key: 'rarity-advanced',   label: 'Advanced',   category: 'rarity', color: '#a888ff', backgroundColor: '#2a2a4a', borderColor: '#3a3a6a', sortOrder: 40 },
-  { id: 'tag_rarity_rare',       key: 'rarity-rare',       label: 'Rare',       category: 'rarity', color: '#b888ff', backgroundColor: '#2a2050', borderColor: '#3a306a', effectKey: 'glow-cyan', sortOrder: 50 },
-  { id: 'tag_rarity_ultra_rare', key: 'rarity-ultra-rare', label: 'Ultra Rare', category: 'rarity', color: '#e88ce0', backgroundColor: '#3a1a4a', borderColor: '#5a2a6a', effectKey: 'shimmer-purple', sortOrder: 60 },
-  { id: 'tag_rarity_epic',       key: 'rarity-epic',       label: 'Epic',       category: 'rarity', color: '#ff8c8c', backgroundColor: '#3a1a1a', borderColor: '#6a2a2a', effectKey: 'shimmer-purple', sortOrder: 70 },
-  { id: 'tag_rarity_mythic',     key: 'rarity-mythic',     label: 'Mythic',     category: 'rarity', color: '#ffcc4d', backgroundColor: '#3a2a0a', borderColor: '#6a4a1a', effectKey: 'shimmer-gold',   sortOrder: 80 },
-  { id: 'tag_rarity_legendary',  key: 'rarity-legendary',  label: 'Legendary',  category: 'rarity', color: '#ffe14d', backgroundColor: '#3a2a00', borderColor: '#6a4a00', effectKey: 'glow-gold',      sortOrder: 90 },
+  // ─── Item rarity (8 tiers: common | uncommon | scare | rare | epic | mythic | legendary | unique). ───
+  { id: 'tag_rarity_common',    key: 'rarity-common',    label: 'Common',    category: 'rarity', color: '#cccccc', backgroundColor: '#2a2a3a', borderColor: '#3a3a4a', sortOrder: 10 },
+  { id: 'tag_rarity_uncommon',  key: 'rarity-uncommon',  label: 'Uncommon',  category: 'rarity', color: '#5cdc8c', backgroundColor: '#1a3a2a', borderColor: '#2a5a3a', sortOrder: 20 },
+  { id: 'tag_rarity_scare',     key: 'rarity-scare',     label: 'Scare',     category: 'rarity', color: '#7cc8ff', backgroundColor: '#1a2a3a', borderColor: '#2a4a6a', sortOrder: 30 },
+  { id: 'tag_rarity_rare',      key: 'rarity-rare',      label: 'Rare',      category: 'rarity', color: '#b888ff', backgroundColor: '#2a2050', borderColor: '#3a306a', effectKey: 'glow-cyan',      sortOrder: 40 },
+  { id: 'tag_rarity_epic',      key: 'rarity-epic',      label: 'Epic',      category: 'rarity', color: '#ff8c8c', backgroundColor: '#3a1a1a', borderColor: '#6a2a2a', effectKey: 'shimmer-purple', sortOrder: 50 },
+  { id: 'tag_rarity_mythic',    key: 'rarity-mythic',    label: 'Mythic',    category: 'rarity', color: '#ffcc4d', backgroundColor: '#3a2a0a', borderColor: '#6a4a1a', effectKey: 'shimmer-gold',   sortOrder: 60 },
+  { id: 'tag_rarity_legendary', key: 'rarity-legendary', label: 'Legendary', category: 'rarity', color: '#ffe14d', backgroundColor: '#3a2a00', borderColor: '#6a4a00', effectKey: 'glow-gold',      sortOrder: 70 },
+  { id: 'tag_rarity_unique',    key: 'rarity-unique',    label: 'Unique',    category: 'rarity', color: '#ffffff', backgroundColor: '#1a1a2e', borderColor: '#c0a0ff', effectKey: 'rainbow-perfect', sortOrder: 80 },
 
   // ─── Achievement tiers ───
   { id: 'tag_ach_tier_1', key: 'ach-tier-1', label: 'Bronze',   category: 'ach-tier', color: '#cd7f32', backgroundColor: '#3a2010', borderColor: '#6a4020', sortOrder: 10 },
