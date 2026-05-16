@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { EffectCategory, EffectValueMode } from '@derp/shared';
+import { getCurrentTick } from '@derp/math';
 
 export const POWER_TYPE_TO_CATEGORY: Record<string, EffectCategory> = {
   keeper_xp_boost: EffectCategory.KEEPER_XP_MULTIPLIER,
@@ -14,7 +15,14 @@ export const POWER_TYPE_TO_CATEGORY: Record<string, EffectCategory> = {
   injury_recovery_boost: EffectCategory.INJURY_RECOVERY_SPEED,
 };
 
-export const VALID_POWER_TYPES = Object.keys(POWER_TYPE_TO_CATEGORY);
+// tick_speed_boost acts directly on the BoostEvent / TickRateInterval system
+// rather than the effect resolver, so it lives outside POWER_TYPE_TO_CATEGORY.
+export const TICK_SPEED_BOOST_TYPE = 'tick_speed_boost';
+
+export const VALID_POWER_TYPES = [
+  ...Object.keys(POWER_TYPE_TO_CATEGORY),
+  TICK_SPEED_BOOST_TYPE,
+];
 
 export const VALID_VALUE_MODES = [
   EffectValueMode.FLAT_ADD,
@@ -58,6 +66,16 @@ type SerializedPower = {
   status: string;
   triggeredByUserId?: string;
 };
+
+/** Convert global power value+valueMode into BoostEvent multiplier / percentBoost pair. */
+function toBoostParams(value: number, valueMode: string): { multiplier: number; percentBoost: number } {
+  if (valueMode === EffectValueMode.MULTIPLIER) {
+    return { multiplier: value, percentBoost: (value - 1) * 100 };
+  }
+  // percent_add and flat_add are both treated as an additive percentage.
+  const pct = value;
+  return { multiplier: 1 + pct / 100, percentBoost: pct };
+}
 
 @Injectable()
 export class GlobalPowerService {
@@ -127,7 +145,6 @@ export class GlobalPowerService {
       );
     }
 
-    // Value-range guards per mode
     if (valueMode === EffectValueMode.MULTIPLIER && dto.value <= 0) {
       throw new BadRequestException('value must be greater than 0 for multiplier mode');
     }
@@ -159,6 +176,10 @@ export class GlobalPowerService {
       `Global power activated: ${power.label} (${power.powerType} ${power.value} ${power.valueMode} for ${dto.durationMinutes}min)`,
     );
 
+    if (power.powerType === TICK_SPEED_BOOST_TYPE) {
+      await this.applyTickBoostForPower(power, now);
+    }
+
     const active = await this.getActivePowers();
     this.pubsub.publishBroadcast({
       type: 'global_power.changed',
@@ -189,6 +210,10 @@ export class GlobalPowerService {
 
     this.logger.log(`Global power cancelled: ${power.label} (${id})`);
 
+    if (power.powerType === TICK_SPEED_BOOST_TYPE) {
+      await this.cancelTickBoostForPower(id, new Date());
+    }
+
     const active = await this.getActivePowers();
     this.pubsub.publishBroadcast({
       type: 'global_power.changed',
@@ -216,6 +241,11 @@ export class GlobalPowerService {
       where: { id: { in: expiring.map((p) => p.id) } },
       data: { status: 'expired' },
     });
+
+    const tickPowers = expiring.filter((p) => p.powerType === TICK_SPEED_BOOST_TYPE);
+    if (tickPowers.length > 0) {
+      await this.expireTickBoostsForPowers(tickPowers.map((p) => p.id), now);
+    }
 
     const active = await this.getActivePowers();
     this.pubsub.publishBroadcast({
@@ -247,5 +277,151 @@ export class GlobalPowerService {
       status: power.status,
       ...(power.triggeredByUserId ? { triggeredByUserId: power.triggeredByUserId } : {}),
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tick-speed boost helpers (inline to avoid circular dep with TickModule).
+  // Private getters follow the same pattern as BoostService.
+  // ---------------------------------------------------------------------------
+
+  private get boostEvent() {
+    return (this.prisma as any).boostEvent;
+  }
+
+  private get tickRateInterval() {
+    return (this.prisma as any).tickRateInterval;
+  }
+
+  private boostEventName(powerId: string): string {
+    return `global_power:${powerId}`;
+  }
+
+  /**
+   * Creates a BoostEvent linked to this power and recomputes the tick rate.
+   * Errors propagate to the caller so createPower can surface them cleanly.
+   */
+  private async applyTickBoostForPower(power: GlobalActivePowerRecord, now: Date): Promise<void> {
+    const { multiplier, percentBoost } = toBoostParams(power.value, power.valueMode);
+    const boostEvent = await this.boostEvent.create({
+      data: {
+        name: this.boostEventName(power.id),
+        description: power.label,
+        multiplier,
+        percentBoost,
+        startTime: now,
+        endTime: power.endTime,
+        status: 'active',
+      },
+    });
+    await this.recomputeAndBroadcastTickRate(now, boostEvent.id);
+  }
+
+  /**
+   * Cancels the BoostEvent linked to this power and recomputes the tick rate.
+   * If the boost event is already gone (e.g. expired naturally), logs a warning
+   * and returns — the tick rate will self-correct on the next expiry cycle.
+   */
+  private async cancelTickBoostForPower(powerId: string, now: Date): Promise<void> {
+    const name = this.boostEventName(powerId);
+    const boostEvent = await this.boostEvent.findFirst({
+      where: { name, status: 'active' },
+    });
+    if (!boostEvent) {
+      this.logger.warn(`No active BoostEvent found for power ${powerId} during cancel — skipping tick-rate update`);
+      return;
+    }
+    await this.boostEvent.update({
+      where: { id: boostEvent.id },
+      data: { status: 'cancelled', endTime: now },
+    });
+    await this.recomputeAndBroadcastTickRate(now, boostEvent.id);
+  }
+
+  /**
+   * Expires BoostEvents for a batch of tick_speed_boost powers and recomputes
+   * the tick rate once. Missing boost events are warned about but do not block
+   * the expiry of the global powers themselves.
+   */
+  private async expireTickBoostsForPowers(powerIds: string[], now: Date): Promise<void> {
+    const names = powerIds.map((id) => this.boostEventName(id));
+    const boostEvents = await this.boostEvent.findMany({
+      where: { name: { in: names }, status: 'active' },
+    });
+    if (boostEvents.length === 0) {
+      this.logger.warn(`No active BoostEvents found for powers [${powerIds.join(', ')}] during expiry — skipping tick-rate update`);
+      return;
+    }
+    await this.boostEvent.updateMany({
+      where: { id: { in: boostEvents.map((b: any) => b.id) } },
+      data: { status: 'expired' },
+    });
+    await this.recomputeAndBroadcastTickRate(now, boostEvents[0].id);
+  }
+
+  /**
+   * Recomputes the effective tick rate from all active BoostEvents, writes a
+   * new TickRateInterval anchored to `anchorBoostId`, and broadcasts tick.sync
+   * + boost.changed. Mirrors BoostService.recomputeActiveRate without creating
+   * a circular module dependency.
+   */
+  private async recomputeAndBroadcastTickRate(atTime: Date, anchorBoostId: string): Promise<void> {
+    const activeBoosts = await this.boostEvent.findMany({
+      where: { status: 'active', startTime: { lte: atTime }, endTime: { gt: atTime } },
+      select: { id: true, name: true, percentBoost: true, multiplier: true, endTime: true },
+    });
+
+    const combinedPercent: number = activeBoosts.reduce(
+      (sum: number, b: { percentBoost: number }) => sum + b.percentBoost,
+      0,
+    );
+
+    const baseInterval = await this.tickRateInterval.findFirst({
+      where: { boostEventId: null, effectiveFromTime: { lte: atTime } },
+      orderBy: { effectiveFromTime: 'desc' },
+    });
+    const baseRate: number = baseInterval?.ticksPerSecond ?? 1.0;
+    const newRate = baseRate * (1 + combinedPercent / 100);
+
+    const intervals = await this.tickRateInterval.findMany({
+      orderBy: { effectiveFromTime: 'asc' },
+    });
+    const currentTick = getCurrentTick(atTime, intervals.map((i: any) => ({
+      effectiveFromTime: i.effectiveFromTime,
+      effectiveFromTick: i.effectiveFromTick,
+      ticksPerSecond: i.ticksPerSecond,
+    })));
+
+    await this.tickRateInterval.create({
+      data: {
+        ticksPerSecond: newRate,
+        effectiveFromTime: atTime,
+        effectiveFromTick: currentTick,
+        boostEventId: anchorBoostId,
+      },
+    });
+
+    this.pubsub.publishBroadcast({
+      type: 'tick.sync',
+      currentTick,
+      tickRate: newRate,
+      serverTime: atTime.toISOString(),
+      boosts: activeBoosts.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        multiplier: b.multiplier,
+        endTime: b.endTime instanceof Date ? b.endTime.toISOString() : b.endTime,
+      })),
+    });
+
+    this.pubsub.publishBroadcast({
+      type: 'boost.changed',
+      active: activeBoosts.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        percentBoost: b.percentBoost,
+        endTime: b.endTime instanceof Date ? b.endTime.toISOString() : b.endTime,
+      })),
+      combinedPercent,
+    });
   }
 }

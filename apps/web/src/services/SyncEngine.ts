@@ -1,7 +1,7 @@
 import { Store } from '@reduxjs/toolkit';
 import { api } from './api';
 import type { DeltaResponse } from './api';
-import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners } from '../store/syncSlice';
+import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners, setGlobalPowers } from '../store/syncSlice';
 import { setSystemIconRegistry } from '../utils/iconResolver';
 import type { RootState } from '../store';
 
@@ -151,6 +151,9 @@ export class SyncEngine {
     es.addEventListener('global_power.changed', (e: MessageEvent) => {
       try {
         const msg = JSON.parse(e.data);
+        if (Array.isArray(msg?.active)) {
+          this.store.dispatch(setGlobalPowers(msg.active));
+        }
         if (Array.isArray(msg?.changes)) {
           for (const change of msg.changes) {
             if (change?.event && change?.id) {

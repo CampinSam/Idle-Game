@@ -3708,7 +3708,7 @@
       "fields": {
         "id":               { "type": "string",   "required": true,  "description": "UUID primary key" },
         "label":            { "type": "string",   "required": true,  "description": "Admin-facing label shown in toasts and admin panel" },
-        "powerType":        { "type": "string",   "required": true,  "description": "Maps to an EffectCategory. One of: keeper_xp_boost, entity_xp_boost, mission_power_boost, mission_duration_reduction, crafting_duration_reduction, building_build_duration_reduction, building_upgrade_duration_reduction, injury_recovery_boost" },
+        "powerType":        { "type": "string",   "required": true,  "description": "Effect-resolver types map to an EffectCategory; tick_speed_boost acts directly on BoostEvent/TickRateInterval. One of: keeper_xp_boost, entity_xp_boost, mission_power_boost, mission_duration_reduction, crafting_duration_reduction, building_build_duration_reduction, building_upgrade_duration_reduction, injury_recovery_boost, tick_speed_boost" },
         "value":            { "type": "float",    "required": true,  "description": "Numeric modifier value (e.g. 50 for +50%, 1.5 for ×1.5)" },
         "valueMode":        { "type": "string",   "default": "percent_add", "description": "How the value is applied: percent_add | flat_add | multiplier" },
         "durationMinutes":  { "type": "integer",  "required": true,  "description": "Duration in whole minutes" },

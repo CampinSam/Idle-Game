@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { fetchCurrencyDefs } from "../store/gameSlice";
 import { logout } from "../store/authSlice";
 import { useNotifications } from "../context/NotificationContext";
-import { useActiveBoosts } from "../tick";
+import { useGlobalPowers } from "../hooks/useSyncSelectors";
 import { useJobReadinessTimers } from "../hooks/useJobReadinessTimers";
 import {
   useSyncPlayer,
@@ -37,7 +37,7 @@ export default function Layout() {
   const currencyBalances = useSyncCurrencyBalances();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const { unreadCount } = useNotifications();
-  const boostInfo = useActiveBoosts();
+  const globalPowers = useGlobalPowers();
 
   const allActiveJobs = useAllActiveJobs();
   const gifts = useSyncGifts();
@@ -218,10 +218,10 @@ export default function Layout() {
                   {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
-              {boostInfo.boostActive && (
+              {globalPowers.length > 0 && (
                 <span
                   className="bell-boost-indicator"
-                  title={boostInfo.boostLabel}
+                  title={globalPowers.map((p) => p.label).join(', ')}
                 >
                   ⚡
                 </span>
@@ -236,7 +236,6 @@ export default function Layout() {
       {showNotifCenter && (
         <NotificationCenter
           onClose={() => setShowNotifCenter(false)}
-          boostInfo={boostInfo}
         />
       )}
 

@@ -44,6 +44,15 @@ export interface HomeBannerSnapshot {
   config: Record<string, any>;
 }
 
+export interface GlobalPowerSnapshot {
+  id: string;
+  label: string;
+  powerType: string;
+  value: number;
+  valueMode: string;
+  endTime: string;
+}
+
 interface SyncState {
   status: SyncStatus;
   cursor: string | null;
@@ -71,6 +80,10 @@ interface SyncState {
   // (filtered by status + start/end window + season-derive substitution).
   // Stored as an ordered array (priority desc) since order is meaningful.
   homeBanners: HomeBannerSnapshot[];
+
+  // Active global powers — populated from the bootstrap snapshot and kept
+  // current by the global_power.changed SSE broadcast.
+  globalPowers: GlobalPowerSnapshot[];
 
   // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
   // so `<Tag tagKey>` is a single dictionary lookup.
@@ -110,6 +123,7 @@ const initialState: SyncState = {
   currencyBalances: {},
   activeSeason: null,
   homeBanners: [],
+  globalPowers: [],
 
   tagDefs: {},
   visualEffectDefs: {},
@@ -229,6 +243,12 @@ const syncSlice = createSlice({
         ? (snapshot as any).homeBanners
         : [];
 
+      state.globalPowers = Array.isArray((snapshot.state as any)?.activePowers)
+        ? (snapshot.state as any).activePowers
+        : Array.isArray((snapshot as any).activePowers)
+        ? (snapshot as any).activePowers
+        : [];
+
       if ((action.payload as any).tickAnchor) {
         state.tickAnchor = (action.payload as any).tickAnchor;
       }
@@ -236,6 +256,10 @@ const syncSlice = createSlice({
 
     setHomeBanners(state, action: PayloadAction<HomeBannerSnapshot[]>) {
       state.homeBanners = Array.isArray(action.payload) ? action.payload : [];
+    },
+
+    setGlobalPowers(state, action: PayloadAction<GlobalPowerSnapshot[]>) {
+      state.globalPowers = Array.isArray(action.payload) ? action.payload : [];
     },
 
     applyPatches(state, action: PayloadAction<{ patches: Patch[]; cursor?: string }>) {
@@ -341,5 +365,5 @@ const syncSlice = createSlice({
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchPlayerOptimistic, patchBuildingEnabled, setTickBroadcast, setTickSync, setHomeBanners } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchPlayerOptimistic, patchBuildingEnabled, setTickBroadcast, setTickSync, setHomeBanners, setGlobalPowers } = syncSlice.actions;
 export default syncSlice.reducer;

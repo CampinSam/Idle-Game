@@ -2,17 +2,7 @@ import { useEffect } from 'react';
 import { useNotifications } from '../context/NotificationContext';
 import { syncEngine } from '../services/syncEngineSingleton';
 import type { GlobalPowerChangeHandler } from '../services/SyncEngine';
-
-const POWER_TYPE_LABELS: Record<string, string> = {
-  keeper_xp_boost: 'Keeper XP',
-  entity_xp_boost: 'Entity XP',
-  mission_power_boost: 'Mission Power',
-  mission_duration_reduction: 'Mission Speed',
-  crafting_duration_reduction: 'Crafting Speed',
-  building_build_duration_reduction: 'Build Speed',
-  building_upgrade_duration_reduction: 'Upgrade Speed',
-  injury_recovery_boost: 'Injury Recovery',
-};
+import { POWER_TYPE_LABELS } from '../utils/globalPowerUtils';
 
 export function useGlobalPowerToasts() {
   const { addTransientToast } = useNotifications();

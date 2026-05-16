@@ -156,6 +156,10 @@ export function useSyncActiveEffects() {
   return useMemo(() => Object.values(table), [table]);
 }
 
+export function useGlobalPowers() {
+  return useAppSelector((s) => s.sync.globalPowers);
+}
+
 /**
  * Returns the active homescreen banners, freshly filtered against the
  * current wall-clock time so banners whose `endsAt` has slipped into the

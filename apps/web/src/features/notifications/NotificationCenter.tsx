@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
-import type { ActiveBoostInfo } from '../../tick';
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
+import { useGlobalPowers } from '../../hooks/useSyncSelectors';
+import type { GlobalPowerSnapshot } from '../../store/syncSlice';
+import { POWER_TYPE_LABELS, POWER_TYPE_ICONS, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
@@ -33,11 +35,38 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-export default function NotificationCenter({ onClose, boostInfo }: { onClose: () => void; boostInfo?: ActiveBoostInfo }) {
+function GlobalPowerRow({ power }: { power: GlobalPowerSnapshot }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const icon = POWER_TYPE_ICONS[power.powerType] ?? '🌐';
+  const typeLabel = POWER_TYPE_LABELS[power.powerType] ?? power.powerType.replace(/_/g, ' ');
+  const valueLabel = formatPowerValue(power.value, power.valueMode);
+  const countdown = formatCountdown(power.endTime);
+
+  return (
+    <div className="nc-boost-pinned">
+      <span className="nc-boost-icon">{icon}</span>
+      <div className="nc-item-content">
+        <span className="nc-item-title nc-boost-title">{power.label}</span>
+        <span className="nc-item-body nc-boost-category">
+          {typeLabel}: {valueLabel} · {countdown}
+        </span>
+      </div>
+      <span className="nc-boost-dot" />
+    </div>
+  );
+}
+
+export default function NotificationCenter({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const { notifications, markRead, markAllRead, clearRead, dismissNotification, unreadCount } = useNotifications();
   const { pushModal } = useModal();
   const { collectJob } = useCollectJob();
+  const globalPowers = useGlobalPowers();
   const [filter, setFilter] = useState<string>('All');
 
   const filtered = useMemo(() => {
@@ -151,17 +180,10 @@ export default function NotificationCenter({ onClose, boostInfo }: { onClose: ()
         </div>
 
         <div className="nc-list">
-          {boostInfo?.boostActive && (filter === 'All' || filter === 'System') && (
-            <div className="nc-boost-pinned">
-              <span className="nc-boost-icon">⚡</span>
-              <div className="nc-item-content">
-                <span className="nc-item-title nc-boost-title">{boostInfo.boostLabel}</span>
-                <span className="nc-item-body nc-boost-category">System</span>
-              </div>
-              <span className="nc-boost-dot" />
-            </div>
-          )}
-          {filtered.length === 0 && !boostInfo?.boostActive && (
+          {(filter === 'All' || filter === 'System') && globalPowers.map((p) => (
+            <GlobalPowerRow key={p.id} power={p} />
+          ))}
+          {filtered.length === 0 && globalPowers.length === 0 && (
             <div className="nc-empty">No notifications</div>
           )}
           {(['New', 'Today', 'Earlier'] as const).map((section) => {

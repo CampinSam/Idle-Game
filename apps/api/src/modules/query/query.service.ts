@@ -3,6 +3,7 @@ import { CheckInService } from '../checkin/checkin.service';
 import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
+import { GlobalPowerService } from '../global-power/global-power.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
@@ -12,6 +13,15 @@ import {
 } from '../crafting/legacy-job-adoption.util';
 
 const MAX_DELTA_AGE = 10000;
+
+export interface ActiveGlobalPowerSummary {
+  id: string;
+  label: string;
+  powerType: string;
+  value: number;
+  valueMode: string;
+  endTime: string;
+}
 
 export interface BootstrapResult {
   serverTime: number;
@@ -31,6 +41,7 @@ export interface BootstrapResult {
     activeEffects?: any;
     homeBanners?: HomeBannerSnapshot[];
     activeSeason?: any;
+    activePowers?: ActiveGlobalPowerSummary[];
   };
   cursor: { delta: string };
 }
@@ -115,6 +126,7 @@ export class QueryService {
     private checkInService: CheckInService,
     private tickService: TickService,
     private homeBannerService: HomeBannerService,
+    private globalPowerService: GlobalPowerService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -147,6 +159,7 @@ export class QueryService {
       homeBanners,
       activeSeason,
       tickInfo,
+      activePowers,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -266,6 +279,7 @@ export class QueryService {
         orderBy: { endsAt: 'asc' },
       }),
       this.tickService.getTickInfo(),
+      this.globalPowerService.getActivePowers(),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -421,6 +435,14 @@ export class QueryService {
               config: activeSeason.config ?? {},
             }
           : null,
+        activePowers: activePowers.map((p) => this.globalPowerService.serializePower(p)).map((p) => ({
+          id: p.id,
+          label: p.label,
+          powerType: p.powerType,
+          value: p.value,
+          valueMode: p.valueMode,
+          endTime: p.endTime,
+        })),
       },
       cursor: { delta: cursorId.toString() },
     };

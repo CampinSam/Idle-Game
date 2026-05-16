@@ -7,6 +7,7 @@ import {
   useSyncLocations,
   useAllActiveJobs,
   useSyncCurrencyBalances,
+  useGlobalPowers,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchCraftingRecipes } from '../../store/gameSlice';
@@ -30,6 +31,7 @@ import {
 import { workshopParallelSlots, workshopTimerMultiplier } from '@derp/math';
 import { BannerCarousel } from './BannerCarousel';
 import { MissionReadyRow, MissionInProgressRow } from './MissionRow';
+import { GlobalBuffsSection } from './GlobalBuffsSection';
 
 function formatTime(ms: number) {
   if (ms <= 0) return null;
@@ -158,9 +160,12 @@ export default function HomePage() {
     }
   };
 
+  const globalPowers = useGlobalPowers();
+
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <BannerCarousel />
+      {globalPowers.length > 0 && <GlobalBuffsSection />}
 
       <Card className="mb-4">
         <div className="px-4 pt-3.5">
