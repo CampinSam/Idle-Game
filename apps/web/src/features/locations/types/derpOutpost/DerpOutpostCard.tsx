@@ -157,10 +157,11 @@ function UniquePowerPanel({
         const usage = usageState[p.powerType];
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
+        const usageCount = usage?.usageCount ?? 0;
         const label = powerLabel(p.powerType);
-        const pctLabel = (p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost')
-          ? `+${p.value}% · ${p.durationMinutes}m`
-          : `${p.value} · ${p.durationMinutes}m`;
+        const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost';
+        const valueLabel = isPercent ? `+${p.value}% · ${p.durationMinutes}m` : `+${p.value} · ${p.durationMinutes}m`;
+        const remaining = Math.max(0, limit - usageCount);
         return (
           <div key={p.powerType}>
             {isAtLimit ? (
@@ -172,12 +173,26 @@ function UniquePowerPanel({
               </div>
             ) : (
               <button
-                className="w-full flex items-center justify-between gap-1 bg-gradient-to-r from-[#7C3AED]/30 to-[#F59E0B]/20 hover:from-[#7C3AED]/50 hover:to-[#F59E0B]/35 border border-[#F59E0B]/30 rounded px-2 py-1 cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex flex-col gap-[2px] bg-gradient-to-r from-[#7C3AED]/30 to-[#F59E0B]/20 hover:from-[#7C3AED]/50 hover:to-[#F59E0B]/35 border border-[#F59E0B]/30 rounded px-2 py-1 cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!!triggering}
                 onClick={(e) => handleTrigger(e, p.powerType)}
               >
-                <span className="text-[9px] font-bold text-[#fde68a] truncate">{label}</span>
-                <span className="text-[8px] text-[#fde68a]/70 flex-shrink-0">{pctLabel}</span>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] font-bold text-[#fde68a] truncate">{label}</span>
+                  <span className="text-[8px] text-[#fde68a]/70 flex-shrink-0">{valueLabel}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: limit }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={[
+                        'w-1.5 h-1.5 rounded-full',
+                        i < usageCount ? 'bg-white/15' : 'bg-[#F59E0B]/60',
+                      ].join(' ')}
+                    />
+                  ))}
+                  <span className="text-[8px] text-white/40 ml-0.5">{remaining}/{limit}</span>
+                </div>
               </button>
             )}
           </div>

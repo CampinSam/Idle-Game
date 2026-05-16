@@ -15,6 +15,7 @@ import { OutpostWorkersCard } from './components/OutpostWorkersCard';
 import { OutpostWarehouseCard } from './components/OutpostWarehouseCard';
 import { AddBuildingCard } from './components/AddBuildingCard';
 import { OutpostDetailsCard } from './components/OutpostDetailsCard';
+import { OutpostUniquePowersCard } from './components/OutpostUniquePowersCard';
 import type { LocationPageProps } from '../../registry';
 
 const WAREHOUSE_DEF_ID = 'stor_warehouse';
@@ -215,6 +216,8 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           <OutpostHeroSection outpost={outpost} />
 
           <OutpostDetailsCard outpost={outpost} />
+
+          <OutpostUniquePowersCard outpost={outpost} />
 
         <OutpostProductionCard
         outpost={outpost}
