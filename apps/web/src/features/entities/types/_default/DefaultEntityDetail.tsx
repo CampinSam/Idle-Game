@@ -5,7 +5,7 @@ import GameIcon from '../../../../components/GameIcon';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
 import { getArchetypeDisplay } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
-import { getEntityPower, getXpForLevel, normalizeStats } from '../../utils';
+import { getEntityPower, getXpForLevel, normalizeStats, getEntityStatusLabel } from '../../utils';
 import { useSyncItems } from '../../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../../hooks/useCommand';
 import { useModal } from '../../../../context/ModalContext';
@@ -19,6 +19,8 @@ import {
 } from '../../../inventory/utils/statChangeHelpers';
 import type { EntityDetailProps } from '../../types';
 import { api } from '../../../../services/api';
+import { useAppSelector } from '../../../../store';
+import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../../tick';
 
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
@@ -128,6 +130,18 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   });
 
   const { events: entityEvents, loading: eventsLoading } = useEntityEvents(entity.id);
+
+  const currentTick = useCurrentTick();
+  const tickRate = useTickRate();
+  const allJobs = useAppSelector((s) => s.sync.jobs);
+
+  const entityActiveJob = useMemo(() => {
+    return Object.values(allJobs).find((j: any) =>
+      Array.isArray(j.team) &&
+      j.team.includes(entity.id) &&
+      (j.status === 'active' || j.status === 'ready_notified'),
+    ) as any | undefined;
+  }, [allJobs, entity.id]);
 
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'default');
@@ -377,12 +391,57 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 </div>
                 <span className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">{xpCurrent} / {xpMax}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Stat Growth</span>
-                <span className="text-xs font-extrabold text-white">Normal</span>
-              </div>
 
               <div className="h-px bg-[rgba(139,92,246,0.2)]" />
+
+              {/* Status panel */}
+              {(() => {
+                const st = entity.status ?? 'idle';
+                const statusColor: Record<string, string> = {
+                  idle:    'rgba(255,255,255,0.55)',
+                  mission: '#F59E0B',
+                  working: '#60A5FA',
+                  injured: '#ef4444',
+                };
+                const color = statusColor[st] ?? 'rgba(255,255,255,0.55)';
+
+                let countdownMs: number | null = null;
+                if ((st === 'mission' || st === 'working') && entityActiveJob?.startTick != null && entityActiveJob?.durationTicks != null) {
+                  const timer = createCountdownTimer({ startTick: entityActiveJob.startTick, durationTicks: entityActiveJob.durationTicks });
+                  const remaining = timer.getValue(currentTick);
+                  countdownMs = tickRate > 0 ? (remaining / tickRate) * 1000 : null;
+                } else if (st === 'injured' && entity.injuredUntilTick != null) {
+                  const remaining = Math.max(0, entity.injuredUntilTick - currentTick);
+                  countdownMs = tickRate > 0 ? (remaining / tickRate) * 1000 : null;
+                }
+
+                const fmtMs = (ms: number): string => {
+                  const totalSec = Math.ceil(ms / 1000);
+                  const h = Math.floor(totalSec / 3600);
+                  const m = Math.floor((totalSec % 3600) / 60);
+                  const s = totalSec % 60;
+                  if (h > 0) return `${h}h ${m}m ${s}s`;
+                  if (m > 0) return `${m}m ${s}s`;
+                  return `${s}s`;
+                };
+
+                return (
+                  <div className="flex flex-col gap-[4px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Status</span>
+                      <span className="text-xs font-extrabold" style={{ color }}>{getEntityStatusLabel(st)}</span>
+                    </div>
+                    {countdownMs !== null && countdownMs > 0 && (
+                      <div className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">
+                        ⏱ {fmtMs(countdownMs)}
+                      </div>
+                    )}
+                    {countdownMs !== null && countdownMs <= 0 && st !== 'idle' && (
+                      <div className="text-[10px] font-bold text-[#10B981] text-right">✅ Ready</div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Recent Events */}
               <div>

@@ -80,11 +80,6 @@ export class AuthService {
         data: locData,
       });
       await this.settlementService.recalculateLocationMeta(loc.id);
-      try {
-        await this.grantStarterWorkshop(user.id, loc.id);
-      } catch (err) {
-        this.logger.warn(`Failed to grant starter Workshop to ${user.id}: ${err}`);
-      }
     } catch (err) {
       this.logger.error(`Failed to create starter location for ${user.id}: ${err}`);
     }
@@ -130,12 +125,6 @@ export class AuthService {
     }
 
     try {
-      await this.ensureStarterWorkshopForExistingUser(user.id);
-    } catch (err) {
-      this.logger.warn(`Failed to backfill starter Workshop on login for ${user.id}: ${err}`);
-    }
-
-    try {
       await this.checkInService.autoCheck(user.id);
     } catch (err) {
       this.logger.warn(`Failed to auto check-in for ${user.id}: ${err}`);
@@ -177,58 +166,8 @@ export class AuthService {
       level: 1,
       lastCollectionTick: BigInt(Math.floor(currentTick)),
       storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
-      state: {},
+      state: { nftName: 'Starter Outpost' },
     };
-  }
-
-  private async ensureStarterWorkshopForExistingUser(userId: string) {
-    const locations = await (this.prisma as any).locationInstance.findMany({
-      where: { ownerUserId: userId },
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!locations || locations.length === 0) return;
-    for (const loc of locations) {
-      try {
-        await this.grantStarterWorkshop(userId, loc.id);
-      } catch (err) {
-        this.logger.warn(`Backfill grantStarterWorkshop(${loc.id}) failed: ${err}`);
-      }
-    }
-  }
-
-  /**
-   * Grant a tier-1 Workshop building inside the player's starter Outpost so
-   * The Forge is reachable from the very first session. Idempotent — skips
-   * when a workshop already exists at the location.
-   */
-  private async grantStarterWorkshop(userId: string, locationId: string) {
-    const existing = await (this.prisma as any).locationBuildingInstance.findFirst({
-      where: { locationId, buildingDef: { category: 'WORKSHOP' } },
-    }).catch(() => null);
-    if (existing) return;
-
-    const def = await (this.prisma as any).buildingDef.findUnique({ where: { id: 'bld_forge' } });
-    if (!def) {
-      this.logger.warn(`grantStarterWorkshop: bld_forge definition missing — seeds may not have run`);
-      return;
-    }
-
-    await (this.prisma as any).locationBuildingInstance.create({
-      data: {
-        locationId,
-        buildingDefId: 'bld_forge',
-        level: 1,
-        enabled: true,
-        state: { grantedBy: 'starter' },
-      },
-    });
-    try {
-      await this.settlementService.recalculateLocationMeta(locationId);
-    } catch (err) {
-      this.logger.warn(`recalc after starter Workshop failed: ${err}`);
-    }
-    this.logger.log(`Granted starter Workshop (bld_forge) to ${userId} at ${locationId}`);
   }
 
   async requestWalletNonce(chain: string, address: string): Promise<{ nonce: string; message: string }> {
@@ -317,11 +256,6 @@ export class AuthService {
       user = await this.prisma.user.findUnique({ where: { id: existing.userId } });
       if (!user) throw new UnauthorizedException('Account not found');
       try { await this.recalculateUserLocations(user.id); } catch {}
-      try {
-        await this.ensureStarterWorkshopForExistingUser(user.id);
-      } catch (err) {
-        this.logger.warn(`Failed to backfill starter Workshop on SIWE login for ${user.id}: ${err}`);
-      }
       try { await this.checkInService.autoCheck(user.id); } catch {}
       try { await this.nftCollectionService.lazySyncOnLogin(user.id); } catch (err) {
         this.logger.warn(`Lazy NFT sync failed on SIWE login for ${user.id}: ${err}`);
@@ -405,7 +339,6 @@ export class AuthService {
     try {
       const currentTick = await this.tickService.getCurrentTick();
       const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
-      await this.grantStarterWorkshop(user.id, loc.id);
       await this.settlementService.recalculateLocationMeta(loc.id);
     } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
     try {

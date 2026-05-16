@@ -70,6 +70,8 @@ export interface Entity {
   stats: EntityStats;
   traits: EntityTraits;
   status: EntityStatus;
+  /** Absolute tick at which the injury expires. Present when status === 'injured'. */
+  injuredUntilTick?: number | null;
   imageUrl?: string;
   createdAt: string;
   updatedAt: string;
