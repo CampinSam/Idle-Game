@@ -16,7 +16,7 @@ import {
   ghostButtonStyle,
   sectionStyle,
 } from './editorStyles';
-import { ERROR_BORDER_COLOR, errorTextStyle } from './validation';
+import { ERROR_BORDER_COLOR, errorTextStyle, validatePower } from './validation';
 
 const POWER_TYPES = [
   'tick_boost',
@@ -50,6 +50,7 @@ function PowerEntryEditor({
   onChange: (p: Power) => void;
   onRemove: () => void;
 }) {
+  const errs = validatePower(power);
   return (
     <div style={{ ...sectionStyle, padding: 8 }}>
       <div style={fieldRowStyle}>
@@ -58,12 +59,17 @@ function PowerEntryEditor({
           <select
             value={power.powerType}
             onChange={e => onChange({ ...power, powerType: e.target.value })}
-            style={{ ...selectStyle, width: '100%' }}
+            style={{
+              ...selectStyle,
+              width: '100%',
+              borderColor: errs.powerType ? ERROR_BORDER_COLOR : (selectStyle.borderColor as string | undefined),
+            }}
           >
             {POWER_TYPES.map(t => (
               <option key={t} value={t}>{t}</option>
             ))}
           </select>
+          {errs.powerType && <span style={errorTextStyle}>{errs.powerType}</span>}
         </div>
         <div style={fieldGroupStyle}>
           <span style={labelStyle}>value</span>
@@ -71,9 +77,14 @@ function PowerEntryEditor({
             type="number"
             value={power.value ?? ''}
             onChange={e => onChange({ ...power, value: e.target.value === '' ? 0 : Number(e.target.value) })}
-            style={{ ...numberInputStyle, width: '100%' }}
+            style={{
+              ...numberInputStyle,
+              width: '100%',
+              borderColor: errs.value ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined),
+            }}
             title="For tick_boost: additive percent (50 = +50%). For others: same as GlobalActivePower value."
           />
+          {errs.value && <span style={errorTextStyle}>{errs.value}</span>}
         </div>
         <div style={fieldGroupStyle}>
           <span style={labelStyle}>durationMinutes</span>
@@ -82,8 +93,13 @@ function PowerEntryEditor({
             min={1}
             value={power.durationMinutes ?? ''}
             onChange={e => onChange({ ...power, durationMinutes: e.target.value === '' ? 0 : Number(e.target.value) })}
-            style={{ ...numberInputStyle, width: '100%' }}
+            style={{
+              ...numberInputStyle,
+              width: '100%',
+              borderColor: errs.durationMinutes ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined),
+            }}
           />
+          {errs.durationMinutes && <span style={errorTextStyle}>{errs.durationMinutes}</span>}
         </div>
         <div style={fieldGroupStyle}>
           <span style={labelStyle}>dailyLimit</span>
@@ -92,8 +108,13 @@ function PowerEntryEditor({
             min={1}
             value={power.dailyLimit ?? ''}
             onChange={e => onChange({ ...power, dailyLimit: e.target.value === '' ? 1 : Number(e.target.value) })}
-            style={{ ...numberInputStyle, width: '100%' }}
+            style={{
+              ...numberInputStyle,
+              width: '100%',
+              borderColor: errs.dailyLimit ? ERROR_BORDER_COLOR : (numberInputStyle.borderColor as string | undefined),
+            }}
           />
+          {errs.dailyLimit && <span style={errorTextStyle}>{errs.dailyLimit}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 1 }}>
           <button type="button" style={dangerIconButtonStyle} onClick={onRemove} title="Remove power">×</button>

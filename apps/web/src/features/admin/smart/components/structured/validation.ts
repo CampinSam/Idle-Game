@@ -344,6 +344,29 @@ export function masteryErrorCount(value: any): number {
   return 0;
 }
 
+export interface PowerErrors {
+  powerType?: string;
+  value?: string;
+  durationMinutes?: string;
+  dailyLimit?: string;
+}
+
+export function validatePower(p: any): PowerErrors {
+  const errs: PowerErrors = {};
+  if (!p || typeof p !== 'object') return { powerType: 'invalid power' };
+  if (!p.powerType) errs.powerType = 'powerType required';
+  if (isMissingNumber(p.value)) {
+    errs.value = 'value required';
+  }
+  if (!p.durationMinutes || Number(p.durationMinutes) < 1) {
+    errs.durationMinutes = 'durationMinutes must be ≥ 1';
+  }
+  if (!p.dailyLimit || Number(p.dailyLimit) < 1) {
+    errs.dailyLimit = 'dailyLimit must be ≥ 1';
+  }
+  return errs;
+}
+
 export function uniquesErrorCount(value: any): number {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 0;
   let n = 0;

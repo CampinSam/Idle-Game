@@ -23,6 +23,7 @@ import { AscensionEditor, MasteryEditor } from './structured/AscensionMasteryEdi
 import InitEditor from './structured/InitEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 import UniquesEditor from './structured/UniquesEditor';
+import { uniquesErrorCount } from './structured/validation';
 
 interface Props {
   fieldName: string;
@@ -400,16 +401,26 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
           onChange(partial);
         }
       };
+      const uniqueErrCount = uniquesErrorCount(uniques);
       return renderStructured(
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{
-            border: '1px solid #2a2a4e',
+            border: `1px solid ${uniqueErrCount > 0 ? '#ef4444' : '#2a2a4e'}`,
             borderRadius: 6,
             background: '#0f0f2e',
             padding: 10,
           }}>
-            <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
               Unique NFT Powers
+              {uniqueErrCount > 0 && (
+                <span style={{
+                  background: '#ef4444', color: '#fff', borderRadius: 8,
+                  fontSize: 9, padding: '1px 5px', fontWeight: 700,
+                  minWidth: 14, textAlign: 'center', lineHeight: 1.4,
+                }}>
+                  {uniqueErrCount}
+                </span>
+              )}
             </div>
             <UniquesEditor value={uniques} onChange={handleUniquesChange} />
           </div>
