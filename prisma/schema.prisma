@@ -234,6 +234,7 @@ model Entity {
 
   equipment       EntityEquipment[]
   workerAssignments LocationWorkerAssignment[]
+  powerUsages     EntityPowerUsage[]
 
   @@index([ownerUserId])
   @@index([ecosystemId])
@@ -660,6 +661,20 @@ model LocationPowerUsage {
   @@unique([locationInstanceId, powerKey])
   @@index([locationInstanceId])
   @@map("location_power_usages")
+}
+
+model EntityPowerUsage {
+  id             String @id @default(uuid())
+  entityId       String
+  powerKey       String
+  lastUsedUtcDay String
+  usageCount     Int    @default(1)
+
+  entity         Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, powerKey])
+  @@index([entityId])
+  @@map("entity_power_usages")
 }
 
 enum ItemRarity {

@@ -30,6 +30,7 @@ import { DepositLocationXpHandler } from './handlers/deposit-location-xp.handler
 import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
 import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
+import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -92,6 +93,7 @@ import { GlobalPowerModule } from '../global-power/global-power.module';
     RenameEntityHandler,
     SetPrimaryOutpostHandler,
     TriggerLocationPowerHandler,
+    TriggerEntityPowerHandler,
   ],
   exports: [CommandService],
 })

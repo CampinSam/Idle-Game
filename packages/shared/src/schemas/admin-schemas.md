@@ -24,7 +24,7 @@ Self-contained blueprint for a species/type of game entity. One row per species 
 | ascension | json | Ascension rules: `{ enabled, cap?, ... }` (see [`ascension` format](#ascension-format)). Currently `{ "enabled": false }` for all entities. |
 | mastery | json | Mastery rules: `{ enabled, branches? }` (see [`mastery` format](#mastery-format)). Currently `{ "enabled": false }` for all entities. |
 | init | json | Init rules used when minting an entity: `{ scratch, nft }` (see [`init` format](#init-format)). The renamed `attributeMap` lives at `init.nft.attributeMap`. |
-| rules | json | Entity-type-specific rule overrides |
+| rules | json | Entity-type-specific rule overrides. Supports `rules.uniques` — a map of `nftAssetId → { powers: UniqueLocationPower[] }` for triggerable NFT powers (see [Unique NFT Powers](#unique-nft-powers-entitydefinition)). |
 | data | json | Extra configuration |
 
 ### Known entity definitions
@@ -385,6 +385,72 @@ The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keye
 **Power types:** `tick_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
 
 For `tick_boost`, `value` is the additive percent increase (e.g. `50` = +50% world tick speed). Multiple concurrent boosts are summed additively. For all other power types, the same `powerType`/`value` semantics as `GlobalActivePower` apply.
+
+---
+
+## EntityPowerUsage
+
+Tracks per-(entity-id, power-key) daily usage for unique NFT entity powers. Mirrors `LocationPowerUsage` with the same UTC-day gate and daily limit enforcement.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | UUID primary key |
+| entityId | string | FK → Entity |
+| powerKey | string | The `powerType` string (e.g. `tick_boost`) |
+| lastUsedUtcDay | string | UTC date string `YYYY-MM-DD` of last trigger |
+| usageCount | integer | Number of triggers on `lastUsedUtcDay`; reset to 1 on a new UTC day |
+
+**Unique constraint:** `(entityId, powerKey)`.
+
+---
+
+## TriggerEntityPower Command
+
+**Command type:** `TriggerEntityPower`
+
+Triggers a unique power belonging to a specific NFT entity. The caller must own the entity (or have admin role). Checks/updates `EntityPowerUsage` for today's UTC date against the power's `dailyLimit`. Dispatches `BoostService.createBoost` for `tick_boost` powers, or `GlobalPowerService.triggerPower` for all other types.
+
+| Payload field | Type | Required | Description |
+|--------------|------|----------|-------------|
+| entityId | string | yes | The `Entity.id` to trigger from |
+| powerKey | string | yes | The power type to trigger (e.g. `tick_boost`) |
+
+**Errors:**
+- `ForbiddenException` — caller does not own the entity
+- `BadRequestException` — entity has no NFT asset ID, no unique powers defined, power key not found, or daily limit reached (`"Resets at 00:00 UTC"`)
+
+---
+
+## EntityDefinition `rules.uniques` field
+
+The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers that the entity owner can trigger once per UTC day:
+
+```json
+{
+  "uniques": {
+    "CARDANO:policy123:asset456": {
+      "powers": [
+        {
+          "powerType": "entity_xp_boost",
+          "value": 50,
+          "durationMinutes": 120,
+          "dailyLimit": 1
+        },
+        {
+          "powerType": "tick_boost",
+          "value": 25,
+          "durationMinutes": 60,
+          "dailyLimit": 1
+        }
+      ]
+    }
+  }
+}
+```
+
+**Power types:** `tick_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
+
+These use the same `UniqueLocationPower` type as `LocationDefinition.rules.uniques`. The frontend entity detail panel renders a "Unique NFT Powers" section below the progression tabs for any entity with powers defined.
 
 ---
 

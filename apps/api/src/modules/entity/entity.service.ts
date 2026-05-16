@@ -51,7 +51,7 @@ export class EntityService {
   async getEntities(userId: string) {
     const entities = await (this.prisma as any).entity.findMany({
       where: { ownerUserId: userId },
-      include: { equipment: true, definition: { select: { progression: true } } },
+      include: { equipment: true, definition: { select: { progression: true, rules: true } } },
     });
     return entities.map(serializeEntity);
   }
@@ -59,10 +59,32 @@ export class EntityService {
   async getEntity(entityId: string, userId: string) {
     const entity = await (this.prisma as any).entity.findFirst({
       where: { id: entityId, ownerUserId: userId },
-      include: { equipment: true, definition: { select: { progression: true } } },
+      include: { equipment: true, definition: { select: { progression: true, rules: true } } },
     });
     if (!entity) throw new NotFoundException('Entity not found');
     return serializeEntity(entity);
+  }
+
+  async getPowerUsage(
+    userId: string,
+    entityId: string,
+  ): Promise<Record<string, { usageCount: number; lastUsedUtcDay: string }>> {
+    const entity = await (this.prisma as any).entity.findFirst({
+      where: { id: entityId, ownerUserId: userId },
+      select: { id: true },
+    });
+    if (!entity) return {};
+
+    const today = new Date().toISOString().slice(0, 10);
+    const usages = await (this.prisma as any).entityPowerUsage.findMany({
+      where: { entityId, lastUsedUtcDay: today },
+    });
+
+    const result: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    for (const u of usages) {
+      result[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+    }
+    return result;
   }
 
   async createEntity(data: any) {

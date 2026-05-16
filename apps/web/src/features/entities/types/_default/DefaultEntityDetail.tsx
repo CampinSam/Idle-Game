@@ -22,6 +22,7 @@ import type { EntityDetailProps } from '../../types';
 import { api } from '../../../../services/api';
 import { useAppSelector } from '../../../../store';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../../tick';
+import { useNotifications } from '../../../../context/NotificationContext';
 
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
@@ -155,6 +156,17 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const equippedStats = (entity as any).equippedStats as Record<string, number> | undefined;
   const traits: Record<string, string> = (entity.traits as Record<string, string>) || {};
   const entityBusy = isEntityBusy(entity);
+
+  const uniquePowers = useMemo(() => {
+    const nftAssetId: string | undefined = (entity as any).nftAssetId;
+    if (!nftAssetId) return [];
+    const rules = (entity as any).definition?.rules as any;
+    const uniques = rules?.uniques as Record<string, any> | undefined;
+    if (!uniques) return [];
+    const entry = uniques[nftAssetId];
+    if (!entry) return [];
+    return (entry.powers as Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>) || [];
+  }, [entity]);
 
   const equippedBySlot = useMemo(() => {
     const map: Record<string, any> = {};
@@ -542,6 +554,167 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           )}
         </div>
       </div>
+
+      {uniquePowers.length > 0 && (
+        <EntityUniquePowerPanel entityId={entity.id} powers={uniquePowers} />
+      )}
+    </div>
+  );
+}
+
+function getUtcDay(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getSecondsUntilUtcMidnight(): number {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setUTCHours(24, 0, 0, 0);
+  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+}
+
+function formatCountdown(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function powerLabel(powerType: string): string {
+  switch (powerType) {
+    case 'tick_boost': return '⚡ Boost World Tick';
+    case 'keeper_xp_boost': return '⬆ Boost Keeper XP';
+    case 'entity_xp_boost': return '⬆ Boost Entity XP';
+    case 'mission_power_boost': return '⚔ Boost Mission Power';
+    case 'mission_duration_reduction': return '⏩ Speed Missions';
+    case 'crafting_duration_reduction': return '⏩ Speed Crafting';
+    case 'building_build_duration_reduction': return '⏩ Speed Building';
+    case 'building_upgrade_duration_reduction': return '⏩ Speed Upgrades';
+    case 'injury_recovery_boost': return '💚 Boost Recovery';
+    default: return powerType.replace(/_/g, ' ');
+  }
+}
+
+function EntityUniquePowerPanel({
+  entityId,
+  powers,
+}: {
+  entityId: string;
+  powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
+}) {
+  const { execute } = useCommand();
+  const { addTransientToast } = useNotifications();
+  const [usageState, setUsageState] = useState<Record<string, { usageCount: number; dailyLimit: number }>>({});
+  const [countdown, setCountdown] = useState(0);
+  const [triggering, setTriggering] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const today = getUtcDay();
+    api.getEntityPowerUsage(entityId).then((data) => {
+      if (cancelled) return;
+      const state: Record<string, { usageCount: number; dailyLimit: number }> = {};
+      for (const p of powers) {
+        const entry = data[p.powerType];
+        if (entry && entry.lastUsedUtcDay === today) {
+          state[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
+        }
+      }
+      setUsageState(state);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [entityId, powers]);
+
+  useEffect(() => {
+    const update = () => setCountdown(getSecondsUntilUtcMidnight());
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleTrigger = useCallback(
+    async (powerType: string) => {
+      if (triggering) return;
+      setTriggering(powerType);
+      try {
+        const res = await execute('TriggerEntityPower', { entityId, powerKey: powerType });
+        const toast = (res.ui as any[]).find((u) => u.type === 'toast');
+        if (toast) {
+          addTransientToast({
+            title: toast.tone === 'success' ? 'Power Triggered!' : 'Error',
+            body: toast.message,
+            icon: toast.tone === 'success' ? '⚡' : '❌',
+            accentColor: toast.tone === 'success' ? '#F59E0B' : '#EF4444',
+            durationMs: 8000,
+          });
+        }
+        setUsageState((prev) => ({
+          ...prev,
+          [powerType]: {
+            usageCount: (prev[powerType]?.usageCount ?? 0) + 1,
+            dailyLimit: powers.find((p) => p.powerType === powerType)?.dailyLimit ?? 1,
+          },
+        }));
+      } catch (err: any) {
+        const msg = err?.message || 'Failed to trigger power';
+        const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
+        if (isLimit) {
+          const p = powers.find((pw) => pw.powerType === powerType);
+          setUsageState((prev) => ({
+            ...prev,
+            [powerType]: { usageCount: p?.dailyLimit ?? 1, dailyLimit: p?.dailyLimit ?? 1 },
+          }));
+        }
+        addTransientToast({
+          title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
+          body: msg,
+          icon: '❌',
+          accentColor: '#EF4444',
+          durationMs: 8000,
+        });
+      } finally {
+        setTriggering(null);
+      }
+    },
+    [entityId, execute, addTransientToast, triggering, powers],
+  );
+
+  if (powers.length === 0) return null;
+
+  return (
+    <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col gap-[6px] shrink-0">
+      <div className="text-[9px] font-black tracking-[0.8px] text-[#fde68a]/70 uppercase">Unique NFT Powers</div>
+      {powers.map((p) => {
+        const usage = usageState[p.powerType];
+        const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
+        const isAtLimit = usage ? usage.usageCount >= limit : false;
+        const label = powerLabel(p.powerType);
+        const pctLabel = p.powerType === 'tick_boost'
+          ? `+${p.value}% · ${p.durationMinutes}m`
+          : `${p.value} · ${p.durationMinutes}m`;
+        return (
+          <div key={p.powerType}>
+            {isAtLimit ? (
+              <div className="flex items-center justify-between gap-1 bg-white/[0.04] rounded px-2 py-1.5">
+                <span className="text-[9px] font-bold text-white/40 truncate">{label}</span>
+                <span className="text-[8px] font-mono text-white/30 flex-shrink-0">
+                  Resets {formatCountdown(countdown)}
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="w-full flex items-center justify-between gap-1 bg-gradient-to-r from-[#7C3AED]/30 to-[#F59E0B]/20 hover:from-[#7C3AED]/50 hover:to-[#F59E0B]/35 border border-[#F59E0B]/30 rounded px-2 py-1.5 cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!!triggering}
+                onClick={() => handleTrigger(p.powerType)}
+              >
+                <span className="text-[9px] font-bold text-[#fde68a] truncate">{label}</span>
+                <span className="text-[8px] text-[#fde68a]/70 flex-shrink-0">{pctLabel}</span>
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

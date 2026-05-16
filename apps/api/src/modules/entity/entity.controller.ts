@@ -22,4 +22,9 @@ export class EntityController {
   getEntityEvents(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.entityService.getEntityEvents(id, user.id);
   }
+
+  @Get(':id/power-usage')
+  getPowerUsage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.entityService.getPowerUsage(user.id, id);
+  }
 }

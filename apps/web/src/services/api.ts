@@ -73,6 +73,12 @@ class ApiClient {
     return this.request<any[]>(`/entities/${id}/events`);
   }
 
+  getEntityPowerUsage(id: string) {
+    return this.request<Record<string, { usageCount: number; lastUsedUtcDay: string }>>(
+      `/entities/${id}/power-usage`,
+    );
+  }
+
   // Locations
   getLocations() {
     return this.request<any[]>('/locations');
