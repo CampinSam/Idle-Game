@@ -1,9 +1,19 @@
+import type { CSSProperties } from 'react';
 import StatMapEditor from './StatMapEditor';
+import { validateProgression } from './validation';
 import {
   containerStyle, sectionStyle, inputStyle, selectStyle, labelStyle,
   fieldRowStyle, numberInputStyle, fieldGroupStyle, dangerIconButtonStyle,
   addButtonStyle,
 } from './editorStyles';
+
+const errorBorder: CSSProperties = { borderColor: '#ef4444' };
+const errorTextStyle: CSSProperties = { fontSize: 10, color: '#ef4444', marginTop: 2 };
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <div style={errorTextStyle}>{msg}</div>;
+}
 
 const XP_KIND_OPTIONS = ['geometric', 'table'];
 const BONUS_KIND_OPTIONS = ['rarityScaled', 'flat'];
@@ -17,6 +27,7 @@ export default function ProgressionEditor({ value, onChange }: Props) {
   const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
   const xpCurve = v.xpCurve && typeof v.xpCurve === 'object' ? v.xpCurve : { kind: 'geometric', base: 100, ratio: 1.15 };
   const statGain = v.statGain && typeof v.statGain === 'object' ? v.statGain : null;
+  const errors = validateProgression(value);
 
   const patch = (p: any) => onChange({ ...v, ...p });
   const patchXp = (p: any) => onChange({ ...v, xpCurve: { ...xpCurve, ...p } });
@@ -65,9 +76,10 @@ export default function ProgressionEditor({ value, onChange }: Props) {
                 const n = Number(e.target.value);
                 patch({ maxLevel: isNaN(n) ? undefined : n });
               }}
-              style={numberInputStyle}
+              style={{ ...numberInputStyle, ...(errors.maxLevel ? errorBorder : null) }}
               placeholder="50"
             />
+            <FieldError msg={errors.maxLevel} />
           </div>
         </div>
       </div>
@@ -81,10 +93,11 @@ export default function ProgressionEditor({ value, onChange }: Props) {
             <select
               value={xpCurve.kind ?? 'geometric'}
               onChange={e => setXpKind(e.target.value)}
-              style={selectStyle}
+              style={{ ...selectStyle, ...(errors.xpKind ? errorBorder : null) }}
             >
               {XP_KIND_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
+            <FieldError msg={errors.xpKind} />
           </div>
         </div>
         {xpCurve.kind === 'geometric' && (
@@ -98,8 +111,9 @@ export default function ProgressionEditor({ value, onChange }: Props) {
                   const n = Number(e.target.value);
                   patchXp({ base: isNaN(n) ? undefined : n });
                 }}
-                style={numberInputStyle}
+                style={{ ...numberInputStyle, ...(errors.xpBase ? errorBorder : null) }}
               />
+              <FieldError msg={errors.xpBase} />
             </div>
             <div style={fieldGroupStyle}>
               <div style={labelStyle}>RATIO (per-level multiplier)</div>
@@ -111,16 +125,20 @@ export default function ProgressionEditor({ value, onChange }: Props) {
                   const n = Number(e.target.value);
                   patchXp({ ratio: isNaN(n) ? undefined : n });
                 }}
-                style={numberInputStyle}
+                style={{ ...numberInputStyle, ...(errors.xpRatio ? errorBorder : null) }}
               />
+              <FieldError msg={errors.xpRatio} />
             </div>
           </div>
         )}
         {xpCurve.kind === 'table' && (
-          <PerLevelEditor
-            value={Array.isArray(xpCurve.perLevel) ? xpCurve.perLevel : []}
-            onChange={a => patchXp({ perLevel: a })}
-          />
+          <>
+            <PerLevelEditor
+              value={Array.isArray(xpCurve.perLevel) ? xpCurve.perLevel : []}
+              onChange={a => patchXp({ perLevel: a })}
+            />
+            <FieldError msg={errors.perLevel} />
+          </>
         )}
       </div>
 
@@ -147,7 +165,11 @@ export default function ProgressionEditor({ value, onChange }: Props) {
           )}
         </div>
         {statGain && (
-          <StatGainEditor value={statGain} onChange={s => patch({ statGain: s })} />
+          <StatGainEditor
+            value={statGain}
+            onChange={s => patch({ statGain: s })}
+            errors={errors}
+          />
         )}
         {!statGain && (
           <div style={{ fontSize: 11, color: '#555' }}>
@@ -159,7 +181,7 @@ export default function ProgressionEditor({ value, onChange }: Props) {
   );
 }
 
-function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+function StatGainEditor({ value, onChange, errors }: { value: any; onChange: (v: any) => void; errors: ReturnType<typeof validateProgression> }) {
   const guaranteed = value.guaranteed && typeof value.guaranteed === 'object' ? value.guaranteed : {};
   const bonusPool = value.bonusPool && typeof value.bonusPool === 'object' ? value.bonusPool : { kind: 'rarityScaled' };
   const distribution = value.distribution && typeof value.distribution === 'object' ? value.distribution : {};
@@ -221,8 +243,9 @@ function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) =>
                   type="number"
                   value={bonusPool.base ?? ''}
                   onChange={e => { const n = Number(e.target.value); patchBP({ base: isNaN(n) ? undefined : n }); }}
-                  style={numberInputStyle}
+                  style={{ ...numberInputStyle, ...(errors.bonusBase ? errorBorder : null) }}
                 />
+                <FieldError msg={errors.bonusBase} />
               </div>
               <div style={fieldGroupStyle}>
                 <div style={labelStyle}>EXPONENT</div>
@@ -231,8 +254,9 @@ function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) =>
                   step={0.01}
                   value={bonusPool.exponent ?? ''}
                   onChange={e => { const n = Number(e.target.value); patchBP({ exponent: isNaN(n) ? undefined : n }); }}
-                  style={numberInputStyle}
+                  style={{ ...numberInputStyle, ...(errors.bonusExponent ? errorBorder : null) }}
                 />
+                <FieldError msg={errors.bonusExponent} />
               </div>
               <div style={fieldGroupStyle}>
                 <div style={labelStyle}>RARITY FIELD</div>
@@ -252,8 +276,9 @@ function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) =>
                 type="number"
                 value={bonusPool.amount ?? ''}
                 onChange={e => { const n = Number(e.target.value); patchBP({ amount: isNaN(n) ? undefined : n }); }}
-                style={numberInputStyle}
+                style={{ ...numberInputStyle, ...(errors.bonusAmount ? errorBorder : null) }}
               />
+              <FieldError msg={errors.bonusAmount} />
             </div>
           )}
         </div>
@@ -269,8 +294,9 @@ function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) =>
               step={0.01}
               value={distribution.uniformShare ?? ''}
               onChange={e => { const n = Number(e.target.value); patchDist({ uniformShare: isNaN(n) ? undefined : n }); }}
-              style={numberInputStyle}
+              style={{ ...numberInputStyle, ...(errors.uniformShare ? errorBorder : null) }}
             />
+            <FieldError msg={errors.uniformShare} />
           </div>
           <div style={fieldGroupStyle}>
             <div style={labelStyle}>WEIGHTED SHARE</div>
@@ -279,8 +305,9 @@ function StatGainEditor({ value, onChange }: { value: any; onChange: (v: any) =>
               step={0.01}
               value={distribution.weightedShare ?? ''}
               onChange={e => { const n = Number(e.target.value); patchDist({ weightedShare: isNaN(n) ? undefined : n }); }}
-              style={numberInputStyle}
+              style={{ ...numberInputStyle, ...(errors.weightedShare ? errorBorder : null) }}
             />
+            <FieldError msg={errors.weightedShare} />
           </div>
           <div style={fieldGroupStyle}>
             <div style={labelStyle}>WEIGHTS FIELD</div>

@@ -1,10 +1,20 @@
+import type { CSSProperties } from 'react';
 import StatMapEditor from './StatMapEditor';
 import SlotSingleArchetypeEditor from './SlotSingleArchetypeEditor';
+import { validateInit, type InitErrors } from './validation';
 import {
   containerStyle, sectionStyle, inputStyle, selectStyle, labelStyle,
   fieldRowStyle, numberInputStyle, fieldGroupStyle, addButtonStyle,
   dangerIconButtonStyle,
 } from './editorStyles';
+
+const errorBorder: CSSProperties = { borderColor: '#ef4444' };
+const errorTextStyle: CSSProperties = { fontSize: 10, color: '#ef4444', marginTop: 2 };
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <div style={errorTextStyle}>{msg}</div>;
+}
 
 const SLOT_FILL_OPTIONS = ['singleRandomArchetype', 'multiRandomArchetype', 'fixed'];
 const MISSING_SLOT_OPTIONS = ['skip', 'default', 'error'];
@@ -18,6 +28,7 @@ export default function InitEditor({ value, onChange }: Props) {
   const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
   const scratch = v.scratch && typeof v.scratch === 'object' ? v.scratch : { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } };
   const nft = v.nft && typeof v.nft === 'object' ? v.nft : null;
+  const errors = validateInit(value);
 
   const patch = (p: any) => onChange({ ...v, ...p });
   const patchScratch = (p: any) => onChange({ ...v, scratch: { ...scratch, ...p } });
@@ -38,8 +49,9 @@ export default function InitEditor({ value, onChange }: Props) {
                 const n = Number(e.target.value);
                 patchScratch({ startingLevel: isNaN(n) ? undefined : n });
               }}
-              style={numberInputStyle}
+              style={{ ...numberInputStyle, ...(errors.startingLevel ? errorBorder : null) }}
             />
+            <FieldError msg={errors.startingLevel} />
           </div>
         </div>
 
@@ -49,11 +61,13 @@ export default function InitEditor({ value, onChange }: Props) {
             value={scratch.baseStats ?? {}}
             onChange={s => patchScratch({ baseStats: s })}
           />
+          <FieldError msg={errors.baseStats} />
         </div>
 
         <SlotFillEditor
           value={scratch.slotFill ?? { kind: 'singleRandomArchetype' }}
           onChange={s => patchScratch({ slotFill: s })}
+          errors={errors}
         />
       </div>
 
@@ -72,7 +86,7 @@ export default function InitEditor({ value, onChange }: Props) {
           )}
         </div>
         {nft ? (
-          <NftEditor value={nft} onChange={n => patch({ nft: n })} />
+          <NftEditor value={nft} onChange={n => patch({ nft: n })} errors={errors} />
         ) : (
           <div style={{ fontSize: 11, color: '#555' }}>
             Not configured — NFT-backed claims for this entity will not work until added.
@@ -83,7 +97,7 @@ export default function InitEditor({ value, onChange }: Props) {
   );
 }
 
-function SlotFillEditor({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+function SlotFillEditor({ value, onChange, errors }: { value: any; onChange: (v: any) => void; errors: InitErrors }) {
   const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : { kind: 'singleRandomArchetype' };
   const kind: string = typeof v.kind === 'string' ? v.kind : 'singleRandomArchetype';
 
@@ -116,10 +130,11 @@ function SlotFillEditor({ value, onChange }: { value: any; onChange: (v: any) =>
           <select
             value={kind}
             onChange={e => setKind(e.target.value)}
-            style={selectStyle}
+            style={{ ...selectStyle, ...(errors.slotFillKind ? errorBorder : null) }}
           >
             {SLOT_FILL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
+          <FieldError msg={errors.slotFillKind} />
         </div>
         {kind === 'multiRandomArchetype' && (
           <div style={fieldGroupStyle}>
@@ -132,8 +147,9 @@ function SlotFillEditor({ value, onChange }: { value: any; onChange: (v: any) =>
                 const n = Number(e.target.value);
                 onChange({ ...v, count: isNaN(n) ? undefined : n });
               }}
-              style={numberInputStyle}
+              style={{ ...numberInputStyle, ...(errors.slotFillCount ? errorBorder : null) }}
             />
+            <FieldError msg={errors.slotFillCount} />
           </div>
         )}
       </div>
@@ -145,13 +161,14 @@ function SlotFillEditor({ value, onChange }: { value: any; onChange: (v: any) =>
             onChange={f => onChange({ ...v, fixed: f })}
             emptyMessage="No fixed assignments — add slot → archetype below"
           />
+          <FieldError msg={errors.slotFillFixed} />
         </div>
       )}
     </div>
   );
 }
 
-function NftEditor({ value, onChange }: { value: any; onChange: (v: any) => void }) {
+function NftEditor({ value, onChange, errors }: { value: any; onChange: (v: any) => void; errors: InitErrors }) {
   const attributeMap = value.attributeMap && typeof value.attributeMap === 'object' ? value.attributeMap : {};
   const policy = typeof value.missingSlotPolicy === 'string' ? value.missingSlotPolicy : 'skip';
   const defaults = value.defaults && typeof value.defaults === 'object' ? value.defaults : {};
@@ -168,6 +185,7 @@ function NftEditor({ value, onChange }: { value: any; onChange: (v: any) => void
           keyPlaceholder="raw nft key (e.g. meta_body)"
           valuePlaceholder="slot name (e.g. body)"
         />
+        <FieldError msg={errors.attributeMap} />
       </div>
 
       <div style={fieldRowStyle}>
@@ -176,10 +194,11 @@ function NftEditor({ value, onChange }: { value: any; onChange: (v: any) => void
           <select
             value={policy}
             onChange={e => patch({ missingSlotPolicy: e.target.value })}
-            style={selectStyle}
+            style={{ ...selectStyle, ...(errors.missingSlotPolicy ? errorBorder : null) }}
           >
             {MISSING_SLOT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
+          <FieldError msg={errors.missingSlotPolicy} />
         </div>
       </div>
 
@@ -190,6 +209,7 @@ function NftEditor({ value, onChange }: { value: any; onChange: (v: any) => void
           onChange={d => patch({ defaults: d })}
           emptyMessage="No defaults — add slot → archetype below"
         />
+        <FieldError msg={errors.nftDefaults} />
       </div>
     </div>
   );

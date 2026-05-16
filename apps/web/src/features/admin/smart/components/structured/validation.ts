@@ -276,6 +276,7 @@ export interface InitErrors {
   slotFillFixed?: string;
   attributeMap?: string;
   missingSlotPolicy?: string;
+  nftDefaults?: string;
 }
 
 export function validateInit(value: any): InitErrors {
@@ -320,7 +321,7 @@ export function validateInit(value: any): InitErrors {
         errs.missingSlotPolicy = 'must be error | skip | default';
       }
       if (nft.defaults !== undefined && (typeof nft.defaults !== 'object' || nft.defaults === null || Array.isArray(nft.defaults))) {
-        (errs as any).nftDefaults = 'defaults must be an object';
+        errs.nftDefaults = 'defaults must be an object';
       }
     }
   }

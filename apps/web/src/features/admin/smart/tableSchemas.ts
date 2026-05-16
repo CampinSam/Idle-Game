@@ -385,18 +385,19 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     color: '#9B59B6',
     group: 'Entities',
     sections: [
-      { id: 'general', label: 'General', description: 'Identity & equipment slots' },
+      { id: 'general', label: 'General', description: 'Identity, equipment slots, level rules, freeform data' },
       { id: 'slotsTraits', label: 'Slots & Traits', description: 'Body slots and per-archetype trait data' },
       { id: 'progression', label: 'Progression', description: 'Leveling, XP curve, stat gain' },
       { id: 'ascensionMastery', label: 'Ascension & Mastery', description: 'Long-term progression toggles' },
       { id: 'init', label: 'Init', description: 'Mint-time initialization (scratch + NFT)' },
-      { id: 'advanced', label: 'Advanced', description: 'Level-based rules and freeform data' },
     ],
     fields: {
       id: { type: 'string', required: true, section: 'general', description: 'Unique identifier (e.g. derp_bird)' },
       name: { type: 'string', required: true, section: 'general', description: 'Display name' },
       speciesId: { type: 'string', required: true, section: 'general', description: 'Species identifier' },
       equipmentSlots: { type: 'equipmentSlotsMap', default: {}, section: 'general', description: 'Equipment slot capacities (slot → max count)' },
+      rules: { type: 'json', default: {}, section: 'general', description: 'Level-based rules (escape hatch — currently unused server-side)' },
+      data: { type: 'json', default: {}, section: 'general', description: 'Extra freeform data' },
 
       slots: { type: 'slotArchetypesMap', default: {}, section: 'slotsTraits', description: 'Body slot layout (slot → list of allowed archetypes)' },
       traits: { type: 'traits', default: {}, section: 'slotsTraits', description: 'Per-archetype trait map: slotStats, scaling, rarity, presentation' },
@@ -407,9 +408,6 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       mastery: { type: 'mastery', default: { enabled: false }, section: 'ascensionMastery', description: 'Mastery rules (reserved)' },
 
       init: { type: 'init', default: { scratch: { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } } }, section: 'init', description: 'Mint-time initialization (scratch + optional NFT block)' },
-
-      rules: { type: 'json', default: {}, section: 'advanced', description: 'Level-based rules' },
-      data: { type: 'json', default: {}, section: 'advanced', description: 'Extra freeform data' },
     },
   },
   EffectDef: {

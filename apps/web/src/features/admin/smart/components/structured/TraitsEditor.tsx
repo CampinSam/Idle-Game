@@ -6,7 +6,7 @@ import {
   labelStyle, fieldRowStyle, selectStyle, numberInputStyle,
 } from './editorStyles';
 
-const RARITY_OPTIONS = ['common', 'scare', 'rare', 'epic', 'legendary', 'mythic'];
+const RARITY_OPTIONS = ['common', 'uncommon', 'scarce', 'rare', 'ultra_rare', 'epic', 'legendary'];
 
 type Trait = {
   slotStats?: Record<string, Record<string, number | number[]>>;
