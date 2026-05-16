@@ -69,11 +69,31 @@ export class NftAssetCacheService {
               tokenName,
             );
             if (!meta) {
-              this.logger.warn(`No metadata returned for ${nftAssetId} during bulk import`);
+              this.logger.warn(
+                `Asset ${nftAssetId} not found on-chain (Blockfrost 404) — skipping during bulk import`,
+              );
               failed++;
               return;
             }
-            await this.upsertAsset(collection, tokenName, nftAssetId, meta, null);
+
+            // Fetch current owner alongside metadata so the cache row is
+            // immediately useful for owner-filtered queries without a separate
+            // refresh pass. A holders fetch failure is non-fatal: we still cache
+            // the metadata with ownerAddress=null and log a warning.
+            let ownerAddress: string | null = null;
+            try {
+              const holders = await this.cardanoProvider.getAssetHolders(
+                collection.collectionId,
+                tokenName,
+              );
+              ownerAddress = holders.length > 0 ? holders[0] : null;
+            } catch (holdersErr) {
+              this.logger.warn(
+                `Could not fetch holders for ${nftAssetId} during import (will set ownerAddress=null): ${holdersErr}`,
+              );
+            }
+
+            await this.upsertAsset(collection, tokenName, nftAssetId, meta, ownerAddress);
             upserted++;
           } catch (err) {
             this.logger.error(`Cache import failed for ${nftAssetId}: ${err}`);
@@ -139,10 +159,13 @@ export class NftAssetCacheService {
       );
     }
 
+    // getAssetMetadata returns null only for HTTP 404 (asset not found on chain);
+    // any transient/upstream failure throws instead, so null here is unambiguous.
     const meta = await this.cardanoProvider.getAssetMetadata(policyId, tokenName);
     if (!meta) {
       throw new Error(
-        `Blockfrost returned no metadata for "${nftAssetId}" — cannot create game instance`,
+        `Asset "${nftAssetId}" was not found on Blockfrost (HTTP 404) — ` +
+        `the token may not exist on-chain or the policy ID may be incorrect`,
       );
     }
 

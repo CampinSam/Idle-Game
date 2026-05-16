@@ -298,9 +298,18 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
           continue;
         }
 
-        if (!res.ok) {
-          this.logger.warn(`Blockfrost getAssetMetadata failed for ${unit}: ${res.status}`);
+        if (res.status === 404) {
+          // Asset genuinely does not exist on-chain — callers can treat this as
+          // "not found" rather than a transient failure.
           return null;
+        }
+
+        if (!res.ok) {
+          // Transient or unexpected HTTP error — throw so callers know the fetch
+          // failed rather than silently returning null (which would look like 404).
+          throw new Error(
+            `Blockfrost getAssetMetadata returned HTTP ${res.status} for asset ${unit}`,
+          );
         }
 
         const data = (await res.json()) as any;
