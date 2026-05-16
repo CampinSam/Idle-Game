@@ -423,33 +423,7 @@ export class EffectService {
     if (result.count > 0) {
       this.logger.log(`Cleaned up ${result.count} expired effects`);
     }
-
-    await this.recoverInjuredEntities(currentTick);
-
     return result.count;
-  }
-
-  async recoverInjuredEntities(currentTick?: number): Promise<void> {
-    const tick = currentTick ?? await this.tickService.getCurrentTick(new Date());
-    const toRecover = await (this.prisma as any).entity.findMany({
-      where: {
-        injuredUntilTick: { not: null, lte: tick },
-        state: { path: ['status'], equals: 'injured' },
-      },
-      select: { id: true, state: true },
-    });
-    if (toRecover.length === 0) return;
-    this.logger.log(`Recovering ${toRecover.length} injured entities`);
-    for (const ent of toRecover) {
-      const st = (ent.state as any) || {};
-      await (this.prisma as any).entity.update({
-        where: { id: ent.id },
-        data: {
-          state: { ...st, status: 'idle' },
-          injuredUntilTick: null,
-        },
-      });
-    }
   }
 
   private computeExpiry(def: EffectDefRecord): Date | null {

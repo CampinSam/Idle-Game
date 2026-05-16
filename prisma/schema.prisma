@@ -602,6 +602,7 @@ model Job {
   team          Json     @default("[]")
   results       Json?
   data          Json     @default("{}")
+  readyAtTick   Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -610,6 +611,7 @@ model Job {
   @@index([userId, type, status])
   @@index([type, status])
   @@index([defId])
+  @@index([readyAtTick, status])
   @@map("jobs")
 }
 

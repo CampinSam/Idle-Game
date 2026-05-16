@@ -2,8 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EntityService } from '../entity/entity.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { NotificationService } from '../notification/notification.service';
 import { PatchBuilder } from '../commands/patch-builder';
 import { serializeEntityFull } from '../entity/entity-stats.util';
+import { createJobReadyNotifications } from './job-notification.helper';
 
 @Injectable()
 export class JobService {
@@ -13,6 +15,7 @@ export class JobService {
     private prisma: PrismaService,
     private entityService: EntityService,
     private pubsub: PubSubService,
+    private notificationService: NotificationService,
   ) {}
 
   async cancelJob(userId: string, jobId: string) {
@@ -83,5 +86,24 @@ export class JobService {
     this.logger.log(`Job ${jobId} cancelled by user ${userId}`);
 
     return { cancelled: true };
+  }
+
+  async notifyReadyJobs(userId: string, jobIds: string[]): Promise<{ updated: number; createdNotifs: any[] }> {
+    if (!jobIds || jobIds.length === 0) return { updated: 0, createdNotifs: [] };
+
+    const jobs = await (this.prisma as any).job.findMany({
+      where: { id: { in: jobIds }, userId, status: 'active' },
+    });
+
+    const createdNotifs = jobs.length > 0
+      ? await createJobReadyNotifications(this.prisma, this.notificationService, this.logger, userId, jobs)
+      : [];
+
+    const result = await (this.prisma as any).job.updateMany({
+      where: { id: { in: jobIds }, userId, status: 'active' },
+      data: { status: 'ready_notified' },
+    });
+
+    return { updated: result.count, createdNotifs };
   }
 }

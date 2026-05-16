@@ -445,6 +445,7 @@ export class CraftingService {
           timer: { startTick: currentTick, durationTicks },
           team: [entityId],
           data: { seed: randomUUID(), locationId: effectiveLocationId },
+          readyAtTick: Math.floor(currentTick) + durationTicks,
         },
       });
     };

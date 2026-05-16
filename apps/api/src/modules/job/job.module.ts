@@ -10,5 +10,6 @@ import { EntityModule } from '../entity/entity.module';
   imports: [TickModule, NotificationModule, CurrencyModule, EntityModule],
   controllers: [JobController],
   providers: [JobService],
+  exports: [JobService],
 })
 export class JobModule {}

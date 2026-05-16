@@ -675,6 +675,7 @@ export class LocationService {
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId: building.id },
+            readyAtTick: Math.floor(currentTick) + durationTicks,
           },
         });
       }
@@ -994,6 +995,7 @@ export class LocationService {
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],
             data: { locationId, buildingId, upgradeToLevel: currentLevel + 1 },
+            readyAtTick: Math.floor(currentTick) + durationTicks,
           },
         });
 

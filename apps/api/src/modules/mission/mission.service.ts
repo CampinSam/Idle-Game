@@ -347,6 +347,7 @@ export class MissionService {
         timer: { startTick: currentTick, durationTicks },
         team: entityIds,
         data: { difficulty: dbDef.difficulty, seed },
+        readyAtTick: Math.floor(currentTick) + durationTicks,
       },
     });
 

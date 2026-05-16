@@ -8,12 +8,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { IdempotencyService } from '../infrastructure/idempotency.service';
 import { JobService } from './job.service';
-
-const JOB_TYPE_CONFIG: Record<string, { defTable: string; category: string; label: string; screen: string }> = {
-  MissionJob: { defTable: 'missionDef', category: 'missions', label: 'Mission', screen: '/missions' },
-  CraftingJob: { defTable: 'recipeDef', category: 'crafting', label: 'Crafting', screen: '/crafting' },
-  BuildingJob: { defTable: 'buildingDef', category: 'buildings', label: 'Building', screen: '/locations' },
-};
+import { JOB_TYPE_CONFIG } from './job.constants';
 
 @Controller('jobs')
 @UseGuards(JwtAuthGuard)
@@ -154,10 +149,6 @@ export class JobController {
       amount: Math.max(1, Math.ceil((entry.amount ?? 0) * costMultiplier)),
     }));
 
-    // Atomic write: spend ALL skip costs + update the job timer in ONE
-    // transaction so a crash mid-spend can never leave the player partially
-    // charged with the job not skipped. spendTx itself throws on
-    // insufficient balance, so we don't need a separate preflight loop.
     await this.prisma.$transaction(async (tx) => {
       for (const cost of finalCosts) {
         if (cost.type === 'currency') {
@@ -176,6 +167,7 @@ export class JobController {
         where: { id: job.id },
         data: {
           timer: { startTick, durationTicks: Math.max(0, currentTick - startTick) },
+          readyAtTick: currentTick,
         },
       });
     }, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
@@ -193,61 +185,7 @@ export class JobController {
     const { jobIds } = dto;
     if (!jobIds || jobIds.length === 0) return { updated: 0 };
 
-    const jobs = await (this.prisma as any).job.findMany({
-      where: { id: { in: jobIds }, userId: user.id, status: 'active' },
-    });
-
-    const createdNotifs: any[] = [];
-
-    if (jobs.length > 0) {
-      const byType = new Map<string, any[]>();
-      for (const job of jobs) {
-        const list = byType.get(job.type) || [];
-        list.push(job);
-        byType.set(job.type, list);
-      }
-
-      for (const [type, typeJobs] of byType) {
-        const config = JOB_TYPE_CONFIG[type];
-        if (!config) continue;
-
-        const defIds = [...new Set(typeJobs.map((j: any) => j.defId).filter(Boolean))];
-        const defs = defIds.length > 0
-          ? await (this.prisma as any)[config.defTable].findMany({ where: { id: { in: defIds } } })
-          : [];
-        const defMap = new Map<string, any>(defs.map((d: any) => [d.id, d]));
-
-        for (const job of typeJobs) {
-          try {
-            const def = defMap.get(job.defId);
-            const defName = def?.name || config.label;
-            const notif = await this.notificationService.createNotification({
-              userId: user.id,
-              type: 'job_ready',
-              category: config.category,
-              priority: 'high',
-              title: `${config.label} Ready!`,
-              body: `${defName} is ready to collect`,
-              deepLink: { screen: config.screen, jobId: job.id, defId: job.defId },
-              sourceType: 'job_ready',
-              sourceId: job.id,
-            });
-            if (notif) createdNotifs.push(notif);
-          } catch (err) {
-            this.logger.warn(`Failed to create job_ready notification for ${job.id}: ${err}`);
-          }
-        }
-      }
-    }
-
-    const result = await (this.prisma as any).job.updateMany({
-      where: {
-        id: { in: jobIds },
-        userId: user.id,
-        status: 'active',
-      },
-      data: { status: 'ready_notified' },
-    });
+    const { updated, createdNotifs } = await this.jobService.notifyReadyJobs(user.id, jobIds);
 
     if (createdNotifs.length > 0) {
       try {
@@ -299,6 +237,6 @@ export class JobController {
       }
     }
 
-    return { updated: result.count };
+    return { updated };
   }
 }
