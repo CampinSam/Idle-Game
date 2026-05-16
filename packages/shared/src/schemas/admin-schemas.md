@@ -233,6 +233,16 @@ Links an on-chain NFT collection to an EntityDefinition or LocationDefinition.
 
 ---
 
+## Entity Power Usage
+
+### Admin Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `DELETE /admin/players/:userId/entities/:entityId/power-usage/:powerKey` | Delete the `EntityPowerUsage` row for the given entity + power key, allowing the power to be re-triggered immediately without waiting for UTC midnight. Returns `{ deleted: true, entityId, powerKey }`. Throws 404 if the entity doesn't belong to the player or if no usage record exists for that key. |
+
+---
+
 ## Admin Backfill Endpoints
 
 | Endpoint | Description |

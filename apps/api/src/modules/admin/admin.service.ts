@@ -481,6 +481,19 @@ export class AdminService {
     return { deleted: true, effectId };
   }
 
+  async resetEntityPowerUsage(userId: string, entityId: string, powerKey: string) {
+    const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
+    if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);
+    const usage = await (this.prisma as any).entityPowerUsage.findUnique({
+      where: { entityId_powerKey: { entityId, powerKey } },
+    });
+    if (!usage) throw new NotFoundException(`No power usage record found for entity ${entityId} and power key "${powerKey}"`);
+    await (this.prisma as any).entityPowerUsage.delete({
+      where: { entityId_powerKey: { entityId, powerKey } },
+    });
+    return { deleted: true, entityId, powerKey };
+  }
+
   async getPlayerTelemetry(userId: string, limit = 30) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`Player ${userId} not found`);
