@@ -284,7 +284,30 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
         if (decodeFailed) {
           this.logger.warn(`CBOR decode failed for attributes on ${unit} — preserving raw hex in attributesRaw`);
         }
-        const attributes: Record<string, string> = decoded ?? (rawAttributes && typeof rawAttributes === 'object' ? rawAttributes : {});
+
+        let attributes: Record<string, string>;
+        if (decoded !== null && decoded !== undefined) {
+          // CBOR-decoded attributes sub-object (e.g. CIP-25 v2 hex-encoded)
+          attributes = decoded;
+        } else if (rawAttributes && typeof rawAttributes === 'object') {
+          // Plain object attributes sub-key (most CIP-25 v1 collections)
+          attributes = rawAttributes as Record<string, string>;
+        } else {
+          // No attributes sub-key — CIP-25 v1 collections that embed traits as
+          // top-level keys in onchain_metadata (e.g. Derp Perps).  Extract
+          // every top-level string value, excluding well-known CIP-25 non-trait
+          // fields.
+          const CIP25_SKIP = new Set([
+            'name', 'image', 'files', 'mediatype', 'description',
+            'website', 'x', 'twitter', 'discord',
+          ]);
+          attributes = Object.fromEntries(
+            Object.entries(meta)
+              .filter(([k, v]) => typeof v === 'string' && !CIP25_SKIP.has(k.toLowerCase()))
+              .map(([k, v]) => [k, v as string]),
+          );
+        }
+
         return {
           assetId,
           name: meta.name ?? assetId,

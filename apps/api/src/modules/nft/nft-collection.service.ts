@@ -748,9 +748,45 @@ export class NftCollectionService {
 
       for (const entity of entities) {
         const state = (entity.state as Record<string, any>) ?? {};
-        const nftAttributes = state.nftAttributes as Record<string, string> | undefined;
+        let nftAttributes = state.nftAttributes as Record<string, string> | undefined;
+        let nftRawMeta = (state.nftRawMeta as Record<string, any>) ?? {};
 
-        if (!nftAttributes || typeof nftAttributes !== 'object') {
+        // If attributes are absent or empty, try fetching from the blockchain
+        // before giving up. This handles entities that were imported as shells
+        // (nftAttributes: {}) before their on-chain metadata was pulled.
+        const attributesEmpty =
+          !nftAttributes || typeof nftAttributes !== 'object' || Object.keys(nftAttributes).length === 0;
+
+        if (attributesEmpty && collection.chain === 'CARDANO' && entity.nftAssetId) {
+          const parts = (entity.nftAssetId as string).split(':');
+          if (parts.length >= 3) {
+            try {
+              const fetched = await this.cardanoProvider.getAssetMetadata(collection.collectionId, parts[2]);
+              if (fetched) {
+                nftAttributes = fetched.attributes;
+                nftRawMeta = fetched.rawMeta ?? {};
+                // Persist so future backfills (and rebuildNftEntityTraits) don't need to re-fetch.
+                await (this.prisma as any).entity.update({
+                  where: { id: entity.id },
+                  data: {
+                    state: {
+                      ...state,
+                      nftAttributes: fetched.attributes,
+                      nftRawMeta: fetched.rawMeta,
+                      ...(fetched.attributesRaw !== undefined ? { nftAttributesRaw: fetched.attributesRaw } : {}),
+                    },
+                  },
+                });
+              }
+            } catch (fetchErr) {
+              this.logger.warn(
+                `rebuildNftEntityTraits: could not fetch metadata for ${entity.nftAssetId}: ${fetchErr}`,
+              );
+            }
+          }
+        }
+
+        if (!nftAttributes || typeof nftAttributes !== 'object' || Object.keys(nftAttributes).length === 0) {
           skipped++;
           continue;
         }
@@ -762,7 +798,7 @@ export class NftCollectionService {
             name: (display.name as string) ?? '',
             imageUrl: (display.imageUrl as string) ?? '',
             attributes: nftAttributes,
-            rawMeta: (state.nftRawMeta as Record<string, any>) ?? {},
+            rawMeta: nftRawMeta,
             ...(state.nftAttributesRaw !== undefined ? { attributesRaw: state.nftAttributesRaw as string } : {}),
           };
 
