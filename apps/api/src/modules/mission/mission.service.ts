@@ -16,7 +16,7 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
-import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, applyModifier, applyStatModifiers } from '@derp/shared';
+import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
 import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
@@ -329,11 +329,18 @@ export class MissionService {
     const boostable = timer?.boostable ?? true;
     let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
 
-    const timerMod = await this.effectService.resolveForTarget(
-      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED, db,
-    );
-    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
-      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
+    const [timerMod, legacyTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.MISSION_TIMER_SPEED, db),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED, db),
+    ]);
+    const combinedTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
+      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
+      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
+    };
+    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
     }
 
     const seed = randomUUID();
@@ -446,9 +453,13 @@ export class MissionService {
     });
 
     const allEffects = await this.effectService.getActiveEffectsForUser(userId, db);
-    const playerEffects = allEffects.filter((e: any) =>
-      !e.sessionType || (e.sessionType === 'mission' && e.sessionId === missionId)
-    );
+    const globalPowerRows = await this.effectService.getGlobalPowerRows();
+    const playerEffects = [
+      ...allEffects.filter((e: any) =>
+        !e.sessionType || (e.sessionType === 'mission' && e.sessionId === missionId)
+      ),
+      ...globalPowerRows,
+    ];
 
     // Per-entity STAT_BOOST resolution: combine player-scoped boosts (mission
     // potions, global buffs) with each entity's own equipped-gear passives so
@@ -631,7 +642,13 @@ export class MissionService {
           for (const entity of entities) {
             if (rng.chance(injuryChance)) {
               const vit = (entity.stats as any)?.VIT ?? 0;
-              const recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
+              let recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
+              const injuryMod = await this.effectService.resolveForTarget(
+                userId, EffectTargetType.PLAYER, userId, EffectCategory.INJURY_RECOVERY_SPEED, db,
+              );
+              if (injuryMod.flatAdd !== 0 || injuryMod.percentAdd !== 0 || injuryMod.multiplier !== 1) {
+                recoveryTicks = Math.max(1, Math.floor(applyModifier(recoveryTicks, injuryMod)));
+              }
               const untilTick = currentTick + recoveryTicks;
               injuredEntityUntilTick.set(entity.id, untilTick);
               const existing = entityResultsMap.get(entity.id);

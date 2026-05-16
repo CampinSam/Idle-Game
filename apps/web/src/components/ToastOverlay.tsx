@@ -160,13 +160,47 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
   );
 }
 
-export default function ToastOverlay() {
-  const { toasts, dismissToast, hideToast } = useNotifications();
+function TransientToastBanner({ toast, onDismiss }: { toast: import('../context/NotificationContext').TransientToast; onDismiss: () => void }) {
+  return (
+    <div
+      className={[
+        'pointer-events-auto flex items-center w-full py-3 px-[14px] rounded-xl border-l-4',
+        'bg-gradient-to-br from-[#1e1b3a] to-[#2a1f4e]',
+        'shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(139,92,246,0.2)]',
+        'text-left gap-2.5 [animation:toast-slide-in_0.3s_ease-out]',
+      ].join(' ')}
+      style={{ borderLeftColor: toast.accentColor ?? '#8B5CF6' }}
+      role="status"
+    >
+      {toast.icon && <span className="text-xl shrink-0">{toast.icon}</span>}
+      <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+        <span className="text-[13px] font-extrabold text-[#f0f0f0]">{toast.title}</span>
+        <span className="text-xs text-white/65 whitespace-nowrap overflow-hidden text-ellipsis">{toast.body}</span>
+      </div>
+      <button
+        className="!bg-transparent !border-0 !text-white/40 text-xl cursor-pointer !p-0 !px-1 leading-none shrink-0 transition-colors duration-150"
+        onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
 
-  if (toasts.length === 0) return null;
+export default function ToastOverlay() {
+  const { toasts, dismissToast, hideToast, transientToasts, dismissTransientToast } = useNotifications();
+
+  if (toasts.length === 0 && transientToasts.length === 0) return null;
 
   return (
     <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-1.5 w-full max-w-[500px] px-3 pointer-events-none">
+      {transientToasts.map((t) => (
+        <TransientToastBanner
+          key={t.id}
+          toast={t}
+          onDismiss={() => dismissTransientToast(t.id)}
+        />
+      ))}
       {toasts.map((t) => (
         <ToastBanner
           key={t.id}

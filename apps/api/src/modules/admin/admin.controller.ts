@@ -4,6 +4,7 @@ import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { BoostService } from '../tick/boost.service';
+import { GlobalPowerService, VALID_POWER_TYPES } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
@@ -20,6 +21,7 @@ export class AdminController {
   constructor(
     private adminService: AdminService,
     private boostService: BoostService,
+    private globalPowerService: GlobalPowerService,
     private notificationService: NotificationService,
     private eventService: EventService,
     private giftService: GiftService,
@@ -526,6 +528,45 @@ export class AdminController {
   ) {
     return this.adminService.setBonusOutpostSlots(id, body.slots);
   }
+
+  // ─── Global Active Powers ───────────────────────────────────────────────────
+
+  @Get('global-powers/types')
+  getGlobalPowerTypes() {
+    return { types: VALID_POWER_TYPES };
+  }
+
+  @Get('global-powers')
+  getGlobalPowers(@Query('all') all?: string) {
+    return all === 'true'
+      ? this.globalPowerService.getAllPowers()
+      : this.globalPowerService.getActivePowers();
+  }
+
+  @Post('global-powers')
+  createGlobalPower(
+    @Body() body: {
+      label: string;
+      powerType: string;
+      value: number;
+      valueMode?: string;
+      durationMinutes: number;
+      triggeredByUserId?: string;
+    },
+  ) {
+    if (!body.label) throw new BadRequestException('label is required');
+    if (!body.powerType) throw new BadRequestException('powerType is required');
+    if (body.value === undefined || body.value === null) throw new BadRequestException('value is required');
+    if (!body.durationMinutes) throw new BadRequestException('durationMinutes is required');
+    return this.globalPowerService.createPower(body);
+  }
+
+  @Delete('global-powers/:id')
+  cancelGlobalPower(@Param('id') id: string) {
+    return this.globalPowerService.cancelPower(id);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   @Get(':table')
   list(@Param('table') table: string) {

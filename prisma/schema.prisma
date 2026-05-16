@@ -1376,3 +1376,34 @@ model SystemIconDef {
 
   @@map("system_icon_defs")
 }
+
+// ═══════════════════════════════════════════════════
+// GLOBAL ACTIVE POWERS
+// ═══════════════════════════════════════════════════
+//
+// Time-limited server-side powers that apply globally to all players.
+// Admins create them; the tick processor expires them automatically.
+
+model GlobalActivePower {
+  id              String    @id @default(uuid())
+  label           String
+  // Semantic type that maps to an EffectCategory on the backend.
+  // Valid values: keeper_xp_boost | entity_xp_boost | mission_power_boost |
+  //   mission_duration_reduction | crafting_duration_reduction |
+  //   building_build_duration_reduction | building_upgrade_duration_reduction |
+  //   injury_recovery_boost
+  powerType       String
+  value           Float
+  valueMode       String    @default("percent_add")
+  durationMinutes Int
+  startTime       DateTime  @default(now())
+  endTime         DateTime
+  status          String    @default("active")  // active | cancelled | expired
+  triggeredByUserId String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, endTime])
+  @@map("global_active_powers")
+}

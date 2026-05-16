@@ -242,3 +242,77 @@ Links an on-chain NFT collection to an EntityDefinition or LocationDefinition.
 | `POST /admin/backfill/nft-metadata` | Fetch and cache NFT metadata for outpost `LocationInstance` records missing `state.nftRawMeta` |
 | `POST /admin/backfill/nft-entity-traits?collectionId=<id>` | Rebuild `traits`, `stats`, `definitionId`, and `speciesId` for existing NFT entities from `state.nftAttributes`. `collectionId` is optional — omit to process all entity collections. No on-chain requests are made. |
 | `POST /admin/backfill/production-rates` | Recompute production rates for all location instances |
+
+---
+
+## Global Active Powers
+
+Time-limited server-side powers that apply globally to all players simultaneously. Created and cancelled by admins via the admin panel.
+
+### Admin Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /admin/global-powers` | List currently active (non-expired) global powers |
+| `GET /admin/global-powers?all=true` | List all powers (including expired/cancelled), most recent 100 |
+| `GET /admin/global-powers/types` | List all valid power type strings |
+| `POST /admin/global-powers` | Activate a new global power (see body schema below) |
+| `DELETE /admin/global-powers/:id` | Cancel an active global power immediately |
+
+### POST /admin/global-powers body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| label | string | yes | Admin-facing label shown in toasts and admin panel |
+| powerType | string | yes | One of the valid power types (see below) |
+| value | number | yes | Numeric modifier value |
+| valueMode | string | no | `percent_add` (default), `flat_add`, or `multiplier` |
+| durationMinutes | integer | yes | How long the power lasts (whole minutes) |
+| triggeredByUserId | string | no | Admin user ID for audit trail |
+
+### Power Types
+
+| powerType | Effect Category | Description |
+|-----------|-----------------|-------------|
+| `keeper_xp_boost` | `KEEPER_XP_MULTIPLIER` | Boosts keeper XP earned from missions |
+| `entity_xp_boost` | `XP_MULTIPLIER` | Boosts entity XP earned from missions |
+| `mission_power_boost` | `MISSION_POWER` | Increases mission power for all players |
+| `mission_duration_reduction` | `MISSION_TIMER_SPEED` | Reduces mission timer duration |
+| `crafting_duration_reduction` | `CRAFTING_TIMER_SPEED` | Reduces crafting timer duration |
+| `building_build_duration_reduction` | `BUILDING_BUILD_TIMER_SPEED` | Reduces building construction time |
+| `building_upgrade_duration_reduction` | `BUILDING_UPGRADE_TIMER_SPEED` | Reduces building upgrade time |
+| `injury_recovery_boost` | `INJURY_RECOVERY_SPEED` | Reduces injury recovery ticks |
+
+### SSE Broadcast
+
+When a global power starts, expires, or is cancelled, a `global_power.changed` SSE event is broadcast to all connected clients:
+
+```json
+{
+  "type": "global_power.changed",
+  "active": [
+    {
+      "id": "uuid",
+      "label": "Weekend XP Boost",
+      "powerType": "entity_xp_boost",
+      "value": 50,
+      "valueMode": "percent_add",
+      "durationMinutes": 60,
+      "startTime": "2026-05-17T18:00:00.000Z",
+      "endTime": "2026-05-17T19:00:00.000Z",
+      "status": "active"
+    }
+  ],
+  "changes": [
+    {
+      "event": "started | ended",
+      "id": "uuid",
+      "powerType": "entity_xp_boost",
+      "label": "Weekend XP Boost",
+      "durationMinutes": 60
+    }
+  ]
+}
+```
+
+`active` is the full current list of active powers after the change. `changes` lists each power that started or ended. Clients display a transient toast for each change entry.

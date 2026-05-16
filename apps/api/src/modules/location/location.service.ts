@@ -13,7 +13,7 @@ import { GameRulesService } from "../game-rules/game-rules.service";
 import { NotificationService } from "../notification/notification.service";
 import { EffectService } from "../effect/effect.service";
 import { TelemetryService } from "../telemetry/telemetry.service";
-import { ANTI_WHALE_CAPS, EffectCategory, EffectTargetType, applyModifier } from "@derp/shared";
+import { ANTI_WHALE_CAPS, EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from "@derp/shared";
 import { serializeLocation } from "../commands/location-serializer.util";
 import {
   resolveLevelConfig,
@@ -613,11 +613,18 @@ export class LocationService {
       buildLevel,
     );
     let durationTicks = durationSeconds;
-    const buildTimerMod = await this.effectService.resolveForTarget(
-      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
-    );
-    if (buildTimerMod.flatAdd !== 0 || buildTimerMod.percentAdd !== 0 || buildTimerMod.multiplier !== 1) {
-      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, buildTimerMod)));
+    const [buildTimerMod, legacyBuildTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_BUILD_TIMER_SPEED),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+    ]);
+    const combinedBuildTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: buildTimerMod.flatAdd + legacyBuildTimerMod.flatAdd,
+      percentAdd: buildTimerMod.percentAdd + legacyBuildTimerMod.percentAdd,
+      multiplier: buildTimerMod.multiplier * legacyBuildTimerMod.multiplier,
+    };
+    if (combinedBuildTimer.flatAdd !== 0 || combinedBuildTimer.percentAdd !== 0 || combinedBuildTimer.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, combinedBuildTimer)));
     }
     const isInstant = durationTicks <= 0;
 
@@ -933,11 +940,18 @@ export class LocationService {
       nextLevel,
     );
     let durationTicks = durationSeconds;
-    const upgradeTimerMod = await this.effectService.resolveForTarget(
-      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
-    );
-    if (upgradeTimerMod.flatAdd !== 0 || upgradeTimerMod.percentAdd !== 0 || upgradeTimerMod.multiplier !== 1) {
-      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, upgradeTimerMod)));
+    const [upgradeTimerMod, legacyUpgradeTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_UPGRADE_TIMER_SPEED),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+    ]);
+    const combinedUpgradeTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: upgradeTimerMod.flatAdd + legacyUpgradeTimerMod.flatAdd,
+      percentAdd: upgradeTimerMod.percentAdd + legacyUpgradeTimerMod.percentAdd,
+      multiplier: upgradeTimerMod.multiplier * legacyUpgradeTimerMod.multiplier,
+    };
+    if (combinedUpgradeTimer.flatAdd !== 0 || combinedUpgradeTimer.percentAdd !== 0 || combinedUpgradeTimer.multiplier !== 1) {
+      durationTicks = Math.max(0, Math.floor(applyModifier(durationTicks, combinedUpgradeTimer)));
     }
     const isInstant = durationTicks <= 0;
 

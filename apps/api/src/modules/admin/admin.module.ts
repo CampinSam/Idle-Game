@@ -9,11 +9,12 @@ import { NftModule } from '../nft/nft.module';
 import { MissionModule } from '../mission/mission.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { HomeBannerModule } from '../home-banner/home-banner.module';
+import { GlobalPowerModule } from '../global-power/global-power.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule],
+  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

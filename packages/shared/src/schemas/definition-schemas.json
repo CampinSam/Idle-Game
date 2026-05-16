@@ -3698,6 +3698,26 @@
         "config":          { "type": "json",     "default": {},     "description": "Extra config: { autoAdvanceMs?: number, autoAdvance?: boolean, tagline?: string, deriveFromActiveSeason?: boolean }" }
       },
       "indexes": ["status", "startsAt", "endsAt"]
+    },
+    "GlobalActivePower": {
+      "description": "Time-limited global power modifier activated by admins. Active powers are merged into every player's effect resolution, applying their modifier to all players simultaneously. The tick processor persists status='expired' and broadcasts expiry via SSE.",
+      "prismaModel": "GlobalActivePower",
+      "tableName": "global_active_powers",
+      "primaryKey": "id",
+      "adminOnly": true,
+      "fields": {
+        "id":               { "type": "string",   "required": true,  "description": "UUID primary key" },
+        "label":            { "type": "string",   "required": true,  "description": "Admin-facing label shown in toasts and admin panel" },
+        "powerType":        { "type": "string",   "required": true,  "description": "Maps to an EffectCategory. One of: keeper_xp_boost, entity_xp_boost, mission_power_boost, mission_duration_reduction, crafting_duration_reduction, building_build_duration_reduction, building_upgrade_duration_reduction, injury_recovery_boost" },
+        "value":            { "type": "float",    "required": true,  "description": "Numeric modifier value (e.g. 50 for +50%, 1.5 for ×1.5)" },
+        "valueMode":        { "type": "string",   "default": "percent_add", "description": "How the value is applied: percent_add | flat_add | multiplier" },
+        "durationMinutes":  { "type": "integer",  "required": true,  "description": "Duration in whole minutes" },
+        "startTime":        { "type": "string",   "format": "date-time", "required": true, "description": "When the power became active (server now at creation)" },
+        "endTime":          { "type": "string",   "format": "date-time", "required": true, "description": "When the power expires (startTime + durationMinutes)" },
+        "status":           { "type": "string",   "default": "active", "description": "Lifecycle status: active | cancelled | expired" },
+        "triggeredByUserId": { "type": "string",  "nullable": true,  "description": "Admin user ID for audit trail" }
+      },
+      "indexes": [["status", "endTime"]]
     }
   },
   "tableList": [
@@ -3723,7 +3743,8 @@
     "EffectDef",
     "SoundDef",
     "SoundMapping",
-    "HomeBannerDef"
+    "HomeBannerDef",
+    "GlobalActivePower"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",

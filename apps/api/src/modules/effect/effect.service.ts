@@ -342,9 +342,42 @@ export class EffectService {
       : [];
 
     const passiveRows = await this.getPassiveEffectsFromEquipment(userId, targetType, targetId, tx);
+    const globalRows = await this.resolveGlobalPowerRows(category);
 
-    const allEffects = [...effects, ...playerEffects, ...passiveRows];
+    const allEffects = [...effects, ...playerEffects, ...passiveRows, ...globalRows];
     return resolveEffects(allEffects, category);
+  }
+
+  /**
+   * Returns all active global power records as effect rows (all categories).
+   * Used by mission completion and other consumers that resolve multiple
+   * categories from a pre-fetched effect list.
+   */
+  async getGlobalPowerRows(): Promise<ActiveEffectRow[]> {
+    const { POWER_TYPE_TO_CATEGORY } = await import('../global-power/global-power.service');
+    const activePowers = await this.prisma.globalActivePower.findMany({
+      where: { status: 'active' },
+    });
+    const rows: ActiveEffectRow[] = [];
+    for (const power of activePowers) {
+      const mappedCategory = POWER_TYPE_TO_CATEGORY[power.powerType];
+      if (!mappedCategory) continue;
+      rows.push({
+        effectDefId: `global_power:${power.id}`,
+        category: mappedCategory as string,
+        valueMode: power.valueMode,
+        value: power.value,
+        stats: null,
+        trait: null,
+        currentStacks: 1,
+      });
+    }
+    return rows;
+  }
+
+  private async resolveGlobalPowerRows(category: EffectCategory): Promise<ActiveEffectRow[]> {
+    const all = await this.getGlobalPowerRows();
+    return all.filter((r) => r.category === category);
   }
 
   async getPassiveEffectsFromEquipment(

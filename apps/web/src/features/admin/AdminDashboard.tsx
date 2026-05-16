@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench } from 'lucide-react';
+import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -597,11 +597,198 @@ function ToolsPanel() {
   );
 }
 
-type Tab = 'players' | 'boosts' | 'notifications' | 'events' | 'tools';
+const POWER_TYPE_LABELS: Record<string, string> = {
+  keeper_xp_boost: 'Keeper XP Boost',
+  entity_xp_boost: 'Entity XP Boost',
+  mission_power_boost: 'Mission Power Boost',
+  mission_duration_reduction: 'Mission Speed',
+  crafting_duration_reduction: 'Crafting Speed',
+  building_build_duration_reduction: 'Build Speed',
+  building_upgrade_duration_reduction: 'Upgrade Speed',
+  injury_recovery_boost: 'Injury Recovery',
+};
+
+function GlobalPowerPanel() {
+  const [powers, setPowers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [form, setForm] = useState({
+    label: '',
+    powerType: 'entity_xp_boost',
+    value: '50',
+    valueMode: 'percent_add',
+    durationMinutes: '60',
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const p = await adminApi.getGlobalPowers(showAll);
+      setPowers(p);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [showAll]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async () => {
+    setMsg(null);
+    try {
+      await adminApi.createGlobalPower({
+        label: form.label || 'Admin Power',
+        powerType: form.powerType,
+        value: Number(form.value),
+        valueMode: form.valueMode,
+        durationMinutes: Number(form.durationMinutes),
+      });
+      setMsg({ text: 'Global power activated!', type: 'success' });
+      setForm({ label: '', powerType: 'entity_xp_boost', value: '50', valueMode: 'percent_add', durationMinutes: '60' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const cancel = async (id: string) => {
+    if (!confirm('Cancel this global power?')) return;
+    setMsg(null);
+    try {
+      await adminApi.cancelGlobalPower(id);
+      setMsg({ text: 'Power cancelled', type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const formatTimeLeft = (endTime: string) => {
+    const ms = new Date(endTime).getTime() - Date.now();
+    if (ms <= 0) return 'expired';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  const activePowers = powers.filter((p) => p.status === 'active');
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 1rem', fontSize: '1.3rem' }}>Global Active Powers</h2>
+
+      <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1.25rem' }}>
+        <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', color: '#b8b8ff' }}>Activate New Power</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+          <div className="form-field">
+            <label>Label</label>
+            <input type="text" placeholder="Power label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+          </div>
+          <div className="form-field">
+            <label>Power Type</label>
+            <select value={form.powerType} onChange={(e) => setForm({ ...form, powerType: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
+              {Object.entries(POWER_TYPE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Value</label>
+            <input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
+          </div>
+          <div className="form-field">
+            <label>Value Mode</label>
+            <select value={form.valueMode} onChange={(e) => setForm({ ...form, valueMode: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
+              <option value="percent_add">% Add (e.g. +50%)</option>
+              <option value="flat_add">Flat Add</option>
+              <option value="multiplier">Multiplier (e.g. ×1.5)</option>
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Duration (minutes)</label>
+            <input type="number" min="1" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
+          </div>
+        </div>
+        <button onClick={create} className="btn-save" style={{ marginTop: '0.75rem' }}>Activate Power</button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', color: '#b8b8ff' }}>
+          {showAll ? 'All Powers (recent 100)' : `Active Powers (${activePowers.length})`}
+        </h3>
+        <button onClick={() => setShowAll(!showAll)} style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.8rem' }}>
+          {showAll ? 'Show Active Only' : 'Show All'}
+        </button>
+      </div>
+
+      {loading && <div className="loading">Loading...</div>}
+
+      {powers.length > 0 && (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Activated</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {powers.map((p) => {
+                const isActive = p.status === 'active';
+                const valueFmt = p.valueMode === 'percent_add' ? `+${p.value}%` : p.valueMode === 'multiplier' ? `×${p.value}` : `+${p.value}`;
+                return (
+                  <tr key={p.id}>
+                    <td>{p.label}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{POWER_TYPE_LABELS[p.powerType] ?? p.powerType}</td>
+                    <td style={{ fontWeight: 600, color: isActive ? '#4caf50' : '#888' }}>{valueFmt}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{new Date(p.startTime).toLocaleString()}</td>
+                    <td style={{ fontSize: '0.8rem' }}>
+                      {new Date(p.endTime).toLocaleString()}
+                      {isActive && <div style={{ color: '#F59E0B', fontSize: '0.7rem' }}>{formatTimeLeft(p.endTime)} left</div>}
+                    </td>
+                    <td>
+                      <span className={`boost-status boost-${p.status}`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td>
+                      {isActive && (
+                        <button onClick={() => cancel(p.id)} className="btn-delete">Cancel</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {powers.length === 0 && !loading && (
+        <div style={{ color: '#888', padding: '1rem 0', textAlign: 'center', fontSize: '0.9rem' }}>
+          No {showAll ? '' : 'active '}global powers
+        </div>
+      )}
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
+type Tab = 'players' | 'boosts' | 'powers' | 'notifications' | 'events' | 'tools';
 
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'players', label: 'Player Editor', icon: Users },
   { key: 'boosts', label: 'Tick Boosts', icon: Zap },
+  { key: 'powers', label: 'Global Powers', icon: Flame },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'events', label: 'Events & Gifts', icon: Gift },
   { key: 'tools', label: 'Tools', icon: Wrench },
@@ -659,6 +846,7 @@ function Dashboard() {
       <div className="admin-content">
         {tab === 'players' && <PlayerPanel />}
         {tab === 'boosts' && <BoostPanel />}
+        {tab === 'powers' && <GlobalPowerPanel />}
         {tab === 'notifications' && <NotificationPanel />}
         {tab === 'events' && <EventGiftPanel />}
         {tab === 'tools' && <ToolsPanel />}

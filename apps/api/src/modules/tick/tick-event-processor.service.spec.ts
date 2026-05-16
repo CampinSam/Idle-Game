@@ -75,11 +75,16 @@ function makeService() {
     createNotification: jest.fn(async () => ({ id: `notif-${Math.random()}` })),
   };
 
+  const globalPowerService: any = {
+    expireStale: jest.fn(async () => {}),
+  };
+
   const svc = new TickEventProcessorService(
     prisma as any,
     tickService,
     pubsub,
     notificationService,
+    globalPowerService,
   );
 
   (svc as any).logger = {

@@ -12,7 +12,7 @@ import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
-import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
+import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
 import {
   calculateCraftingLuck,
   durationSecondsToTicks,
@@ -408,11 +408,18 @@ export class CraftingService {
     const boostable = timer?.boostable ?? true;
     let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
 
-    const timerMod = await this.effectService.resolveForTarget(
-      userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED,
-    );
-    if (timerMod.flatAdd !== 0 || timerMod.percentAdd !== 0 || timerMod.multiplier !== 1) {
-      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, timerMod)));
+    const [timerMod, legacyTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.CRAFTING_TIMER_SPEED),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+    ]);
+    const combinedTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
+      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
+      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
+    };
+    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
+      durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
     }
 
     // Workshop tier shortens the timer (Tier 2 ×0.9, Tier 3 ×0.8). Applied

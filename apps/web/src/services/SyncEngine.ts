@@ -5,6 +5,11 @@ import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync,
 import { setSystemIconRegistry } from '../utils/iconResolver';
 import type { RootState } from '../store';
 
+export type GlobalPowerChangeHandler = (
+  event: 'started' | 'ended',
+  change: { id: string; powerType: string; label: string; durationMinutes: number },
+) => void;
+
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -16,9 +21,21 @@ export class SyncEngine {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
   private destroyed = false;
+  private globalPowerHandlers = new Set<GlobalPowerChangeHandler>();
 
   constructor(store: Store<RootState>) {
     this.store = store;
+  }
+
+  onGlobalPowerChange(handler: GlobalPowerChangeHandler): () => void {
+    this.globalPowerHandlers.add(handler);
+    return () => this.globalPowerHandlers.delete(handler);
+  }
+
+  private emitGlobalPowerChange(event: 'started' | 'ended', change: any) {
+    for (const handler of this.globalPowerHandlers) {
+      try { handler(event, change); } catch { /* ignore */ }
+    }
   }
 
   async start(): Promise<void> {
@@ -111,6 +128,21 @@ export class SyncEngine {
         }
       } catch {
         console.warn('[SyncEngine] Failed to parse home_banners.updated event');
+      }
+    });
+
+    es.addEventListener('global_power.changed', (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (Array.isArray(msg?.changes)) {
+          for (const change of msg.changes) {
+            if (change?.event && change?.id) {
+              this.emitGlobalPowerChange(change.event, change);
+            }
+          }
+        }
+      } catch {
+        console.warn('[SyncEngine] Failed to parse global_power.changed event');
       }
     });
 

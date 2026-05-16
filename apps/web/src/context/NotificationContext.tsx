@@ -5,6 +5,15 @@ import { applyPatches } from '../store/syncSlice';
 import { useSyncNotifications } from '../hooks/useSyncSelectors';
 import { audioEngine } from '../services/AudioEngine';
 
+export interface TransientToast {
+  id: string;
+  title: string;
+  body: string;
+  icon?: string;
+  accentColor?: string;
+  durationMs?: number;
+}
+
 export interface AppNotification {
   id: string;
   type: string;
@@ -31,6 +40,7 @@ interface NotificationContextValue {
   notifications: AppNotification[];
   unreadCount: number;
   toasts: ToastItem[];
+  transientToasts: TransientToast[];
   loading: boolean;
   markRead: (ids: string[]) => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -38,12 +48,15 @@ interface NotificationContextValue {
   dismissNotification: (id: string) => void;
   dismissToast: (toastId: string) => void;
   hideToast: (toastId: string) => void;
+  addTransientToast: (toast: Omit<TransientToast, 'id'>) => void;
+  dismissTransientToast: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
   notifications: [],
   unreadCount: 0,
   toasts: [],
+  transientToasts: [],
   loading: false,
   markRead: async () => {},
   markAllRead: async () => {},
@@ -51,6 +64,8 @@ const NotificationContext = createContext<NotificationContextValue>({
   dismissNotification: () => {},
   dismissToast: () => {},
   hideToast: () => {},
+  addTransientToast: () => {},
+  dismissTransientToast: () => {},
 });
 
 export function useNotifications() {
@@ -93,6 +108,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const userId = useAppSelector((s) => s.auth.player?.id as string | undefined);
   const syncNotifs = useSyncNotifications();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [transientToasts, setTransientToasts] = useState<TransientToast[]>([]);
+  const transientTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const seenIds = useRef<Set<string>>(new Set());
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   // Tracks the last known userId so the logout effect can still reference it
@@ -211,6 +228,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }));
   }, [dispatch, notifications]);
 
+  const addTransientToast = useCallback((toast: Omit<TransientToast, 'id'>) => {
+    const id = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const full: TransientToast = { ...toast, id };
+    setTransientToasts((prev) => [...prev, full].slice(-5));
+    const duration = toast.durationMs ?? 8000;
+    const timer = setTimeout(() => {
+      setTransientToasts((prev) => prev.filter((t) => t.id !== id));
+      transientTimers.current.delete(id);
+    }, duration);
+    transientTimers.current.set(id, timer);
+  }, []);
+
+  const dismissTransientToast = useCallback((id: string) => {
+    setTransientToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = transientTimers.current.get(id);
+    if (timer) { clearTimeout(timer); transientTimers.current.delete(id); }
+  }, []);
+
   const dismissNotification = useCallback((id: string) => {
     api.dismissNotification(id).catch(() => {});
     dispatch(applyPatches({
@@ -224,6 +259,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         notifications,
         unreadCount,
         toasts: toasts.slice(0, MAX_VISIBLE_TOASTS),
+        transientToasts,
         loading: false,
         markRead,
         markAllRead,
@@ -231,6 +267,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         dismissNotification,
         dismissToast,
         hideToast,
+        addTransientToast,
+        dismissTransientToast,
       }}
     >
       {children}

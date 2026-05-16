@@ -21,6 +21,31 @@ export type BroadcastMessage =
       // connected client refreshes its carousel without a re-bootstrap.
       type: 'home_banners.updated';
       banners: any[];
+    }
+  | {
+      // Broadcast when a global active power is created, cancelled, or expires.
+      // `active` is the current list of all active powers after the change.
+      // `changes` lists each power that started or ended in this event.
+      type: 'global_power.changed';
+      active: Array<{
+        id: string;
+        label: string;
+        powerType: string;
+        value: number;
+        valueMode: string;
+        durationMinutes: number;
+        startTime: string;
+        endTime: string;
+        status: string;
+        triggeredByUserId?: string;
+      }>;
+      changes: Array<{
+        event: 'started' | 'ended';
+        id: string;
+        powerType: string;
+        label: string;
+        durationMinutes: number;
+      }>;
     };
 
 export abstract class PubSubService {
