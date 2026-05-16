@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Zap, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame } from 'lucide-react';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -153,122 +153,6 @@ function PlayerPanel() {
       )}
 
       {msg && !player && <StatusMsg msg={msg.text} type={msg.type} />}
-    </div>
-  );
-}
-
-function BoostPanel() {
-  const [boosts, setBoosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [form, setForm] = useState({ name: '', description: '', multiplier: '2', durationMinutes: '30' });
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const b = await adminApi.listBoosts();
-      setBoosts(b);
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const create = async () => {
-    setMsg(null);
-    try {
-      await adminApi.createBoost({
-        name: form.name || 'Admin Boost',
-        description: form.description || undefined,
-        multiplier: Number(form.multiplier),
-        durationMinutes: Number(form.durationMinutes),
-      });
-      setMsg({ text: 'Boost created', type: 'success' });
-      setForm({ name: '', description: '', multiplier: '2', durationMinutes: '30' });
-      await load();
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
-    }
-  };
-
-  const cancel = async (id: string) => {
-    if (!confirm('Cancel this boost?')) return;
-    setMsg(null);
-    try {
-      await adminApi.cancelBoost(id);
-      setMsg({ text: 'Boost cancelled', type: 'success' });
-      await load();
-    } catch (e: any) {
-      setMsg({ text: e.message, type: 'error' });
-    }
-  };
-
-  return (
-    <div>
-      <h2 style={{ margin: '0 0 1rem', fontSize: '1.3rem' }}>Tick Boosts</h2>
-
-      <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1.25rem' }}>
-        <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', color: '#b8b8ff' }}>Create Boost</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
-          <div className="form-field">
-            <label>Name</label>
-            <input type="text" placeholder="Boost name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </div>
-          <div className="form-field">
-            <label>Multiplier</label>
-            <input type="number" step="0.1" min="0.1" max="10" value={form.multiplier} onChange={(e) => setForm({ ...form, multiplier: e.target.value })} />
-          </div>
-          <div className="form-field">
-            <label>Duration (min)</label>
-            <input type="number" min="1" max="1440" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
-          </div>
-        </div>
-        <div className="form-field" style={{ marginTop: '0.5rem' }}>
-          <label>Description (optional)</label>
-          <input type="text" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        </div>
-        <button onClick={create} className="btn-save" style={{ marginTop: '0.75rem' }}>Create Boost</button>
-      </div>
-
-      {loading && <div className="loading">Loading...</div>}
-
-      {boosts.length > 0 && (
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Multiplier</th>
-                <th>Status</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {boosts.map((b) => (
-                <tr key={b.id}>
-                  <td>{b.name}</td>
-                  <td>{b.multiplier}x</td>
-                  <td><span className={`boost-status boost-${b.status}`}>{b.status}</span></td>
-                  <td style={{ fontSize: '0.8rem' }}>{new Date(b.startTime).toLocaleString()}</td>
-                  <td style={{ fontSize: '0.8rem' }}>{new Date(b.endTime).toLocaleString()}</td>
-                  <td>
-                    {b.status === 'active' && (
-                      <button onClick={() => cancel(b.id)} className="btn-delete">Cancel</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
     </div>
   );
 }
@@ -598,6 +482,7 @@ function ToolsPanel() {
 }
 
 const POWER_TYPE_LABELS: Record<string, string> = {
+  tick_speed_boost: 'Global Tick Boost',
   keeper_xp_boost: 'Keeper XP Boost',
   entity_xp_boost: 'Entity XP Boost',
   mission_power_boost: 'Mission Power Boost',
@@ -850,11 +735,10 @@ function GlobalPowerPanel() {
   );
 }
 
-type Tab = 'players' | 'boosts' | 'powers' | 'notifications' | 'events' | 'tools';
+type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools';
 
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'players', label: 'Player Editor', icon: Users },
-  { key: 'boosts', label: 'Tick Boosts', icon: Zap },
   { key: 'powers', label: 'Global Powers', icon: Flame },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'events', label: 'Events & Gifts', icon: Gift },
@@ -912,7 +796,6 @@ function Dashboard() {
       </div>
       <div className="admin-content">
         {tab === 'players' && <PlayerPanel />}
-        {tab === 'boosts' && <BoostPanel />}
         {tab === 'powers' && <GlobalPowerPanel />}
         {tab === 'notifications' && <NotificationPanel />}
         {tab === 'events' && <EventGiftPanel />}

@@ -582,7 +582,8 @@ function formatCountdown(seconds: number): string {
 
 function powerLabel(powerType: string): string {
   switch (powerType) {
-    case 'tick_boost': return '⚡ Boost World Tick';
+    case 'tick_boost':
+    case 'tick_speed_boost': return '⚡ Global Tick Boost';
     case 'keeper_xp_boost': return '⬆ Boost Keeper XP';
     case 'entity_xp_boost': return '⬆ Boost Entity XP';
     case 'mission_power_boost': return '⚔ Boost Mission Power';
@@ -689,7 +690,7 @@ function EntityUniquePowerPanel({
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
         const label = powerLabel(p.powerType);
-        const pctLabel = p.powerType === 'tick_boost'
+        const pctLabel = (p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost')
           ? `+${p.value}% · ${p.durationMinutes}m`
           : `${p.value} · ${p.durationMinutes}m`;
         return (

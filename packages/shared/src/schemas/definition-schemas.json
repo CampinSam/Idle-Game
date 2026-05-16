@@ -3729,7 +3729,7 @@
       "fields": {
         "id":                 { "type": "string",  "required": true,  "description": "UUID primary key" },
         "locationInstanceId": { "type": "string",  "required": true,  "description": "FK → LocationInstance.id" },
-        "powerKey":           { "type": "string",  "required": true,  "description": "The powerType string (e.g. tick_boost)" },
+        "powerKey":           { "type": "string",  "required": true,  "description": "The powerType string (e.g. tick_speed_boost)" },
         "lastUsedUtcDay":     { "type": "string",  "required": true,  "description": "UTC date string YYYY-MM-DD of last trigger" },
         "usageCount":         { "type": "integer", "required": true,  "default": 1, "description": "Number of triggers on lastUsedUtcDay; reset to 1 on a new UTC day. Enforced against dailyLimit in the power definition." }
       },
@@ -3739,10 +3739,10 @@
   },
   "commands": {
     "TriggerLocationPower": {
-      "description": "Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates LocationPowerUsage for today's UTC date. Dispatches BoostService.createBoost for tick_boost or GlobalPowerService.createPower for all other types.",
+      "description": "Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates LocationPowerUsage for today's UTC date. All power types (including tick_boost, which is remapped to tick_speed_boost) route through GlobalPowerService.triggerPower.",
       "payload": {
         "locationId": { "type": "string", "required": true, "description": "The LocationInstance.id to trigger from" },
-        "powerKey":   { "type": "string", "required": true, "description": "The power type to trigger (e.g. tick_boost)" }
+        "powerKey":   { "type": "string", "required": true, "description": "The power type to trigger (e.g. tick_speed_boost)" }
       },
       "errors": [
         "ForbiddenException: caller does not own the location",
@@ -3752,7 +3752,7 @@
   },
   "sseEvents": {
     "boost.changed": {
-      "description": "Broadcast to all connected clients whenever a tick boost starts, ends, or is cancelled. The frontend SyncEngine fires a transient toast via useBoostChangeToasts.",
+      "description": "Broadcast to all connected clients whenever the underlying tick-boost state changes. Emitted by GlobalPowerService when a tick_speed_boost global power is created, cancelled, or expires. Clients update local tick rate from this; toast notifications are driven by global_power.changed instead.",
       "payload": {
         "active": "Array<{ id, name, percentBoost, endTime }> — current active tick boosts",
         "combinedPercent": "number — sum of all active percentBoost values"
@@ -3769,8 +3769,8 @@
           "powers": {
             "type": "array",
             "items": {
-              "powerType": { "type": "string", "description": "tick_boost | keeper_xp_boost | entity_xp_boost | mission_power_boost | mission_duration_reduction | crafting_duration_reduction | building_build_duration_reduction | building_upgrade_duration_reduction | injury_recovery_boost" },
-              "value":     { "type": "number", "description": "For tick_boost: additive percent (50 = +50%). For others: same as GlobalActivePower value." },
+              "powerType": { "type": "string", "description": "tick_speed_boost | keeper_xp_boost | entity_xp_boost | mission_power_boost | mission_duration_reduction | crafting_duration_reduction | building_build_duration_reduction | building_upgrade_duration_reduction | injury_recovery_boost. Legacy tick_boost is remapped to tick_speed_boost at trigger time." },
+              "value":     { "type": "number", "description": "For tick_speed_boost: additive percent (50 = +50%). For others: same as GlobalActivePower value." },
               "durationMinutes": { "type": "integer", "description": "Duration in whole minutes" },
               "dailyLimit": { "type": "integer", "description": "Maximum triggers per UTC day (typically 1)" }
             }

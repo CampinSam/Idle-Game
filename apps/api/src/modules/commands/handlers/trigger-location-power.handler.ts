@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildLocationPatches } from '../patch-builder';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BoostService } from '../../tick/boost.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
 
 function getUtcDay(date: Date): string {
@@ -13,7 +12,6 @@ function getUtcDay(date: Date): string {
 export class TriggerLocationPowerHandler implements CommandHandler {
   constructor(
     private prisma: PrismaService,
-    private boostService: BoostService,
     private globalPowerService: GlobalPowerService,
   ) {}
 
@@ -93,31 +91,21 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       );
     }
 
-    // Activate the power. Both service methods use this.prisma internally and
-    // commit their own writes before broadcasting SSE — ensuring SSE payloads
-    // always reflect fully-committed state.
-    if (power.powerType === 'tick_boost') {
-      const percentBoost = typeof power.value === 'number' ? power.value : 50;
-      const multiplier = 1 + percentBoost / 100;
-      const locationName = location.name || location.definition?.id || 'Unique Outpost';
+    // Remap legacy tick_boost powerType to the canonical tick_speed_boost global power type.
+    const resolvedPowerType = power.powerType === 'tick_boost' ? 'tick_speed_boost' : power.powerType;
+    const percentBoost = typeof power.value === 'number' ? power.value : 50;
+    const locationName = location.name || location.definition?.id || 'Unique Outpost';
 
-      await this.boostService.createBoost({
-        name: `${locationName} Tick Boost`,
-        description: `Triggered by unique location power from ${nftAssetId}`,
-        multiplier,
-        percentBoost,
-        durationMinutes: power.durationMinutes,
-        userId: ctx.userId,
-      });
-    } else {
-      await this.globalPowerService.triggerPower({
-        label: `${location.name || nftAssetId} — ${powerKey}`,
-        powerType: power.powerType,
-        value: power.value,
-        durationMinutes: power.durationMinutes,
-        triggeredByUserId: ctx.userId,
-      });
-    }
+    await this.globalPowerService.triggerPower({
+      label: power.powerType === 'tick_boost'
+        ? `${locationName} — Global Tick Boost`
+        : `${location.name || nftAssetId} — ${powerKey}`,
+      powerType: resolvedPowerType,
+      value: power.powerType === 'tick_boost' ? percentBoost : power.value,
+      valueMode: power.powerType === 'tick_boost' ? 'percent_add' : undefined,
+      durationMinutes: power.durationMinutes,
+      triggeredByUserId: ctx.userId,
+    });
 
     // Record usage after successful activation. Ordering is intentional: if
     // activation throws, usage is never incremented. If the usage write fails
@@ -149,7 +137,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
 
     const toastMessage = power.powerType === 'tick_boost'
-      ? `⚡ World Tick boosted +${typeof power.value === 'number' ? power.value : 50}% for ${power.durationMinutes} minutes!`
+      ? `⚡ Global Tick Boost activated! +${percentBoost}% world tick speed for ${power.durationMinutes} minutes!`
       : `Power "${powerKey}" activated for ${power.durationMinutes} minutes!`;
 
     return {

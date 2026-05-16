@@ -38,14 +38,6 @@ export const adminApi = {
     adminRequest<any>(`/${table}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (table: string, id: string) =>
     adminRequest<any>(`/${table}/${id}`, { method: 'DELETE' }),
-  listBoosts: () => adminRequest<any[]>('/boosts/list'),
-  createBoost: (data: { name: string; description?: string; multiplier: number; durationMinutes: number }) =>
-    adminRequest<any>('/boosts/create', { method: 'POST', body: JSON.stringify(data) }),
-  updateBoost: (id: string, data: { name?: string; description?: string }) =>
-    adminRequest<any>(`/boosts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  cancelBoost: (id: string) =>
-    adminRequest<any>(`/boosts/${id}`, { method: 'DELETE' }),
-
   searchPlayers: (q: string) => adminRequest<any[]>(`/players/search?q=${encodeURIComponent(q)}`),
   getPlayer: (id: string) => adminRequest<any>(`/players/${id}`),
   updatePlayer: (id: string, data: any) =>

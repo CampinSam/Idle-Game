@@ -10,6 +10,6 @@ import { TickEventProcessorService } from './tick-event-processor.service';
   imports: [NotificationModule, GlobalPowerModule],
   providers: [TickService, BoostService, TickEventProcessorService],
   controllers: [TickController],
-  exports: [TickService, BoostService, TickEventProcessorService],
+  exports: [TickService, TickEventProcessorService],
 })
 export class TickModule {}

@@ -275,6 +275,7 @@ Time-limited server-side powers that apply globally to all players simultaneousl
 
 | powerType | Effect Category | Description |
 |-----------|-----------------|-------------|
+| `tick_speed_boost` | _(direct)_ | **Global Tick Boost** — accelerates world tick rate for all players. Acts directly on `BoostEvent`/`TickRateInterval` rather than the effect resolver. |
 | `keeper_xp_boost` | `KEEPER_XP_MULTIPLIER` | Boosts keeper XP earned from missions |
 | `entity_xp_boost` | `XP_MULTIPLIER` | Boosts entity XP earned from missions |
 | `mission_power_boost` | `MISSION_POWER` | Increases mission power for all players |
@@ -342,7 +343,7 @@ Daily limit is enforced per the `dailyLimit` field in the power definition. When
 
 **Command type:** `TriggerLocationPower`
 
-Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates `LocationPowerUsage` for today's UTC date against the power's `dailyLimit`. Dispatches `BoostService.createBoost` for `tick_boost` powers, or `GlobalPowerService.createPower` for all other types.
+Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates `LocationPowerUsage` for today's UTC date against the power's `dailyLimit`. All power types (including `tick_boost`, which is remapped to `tick_speed_boost`) route through `GlobalPowerService.triggerPower`.
 
 | Payload field | Type | Required | Description |
 |--------------|------|----------|-------------|
@@ -365,7 +366,7 @@ The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keye
     "CARDANO:policy123:asset456": {
       "powers": [
         {
-          "powerType": "tick_boost",
+          "powerType": "tick_speed_boost",
           "value": 50,
           "durationMinutes": 60,
           "dailyLimit": 1
@@ -382,9 +383,9 @@ The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keye
 }
 ```
 
-**Power types:** `tick_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
+**Power types:** `tick_speed_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
 
-For `tick_boost`, `value` is the additive percent increase (e.g. `50` = +50% world tick speed). Multiple concurrent boosts are summed additively. For all other power types, the same `powerType`/`value` semantics as `GlobalActivePower` apply.
+For `tick_speed_boost` ("Global Tick Boost"), `value` is the additive percent increase (e.g. `50` = +50% world tick speed). Multiple concurrent boosts are summed additively. Legacy definitions using `tick_boost` as the powerType are automatically remapped to `tick_speed_boost` at trigger time. For all other power types, the same `powerType`/`value` semantics as `GlobalActivePower` apply.
 
 ---
 
@@ -408,7 +409,7 @@ Tracks per-(entity-id, power-key) daily usage for unique NFT entity powers. Mirr
 
 **Command type:** `TriggerEntityPower`
 
-Triggers a unique power belonging to a specific NFT entity. The caller must own the entity (or have admin role). Checks/updates `EntityPowerUsage` for today's UTC date against the power's `dailyLimit`. Dispatches `BoostService.createBoost` for `tick_boost` powers, or `GlobalPowerService.triggerPower` for all other types.
+Triggers a unique power belonging to a specific NFT entity. The caller must own the entity (or have admin role). Checks/updates `EntityPowerUsage` for today's UTC date against the power's `dailyLimit`. All power types (including `tick_boost`, which is remapped to `tick_speed_boost`) route through `GlobalPowerService.triggerPower`.
 
 | Payload field | Type | Required | Description |
 |--------------|------|----------|-------------|
@@ -437,7 +438,7 @@ The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed 
           "dailyLimit": 1
         },
         {
-          "powerType": "tick_boost",
+          "powerType": "tick_speed_boost",
           "value": 25,
           "durationMinutes": 60,
           "dailyLimit": 1
@@ -448,7 +449,7 @@ The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed 
 }
 ```
 
-**Power types:** `tick_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
+**Power types:** `tick_speed_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
 
 These use the same `UniqueLocationPower` type as `LocationDefinition.rules.uniques`. The frontend entity detail panel renders a "Unique NFT Powers" section below the progression tabs for any entity with powers defined.
 
@@ -456,7 +457,7 @@ These use the same `UniqueLocationPower` type as `LocationDefinition.rules.uniqu
 
 ## boost.changed SSE Event
 
-Broadcast to all connected clients whenever a tick boost starts, ends, or is cancelled:
+Broadcast to all connected clients whenever the underlying tick-boost state changes (a `BoostEvent` starts, ends, or is cancelled). This event is emitted by `GlobalPowerService` when a `tick_speed_boost` global power is created, cancelled, or expires:
 
 ```json
 {
@@ -464,7 +465,7 @@ Broadcast to all connected clients whenever a tick boost starts, ends, or is can
   "active": [
     {
       "id": "uuid",
-      "name": "My Outpost Tick Boost",
+      "name": "global_power:<powerId>",
       "percentBoost": 50,
       "endTime": "2026-05-17T19:00:00.000Z"
     }
@@ -473,4 +474,4 @@ Broadcast to all connected clients whenever a tick boost starts, ends, or is can
 }
 ```
 
-`active` is the list of all currently active tick boosts. `combinedPercent` is the sum of all `percentBoost` values. The frontend `SyncEngine` fires a transient toast per event via the `useBoostChangeToasts` hook.
+`active` is the list of all currently active tick boosts. `combinedPercent` is the sum of all `percentBoost` values. Clients use this to update the local tick rate. Toast notifications for tick-speed changes are driven by the `global_power.changed` SSE event and the `useGlobalPowerToasts` hook, not by this event directly.

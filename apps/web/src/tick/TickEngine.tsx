@@ -5,13 +5,6 @@ import type { ActiveBoost } from '../store/syncSlice';
 
 export type { ActiveBoost };
 
-export interface ActiveBoostInfo {
-  boostActive: boolean;
-  boostPercent: number;
-  boostLabel: string;
-  boostNames: string[];
-}
-
 export interface TickSnapshot {
   currentTick: number;
   tickRate: number;
@@ -154,25 +147,3 @@ export function useTickRate(): number {
   return tickRate;
 }
 
-export function useActiveBoosts(): ActiveBoostInfo {
-  const { activeBoosts } = useContext(TickEngineContext);
-
-  return useMemo(() => {
-    const meaningful = activeBoosts.filter((b) => (b.multiplier || 1) > 1);
-    const combinedMultiplier = meaningful.reduce((acc, b) => acc * b.multiplier, 1);
-    const boostPercent = Math.round((combinedMultiplier - 1) * 100);
-    const boostNames = meaningful.map((b) => b.name || 'Boost');
-
-    let boostLabel = '';
-    if (meaningful.length > 0) {
-      boostLabel = `Global ${boostPercent}% boost active — ${boostNames.join(', ')}`;
-    }
-
-    return {
-      boostActive: meaningful.length > 0 && boostPercent > 0,
-      boostPercent,
-      boostLabel,
-      boostNames,
-    };
-  }, [activeBoosts]);
-}

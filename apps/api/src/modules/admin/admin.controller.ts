@@ -3,7 +3,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
-import { BoostService } from '../tick/boost.service';
 import { GlobalPowerService, VALID_POWER_TYPES } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
@@ -20,7 +19,6 @@ export class AdminController {
 
   constructor(
     private adminService: AdminService,
-    private boostService: BoostService,
     private globalPowerService: GlobalPowerService,
     private notificationService: NotificationService,
     private eventService: EventService,
@@ -128,31 +126,6 @@ export class AdminController {
       undefined,
       body.contextData,
     );
-  }
-
-  @Get('boosts/list')
-  listBoosts() {
-    return this.boostService.getAllBoosts();
-  }
-
-  @Post('boosts/create')
-  createBoost(
-    @Body() body: { name: string; description?: string; multiplier: number; durationMinutes: number },
-  ) {
-    return this.boostService.createBoost(body);
-  }
-
-  @Put('boosts/:id')
-  async updateBoost(
-    @Param('id') id: string,
-    @Body() body: { name?: string; description?: string },
-  ) {
-    return this.adminService.updateBoost(id, body);
-  }
-
-  @Delete('boosts/:id')
-  cancelBoost(@Param('id') id: string) {
-    return this.boostService.cancelBoost(id);
   }
 
   @Post('backfill/item-rarity')

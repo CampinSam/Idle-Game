@@ -19,7 +19,7 @@ import {
 import { ERROR_BORDER_COLOR, errorTextStyle, validatePower } from './validation';
 
 const POWER_TYPES = [
-  'tick_boost',
+  'tick_speed_boost',
   'keeper_xp_boost',
   'entity_xp_boost',
   'mission_power_boost',
@@ -38,7 +38,7 @@ interface Power {
 }
 
 function defaultPower(): Power {
-  return { powerType: 'tick_boost', value: 50, durationMinutes: 60, dailyLimit: 1 };
+  return { powerType: 'tick_speed_boost', value: 50, durationMinutes: 60, dailyLimit: 1 };
 }
 
 function PowerEntryEditor({

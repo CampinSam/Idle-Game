@@ -5,7 +5,6 @@ import { restoreSession } from './store/authSlice';
 import { fetchCurrencyDefs, fetchItemDefs, fetchEffectDefs } from './store/gameSlice';
 import { useSyncEngine } from './hooks/useSyncEngine';
 import { useGlobalPowerToasts } from './hooks/useGlobalPowerToasts';
-import { useBoostChangeToasts } from './hooks/useBoostChangeToasts';
 import { NotificationProvider } from './context/NotificationContext';
 import { ModalProvider } from './context/ModalContext';
 import { BodyCardVariantProvider } from './context/BodyCardVariantContext';
@@ -53,7 +52,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useSyncEngine();
   useGlobalPowerToasts();
-  useBoostChangeToasts();
 
   useEffect(() => {
     if (token && initializing) {

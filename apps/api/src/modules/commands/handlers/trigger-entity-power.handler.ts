@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildEntityPatch } from '../patch-builder';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { BoostService } from '../../tick/boost.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
 
 function getUtcDay(date: Date): string {
@@ -13,7 +12,6 @@ function getUtcDay(date: Date): string {
 export class TriggerEntityPowerHandler implements CommandHandler {
   constructor(
     private prisma: PrismaService,
-    private boostService: BoostService,
     private globalPowerService: GlobalPowerService,
   ) {}
 
@@ -90,27 +88,20 @@ export class TriggerEntityPowerHandler implements CommandHandler {
 
     const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
 
-    if (power.powerType === 'tick_boost') {
-      const percentBoost = typeof power.value === 'number' ? power.value : 50;
-      const multiplier = 1 + percentBoost / 100;
+    // Remap legacy tick_boost powerType to the canonical tick_speed_boost global power type.
+    const resolvedPowerType = power.powerType === 'tick_boost' ? 'tick_speed_boost' : power.powerType;
+    const percentBoost = typeof power.value === 'number' ? power.value : 50;
 
-      await this.boostService.createBoost({
-        name: `${entityName} Tick Boost`,
-        description: `Triggered by unique entity power from ${nftAssetId}`,
-        multiplier,
-        percentBoost,
-        durationMinutes: power.durationMinutes,
-        userId: ctx.userId,
-      });
-    } else {
-      await this.globalPowerService.triggerPower({
-        label: `${entityName} — ${powerKey}`,
-        powerType: power.powerType,
-        value: power.value,
-        durationMinutes: power.durationMinutes,
-        triggeredByUserId: ctx.userId,
-      });
-    }
+    await this.globalPowerService.triggerPower({
+      label: power.powerType === 'tick_boost'
+        ? `${entityName} — Global Tick Boost`
+        : `${entityName} — ${powerKey}`,
+      powerType: resolvedPowerType,
+      value: power.powerType === 'tick_boost' ? percentBoost : power.value,
+      valueMode: power.powerType === 'tick_boost' ? 'percent_add' : undefined,
+      durationMinutes: power.durationMinutes,
+      triggeredByUserId: ctx.userId,
+    });
 
     if (existingUsage && existingUsage.lastUsedUtcDay === today) {
       await (this.prisma as any).entityPowerUsage.update({
@@ -136,7 +127,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     await buildEntityPatch(pb, ctx.tx, entityId);
 
     const toastMessage = power.powerType === 'tick_boost'
-      ? `⚡ World Tick boosted +${typeof power.value === 'number' ? power.value : 50}% for ${power.durationMinutes} minutes!`
+      ? `⚡ Global Tick Boost activated! +${percentBoost}% world tick speed for ${power.durationMinutes} minutes!`
       : `Power "${powerKey}" activated for ${power.durationMinutes} minutes!`;
 
     return {

@@ -1,4 +1,5 @@
 export const POWER_TYPE_LABELS: Record<string, string> = {
+  tick_speed_boost: 'Global Tick Boost',
   keeper_xp_boost: 'Keeper XP',
   entity_xp_boost: 'Entity XP',
   mission_power_boost: 'Mission Power',
@@ -7,7 +8,6 @@ export const POWER_TYPE_LABELS: Record<string, string> = {
   building_build_duration_reduction: 'Build Speed',
   building_upgrade_duration_reduction: 'Upgrade Speed',
   injury_recovery_boost: 'Injury Recovery',
-  tick_speed_boost: 'World Tick Speed',
 };
 
 export const POWER_TYPE_ICONS: Record<string, string> = {
