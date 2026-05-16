@@ -399,6 +399,13 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               {/* Status panel */}
               {(() => {
                 const st = entity.status ?? 'idle';
+                const DISPLAY_LABEL: Record<string, string> = {
+                  idle:    'Ready',
+                  mission: 'On Mission',
+                  working: 'Working',
+                  injured: 'Injured',
+                };
+                const label = DISPLAY_LABEL[st] ?? (st.charAt(0).toUpperCase() + st.slice(1));
                 const statusColor: Record<string, string> = {
                   idle:    'rgba(255,255,255,0.55)',
                   mission: '#F59E0B',
@@ -407,6 +414,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 };
                 const color = statusColor[st] ?? 'rgba(255,255,255,0.55)';
 
+                // Deeplink targets
                 let link: string | null = null;
                 if (st === 'mission') {
                   link = '/missions';
@@ -417,6 +425,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                   link = '/inventory';
                 }
 
+                // Countdown
                 let countdownMs: number | null = null;
                 if ((st === 'mission' || st === 'working') && entityActiveJob?.startTick != null && entityActiveJob?.durationTicks != null) {
                   const timer = createCountdownTimer({ startTick: entityActiveJob.startTick, durationTicks: entityActiveJob.durationTicks });
@@ -437,36 +446,41 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                   return `${s}s`;
                 };
 
+                // Compose the display value inline: "On Mission · 4m 12s"
+                let displayValue = label;
+                if (countdownMs !== null && countdownMs > 0) {
+                  displayValue = `${label} · ${fmtMs(countdownMs)}`;
+                } else if (countdownMs !== null && countdownMs <= 0 && st !== 'idle') {
+                  displayValue = `${label} · ✅`;
+                }
+
+                const handleClick = () => {
+                  if (st === 'injured') {
+                    try { localStorage.setItem('inv_activeCategory', 'CONSUMABLE'); } catch {}
+                  }
+                  navigate(link!);
+                };
+
                 const inner = (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Status</span>
-                      <span className="flex items-center gap-1 text-xs font-extrabold" style={{ color }}>
-                        {getEntityStatusLabel(st)}
-                        {link && <span className="text-[9px] opacity-60">›</span>}
-                      </span>
-                    </div>
-                    {countdownMs !== null && countdownMs > 0 && (
-                      <div className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">
-                        ⏱ {fmtMs(countdownMs)}
-                      </div>
-                    )}
-                    {countdownMs !== null && countdownMs <= 0 && st !== 'idle' && (
-                      <div className="text-[10px] font-bold text-[#10B981] text-right">✅ Ready</div>
-                    )}
-                  </>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Status</span>
+                    <span className="flex items-center gap-1 text-xs font-extrabold" style={{ color }}>
+                      {displayValue}
+                      {link && <span className="text-[9px] opacity-60">›</span>}
+                    </span>
+                  </div>
                 );
 
                 return link ? (
                   <button
                     type="button"
-                    className="flex flex-col gap-[4px] w-full text-left bg-transparent border-none cursor-pointer rounded-lg px-2 py-1.5 -mx-2 hover:bg-white/[0.04] active:bg-white/[0.08] [transition:background_0.15s]"
-                    onClick={() => navigate(link!)}
+                    className="w-full text-left bg-transparent border-none cursor-pointer rounded-lg px-2 py-1.5 -mx-2 hover:bg-white/[0.04] active:bg-white/[0.08] [transition:background_0.15s]"
+                    onClick={handleClick}
                   >
                     {inner}
                   </button>
                 ) : (
-                  <div className="flex flex-col gap-[4px]">{inner}</div>
+                  <div>{inner}</div>
                 );
               })()}
 
