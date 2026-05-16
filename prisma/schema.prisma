@@ -1413,9 +1413,10 @@ model GlobalActivePower {
   value           Float
   valueMode       String    @default("percent_add")
   durationMinutes Int
+  scheduledFor    DateTime?
   startTime       DateTime  @default(now())
   endTime         DateTime
-  status          String    @default("active")  // active | cancelled | expired
+  status          String    @default("active")  // active | scheduled | cancelled | expired
   triggeredByUserId String?
 
   createdAt       DateTime  @default(now())

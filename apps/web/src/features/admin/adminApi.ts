@@ -159,6 +159,7 @@ export const adminApi = {
     value: number;
     valueMode?: string;
     durationMinutes: number;
+    scheduledFor?: string;
     triggeredByUserId?: string;
   }) => adminRequest<any>('/global-powers', { method: 'POST', body: JSON.stringify(data) }),
   cancelGlobalPower: (id: string) =>

@@ -608,6 +608,14 @@ const POWER_TYPE_LABELS: Record<string, string> = {
   injury_recovery_boost: 'Injury Recovery',
 };
 
+const DURATION_PRESETS: { label: string; minutes: number }[] = [
+  { label: '30m', minutes: 30 },
+  { label: '1h', minutes: 60 },
+  { label: '2h', minutes: 120 },
+  { label: '6h', minutes: 360 },
+  { label: '24h', minutes: 1440 },
+];
+
 function GlobalPowerPanel() {
   const [powers, setPowers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -619,6 +627,7 @@ function GlobalPowerPanel() {
     value: '50',
     valueMode: 'percent_add',
     durationMinutes: '60',
+    scheduledFor: '',
   });
 
   const load = useCallback(async () => {
@@ -644,9 +653,11 @@ function GlobalPowerPanel() {
         value: Number(form.value),
         valueMode: form.valueMode,
         durationMinutes: Number(form.durationMinutes),
+        ...(form.scheduledFor ? { scheduledFor: new Date(form.scheduledFor).toISOString() } : {}),
       });
-      setMsg({ text: 'Global power activated!', type: 'success' });
-      setForm({ label: '', powerType: 'entity_xp_boost', value: '50', valueMode: 'percent_add', durationMinutes: '60' });
+      const isScheduled = !!form.scheduledFor && new Date(form.scheduledFor) > new Date();
+      setMsg({ text: isScheduled ? 'Global power scheduled!' : 'Global power activated!', type: 'success' });
+      setForm({ label: '', powerType: 'entity_xp_boost', value: '50', valueMode: 'percent_add', durationMinutes: '60', scheduledFor: '' });
       await load();
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -674,7 +685,28 @@ function GlobalPowerPanel() {
     return `${m}m`;
   };
 
+  const formatTimeUntil = (scheduledFor: string) => {
+    const ms = new Date(scheduledFor).getTime() - Date.now();
+    if (ms <= 0) return 'starting soon';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    if (h > 0) return `in ${h}h ${m}m`;
+    return `in ${m}m`;
+  };
+
   const activePowers = powers.filter((p) => p.status === 'active');
+  const scheduledPowers = powers.filter((p) => p.status === 'scheduled');
+
+  const presetBtnStyle = (active: boolean): React.CSSProperties => ({
+    padding: '0.3rem 0.6rem',
+    border: `1px solid ${active ? '#7c3aed' : '#444'}`,
+    borderRadius: 5,
+    background: active ? '#4c1d95' : 'transparent',
+    color: active ? '#e0d4ff' : '#aaa',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    fontWeight: active ? 600 : 400,
+  });
 
   return (
     <div>
@@ -707,20 +739,51 @@ function GlobalPowerPanel() {
               <option value="multiplier">Multiplier (e.g. ×1.5)</option>
             </select>
           </div>
+          <div className="form-field" style={{ gridColumn: 'span 2' }}>
+            <label>Duration</label>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+              {DURATION_PRESETS.map((p) => (
+                <button
+                  key={p.minutes}
+                  type="button"
+                  style={presetBtnStyle(form.durationMinutes === String(p.minutes))}
+                  onClick={() => setForm({ ...form, durationMinutes: String(p.minutes) })}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min="1"
+              placeholder="Custom minutes"
+              value={form.durationMinutes}
+              onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
+            />
+          </div>
           <div className="form-field">
-            <label>Duration (minutes)</label>
-            <input type="number" min="1" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
+            <label>Start At <span style={{ color: '#888', fontWeight: 400 }}>(optional — leave blank to start now)</span></label>
+            <input
+              type="datetime-local"
+              value={form.scheduledFor}
+              onChange={(e) => setForm({ ...form, scheduledFor: e.target.value })}
+              style={{ colorScheme: 'dark' }}
+            />
           </div>
         </div>
-        <button onClick={create} className="btn-save" style={{ marginTop: '0.75rem' }}>Activate Power</button>
+        <button onClick={create} className="btn-save" style={{ marginTop: '0.75rem' }}>
+          {form.scheduledFor && new Date(form.scheduledFor) > new Date() ? 'Schedule Power' : 'Activate Power'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
         <h3 style={{ margin: 0, fontSize: '1rem', color: '#b8b8ff' }}>
-          {showAll ? 'All Powers (recent 100)' : `Active Powers (${activePowers.length})`}
+          {showAll
+            ? 'All Powers (recent 100)'
+            : `Active (${activePowers.length})${scheduledPowers.length > 0 ? ` · Scheduled (${scheduledPowers.length})` : ''}`}
         </h3>
         <button onClick={() => setShowAll(!showAll)} style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.8rem' }}>
-          {showAll ? 'Show Active Only' : 'Show All'}
+          {showAll ? 'Show Active + Scheduled' : 'Show History'}
         </button>
       </div>
 
@@ -734,7 +797,7 @@ function GlobalPowerPanel() {
                 <th>Name</th>
                 <th>Type</th>
                 <th>Value</th>
-                <th>Activated</th>
+                <th>Starts</th>
                 <th>Expires</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -743,13 +806,17 @@ function GlobalPowerPanel() {
             <tbody>
               {powers.map((p) => {
                 const isActive = p.status === 'active';
+                const isScheduled = p.status === 'scheduled';
                 const valueFmt = p.valueMode === 'percent_add' ? `+${p.value}%` : p.valueMode === 'multiplier' ? `×${p.value}` : `+${p.value}`;
                 return (
                   <tr key={p.id}>
                     <td>{p.label}</td>
                     <td style={{ fontSize: '0.8rem' }}>{POWER_TYPE_LABELS[p.powerType] ?? p.powerType}</td>
-                    <td style={{ fontWeight: 600, color: isActive ? '#4caf50' : '#888' }}>{valueFmt}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{new Date(p.startTime).toLocaleString()}</td>
+                    <td style={{ fontWeight: 600, color: isActive ? '#4caf50' : isScheduled ? '#60a5fa' : '#888' }}>{valueFmt}</td>
+                    <td style={{ fontSize: '0.8rem' }}>
+                      {new Date(p.startTime).toLocaleString()}
+                      {isScheduled && <div style={{ color: '#60a5fa', fontSize: '0.7rem' }}>{formatTimeUntil(p.startTime)}</div>}
+                    </td>
                     <td style={{ fontSize: '0.8rem' }}>
                       {new Date(p.endTime).toLocaleString()}
                       {isActive && <div style={{ color: '#F59E0B', fontSize: '0.7rem' }}>{formatTimeLeft(p.endTime)} left</div>}
@@ -760,7 +827,7 @@ function GlobalPowerPanel() {
                       </span>
                     </td>
                     <td>
-                      {isActive && (
+                      {(isActive || isScheduled) && (
                         <button onClick={() => cancel(p.id)} className="btn-delete">Cancel</button>
                       )}
                     </td>

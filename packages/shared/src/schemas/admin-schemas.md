@@ -267,7 +267,8 @@ Time-limited server-side powers that apply globally to all players simultaneousl
 | powerType | string | yes | One of the valid power types (see below) |
 | value | number | yes | Numeric modifier value |
 | valueMode | string | no | `percent_add` (default), `flat_add`, or `multiplier` |
-| durationMinutes | integer | yes | How long the power lasts (whole minutes) |
+| durationMinutes | integer | yes | How long the power lasts (whole minutes, max 10080) |
+| scheduledFor | string | no | Optional ISO 8601 datetime. If provided and in the future, the power is stored with `status=scheduled` and automatically activated by the tick processor when that time arrives. Omit or leave blank to activate immediately. |
 | triggeredByUserId | string | no | Admin user ID for audit trail |
 
 ### Power Types

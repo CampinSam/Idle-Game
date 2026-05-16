@@ -36,6 +36,7 @@ export interface CreateGlobalPowerDto {
   value: number;
   valueMode?: string;
   durationMinutes: number;
+  scheduledFor?: Date | string;
   triggeredByUserId?: string;
 }
 
@@ -46,6 +47,7 @@ export interface GlobalActivePowerRecord {
   value: number;
   valueMode: string;
   durationMinutes: number;
+  scheduledFor: Date | null;
   startTime: Date;
   endTime: Date;
   status: string;
@@ -61,6 +63,7 @@ type SerializedPower = {
   value: number;
   valueMode: string;
   durationMinutes: number;
+  scheduledFor?: string;
   startTime: string;
   endTime: string;
   status: string;
@@ -93,9 +96,17 @@ export class GlobalPowerService {
     }) as Promise<GlobalActivePowerRecord[]>;
   }
 
+  /** Returns active + scheduled powers. Used by the admin panel default view. */
+  async getActiveAndScheduledPowers(): Promise<GlobalActivePowerRecord[]> {
+    return this.prisma.globalActivePower.findMany({
+      where: { status: { in: ['active', 'scheduled'] } },
+      orderBy: { startTime: 'asc' },
+    }) as Promise<GlobalActivePowerRecord[]>;
+  }
+
   async getAllPowers(): Promise<GlobalActivePowerRecord[]> {
     return this.prisma.globalActivePower.findMany({
-      orderBy: { startTime: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     }) as Promise<GlobalActivePowerRecord[]>;
   }
@@ -155,8 +166,21 @@ export class GlobalPowerService {
       throw new BadRequestException('value must be non-zero');
     }
 
+    // Validate and parse scheduledFor
+    let scheduledFor: Date | null = null;
+    if (dto.scheduledFor) {
+      const parsed = new Date(dto.scheduledFor);
+      if (isNaN(parsed.getTime())) {
+        throw new BadRequestException('scheduledFor must be a valid ISO date-time string');
+      }
+      scheduledFor = parsed;
+    }
+
     const now = new Date();
-    const endTime = new Date(now.getTime() + dto.durationMinutes * 60 * 1000);
+    const isScheduled = scheduledFor !== null && scheduledFor > now;
+    const startTime = isScheduled ? scheduledFor! : now;
+    const endTime = new Date(startTime.getTime() + dto.durationMinutes * 60 * 1000);
+    const status = isScheduled ? 'scheduled' : 'active';
 
     const power = await this.prisma.globalActivePower.create({
       data: {
@@ -165,12 +189,22 @@ export class GlobalPowerService {
         value: dto.value,
         valueMode,
         durationMinutes: dto.durationMinutes,
-        startTime: now,
+        // Only persist scheduledFor when the power is actually deferred; normalize
+        // to null when the provided date is in the past or omitted (immediate activation).
+        scheduledFor: isScheduled ? scheduledFor : null,
+        startTime,
         endTime,
-        status: 'active',
+        status,
         triggeredByUserId: dto.triggeredByUserId ?? null,
       },
     }) as GlobalActivePowerRecord;
+
+    if (isScheduled) {
+      this.logger.log(
+        `Global power scheduled: ${power.label} (${power.powerType} ${power.value} ${power.valueMode} for ${dto.durationMinutes}min, starts ${startTime.toISOString()})`,
+      );
+      return power;
+    }
 
     this.logger.log(
       `Global power activated: ${power.label} (${power.powerType} ${power.value} ${power.valueMode} for ${dto.durationMinutes}min)`,
@@ -210,7 +244,7 @@ export class GlobalPowerService {
 
     this.logger.log(`Global power cancelled: ${power.label} (${id})`);
 
-    if (power.powerType === TICK_SPEED_BOOST_TYPE) {
+    if (power.status === 'active' && power.powerType === TICK_SPEED_BOOST_TYPE) {
       await this.cancelTickBoostForPower(id, new Date());
     }
 
@@ -227,10 +261,47 @@ export class GlobalPowerService {
   /**
    * Called on every tick poll cycle (~200ms). Finds naturally expired powers
    * (endTime <= now, status = 'active'), persists status = 'expired', and
-   * broadcasts a single summary event. Returns count of newly expired powers.
+   * broadcasts a single summary event. Also activates scheduled powers whose
+   * startTime has arrived (scheduledFor <= now, status = 'scheduled').
+   * Returns count of newly expired powers.
    */
   async expireStale(): Promise<number> {
     const now = new Date();
+
+    // Activate powers whose scheduled start time has arrived
+    const toActivate = await this.prisma.globalActivePower.findMany({
+      where: { status: 'scheduled', startTime: { lte: now } },
+    }) as GlobalActivePowerRecord[];
+
+    if (toActivate.length > 0) {
+      await this.prisma.globalActivePower.updateMany({
+        where: { id: { in: toActivate.map((p) => p.id) } },
+        data: { status: 'active' },
+      });
+
+      for (const p of toActivate) {
+        if (p.powerType === TICK_SPEED_BOOST_TYPE) {
+          await this.applyTickBoostForPower({ ...p, status: 'active' }, now);
+        }
+      }
+
+      const active = await this.getActivePowers();
+      this.pubsub.publishBroadcast({
+        type: 'global_power.changed',
+        active: active.map((p) => this.serializePower(p)),
+        changes: toActivate.map((p) => ({
+          event: 'started' as const,
+          id: p.id,
+          powerType: p.powerType,
+          label: p.label,
+          durationMinutes: p.durationMinutes,
+        })),
+      });
+
+      this.logger.log(`Activated ${toActivate.length} scheduled global power(s)`);
+    }
+
+    // Expire powers whose end time has passed
     const expiring = await this.prisma.globalActivePower.findMany({
       where: { status: 'active', endTime: { lte: now } },
     }) as GlobalActivePowerRecord[];
@@ -272,6 +343,7 @@ export class GlobalPowerService {
       value: power.value,
       valueMode: power.valueMode,
       durationMinutes: power.durationMinutes,
+      ...(power.scheduledFor ? { scheduledFor: power.scheduledFor.toISOString() } : {}),
       startTime: power.startTime.toISOString(),
       endTime: power.endTime.toISOString(),
       status: power.status,
@@ -308,7 +380,7 @@ export class GlobalPowerService {
         description: power.label,
         multiplier,
         percentBoost,
-        startTime: now,
+        startTime: power.startTime,
         endTime: power.endTime,
         status: 'active',
       },

@@ -540,7 +540,7 @@ export class AdminController {
   getGlobalPowers(@Query('all') all?: string) {
     return all === 'true'
       ? this.globalPowerService.getAllPowers()
-      : this.globalPowerService.getActivePowers();
+      : this.globalPowerService.getActiveAndScheduledPowers();
   }
 
   @Post('global-powers')
@@ -551,6 +551,7 @@ export class AdminController {
       value: number;
       valueMode?: string;
       durationMinutes: number;
+      scheduledFor?: string;
       triggeredByUserId?: string;
     },
   ) {
