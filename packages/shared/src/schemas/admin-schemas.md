@@ -178,18 +178,18 @@ Reserved for future gameplay (`branches: object[]` will declare per-branch unloc
 | Yellow | body | ATK+1 | common |
 | Cyan | body | DEF+1, SPD+1 | uncommon |
 | Grey | body | VIT+1, DEF+1 | uncommon |
-| Purple | body | FOC+1, LCK+1 | scarce |
+| Purple | body | FOC+1, LCK+1 | scare  |
 | Neon | body | LCK+2 | rare |
-| Blue | body | SPD+1, ATK+1 | advanced |
+| Blue | body | SPD+1, ATK+1 | scare    |
 | Sparkles | special | LCK+1 | uncommon |
 | Leaves | special | VIT+1 | uncommon |
-| Bubble Show | special | FOC+1 | scarce |
-| Water | special | DEF+1 | scarce |
-| Earthen | special | VIT+2 | advanced |
+| Bubble Show | special | FOC+1 | scare  |
+| Water | special | DEF+1 | scare  |
+| Earthen | special | VIT+2 | scare    |
 | Ice Storm | special | SPD+1, DEF+1 | rare |
-| Electric Aura | special | ATK+2 | ultra_rare |
+| Electric Aura | special | ATK+2 | epic      |
 | Low Life | special | LCK+2 | rare |
-| Crystal Storm | special | FOC+2 | ultra_rare |
+| Crystal Storm | special | FOC+2 | epic      |
 | Press Speech | special | ATK+1, LCK+1 | epic |
 | Dark Energy | special | ATK+2, DEF+1 | epic |
 | The Incubator | special | all+1 | legendary |

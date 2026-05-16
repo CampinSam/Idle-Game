@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RARITY_TIERS } from '@derp/shared';
 import StatMapEditor from './StatMapEditor';
 import SlotStatsEditor from './SlotStatsEditor';
 import {
@@ -6,7 +7,7 @@ import {
   labelStyle, fieldRowStyle, selectStyle, numberInputStyle,
 } from './editorStyles';
 
-const RARITY_OPTIONS = ['common', 'uncommon', 'scare', 'rare', 'epic', 'mythic', 'legendary', 'unique'];
+const RARITY_OPTIONS = [...RARITY_TIERS];
 
 type Trait = {
   slotStats?: Record<string, Record<string, number | number[]>>;

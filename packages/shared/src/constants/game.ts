@@ -43,7 +43,7 @@ export const RARITY_TIERS = [
 
 export type Rarity = typeof RARITY_TIERS[number];
 
-export const RARITY_SORT_ORDER: Record<Rarity, number> = {
+export const RARITY_ORDER: Record<Rarity, number> = {
   common: 0, uncommon: 1, scare: 2, rare: 3, epic: 4, mythic: 5, legendary: 6, unique: 7,
 };
 
@@ -52,7 +52,8 @@ export const RARITY_DISPLAY_LABEL: Record<Rarity, string> = {
   epic: 'Epic', mythic: 'Mythic', legendary: 'Legendary', unique: 'Unique',
 };
 
-export type ArchetypeRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export const ARCHETYPE_RARITY_TIERS = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
+export type ArchetypeRarity = typeof ARCHETYPE_RARITY_TIERS[number];
 
 export const ARCHETYPE_RARITY: Record<EntityArchetype, ArchetypeRarity> = {
   Dave: 'common',

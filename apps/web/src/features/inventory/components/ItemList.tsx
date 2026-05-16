@@ -1,32 +1,20 @@
 import { useMemo } from 'react';
+import { RARITY_TIERS, RARITY_ORDER, RARITY_DISPLAY_LABEL, type Rarity } from '@derp/shared';
 import ItemCard from './ItemCard';
 import type { ItemListMode, ItemUseCase } from '../types';
 
-const RARITY_ORDER: Record<string, number> = {
-  UNIQUE:    0,
-  LEGENDARY: 1,
-  MYTHIC:    2,
-  EPIC:      3,
-  RARE:      4,
-  SCARE:     5,
-  UNCOMMON:  6,
-  COMMON:    7,
-};
+const RARITY_SORT_DESC: Record<string, number> = Object.fromEntries(
+  [...RARITY_TIERS].reverse().map((r, i) => [r.toUpperCase(), i]),
+);
 
 export type ItemSortBy = 'rarity' | 'name' | 'quantity';
-export type ItemRarityFilter = 'ALL' | 'COMMON' | 'UNCOMMON' | 'SCARE' | 'RARE' | 'EPIC' | 'MYTHIC' | 'LEGENDARY' | 'UNIQUE';
+export type ItemRarityFilter = 'ALL' | Uppercase<Rarity>;
 
 export const ITEM_RARITY_OPTIONS: Array<{ key: ItemRarityFilter; label: string }> = [
-  { key: 'ALL',       label: 'All' },
-  { key: 'COMMON',    label: 'Common' },
-  { key: 'UNCOMMON',  label: 'Uncommon' },
-  { key: 'SCARE',     label: 'Scare' },
-  { key: 'RARE',      label: 'Rare' },
-  { key: 'EPIC',      label: 'Epic' },
-  { key: 'MYTHIC',    label: 'Mythic' },
-  { key: 'LEGENDARY', label: 'Legendary' },
-  { key: 'UNIQUE',    label: 'Unique' },
+  { key: 'ALL', label: 'All' },
+  ...RARITY_TIERS.map(r => ({ key: r.toUpperCase() as Uppercase<Rarity>, label: RARITY_DISPLAY_LABEL[r] })),
 ];
+
 
 export const ITEM_SORT_OPTIONS: Array<{ key: ItemSortBy; label: string }> = [
   { key: 'rarity',   label: 'Rarity' },
@@ -110,8 +98,8 @@ export default function ItemList({
 
     if (effectiveSort === 'rarity') {
       list = [...list].sort((a: any, b: any) => {
-        const ra = RARITY_ORDER[a.rarity] ?? 99;
-        const rb = RARITY_ORDER[b.rarity] ?? 99;
+        const ra = RARITY_SORT_DESC[(a.rarity ?? '').toUpperCase()] ?? 99;
+        const rb = RARITY_SORT_DESC[(b.rarity ?? '').toUpperCase()] ?? 99;
         if (ra !== rb) return ra - rb;
         return (a.name || '').localeCompare(b.name || '');
       });

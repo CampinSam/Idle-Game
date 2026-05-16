@@ -30,15 +30,14 @@
       "values": [
         "COMMON",
         "UNCOMMON",
-        "SCARCE",
-        "ADVANCED",
+        "SCARE",
         "RARE",
-        "ULTRA_RARE",
         "EPIC",
         "MYTHIC",
-        "LEGENDARY"
+        "LEGENDARY",
+        "UNIQUE"
       ],
-      "description": "Rarity tiers in ascending order"
+      "description": "Rarity tiers in ascending order: common | uncommon | scare | rare | epic | mythic | legendary | unique"
     },
     "ItemCategory": {
       "values": [

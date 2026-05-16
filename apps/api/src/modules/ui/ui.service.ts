@@ -6,6 +6,7 @@ import { resolveSpec } from './modal-def-resolver.util';
 import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
+import { RARITY_ORDER as SHARED_RARITY_ORDER } from '@derp/shared';
 
 interface TeamEntitySnapshot {
   id: string;
@@ -255,9 +256,9 @@ export class UiService {
 
     // --- Fetch sort keys for currencies and items ---
     const XP_TYPES = new Set(['entity_xp', 'keeper_xp']);
-    const RARITY_ORDER: Record<string, number> = {
-      COMMON: 0, UNCOMMON: 1, SCARE: 2, RARE: 3, EPIC: 4, MYTHIC: 5, LEGENDARY: 6, UNIQUE: 7,
-    };
+    const RARITY_ORDER: Record<string, number> = Object.fromEntries(
+      Object.entries(SHARED_RARITY_ORDER).map(([k, v]) => [k.toUpperCase(), v]),
+    );
 
     const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);
     const itemKeys = merged.filter(r => r.type === 'item' && r.key).map(r => r.key as string);
