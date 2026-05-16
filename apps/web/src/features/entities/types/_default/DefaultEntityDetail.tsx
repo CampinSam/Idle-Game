@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
 import GameIcon from '../../../../components/GameIcon';
@@ -129,6 +130,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     },
   });
 
+  const navigate = useNavigate();
   const { events: entityEvents, loading: eventsLoading } = useEntityEvents(entity.id);
 
   const currentTick = useCurrentTick();
@@ -405,6 +407,16 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 };
                 const color = statusColor[st] ?? 'rgba(255,255,255,0.55)';
 
+                let link: string | null = null;
+                if (st === 'mission') {
+                  link = '/missions';
+                } else if (st === 'working') {
+                  const locationId = entityActiveJob?.data?.locationId;
+                  link = locationId ? `/locations/${locationId}/workshop` : '/crafting';
+                } else if (st === 'injured') {
+                  link = '/inventory';
+                }
+
                 let countdownMs: number | null = null;
                 if ((st === 'mission' || st === 'working') && entityActiveJob?.startTick != null && entityActiveJob?.durationTicks != null) {
                   const timer = createCountdownTimer({ startTick: entityActiveJob.startTick, durationTicks: entityActiveJob.durationTicks });
@@ -425,11 +437,14 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                   return `${s}s`;
                 };
 
-                return (
-                  <div className="flex flex-col gap-[4px]">
+                const inner = (
+                  <>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Status</span>
-                      <span className="text-xs font-extrabold" style={{ color }}>{getEntityStatusLabel(st)}</span>
+                      <span className="flex items-center gap-1 text-xs font-extrabold" style={{ color }}>
+                        {getEntityStatusLabel(st)}
+                        {link && <span className="text-[9px] opacity-60">›</span>}
+                      </span>
                     </div>
                     {countdownMs !== null && countdownMs > 0 && (
                       <div className="text-[10px] font-bold text-[rgba(255,255,255,0.45)] text-right">
@@ -439,7 +454,19 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                     {countdownMs !== null && countdownMs <= 0 && st !== 'idle' && (
                       <div className="text-[10px] font-bold text-[#10B981] text-right">✅ Ready</div>
                     )}
-                  </div>
+                  </>
+                );
+
+                return link ? (
+                  <button
+                    type="button"
+                    className="flex flex-col gap-[4px] w-full text-left bg-transparent border-none cursor-pointer rounded-lg px-2 py-1.5 -mx-2 hover:bg-white/[0.04] active:bg-white/[0.08] [transition:background_0.15s]"
+                    onClick={() => navigate(link!)}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-[4px]">{inner}</div>
                 );
               })()}
 
