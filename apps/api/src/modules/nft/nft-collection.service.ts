@@ -88,6 +88,7 @@ export class NftCollectionService {
   async listCollections() {
     return (this.prisma as any).nftCollectionDef.findMany({
       orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { nftAssets: true } } },
     });
   }
 

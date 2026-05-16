@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame } from 'lucide-react';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -735,13 +735,266 @@ function GlobalPowerPanel() {
   );
 }
 
-type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools';
+function NftCollectionsPanel() {
+  const [collections, setCollections] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [assetsTotal, setAssetsTotal] = useState(0);
+  const [assetsPage, setAssetsPage] = useState(1);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const ASSETS_LIMIT = 50;
+
+  const loadCollections = useCallback(async () => {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const data = await adminApi.listNftCollections();
+      setCollections(data);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCollections(); }, [loadCollections]);
+
+  const loadAssets = useCallback(async (collectionId: string, page: number) => {
+    setAssetsLoading(true);
+    try {
+      const result = await adminApi.listNftAssets(collectionId, page, ASSETS_LIMIT);
+      setAssets(result.items);
+      setAssetsTotal(result.total);
+      setAssetsPage(result.page);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setAssetsLoading(false);
+    }
+  }, []);
+
+  const selectCollection = (col: any) => {
+    setSelectedCollection(col);
+    setAssets([]);
+    setAssetsPage(1);
+    setMsg(null);
+    loadAssets(col.id, 1);
+  };
+
+  const handleImport = async (col: any) => {
+    setMsg(null);
+    try {
+      const result = await adminApi.importNftCollectionCache(col.id);
+      setMsg({ text: `Import started — ${result.total} tokens queued`, type: 'success' });
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const handleRefresh = async (col: any) => {
+    setMsg(null);
+    try {
+      const result = await adminApi.refreshNftOwnership(col.id);
+      setMsg({ text: `Ownership refresh started — ${result.total} assets queued`, type: 'success' });
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const totalPages = Math.ceil(assetsTotal / ASSETS_LIMIT);
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString();
+  };
+
+  if (selectedCollection) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
+          <button
+            onClick={() => { setSelectedCollection(null); setAssets([]); setMsg(null); loadCollections(); }}
+            style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}
+          >
+            ← Back
+          </button>
+          <h2 style={{ margin: 0, fontSize: '1.3rem' }}>{selectedCollection.name}</h2>
+          <span style={{ padding: '0.2rem 0.5rem', background: selectedCollection.active ? 'rgba(76,175,80,0.15)' : 'rgba(255,107,107,0.15)', color: selectedCollection.active ? '#4caf50' : '#ff6b6b', borderRadius: 4, fontSize: '0.75rem', border: `1px solid ${selectedCollection.active ? 'rgba(76,175,80,0.3)' : 'rgba(255,107,107,0.3)'}` }}>
+            {selectedCollection.active ? 'active' : 'inactive'}
+          </span>
+        </div>
+
+        <div style={{ background: '#16213e', padding: '1rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1rem', display: 'flex', gap: '2rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+          <span style={{ color: '#888' }}>Chain: <strong style={{ color: '#e0e0ff' }}>{selectedCollection.chain}</strong></span>
+          <span style={{ color: '#888' }}>Policy/ID: <code style={{ color: '#b8b8ff', fontSize: '0.8rem' }}>{selectedCollection.collectionId}</code></span>
+          <span style={{ color: '#888' }}>Cached Assets: <strong style={{ color: '#e0e0ff' }}>{selectedCollection._count?.nftAssets ?? 0}</strong></span>
+          <span style={{ color: '#888' }}>Mint Mode: <strong style={{ color: '#e0e0ff' }}>{selectedCollection.mintMode}</strong></span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
+          <button onClick={() => handleImport(selectedCollection)} className="btn-save">
+            Import to Cache
+          </button>
+          <button onClick={() => handleRefresh(selectedCollection)} className="btn-save" style={{ background: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.5)', color: '#93c5fd' }}>
+            Refresh Ownership
+          </button>
+          <button onClick={() => loadAssets(selectedCollection.id, assetsPage)} style={{ padding: '0.5rem 1rem', border: '1px solid #555', borderRadius: 6, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}>
+            Reload Assets
+          </button>
+        </div>
+
+        {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', color: '#b8b8ff' }}>
+            Cached Assets ({assetsTotal})
+          </h3>
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.85rem' }}>
+              <button
+                disabled={assetsPage <= 1}
+                onClick={() => loadAssets(selectedCollection.id, assetsPage - 1)}
+                style={{ padding: '0.25rem 0.6rem', border: '1px solid #444', borderRadius: 4, background: 'transparent', color: assetsPage <= 1 ? '#555' : '#aaa', cursor: assetsPage <= 1 ? 'default' : 'pointer' }}
+              >‹ Prev</button>
+              <span style={{ color: '#888' }}>Page {assetsPage} / {totalPages}</span>
+              <button
+                disabled={assetsPage >= totalPages}
+                onClick={() => loadAssets(selectedCollection.id, assetsPage + 1)}
+                style={{ padding: '0.25rem 0.6rem', border: '1px solid #444', borderRadius: 4, background: 'transparent', color: assetsPage >= totalPages ? '#555' : '#aaa', cursor: assetsPage >= totalPages ? 'default' : 'pointer' }}
+              >Next ›</button>
+            </div>
+          )}
+        </div>
+
+        {assetsLoading && <div className="loading">Loading assets...</div>}
+
+        {!assetsLoading && assets.length === 0 && (
+          <div style={{ color: '#888', padding: '2rem 0', textAlign: 'center', fontSize: '0.9rem' }}>
+            No cached assets yet. Run "Import to Cache" to populate.
+          </div>
+        )}
+
+        {assets.length > 0 && (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Image</th>
+                  <th>Token Name</th>
+                  <th>Name</th>
+                  <th>Image URL</th>
+                  <th>Owner Address</th>
+                  <th>Last Synced</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assets.map((asset) => (
+                  <tr key={asset.nftAssetId}>
+                    <td style={{ width: 48 }}>
+                      {asset.imageUrl ? (
+                        <img
+                          src={asset.imageUrl}
+                          alt={asset.name ?? asset.tokenName}
+                          style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover', border: '1px solid #2a2a4e' }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div style={{ width: 40, height: 40, borderRadius: 4, background: '#1a1a3e', border: '1px solid #2a2a4e', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: '0.7rem' }}>—</div>
+                      )}
+                    </td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#b8b8ff' }}>{asset.tokenName}</td>
+                    <td style={{ color: '#e0e0ff' }}>{asset.name ?? '—'}</td>
+                    <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={asset.imageUrl ?? ''}>
+                      {asset.imageUrl ? (
+                        <a href={asset.imageUrl} target="_blank" rel="noreferrer" style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa', textDecoration: 'none' }}>
+                          {asset.imageUrl}
+                        </a>
+                      ) : <span style={{ color: '#555', fontSize: '0.8rem' }}>—</span>}
+                    </td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#888', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={asset.ownerAddress ?? ''}>
+                      {asset.ownerAddress ? asset.ownerAddress : <span style={{ color: '#555' }}>unowned</span>}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: '#888' }}>{formatDate(asset.lastSyncedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.3rem' }}>NFT Collections</h2>
+        <button onClick={loadCollections} disabled={loading} style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}>
+          {loading ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+
+      {loading && <div className="loading">Loading collections...</div>}
+
+      {!loading && collections.length === 0 && (
+        <div style={{ color: '#888', padding: '2rem 0', textAlign: 'center', fontSize: '0.9rem' }}>
+          No NFT collections defined. Add one in the Definition Editor.
+        </div>
+      )}
+
+      {collections.length > 0 && (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Chain</th>
+                <th>Policy / Collection ID</th>
+                <th>Cached Assets</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {collections.map((col) => (
+                <tr key={col.id} style={{ cursor: 'pointer' }} onClick={() => selectCollection(col)}>
+                  <td style={{ fontWeight: 600, color: '#e0e0ff' }}>{col.name}</td>
+                  <td><span style={{ padding: '0.15rem 0.4rem', background: 'rgba(139,92,246,0.15)', borderRadius: 4, fontSize: '0.8rem', color: '#b8b8ff', border: '1px solid rgba(139,92,246,0.3)' }}>{col.chain}</span></td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#888', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={col.collectionId}>{col.collectionId}</td>
+                  <td style={{ fontWeight: 600, color: col._count?.nftAssets > 0 ? '#4caf50' : '#888' }}>{col._count?.nftAssets ?? 0}</td>
+                  <td>
+                    <span style={{ padding: '0.2rem 0.45rem', background: col.active ? 'rgba(76,175,80,0.15)' : 'rgba(255,107,107,0.15)', color: col.active ? '#4caf50' : '#ff6b6b', borderRadius: 4, fontSize: '0.75rem', border: `1px solid ${col.active ? 'rgba(76,175,80,0.3)' : 'rgba(255,107,107,0.3)'}` }}>
+                      {col.active ? 'active' : 'inactive'}
+                    </span>
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button onClick={() => handleImport(col)} className="btn-save" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}>Import</button>
+                      <button onClick={() => handleRefresh(col)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', border: '1px solid rgba(59,130,246,0.5)', borderRadius: 5, background: 'rgba(59,130,246,0.1)', color: '#93c5fd', cursor: 'pointer' }}>Refresh</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft';
 
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'players', label: 'Player Editor', icon: Users },
   { key: 'powers', label: 'Global Powers', icon: Flame },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'events', label: 'Events & Gifts', icon: Gift },
+  { key: 'nft', label: 'NFT Collections', icon: Layers },
   { key: 'tools', label: 'Tools', icon: Wrench },
 ];
 
@@ -799,6 +1052,7 @@ function Dashboard() {
         {tab === 'powers' && <GlobalPowerPanel />}
         {tab === 'notifications' && <NotificationPanel />}
         {tab === 'events' && <EventGiftPanel />}
+        {tab === 'nft' && <NftCollectionsPanel />}
         {tab === 'tools' && <ToolsPanel />}
       </div>
     </div>

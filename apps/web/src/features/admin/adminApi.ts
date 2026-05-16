@@ -1,4 +1,5 @@
 const API_BASE = '/api/admin';
+const NFT_API_BASE = '/api';
 
 let adminKey = sessionStorage.getItem('adminKey') || '';
 
@@ -19,6 +20,23 @@ async function adminRequest<T>(path: string, options: RequestInit = {}): Promise
   };
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `Request failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+async function nftAdminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Admin-Key': adminKey,
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  const res = await fetch(`${NFT_API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -161,6 +179,17 @@ export const adminApi = {
   }) => adminRequest<any>('/global-powers', { method: 'POST', body: JSON.stringify(data) }),
   cancelGlobalPower: (id: string) =>
     adminRequest<any>(`/global-powers/${id}`, { method: 'DELETE' }),
+
+  listNftCollections: () =>
+    nftAdminRequest<any[]>('/nft/collections'),
+  importNftCollectionCache: (id: string) =>
+    nftAdminRequest<any>(`/nft/collections/${id}/import`, { method: 'POST' }),
+  refreshNftOwnership: (id: string) =>
+    nftAdminRequest<any>(`/nft/collections/${id}/refresh`, { method: 'POST' }),
+  listNftAssets: (id: string, page = 1, limit = 50) =>
+    nftAdminRequest<{ items: any[]; total: number; page: number; limit: number }>(
+      `/nft/collections/${id}/assets?page=${page}&limit=${limit}`,
+    ),
 
   listLocationDefs: () => adminRequest<any[]>('/locationDefinition'),
   listSeasons: () => adminRequest<any[]>('/season'),
