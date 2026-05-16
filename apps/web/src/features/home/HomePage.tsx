@@ -120,6 +120,8 @@ export default function HomePage() {
     inProgressJobs: allActiveJobs.filter((j: any) => getJobRemaining(j) > 0),
   }), [allActiveJobs, getJobRemaining]);
 
+  const globalPowers = useGlobalPowers();
+
   if (!profile) return <HomePageSkeleton />;
 
   const totalProductionByResource = (locations as any[]).reduce<Record<string, number>>((acc, loc) => {
@@ -159,8 +161,6 @@ export default function HomePage() {
       setClaimingId(null);
     }
   };
-
-  const globalPowers = useGlobalPowers();
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
