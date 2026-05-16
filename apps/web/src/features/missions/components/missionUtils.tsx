@@ -62,17 +62,17 @@ export function resolveCategoryDisplay(catDef: any) {
   };
 }
 
+export const DEFAULT_OVERLAY = 'linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%)';
+
 export function displayCssVars(
   display: { style?: DisplayStyle },
   opts?: { hero?: boolean },
-): { vars: Record<string, string>; titleStyle: React.CSSProperties } {
+): { vars: Record<string, string>; overlay: string | null; titleStyle: React.CSSProperties } {
   const style = display.style || {};
   const overlay = overlayToCss(style.overlay);
   const bg = style.background || {};
   const body = style.body || {};
   const vars: Record<string, string> = {};
-  // Overlay is consumed inline by callers (MissionsList/CategoriesGrid/MissionDetail).
-  void overlay;
   void opts;
   if (bg.position) vars['--card-bg-position'] = bg.position;
   if (bg.size) vars['--card-bg-size'] = bg.size;
@@ -84,6 +84,7 @@ export function displayCssVars(
   if (body.lineHeight) vars['--card-body-line-height'] = String(body.lineHeight);
   return {
     vars,
+    overlay,
     titleStyle: textStyleToCss(style.title) as React.CSSProperties,
   };
 }

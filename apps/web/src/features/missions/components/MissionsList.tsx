@@ -2,6 +2,7 @@ import { getDifficultyDisplay } from '@derp/shared';
 import ItemQty from '../../../components/ItemQty';
 import {
   DEFAULT_DISPLAY,
+  DEFAULT_OVERLAY,
   bgImageCss,
   displayCssVars,
   getReqValue,
@@ -44,7 +45,7 @@ export function MissionsList({
         const unavailable = locked || !missionEnabled;
         const diffInfo = getDifficultyDisplay(def.difficulty);
         const display = resolveDisplay(def);
-        const { vars, titleStyle } = displayCssVars(display);
+        const { vars, overlay, titleStyle } = displayCssVars(display);
         const missionTags = def.tags || [];
         const listCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
         const getListHave = (entry: { type: string; id: string }) =>
@@ -66,14 +67,19 @@ export function MissionsList({
             {bgImg && bgImg !== 'none' && (
               <div
                 aria-hidden
-                className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat"
-                style={{ backgroundImage: bgImg }}
+                className="absolute inset-0 z-0"
+                style={{
+                  backgroundImage: bgImg,
+                  backgroundPosition: 'var(--card-bg-position, center)',
+                  backgroundSize: 'var(--card-bg-size, cover)',
+                  backgroundRepeat: 'var(--card-bg-repeat, no-repeat)',
+                }}
               />
             )}
             <div
               aria-hidden
               className="absolute inset-0 z-0 pointer-events-none"
-              style={{ background: 'linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%)' }}
+              style={{ background: overlay ?? DEFAULT_OVERLAY }}
             />
             <div className="relative z-10 p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">

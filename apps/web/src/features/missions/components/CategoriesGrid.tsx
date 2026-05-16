@@ -1,4 +1,4 @@
-import { DEFAULT_DISPLAY, bgImageCss, displayCssVars, renderTags } from './missionUtils';
+import { DEFAULT_DISPLAY, DEFAULT_OVERLAY, bgImageCss, displayCssVars, renderTags } from './missionUtils';
 
 interface CategoryView {
   id: string;
@@ -34,7 +34,7 @@ export function CategoriesGrid({
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
       {visibleCategories.map((cat) => {
         const display = cat.display;
-        const { vars, titleStyle } = displayCssVars(display);
+        const { vars, overlay, titleStyle } = displayCssVars(display);
         const unavailable = cat.locked || !cat.enabled;
         const inlineMissions = getInlineMissions(cat.id);
         const navigable = !cat.inlineOnly;
@@ -54,14 +54,19 @@ export function CategoriesGrid({
             {bgImg && bgImg !== 'none' && (
               <div
                 aria-hidden
-                className="absolute inset-0 z-0 bg-center bg-cover bg-no-repeat"
-                style={{ backgroundImage: bgImg }}
+                className="absolute inset-0 z-0"
+                style={{
+                  backgroundImage: bgImg,
+                  backgroundPosition: 'var(--card-bg-position, center)',
+                  backgroundSize: 'var(--card-bg-size, cover)',
+                  backgroundRepeat: 'var(--card-bg-repeat, no-repeat)',
+                }}
               />
             )}
             <div
               aria-hidden
               className="absolute inset-0 z-0 pointer-events-none"
-              style={{ background: 'linear-gradient(90deg, rgba(15,10,40,0.75) 0%, rgba(15,10,40,0.4) 60%, rgba(15,10,40,0.15) 100%)' }}
+              style={{ background: overlay ?? DEFAULT_OVERLAY }}
             />
             <div className="relative z-10 p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
@@ -90,13 +95,12 @@ export function CategoriesGrid({
                     return (
                       <button
                         key={def.id}
-                        disabled={!canAffordInline}
-                        title={!canAffordInline ? "Can't afford this mission" : undefined}
+                        title={!canAffordInline ? 'View requirements' : undefined}
                         onClick={() => onSelectInlineMission(cat.id, def.id)}
-                        className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 ${
+                        className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 cursor-pointer ${
                           canAffordInline
-                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110 cursor-pointer'
-                            : 'text-white/50 border-white/15 bg-white/5 cursor-not-allowed'
+                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110'
+                            : 'text-white/50 border-white/15 bg-white/5'
                         }`}
                         style={canAffordInline ? { background: 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))' } : undefined}
                       >
