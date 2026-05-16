@@ -20,7 +20,6 @@ import {
 import type { EntityDetailProps } from '../../types';
 import { api } from '../../../../services/api';
 
-const TRAIT_SLOT_ORDER = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
 
@@ -138,7 +137,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     [entity],
   );
   const equippedStats = (entity as any).equippedStats as Record<string, number> | undefined;
-  const traits = (entity.traits || {}) as Partial<Record<typeof TRAIT_SLOT_ORDER[number], string>>;
+  const traits: Record<string, string> = (entity.traits as Record<string, string>) || {};
   const entityBusy = isEntityBusy(entity);
 
   const equippedBySlot = useMemo(() => {
@@ -411,9 +410,9 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
 
           {activeTab === 'TRAITS' && (
             <div className="flex flex-col gap-[6px]">
-              <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-1">BODY SLOTS &amp; TRAITS</div>
+              <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-1">SLOTS &amp; TRAITS</div>
               <div className="h-px bg-[rgba(139,92,246,0.2)]" />
-              {TRAIT_SLOT_ORDER.map((slot) => {
+              {Object.keys(traits).map((slot) => {
                 const value = traits[slot];
                 const archetypeColor = value
                   ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')

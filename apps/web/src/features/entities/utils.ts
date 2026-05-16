@@ -61,12 +61,10 @@ export function getStarRating(entity: any): number {
  *  3. Role based on the highest stat (Support, Attacker, etc.)
  */
 export function getTraitCategoryTags(entity: any): string[] {
-  const traits = entity?.traits || {};
-  const slots = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'] as const;
+  const traits: Record<string, string> = entity?.traits || {};
 
   const counts: Record<string, number> = {};
-  for (const slot of slots) {
-    const val = traits[slot];
+  for (const val of Object.values(traits)) {
     if (val) counts[val] = (counts[val] || 0) + 1;
   }
 

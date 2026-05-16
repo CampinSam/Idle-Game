@@ -43,15 +43,17 @@ export type EntityArchetype =
   | 'MadScientist'
   | 'Deity';
 
-export interface EntityTraits {
-  head: EntityArchetype;
-  ears: EntityArchetype;
-  beak: EntityArchetype;
-  eyes: EntityArchetype;
-  body: EntityArchetype;
-  back: EntityArchetype;
-  tail: EntityArchetype;
-}
+/**
+ * Open-ended slot → archetype map. Keys are the slot names defined on the
+ * EntityDefinition (e.g. "body", "faction", "special" for Perps; "head",
+ * "ears", … for Derp Birds). Values are the lowercase archetype string stored
+ * after the builder resolves the NFT metadata or random generation.
+ *
+ * This is intentionally `Record<string, string>` rather than a fixed interface
+ * so every collection can define its own slot schema without requiring shared-
+ * package changes.
+ */
+export type EntityTraits = Record<string, string>;
 
 export type EntityStatus = 'idle' | 'mission' | 'working' | 'injured';
 
@@ -78,7 +80,6 @@ export interface CreateEntityDto {
 }
 
 const STAT_KEYS: (keyof EntityStats)[] = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
-const TRAIT_KEYS: (keyof EntityTraits)[] = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'];
 
 /** Type guard for EntityStats JSON field from the database. */
 export function isEntityStats(value: unknown): value is EntityStats {
@@ -87,11 +88,14 @@ export function isEntityStats(value: unknown): value is EntityStats {
   return STAT_KEYS.every((key) => typeof v[key] === 'number');
 }
 
-/** Type guard for EntityTraits JSON field from the database. */
+/**
+ * Type guard for EntityTraits JSON field from the database.
+ * Accepts any object whose enumerable values are all strings — the key set is
+ * collection-specific and is not validated here.
+ */
 export function isEntityTraits(value: unknown): value is EntityTraits {
   if (!value || typeof value !== 'object') return false;
-  const v = value as Record<string, unknown>;
-  return TRAIT_KEYS.every((key) => typeof v[key] === 'string');
+  return Object.values(value as Record<string, unknown>).every((v) => typeof v === 'string');
 }
 
 /** Parses and validates EntityStats from a raw JSON field value. Throws if invalid. */

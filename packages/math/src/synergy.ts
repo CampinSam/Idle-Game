@@ -1,21 +1,30 @@
-import { EntityTraits, EntityArchetype } from '@derp/shared';
+import { EntityTraits } from '@derp/shared';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
 
 /**
  * Calculate synergy score from a team's trait distribution.
  * More matching archetypes across entities = higher synergy.
+ *
+ * Works with any EntityDefinition slot schema — iterates over the union of
+ * all slots present in the team rather than a hardcoded Derp-specific list.
  */
 export const calculateSynergyScore = (teamTraits: EntityTraits[]): number => {
   if (teamTraits.length <= 1) return 0;
 
-  const traitSlots: (keyof EntityTraits)[] = ['head', 'ears', 'beak', 'eyes', 'body', 'back', 'tail'];
+  const allSlots = new Set<string>();
+  for (const traits of teamTraits) {
+    for (const slot of Object.keys(traits)) {
+      allSlots.add(slot);
+    }
+  }
+
   let score = 0;
 
-  for (const slot of traitSlots) {
-    const archetypes = teamTraits.map((t) => t[slot]);
-    const counts = new Map<EntityArchetype, number>();
-    for (const arch of archetypes) {
-      counts.set(arch, (counts.get(arch) || 0) + 1);
+  for (const slot of allSlots) {
+    const counts = new Map<string, number>();
+    for (const traits of teamTraits) {
+      const arch = traits[slot];
+      if (arch) counts.set(arch, (counts.get(arch) || 0) + 1);
     }
     for (const count of counts.values()) {
       if (count > 1) {
