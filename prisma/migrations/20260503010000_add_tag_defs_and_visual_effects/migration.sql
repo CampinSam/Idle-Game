@@ -16,11 +16,15 @@ CREATE TABLE "visual_effect_defs" (
     CONSTRAINT "visual_effect_defs_pkey" PRIMARY KEY ("id")
 );
 
--- Use a real UNIQUE CONSTRAINT (not just a unique index) so that downstream
--- FKs targeting `key` can be introspected as referencing a constraint. Some
--- diff/migration tools (including Replit's publish-time schema diff) only
--- recognize FK targets when a UNIQUE CONSTRAINT exists, not a bare UNIQUE
--- INDEX — even though Postgres itself accepts either.
+-- NOTE: Using a UNIQUE CONSTRAINT here instead of a plain unique index was a
+-- mistake. The original intent was to satisfy Replit's publish-time schema
+-- differ, which was believed to require a named UNIQUE CONSTRAINT (rather than
+-- a bare UNIQUE INDEX) as the target of FK introspection. This turned out to be
+-- incorrect. In practice the differ sees the CONSTRAINT in production and the
+-- UNIQUE INDEX that Prisma generates for @unique and emits a spurious DROP
+-- CONSTRAINT statement, which then fails because tag_defs_effectKey_fkey
+-- depends on it. The correct approach is a plain unique index matching Prisma's
+-- DDL. This was fixed in migration 20260516010000_fix_visual_effect_key_constraint.
 ALTER TABLE "visual_effect_defs" ADD CONSTRAINT "visual_effect_defs_key_key" UNIQUE ("key");
 
 -- CreateTable: tag_defs (visual contract for every named badge/pill/chip)
