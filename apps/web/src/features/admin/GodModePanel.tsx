@@ -311,6 +311,74 @@ function JobsTab({ player }: { player: any }) {
   );
 }
 
+function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; entityId: string }) {
+  const [usages, setUsages] = useState<any[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = async () => {
+    setLoadError(null);
+    try {
+      const data = await adminApi.getEntityPowerUsage(playerId, entityId);
+      setUsages(data);
+    } catch (e: any) {
+      setUsages([]);
+      setLoadError(e.message || 'Failed to load power usage');
+    }
+  };
+
+  useEffect(() => { load(); }, [playerId, entityId]);
+
+  const handleReset = async (powerKey: string) => {
+    if (!window.confirm(`Reset power usage for "${powerKey}"? This will allow the power to be used again immediately.`)) return;
+    setResetting(powerKey); setMsg(null);
+    try {
+      await adminApi.resetEntityPowerUsage(playerId, entityId, powerKey);
+      setMsg({ text: `Reset "${powerKey}" successfully`, type: 'success' });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setResetting(null); }
+  };
+
+  if (usages === null) return <div style={{ color: '#666', fontSize: '0.8rem', marginTop: '0.75rem' }}>Loading power usage...</div>;
+  if (loadError) return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      <StatusMsg msg={`Failed to load: ${loadError}`} type="error" />
+    </div>
+  );
+  if (usages.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px solid #2a2a4e', paddingTop: '0.75rem' }}>
+      <div style={{ color: '#b8b0ff', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>Power Usage</div>
+      {usages.map((usage) => (
+        <div key={usage.powerKey} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: '0.8rem' }}>
+          <span style={{ color: '#e0e0ff', flex: 1 }}>{usage.powerKey}</span>
+          <span style={{ color: '#888' }}>uses: {usage.usageCount ?? 1}</span>
+          {usage.resetAt && (
+            <span style={{ color: '#666' }}>resets: {new Date(usage.resetAt).toLocaleString()}</span>
+          )}
+          <button
+            onClick={() => handleReset(usage.powerKey)}
+            disabled={resetting === usage.powerKey}
+            style={{
+              padding: '0.2rem 0.6rem', border: '1px solid #c0392b', borderRadius: 4,
+              background: 'rgba(192,57,43,0.15)', color: '#e74c3c', cursor: 'pointer',
+              fontSize: '0.75rem', fontWeight: 600,
+            }}
+          >
+            {resetting === usage.powerKey ? '...' : 'Reset'}
+          </button>
+        </div>
+      ))}
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+    </div>
+  );
+}
+
 function EntitiesTab({ player }: { player: any }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [entityEdits, setEntityEdits] = useState<Record<string, any>>({});
@@ -405,6 +473,7 @@ function EntitiesTab({ player }: { player: any }) {
                 <button onClick={() => saveEntity(entity)} className="btn-save" disabled={saving === entity.id}>
                   {saving === entity.id ? 'Saving...' : 'Save Entity'}
                 </button>
+                <EntityPowerUsageSection playerId={player.id} entityId={entity.id} />
               </div>
             )}
           </div>

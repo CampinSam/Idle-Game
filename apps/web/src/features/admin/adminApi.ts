@@ -69,6 +69,11 @@ export const adminApi = {
   updatePlayerEntity: (id: string, entityId: string, data: { stats?: any; level?: number; name?: string }) =>
     adminRequest<any>(`/players/${id}/entities/${entityId}`, { method: 'PUT', body: JSON.stringify(data) }),
 
+  getEntityPowerUsage: (userId: string, entityId: string) =>
+    adminRequest<any[]>(`/players/${userId}/entities/${entityId}/power-usage`),
+  resetEntityPowerUsage: (userId: string, entityId: string, powerKey: string) =>
+    adminRequest<any>(`/players/${userId}/entities/${entityId}/power-usage/${encodeURIComponent(powerKey)}`, { method: 'DELETE' }),
+
   forceSettleLocation: (id: string, locationId: string) =>
     adminRequest<any>(`/players/${id}/locations/${locationId}/settle`, { method: 'POST' }),
 

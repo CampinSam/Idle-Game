@@ -481,6 +481,16 @@ export class AdminService {
     return { deleted: true, effectId };
   }
 
+  async getEntityPowerUsage(userId: string, entityId: string) {
+    const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
+    if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);
+    const usages = await (this.prisma as any).entityPowerUsage.findMany({
+      where: { entityId },
+      orderBy: { powerKey: 'asc' },
+    });
+    return serializeBigInts(usages);
+  }
+
   async resetEntityPowerUsage(userId: string, entityId: string, powerKey: string) {
     const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
     if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);

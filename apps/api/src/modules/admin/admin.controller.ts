@@ -396,6 +396,14 @@ export class AdminController {
     return this.adminService.deletePlayerEffect(id, effectId);
   }
 
+  @Get('players/:userId/entities/:entityId/power-usage')
+  getEntityPowerUsage(
+    @Param('userId') userId: string,
+    @Param('entityId') entityId: string,
+  ) {
+    return this.adminService.getEntityPowerUsage(userId, entityId);
+  }
+
   @Delete('players/:userId/entities/:entityId/power-usage/:powerKey')
   resetEntityPowerUsage(
     @Param('userId') userId: string,
