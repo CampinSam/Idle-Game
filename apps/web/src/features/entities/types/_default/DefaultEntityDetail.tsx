@@ -459,7 +459,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
 
                 const handleClick = () => {
                   if (st === 'injured') {
-                    try { localStorage.setItem('inv_activeCategory', 'CONSUMABLE'); } catch {}
+                    try { localStorage.setItem('inv_activeCategory', 'CONSUMABLE'); } catch (e) { console.error('[status-deeplink] localStorage write failed', e); }
                   }
                   navigate(link!);
                 };
