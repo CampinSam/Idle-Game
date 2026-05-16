@@ -886,6 +886,15 @@ input:focus {
 .entity-card--outpost.entity-card--perp-nft::after {
   display: none;
 }
+.entity-card--mission.entity-card--perp-leader,
+.entity-card--outpost.entity-card--perp-leader {
+  border: 2px solid rgba(253, 211, 77, 0.55);
+  background: linear-gradient(180deg, rgba(180, 130, 0, 0.1), rgba(0, 0, 0, 0)), var(--bg-surface, #0f1424);
+  box-shadow:
+    inset 0 0 0 1px rgba(253, 211, 77, 0.1),
+    0 0 12px rgba(234, 179, 8, 0.22);
+  animation: none;
+}
 .entity-card--mission.entity-card--perp-multiverse-leader,
 .entity-card--outpost.entity-card--perp-multiverse-leader {
   border: 2px solid rgba(253, 224, 71, 0.5);
