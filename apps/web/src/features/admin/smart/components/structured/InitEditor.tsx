@@ -26,7 +26,7 @@ interface Props {
 
 export default function InitEditor({ value, onChange }: Props) {
   const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-  const scratch = v.scratch && typeof v.scratch === 'object' ? v.scratch : { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } };
+  const scratch = v.scratch && typeof v.scratch === 'object' ? v.scratch : { startingLevel: 1, slotFill: { kind: 'singleRandomArchetype' } };
   const nft = v.nft && typeof v.nft === 'object' ? v.nft : null;
   const errors = validateInit(value);
 
@@ -35,9 +35,19 @@ export default function InitEditor({ value, onChange }: Props) {
 
   return (
     <div style={containerStyle}>
+      {/* BASE STATS — shared floor for both non-NFT and NFT generation paths */}
+      <div style={sectionStyle}>
+        <div style={{ ...labelStyle, color: '#a78bfa' }}>BASE STATS (shared stat floor — applied to all entities)</div>
+        <StatMapEditor
+          value={v.baseStats ?? {}}
+          onChange={s => patch({ baseStats: s })}
+        />
+        <FieldError msg={errors.baseStats} />
+      </div>
+
       {/* SCRATCH */}
       <div style={sectionStyle}>
-        <div style={{ ...labelStyle, color: '#a78bfa' }}>SCRATCH (fresh / non-NFT mints)</div>
+        <div style={{ ...labelStyle, color: '#a78bfa' }}>SCRATCH (trait-selection rules for fresh / non-NFT mints)</div>
         <div style={fieldRowStyle}>
           <div style={fieldGroupStyle}>
             <div style={labelStyle}>STARTING LEVEL</div>
@@ -53,15 +63,6 @@ export default function InitEditor({ value, onChange }: Props) {
             />
             <FieldError msg={errors.startingLevel} />
           </div>
-        </div>
-
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 4 }}>BASE STATS</div>
-          <StatMapEditor
-            value={scratch.baseStats ?? {}}
-            onChange={s => patchScratch({ baseStats: s })}
-          />
-          <FieldError msg={errors.baseStats} />
         </div>
 
         <SlotFillEditor

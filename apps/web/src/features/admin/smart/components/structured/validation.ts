@@ -282,6 +282,9 @@ export interface InitErrors {
 export function validateInit(value: any): InitErrors {
   const errs: InitErrors = {};
   const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+  if (!v.baseStats || typeof v.baseStats !== 'object' || Array.isArray(v.baseStats)) {
+    errs.baseStats = 'baseStats map required';
+  }
   const scratch = v.scratch;
   if (!scratch || typeof scratch !== 'object') {
     errs.startingLevel = 'scratch required';
@@ -289,9 +292,6 @@ export function validateInit(value: any): InitErrors {
   }
   if (isMissingNumber(scratch.startingLevel) || Number(scratch.startingLevel) < 1) {
     errs.startingLevel = 'startingLevel must be ≥ 1';
-  }
-  if (!scratch.baseStats || typeof scratch.baseStats !== 'object' || Array.isArray(scratch.baseStats)) {
-    errs.baseStats = 'baseStats map required';
   }
   const sf = scratch.slotFill;
   if (!sf || typeof sf !== 'object') {
