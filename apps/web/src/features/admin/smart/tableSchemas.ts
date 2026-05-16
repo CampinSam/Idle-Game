@@ -407,7 +407,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       ascension: { type: 'ascension', default: { enabled: false }, section: 'ascensionMastery', description: 'Ascension rules (reserved)' },
       mastery: { type: 'mastery', default: { enabled: false }, section: 'ascensionMastery', description: 'Mastery rules (reserved)' },
 
-      init: { type: 'init', default: { scratch: { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } } }, section: 'init', description: 'Mint-time initialization (scratch + optional NFT block)' },
+      init: { type: 'init', default: { baseStats: {}, scratch: { startingLevel: 1, slotFill: { kind: 'singleRandomArchetype' } } }, section: 'init', description: 'Mint-time initialization (shared baseStats floor + scratch trait-selection rules + optional NFT block)' },
     },
   },
   EffectDef: {

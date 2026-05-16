@@ -2260,7 +2260,7 @@
         "init": {
           "type": "json",
           "default": {},
-          "description": "Initialization rules used when minting a new entity. Shape: { scratch: { startingLevel:int, baseStats: { ATK,DEF,SPD,FOC,LCK,VIT:int }, slotFill: { kind:'singleRandomArchetype' } | { kind:'fixed', fixed: { slot: archetype } } }, nft: { attributeMap: { rawNftKey: slotName }, missingSlotPolicy: 'skip'|'error'|'default', defaults: { slot: archetype } } }. The nft.attributeMap was previously stored as a top-level column (#367) and before that on NftCollectionDef.data."
+          "description": "Initialization rules used when minting a new entity. Shape: { baseStats: { ATK,DEF,SPD,FOC,LCK,VIT:int }, scratch: { startingLevel:int, slotFill: { kind:'singleRandomArchetype' } | { kind:'fixed', fixed: { slot: archetype } } }, nft: { attributeMap: { rawNftKey: slotName }, missingSlotPolicy: 'skip'|'error'|'default', defaults: { slot: archetype } } }. baseStats is the shared stat floor applied by both the non-NFT generator and the NFT builder. scratch contains only trait-selection rules (slotFill, startingLevel). The nft.attributeMap was previously stored as a top-level column (#367) and before that on NftCollectionDef.data."
         },
         "rules": {
           "$ref": "#/complexTypes/LevelRules",

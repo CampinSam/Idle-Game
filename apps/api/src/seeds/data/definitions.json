@@ -971,16 +971,16 @@
         }
       },
       "init": {
+        "baseStats": {
+          "ATK": 10,
+          "DEF": 10,
+          "SPD": 10,
+          "FOC": 10,
+          "LCK": 10,
+          "VIT": 10
+        },
         "scratch": {
           "startingLevel": 1,
-          "baseStats": {
-            "ATK": 10,
-            "DEF": 10,
-            "SPD": 10,
-            "FOC": 10,
-            "LCK": 10,
-            "VIT": 10
-          },
           "slotFill": {
             "kind": "singleRandomArchetype"
           }
@@ -1925,16 +1925,16 @@
         }
       },
       "init": {
+        "baseStats": {
+          "ATK": 10,
+          "DEF": 10,
+          "SPD": 10,
+          "FOC": 10,
+          "LCK": 10,
+          "VIT": 10
+        },
         "scratch": {
           "startingLevel": 1,
-          "baseStats": {
-            "ATK": 10,
-            "DEF": 10,
-            "SPD": 10,
-            "FOC": 10,
-            "LCK": 10,
-            "VIT": 10
-          },
           "slotFill": {
             "kind": "singleRandomArchetype"
           }
@@ -2879,16 +2879,16 @@
         }
       },
       "init": {
+        "baseStats": {
+          "ATK": 10,
+          "DEF": 10,
+          "SPD": 10,
+          "FOC": 10,
+          "LCK": 10,
+          "VIT": 10
+        },
         "scratch": {
           "startingLevel": 1,
-          "baseStats": {
-            "ATK": 10,
-            "DEF": 10,
-            "SPD": 10,
-            "FOC": 10,
-            "LCK": 10,
-            "VIT": 10
-          },
           "slotFill": {
             "kind": "singleRandomArchetype"
           }
@@ -3833,16 +3833,16 @@
         }
       },
       "init": {
+        "baseStats": {
+          "ATK": 10,
+          "DEF": 10,
+          "SPD": 10,
+          "FOC": 10,
+          "LCK": 10,
+          "VIT": 10
+        },
         "scratch": {
           "startingLevel": 1,
-          "baseStats": {
-            "ATK": 10,
-            "DEF": 10,
-            "SPD": 10,
-            "FOC": 10,
-            "LCK": 10,
-            "VIT": 10
-          },
           "slotFill": {
             "kind": "singleRandomArchetype"
           }
@@ -4469,16 +4469,16 @@
         }
       },
       "init": {
+        "baseStats": {
+          "ATK": 10,
+          "DEF": 10,
+          "SPD": 10,
+          "FOC": 10,
+          "LCK": 10,
+          "VIT": 10
+        },
         "scratch": {
           "startingLevel": 1,
-          "baseStats": {
-            "ATK": 10,
-            "DEF": 10,
-            "SPD": 10,
-            "FOC": 10,
-            "LCK": 10,
-            "VIT": 10
-          },
           "slotFill": {
             "kind": "singleRandomArchetype"
           }

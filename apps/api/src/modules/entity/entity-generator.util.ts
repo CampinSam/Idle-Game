@@ -70,10 +70,10 @@ export async function generateEntityData(
     );
   }
   const startingLevel: number = scratchRules.startingLevel;
-  const initBaseStats = scratchRules.baseStats as Record<string, number>;
+  const initBaseStats = initRules.baseStats as Record<string, number>;
   if (!initBaseStats || typeof initBaseStats !== 'object') {
     throw new Error(
-      `EntityDefinition "${definitionId}" is missing required \`init.scratch.baseStats\` map`,
+      `EntityDefinition "${definitionId}" is missing required \`init.baseStats\` map`,
     );
   }
   const progression = entityDef.progression as any;

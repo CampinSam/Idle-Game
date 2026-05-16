@@ -111,13 +111,13 @@ function validateEntityDefinition(row: any): void {
 
   const init = row.init;
   if (!init || typeof init !== 'object') fail('missing required `init` object');
+  if (!init.baseStats || typeof init.baseStats !== 'object') {
+    fail('missing required `init.baseStats` map');
+  }
   const scratch = init.scratch;
   if (!scratch || typeof scratch !== 'object') fail('missing required `init.scratch` object');
   if (typeof scratch.startingLevel !== 'number' || scratch.startingLevel < 1) {
     fail('`init.scratch.startingLevel` must be a positive number');
-  }
-  if (!scratch.baseStats || typeof scratch.baseStats !== 'object') {
-    fail('missing required `init.scratch.baseStats` map');
   }
   if (!scratch.slotFill || typeof scratch.slotFill !== 'object' || typeof scratch.slotFill.kind !== 'string') {
     fail('missing required `init.scratch.slotFill.kind`');

@@ -30,9 +30,6 @@ export async function buildEntityDataFromNftMetadata(
     traitByArchetype[archetype.toLowerCase()] = td;
   }
 
-  const baseStats: Record<string, number> = {};
-  for (const k of STAT_KEYS) baseStats[k] = 0;
-
   const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, string> = {};
 
@@ -61,6 +58,14 @@ export async function buildEntityDataFromNftMetadata(
       `EntityDefinition "${entityDef.id}" backs NFT collection "${collection.id}" but is missing required \`init\` object`,
     );
   }
+  const initBaseStats = initRules.baseStats as Record<string, number>;
+  if (!initBaseStats || typeof initBaseStats !== 'object') {
+    throw new Error(
+      `EntityDefinition "${entityDef.id}" is missing required \`init.baseStats\` map`,
+    );
+  }
+  const baseStats: Record<string, number> = {};
+  for (const k of STAT_KEYS) baseStats[k] = typeof initBaseStats[k] === 'number' ? initBaseStats[k] : 0;
   const nftRules = initRules.nft as any;
   if (!nftRules || typeof nftRules !== 'object') {
     throw new Error(
