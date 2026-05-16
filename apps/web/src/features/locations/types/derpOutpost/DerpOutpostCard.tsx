@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppSelector } from '../../../../store';
 import { useLocationTimers } from '../../../../hooks/useLocationTimers';
 import { GameImage } from '../../../../components/GameImage';
@@ -86,31 +86,23 @@ function UniquePowerPanel({
   powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
   onClick?: () => void;
 }) {
-  const { execute, } = useCommand();
+  const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
-  const [usageState, setUsageState] = useState<Record<string, { usageCount: number; dailyLimit: number }>>({});
+  const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[locationId] ?? {});
   const [countdown, setCountdown] = useState(0);
   const [triggering, setTriggering] = useState<string | null>(null);
 
-  // Fetch today's usage from the server on mount to hydrate cooldown state
-  useEffect(() => {
-    let cancelled = false;
-    const today = getUtcDay();
-    import('../../../../services/api').then(({ api }) => {
-      api.getLocationPowerUsage(locationId).then((data) => {
-        if (cancelled) return;
-        const state: Record<string, { usageCount: number; dailyLimit: number }> = {};
-        for (const p of powers) {
-          const entry = data[p.powerType];
-          if (entry && entry.lastUsedUtcDay === today) {
-            state[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
-          }
-        }
-        setUsageState(state);
-      }).catch(() => {});
-    });
-    return () => { cancelled = true; };
-  }, [locationId, powers]);
+  const today = getUtcDay();
+  const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
+    const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
+    for (const p of powers) {
+      const entry = storedUsages[p.powerType];
+      if (entry && entry.lastUsedUtcDay === today) {
+        result[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
+      }
+    }
+    return result;
+  }, [storedUsages, powers, today]);
 
   useEffect(() => {
     const update = () => setCountdown(getSecondsUntilUtcMidnight());
@@ -136,21 +128,9 @@ function UniquePowerPanel({
             durationMs: 8000,
           });
         }
-        setUsageState((prev) => ({
-          ...prev,
-          [powerType]: { usageCount: (prev[powerType]?.usageCount ?? 0) + 1, dailyLimit: powers.find((p) => p.powerType === powerType)?.dailyLimit ?? 1 },
-        }));
       } catch (err: any) {
         const msg = err?.message || 'Failed to trigger power';
         const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
-        if (isLimit) {
-          // Mark as at limit so the button shows cooldown state
-          const p = powers.find((pw) => pw.powerType === powerType);
-          setUsageState((prev) => ({
-            ...prev,
-            [powerType]: { usageCount: p?.dailyLimit ?? 1, dailyLimit: p?.dailyLimit ?? 1 },
-          }));
-        }
         addTransientToast({
           title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
           body: msg,

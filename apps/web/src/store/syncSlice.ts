@@ -89,6 +89,10 @@ interface SyncState {
   // Populated from the bootstrap snapshot and patched after TriggerEntityPower commands.
   entityPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
 
+  // Location power usage — keyed by locationId → { [powerKey]: { usageCount, lastUsedUtcDay } }
+  // Populated from the bootstrap snapshot and patched after TriggerLocationPower commands.
+  locationPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+
   // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
   // so `<Tag tagKey>` is a single dictionary lookup.
   tagDefs: Record<string, any>;
@@ -129,6 +133,7 @@ const initialState: SyncState = {
   homeBanners: [],
   globalPowers: [],
   entityPowerUsages: {},
+  locationPowerUsages: {},
 
   tagDefs: {},
   visualEffectDefs: {},
@@ -189,6 +194,7 @@ const syncSlice = createSlice({
       state.activeEffects = {};
       state.currencyBalances = {};
       state.entityPowerUsages = {};
+      state.locationPowerUsages = {};
 
       // Catalog tables: rebuilt in full on every bootstrap (rare changes,
       // small payload). Keyed by stable `key` not `id` so callers can do
@@ -259,6 +265,10 @@ const syncSlice = createSlice({
         state.entityPowerUsages = snapshot.entityPowerUsages;
       }
 
+      if (snapshot.locationPowerUsages && typeof snapshot.locationPowerUsages === 'object') {
+        state.locationPowerUsages = snapshot.locationPowerUsages;
+      }
+
       if ((action.payload as any).tickAnchor) {
         state.tickAnchor = (action.payload as any).tickAnchor;
       }
@@ -316,6 +326,15 @@ const syncSlice = createSlice({
             state.entityPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
           } else if (patch.op === 'delete' && patch.id) {
             delete state.entityPowerUsages[patch.id];
+          }
+          continue;
+        }
+
+        if (patch.entity === 'locationPowerUsage') {
+          if (patch.op === 'upsert' && patch.id && patch.data) {
+            state.locationPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
+          } else if (patch.op === 'delete' && patch.id) {
+            delete state.locationPowerUsages[patch.id];
           }
           continue;
         }

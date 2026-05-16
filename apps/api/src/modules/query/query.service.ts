@@ -43,6 +43,7 @@ export interface BootstrapResult {
     activeSeason?: any;
     activePowers?: ActiveGlobalPowerSummary[];
     entityPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+    locationPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
   };
   cursor: { delta: string };
 }
@@ -162,6 +163,7 @@ export class QueryService {
       tickInfo,
       activePowers,
       entityPowerUsageRows,
+      locationPowerUsageRows,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -289,6 +291,13 @@ export class QueryService {
         },
         select: { entityId: true, powerKey: true, usageCount: true, lastUsedUtcDay: true },
       }),
+      (this.prisma as any).locationPowerUsage.findMany({
+        where: {
+          locationInstance: { ownerUserId: userId },
+          lastUsedUtcDay: new Date().toISOString().slice(0, 10),
+        },
+        select: { locationInstanceId: true, powerKey: true, usageCount: true, lastUsedUtcDay: true },
+      }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -298,6 +307,15 @@ export class QueryService {
     for (const row of entityPowerUsageRows as any[]) {
       if (!entityPowerUsages[row.entityId]) entityPowerUsages[row.entityId] = {};
       entityPowerUsages[row.entityId][row.powerKey] = {
+        usageCount: row.usageCount,
+        lastUsedUtcDay: row.lastUsedUtcDay,
+      };
+    }
+
+    const locationPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>> = {};
+    for (const row of locationPowerUsageRows as any[]) {
+      if (!locationPowerUsages[row.locationInstanceId]) locationPowerUsages[row.locationInstanceId] = {};
+      locationPowerUsages[row.locationInstanceId][row.powerKey] = {
         usageCount: row.usageCount,
         lastUsedUtcDay: row.lastUsedUtcDay,
       };
@@ -462,6 +480,7 @@ export class QueryService {
           endTime: p.endTime,
         })),
         entityPowerUsages,
+        locationPowerUsages,
       },
       cursor: { delta: cursorId.toString() },
     };

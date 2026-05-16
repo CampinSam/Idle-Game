@@ -133,7 +133,21 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       });
     }
 
+    // Read today's usage records to include in the patch so the client
+    // can update its locationPowerUsages store without an extra round-trip.
+    // Scoped to today only — same filter as bootstrap — to keep the patch
+    // payload small and avoid surfacing stale prior-day rows to the client.
+    const updatedUsageRows = await (this.prisma as any).locationPowerUsage.findMany({
+      where: { locationInstanceId: locationId, lastUsedUtcDay: today },
+      select: { powerKey: true, usageCount: true, lastUsedUtcDay: true },
+    });
+    const usageMap: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    for (const row of updatedUsageRows) {
+      usageMap[row.powerKey] = { usageCount: row.usageCount, lastUsedUtcDay: row.lastUsedUtcDay };
+    }
+
     const pb = new PatchBuilder();
+    pb.upsert('locationPowerUsage', locationId, usageMap);
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
 
     const toastMessage = power.powerType === 'tick_boost'
