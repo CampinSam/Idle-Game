@@ -1070,7 +1070,26 @@
           "defaults": {}
         }
       },
-      "rules": {},
+      "rules": {
+        "uniques": {
+          "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130": {
+            "powers": [
+              { "powerType": "keeper_xp_boost", "value": 50, "durationMinutes": 90, "dailyLimit": 1 },
+              { "powerType": "mission_duration_reduction", "value": 25, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833": {
+            "powers": [
+              { "powerType": "tick_speed_boost", "value": 50, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130": {
+            "powers": [
+              { "powerType": "entity_xp_boost", "value": 75, "durationMinutes": 120, "dailyLimit": 2 }
+            ]
+          }
+        }
+      },
       "data": {}
     }
   ],
@@ -1129,6 +1148,123 @@
                 }
               ]
             }
+          }
+        },
+        "uniques": {
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 30, "durationMinutes": 60, "dailyLimit": 2 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030363431": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030373236": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393033": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393338": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031313533": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031363537": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031383030": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031393538": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032323938": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032343138": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032393636": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543033333937": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034333439": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034343130": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034383734": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333033": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333232": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035343234": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036343234": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036363930": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037333633": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
+          },
+          "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037363232": {
+            "powers": [
+              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+            ]
           }
         }
       },

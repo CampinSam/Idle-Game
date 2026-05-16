@@ -66,7 +66,7 @@ async function seedDefinitions() {
     for (const record of records) {
       await model.upsert({
         where: { id: record.id },
-        update: {},
+        update: record.rules !== undefined ? { rules: record.rules } : {},
         create: record,
       });
       upserted++;
@@ -146,18 +146,30 @@ async function seedTestAccount() {
   console.log(`Seeded test account: test@derp.dev (${data?.player?.id ?? 'unknown id'})`);
 }
 
-// Powers to seed onto the test account's perfect specimens and primary outpost.
+// Powers to seed for NFT entities/locations with unique powers.
 // Each entry describes one nftAssetId and the powers array to merge in.
+// Perfect Specimens and all NFT outposts are covered here; placeholder powers
+// for new outposts and the leader Perp will be fleshed out in a future pass.
 const TEST_POWERS: Array<{
   defTable: 'entityDefinition' | 'locationDefinition';
   defId: string;
   nftAssetId: string;
   powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
 }> = [
+  // ── Perfect Specimens (derp_bird) ────────────────────────────────────────
   {
     defTable: 'entityDefinition',
     defId: 'derp_bird',
-    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130', // #00310
+    powers: [
+      { powerType: 'keeper_xp_boost', value: 50, durationMinutes: 90, dailyLimit: 1 },
+      { powerType: 'mission_duration_reduction', value: 25, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833', // #09183
     powers: [
       { powerType: 'tick_speed_boost', value: 50, durationMinutes: 60, dailyLimit: 1 },
     ],
@@ -165,26 +177,205 @@ const TEST_POWERS: Array<{
   {
     defTable: 'entityDefinition',
     defId: 'derp_bird',
-    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130', // #09910
     powers: [
       { powerType: 'entity_xp_boost', value: 75, durationMinutes: 120, dailyLimit: 2 },
     ],
   },
+
+  // ── Leader Perps (perp) ──────────────────────────────────────────────────
   {
     defTable: 'entityDefinition',
-    defId: 'derp_bird',
-    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130',
+    defId: 'perp',
+    nftAssetId: 'CARDANO:e6ba9c0ff27be029442c32533c6efd956a60d15ecb976acbb64c4de0:5065727034353834', // #4584 leader:daking
     powers: [
-      { powerType: 'keeper_xp_boost', value: 50, durationMinutes: 90, dailyLimit: 1 },
-      { powerType: 'mission_duration_reduction', value: 25, durationMinutes: 60, dailyLimit: 1 },
+      { powerType: 'entity_xp_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+
+  // ── NFT Outposts (derp_outpost) ──────────────────────────────────────────
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732', // #00272
+    powers: [
+      { powerType: 'mission_power_boost', value: 30, durationMinutes: 60, dailyLimit: 2 },
     ],
   },
   {
     defTable: 'locationDefinition',
     defId: 'derp_outpost',
-    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030363431', // #00641
     powers: [
-      { powerType: 'mission_power_boost', value: 30, durationMinutes: 60, dailyLimit: 2 },
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030373236', // #00726
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393033', // #00903
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393338', // #00938
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031313533', // #01153
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031363537', // #01657
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031383030', // #01800
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031393538', // #01958
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032323938', // #02298
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032343138', // #02418
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032393636', // #02966
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543033333937', // #03397
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034333439', // #04349
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034343130', // #04410
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034383734', // #04874
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333033', // #05303
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333232', // #05322
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035343234', // #05424
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036343234', // #06424
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036363930', // #06690
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037333633', // #07363
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037363232', // #07622
+    powers: [
+      { powerType: 'mission_power_boost', value: 10, durationMinutes: 60, dailyLimit: 1 },
     ],
   },
 ];
