@@ -100,14 +100,6 @@ export class AuthService {
       this.logger.warn(`Failed to send welcome gift to ${user.id}: ${err}`);
     }
 
-    try {
-      await (this.prisma as any).itemInstance.create({
-        data: { userId: user.id, definitionId: 'item_common_chest', quantity: 3 },
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to seed starter chests for ${user.id}: ${err}`);
-    }
-
     const token = this.jwt.sign({ sub: user.id, username: user.username });
 
     return {
@@ -422,11 +414,6 @@ export class AuthService {
         idempotencyKey: `welcome-gift-${user.id}`,
       });
     } catch {}
-    try {
-      await (this.prisma as any).itemInstance.create({
-        data: { userId: user.id, definitionId: 'item_common_chest', quantity: 3 },
-      });
-    } catch (err) { this.logger.warn(`Failed to seed starter chests for ${user.id}: ${err}`); }
     try {
       await this.nftCollectionService.syncUserCollections(user.id);
     } catch (err) {

@@ -20,32 +20,10 @@
     "passiveEffects": null,
     "consumableData": {
       "effects": [
-        { "effectDefId": "eff_success_chance", "targetType": "player" }
-      ]
-    }
-  },
-  {
-    "id": "consumable_xp_scroll",
-    "type": "CONSUMABLE",
-    "rarity": "SCARCE",
-    "name": "XP Scroll",
-    "description": "Doubles experience gained for the next mission.",
-    "iconKey": "xp_scroll",
-    "uiColor": null,
-    "category": "ENHANCEMENT",
-    "groups": [
-      "buff",
-      "xp"
-    ],
-    "tags": [],
-    "stackable": true,
-    "maxStack": 5,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": {
-      "effects": [
-        { "effectDefId": "eff_xp_scroll", "targetType": "player" }
+        {
+          "effectDefId": "eff_success_chance",
+          "targetType": "player"
+        }
       ]
     }
   },
@@ -240,54 +218,12 @@
     "consumableData": null
   },
   {
-    "id": "mat_shadow_silk",
-    "type": "MATERIAL",
-    "rarity": "SCARCE",
-    "name": "Shadow Silk",
-    "description": "Rare silk woven from shadow threads.",
-    "iconKey": "shadow_silk",
-    "uiColor": null,
-    "category": "CRAFTING",
-    "groups": [
-      "rare",
-      "textile"
-    ],
-    "tags": [],
-    "stackable": true,
-    "maxStack": null,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
     "id": "mat_starlight_dust",
     "type": "MATERIAL",
     "rarity": "ADVANCED",
     "name": "Starlight Dust",
     "description": "Glittering particles that fall from the night sky.",
     "iconKey": "starlight_dust",
-    "uiColor": null,
-    "category": "CRAFTING",
-    "groups": [
-      "rare",
-      "arcane"
-    ],
-    "tags": [],
-    "stackable": true,
-    "maxStack": null,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "mat_void_essence",
-    "type": "MATERIAL",
-    "rarity": "RARE",
-    "name": "Void Essence",
-    "description": "Concentrated essence from the void between realms.",
-    "iconKey": "void_essence",
     "uiColor": null,
     "category": "CRAFTING",
     "groups": [
@@ -322,7 +258,10 @@
     "passiveEffects": null,
     "consumableData": {
       "effects": [
-        { "effectDefId": "eff_heal", "targetType": "entity" }
+        {
+          "effectDefId": "eff_heal",
+          "targetType": "entity"
+        }
       ]
     }
   },
@@ -346,7 +285,10 @@
     "passiveEffects": null,
     "consumableData": {
       "effects": [
-        { "effectDefId": "eff_heal_minor", "targetType": "entity" }
+        {
+          "effectDefId": "eff_heal_minor",
+          "targetType": "entity"
+        }
       ]
     }
   },
@@ -371,167 +313,11 @@
     "passiveEffects": null,
     "consumableData": {
       "effects": [
-        { "effectDefId": "eff_speed_boost", "targetType": "player" }
+        {
+          "effectDefId": "eff_speed_boost",
+          "targetType": "player"
+        }
       ]
     }
-  },
-  {
-    "id": "mat_ember_crystal",
-    "type": "MATERIAL",
-    "rarity": "SCARCE",
-    "name": "Ember Crystal",
-    "description": "A fragment of condensed flame energy found near volcanic vents.",
-    "iconKey": "ember_crystal",
-    "uiColor": null,
-    "category": "CRAFTING",
-    "groups": ["rare", "elemental"],
-    "tags": [],
-    "stackable": true,
-    "maxStack": null,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "mat_silver_dust",
-    "type": "MATERIAL",
-    "rarity": "COMMON",
-    "name": "Silver Dust",
-    "description": "Fine metallic powder used in enchanting and alchemy.",
-    "iconKey": "silver_dust",
-    "uiColor": null,
-    "category": "CRAFTING",
-    "groups": ["basic", "metal"],
-    "tags": [],
-    "stackable": true,
-    "maxStack": null,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "consumable_revival_token",
-    "type": "CONSUMABLE",
-    "rarity": "RARE",
-    "name": "Revival Token",
-    "description": "Instantly revives a defeated keeper mid-mission.",
-    "iconKey": "revival_token",
-    "uiColor": null,
-    "category": "COMBAT",
-    "groups": ["revival", "combat"],
-    "tags": [],
-    "stackable": true,
-    "maxStack": 5,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": {
-      "effects": [
-        { "effectDefId": "eff_revival", "targetType": "entity" }
-      ]
-    }
-  },
-  {
-    "id": "gear_shadow_cloak",
-    "type": "GEAR",
-    "rarity": "SCARCE",
-    "name": "Shadow Cloak",
-    "description": "A cloak woven from shadow silk that improves stealth and evasion.",
-    "iconKey": "shadow_cloak",
-    "uiColor": null,
-    "category": "COMBAT",
-    "groups": ["armor", "stealth"],
-    "tags": [],
-    "stackable": false,
-    "maxStack": null,
-    "uniqueInstance": false,
-    "equipData": {
-      "slot": "armor",
-      "stats": {
-        "DEF": 3,
-        "SPD": 2
-      }
-    },
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "quest_ancient_map",
-    "type": "QUEST",
-    "rarity": "SCARCE",
-    "name": "Ancient Map Fragment",
-    "description": "A piece of a larger map leading to forgotten treasure.",
-    "iconKey": "ancient_map",
-    "uiColor": null,
-    "category": "QUEST_ITEMS",
-    "groups": [
-      "treasure"
-    ],
-    "tags": [],
-    "stackable": true,
-    "maxStack": 5,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "item_common_chest",
-    "type": "LOOTBOX",
-    "rarity": "COMMON",
-    "name": "Common Chest",
-    "description": "A sturdy chest filled with everyday supplies. Open it to receive resources.",
-    "iconKey": "common_chest",
-    "uiColor": "#6b7280",
-    "category": "MISC",
-    "groups": ["lootbox"],
-    "tags": ["lootbox", "chest"],
-    "lootboxDefId": "lootbox_common_chest",
-    "stackable": true,
-    "maxStack": 99,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "item_rare_crate",
-    "type": "LOOTBOX",
-    "rarity": "RARE",
-    "name": "Rare Crate",
-    "description": "A reinforced crate stamped with arcane sigils. Contains rare materials and premium currency.",
-    "iconKey": "rare_crate",
-    "uiColor": "#3b82f6",
-    "category": "MISC",
-    "groups": ["lootbox"],
-    "tags": ["lootbox", "crate"],
-    "lootboxDefId": "lootbox_rare_crate",
-    "stackable": true,
-    "maxStack": 99,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
-  },
-  {
-    "id": "item_mystery_egg",
-    "type": "LOOTBOX",
-    "rarity": "EPIC",
-    "name": "Mystery Egg",
-    "description": "A pulsing crystalline egg of unknown origin. Its contents shift with every heartbeat.",
-    "iconKey": "mystery_egg",
-    "uiColor": "#a78bfa",
-    "category": "MISC",
-    "groups": ["lootbox"],
-    "tags": ["lootbox", "egg", "mystery"],
-    "lootboxDefId": "lootbox_mystery_egg",
-    "stackable": true,
-    "maxStack": 99,
-    "uniqueInstance": false,
-    "equipData": null,
-    "passiveEffects": null,
-    "consumableData": null
   }
 ]
