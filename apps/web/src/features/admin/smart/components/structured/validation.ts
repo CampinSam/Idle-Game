@@ -212,6 +212,137 @@ export function timerErrorCount(value: any): number {
   return n;
 }
 
+export interface ProgressionErrors {
+  maxLevel?: string;
+  xpKind?: string;
+  xpBase?: string;
+  xpRatio?: string;
+  perLevel?: string;
+  uniformShare?: string;
+  weightedShare?: string;
+  bonusBase?: string;
+  bonusExponent?: string;
+  bonusAmount?: string;
+}
+
+export function validateProgression(value: any): ProgressionErrors {
+  const errs: ProgressionErrors = {};
+  const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+  if (isMissingNumber(v.maxLevel) || Number(v.maxLevel) < 1) {
+    errs.maxLevel = 'maxLevel must be ≥ 1';
+  }
+  const xp = v.xpCurve;
+  if (!xp || typeof xp !== 'object') {
+    errs.xpKind = 'xpCurve required';
+  } else if (xp.kind === 'geometric') {
+    if (isMissingNumber(xp.base) || Number(xp.base) <= 0) errs.xpBase = 'base must be > 0';
+    if (isMissingNumber(xp.ratio) || Number(xp.ratio) <= 0) errs.xpRatio = 'ratio must be > 0';
+  } else if (xp.kind === 'table') {
+    if (!Array.isArray(xp.perLevel) || xp.perLevel.length === 0) {
+      errs.perLevel = 'perLevel must have at least one entry';
+    }
+  } else {
+    errs.xpKind = 'kind must be geometric or table';
+  }
+  const sg = v.statGain;
+  if (sg && typeof sg === 'object') {
+    const bp = sg.bonusPool;
+    if (bp && typeof bp === 'object') {
+      if (bp.kind === 'rarityScaled') {
+        if (isMissingNumber(bp.base)) errs.bonusBase = 'base required';
+        if (isMissingNumber(bp.exponent)) errs.bonusExponent = 'exponent required';
+      } else if (bp.kind === 'flat') {
+        if (isMissingNumber(bp.amount)) errs.bonusAmount = 'amount required';
+      }
+    }
+    const dist = sg.distribution;
+    if (dist && typeof dist === 'object') {
+      if (dist.uniformShare !== undefined && isMissingNumber(dist.uniformShare)) errs.uniformShare = 'must be a number';
+      if (dist.weightedShare !== undefined && isMissingNumber(dist.weightedShare)) errs.weightedShare = 'must be a number';
+    }
+  }
+  return errs;
+}
+
+export function progressionErrorCount(value: any): number {
+  return Object.keys(validateProgression(value)).length;
+}
+
+export interface InitErrors {
+  startingLevel?: string;
+  baseStats?: string;
+  slotFillKind?: string;
+  slotFillCount?: string;
+  slotFillFixed?: string;
+  attributeMap?: string;
+  missingSlotPolicy?: string;
+}
+
+export function validateInit(value: any): InitErrors {
+  const errs: InitErrors = {};
+  const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+  const scratch = v.scratch;
+  if (!scratch || typeof scratch !== 'object') {
+    errs.startingLevel = 'scratch required';
+    return errs;
+  }
+  if (isMissingNumber(scratch.startingLevel) || Number(scratch.startingLevel) < 1) {
+    errs.startingLevel = 'startingLevel must be ≥ 1';
+  }
+  if (!scratch.baseStats || typeof scratch.baseStats !== 'object' || Array.isArray(scratch.baseStats)) {
+    errs.baseStats = 'baseStats map required';
+  }
+  const sf = scratch.slotFill;
+  if (!sf || typeof sf !== 'object') {
+    errs.slotFillKind = 'slotFill required';
+  } else {
+    const k = sf.kind;
+    if (k !== 'singleRandomArchetype' && k !== 'multiRandomArchetype' && k !== 'fixed') {
+      errs.slotFillKind = 'kind must be singleRandomArchetype | multiRandomArchetype | fixed';
+    }
+    if (k === 'multiRandomArchetype' && (isMissingNumber(sf.count) || Number(sf.count) < 1)) {
+      errs.slotFillCount = 'count must be ≥ 1';
+    }
+    if (k === 'fixed' && (!sf.fixed || typeof sf.fixed !== 'object' || Array.isArray(sf.fixed))) {
+      errs.slotFillFixed = 'fixed map required';
+    }
+  }
+  if (v.nft !== undefined) {
+    const nft = v.nft;
+    if (!nft || typeof nft !== 'object') {
+      errs.attributeMap = 'nft must be an object';
+    } else {
+      if (!nft.attributeMap || typeof nft.attributeMap !== 'object' || Array.isArray(nft.attributeMap)) {
+        errs.attributeMap = 'attributeMap required';
+      }
+      const p = nft.missingSlotPolicy;
+      if (p !== 'error' && p !== 'skip' && p !== 'default') {
+        errs.missingSlotPolicy = 'must be error | skip | default';
+      }
+      if (nft.defaults !== undefined && (typeof nft.defaults !== 'object' || nft.defaults === null || Array.isArray(nft.defaults))) {
+        (errs as any).nftDefaults = 'defaults must be an object';
+      }
+    }
+  }
+  return errs;
+}
+
+export function initErrorCount(value: any): number {
+  return Object.keys(validateInit(value)).length;
+}
+
+export function ascensionErrorCount(value: any): number {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 1;
+  if (typeof value.enabled !== 'boolean') return 1;
+  return 0;
+}
+
+export function masteryErrorCount(value: any): number {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 1;
+  if (typeof value.enabled !== 'boolean') return 1;
+  return 0;
+}
+
 export function structuredFieldErrorCount(type: string | undefined, value: any): number {
   switch (type) {
     case 'costArray':
@@ -222,6 +353,14 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return outcomeSpecErrorCount(value);
     case 'timerSpec':
       return timerErrorCount(value);
+    case 'progression':
+      return progressionErrorCount(value);
+    case 'init':
+      return initErrorCount(value);
+    case 'ascension':
+      return ascensionErrorCount(value);
+    case 'mastery':
+      return masteryErrorCount(value);
     default:
       return 0;
   }

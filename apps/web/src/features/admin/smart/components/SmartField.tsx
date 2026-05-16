@@ -15,6 +15,12 @@ import FrequencyEditor from './structured/FrequencyEditor';
 import DisplayStyleEditor from './structured/DisplayStyleEditor';
 import StatMapEditor from './structured/StatMapEditor';
 import SlotStatsEditor from './structured/SlotStatsEditor';
+import SlotArchetypesEditor from './structured/SlotArchetypesEditor';
+import EquipmentSlotsEditor from './structured/EquipmentSlotsEditor';
+import TraitsEditor from './structured/TraitsEditor';
+import ProgressionEditor from './structured/ProgressionEditor';
+import { AscensionEditor, MasteryEditor } from './structured/AscensionMasteryEditor';
+import InitEditor from './structured/InitEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 
 interface Props {
@@ -321,6 +327,51 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
       return renderStructured(
         <SlotStatsEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'slotArchetypesMap') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <SlotArchetypesEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'equipmentSlotsMap') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <EquipmentSlotsEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'traits') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <TraitsEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'progression') {
+      return renderStructured(
+        <ProgressionEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'ascension') {
+      return renderStructured(
+        <AscensionEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'mastery') {
+      return renderStructured(
+        <MasteryEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'init') {
+      return renderStructured(
+        <InitEditor value={value} onChange={onChange} />
       );
     }
 

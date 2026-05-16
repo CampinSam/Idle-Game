@@ -32,12 +32,25 @@ export interface FieldDef {
   enum?: string;
   refTable?: string;
   options?: string[];
+  /** Optional tab/section id this field belongs to. Only meaningful when the
+   *  parent TableSchema declares `sections`. Fields without a section land
+   *  in the first section. */
+  section?: string;
+}
+
+export interface SectionDef {
+  id: string;
+  label: string;
+  description?: string;
 }
 
 export interface TableSchema {
   color: string;
   group: string;
   fields: Record<string, FieldDef>;
+  /** When provided, the editor renders a tab strip at the top of the form
+   *  and groups fields by `field.section`. */
+  sections?: SectionDef[];
 }
 
 export const TABLE_SCHEMAS: Record<string, TableSchema> = {
@@ -371,19 +384,32 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
   EntityDefinition: {
     color: '#9B59B6',
     group: 'Entities',
+    sections: [
+      { id: 'general', label: 'General', description: 'Identity & equipment slots' },
+      { id: 'slotsTraits', label: 'Slots & Traits', description: 'Body slots and per-archetype trait data' },
+      { id: 'progression', label: 'Progression', description: 'Leveling, XP curve, stat gain' },
+      { id: 'ascensionMastery', label: 'Ascension & Mastery', description: 'Long-term progression toggles' },
+      { id: 'init', label: 'Init', description: 'Mint-time initialization (scratch + NFT)' },
+      { id: 'advanced', label: 'Advanced', description: 'Level-based rules and freeform data' },
+    ],
     fields: {
-      id: { type: 'string', required: true, description: 'Unique identifier (e.g. derp_bird)' },
-      name: { type: 'string', required: true, description: 'Display name' },
-      speciesId: { type: 'string', required: true, description: 'Species identifier' },
-      slots: { type: 'json', default: {}, description: 'Body slot layout: { slotName: [allowedArchetype, ...] }' },
-      equipmentSlots: { type: 'json', default: {}, description: 'Equipment slot capacities: { slotName: maxCount }' },
-      traits: { type: 'json', default: {}, description: 'Per-archetype trait map: { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }' },
-      progression: { type: 'json', default: {}, description: 'Progression rules: { enabled, maxLevel, xpCurve: { kind: "geometric"|"table", ... }, statGain: { guaranteed, bonusPool, distribution } }' },
-      ascension: { type: 'json', default: { enabled: false }, description: 'Ascension rules: { enabled, cap, costPerStep, effects }. enabled=false until gameplay ships.' },
-      mastery: { type: 'json', default: { enabled: false }, description: 'Mastery rules: { enabled, branches }. enabled=false until gameplay ships.' },
-      init: { type: 'json', default: {}, description: 'Initialization rules: { scratch: { startingLevel, baseStats, slotFill }, nft: { attributeMap, missingSlotPolicy, defaults } }' },
-      rules: { type: 'json', default: {}, description: 'Level-based rules' },
-      data: { type: 'json', default: {}, description: 'Extra data' },
+      id: { type: 'string', required: true, section: 'general', description: 'Unique identifier (e.g. derp_bird)' },
+      name: { type: 'string', required: true, section: 'general', description: 'Display name' },
+      speciesId: { type: 'string', required: true, section: 'general', description: 'Species identifier' },
+      equipmentSlots: { type: 'equipmentSlotsMap', default: {}, section: 'general', description: 'Equipment slot capacities (slot → max count)' },
+
+      slots: { type: 'slotArchetypesMap', default: {}, section: 'slotsTraits', description: 'Body slot layout (slot → list of allowed archetypes)' },
+      traits: { type: 'traits', default: {}, section: 'slotsTraits', description: 'Per-archetype trait map: slotStats, scaling, rarity, presentation' },
+
+      progression: { type: 'progression', default: { enabled: true, maxLevel: 50, xpCurve: { kind: 'geometric', base: 100, ratio: 1.15 } }, section: 'progression', description: 'Leveling rules' },
+
+      ascension: { type: 'ascension', default: { enabled: false }, section: 'ascensionMastery', description: 'Ascension rules (reserved)' },
+      mastery: { type: 'mastery', default: { enabled: false }, section: 'ascensionMastery', description: 'Mastery rules (reserved)' },
+
+      init: { type: 'init', default: { scratch: { startingLevel: 1, baseStats: {}, slotFill: { kind: 'singleRandomArchetype' } } }, section: 'init', description: 'Mint-time initialization (scratch + optional NFT block)' },
+
+      rules: { type: 'json', default: {}, section: 'advanced', description: 'Level-based rules' },
+      data: { type: 'json', default: {}, section: 'advanced', description: 'Extra freeform data' },
     },
   },
   EffectDef: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useReducer, useCallback, useMemo } from 'react';
 import { adminApi } from '../adminApi';
-import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS } from './tableSchemas';
+import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS, TableSchema } from './tableSchemas';
 import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount } from './components/structured/validation';
@@ -65,6 +65,120 @@ interface Props {
   adminKey: string;
 }
 
+function SectionedFormBody({
+  schema,
+  record,
+  enumOptions,
+  onSetField,
+  activeSectionId,
+  setActiveSectionId,
+}: {
+  schema: TableSchema;
+  record: Record<string, any>;
+  enumOptions: Record<string, string[]>;
+  onSetField: (field: string, value: any) => void;
+  activeSectionId: string | null;
+  setActiveSectionId: (id: string) => void;
+}) {
+  const sections = schema.sections!;
+  const firstId = sections[0].id;
+  const activeId = activeSectionId && sections.some(s => s.id === activeSectionId)
+    ? activeSectionId
+    : firstId;
+
+  const fieldsBySection: Record<string, Array<[string, typeof schema.fields[string]]>> = {};
+  sections.forEach(s => { fieldsBySection[s.id] = []; });
+  Object.entries(schema.fields).forEach(([fname, fdef]) => {
+    const sid = fdef.section && fieldsBySection[fdef.section] ? fdef.section : firstId;
+    fieldsBySection[sid].push([fname, fdef]);
+  });
+
+  const errorCountBySection: Record<string, number> = {};
+  sections.forEach(s => {
+    let n = 0;
+    fieldsBySection[s.id].forEach(([fname, fdef]) => {
+      n += structuredFieldErrorCount(fdef.type, record[fname]);
+      if (fdef.required) {
+        const v = record[fname];
+        if (v === undefined || v === null || v === '') n++;
+      }
+    });
+    errorCountBySection[s.id] = n;
+  });
+
+  const activeSection = sections.find(s => s.id === activeId)!;
+  const activeFields = fieldsBySection[activeId];
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', gap: 4, padding: '8px 16px 0', borderBottom: '1px solid #1a1a3e',
+        flexShrink: 0, overflowX: 'auto',
+      }}>
+        {sections.map(s => {
+          const isActive = s.id === activeId;
+          const errors = errorCountBySection[s.id];
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setActiveSectionId(s.id)}
+              style={{
+                padding: '8px 14px',
+                background: isActive ? '#1a1a3e' : 'transparent',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #a78bfa' : '2px solid transparent',
+                color: isActive ? '#e0e0ff' : '#888',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: isActive ? 700 : 500,
+                letterSpacing: '0.04em',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'color 0.15s, background 0.15s',
+              }}
+              title={s.description}
+            >
+              {s.label}
+              {errors > 0 && (
+                <span style={{
+                  background: '#ef4444', color: '#fff', borderRadius: 8,
+                  fontSize: 9, padding: '1px 5px', fontWeight: 700,
+                  minWidth: 14, textAlign: 'center', lineHeight: 1.4,
+                }}>
+                  {errors}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {activeSection.description && (
+          <div style={{ fontSize: 11, color: '#666', letterSpacing: '0.02em' }}>
+            {activeSection.description}
+          </div>
+        )}
+        {activeFields.map(([fieldName, fieldDef]) => (
+          <SmartField
+            key={fieldName}
+            fieldName={fieldName}
+            fieldDef={fieldDef}
+            value={record[fieldName]}
+            onChange={val => onSetField(fieldName, val)}
+            enumOptions={enumOptions}
+          />
+        ))}
+        {activeFields.length === 0 && (
+          <div style={{ color: '#555', fontSize: 12 }}>No fields in this section.</div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function SmartAdminEditor({ adminKey: _ }: Props) {
   const [tables, setTables] = useState<TableEntry[]>([]);
   const [activeTable, setActiveTable] = useState<string>('');
@@ -81,6 +195,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
   const [editorState, dispatch] = useReducer(editorReducer, {
     record: null, original: null, dirty: false, saving: false, saveError: null,
   });
+
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
@@ -114,6 +230,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setSelectedId(null);
     setIsNew(false);
     setSearch('');
+    setActiveSectionId(null);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
   };
@@ -619,23 +736,34 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                 </button>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {schema && Object.entries(schema.fields).map(([fieldName, fieldDef]) => (
-                  <SmartField
-                    key={fieldName}
-                    fieldName={fieldName}
-                    fieldDef={fieldDef}
-                    value={editorState.record![fieldName]}
-                    onChange={val => dispatch({ type: 'SET_FIELD', field: fieldName, value: val })}
-                    enumOptions={enumOptions}
-                  />
-                ))}
-                {!schema && (
-                  <div style={{ color: '#555', fontSize: 13 }}>
-                    No schema defined for this table. Records can still be saved.
-                  </div>
-                )}
-              </div>
+              {schema?.sections && schema.sections.length > 0 ? (
+                <SectionedFormBody
+                  schema={schema}
+                  record={editorState.record!}
+                  enumOptions={enumOptions}
+                  onSetField={(field, value) => dispatch({ type: 'SET_FIELD', field, value })}
+                  activeSectionId={activeSectionId}
+                  setActiveSectionId={setActiveSectionId}
+                />
+              ) : (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {schema && Object.entries(schema.fields).map(([fieldName, fieldDef]) => (
+                    <SmartField
+                      key={fieldName}
+                      fieldName={fieldName}
+                      fieldDef={fieldDef}
+                      value={editorState.record![fieldName]}
+                      onChange={val => dispatch({ type: 'SET_FIELD', field: fieldName, value: val })}
+                      enumOptions={enumOptions}
+                    />
+                  ))}
+                  {!schema && (
+                    <div style={{ color: '#555', fontSize: 13 }}>
+                      No schema defined for this table. Records can still be saved.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>
