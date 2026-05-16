@@ -188,6 +188,8 @@ export const adminApi = {
     nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; upserted: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/import/status`),
   refreshNftOwnership: (id: string) =>
     nftAdminRequest<any>(`/nft/collections/${id}/refresh`, { method: 'POST' }),
+  getRefreshStatus: (id: string) =>
+    nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; updated: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/refresh/status`),
   listNftAssets: (id: string, page = 1, limit = 50) =>
     nftAdminRequest<{ items: any[]; total: number; page: number; limit: number }>(
       `/nft/collections/${id}/assets?page=${page}&limit=${limit}`,

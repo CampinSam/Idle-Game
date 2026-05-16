@@ -107,6 +107,15 @@ export class NftCollectionController {
   }
 
   /**
+   * Return the current progress of a running (or completed) ownership refresh job.
+   */
+  @Get(':id/refresh/status')
+  @UseGuards(AdminGuard)
+  getRefreshStatus(@Param('id') id: string) {
+    return this.nftAssetCache.getRefreshStatus(id);
+  }
+
+  /**
    * List cached NftAsset rows for a collection. Paginated via ?page=&limit=.
    * Optional ?owner=<address> filter.
    */

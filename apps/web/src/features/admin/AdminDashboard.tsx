@@ -743,6 +743,14 @@ interface ImportProgress {
   failed: number;
 }
 
+interface RefreshProgress {
+  status: 'idle' | 'running' | 'done' | 'error';
+  total: number;
+  processed: number;
+  updated: number;
+  failed: number;
+}
+
 function NftCollectionsPanel() {
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -754,6 +762,8 @@ function NftCollectionsPanel() {
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const importPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [refreshProgress, setRefreshProgress] = useState<RefreshProgress | null>(null);
+  const refreshPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ASSETS_LIMIT = 50;
 
   const loadCollections = useCallback(async () => {
@@ -825,6 +835,38 @@ function NftCollectionsPanel() {
     }, 2000);
   };
 
+  const stopRefreshPoll = () => {
+    if (refreshPollRef.current) {
+      clearInterval(refreshPollRef.current);
+      refreshPollRef.current = null;
+    }
+  };
+
+  const startRefreshPoll = (collectionId: string) => {
+    stopRefreshPoll();
+    refreshPollRef.current = setInterval(async () => {
+      try {
+        const status = await adminApi.getRefreshStatus(collectionId);
+        const knownStatus: RefreshProgress['status'] =
+          status.status === 'running' || status.status === 'done' || status.status === 'error'
+            ? status.status
+            : 'idle';
+        setRefreshProgress({
+          status: knownStatus,
+          total: status.total,
+          processed: status.processed,
+          updated: status.updated,
+          failed: status.failed,
+        });
+        if (knownStatus !== 'running') {
+          stopRefreshPoll();
+        }
+      } catch {
+        stopRefreshPoll();
+      }
+    }, 2000);
+  };
+
   const handleImport = async (col: any) => {
     setMsg(null);
     setImportProgress(null);
@@ -839,15 +881,17 @@ function NftCollectionsPanel() {
 
   const handleRefresh = async (col: any) => {
     setMsg(null);
+    setRefreshProgress(null);
     try {
       const result = await adminApi.refreshNftOwnership(col.id);
-      setMsg({ text: `Ownership refresh started — ${result.total} assets queued`, type: 'success' });
+      setRefreshProgress({ status: 'running', total: result.total, processed: 0, updated: 0, failed: 0 });
+      startRefreshPoll(col.id);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     }
   };
 
-  useEffect(() => () => stopImportPoll(), []);
+  useEffect(() => () => { stopImportPoll(); stopRefreshPoll(); }, []);
 
   const totalPages = Math.ceil(assetsTotal / ASSETS_LIMIT);
 
@@ -865,7 +909,7 @@ function NftCollectionsPanel() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
           <button
-            onClick={() => { stopImportPoll(); setImportProgress(null); setSelectedCollection(null); setAssets([]); setMsg(null); loadCollections(); }}
+            onClick={() => { stopImportPoll(); setImportProgress(null); stopRefreshPoll(); setRefreshProgress(null); setSelectedCollection(null); setAssets([]); setMsg(null); loadCollections(); }}
             style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}
           >
             ← Back
@@ -887,7 +931,7 @@ function NftCollectionsPanel() {
           <button onClick={() => handleImport(selectedCollection)} className="btn-save" disabled={importProgress?.status === 'running'}>
             Import to Cache
           </button>
-          <button onClick={() => handleRefresh(selectedCollection)} className="btn-save" style={{ background: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.5)', color: '#93c5fd' }}>
+          <button onClick={() => handleRefresh(selectedCollection)} className="btn-save" style={{ background: 'rgba(59,130,246,0.2)', borderColor: 'rgba(59,130,246,0.5)', color: '#93c5fd' }} disabled={refreshProgress?.status === 'running'}>
             Refresh Ownership
           </button>
           <button onClick={() => loadAssets(selectedCollection.id, assetsPage)} style={{ padding: '0.5rem 1rem', border: '1px solid #555', borderRadius: 6, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -924,6 +968,41 @@ function NftCollectionsPanel() {
             </div>
           </div>
         )}
+
+        {refreshProgress && (() => {
+          const rPct = refreshProgress.total > 0
+            ? Math.round((refreshProgress.processed / refreshProgress.total) * 100)
+            : 0;
+          return (
+            <div style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: refreshProgress.status === 'error' || refreshProgress.status === 'idle' ? '#ff6b6b' : refreshProgress.status === 'done' ? '#4caf50' : '#93c5fd', fontWeight: 600 }}>
+                  {refreshProgress.status === 'running' && `Refreshing ownership… ${refreshProgress.processed} / ${refreshProgress.total}`}
+                  {refreshProgress.status === 'done' && `Refresh complete — ${refreshProgress.total} assets`}
+                  {refreshProgress.status === 'error' && 'Refresh failed'}
+                  {refreshProgress.status === 'idle' && 'Refresh status unavailable — server may have restarted'}
+                </span>
+                <span style={{ color: '#888' }}>
+                  {refreshProgress.status === 'running' ? `${rPct}%` : ''}
+                </span>
+              </div>
+              <div style={{ background: '#0d1421', borderRadius: 4, height: 8, overflow: 'hidden', marginBottom: '0.5rem' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${refreshProgress.status === 'done' ? 100 : rPct}%`,
+                  background: refreshProgress.status === 'error' ? '#ff6b6b' : refreshProgress.status === 'done' ? '#4caf50' : '#3b82f6',
+                  borderRadius: 4,
+                  transition: 'width 0.4s ease',
+                }} />
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem', color: '#888' }}>
+                <span>Updated: <strong style={{ color: '#4caf50' }}>{refreshProgress.updated}</strong></span>
+                <span>Failed: <strong style={{ color: refreshProgress.failed > 0 ? '#ff6b6b' : '#888' }}>{refreshProgress.failed}</strong></span>
+                <span>Total: <strong style={{ color: '#e0e0ff' }}>{refreshProgress.total}</strong></span>
+              </div>
+            </div>
+          );
+        })()}
 
         {msg && <StatusMsg msg={msg.text} type={msg.type} />}
 

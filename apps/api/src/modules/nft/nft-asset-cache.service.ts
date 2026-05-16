@@ -16,6 +16,16 @@ export interface CacheImportStatus {
   finishedAt?: string;
 }
 
+export interface CacheRefreshStatus {
+  status: 'idle' | 'running' | 'done' | 'error';
+  total: number;
+  processed: number;
+  updated: number;
+  failed: number;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
 export function nftAssetRowToMetadata(asset: any): NftMetadata {
   return {
     assetId: asset.tokenName,
@@ -30,6 +40,7 @@ export function nftAssetRowToMetadata(asset: any): NftMetadata {
 export class NftAssetCacheService {
   private readonly logger = new Logger(NftAssetCacheService.name);
   private readonly importJobs = new Map<string, CacheImportStatus>();
+  private readonly refreshJobs = new Map<string, CacheRefreshStatus>();
 
   constructor(
     private prisma: PrismaService,
@@ -38,6 +49,10 @@ export class NftAssetCacheService {
 
   getImportStatus(collectionId: string): CacheImportStatus {
     return this.importJobs.get(collectionId) ?? { status: 'idle', total: 0, processed: 0, upserted: 0, failed: 0 };
+  }
+
+  getRefreshStatus(collectionId: string): CacheRefreshStatus {
+    return this.refreshJobs.get(collectionId) ?? { status: 'idle', total: 0, processed: 0, updated: 0, failed: 0 };
   }
 
   /**
@@ -245,9 +260,22 @@ export class NftAssetCacheService {
       `Starting background ownership refresh for ${total} cached assets in "${collectionId}"`,
     );
 
-    this.runOwnershipRefresh(collection, assets).catch((err) =>
-      this.logger.error(`Ownership refresh failed for collection "${collectionId}": ${err}`),
-    );
+    this.refreshJobs.set(collectionId, {
+      status: 'running',
+      total,
+      processed: 0,
+      updated: 0,
+      failed: 0,
+      startedAt: new Date().toISOString(),
+    });
+
+    this.runOwnershipRefresh(collection, assets).catch((err) => {
+      this.logger.error(`Ownership refresh failed for collection "${collectionId}": ${err}`);
+      const prev = this.refreshJobs.get(collectionId);
+      if (prev) {
+        this.refreshJobs.set(collectionId, { ...prev, status: 'error', finishedAt: new Date().toISOString() });
+      }
+    });
 
     return { started: true, total };
   }
@@ -256,7 +284,8 @@ export class NftAssetCacheService {
     let updated = 0;
     let failed = 0;
 
-    for (const asset of assets) {
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
       try {
         const holders = await this.cardanoProvider.getAssetHolders(
           collection.collectionId,
@@ -272,7 +301,29 @@ export class NftAssetCacheService {
         this.logger.error(`refreshOwnership failed for ${asset.nftAssetId}: ${err}`);
         failed++;
       }
+
+      const processed = i + 1;
+      const currentJob = this.refreshJobs.get(collection.id);
+      if (currentJob) {
+        this.refreshJobs.set(collection.id, { ...currentJob, processed, updated, failed });
+      }
+
+      if (processed % 100 === 0 || processed === assets.length) {
+        this.logger.log(
+          `Ownership refresh progress [${collection.id}]: ${processed}/${assets.length} — updated: ${updated}, failed: ${failed}`,
+        );
+      }
     }
+
+    this.refreshJobs.set(collection.id, {
+      status: 'done',
+      total: assets.length,
+      processed: assets.length,
+      updated,
+      failed,
+      startedAt: this.refreshJobs.get(collection.id)?.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
 
     this.logger.log(
       `Ownership refresh complete [${collection.id}]: updated=${updated}, failed=${failed}`,
