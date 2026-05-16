@@ -237,6 +237,7 @@ Links an on-chain NFT collection to an EntityDefinition or LocationDefinition.
 
 | Endpoint | Description |
 |----------|-------------|
+| `POST /admin/backfill/item-rarity` | One-time migration: renames `SCARCE→SCARE` in the enum type, merges `ADVANCED→RARE` and `ULTRA_RARE→EPIC` rows in `item_defs`. Fully idempotent — safe to re-run. Call this on production **before** publishing the schema change that removes old enum values. Returns `{ advanced, ultraRare, scarceRenamed, message }`. |
 | `POST /admin/backfill/entity-stats` | Recompute `stats.scaling` and `stats.compositRarity` for all entities from stored traits |
 | `POST /admin/backfill/nft-metadata` | Fetch and cache NFT metadata for outpost `LocationInstance` records missing `state.nftRawMeta` |
 | `POST /admin/backfill/nft-entity-traits?collectionId=<id>` | Rebuild `traits`, `stats`, `definitionId`, and `speciesId` for existing NFT entities from `state.nftAttributes`. `collectionId` is optional — omit to process all entity collections. No on-chain requests are made. |

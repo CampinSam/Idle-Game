@@ -646,13 +646,12 @@ model BoostEvent {
 enum ItemRarity {
   COMMON
   UNCOMMON
-  SCARCE
-  ADVANCED
+  SCARE
   RARE
-  ULTRA_RARE
   EPIC
   MYTHIC
   LEGENDARY
+  UNIQUE
 }
 
 enum ItemType {

@@ -153,6 +153,11 @@ export class AdminController {
     return this.boostService.cancelBoost(id);
   }
 
+  @Post('backfill/item-rarity')
+  async backfillItemRarity() {
+    return this.adminService.backfillItemRarity();
+  }
+
   @Post('backfill/entity-stats')
   async backfillEntityStats() {
     return this.adminService.backfillEntityStats();

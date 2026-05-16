@@ -507,6 +507,53 @@ export class AdminService {
     }
   }
 
+  async backfillItemRarity(): Promise<{
+    advanced: number;
+    ultraRare: number;
+    scarceRenamed: boolean;
+    message: string;
+  }> {
+    // 1. Rename SCARCE → SCARE in the enum type (idempotent: only runs if SCARCE still exists)
+    const [scarceCheck] = await this.prisma.$queryRawUnsafe<{ exists: boolean }[]>(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_enum e
+        JOIN pg_type t ON e.enumtypid = t.oid
+        JOIN pg_namespace n ON t.typnamespace = n.oid
+        WHERE t.typname = 'ItemRarity'
+          AND n.nspname = 'public'
+          AND e.enumlabel = 'SCARCE'
+      ) AS exists
+    `);
+    const scarceRenamed = scarceCheck.exists;
+    if (scarceRenamed) {
+      await this.prisma.$executeRawUnsafe(
+        `ALTER TYPE "ItemRarity" RENAME VALUE 'SCARCE' TO 'SCARE'`,
+      );
+    }
+
+    // 2. Merge ADVANCED → RARE (idempotent: no-op once value no longer exists)
+    const advanced = await this.prisma.$executeRawUnsafe(
+      `UPDATE item_defs SET rarity = 'RARE'::"ItemRarity" WHERE rarity::text = 'ADVANCED'`,
+    );
+
+    // 3. Merge ULTRA_RARE → EPIC (idempotent: no-op once value no longer exists)
+    const ultraRare = await this.prisma.$executeRawUnsafe(
+      `UPDATE item_defs SET rarity = 'EPIC'::"ItemRarity" WHERE rarity::text = 'ULTRA_RARE'`,
+    );
+
+    this.logger.log(
+      `backfillItemRarity: scarceRenamed=${scarceRenamed}, ADVANCED→RARE=${advanced}, ULTRA_RARE→EPIC=${ultraRare}`,
+    );
+    return {
+      advanced,
+      ultraRare,
+      scarceRenamed,
+      message:
+        'Migration complete. After this backfill, publish the app so the Replit publish flow ' +
+        'applies the remaining schema changes (removes old enum values, adds UNIQUE).',
+    };
+  }
+
   async backfillEntityStats(): Promise<{ total: number; updated: number; skipped: number; failed: number }> {
     const entities = await (this.prisma as any).entity.findMany({
       select: { id: true, definitionId: true, traits: true, stats: true },
