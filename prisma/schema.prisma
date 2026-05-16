@@ -355,6 +355,7 @@ model LocationInstance {
 
   definitionId    String
   regionId        String?
+  name            String?
   kind            String   @default("outpost_fungible")
   isUnique        Boolean  @default(false)
 

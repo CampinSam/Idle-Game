@@ -65,7 +65,7 @@ export default function DerpOutpostCard({
     return isFull ? s : s + r.netRatePerHour;
   }, 0);
 
-  const displayName = (op.nftAssetId ? op.name : regionName) || regionName;
+  const displayName = op.name || regionName;
 
   const borderClass = isPrimary
     ? 'border-[#a78bfa] hover:border-[#c4b5fd]'

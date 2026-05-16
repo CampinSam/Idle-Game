@@ -162,11 +162,12 @@ export class AuthService {
     return {
       ownerUserId: userId,
       definitionId: 'derp_outpost',
+      name: 'Starter Outpost',
       kind: 'outpost_fungible',
       level: 1,
       lastCollectionTick: BigInt(Math.floor(currentTick)),
       storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
-      state: { nftName: 'Starter Outpost' },
+      state: {},
     };
   }
 
