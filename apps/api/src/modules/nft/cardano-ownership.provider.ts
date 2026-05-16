@@ -256,23 +256,28 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
   /**
    * Return the list of addresses currently holding the given asset.
    * For NFTs (quantity = 1) this will typically be a single address.
+   *
+   * Throws on any Blockfrost failure so callers can distinguish "no holders"
+   * (empty array = legitimate on-chain state) from "fetch failed" (exception).
+   * Missing API key throws immediately so refresh jobs fail fast and do NOT
+   * overwrite existing ownerAddress values with null.
    */
   async getAssetHolders(policyId: string, assetId: string): Promise<string[]> {
-    if (!this.apiKey) return [];
+    if (!this.apiKey) {
+      throw new Error(
+        `BLOCKFROST_API_KEY is not set — cannot fetch holders for ${policyId}${assetId}`,
+      );
+    }
     const unit = `${policyId}${assetId}`;
     const url = `${this.baseUrl}/assets/${unit}/addresses`;
-    try {
-      const res = await fetch(url, { headers: { project_id: this.apiKey } });
-      if (!res.ok) {
-        this.logger.warn(`Blockfrost getAssetHolders failed for ${unit}: ${res.status}`);
-        return [];
-      }
-      const data = (await res.json()) as Array<{ address: string; quantity: string }>;
-      return data.map((d) => d.address);
-    } catch (err) {
-      this.logger.error(`Blockfrost getAssetHolders error for ${unit}: ${err}`);
-      return [];
+    const res = await fetch(url, { headers: { project_id: this.apiKey } });
+    if (!res.ok) {
+      throw new Error(
+        `Blockfrost getAssetHolders returned HTTP ${res.status} for asset ${unit}`,
+      );
     }
+    const data = (await res.json()) as Array<{ address: string; quantity: string }>;
+    return data.map((d) => d.address);
   }
 
   async getAssetMetadata(policyId: string, assetId: string): Promise<NftMetadata | null> {

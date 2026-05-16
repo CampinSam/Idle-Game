@@ -146,46 +146,57 @@ export class NftCollectionService {
   }
 
   /**
-   * Create game entity instances for all cached assets in a collection.
-   * Reads metadata from the NftAsset cache — run POST /:id/import first.
+   * Create game entity instances for all tokens in the collection whose
+   * metadata is already cached in the NftAsset table. Does not call Blockfrost
+   * directly — run POST /:id/import first to populate the cache, then call this.
+   * fetchAndCache() is still invoked per asset so any cache-miss is filled on
+   * demand, but the work list comes from the local DB rather than from the chain.
    */
   async createInstances(id: string): Promise<{ started: true; total: number }> {
     const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
     if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
-    if (collection.chain !== 'CARDANO') {
-      throw new BadRequestException(`create-instances is only supported for CARDANO collections`);
-    }
     if (!collection.entityDefinitionId) {
       throw new BadRequestException(
         `create-instances is only supported for entity-backed collections (entityDefinitionId is required)`,
       );
     }
 
-    const allAssetIds = await this.cardanoProvider.getAllPolicyAssets(collection.collectionId);
-    const total = allAssetIds.length;
+    // Source from cached NftAsset rows — no direct Blockfrost enumeration here.
+    const cachedAssets = await (this.prisma as any).nftAsset.findMany({
+      where: { collectionId: id },
+      select: { nftAssetId: true },
+    });
+
+    if (cachedAssets.length === 0) {
+      throw new BadRequestException(
+        `No cached assets found for collection "${id}" — run POST /:id/import to populate the NftAsset cache first`,
+      );
+    }
+
+    const nftAssetIds: string[] = cachedAssets.map((a: any) => a.nftAssetId as string);
+    const total = nftAssetIds.length;
 
     this.logger.log(`Starting background instance creation of ${total} tokens for collection "${id}"`);
 
-    this.runInstanceCreation(collection, allAssetIds).catch((err) =>
+    this.runInstanceCreation(collection, nftAssetIds).catch((err) =>
       this.logger.error(`Background instance creation failed for collection "${id}": ${err}`),
     );
 
     return { started: true, total };
   }
 
-  private async runInstanceCreation(collection: any, assetIds: string[]) {
+  private async runInstanceCreation(collection: any, nftAssetIds: string[]) {
     const BATCH_SIZE = 5;
     const BATCH_DELAY_MS = 300;
     let created = 0;
     let skipped = 0;
     let failed = 0;
 
-    for (let i = 0; i < assetIds.length; i += BATCH_SIZE) {
-      const batch = assetIds.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < nftAssetIds.length; i += BATCH_SIZE) {
+      const batch = nftAssetIds.slice(i, i + BATCH_SIZE);
 
       await Promise.all(
-        batch.map(async (assetId) => {
-          const nftAssetId = `${collection.chain}:${collection.collectionId}:${assetId}`;
+        batch.map(async (nftAssetId) => {
           try {
             const existing = await (this.prisma as any).entity.findFirst({ where: { nftAssetId } });
             if (existing) {
@@ -215,14 +226,14 @@ export class NftCollectionService {
         }),
       );
 
-      const processed = Math.min(i + BATCH_SIZE, assetIds.length);
-      if (processed % 100 === 0 || processed === assetIds.length) {
+      const processed = Math.min(i + BATCH_SIZE, nftAssetIds.length);
+      if (processed % 100 === 0 || processed === nftAssetIds.length) {
         this.logger.log(
-          `Instance creation progress [${collection.id}]: ${processed}/${assetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
+          `Instance creation progress [${collection.id}]: ${processed}/${nftAssetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
         );
       }
 
-      if (i + BATCH_SIZE < assetIds.length) {
+      if (i + BATCH_SIZE < nftAssetIds.length) {
         await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
       }
     }
