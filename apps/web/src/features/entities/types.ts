@@ -35,6 +35,7 @@ export interface EntityCardProps {
   extras?: ReactNode;
   className?: string;
   compact?: boolean;
+  tagOverride?: { label: string; color: string };
 }
 
 export interface EntityDetailProps {

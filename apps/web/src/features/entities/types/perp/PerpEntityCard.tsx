@@ -4,6 +4,12 @@ import { isLeader } from './isLeader';
 import { getFaction } from './getFaction';
 import { isNftEntity } from '../derp_bird/isNftEntity';
 
+const FACTION_TAGS: Record<string, { label: string; color: string }> = {
+  genovault:   { label: 'GENOVAULT',   color: '#7C3AED' },
+  astro_schism: { label: 'ASTRO SCHISM', color: '#3B82F6' },
+  kraashers:   { label: 'KRAASHERS',   color: '#EF4444' },
+};
+
 export default function PerpEntityCard(props: EntityCardProps) {
   const leader = isLeader(props.entity);
   const faction = getFaction(props.entity);
@@ -25,11 +31,13 @@ export default function PerpEntityCard(props: EntityCardProps) {
   }
 
   const classes = [primaryClass, nft && 'entity-card--perp-nft'];
+  const tagOverride = faction ? FACTION_TAGS[faction] : undefined;
 
   return (
     <DefaultEntityCard
       {...props}
       className={[...classes, props.className].filter(Boolean).join(' ')}
+      tagOverride={tagOverride}
     />
   );
 }

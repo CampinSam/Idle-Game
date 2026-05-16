@@ -757,21 +757,29 @@ input:focus {
     inset 0 0 8px rgba(239, 68, 68, 0.18);
 }
 
-/* Leader — gold frame */
+/* Leader — animated gold frame */
+@property --card-leader-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
 .entity-card--perp-leader {
-  border-color: rgba(253, 211, 77, 0.55);
+  border-color: transparent;
   background:
-    linear-gradient(180deg, rgba(180, 130, 0, 0.1), rgba(0, 0, 0, 0)),
-    var(--bg-surface, #0f1424);
+    linear-gradient(180deg, rgba(15, 8, 30, 0.95), rgba(8, 4, 18, 0.95)) padding-box,
+    conic-gradient(from var(--card-leader-angle), #fde68a, #fbbf24, #f59e0b, #fbbf24, #fde68a) border-box;
+  border: 2px solid transparent;
   box-shadow:
-    inset 0 0 0 1px rgba(253, 211, 77, 0.1),
-    0 0 12px rgba(234, 179, 8, 0.22);
+    0 0 10px rgba(253, 224, 71, 0.3),
+    0 0 18px rgba(234, 179, 8, 0.15),
+    inset 0 0 8px rgba(255, 255, 255, 0.03);
+  animation: leader-spin 7s linear infinite;
 }
 .entity-card--perp-leader:hover {
-  border-color: rgba(253, 224, 71, 0.8);
   box-shadow:
-    inset 0 0 0 1px rgba(253, 211, 77, 0.22),
-    0 0 20px rgba(234, 179, 8, 0.4);
+    0 0 20px rgba(253, 224, 71, 0.55),
+    0 0 36px rgba(234, 179, 8, 0.28),
+    inset 0 0 10px rgba(255, 255, 255, 0.05);
 }
 .entity-card--perp-leader::after {
   content: '★ LEADER';
@@ -792,10 +800,14 @@ input:focus {
 .entity-card--perp-leader > * { position: relative; z-index: 3; }
 .entity-card--perp-leader.entity-card--selected,
 .entity-card--perp-leader.entity-card--active {
-  border-color: #fcd34d !important;
   box-shadow:
-    0 0 14px rgba(253, 211, 77, 0.6),
-    inset 0 0 8px rgba(253, 211, 77, 0.18);
+    0 0 18px rgba(253, 211, 77, 0.7),
+    0 0 36px rgba(234, 179, 8, 0.35),
+    inset 0 0 10px rgba(255, 255, 255, 0.08);
+}
+@keyframes leader-spin {
+  from { --card-leader-angle: 0deg; }
+  to   { --card-leader-angle: 360deg; }
 }
 
 /* Multiverse Leader — animated gold + purple */
@@ -853,6 +865,7 @@ input:focus {
   to   { --card-mv-leader-angle: 360deg; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .entity-card--perp-leader { animation: none; }
   .entity-card--perp-multiverse-leader { animation: none; }
 }
 

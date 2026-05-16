@@ -48,6 +48,7 @@ export default function DefaultEntityCard({
   extras,
   className = '',
   compact = false,
+  tagOverride,
 }: EntityCardProps) {
   const archetype = getEntityArchetype(entity);
   const archetypeDisplay = getArchetypeDisplay(archetype || 'Warrior');
@@ -99,9 +100,9 @@ export default function DefaultEntityCard({
           <div className="mb-1.5">
             <span
               className="inline-block px-2 py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px]"
-              style={{ backgroundColor: archetypeDisplay.color }}
+              style={{ backgroundColor: tagOverride?.color ?? archetypeDisplay.color }}
             >
-              {(archetype || 'UNKNOWN').toUpperCase()}
+              {tagOverride?.label ?? (archetype || 'UNKNOWN').toUpperCase()}
             </span>
           </div>
           <div className="flex items-center justify-between">
