@@ -15,7 +15,6 @@ interface BuildingCardProps {
   resourceSummaries: any[];
   currencyDefs: any[];
   itemDefs: any[];
-  tickRate: number;
   onCompleteBuilding: (buildingId: string) => void;
   onUpgradeClick: (building: any) => void;
 }
@@ -26,7 +25,6 @@ export default function BuildingCard({
   resourceSummaries,
   currencyDefs,
   itemDefs,
-  tickRate,
   onCompleteBuilding,
   onUpgradeClick,
 }: BuildingCardProps) {
@@ -111,7 +109,6 @@ export default function BuildingCard({
           name={b.name}
           startTick={b.startTick}
           durationTicks={b.durationTicks}
-          tickRate={tickRate}
           isUpgrade={!!b.jobData?.upgradeToLevel}
           onComplete={() => onCompleteBuilding(b.id)}
         />

@@ -1,7 +1,7 @@
 import { Store } from '@reduxjs/toolkit';
 import { api } from './api';
 import type { DeltaResponse } from './api';
-import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickBroadcast, setHomeBanners } from '../store/syncSlice';
+import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners } from '../store/syncSlice';
 import { setSystemIconRegistry } from '../utils/iconResolver';
 import type { RootState } from '../store';
 
@@ -85,16 +85,18 @@ export class SyncEngine {
       this.fetchAndApplyDelta();
     });
 
-    es.addEventListener('tick.rate.updated', (e: MessageEvent) => {
+    es.addEventListener('tick.sync', (e: MessageEvent) => {
       try {
         const msg = JSON.parse(e.data);
-        this.store.dispatch(setTickBroadcast({
+        this.store.dispatch(setTickSync({
+          currentTick: msg.currentTick,
           tickRate: msg.tickRate,
+          serverTime: msg.serverTime,
           boosts: msg.boosts ?? [],
           receivedAt: Date.now(),
         }));
       } catch {
-        console.warn('[SyncEngine] Failed to parse tick.rate.updated event');
+        console.warn('[SyncEngine] Failed to parse tick.sync event');
       }
     });
 

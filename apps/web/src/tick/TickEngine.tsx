@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import { api } from '../services/api';
+import { createContext, useContext, useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useSelector, useStore } from 'react-redux';
 import type { RootState } from '../store';
 import type { ActiveBoost } from '../store/syncSlice';
 
@@ -47,46 +46,25 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
   const [, setTrigger] = useState(0);
   const interpolatedRef = useRef({ currentTick: 0, tickRate: 1 });
 
+  const tickAnchor = useSelector((s: RootState) => s.sync.tickAnchor);
   const tickBroadcast = useSelector((s: RootState) => s.sync.tickBroadcast);
-  const tickBroadcastRef = useRef(tickBroadcast);
-  useEffect(() => {
-    tickBroadcastRef.current = tickBroadcast;
-  }, [tickBroadcast]);
-
-  const fetchSnapshot = useCallback(async () => {
-    const fetchStartedAt = Date.now();
-    try {
-      const info = await api.getTickInfo();
-      let tickRate = info.currentRate > 0 ? info.currentRate : 1;
-      let activeBoosts: ActiveBoost[] = info.activeBoosts ?? [];
-
-      const pending = tickBroadcastRef.current;
-      if (pending && pending.receivedAt >= fetchStartedAt) {
-        tickRate = pending.tickRate;
-        activeBoosts = pending.boosts;
-      }
-
-      const snap: TickSnapshot = {
-        currentTick: info.currentTick,
-        tickRate,
-        serverTime: info.serverTime,
-        fetchedAt: Date.now(),
-        activeBoosts,
-      };
-      setSnapshot(snap);
-      interpolatedRef.current = {
-        currentTick: snap.currentTick,
-        tickRate: snap.tickRate,
-      };
-      setLoading(false);
-    } catch {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
-    fetchSnapshot();
-  }, [fetchSnapshot]);
+    if (!tickAnchor) return;
+    const snap: TickSnapshot = {
+      currentTick: tickAnchor.currentTick,
+      tickRate: tickAnchor.tickRate > 0 ? tickAnchor.tickRate : 1,
+      serverTime: tickAnchor.serverTime,
+      fetchedAt: Date.now(),
+      activeBoosts: tickAnchor.activeBoosts ?? tickBroadcast?.boosts ?? [],
+    };
+    setSnapshot(snap);
+    interpolatedRef.current = {
+      currentTick: snap.currentTick,
+      tickRate: snap.tickRate,
+    };
+    setLoading(false);
+  }, [tickAnchor]);
 
   useEffect(() => {
     if (!tickBroadcast) return;
@@ -95,15 +73,15 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       if (tickBroadcast.receivedAt <= prev.fetchedAt) return prev;
       return {
         ...prev,
-        currentTick: interpolatedRef.current.currentTick,
+        currentTick: tickBroadcast.currentTick,
         tickRate: tickBroadcast.tickRate,
         activeBoosts: tickBroadcast.boosts,
-        serverTime: new Date().toISOString(),
+        serverTime: tickBroadcast.serverTime,
         fetchedAt: tickBroadcast.receivedAt,
       };
     });
     interpolatedRef.current = {
-      currentTick: interpolatedRef.current.currentTick,
+      currentTick: tickBroadcast.currentTick,
       tickRate: tickBroadcast.tickRate,
     };
   }, [tickBroadcast]);
@@ -129,14 +107,31 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
     return () => clearInterval(id);
   }, [snapshot]);
 
+  const store = useStore<RootState>();
+  const refresh = useCallback(async () => {
+    const state = store.getState();
+    const anchor = state.sync.tickAnchor;
+    if (!anchor) return;
+    const broadcast = state.sync.tickBroadcast;
+    const snap: TickSnapshot = {
+      currentTick: anchor.currentTick,
+      tickRate: anchor.tickRate > 0 ? anchor.tickRate : 1,
+      serverTime: anchor.serverTime,
+      fetchedAt: Date.now(),
+      activeBoosts: anchor.activeBoosts ?? broadcast?.boosts ?? [],
+    };
+    setSnapshot(snap);
+    interpolatedRef.current = { currentTick: snap.currentTick, tickRate: snap.tickRate };
+  }, [store]);
+
   const value = useMemo((): TickEngineState => ({
     snapshot,
     currentTick: interpolatedRef.current.currentTick,
     tickRate: interpolatedRef.current.tickRate,
     activeBoosts: snapshot?.activeBoosts ?? [],
     loading,
-    refresh: fetchSnapshot,
-  }), [snapshot, loading, fetchSnapshot, interpolatedRef.current.currentTick]);
+    refresh,
+  }), [snapshot, loading, refresh, interpolatedRef.current.currentTick]);
 
   return (
     <TickEngineContext.Provider value={value}>

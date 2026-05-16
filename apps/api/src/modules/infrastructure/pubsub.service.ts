@@ -7,8 +7,12 @@ export interface PubSubMessage {
 
 export type BroadcastMessage =
   | {
-      type: 'tick.rate.updated';
+      // Authoritative tick anchor broadcast every ~30 s and on rate changes.
+      // Carries enough data for the client to re-anchor its interpolation clock.
+      type: 'tick.sync';
+      currentTick: number;
       tickRate: number;
+      serverTime: string;
       boosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
     }
   | {

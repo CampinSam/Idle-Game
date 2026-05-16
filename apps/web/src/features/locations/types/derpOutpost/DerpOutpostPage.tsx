@@ -3,7 +3,6 @@ import { useAppDispatch, useAppSelector } from '../../../../store';
 import { fetchCurrencyDefs, fetchItemDefs } from '../../../../store/gameSlice';
 import { useSyncEntities, useAllActiveJobs } from '../../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../../hooks/useCommand';
-import { useTickRate } from '../../../../tick';
 import { useLocationTimers } from '../../../../hooks/useLocationTimers';
 import { useModal } from '../../../../context/ModalContext';
 import { useNotifications } from '../../../../context/NotificationContext';
@@ -36,7 +35,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const autoOpenedLevelUpRef = useRef<Set<string>>(new Set());
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
-  const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
   const allActiveJobs = useAllActiveJobs();
 
@@ -225,7 +223,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         effectiveRatePerHour={effectiveRatePerHour}
         constructingBuildings={constructingBuildings}
         locationJobs={locationJobs}
-        tickRate={tickRate}
         storedResources={storedResources}
         onCompleteBuilding={handleCompleteBuilding}
       />
@@ -253,7 +250,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           resourceSummaries={resourceSummaries}
           currencyDefs={currencyDefs}
           itemDefs={itemDefs}
-          tickRate={tickRate}
           onCompleteBuilding={handleCompleteBuilding}
           onUpgradeClick={openUpgradeModal}
         />

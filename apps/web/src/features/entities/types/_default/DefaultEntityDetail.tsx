@@ -432,11 +432,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 let countdownMs: number | null = null;
                 if ((st === 'mission' || st === 'working') && entityActiveJob?.startTick != null && entityActiveJob?.durationTicks != null) {
                   const timer = createCountdownTimer({ startTick: entityActiveJob.startTick, durationTicks: entityActiveJob.durationTicks });
-                  const remaining = timer.getValue(currentTick);
-                  countdownMs = tickRate > 0 ? (remaining / tickRate) * 1000 : null;
+                  countdownMs = timer.getRemainingMs(currentTick, tickRate);
                 } else if (st === 'injured' && entity.injuredUntilTick != null) {
-                  const remaining = Math.max(0, entity.injuredUntilTick - currentTick);
-                  countdownMs = tickRate > 0 ? (remaining / tickRate) * 1000 : null;
+                  const injuredTimer = createCountdownTimer({ startTick: currentTick, durationTicks: Math.max(0, entity.injuredUntilTick - currentTick) });
+                  countdownMs = injuredTimer.getRemainingMs(currentTick, tickRate);
                 }
 
                 const fmtMs = (ms: number): string => {

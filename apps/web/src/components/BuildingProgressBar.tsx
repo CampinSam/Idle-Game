@@ -1,4 +1,5 @@
 import { useCurrentTick } from '../tick';
+import { useTickRemainingMs } from '../tick/useTickValue';
 import { createCountdownTimer } from '../tick/TickTimer';
 
 function formatCountdown(ms: number): string {
@@ -16,7 +17,6 @@ interface BuildingProgressBarProps {
   name: string;
   startTick: number;
   durationTicks: number;
-  tickRate: number;
   isUpgrade?: boolean;
   onComplete?: () => void;
   compact?: boolean;
@@ -26,17 +26,16 @@ export default function BuildingProgressBar({
   name,
   startTick,
   durationTicks,
-  tickRate,
   isUpgrade = false,
   onComplete,
   compact = false,
 }: BuildingProgressBarProps) {
   const currentTick = useCurrentTick();
   const timer = createCountdownTimer({ startTick, durationTicks });
-  const remainingTicks = timer.getValue(currentTick);
-  const remainingMs = tickRate > 0 ? (remainingTicks / tickRate) * 1000 : Infinity;
+  const remainingMs = useTickRemainingMs(timer);
   const isReady = remainingMs <= 0;
 
+  const remainingTicks = timer.getValue(currentTick);
   const elapsed = durationTicks > 0 ? Math.max(0, durationTicks - remainingTicks) : 0;
   const progress = durationTicks > 0 ? Math.min(100, (elapsed / durationTicks) * 100) : 100;
 

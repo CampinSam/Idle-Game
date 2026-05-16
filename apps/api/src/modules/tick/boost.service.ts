@@ -104,9 +104,13 @@ export class BoostService {
       });
     }
 
+    const boostNow = new Date();
+    const boostCurrentTick = await this.tickService.getCurrentTick(boostNow);
     this.pubsub.publishBroadcast({
-      type: 'tick.rate.updated',
+      type: 'tick.sync',
+      currentTick: boostCurrentTick,
       tickRate: boostedRate,
+      serverTime: boostNow.toISOString(),
       boosts: [
         {
           id: boost.id,
@@ -163,9 +167,13 @@ export class BoostService {
 
     this.tickService.invalidateCache();
 
+    const cancelNow = new Date();
+    const cancelCurrentTick = await this.tickService.getCurrentTick(cancelNow);
     this.pubsub.publishBroadcast({
-      type: 'tick.rate.updated',
+      type: 'tick.sync',
+      currentTick: cancelCurrentTick,
       tickRate: priorRate,
+      serverTime: cancelNow.toISOString(),
       boosts: [],
     });
 

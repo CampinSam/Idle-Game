@@ -495,6 +495,12 @@ class ApiClient {
 
 export interface BootstrapResponse {
   serverTime: number;
+  tickAnchor?: {
+    currentTick: number;
+    tickRate: number;
+    serverTime: string;
+    activeBoosts?: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
+  };
   snapshot: {
     player: any;
     state: any;

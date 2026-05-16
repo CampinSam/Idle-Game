@@ -15,6 +15,12 @@ const MAX_DELTA_AGE = 10000;
 
 export interface BootstrapResult {
   serverTime: number;
+  tickAnchor: {
+    currentTick: number;
+    tickRate: number;
+    serverTime: string;
+    activeBoosts: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
+  };
   snapshot: {
     player: any;
     state: any;
@@ -140,6 +146,7 @@ export class QueryService {
       systemIconDefs,
       homeBanners,
       activeSeason,
+      tickInfo,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -258,6 +265,7 @@ export class QueryService {
         where: { status: 'active', startsAt: { lte: new Date() }, endsAt: { gt: new Date() } },
         orderBy: { endsAt: 'asc' },
       }),
+      this.tickService.getTickInfo(),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
@@ -296,6 +304,12 @@ export class QueryService {
 
     return {
       serverTime: Date.now(),
+      tickAnchor: {
+        currentTick: tickInfo.currentTick,
+        tickRate: tickInfo.currentRate,
+        serverTime: tickInfo.serverTime,
+        activeBoosts: tickInfo.activeBoosts,
+      },
       snapshot: {
         player: user
           ? {

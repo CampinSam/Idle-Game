@@ -1,6 +1,5 @@
 import { useAppSelector } from '../../../../store';
 import { useLocationTimers } from '../../../../hooks/useLocationTimers';
-import { useTickRate } from '../../../../tick';
 import { GameImage } from '../../../../components/GameImage';
 import GameIcon from '../../../../components/GameIcon';
 import BuildingProgressBar from '../../../../components/BuildingProgressBar';
@@ -48,7 +47,6 @@ export default function DerpOutpostCard({
 }: LocationCardProps) {
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
-  const tickRate = useTickRate();
   const locationTimerMap = useLocationTimers();
 
   const regionDisplay = getRegionDisplay(op.regionId || op.region);
@@ -139,7 +137,6 @@ export default function DerpOutpostCard({
               name={b.name}
               startTick={b.startTick}
               durationTicks={b.durationTicks}
-              tickRate={tickRate}
               isUpgrade={!!b.jobData?.upgradeToLevel}
               compact
             />

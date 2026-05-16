@@ -10,7 +10,7 @@ import {
 import { fetchCraftingRecipes } from '../../store/gameSlice';
 import { useCommand } from '../../hooks/useCommand';
 import { api } from '../../services/api';
-import { useCurrentTick, useTickRate } from '../../tick';
+import { useCurrentTick } from '../../tick';
 import { workshopParallelSlots } from '@derp/math';
 import { ForgeHero } from './components/ForgeHero';
 import { ForgeJobRow } from './components/ForgeJobRow';
@@ -27,7 +27,6 @@ export default function ForgePage() {
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
   const tick = useCurrentTick();
-  const tickRate = useTickRate();
 
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
@@ -219,8 +218,6 @@ export default function ForgePage() {
                 job={job}
                 entities={entities}
                 craftingRecipes={craftingRecipes as any[]}
-                tick={tick}
-                tickRate={tickRate}
                 focusedJobId={focusedJobId}
                 focusedJobRef={focusedJobRef}
                 onCollect={handleCollect}

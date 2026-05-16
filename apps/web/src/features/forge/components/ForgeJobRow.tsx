@@ -1,4 +1,6 @@
 import { createCountdownTimer } from '../../../tick';
+import { useCurrentTick } from '../../../tick/TickEngine';
+import { useTickRemainingMs } from '../../../tick/useTickValue';
 import { GameImage } from '../../../components/GameImage';
 import { getEntityImagePath } from '../../../config/images';
 import { fmtSeconds } from './forgeUtils';
@@ -7,8 +9,6 @@ interface ForgeJobRowProps {
   job: any;
   entities: any[];
   craftingRecipes: any[];
-  tick: number;
-  tickRate: number;
   focusedJobId: string;
   focusedJobRef: React.RefObject<HTMLDivElement>;
   onCollect: (jobId: string) => void;
@@ -24,17 +24,15 @@ export function ForgeJobRow({
   job,
   entities,
   craftingRecipes,
-  tick,
-  tickRate,
   focusedJobId,
   focusedJobRef,
   onCollect,
 }: ForgeJobRowProps) {
+  const currentTick = useCurrentTick();
   const timer = (job.startTick != null && job.durationTicks != null)
     ? createCountdownTimer({ startTick: job.startTick, durationTicks: job.durationTicks })
     : null;
-  const remTicks = timer ? timer.getValue(tick) : Infinity;
-  const remMs = timer && tickRate > 0 ? (remTicks / tickRate) * 1000 : Infinity;
+  const remMs = useTickRemainingMs(timer);
   const isReady = remMs <= 0;
   const recipeDef = craftingRecipes.find((r: any) => r.id === job.recipeId);
   const entity = entities.find((e: any) => e.id === job.entityId);
@@ -43,7 +41,8 @@ export function ForgeJobRow({
   const recipeTier = Number(recipeDef?.tier ?? 1);
   const tierKey = recipeTier >= 3 ? 'tier-3' : recipeTier >= 2 ? 'tier-2' : 'tier-1';
   const totalDurationTicks = Number(job.durationTicks ?? 0);
-  const elapsedTicks = totalDurationTicks - (Number.isFinite(remTicks) ? Math.max(0, remTicks) : totalDurationTicks);
+  const remTicks = timer ? Math.max(0, timer.getValue(currentTick)) : totalDurationTicks;
+  const elapsedTicks = totalDurationTicks - remTicks;
   const progress = totalDurationTicks > 0 ? Math.min(1, Math.max(0, elapsedTicks / totalDurationTicks)) : (isReady ? 1 : 0);
   const ringCircumference = 2 * Math.PI * 28;
   const ringDashOffset = ringCircumference * (1 - progress);

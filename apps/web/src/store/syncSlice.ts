@@ -15,9 +15,18 @@ export interface ActiveBoost {
 }
 
 export interface TickBroadcast {
+  currentTick: number;
   tickRate: number;
+  serverTime: string;
   boosts: ActiveBoost[];
   receivedAt: number;
+}
+
+export interface TickAnchor {
+  currentTick: number;
+  tickRate: number;
+  serverTime: string;
+  activeBoosts?: Array<{ id: string; name: string; multiplier: number; endTime: string }>;
 }
 
 export interface HomeBannerSnapshot {
@@ -73,6 +82,7 @@ interface SyncState {
   // add new SystemIconDef rows via the admin panel.
   systemIconDefs: Record<string, any>;
 
+  tickAnchor: TickAnchor | null;
   tickBroadcast: TickBroadcast | null;
   lastError: string | null;
 }
@@ -105,6 +115,7 @@ const initialState: SyncState = {
   visualEffectDefs: {},
   systemIconDefs: {},
 
+  tickAnchor: null,
   tickBroadcast: null,
   lastError: null,
 };
@@ -217,6 +228,10 @@ const syncSlice = createSlice({
         : Array.isArray((snapshot as any).homeBanners)
         ? (snapshot as any).homeBanners
         : [];
+
+      if ((action.payload as any).tickAnchor) {
+        state.tickAnchor = (action.payload as any).tickAnchor;
+      }
     },
 
     setHomeBanners(state, action: PayloadAction<HomeBannerSnapshot[]>) {
@@ -311,11 +326,20 @@ const syncSlice = createSlice({
       state.tickBroadcast = action.payload;
     },
 
+    setTickSync(state, action: PayloadAction<TickBroadcast>) {
+      state.tickBroadcast = action.payload;
+      state.tickAnchor = {
+        currentTick: action.payload.currentTick,
+        tickRate: action.payload.tickRate,
+        serverTime: action.payload.serverTime,
+      };
+    },
+
     resetSync() {
       return initialState;
     },
   },
 });
 
-export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchPlayerOptimistic, patchBuildingEnabled, setTickBroadcast, setHomeBanners } = syncSlice.actions;
+export const { setStatus, setSnapshot, applyPatches, setCursor, setError, resetSync, patchPlayerOptimistic, patchBuildingEnabled, setTickBroadcast, setTickSync, setHomeBanners } = syncSlice.actions;
 export default syncSlice.reducer;

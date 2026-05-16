@@ -21,7 +21,6 @@ interface OutpostProductionCardProps {
   effectiveRatePerHour: number;
   constructingBuildings: any[];
   locationJobs: any[];
-  tickRate: number;
   storedResources: number[];
   onCompleteBuilding: (id: string) => void;
 }
@@ -33,7 +32,6 @@ export function OutpostProductionCard({
   effectiveRatePerHour,
   constructingBuildings,
   locationJobs,
-  tickRate,
   storedResources,
   onCompleteBuilding,
 }: OutpostProductionCardProps) {
@@ -164,7 +162,6 @@ export function OutpostProductionCard({
               name={b.name}
               startTick={b.startTick}
               durationTicks={b.durationTicks}
-              tickRate={tickRate}
               isUpgrade={!!b.jobData?.upgradeToLevel}
               onComplete={() => onCompleteBuilding(b.id)}
             />
@@ -182,7 +179,6 @@ export function OutpostProductionCard({
               name={(j.name || j.recipeId || j.type || 'Job').toString().replace(/_/g, ' ')}
               startTick={j.startTick}
               durationTicks={j.durationTicks}
-              tickRate={tickRate}
             />
           ))}
         </div>

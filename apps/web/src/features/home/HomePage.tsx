@@ -110,8 +110,7 @@ export default function HomePage() {
   const getJobRemaining = useCallback((j: any): number => {
     if (j.startTick == null || j.durationTicks == null) return Infinity;
     const timer = createCountdownTimer({ startTick: j.startTick, durationTicks: j.durationTicks });
-    const remainingTicks = timer.getValue(currentTick);
-    return tickRate > 0 ? (remainingTicks / tickRate) * 1000 : Infinity;
+    return timer.getRemainingMs(currentTick, tickRate);
   }, [currentTick, tickRate]);
 
   const { completedJobs, inProgressJobs } = useMemo(() => ({

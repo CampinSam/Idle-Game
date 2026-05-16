@@ -6,6 +6,7 @@ import { TickService } from './tick.service';
 import { createJobReadyNotifications } from '../job/job-notification.helper';
 
 const POLL_INTERVAL_MS = 200;
+const TICK_SYNC_INTERVAL_MS = 30_000;
 
 /**
  * In-memory set of IDs processed in a recent poll cycle.
@@ -23,6 +24,7 @@ interface DedupEntry {
 export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TickEventProcessorService.name);
   private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private tickSyncInterval: ReturnType<typeof setInterval> | null = null;
   private running = false;
 
   private readonly processedEntityIds = new Map<string, DedupEntry>();
@@ -47,6 +49,12 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       }
     }, POLL_INTERVAL_MS);
     this.logger.log(`TickEventProcessor started (interval=${POLL_INTERVAL_MS}ms)`);
+
+    this.tickSyncInterval = setInterval(() => {
+      this.broadcastTickSync().catch((err) => {
+        this.logger.warn('tick.sync broadcast failed', err);
+      });
+    }, TICK_SYNC_INTERVAL_MS);
   }
 
   onModuleDestroy() {
@@ -54,6 +62,21 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
+    if (this.tickSyncInterval) {
+      clearInterval(this.tickSyncInterval);
+      this.tickSyncInterval = null;
+    }
+  }
+
+  private async broadcastTickSync(): Promise<void> {
+    const info = await this.tickService.getTickInfo();
+    this.pubsub.publishBroadcast({
+      type: 'tick.sync',
+      currentTick: info.currentTick,
+      tickRate: info.currentRate,
+      serverTime: info.serverTime,
+      boosts: info.activeBoosts,
+    });
   }
 
   private evictExpiredDedup() {
