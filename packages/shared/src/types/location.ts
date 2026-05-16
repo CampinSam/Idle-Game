@@ -1,5 +1,6 @@
 export type GlobalPowerType =
   | 'tick_boost'
+  | 'tick_speed_boost'
   | 'keeper_xp_boost'
   | 'entity_xp_boost'
   | 'mission_power_boost'

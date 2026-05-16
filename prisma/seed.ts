@@ -146,6 +146,124 @@ async function seedTestAccount() {
   console.log(`Seeded test account: test@derp.dev (${data?.player?.id ?? 'unknown id'})`);
 }
 
+// Powers to seed onto the test account's perfect specimens and primary outpost.
+// Each entry describes one nftAssetId and the powers array to merge in.
+const TEST_POWERS: Array<{
+  defTable: 'entityDefinition' | 'locationDefinition';
+  defId: string;
+  nftAssetId: string;
+  powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
+}> = [
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833',
+    powers: [
+      { powerType: 'tick_speed_boost', value: 50, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130',
+    powers: [
+      { powerType: 'entity_xp_boost', value: 75, durationMinutes: 120, dailyLimit: 2 },
+    ],
+  },
+  {
+    defTable: 'entityDefinition',
+    defId: 'derp_bird',
+    nftAssetId: 'CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130',
+    powers: [
+      { powerType: 'keeper_xp_boost', value: 50, durationMinutes: 90, dailyLimit: 1 },
+      { powerType: 'mission_duration_reduction', value: 25, durationMinutes: 60, dailyLimit: 1 },
+    ],
+  },
+  {
+    defTable: 'locationDefinition',
+    defId: 'derp_outpost',
+    nftAssetId: 'CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732',
+    powers: [
+      { powerType: 'mission_power_boost', value: 30, durationMinutes: 60, dailyLimit: 2 },
+    ],
+  },
+];
+
+async function seedTestPowers() {
+  // Group entries by (defTable, defId) so we only read/write each definition once.
+  const byDef = new Map<string, typeof TEST_POWERS>();
+  for (const entry of TEST_POWERS) {
+    const key = `${entry.defTable}:${entry.defId}`;
+    if (!byDef.has(key)) byDef.set(key, []);
+    byDef.get(key)!.push(entry);
+  }
+
+  for (const [key, entries] of byDef) {
+    const [defTable, defId] = key.split(':');
+    const model = (prisma as any)[defTable];
+    if (!model) {
+      throw new Error(`seedTestPowers: Prisma model "${defTable}" not found — check TABLE_TO_MODEL mapping`);
+    }
+
+    const def = await model.findUnique({ where: { id: defId } });
+    if (!def) {
+      throw new Error(
+        `seedTestPowers: Definition "${defId}" not found in ${defTable}. ` +
+        `Run seedDefinitions first (pnpm prisma db seed).`,
+      );
+    }
+
+    const rules = (def.rules && typeof def.rules === 'object') ? { ...(def.rules as Record<string, unknown>) } : {};
+    const uniques: Record<string, { powers: unknown[] }> = (rules.uniques && typeof rules.uniques === 'object')
+      ? { ...(rules.uniques as Record<string, { powers: unknown[] }>) }
+      : {};
+
+    for (const entry of entries) {
+      uniques[entry.nftAssetId] = { powers: entry.powers };
+    }
+
+    rules.uniques = uniques;
+
+    await model.update({
+      where: { id: defId },
+      data: { rules },
+    });
+
+    const nftIds = entries.map(e => e.nftAssetId.slice(-8)).join(', ');
+    console.log(`  ✓ ${defTable} "${defId}": seeded uniques for …${nftIds}`);
+  }
+
+  // Post-seed verification: read back each definition and assert every expected
+  // nftAssetId has at least one power entry so a partial write is caught immediately.
+  console.log('  Verifying seeded powers…');
+  for (const [key, entries] of byDef) {
+    const [defTable, defId] = key.split(':');
+    const model = (prisma as any)[defTable];
+    const def = await model.findUnique({ where: { id: defId } });
+    const uniques = ((def?.rules as any)?.uniques ?? {}) as Record<string, { powers: unknown[] }>;
+
+    for (const entry of entries) {
+      const stored = uniques[entry.nftAssetId];
+      if (!stored || !Array.isArray(stored.powers) || stored.powers.length === 0) {
+        throw new Error(
+          `seedTestPowers verification failed: nftAssetId "${entry.nftAssetId}" ` +
+          `has no powers in ${defTable} "${defId}" after upsert.`,
+        );
+      }
+      for (const expected of entry.powers) {
+        const found = stored.powers.find((p: any) => p.powerType === expected.powerType);
+        if (!found) {
+          throw new Error(
+            `seedTestPowers verification failed: powerType "${expected.powerType}" ` +
+            `missing for nftAssetId "${entry.nftAssetId}" in ${defTable} "${defId}".`,
+          );
+        }
+      }
+    }
+  }
+  console.log('  ✓ Power seed verification passed');
+}
+
 async function main() {
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -156,6 +274,7 @@ async function main() {
   // creating a known-credential account on the live database.
   if (!isProduction) {
     await seedTestAccount();
+    await seedTestPowers();
   } else {
     console.log('Production environment — skipping test account seed.');
   }
