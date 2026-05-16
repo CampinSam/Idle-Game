@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSyncEntities, useSyncStatus } from "../../hooks/useSyncSelectors";
 import { EntityList } from "./components";
+import { normalizeFilter } from "./entityListUtils";
 import type { EntityFilter, EntitySortBy } from "./types";
 
 function EntitiesPageSkeleton() {
@@ -59,15 +60,7 @@ function safeLocalStorageSet(key: string, value: string): void {
 }
 
 function readFilter(): EntityFilter {
-  const stored = safeLocalStorageGet(STORAGE_KEY_FILTER);
-  if (
-    stored === "ALL" ||
-    stored === "DERPS" ||
-    stored === "VAMPS" ||
-    stored === "PREDS"
-  )
-    return stored;
-  return "ALL";
+  return safeLocalStorageGet(STORAGE_KEY_FILTER) ?? "ALL";
 }
 
 function readSort(): EntitySortBy {
@@ -92,6 +85,11 @@ export default function EntitiesPage() {
   const [activeFilter, setActiveFilter] = useState<EntityFilter>(readFilter);
   const [searchQuery, setSearchQuery] = useState<string>(readSearch);
   const [sortBy, setSortBy] = useState<EntitySortBy>(readSort);
+
+  const validFilter = useMemo(
+    () => normalizeFilter(activeFilter, entities),
+    [activeFilter, entities],
+  );
 
   function handleFilterChange(filter: EntityFilter) {
     safeLocalStorageSet(STORAGE_KEY_FILTER, filter);
@@ -118,7 +116,7 @@ export default function EntitiesPage() {
           mode="display"
           useCase="browse"
           showControls
-          activeFilter={activeFilter}
+          activeFilter={validFilter}
           onFilterChange={handleFilterChange}
           search={searchQuery}
           onSearchChange={handleSearchChange}

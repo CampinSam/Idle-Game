@@ -1,12 +1,27 @@
 import type { EntityFilter, EntitySortBy } from './types';
+import { getEntityKind, getKindMeta } from './registry';
 import { getEntityPower } from './utils';
 
-export const COLLECTION_OPTIONS: Array<{ key: EntityFilter; label: string; archetypeKeys: string[] | null }> = [
-  { key: 'ALL',   label: 'All',   archetypeKeys: null },
-  { key: 'DERPS', label: 'Derps', archetypeKeys: ['Derp', 'Dave', 'Warrior', 'Mage', 'Rogue', 'Healer', 'Tank'] },
-  { key: 'VAMPS', label: 'Vamps', archetypeKeys: ['Vamp', 'Vampire'] },
-  { key: 'PREDS', label: 'Preds', archetypeKeys: ['Pred', 'Predator'] },
-];
+export interface CollectionOption {
+  key: EntityFilter;
+  label: string;
+}
+
+const ALL_OPTION: CollectionOption = { key: 'ALL', label: 'All' };
+
+export function buildCollectionOptions(entities: any[]): CollectionOption[] {
+  const seen = new Set<string>();
+  const options: CollectionOption[] = [ALL_OPTION];
+  for (const entity of entities) {
+    const kind = getEntityKind(entity);
+    if (kind && !seen.has(kind)) {
+      seen.add(kind);
+      const meta = getKindMeta(kind);
+      options.push({ key: kind, label: meta.label });
+    }
+  }
+  return options;
+}
 
 export const SORT_OPTIONS: Array<{ key: EntitySortBy; label: string }> = [
   { key: 'name',       label: 'Name (A–Z)' },
@@ -15,19 +30,21 @@ export const SORT_OPTIONS: Array<{ key: EntitySortBy; label: string }> = [
   { key: 'collection', label: 'Collection' },
 ];
 
+export function normalizeFilter(stored: string | null, entities: any[]): EntityFilter {
+  if (!stored || stored === 'ALL') return 'ALL';
+  const options = buildCollectionOptions(entities);
+  return options.some((o) => o.key === stored) ? stored : 'ALL';
+}
+
 export function passesFilter(entity: any, filter: EntityFilter): boolean {
   if (filter === 'ALL') return true;
-  const set = COLLECTION_OPTIONS.find(t => t.key === filter)?.archetypeKeys;
-  if (!set) return true;
-  const archetype = (entity?.traits?.body || entity?.traits?.head || '') as string;
-  return set.some(k => archetype.toLowerCase().includes(k.toLowerCase()));
+  return getEntityKind(entity) === filter;
 }
 
 export function collectionBucket(entity: any): number {
-  const idx = COLLECTION_OPTIONS.findIndex(
-    t => t.key !== 'ALL' && passesFilter(entity, t.key),
-  );
-  return idx === -1 ? 99 : idx;
+  const kind = getEntityKind(entity);
+  if (!kind) return 99;
+  return kind.charCodeAt(0);
 }
 
 export function getFilteredSortedEntities(

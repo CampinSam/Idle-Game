@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityCard from './EntityCard';
-import { COLLECTION_OPTIONS, SORT_OPTIONS, passesFilter, getFilteredSortedEntities } from '../entityListUtils';
+import { buildCollectionOptions, SORT_OPTIONS, passesFilter, getFilteredSortedEntities } from '../entityListUtils';
 import { isEntityBusy } from '../../inventory/utils/statChangeHelpers';
 import type {
   EntityListLayout,
@@ -72,6 +72,8 @@ export default function EntityList({
 
   const effectiveFilter: EntityFilter = activeFilter ?? filter ?? 'ALL';
 
+  const collectionOptions = useMemo(() => buildCollectionOptions(entities), [entities]);
+
   const filtered = useMemo(() => {
     if (showControls) {
       return getFilteredSortedEntities(entities, effectiveFilter, search ?? '', sortBy);
@@ -128,7 +130,7 @@ export default function EntityList({
             onChange={(e) => onFilterChange?.(e.target.value as EntityFilter)}
             aria-label="Filter by collection"
           >
-            {COLLECTION_OPTIONS.map((opt) => (
+            {collectionOptions.map((opt) => (
               <option key={opt.key} value={opt.key}>{opt.label}</option>
             ))}
           </select>
@@ -149,7 +151,7 @@ export default function EntityList({
       {/* Legacy tab strip */}
       {showFilterTabs && !showControls && (
         <div className="flex bg-[rgba(0,0,0,0.25)] border-b border-[rgba(139,92,246,0.12)] shrink-0">
-          {COLLECTION_OPTIONS.map((tab) => (
+          {collectionOptions.map((tab) => (
             <button
               key={tab.key}
               type="button"

@@ -4,7 +4,7 @@ import { FullscreenModal } from '../../components/ui';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store';
 import { EntityDetail } from './components';
-import { getFilteredSortedEntities } from './entityListUtils';
+import { getFilteredSortedEntities, normalizeFilter } from './entityListUtils';
 import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
@@ -47,12 +47,6 @@ type LocationState = { slideDir?: SlideDir };
 
 function safeGet(key: string): string | null {
   try { return localStorage.getItem(key); } catch { return null; }
-}
-
-function readBrowseFilter(): EntityFilter {
-  const v = safeGet(STORAGE_KEY_FILTER);
-  if (v === 'ALL' || v === 'DERPS' || v === 'VAMPS' || v === 'PREDS') return v;
-  return 'ALL';
 }
 
 function readBrowseSort(): EntitySortBy {
@@ -113,11 +107,15 @@ export default function EntityDetailPage() {
   const entity = useAppSelector((s) => s.sync.entities[id ?? '']);
   const entityMap = useAppSelector((s) => s.sync.entities);
 
-  const browseFilter = useMemo(readBrowseFilter, []);
   const browseSortBy = useMemo(readBrowseSort, []);
   const browseSearch = useMemo(() => safeGet(STORAGE_KEY_SEARCH) ?? '', []);
 
   const allEntities = useMemo(() => Object.values(entityMap), [entityMap]);
+
+  const browseFilter = useMemo(
+    () => normalizeFilter(safeGet(STORAGE_KEY_FILTER), allEntities),
+    [allEntities],
+  );
 
   const navList = useMemo(
     () => getFilteredSortedEntities(allEntities, browseFilter, browseSearch, browseSortBy),
@@ -565,7 +563,7 @@ export default function EntityDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 overflow-y-auto">
+        <div className="flex flex-col flex-1 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
           <EntityDetail entity={entity} variant="full" />
         </div>
       </div>

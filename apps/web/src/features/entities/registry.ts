@@ -43,3 +43,10 @@ export function getEntityArchetype(entity: any): string {
 export function getEntityKind(entity: any): string {
   return (entity?.speciesId || entity?.kind || entity?.definitionId || '') as string;
 }
+
+export function getKindMeta(kind: string): EntityMeta {
+  if (KIND_REGISTRY[kind]) return KIND_REGISTRY[kind].meta;
+  const archetype = kind.toLowerCase();
+  if (ARCHETYPE_REGISTRY[archetype]) return ARCHETYPE_REGISTRY[archetype].meta;
+  return defaultEntityViews.meta;
+}

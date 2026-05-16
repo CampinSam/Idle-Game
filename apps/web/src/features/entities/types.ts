@@ -3,7 +3,7 @@ import type { Entity } from '@derp/shared';
 
 export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'potion-picker';
 
-export type EntityFilter = 'ALL' | 'DERPS' | 'VAMPS' | 'PREDS';
+export type EntityFilter = string;
 
 export type EntitySortBy = 'name' | 'level' | 'power' | 'collection';
 
