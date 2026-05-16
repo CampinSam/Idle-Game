@@ -605,26 +605,21 @@ function EntityUniquePowerPanel({
 }) {
   const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
-  const [usageState, setUsageState] = useState<Record<string, { usageCount: number; dailyLimit: number }>>({});
+  const storedUsages = useAppSelector((s) => s.sync.entityPowerUsages[entityId] ?? {});
   const [countdown, setCountdown] = useState(0);
   const [triggering, setTriggering] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const today = getUtcDay();
-    api.getEntityPowerUsage(entityId).then((data) => {
-      if (cancelled) return;
-      const state: Record<string, { usageCount: number; dailyLimit: number }> = {};
-      for (const p of powers) {
-        const entry = data[p.powerType];
-        if (entry && entry.lastUsedUtcDay === today) {
-          state[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
-        }
+  const today = getUtcDay();
+  const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
+    const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
+    for (const p of powers) {
+      const entry = storedUsages[p.powerType];
+      if (entry && entry.lastUsedUtcDay === today) {
+        result[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
       }
-      setUsageState(state);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [entityId, powers]);
+    }
+    return result;
+  }, [storedUsages, powers, today]);
 
   useEffect(() => {
     const update = () => setCountdown(getSecondsUntilUtcMidnight());
@@ -649,23 +644,9 @@ function EntityUniquePowerPanel({
             durationMs: 8000,
           });
         }
-        setUsageState((prev) => ({
-          ...prev,
-          [powerType]: {
-            usageCount: (prev[powerType]?.usageCount ?? 0) + 1,
-            dailyLimit: powers.find((p) => p.powerType === powerType)?.dailyLimit ?? 1,
-          },
-        }));
       } catch (err: any) {
         const msg = err?.message || 'Failed to trigger power';
         const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
-        if (isLimit) {
-          const p = powers.find((pw) => pw.powerType === powerType);
-          setUsageState((prev) => ({
-            ...prev,
-            [powerType]: { usageCount: p?.dailyLimit ?? 1, dailyLimit: p?.dailyLimit ?? 1 },
-          }));
-        }
         addTransientToast({
           title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
           body: msg,
@@ -677,7 +658,7 @@ function EntityUniquePowerPanel({
         setTriggering(null);
       }
     },
-    [entityId, execute, addTransientToast, triggering, powers],
+    [entityId, execute, addTransientToast, triggering],
   );
 
   if (powers.length === 0) return null;

@@ -126,6 +126,17 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     const pb = new PatchBuilder();
     await buildEntityPatch(pb, ctx.tx, entityId);
 
+
+    const allUsagesForEntity = await (this.prisma as any).entityPowerUsage.findMany({
+      where: { entityId, lastUsedUtcDay: today },
+      select: { powerKey: true, usageCount: true, lastUsedUtcDay: true },
+    });
+    const usageMap: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    for (const u of allUsagesForEntity) {
+      usageMap[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+    }
+    pb.upsert('entityPowerUsage', entityId, usageMap);
+
     const toastMessage = power.powerType === 'tick_boost'
       ? `⚡ Global Tick Boost activated! +${percentBoost}% world tick speed for ${power.durationMinutes} minutes!`
       : `Power "${powerKey}" activated for ${power.durationMinutes} minutes!`;

@@ -42,6 +42,7 @@ export interface BootstrapResult {
     homeBanners?: HomeBannerSnapshot[];
     activeSeason?: any;
     activePowers?: ActiveGlobalPowerSummary[];
+    entityPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
   };
   cursor: { delta: string };
 }
@@ -160,6 +161,7 @@ export class QueryService {
       activeSeason,
       tickInfo,
       activePowers,
+      entityPowerUsageRows,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -280,10 +282,26 @@ export class QueryService {
       }),
       this.tickService.getTickInfo(),
       this.globalPowerService.getActivePowers(),
+      (this.prisma as any).entityPowerUsage.findMany({
+        where: {
+          entity: { ownerUserId: userId },
+          lastUsedUtcDay: new Date().toISOString().slice(0, 10),
+        },
+        select: { entityId: true, powerKey: true, usageCount: true, lastUsedUtcDay: true },
+      }),
     ]);
 
     const cursorId = latestDelta?.id ?? BigInt(0);
     const currencyIds = new Set<string>(currencyDefs.map((c: any) => c.id));
+
+    const entityPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>> = {};
+    for (const row of entityPowerUsageRows as any[]) {
+      if (!entityPowerUsages[row.entityId]) entityPowerUsages[row.entityId] = {};
+      entityPowerUsages[row.entityId][row.powerKey] = {
+        usageCount: row.usageCount,
+        lastUsedUtcDay: row.lastUsedUtcDay,
+      };
+    }
 
     // Enrich each check-in def's rewards[] with the linked gift's iconKey so
     // the daily-login tracker shows the actual reward icon per day.
@@ -443,6 +461,7 @@ export class QueryService {
           valueMode: p.valueMode,
           endTime: p.endTime,
         })),
+        entityPowerUsages,
       },
       cursor: { delta: cursorId.toString() },
     };

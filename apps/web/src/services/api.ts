@@ -532,6 +532,7 @@ export interface BootstrapResponse {
     activeEffects?: any;
     activeSeason?: { id: string; name?: string; [key: string]: unknown } | null;
     activePowers?: ActivePowerSummary[];
+    entityPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
   };
   cursor: { delta: string };
 }

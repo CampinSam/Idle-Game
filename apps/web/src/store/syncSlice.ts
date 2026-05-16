@@ -85,6 +85,10 @@ interface SyncState {
   // current by the global_power.changed SSE broadcast.
   globalPowers: GlobalPowerSnapshot[];
 
+  // Entity power usage — keyed by entityId → { [powerKey]: { usageCount, lastUsedUtcDay } }
+  // Populated from the bootstrap snapshot and patched after TriggerEntityPower commands.
+  entityPowerUsages: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
+
   // Visual catalog — read-only, comes down in bootstrap. Keyed by `key`
   // so `<Tag tagKey>` is a single dictionary lookup.
   tagDefs: Record<string, any>;
@@ -124,6 +128,7 @@ const initialState: SyncState = {
   activeSeason: null,
   homeBanners: [],
   globalPowers: [],
+  entityPowerUsages: {},
 
   tagDefs: {},
   visualEffectDefs: {},
@@ -183,6 +188,7 @@ const syncSlice = createSlice({
       state.gifts = {};
       state.activeEffects = {};
       state.currencyBalances = {};
+      state.entityPowerUsages = {};
 
       // Catalog tables: rebuilt in full on every bootstrap (rare changes,
       // small payload). Keyed by stable `key` not `id` so callers can do
@@ -249,6 +255,10 @@ const syncSlice = createSlice({
         ? (snapshot.state as any).activePowers
         : [];
 
+      if (snapshot.entityPowerUsages && typeof snapshot.entityPowerUsages === 'object') {
+        state.entityPowerUsages = snapshot.entityPowerUsages;
+      }
+
       if ((action.payload as any).tickAnchor) {
         state.tickAnchor = (action.payload as any).tickAnchor;
       }
@@ -297,6 +307,15 @@ const syncSlice = createSlice({
         if (patch.entity === 'currencyBalance') {
           if (patch.op === 'upsert' && patch.data) {
             state.currencyBalances = { ...state.currencyBalances, ...patch.data };
+          }
+          continue;
+        }
+
+        if (patch.entity === 'entityPowerUsage') {
+          if (patch.op === 'upsert' && patch.id && patch.data) {
+            state.entityPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
+          } else if (patch.op === 'delete' && patch.id) {
+            delete state.entityPowerUsages[patch.id];
           }
           continue;
         }
