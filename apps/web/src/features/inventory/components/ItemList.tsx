@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { RARITY_TIERS, RARITY_ORDER, RARITY_DISPLAY_LABEL, type Rarity } from '@derp/shared';
+import { RARITY_TIERS, RARITY_DISPLAY_LABEL, type Rarity } from '@derp/shared';
 import ItemCard from './ItemCard';
 import type { ItemListMode, ItemUseCase } from '../types';
 
