@@ -8,6 +8,7 @@ import { getFilteredSortedEntities } from './entityListUtils';
 import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
+import { isLeader } from './types/perp/isLeader';
 import { useCommand } from '../../hooks/useCommand';
 import { useBodyCardVariant } from '../../context/BodyCardVariantContext';
 import type { EntityFilter, EntitySortBy } from './types';
@@ -15,6 +16,7 @@ import type { EntityFilter, EntitySortBy } from './types';
 function getCollectionLabel(entity: any): string | null {
   const kind = getEntityKind(entity);
   if (kind === 'derp_bird') return 'Derp Bird Collection';
+  if (kind === 'perp') return 'Perp Collection';
   return null;
 }
 
@@ -463,7 +465,15 @@ export default function EntityDetailPage() {
                       )}
                     </span>
                   ) : (
-                    getCollectionLabel(entity)
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                      {getCollectionLabel(entity)}
+                      {getEntityKind(entity) === 'perp' && isLeader(entity) && (
+                        <span className="text-[#fbbf24]">
+                          {' · '}
+                          {isLeader(entity) === 'multiverse_leader' ? 'MULTIVERSE LEADER' : 'LEADER'}
+                        </span>
+                      )}
+                    </span>
                   )}
                 </div>
               )}
