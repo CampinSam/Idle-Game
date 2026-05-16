@@ -68,7 +68,7 @@ export function serializeLocation(
     ownerUserId: location.ownerUserId,
     definitionId: location.definitionId,
     regionId: location.regionId,
-    name: location.name || location.state?.nftName || location.definitionId || location.regionId || 'Location',
+    name: location.name || location.state?.nftName || null,
     nftAssetId: location.nftAssetId ?? null,
     nftAttributes: location.state?.nftAttributes ?? null,
     nftImageUrl: location.state?.nftImageUrl ?? null,
