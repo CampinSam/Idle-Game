@@ -175,14 +175,18 @@ model EntityDefinition {
   // { archetype: { slotStats, tags, emoji, color, gradient, scaling, rarityMultiplier, rarity } }
   traits            Json     @default("{}")
 
-  // Progression rules: { enabled, maxLevel, xpCurve, statGain }
-  progression       Json     @default("{}")
-  // Ascension rules: { enabled, cap, costPerStep, effects } (gameplay TBD)
-  ascension         Json     @default("{\"enabled\": false}")
-  // Mastery rules: { enabled, branches } (gameplay TBD)
-  mastery           Json     @default("{\"enabled\": false}")
-  // Initialization rules: { scratch: {...}, nft: { attributeMap, ... } }
-  init              Json     @default("{}")
+  // Progression rules: { enabled, maxLevel, xpCurve, statGain? }.
+  // Required — no schema default; seeds and admin writes must supply a
+  // complete object. Validated at seed time by validateEntityDefinition.
+  progression       Json
+  // Ascension rules: { enabled, cap?, costPerStep?, effects? } (gameplay TBD).
+  ascension         Json
+  // Mastery rules: { enabled, branches? } (gameplay TBD).
+  mastery           Json
+  // Initialization rules: { scratch: { startingLevel, baseStats, slotFill },
+  //                         nft?: { attributeMap, missingSlotPolicy, defaults } }.
+  // Required — no schema default; seeds and admin writes must supply scratch.
+  init              Json
 
   rules             Json     @default("{}")
   data              Json     @default("{}")

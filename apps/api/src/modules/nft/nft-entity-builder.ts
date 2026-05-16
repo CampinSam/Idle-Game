@@ -50,12 +50,39 @@ export async function buildEntityDataFromNftMetadata(
   // attributeMap lives on EntityDefinition.init.nft.attributeMap as of
   // task #371 (was a top-level column briefly after #367; before that on
   // NftCollectionDef.data).
-  const initRules = (entityDef.init as any) || {};
-  const nftRules = (initRules.nft as any) || {};
-  const rawAttributeMap = (nftRules.attributeMap as any) || {};
-  const missingSlotPolicy: 'error' | 'skip' | 'default' =
-    (nftRules.missingSlotPolicy as any) || 'skip';
-  const slotDefaults: Record<string, string> = (nftRules.defaults as any) || {};
+  // No silent fallbacks: any EntityDefinition that backs an NFT collection
+  // must declare a complete init.nft block. Seed-time validation
+  // (validateEntityDefinition) requires init.nft when an NftCollectionDef
+  // points at this definition; we re-check at build time so a missing or
+  // partially-migrated row fails loudly here too.
+  const initRules = entityDef.init as any;
+  if (!initRules || typeof initRules !== 'object') {
+    throw new Error(
+      `EntityDefinition "${entityDef.id}" backs NFT collection "${collection.id}" but is missing required \`init\` object`,
+    );
+  }
+  const nftRules = initRules.nft as any;
+  if (!nftRules || typeof nftRules !== 'object') {
+    throw new Error(
+      `EntityDefinition "${entityDef.id}" backs NFT collection "${collection.id}" but is missing required \`init.nft\` object`,
+    );
+  }
+  if (!nftRules.attributeMap || typeof nftRules.attributeMap !== 'object') {
+    throw new Error(
+      `EntityDefinition "${entityDef.id}" is missing required \`init.nft.attributeMap\``,
+    );
+  }
+  const rawAttributeMap = nftRules.attributeMap as Record<string, string>;
+  const missingSlotPolicy = nftRules.missingSlotPolicy as 'error' | 'skip' | 'default';
+  if (missingSlotPolicy !== 'error' && missingSlotPolicy !== 'skip' && missingSlotPolicy !== 'default') {
+    throw new Error(
+      `EntityDefinition "${entityDef.id}" has invalid \`init.nft.missingSlotPolicy\`=${JSON.stringify(missingSlotPolicy)} (expected one of: error, skip, default)`,
+    );
+  }
+  const slotDefaults = (nftRules.defaults as Record<string, string>) ?? {};
+  if (typeof slotDefaults !== 'object') {
+    throw new Error(`EntityDefinition "${entityDef.id}" has invalid \`init.nft.defaults\` (must be object)`);
+  }
   if (rawAttributeMap && typeof rawAttributeMap === 'object') {
     for (const [rawKey, mappedSlot] of Object.entries(rawAttributeMap)) {
       if (typeof mappedSlot !== 'string') continue;

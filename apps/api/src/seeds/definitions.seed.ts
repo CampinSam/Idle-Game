@@ -77,6 +77,80 @@ async function upsertManyForce(prisma: any, model: string, rows: any[], transfor
   }
 }
 
+/**
+ * Validate an EntityDefinition row before it is upserted. Task #371 swapped
+ * the legacy boolean/int progression columns for four structured JSON
+ * sub-objects (`progression`, `ascension`, `mastery`, `init`) and explicitly
+ * forbids silent fallbacks for missing rules. Any seed row missing required
+ * keys must fail loudly here so a partially-migrated definition never
+ * reaches Prisma.
+ */
+function validateEntityDefinition(row: any): void {
+  const id = row?.id ?? '<unknown>';
+  const fail = (msg: string): never => {
+    throw new Error(`EntityDefinition seed row "${id}" invalid: ${msg}`);
+  };
+
+  if (!row || typeof row !== 'object') fail('row is not an object');
+  if (typeof row.name !== 'string' || !row.name) fail('missing required `name`');
+  if (typeof row.speciesId !== 'string' || !row.speciesId) fail('missing required `speciesId`');
+
+  const p = row.progression;
+  if (!p || typeof p !== 'object') fail('missing required `progression` object');
+  if (typeof p.maxLevel !== 'number' || p.maxLevel < 1) fail('`progression.maxLevel` must be a positive number');
+  if (!p.xpCurve || typeof p.xpCurve !== 'object') fail('missing required `progression.xpCurve`');
+  if (p.xpCurve.kind !== 'geometric' && p.xpCurve.kind !== 'table') {
+    fail(`\`progression.xpCurve.kind\` must be "geometric" or "table" (got ${JSON.stringify(p.xpCurve.kind)})`);
+  }
+
+  if (!row.ascension || typeof row.ascension !== 'object') fail('missing required `ascension` object');
+  if (typeof row.ascension.enabled !== 'boolean') fail('`ascension.enabled` must be boolean');
+
+  if (!row.mastery || typeof row.mastery !== 'object') fail('missing required `mastery` object');
+  if (typeof row.mastery.enabled !== 'boolean') fail('`mastery.enabled` must be boolean');
+
+  const init = row.init;
+  if (!init || typeof init !== 'object') fail('missing required `init` object');
+  const scratch = init.scratch;
+  if (!scratch || typeof scratch !== 'object') fail('missing required `init.scratch` object');
+  if (typeof scratch.startingLevel !== 'number' || scratch.startingLevel < 1) {
+    fail('`init.scratch.startingLevel` must be a positive number');
+  }
+  if (!scratch.baseStats || typeof scratch.baseStats !== 'object') {
+    fail('missing required `init.scratch.baseStats` map');
+  }
+  if (!scratch.slotFill || typeof scratch.slotFill !== 'object' || typeof scratch.slotFill.kind !== 'string') {
+    fail('missing required `init.scratch.slotFill.kind`');
+  }
+  const fillKind = scratch.slotFill.kind;
+  if (fillKind !== 'singleRandomArchetype' && fillKind !== 'multiRandomArchetype' && fillKind !== 'fixed') {
+    fail(`\`init.scratch.slotFill.kind\` must be one of singleRandomArchetype | multiRandomArchetype | fixed (got ${JSON.stringify(fillKind)})`);
+  }
+  if (fillKind === 'multiRandomArchetype' && (typeof scratch.slotFill.count !== 'number' || scratch.slotFill.count < 1)) {
+    fail('`init.scratch.slotFill.count` must be a positive number when kind=multiRandomArchetype');
+  }
+  if (fillKind === 'fixed' && (!scratch.slotFill.fixed || typeof scratch.slotFill.fixed !== 'object')) {
+    fail('`init.scratch.slotFill.fixed` must be a {slot:archetype} map when kind=fixed');
+  }
+
+  // init.nft is optional in general, but if present every required sub-key
+  // must be a valid value — no defaulting at runtime.
+  if (init.nft !== undefined) {
+    const nft = init.nft;
+    if (!nft || typeof nft !== 'object') fail('`init.nft` must be an object when present');
+    if (!nft.attributeMap || typeof nft.attributeMap !== 'object') {
+      fail('`init.nft.attributeMap` is required when `init.nft` is present');
+    }
+    const policy = nft.missingSlotPolicy;
+    if (policy !== 'error' && policy !== 'skip' && policy !== 'default') {
+      fail(`\`init.nft.missingSlotPolicy\` must be one of error | skip | default (got ${JSON.stringify(policy)})`);
+    }
+    if (nft.defaults !== undefined && (typeof nft.defaults !== 'object' || nft.defaults === null)) {
+      fail('`init.nft.defaults` must be an object when present');
+    }
+  }
+}
+
 export async function seedDefinitions(prisma: any) {
   const defs = loadJson('definitions.json');
   const itemDefs = loadJson('item-defs.json');
@@ -106,6 +180,12 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.entityDefinitions) {
+    // Validate every row up-front so a missing progression/init block fails
+    // the whole seed batch (no partial migration). Task #371: no fallbacks —
+    // an invalid definition must never reach Prisma.
+    for (const row of defs.entityDefinitions) {
+      validateEntityDefinition(row);
+    }
     // Force-update so changes to slots/equipmentSlots/traits/progression caps
     // propagate to existing rows on every boot.
     await upsertManyForce(prisma, 'entityDefinition', defs.entityDefinitions);

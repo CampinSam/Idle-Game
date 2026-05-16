@@ -44,12 +44,43 @@ export async function generateEntityData(
     throw new Error(`EntityDefinition "${definitionId}" not found`);
   }
 
-  const initRules = (entityDef.init as any) || {};
-  const scratchRules = (initRules.scratch as any) || {};
-  const slotFill = (scratchRules.slotFill as any) || { kind: 'singleRandomArchetype' };
-  const startingLevel: number = typeof scratchRules.startingLevel === 'number' ? scratchRules.startingLevel : 1;
-  const initBaseStats: Record<string, number> = (scratchRules.baseStats as any) || {};
-  const progressionStatGain = (entityDef.progression as any)?.statGain;
+  // No silent fallbacks: a definition that reaches generateEntityData must
+  // declare a complete init.scratch block. Seed-time validation
+  // (validateEntityDefinition) guarantees this for seeded definitions; admin
+  // writes are validated server-side before persistence. We re-check here so
+  // a hand-rolled / partially-migrated row fails loudly instead of silently
+  // producing a level-1, all-zero entity.
+  const initRules = entityDef.init as any;
+  if (!initRules || typeof initRules !== 'object') {
+    throw new Error(`EntityDefinition "${definitionId}" is missing required \`init\` object`);
+  }
+  const scratchRules = initRules.scratch as any;
+  if (!scratchRules || typeof scratchRules !== 'object') {
+    throw new Error(`EntityDefinition "${definitionId}" is missing required \`init.scratch\` object`);
+  }
+  const slotFill = scratchRules.slotFill as any;
+  if (!slotFill || typeof slotFill.kind !== 'string') {
+    throw new Error(
+      `EntityDefinition "${definitionId}" is missing required \`init.scratch.slotFill.kind\``,
+    );
+  }
+  if (typeof scratchRules.startingLevel !== 'number') {
+    throw new Error(
+      `EntityDefinition "${definitionId}" is missing required \`init.scratch.startingLevel\``,
+    );
+  }
+  const startingLevel: number = scratchRules.startingLevel;
+  const initBaseStats = scratchRules.baseStats as Record<string, number>;
+  if (!initBaseStats || typeof initBaseStats !== 'object') {
+    throw new Error(
+      `EntityDefinition "${definitionId}" is missing required \`init.scratch.baseStats\` map`,
+    );
+  }
+  const progression = entityDef.progression as any;
+  if (!progression || typeof progression !== 'object') {
+    throw new Error(`EntityDefinition "${definitionId}" is missing required \`progression\` object`);
+  }
+  const progressionStatGain = progression.statGain;
 
   const resolvedName =
     displayName || entityDef.name || (entityDef.data as any)?.name || entityDef.id;
@@ -98,9 +129,6 @@ export async function generateEntityData(
   }
 
   function applyTraitContribution(slotName: string, traitDef: any) {
-    void slotName;
-    void traitDef;
-
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
       // Resolve RND immediately so it never lands in baseStats as 'RND'.
