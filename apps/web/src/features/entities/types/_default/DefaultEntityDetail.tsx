@@ -136,7 +136,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
   const allJobs = useAppSelector((s) => s.sync.jobs);
-  const allLocations = useAppSelector((s) => s.sync.locations);
 
   const entityActiveJob = useMemo(() => {
     return Object.values(allJobs).find((j: any) =>
@@ -418,13 +417,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
                 // Deeplink targets
                 let link: string | null = null;
                 if (st === 'mission') {
-                  // Mission jobs don't carry a locationId — use the player's
-                  // first active outpost as the nearest relevant location, or
-                  // fall back to the missions list page.
-                  const firstLocation = Object.values(allLocations).find(
-                    (l: any) => l.enabled !== false,
-                  ) as any;
-                  link = firstLocation ? `/locations/${firstLocation.id}` : '/missions';
+                  // Mission jobs don't carry a locationId — route to the
+                  // missions page, which is the canonical in-game context for
+                  // a running mission.
+                  link = '/missions';
                 } else if (st === 'working') {
                   const locationId = entityActiveJob?.data?.locationId;
                   link = locationId ? `/locations/${locationId}/workshop` : '/crafting';
