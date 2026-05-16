@@ -243,10 +243,10 @@ const syncSlice = createSlice({
         ? (snapshot as any).homeBanners
         : [];
 
-      state.globalPowers = Array.isArray((snapshot.state as any)?.activePowers)
+      state.globalPowers = Array.isArray(snapshot.activePowers)
+        ? snapshot.activePowers
+        : Array.isArray((snapshot.state as any)?.activePowers)
         ? (snapshot.state as any).activePowers
-        : Array.isArray((snapshot as any).activePowers)
-        ? (snapshot as any).activePowers
         : [];
 
       if ((action.payload as any).tickAnchor) {

@@ -499,6 +499,15 @@ class ApiClient {
   }
 }
 
+export interface ActivePowerSummary {
+  id: string;
+  label: string;
+  powerType: string;
+  value: number;
+  valueMode: string;
+  endTime: string;
+}
+
 export interface BootstrapResponse {
   serverTime: number;
   tickAnchor?: {
@@ -516,6 +525,7 @@ export interface BootstrapResponse {
     currencies?: any;
     activeEffects?: any;
     activeSeason?: { id: string; name?: string; [key: string]: unknown } | null;
+    activePowers?: ActivePowerSummary[];
   };
   cursor: { delta: string };
 }
