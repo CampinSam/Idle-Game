@@ -2,7 +2,7 @@
   "_meta": {
     "exportedAt": "2026-05-16T14:44:26.060Z",
     "source": "production",
-    "description": "Production definition data export — items, recipes, missions, mission categories, loot bundles"
+    "description": "Production definition data export — items, recipes, missions, mission categories, loot bundles, display_defs"
   },
   "item_defs": [
     {
@@ -5151,6 +5151,251 @@
       "enabled": true,
       "createdAt": "2026-03-17T21:26:14.187",
       "updatedAt": "2026-05-16T14:18:33.891"
+    }
+  ],
+  "display_defs": [
+    {
+      "id": "display_quick_mission",
+      "name": "Quick Mission",
+      "borderColor": "#4dcb6a",
+      "backgroundImage": "/images/mission-quick.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.845",
+      "updatedAt": "2026-02-17T15:54:47.276",
+      "style": {}
+    },
+    {
+      "id": "display_standard_mission",
+      "name": "Standard Mission",
+      "borderColor": "#4db0da",
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.853",
+      "updatedAt": "2026-02-17T15:54:47.08",
+      "style": {}
+    },
+    {
+      "id": "display_outpost_mission",
+      "name": "Outpost Mission",
+      "borderColor": "#8a7aee",
+      "backgroundImage": "/images/mission-outpost.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.859",
+      "updatedAt": "2026-02-17T15:54:46.878",
+      "style": {}
+    },
+    {
+      "id": "display_scavenging_mission",
+      "name": "Scavenging Mission",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/mission-scavenging.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.865",
+      "updatedAt": "2026-02-17T15:54:46.775",
+      "style": {}
+    },
+    {
+      "id": "display_seasonal_mission",
+      "name": "Seasonal Mission",
+      "borderColor": "#c040e0",
+      "backgroundImage": "/images/mission-seasonal.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-14T22:10:27.871",
+      "updatedAt": "2026-02-17T15:54:46.56",
+      "style": {}
+    },
+    {
+      "id": "display_prologue",
+      "name": "display_prologue",
+      "borderColor": null,
+      "backgroundImage": null,
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-16T20:44:26.676",
+      "updatedAt": "2026-02-17T15:54:46.353",
+      "style": {}
+    },
+    {
+      "id": "display_perps_cat",
+      "name": "Display - Perps Category",
+      "borderColor": null,
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-17T01:08:31.616",
+      "updatedAt": "2026-02-17T15:54:46.253",
+      "style": {}
+    },
+    {
+      "id": "display_perp4",
+      "name": "Display - Perp 4",
+      "borderColor": null,
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-17T01:08:31.951",
+      "updatedAt": "2026-02-17T15:54:46.056",
+      "style": {}
+    },
+    {
+      "id": "display_perp3",
+      "name": "Display - Perp 3",
+      "borderColor": null,
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-17T01:08:32.207",
+      "updatedAt": "2026-02-17T15:54:45.951",
+      "style": {}
+    },
+    {
+      "id": "display_perp2",
+      "name": "Display - Perp 2",
+      "borderColor": null,
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-17T01:08:32.423",
+      "updatedAt": "2026-02-17T15:54:45.746",
+      "style": {}
+    },
+    {
+      "id": "display_perp1",
+      "name": "Display - Perp 1",
+      "borderColor": null,
+      "backgroundImage": "/images/mission-standard.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-02-17T01:08:32.744",
+      "updatedAt": "2026-02-17T15:54:45.546",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_derpshire_valley",
+      "name": "Scout Derpshire Valley",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/missions/mission_scout_derpshire_valley.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:19:16.825",
+      "updatedAt": "2026-04-24T18:18:02.012",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_sandcrypt_badlands",
+      "name": "Scout Sandcrypt Badlands",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/missions/mission_scout_sandcrypt_badlands.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:20:51.34",
+      "updatedAt": "2026-04-23T13:20:51.34",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_pinnacle_perch",
+      "name": "Scout Pinnacle Perch",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/missions/mission_scout_pinnacle_perch.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:22:48.866",
+      "updatedAt": "2026-04-23T13:22:48.866",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_baldos_bog",
+      "name": "Scout Baldo's Bog",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/missions/mission_scout_baldos_bog.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:23:24.385",
+      "updatedAt": "2026-04-24T18:22:44.627",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_lavalode_peaks",
+      "name": "Scout Lavalode Peaks",
+      "borderColor": "#FF0000",
+      "backgroundImage": "/images/missions/mission_scout_lavalode_peaks.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:24:10.241",
+      "updatedAt": "2026-04-23T13:24:10.241",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_chillartica_drifts",
+      "name": "Scout Chillartica Drifts",
+      "borderColor": "#e0a020",
+      "backgroundImage": "/images/missions/mission_scout_chillartica_drifts.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:24:34.428",
+      "updatedAt": "2026-04-23T13:24:34.428",
+      "style": {}
+    },
+    {
+      "id": "display_mission_scout_chillvine_jungle",
+      "name": "Scout Chillvine Jungle",
+      "borderColor": "#00ff00",
+      "backgroundImage": "/images/missions/mission_scout_chillvine_jungle.png",
+      "cardBackground": null,
+      "data": {},
+      "createdAt": "2026-04-23T13:25:14.561",
+      "updatedAt": "2026-04-23T13:25:14.561",
+      "style": {}
+    },
+    {
+      "id": "display_forge",
+      "name": "The Forge",
+      "borderColor": "#f97316",
+      "backgroundImage": "/images/regions/sandcrypt-badlands.png",
+      "cardBackground": "linear-gradient(180deg, rgba(249,115,22,0.18) 0%, rgba(34,24,88,0.95) 60%)",
+      "data": {},
+      "createdAt": "2026-04-30T17:25:56.941",
+      "updatedAt": "2026-04-30T17:25:56.941",
+      "style": {
+        "body": {
+          "color": "#fde68a"
+        },
+        "title": {
+          "color": "#fed7aa",
+          "fontWeight": "900",
+          "letterSpacing": "0.08em",
+          "textTransform": "uppercase"
+        },
+        "overlay": {
+          "color": "#0c0a1a",
+          "opacity": 0.55
+        }
+      }
+    },
+    {
+      "id": "display_recipe_default",
+      "name": "Recipe — Default",
+      "borderColor": "#8b5cf6",
+      "backgroundImage": null,
+      "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
+      "data": {},
+      "createdAt": "2026-04-30T17:25:57.165",
+      "updatedAt": "2026-04-30T17:25:57.165",
+      "style": {
+        "body": {
+          "color": "#cbd5e1"
+        },
+        "title": {
+          "color": "#c4b5fd",
+          "fontWeight": "800",
+          "letterSpacing": "0.04em"
+        }
+      }
     }
   ]
 }
