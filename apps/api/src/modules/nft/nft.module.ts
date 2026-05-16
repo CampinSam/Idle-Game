@@ -5,14 +5,15 @@ import { NftOwnershipService } from './nft-ownership.service';
 import { NftCollectionService } from './nft-collection.service';
 import { NftCollectionController } from './nft-collection.controller';
 import { NftImageImportService } from './nft-image-import.service';
+import { NftAssetCacheService } from './nft-asset-cache.service';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
   imports: [InfrastructureModule],
-  providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService, NftImageImportService],
+  providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService, NftImageImportService, NftAssetCacheService],
   controllers: [NftCollectionController],
-  exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider, NftImageImportService],
+  exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider, NftImageImportService, NftAssetCacheService],
 })
 export class NftModule implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NftModule.name);

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftOwnershipService, SupportedChain } from './nft-ownership.service';
 import { CardanoOwnershipProvider } from './cardano-ownership.provider';
+import { NftAssetCacheService, nftAssetRowToMetadata } from './nft-asset-cache.service';
 import { buildEntityDataFromNftMetadata } from './nft-entity-builder';
 import { buildLocationDataFromNftMetadata } from './nft-location-builder';
 import { PubSubService } from '../infrastructure/pubsub.service';
@@ -79,6 +80,7 @@ export class NftCollectionService {
     private prisma: PrismaService,
     private nftOwnership: NftOwnershipService,
     private cardanoProvider: CardanoOwnershipProvider,
+    private nftAssetCache: NftAssetCacheService,
     private pubsub: PubSubService,
     private nftImageImport: NftImageImportService,
   ) {}
@@ -143,29 +145,35 @@ export class NftCollectionService {
     });
   }
 
-  async importCollection(id: string): Promise<{ started: true; total: number }> {
+  /**
+   * Create game entity instances for all cached assets in a collection.
+   * Reads metadata from the NftAsset cache — run POST /:id/import first.
+   */
+  async createInstances(id: string): Promise<{ started: true; total: number }> {
     const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
     if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
     if (collection.chain !== 'CARDANO') {
-      throw new BadRequestException(`Import is only supported for CARDANO collections`);
+      throw new BadRequestException(`create-instances is only supported for CARDANO collections`);
     }
     if (!collection.entityDefinitionId) {
-      throw new BadRequestException(`Import is only supported for entity-backed collections (entityDefinitionId is required)`);
+      throw new BadRequestException(
+        `create-instances is only supported for entity-backed collections (entityDefinitionId is required)`,
+      );
     }
 
     const allAssetIds = await this.cardanoProvider.getAllPolicyAssets(collection.collectionId);
     const total = allAssetIds.length;
 
-    this.logger.log(`Starting background import of ${total} tokens for collection "${id}"`);
+    this.logger.log(`Starting background instance creation of ${total} tokens for collection "${id}"`);
 
-    this.runImport(collection, allAssetIds).catch((err) =>
-      this.logger.error(`Background import failed for collection "${id}": ${err}`),
+    this.runInstanceCreation(collection, allAssetIds).catch((err) =>
+      this.logger.error(`Background instance creation failed for collection "${id}": ${err}`),
     );
 
     return { started: true, total };
   }
 
-  private async runImport(collection: any, assetIds: string[]) {
+  private async runInstanceCreation(collection: any, assetIds: string[]) {
     const BATCH_SIZE = 5;
     const BATCH_DELAY_MS = 300;
     let created = 0;
@@ -185,12 +193,8 @@ export class NftCollectionService {
               return;
             }
 
-            const meta = await this.cardanoProvider.getAssetMetadata(collection.collectionId, assetId);
-            if (!meta) {
-              failed++;
-              return;
-            }
-
+            const cachedAsset = await this.nftAssetCache.fetchAndCache(nftAssetId);
+            const meta = nftAssetRowToMetadata(cachedAsset);
             const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
 
             await (this.prisma as any).entity.create({
@@ -205,7 +209,7 @@ export class NftCollectionService {
 
             created++;
           } catch (err) {
-            this.logger.error(`Failed to import NFT ${nftAssetId}: ${err}`);
+            this.logger.error(`Failed to create instance for NFT ${nftAssetId}: ${err}`);
             failed++;
           }
         }),
@@ -214,7 +218,7 @@ export class NftCollectionService {
       const processed = Math.min(i + BATCH_SIZE, assetIds.length);
       if (processed % 100 === 0 || processed === assetIds.length) {
         this.logger.log(
-          `Import progress [${collection.id}]: ${processed}/${assetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
+          `Instance creation progress [${collection.id}]: ${processed}/${assetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
         );
       }
 
@@ -224,7 +228,7 @@ export class NftCollectionService {
     }
 
     this.logger.log(
-      `Import complete [${collection.id}]: created=${created}, skipped=${skipped}, failed=${failed}`,
+      `Instance creation complete [${collection.id}]: created=${created}, skipped=${skipped}, failed=${failed}`,
     );
   }
 
@@ -308,13 +312,11 @@ export class NftCollectionService {
 
             if (!existingLocation) {
               // No location row yet — create one on-demand (no pre-import step needed for locations).
+              // fetchAndCache throws if Blockfrost fails; that error propagates to the outer catch
+              // and the location is not created (no silent fallback).
               try {
-                let meta: any = { name: asset.assetId, imageUrl: null, attributes: {} };
-                try {
-                  meta = await this.cardanoProvider.getAssetMetadata(collection.collectionId, asset.assetId) ?? meta;
-                } catch (metaErr) {
-                  this.logger.warn(`Could not fetch metadata for ${nftAssetId}, using defaults: ${metaErr}`);
-                }
+                const cachedAsset = await this.nftAssetCache.fetchAndCache(nftAssetId);
+                const meta = nftAssetRowToMetadata(cachedAsset);
 
                 const locationData = buildLocationDataFromNftMetadata(collection, meta, nftAssetId);
                 const created = await (this.prisma as any).locationInstance.create({
@@ -443,12 +445,9 @@ export class NftCollectionService {
                 continue;
               }
               try {
-                const meta = await this.cardanoProvider.getAssetMetadata(collection.collectionId, asset.assetId);
-                if (!meta) {
-                  this.logger.warn(`No metadata returned for Cardano NFT ${nftAssetId}, skipping lazy import`);
-                  notImported++;
-                  continue;
-                }
+                // fetchAndCache throws if Blockfrost fails — propagates to outer catch (notImported++).
+                const cachedAsset = await this.nftAssetCache.fetchAndCache(nftAssetId);
+                const meta = nftAssetRowToMetadata(cachedAsset);
                 const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
                 try {
                   existingEntity = await (this.prisma as any).entity.create({
@@ -758,31 +757,27 @@ export class NftCollectionService {
           !nftAttributes || typeof nftAttributes !== 'object' || Object.keys(nftAttributes).length === 0;
 
         if (attributesEmpty && collection.chain === 'CARDANO' && entity.nftAssetId) {
-          const parts = (entity.nftAssetId as string).split(':');
-          if (parts.length >= 3) {
-            try {
-              const fetched = await this.cardanoProvider.getAssetMetadata(collection.collectionId, parts[2]);
-              if (fetched) {
-                nftAttributes = fetched.attributes;
-                nftRawMeta = fetched.rawMeta ?? {};
-                // Persist so future backfills (and rebuildNftEntityTraits) don't need to re-fetch.
-                await (this.prisma as any).entity.update({
-                  where: { id: entity.id },
-                  data: {
-                    state: {
-                      ...state,
-                      nftAttributes: fetched.attributes,
-                      nftRawMeta: fetched.rawMeta,
-                      ...(fetched.attributesRaw !== undefined ? { nftAttributesRaw: fetched.attributesRaw } : {}),
-                    },
-                  },
-                });
-              }
-            } catch (fetchErr) {
-              this.logger.warn(
-                `rebuildNftEntityTraits: could not fetch metadata for ${entity.nftAssetId}: ${fetchErr}`,
-              );
-            }
+          try {
+            // fetchAndCache is the sole gateway to Blockfrost — no direct provider calls.
+            const cachedAsset = await this.nftAssetCache.fetchAndCache(entity.nftAssetId as string);
+            const fetched = nftAssetRowToMetadata(cachedAsset);
+            nftAttributes = fetched.attributes;
+            nftRawMeta = fetched.rawMeta ?? {};
+            // Persist to entity state so offline rebuilds don't need to re-fetch.
+            await (this.prisma as any).entity.update({
+              where: { id: entity.id },
+              data: {
+                state: {
+                  ...state,
+                  nftAttributes: fetched.attributes,
+                  nftRawMeta: fetched.rawMeta,
+                },
+              },
+            });
+          } catch (fetchErr) {
+            this.logger.warn(
+              `rebuildNftEntityTraits: could not fetch metadata for ${entity.nftAssetId}: ${fetchErr}`,
+            );
           }
         }
 
@@ -858,16 +853,10 @@ export class NftCollectionService {
         continue;
       }
 
-      const policyId = parts[1];
-      const assetId = parts[2];
-
       try {
-        const meta = await this.cardanoProvider.getAssetMetadata(policyId, assetId);
-        if (!meta) {
-          this.logger.warn(`backfillNftMetadata: no metadata returned for ${loc.nftAssetId}`);
-          failed++;
-          continue;
-        }
+        // Route through cache — no direct Blockfrost call.
+        const cachedAsset = await this.nftAssetCache.fetchAndCache(loc.nftAssetId as string);
+        const meta = nftAssetRowToMetadata(cachedAsset);
 
         await (this.prisma as any).locationInstance.update({
           where: { id: loc.id },
@@ -876,7 +865,6 @@ export class NftCollectionService {
               ...state,
               nftAttributes: meta.attributes,
               nftRawMeta: meta.rawMeta,
-              ...(meta.attributesRaw !== undefined ? { nftAttributesRaw: meta.attributesRaw } : {}),
             },
           },
         });

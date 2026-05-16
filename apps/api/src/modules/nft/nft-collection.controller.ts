@@ -1,14 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../admin/admin.guard';
 import { NftCollectionService, CreateCollectionDto, UpdateCollectionDto } from './nft-collection.service';
 import { NftImageImportService } from './nft-image-import.service';
+import { NftAssetCacheService } from './nft-asset-cache.service';
 
 @Controller('nft/collections')
 export class NftCollectionController {
   constructor(
     private nftCollectionService: NftCollectionService,
     private nftImageImportService: NftImageImportService,
+    private nftAssetCache: NftAssetCacheService,
   ) {}
 
   @Get()
@@ -64,9 +66,54 @@ export class NftCollectionController {
     return this.nftCollectionService.deactivateCollection(id);
   }
 
+  /**
+   * Bulk-fetch all tokens in a policy from Blockfrost and populate the NftAsset
+   * cache table. Does NOT create any game instances.
+   */
   @Post(':id/import')
   @UseGuards(AdminGuard)
-  importCollection(@Param('id') id: string) {
-    return this.nftCollectionService.importCollection(id);
+  importCollectionCache(@Param('id') id: string) {
+    return this.nftAssetCache.importCollection(id);
+  }
+
+  /**
+   * (Renamed from POST /:id/import) Create game entity instances for all tokens
+   * in the given collection. Reads metadata from the NftAsset cache — run
+   * POST /:id/import first to populate it.
+   */
+  @Post(':id/create-instances')
+  @UseGuards(AdminGuard)
+  createInstances(@Param('id') id: string) {
+    return this.nftCollectionService.createInstances(id);
+  }
+
+  /**
+   * Re-fetch current on-chain holder addresses for all NftAsset rows in a
+   * collection and update ownerAddress + lastSyncedAt.
+   */
+  @Post(':id/refresh')
+  @UseGuards(AdminGuard)
+  refreshOwnership(@Param('id') id: string) {
+    return this.nftAssetCache.refreshOwnership(id);
+  }
+
+  /**
+   * List cached NftAsset rows for a collection. Paginated via ?page=&limit=.
+   * Optional ?owner=<address> filter.
+   */
+  @Get(':id/assets')
+  @UseGuards(AdminGuard)
+  listAssets(
+    @Param('id') id: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '100',
+    @Query('owner') owner?: string,
+  ) {
+    return this.nftAssetCache.listAssets(
+      id,
+      parseInt(page, 10) || 1,
+      parseInt(limit, 10) || 100,
+      owner,
+    );
   }
 }

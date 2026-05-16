@@ -253,6 +253,28 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
     return allAssets;
   }
 
+  /**
+   * Return the list of addresses currently holding the given asset.
+   * For NFTs (quantity = 1) this will typically be a single address.
+   */
+  async getAssetHolders(policyId: string, assetId: string): Promise<string[]> {
+    if (!this.apiKey) return [];
+    const unit = `${policyId}${assetId}`;
+    const url = `${this.baseUrl}/assets/${unit}/addresses`;
+    try {
+      const res = await fetch(url, { headers: { project_id: this.apiKey } });
+      if (!res.ok) {
+        this.logger.warn(`Blockfrost getAssetHolders failed for ${unit}: ${res.status}`);
+        return [];
+      }
+      const data = (await res.json()) as Array<{ address: string; quantity: string }>;
+      return data.map((d) => d.address);
+    } catch (err) {
+      this.logger.error(`Blockfrost getAssetHolders error for ${unit}: ${err}`);
+      return [];
+    }
+  }
+
   async getAssetMetadata(policyId: string, assetId: string): Promise<NftMetadata | null> {
     if (!this.apiKey) return null;
     const unit = `${policyId}${assetId}`;

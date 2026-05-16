@@ -96,8 +96,32 @@ model NftCollectionDef {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
+  nftAssets            NftAsset[]
+
   @@unique([chain, collectionId])
   @@map("nft_collection_defs")
+}
+
+model NftAsset {
+  nftAssetId    String    @id
+  collectionId  String
+  chain         String
+  policyId      String
+  tokenName     String
+  ownerAddress  String?
+  name          String?
+  imageUrl      String?
+  rawMetadata   Json      @default("{}")
+  nftAttributes Json      @default("{}")
+  lastSyncedAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  collection    NftCollectionDef @relation(fields: [collectionId], references: [id])
+
+  @@index([collectionId])
+  @@index([ownerAddress])
+  @@map("nft_assets")
 }
 
 model Currency {

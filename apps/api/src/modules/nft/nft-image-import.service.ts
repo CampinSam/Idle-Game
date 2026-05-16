@@ -103,25 +103,13 @@ export class NftImageImportService {
     if (this.knownCidCacheLoading) return this.knownCidCacheLoading;
 
     this.knownCidCacheLoading = (async () => {
-      const [entityRows, locationRows] = await Promise.all([
-        this.prisma.entity.findMany({
-          where: { nftAssetId: { not: null } },
-          select: { display: true },
-        }),
-        this.prisma.locationInstance.findMany({
-          where: { nftAssetId: { not: null } },
-          select: { state: true },
-        }),
-      ]);
+      const assetRows = await (this.prisma as any).nftAsset.findMany({
+        where: { imageUrl: { not: null } },
+        select: { imageUrl: true },
+      });
       const cids = new Set<string>();
-      for (const row of entityRows) {
-        const url: string = ((row.display as any) || {}).imageUrl || '';
-        const cid = this.extractCid(url);
-        if (cid) cids.add(cid);
-      }
-      for (const row of locationRows) {
-        const url: string = ((row.state as any) || {}).nftImageUrl || '';
-        const cid = this.extractCid(url);
+      for (const row of assetRows) {
+        const cid = this.extractCid((row.imageUrl as string) || '');
         if (cid) cids.add(cid);
       }
       this.knownCidCache = cids;
@@ -300,34 +288,33 @@ export class NftImageImportService {
     };
 
     try {
-      const entities = await this.prisma.entity.findMany({
-        where: { nftAssetId: { not: null } },
-        select: { id: true, display: true },
+      const nftAssets = await (this.prisma as any).nftAsset.findMany({
+        where: { imageUrl: { not: null } },
+        select: { nftAssetId: true, imageUrl: true },
       });
 
       // Bucket per-CID work into two groups:
-      //   - ipfsCidToEntityIds: needs original download + entity URL rewrite
+      //   - ipfsCidToNftAssetIds: needs original download + URL rewrite
       //   - hostedCids: original already in storage; only needs thumbnail backfill
-      const ipfsCidToEntityIds = new Map<string, string[]>();
+      const ipfsCidToNftAssetIds = new Map<string, string[]>();
       const hostedCids = new Set<string>();
-      let alreadyHostedEntities = 0;
+      let alreadyHostedCount = 0;
 
-      for (const entity of entities) {
-        const display = (entity.display as any) || {};
-        const imageUrl: string = display.imageUrl || '';
+      for (const asset of nftAssets) {
+        const imageUrl: string = (asset.imageUrl as string) || '';
         const cid = this.extractCid(imageUrl);
         if (!cid) continue;
 
         if (imageUrl.startsWith('/media/')) {
-          alreadyHostedEntities++;
+          alreadyHostedCount++;
           hostedCids.add(cid);
         } else if (imageUrl.startsWith('ipfs://')) {
-          if (!ipfsCidToEntityIds.has(cid)) ipfsCidToEntityIds.set(cid, []);
-          ipfsCidToEntityIds.get(cid)!.push(entity.id);
+          if (!ipfsCidToNftAssetIds.has(cid)) ipfsCidToNftAssetIds.set(cid, []);
+          ipfsCidToNftAssetIds.get(cid)!.push(asset.nftAssetId as string);
         }
       }
 
-      this.state.alreadyHosted = alreadyHostedEntities;
+      this.state.alreadyHosted = alreadyHostedCount;
 
       const existingObjects = await this.listObjectNames('nft/cardano/');
       const existingOriginals = new Set<string>();
@@ -340,41 +327,38 @@ export class NftImageImportService {
         }
       }
 
-      // Recover orphaned hosted entries: an entity's `display.imageUrl` may
-      // already point at `/media/nft/cardano/<cid>`, but the original file
-      // can be missing from object storage (e.g. partial migration, storage
-      // wipe, or a previous run that updated the URL before the upload
-      // settled). Without this, Phase 2 would silently skip those CIDs and
-      // they would lazy-hydrate from IPFS on every page render. Merge them
-      // into Phase 1 with empty entityIds so the URL update is a no-op
-      // (URL is already correct) but the IPFS download + thumb generation
-      // happen.
+      // Recover orphaned hosted entries: a NftAsset's `imageUrl` may already
+      // point at `/media/nft/cardano/<cid>`, but the original file can be
+      // missing from object storage (e.g. partial migration, storage wipe, or
+      // a previous run that updated the URL before the upload settled). Merge
+      // them into Phase 1 with empty nftAssetIds so the URL update is a no-op
+      // (URL is already correct) but the IPFS download + thumb generation happen.
       let recoveredOrphans = 0;
       for (const cid of hostedCids) {
-        if (!existingOriginals.has(cid) && !ipfsCidToEntityIds.has(cid)) {
-          ipfsCidToEntityIds.set(cid, []);
+        if (!existingOriginals.has(cid) && !ipfsCidToNftAssetIds.has(cid)) {
+          ipfsCidToNftAssetIds.set(cid, []);
           recoveredOrphans++;
         }
       }
-      this.state.total = ipfsCidToEntityIds.size;
+      this.state.total = ipfsCidToNftAssetIds.size;
 
       this.logger.log(
-        `Starting NFT image job: ${ipfsCidToEntityIds.size} CIDs to download ` +
+        `Starting NFT image job: ${ipfsCidToNftAssetIds.size} CIDs to download ` +
           `(${recoveredOrphans} orphaned hosted entries to recover), ` +
-          `${alreadyHostedEntities} entities already hosted, ` +
+          `${alreadyHostedCount} assets already hosted, ` +
           `${existingOriginals.size} originals + ${existingThumbs.size} thumbs in storage`,
       );
 
-      // Phase 1: download originals from IPFS for ipfs:// entities and rewrite URLs.
-      if (ipfsCidToEntityIds.size > 0) {
-        const entries = Array.from(ipfsCidToEntityIds.entries());
+      // Phase 1: download originals from IPFS and rewrite URLs.
+      if (ipfsCidToNftAssetIds.size > 0) {
+        const entries = Array.from(ipfsCidToNftAssetIds.entries());
         let idx = 0;
 
         const worker = async () => {
           while (true) {
             const current = idx++;
             if (current >= entries.length) break;
-            const [cid, entityIds] = entries[current];
+            const [cid, nftAssetIds] = entries[current];
             const hostedUrl = `/media/nft/cardano/${cid}`;
 
             try {
@@ -408,8 +392,7 @@ export class NftImageImportService {
                   );
                 }
               } else if (!existingThumbs.has(cid)) {
-                // Original already in storage but thumb missing — backfill it now
-                // so the URL rewrite below doesn't leave a thumb gap for ipfs:// entities.
+                // Original already in storage but thumb missing — backfill it now.
                 try {
                   const result = await this.ensureThumbnail(cid);
                   if (result.generated) {
@@ -428,7 +411,10 @@ export class NftImageImportService {
                 this.state.thumbsAlreadyPresent++;
               }
 
-              await this.updateEntityImageUrls(entityIds, hostedUrl);
+              // Propagate hosted URL to NftAsset and all game instances.
+              for (const nftAssetId of nftAssetIds) {
+                await this.propagateHostedImageUrl(nftAssetId, hostedUrl);
+              }
 
               if (exists) this.state.skipped++;
               else this.state.done++;
@@ -560,13 +546,38 @@ export class NftImageImportService {
     }
   }
 
-  private async updateEntityImageUrls(entityIds: string[], imageUrl: string): Promise<void> {
-    for (const id of entityIds) {
-      const entity = await this.prisma.entity.findUnique({ where: { id }, select: { display: true } });
-      const display = (entity?.display as any) || {};
-      await this.prisma.entity.update({
-        where: { id },
+  /**
+   * Propagate a hosted image URL to the NftAsset row and all game instances
+   * (Entity, LocationInstance) that share the same nftAssetId. Called after
+   * a CID's original has been uploaded to object storage.
+   */
+  private async propagateHostedImageUrl(nftAssetId: string, imageUrl: string): Promise<void> {
+    await (this.prisma as any).nftAsset.update({
+      where: { nftAssetId },
+      data: { imageUrl },
+    });
+
+    const entity = await (this.prisma as any).entity.findFirst({
+      where: { nftAssetId },
+      select: { id: true, display: true },
+    });
+    if (entity) {
+      const display = (entity.display as any) || {};
+      await (this.prisma as any).entity.update({
+        where: { id: entity.id },
         data: { display: { ...display, imageUrl } },
+      });
+    }
+
+    const location = await (this.prisma as any).locationInstance.findFirst({
+      where: { nftAssetId },
+      select: { id: true, state: true },
+    });
+    if (location) {
+      const state = (location.state as any) || {};
+      await (this.prisma as any).locationInstance.update({
+        where: { id: location.id },
+        data: { state: { ...state, nftImageUrl: imageUrl } },
       });
     }
   }
