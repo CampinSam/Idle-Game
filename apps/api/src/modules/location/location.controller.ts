@@ -22,6 +22,11 @@ export class LocationController {
     return this.locationService.getLocation(user.id, id);
   }
 
+  @Get(':id/power-usage')
+  getPowerUsage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.locationService.getPowerUsage(user.id, id);
+  }
+
   @Get(':id/available-buildings')
   getAvailableBuildings(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.locationService.getAvailableBuildings(user.id, id);

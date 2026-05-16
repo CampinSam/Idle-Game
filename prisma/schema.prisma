@@ -380,6 +380,7 @@ model LocationInstance {
 
   buildings       LocationBuildingInstance[]
   workerAssignments LocationWorkerAssignment[]
+  powerUsages     LocationPowerUsage[]
 
   @@index([ownerUserId])
   @@index([ecosystemId])
@@ -629,21 +630,36 @@ model TickRateInterval {
 }
 
 model BoostEvent {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  multiplier  Float
-  startTime   DateTime
-  endTime     DateTime
-  status      String   @default("scheduled")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  multiplier   Float
+  percentBoost Float    @default(0)
+  startTime    DateTime
+  endTime      DateTime
+  status       String   @default("scheduled")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  intervals   TickRateInterval[]
+  intervals    TickRateInterval[]
 
   @@index([status])
   @@index([startTime])
   @@map("boost_events")
+}
+
+model LocationPowerUsage {
+  id                 String           @id @default(uuid())
+  locationInstanceId String
+  powerKey           String
+  lastUsedUtcDay     String
+  usageCount         Int              @default(1)
+
+  locationInstance   LocationInstance @relation(fields: [locationInstanceId], references: [id], onDelete: Cascade)
+
+  @@unique([locationInstanceId, powerKey])
+  @@index([locationInstanceId])
+  @@map("location_power_usages")
 }
 
 enum ItemRarity {

@@ -46,6 +46,18 @@ export type BroadcastMessage =
         label: string;
         durationMinutes: number;
       }>;
+    }
+  | {
+      // Broadcast when any tick boost starts, ends, or is cancelled.
+      // The frontend SyncEngine fires a transient toast per event.
+      type: 'boost.changed';
+      active: Array<{
+        id: string;
+        name: string;
+        percentBoost: number;
+        endTime: string;
+      }>;
+      combinedPercent: number;
     };
 
 export abstract class PubSubService {

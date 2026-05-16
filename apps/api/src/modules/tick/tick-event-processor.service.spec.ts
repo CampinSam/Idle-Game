@@ -79,12 +79,17 @@ function makeService() {
     expireStale: jest.fn(async () => {}),
   };
 
+  const boostService: any = {
+    expireStaleBoosts: jest.fn(async () => 0),
+  };
+
   const svc = new TickEventProcessorService(
     prisma as any,
     tickService,
     pubsub,
     notificationService,
     globalPowerService,
+    boostService,
   );
 
   (svc as any).logger = {

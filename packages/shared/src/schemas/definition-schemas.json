@@ -3718,6 +3718,64 @@
         "triggeredByUserId": { "type": "string",  "nullable": true,  "description": "Admin user ID for audit trail" }
       },
       "indexes": [["status", "endTime"]]
+    },
+    "LocationPowerUsage": {
+      "description": "Tracks per-(location-instance, power-key) daily usage for unique NFT location powers. Enforces a global UTC-day gate so each power can only be triggered once per UTC day regardless of who triggers it.",
+      "prismaModel": "LocationPowerUsage",
+      "tableName": "location_power_usages",
+      "primaryKey": "id",
+      "adminOnly": false,
+      "fields": {
+        "id":                 { "type": "string",  "required": true,  "description": "UUID primary key" },
+        "locationInstanceId": { "type": "string",  "required": true,  "description": "FK → LocationInstance.id" },
+        "powerKey":           { "type": "string",  "required": true,  "description": "The powerType string (e.g. tick_boost)" },
+        "lastUsedUtcDay":     { "type": "string",  "required": true,  "description": "UTC date string YYYY-MM-DD of last trigger" },
+        "usageCount":         { "type": "integer", "required": true,  "default": 1, "description": "Number of triggers on lastUsedUtcDay; reset to 1 on a new UTC day. Enforced against dailyLimit in the power definition." }
+      },
+      "uniqueConstraints": [["locationInstanceId", "powerKey"]],
+      "indexes": ["locationInstanceId"]
+    }
+  },
+  "commands": {
+    "TriggerLocationPower": {
+      "description": "Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates LocationPowerUsage for today's UTC date. Dispatches BoostService.createBoost for tick_boost or GlobalPowerService.createPower for all other types.",
+      "payload": {
+        "locationId": { "type": "string", "required": true, "description": "The LocationInstance.id to trigger from" },
+        "powerKey":   { "type": "string", "required": true, "description": "The power type to trigger (e.g. tick_boost)" }
+      },
+      "errors": [
+        "ForbiddenException: caller does not own the location",
+        "BadRequestException: no unique powers defined, power key not found, or daily limit reached"
+      ]
+    }
+  },
+  "sseEvents": {
+    "boost.changed": {
+      "description": "Broadcast to all connected clients whenever a tick boost starts, ends, or is cancelled. The frontend SyncEngine fires a transient toast via useBoostChangeToasts.",
+      "payload": {
+        "active": "Array<{ id, name, percentBoost, endTime }> — current active tick boosts",
+        "combinedPercent": "number — sum of all active percentBoost values"
+      }
+    }
+  },
+  "locationDefinitionUniques": {
+    "description": "The rules JSON on LocationDefinition supports an optional uniques map keyed by NFT asset ID string. Each entry defines per-NFT custom powers that the owner can trigger once per UTC day.",
+    "schema": {
+      "uniques": {
+        "type": "object",
+        "description": "Keys are NFT asset ID strings (e.g. CARDANO:policyId:assetId)",
+        "values": {
+          "powers": {
+            "type": "array",
+            "items": {
+              "powerType": { "type": "string", "description": "tick_boost | keeper_xp_boost | entity_xp_boost | mission_power_boost | mission_duration_reduction | crafting_duration_reduction | building_build_duration_reduction | building_upgrade_duration_reduction | injury_recovery_boost" },
+              "value":     { "type": "number", "description": "For tick_boost: additive percent (50 = +50%). For others: same as GlobalActivePower value." },
+              "durationMinutes": { "type": "integer", "description": "Duration in whole minutes" },
+              "dailyLimit": { "type": "integer", "description": "Maximum triggers per UTC day (typically 1)" }
+            }
+          }
+        }
+      }
     }
   },
   "tableList": [
@@ -3744,7 +3802,8 @@
     "SoundDef",
     "SoundMapping",
     "HomeBannerDef",
-    "GlobalActivePower"
+    "GlobalActivePower",
+    "LocationPowerUsage"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",

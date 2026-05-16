@@ -82,6 +82,28 @@ export class GlobalPowerService {
     }) as Promise<GlobalActivePowerRecord[]>;
   }
 
+  /**
+   * Triggers a global power, enforcing a no-stack constraint: if a power of
+   * the same `powerType` is already active, a `BadRequestException` is thrown
+   * with a clear message. Use this for player-initiated power triggers (e.g.
+   * unique location powers) to prevent unintended stacking.
+   */
+  async triggerPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
+    const now = new Date();
+    const existing = await this.prisma.globalActivePower.findFirst({
+      where: { status: 'active', powerType: dto.powerType, endTime: { gt: now } },
+    }) as GlobalActivePowerRecord | null;
+
+    if (existing) {
+      const remaining = Math.ceil((existing.endTime.getTime() - now.getTime()) / 60_000);
+      throw new BadRequestException(
+        `A "${dto.powerType}" power is already active. Wait for it to expire (${remaining} minute${remaining !== 1 ? 's' : ''} remaining).`,
+      );
+    }
+
+    return this.createPower(dto);
+  }
+
   async createPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
     if (!VALID_POWER_TYPES.includes(dto.powerType)) {
       throw new BadRequestException(

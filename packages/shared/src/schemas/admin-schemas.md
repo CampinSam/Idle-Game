@@ -316,3 +316,94 @@ When a global power starts, expires, or is cancelled, a `global_power.changed` S
 ```
 
 `active` is the full current list of active powers after the change. `changes` lists each power that started or ended. Clients display a transient toast for each change entry.
+
+---
+
+## LocationPowerUsage
+
+Tracks per-(location-instance, power-key) daily usage for unique NFT location powers. Enforces a global UTC-day gate so each power can only be triggered once per day regardless of who triggers it.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | UUID primary key |
+| locationInstanceId | string | FK → LocationInstance |
+| powerKey | string | The `powerType` string (e.g. `tick_boost`) |
+| lastUsedUtcDay | string | UTC date string `YYYY-MM-DD` of last trigger |
+| usageCount | integer | Number of triggers on `lastUsedUtcDay`; reset to 1 on a new UTC day |
+
+**Unique constraint:** `(locationInstanceId, powerKey)`.
+
+Daily limit is enforced per the `dailyLimit` field in the power definition. When `usageCount >= dailyLimit` for the current UTC day, further triggers are rejected.
+
+---
+
+## TriggerLocationPower Command
+
+**Command type:** `TriggerLocationPower`
+
+Triggers a unique power belonging to a specific NFT location. The caller must own the location (or have admin role). Checks/updates `LocationPowerUsage` for today's UTC date against the power's `dailyLimit`. Dispatches `BoostService.createBoost` for `tick_boost` powers, or `GlobalPowerService.createPower` for all other types.
+
+| Payload field | Type | Required | Description |
+|--------------|------|----------|-------------|
+| locationId | string | yes | The `LocationInstance.id` to trigger from |
+| powerKey | string | yes | The power type to trigger (e.g. `tick_boost`) |
+
+**Errors:**
+- `ForbiddenException` — caller does not own the location
+- `BadRequestException` — no unique powers defined, power key not found, or daily limit reached (`"Resets at 00:00 UTC"`)
+
+---
+
+## LocationDefinition `uniques` field
+
+The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers:
+
+```json
+{
+  "uniques": {
+    "CARDANO:policy123:asset456": {
+      "powers": [
+        {
+          "powerType": "tick_boost",
+          "value": 50,
+          "durationMinutes": 60,
+          "dailyLimit": 1
+        },
+        {
+          "powerType": "entity_xp_boost",
+          "value": 25,
+          "durationMinutes": 120,
+          "dailyLimit": 1
+        }
+      ]
+    }
+  }
+}
+```
+
+**Power types:** `tick_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
+
+For `tick_boost`, `value` is the additive percent increase (e.g. `50` = +50% world tick speed). Multiple concurrent boosts are summed additively. For all other power types, the same `powerType`/`value` semantics as `GlobalActivePower` apply.
+
+---
+
+## boost.changed SSE Event
+
+Broadcast to all connected clients whenever a tick boost starts, ends, or is cancelled:
+
+```json
+{
+  "type": "boost.changed",
+  "active": [
+    {
+      "id": "uuid",
+      "name": "My Outpost Tick Boost",
+      "percentBoost": 50,
+      "endTime": "2026-05-17T19:00:00.000Z"
+    }
+  ],
+  "combinedPercent": 50
+}
+```
+
+`active` is the list of all currently active tick boosts. `combinedPercent` is the sum of all `percentBoost` values. The frontend `SyncEngine` fires a transient toast per event via the `useBoostChangeToasts` hook.

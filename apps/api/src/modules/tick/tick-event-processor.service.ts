@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { NotificationService } from '../notification/notification.service';
 import { TickService } from './tick.service';
+import { BoostService } from './boost.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { createJobReadyNotifications } from '../job/job-notification.helper';
 
@@ -37,6 +38,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     private readonly pubsub: PubSubService,
     private readonly notificationService: NotificationService,
     private readonly globalPowerService: GlobalPowerService,
+    private readonly boostService: BoostService,
   ) {}
 
   onModuleInit() {
@@ -107,6 +109,9 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       this.processJobReadiness(currentTick),
       this.globalPowerService.expireStale().catch((err) =>
         this.logger.warn('Global power expiry check failed', err),
+      ),
+      this.boostService.expireStaleBoosts().catch((err) =>
+        this.logger.warn('Boost expiry check failed', err),
       ),
     ]);
   }

@@ -10,6 +10,11 @@ export type GlobalPowerChangeHandler = (
   change: { id: string; powerType: string; label: string; durationMinutes: number },
 ) => void;
 
+export type BoostChangeHandler = (data: {
+  active: Array<{ id: string; name: string; percentBoost: number; endTime: string }>;
+  combinedPercent: number;
+}) => void;
+
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -22,6 +27,7 @@ export class SyncEngine {
   private reconnectAttempts = 0;
   private destroyed = false;
   private globalPowerHandlers = new Set<GlobalPowerChangeHandler>();
+  private boostChangeHandlers = new Set<BoostChangeHandler>();
 
   constructor(store: Store<RootState>) {
     this.store = store;
@@ -32,9 +38,20 @@ export class SyncEngine {
     return () => this.globalPowerHandlers.delete(handler);
   }
 
+  onBoostChange(handler: BoostChangeHandler): () => void {
+    this.boostChangeHandlers.add(handler);
+    return () => this.boostChangeHandlers.delete(handler);
+  }
+
   private emitGlobalPowerChange(event: 'started' | 'ended', change: any) {
     for (const handler of this.globalPowerHandlers) {
       try { handler(event, change); } catch { /* ignore */ }
+    }
+  }
+
+  private emitBoostChange(data: any) {
+    for (const handler of this.boostChangeHandlers) {
+      try { handler(data); } catch { /* ignore */ }
     }
   }
 
@@ -143,6 +160,17 @@ export class SyncEngine {
         }
       } catch {
         console.warn('[SyncEngine] Failed to parse global_power.changed event');
+      }
+    });
+
+    es.addEventListener('boost.changed', (e: MessageEvent) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (typeof msg?.combinedPercent === 'number') {
+          this.emitBoostChange(msg);
+        }
+      } catch {
+        console.warn('[SyncEngine] Failed to parse boost.changed event');
       }
     });
 

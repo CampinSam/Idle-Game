@@ -29,6 +29,7 @@ import { UnequipItemHandler } from './handlers/unequip-item.handler';
 import { DepositLocationXpHandler } from './handlers/deposit-location-xp.handler';
 import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
+import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -40,6 +41,8 @@ import { QuestModule } from '../quest/quest.module';
 import { AchievementModule } from '../achievement/achievement.module';
 import { EntityModule } from '../entity/entity.module';
 import { GiftModule } from '../gift/gift.module';
+import { TickModule } from '../tick/tick.module';
+import { GlobalPowerModule } from '../global-power/global-power.module';
 
 @Module({
   imports: [
@@ -54,6 +57,8 @@ import { GiftModule } from '../gift/gift.module';
     AchievementModule,
     EntityModule,
     GiftModule,
+    TickModule,
+    GlobalPowerModule,
   ],
   controllers: [CommandController],
   providers: [
@@ -86,6 +91,7 @@ import { GiftModule } from '../gift/gift.module';
     DepositLocationXpHandler,
     RenameEntityHandler,
     SetPrimaryOutpostHandler,
+    TriggerLocationPowerHandler,
   ],
   exports: [CommandService],
 })

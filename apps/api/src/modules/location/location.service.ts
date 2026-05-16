@@ -356,6 +356,28 @@ export class LocationService {
     );
   }
 
+  async getPowerUsage(
+    userId: string,
+    locationId: string,
+  ): Promise<Record<string, { usageCount: number; lastUsedUtcDay: string }>> {
+    const location = await (this.prisma as any).locationInstance.findFirst({
+      where: { id: locationId, ownerUserId: userId },
+      select: { id: true },
+    });
+    if (!location) return {};
+
+    const today = new Date().toISOString().slice(0, 10);
+    const usages = await (this.prisma as any).locationPowerUsage.findMany({
+      where: { locationInstanceId: locationId, lastUsedUtcDay: today },
+    });
+
+    const result: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    for (const u of usages) {
+      result[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+    }
+    return result;
+  }
+
   async getLocation(userId: string, locationId: string) {
     const currentTick = BigInt(
       Math.floor(await this.tickService.getCurrentTick()),

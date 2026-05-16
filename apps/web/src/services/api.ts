@@ -82,6 +82,12 @@ class ApiClient {
     return this.request<any>(`/locations/${id}`);
   }
 
+  getLocationPowerUsage(id: string) {
+    return this.request<Record<string, { usageCount: number; lastUsedUtcDay: string }>>(
+      `/locations/${id}/power-usage`,
+    );
+  }
+
   claimLocation(id: string, idempotencyKey?: string) {
     return this.request<any>(`/locations/${id}/claim`, {
       method: 'POST',
