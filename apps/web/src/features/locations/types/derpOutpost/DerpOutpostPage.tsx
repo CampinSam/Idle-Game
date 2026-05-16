@@ -215,9 +215,9 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         <div className="flex flex-col gap-3.5 px-3 pt-3 pb-6">
           <OutpostHeroSection outpost={outpost} />
 
-          <OutpostDetailsCard outpost={outpost} />
-
           <OutpostUniquePowersCard outpost={outpost} />
+
+          <OutpostDetailsCard outpost={outpost} />
 
         <OutpostProductionCard
         outpost={outpost}

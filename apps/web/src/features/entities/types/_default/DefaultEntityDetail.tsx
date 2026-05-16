@@ -361,6 +361,10 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
         onUnequip={handlePickerUnequip}
       />
 
+      {uniquePowers.length > 0 && (
+        <EntityUniquePowerPanel entityId={entity.id} powers={uniquePowers} />
+      )}
+
       {/* ── Full-width progression tab panel ── */}
       <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] flex flex-col flex-1 min-h-[200px]">
         <div
@@ -555,10 +559,6 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           )}
         </div>
       </div>
-
-      {uniquePowers.length > 0 && (
-        <EntityUniquePowerPanel entityId={entity.id} powers={uniquePowers} />
-      )}
     </div>
   );
 }
