@@ -9,9 +9,16 @@ import { getEntityKind } from './registry';
 import { isNftEntity } from './types/derp_bird/isNftEntity';
 import { isPerfectSpecimen, getPerfectSpecimenTrait } from './types/derp_bird/isPerfectSpecimen';
 import { isLeader } from './types/perp/isLeader';
+import { getFaction } from './types/perp/getFaction';
 import { useCommand } from '../../hooks/useCommand';
 import { useBodyCardVariant } from '../../context/BodyCardVariantContext';
 import type { EntityFilter, EntitySortBy } from './types';
+
+const PERP_FACTION_LABELS: Record<string, string> = {
+  genovault: 'GENOVAULT',
+  astro_schism: 'ASTRO SCHISM',
+  kraashers: 'KRAASHERS',
+};
 
 function getCollectionLabel(entity: any): string | null {
   const kind = getEntityKind(entity);
@@ -466,16 +473,22 @@ export default function EntityDetailPage() {
                     </span>
                   ) : (
                     (() => {
-                      const leaderKind = getEntityKind(entity) === 'perp' ? isLeader(entity) : null;
+                      const kind = getEntityKind(entity);
+                      if (kind === 'perp') {
+                        const leaderKind = isLeader(entity);
+                        if (leaderKind) {
+                          const factionLabel = PERP_FACTION_LABELS[getFaction(entity) ?? ''];
+                          return (
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#fbbf24]">
+                              {leaderKind === 'multiverse_leader' ? '★ MULTIVERSE LEADER' : '★ LEADER'}
+                              {factionLabel && <span> · {factionLabel}</span>}
+                            </span>
+                          );
+                        }
+                      }
                       return (
                         <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                           {getCollectionLabel(entity)}
-                          {leaderKind && (
-                            <span className="text-[#fbbf24]">
-                              {' | '}
-                              {leaderKind === 'multiverse_leader' ? 'MULTIVERSE LEADER' : 'LEADER'}
-                            </span>
-                          )}
                         </span>
                       );
                     })()
