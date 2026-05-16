@@ -465,15 +465,20 @@ export default function EntityDetailPage() {
                       )}
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-                      {getCollectionLabel(entity)}
-                      {getEntityKind(entity) === 'perp' && isLeader(entity) && (
-                        <span className="text-[#fbbf24]">
-                          {' · '}
-                          {isLeader(entity) === 'multiverse_leader' ? 'MULTIVERSE LEADER' : 'LEADER'}
+                    (() => {
+                      const leaderKind = getEntityKind(entity) === 'perp' ? isLeader(entity) : null;
+                      return (
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                          {getCollectionLabel(entity)}
+                          {leaderKind && (
+                            <span className="text-[#fbbf24]">
+                              {' | '}
+                              {leaderKind === 'multiverse_leader' ? 'MULTIVERSE LEADER' : 'LEADER'}
+                            </span>
+                          )}
                         </span>
-                      )}
-                    </span>
+                      );
+                    })()
                   )}
                 </div>
               )}
