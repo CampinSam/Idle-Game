@@ -45,8 +45,12 @@ export default function StatRadarChart({ stats, equippedStats, size = 200, maxVa
     : null;
   const hasOverlay = !!equippedValues && equippedValues.some((v, i) => v !== statValues[i]);
 
-  // Scale to the larger of base/equipped so neither polygon clips the ring.
-  const scale = maxValue ?? Math.max(10, ...statValues, ...(equippedValues ?? []));
+  // Scale to the next tier boundary so the chart shows meaningful headroom
+  // as characters progress. Snaps up to the nearest multiple of 25 (min 25),
+  // so a level-1 entity with stats ~12-14 fills ~55% of the ring rather than
+  // looking almost maxed out. Passes through an explicit maxValue unchanged.
+  const rawMax = Math.max(10, ...statValues, ...(equippedValues ?? []));
+  const scale = maxValue ?? Math.ceil(rawMax / 25) * 25;
 
   const dataPoints = STATS.map((_, i) => {
     const ratio = Math.min(statValues[i] / scale, 1) * progress;
