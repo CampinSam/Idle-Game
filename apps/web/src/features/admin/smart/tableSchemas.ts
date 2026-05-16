@@ -237,7 +237,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       kind: { type: 'string', default: 'outpost_fungible', description: 'Location type' },
       regionId: { type: 'ref', refTable: 'RegionDefinition', description: 'Region reference' },
       isUnique: { type: 'boolean', default: false, description: 'Only one per player?' },
-      rules: { type: 'json', default: {}, description: 'Level-based rules (incl. xpDepositCosts, maxLevel, xpCurve, baseXP, xpRate, level[].xpThreshold)' },
+      rules: { type: 'rulesWithUniques', default: {}, description: 'Level-based rules (xpDepositCosts, maxLevel, xpCurve, baseXP, xpRate, level[].xpThreshold) + unique NFT powers' },
       productionProfile: { type: 'json', default: {}, description: 'Production configuration' },
       requirements: { type: 'json', default: [], description: 'Acquisition conditions' },
       visibilityRequirements: { type: 'json', default: [], description: 'Visibility conditions' },
@@ -396,7 +396,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, section: 'general', description: 'Display name' },
       speciesId: { type: 'string', required: true, section: 'general', description: 'Species identifier' },
       equipmentSlots: { type: 'equipmentSlotsMap', default: {}, section: 'general', description: 'Equipment slot capacities (slot → max count)' },
-      rules: { type: 'json', default: {}, section: 'general', description: 'Level-based rules (escape hatch — currently unused server-side)' },
+      rules: { type: 'rulesWithUniques', default: {}, section: 'general', description: 'Unique NFT powers (rules.uniques) and other level-based rules' },
       data: { type: 'json', default: {}, section: 'general', description: 'Extra freeform data' },
 
       slots: { type: 'slotArchetypesMap', default: {}, section: 'slotsTraits', description: 'Body slot layout (slot → list of allowed archetypes)' },

@@ -344,6 +344,25 @@ export function masteryErrorCount(value: any): number {
   return 0;
 }
 
+export function uniquesErrorCount(value: any): number {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 0;
+  let n = 0;
+  for (const [key, entry] of Object.entries(value) as [string, any][]) {
+    if (!key || key.trim() === '') { n++; }
+    if (!entry || typeof entry !== 'object') { n++; continue; }
+    const powers = entry.powers;
+    if (!Array.isArray(powers)) { n++; continue; }
+    for (const p of powers) {
+      if (!p || typeof p !== 'object') { n++; continue; }
+      if (!p.powerType) n++;
+      if (p.value === undefined || p.value === null || isNaN(Number(p.value))) n++;
+      if (!p.durationMinutes || Number(p.durationMinutes) < 1) n++;
+      if (!p.dailyLimit || Number(p.dailyLimit) < 1) n++;
+    }
+  }
+  return n;
+}
+
 export function structuredFieldErrorCount(type: string | undefined, value: any): number {
   switch (type) {
     case 'costArray':
@@ -362,6 +381,8 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return ascensionErrorCount(value);
     case 'mastery':
       return masteryErrorCount(value);
+    case 'rulesWithUniques':
+      return uniquesErrorCount((value as any)?.uniques);
     default:
       return 0;
   }

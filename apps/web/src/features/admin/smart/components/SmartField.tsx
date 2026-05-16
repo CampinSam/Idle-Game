@@ -22,6 +22,7 @@ import ProgressionEditor from './structured/ProgressionEditor';
 import { AscensionEditor, MasteryEditor } from './structured/AscensionMasteryEditor';
 import InitEditor from './structured/InitEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
+import UniquesEditor from './structured/UniquesEditor';
 
 interface Props {
   fieldName: string;
@@ -378,6 +379,52 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'modalSpec') {
       return renderStructured(
         <ModalSpecEditor value={value} onChange={onChange} />
+      );
+    }
+
+    if (t === 'rulesWithUniques') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      const { uniques, ...otherRules } = safeVal;
+      const handleUniquesChange = (newUniques: any) => {
+        if (Object.keys(newUniques).length === 0) {
+          const { uniques: _removed, ...rest } = safeVal;
+          onChange(rest);
+        } else {
+          onChange({ ...safeVal, uniques: newUniques });
+        }
+      };
+      const handleOtherRulesChange = (partial: any) => {
+        if (Object.keys(safeVal).includes('uniques')) {
+          onChange({ ...partial, uniques: safeVal.uniques });
+        } else {
+          onChange(partial);
+        }
+      };
+      return renderStructured(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            border: '1px solid #2a2a4e',
+            borderRadius: 6,
+            background: '#0f0f2e',
+            padding: 10,
+          }}>
+            <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Unique NFT Powers
+            </div>
+            <UniquesEditor value={uniques} onChange={handleUniquesChange} />
+          </div>
+          <div style={{
+            border: '1px solid #2a2a4e',
+            borderRadius: 6,
+            background: '#0f0f2e',
+            padding: 10,
+          }}>
+            <div style={{ fontSize: 11, color: '#888', fontWeight: 700, marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Other Rules (JSON)
+            </div>
+            <CollapsibleObject value={otherRules} onChange={handleOtherRulesChange} />
+          </div>
+        </div>
       );
     }
 
