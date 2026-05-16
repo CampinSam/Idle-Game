@@ -166,6 +166,91 @@ describe('applyWeightedLevelUp', () => {
   });
 });
 
+describe('applyWeightedLevelUp bonusPool variants', () => {
+  const flatScaling = { ATK: 1, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 };
+  const startStats = () => ({ ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0, scaling: flatScaling });
+
+  describe('bonusPool.kind = "rarityScaled"', () => {
+    it('honours custom base/exponent (base=20, exp=0)', () => {
+      // exponent 0 → rarity has no effect, pool == floor(base) regardless of rarity/level
+      const cfg = {
+        bonusPool: { kind: 'rarityScaled' as const, base: 20, exponent: 0, rarityField: 'compositRarity' },
+      };
+      const { gains } = applyWeightedLevelUp(startStats(), 1.5, 99, undefined, cfg);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + 20);
+    });
+
+    it('reads the rarity scalar from a custom rarityField on stats', () => {
+      // Pool uses stats[rarityField] when present, ignoring the compositRarity arg.
+      const cfg = {
+        bonusPool: { kind: 'rarityScaled' as const, base: 10, exponent: 1, rarityField: 'myRarity' },
+      };
+      const stats = { ...startStats(), myRarity: 2.0 } as Record<string, any>;
+      // floor(10 * 2^(3*1)) = floor(80) = 80
+      const { gains } = applyWeightedLevelUp(stats, 1.0, 3, undefined, cfg);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + 80);
+    });
+
+    it('falls back to the compositRarity arg when rarityField is absent on stats', () => {
+      const cfg = {
+        bonusPool: { kind: 'rarityScaled' as const, base: 10, exponent: 1, rarityField: 'absentField' },
+      };
+      const { gains } = applyWeightedLevelUp(startStats(), 2.0, 3, undefined, cfg);
+      // floor(10 * 2^3) = 80
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + 80);
+    });
+  });
+
+  describe('bonusPool.kind = "flat"', () => {
+    it('grants exactly `amount` bonus points regardless of rarity/level', () => {
+      const cfg = { bonusPool: { kind: 'flat' as const, amount: 9 } };
+      const { gains } = applyWeightedLevelUp(startStats(), 1.5, 50, undefined, cfg);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + 9);
+    });
+
+    it('floors a non-integer amount', () => {
+      const cfg = { bonusPool: { kind: 'flat' as const, amount: 7.9 } };
+      const { gains } = applyWeightedLevelUp(startStats(), 1.0, 1, undefined, cfg);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6 + 7);
+    });
+
+    it('zero amount produces only the guaranteed +6', () => {
+      const cfg = { bonusPool: { kind: 'flat' as const, amount: 0 } };
+      const { gains } = applyWeightedLevelUp(startStats(), 5.0, 99, undefined, cfg);
+      const total = STAT_KEYS.reduce((s, k) => s + gains[k], 0);
+      expect(total).toBe(6);
+    });
+  });
+
+  describe('distribution.weightsField override', () => {
+    it('reads weights from the configured field instead of `scaling`', () => {
+      // Put a heavy ATK weight on a non-default field; verify gains skew to ATK.
+      const stats = {
+        ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0,
+        scaling: { ATK: 1, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 },
+        altWeights: { ATK: 50, DEF: 1, SPD: 1, FOC: 1, LCK: 1, VIT: 1 },
+      };
+      const cfg = {
+        distribution: { uniformShare: 0, weightedShare: 1, weightsField: 'altWeights' },
+        bonusPool: { kind: 'flat' as const, amount: 200 },
+      };
+      let atk = 0, vit = 0;
+      const trials = 30;
+      for (let i = 0; i < trials; i++) {
+        const { gains } = applyWeightedLevelUp(stats, 1.0, 1, undefined, cfg);
+        atk += gains.ATK;
+        vit += gains.VIT;
+      }
+      expect(atk).toBeGreaterThan(vit * 5);
+    });
+  });
+});
+
 describe('getPowerScore', () => {
   it('uses the documented stat weights', () => {
     expect(POWER_SCORE_WEIGHTS).toEqual({
