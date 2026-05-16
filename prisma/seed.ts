@@ -1,12 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const prisma = new PrismaClient();
-
-const STARTER_GEMS = 1000;
-const GEMS_CURRENCY_ID = 'premium_gems';
 
 const TABLE_TO_MODEL: Record<string, string> = {
   Currency: 'currency',
@@ -80,44 +76,6 @@ async function seedDefinitions() {
   }
 }
 
-function generateEntity(name: string, definitionId = 'derp_bird') {
-  const seedPath = path.resolve(__dirname, 'seed-data.json');
-  const raw = fs.readFileSync(seedPath, 'utf-8');
-  const data = JSON.parse(raw);
-
-  const entityDef = (data.EntityDefinition ?? []).find((d: any) => d.id === definitionId);
-  if (!entityDef) {
-    throw new Error(`generateEntity: EntityDefinition "${definitionId}" not found in seed-data.json`);
-  }
-
-  const slotsMap: Record<string, string[]> = entityDef.slots ?? {};
-  const traitMap: Record<string, any> = entityDef.traits ?? {};
-
-  const traits: Record<string, string> = {};
-  const stats: Record<string, number> = { ATK: 0, DEF: 0, SPD: 0, FOC: 0, LCK: 0, VIT: 0 };
-
-  for (const slot of Object.keys(slotsMap)) {
-    const allowed = slotsMap[slot] ?? [];
-    if (allowed.length === 0) continue;
-    const archetype = allowed[Math.floor(Math.random() * allowed.length)];
-    traits[slot] = archetype;
-
-    const traitDef = traitMap[archetype];
-    const slotBonuses = traitDef?.slotStats?.[slot];
-    if (slotBonuses) {
-      for (const [stat, val] of Object.entries(slotBonuses)) {
-        if (typeof val === 'number') stats[stat] = (stats[stat] || 0) + val;
-      }
-    }
-  }
-
-  return {
-    display: { name },
-    progression: { level: 1, xp: 0 },
-    stats,
-    traits,
-  };
-}
 
 async function seedTickSystem() {
   const existing = await prisma.tickRateInterval.findFirst();
@@ -172,64 +130,20 @@ async function seedTestAccount() {
     return;
   }
 
-  const passwordHash = await bcrypt.hash('Derp1234!', 12);
-
-  const user = await prisma.user.create({
-    data: {
-      username: 'TestKeeper',
-      email: 'test@derp.dev',
-      passwordHash,
-      keeperLevel: 1,
-      authProvider: 'email',
-    },
+  const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+  const res = await fetch(`${apiUrl}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'TestKeeper', email: 'test@derp.dev', password: 'Derp1234!' }),
   });
 
-  const gen = generateEntity('Starter Bird');
-  await prisma.entity.create({
-    data: {
-      ownerUserId: user.id,
-      definitionId: 'derp_bird',
-      speciesId: 'derp_bird',
-      role: 'player_unit',
-      display: gen.display,
-      progression: gen.progression,
-      stats: gen.stats,
-      traits: gen.traits,
-    },
-  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to register test account (${res.status}): ${body}`);
+  }
 
-  const currentTick = BigInt(1);
-
-  await prisma.locationInstance.create({
-    data: {
-      ownerUserId: user.id,
-      definitionId: 'derp_outpost',
-      regionId: 'derpshire_valley',
-      kind: 'outpost_fungible',
-      level: 1,
-      lastCollectionTick: currentTick,
-    },
-  });
-
-  await prisma.userCurrencyBalance.create({
-    data: {
-      userId: user.id,
-      currencyId: GEMS_CURRENCY_ID,
-      balance: BigInt(STARTER_GEMS),
-    },
-  });
-
-  await prisma.currencyLedger.create({
-    data: {
-      userId: user.id,
-      currencyId: GEMS_CURRENCY_ID,
-      delta: BigInt(STARTER_GEMS),
-      reason: 'Starter bonus',
-      sourceType: 'system',
-    },
-  });
-
-  console.log(`Seeded test account: ${user.email} (${user.id})`);
+  const data = await res.json() as any;
+  console.log(`Seeded test account: test@derp.dev (${data?.player?.id ?? 'unknown id'})`);
 }
 
 async function main() {
