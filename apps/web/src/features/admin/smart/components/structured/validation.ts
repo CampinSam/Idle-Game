@@ -1,5 +1,26 @@
 import type { CSSProperties } from 'react';
 
+/**
+ * Composable editor contract.
+ *
+ * Every structured editor must:
+ *  1. Accept `StructuredEditorProps<T>` (value + onChange).
+ *  2. Export a `validate(value: T): Record<string, string>` function that
+ *     returns field-level error strings (empty object = valid).
+ *  3. Export an `*ErrorCount(value: T): number` helper used by
+ *     `structuredFieldErrorCount` below for the save-button badge.
+ *
+ * Nesting: parent editors call child `validate()` functions and may pass the
+ * resulting errors down as props. On save, editors emit plain objects via
+ * onChange — no special serialization step needed.
+ */
+export interface StructuredEditorProps<T> {
+  value: T | null | undefined;
+  onChange: (v: T) => void;
+}
+
+export type ValidationResult = Record<string, string>;
+
 export const ERROR_BORDER_COLOR = '#ef4444';
 
 export const errorTextStyle: CSSProperties = {
@@ -407,6 +428,48 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return masteryErrorCount(value);
     case 'rulesWithUniques':
       return uniquesErrorCount((value as any)?.uniques);
+    case 'synergySelector':
+      return 0;
+    case 'synergyContext': {
+      const ctx = value as any;
+      if (!ctx || typeof ctx !== 'object') return 0;
+      const min = ctx.requiresTeamSizeMin;
+      const max = ctx.requiresTeamSizeMax;
+      if (min !== undefined && max !== undefined && Number(min) > Number(max)) return 1;
+      return 0;
+    }
+    case 'synergyEffectsArray': {
+      const arr = Array.isArray(value) ? value : [];
+      let n = 0;
+      for (const e of arr) {
+        if (!e || !e.type) { n++; continue; }
+        if (e.type !== 'immunity') {
+          if (!e.operation) n++;
+          if (e.value === undefined || e.value === null || isNaN(Number(e.value))) n++;
+        }
+        if (e.type === 'stat_modifier' && !e.stat) n++;
+        if (e.type === 'duration_modifier' && !e.activity) n++;
+        if (e.type === 'resource_yield_modifier' && !e.resourceId) n++;
+        if (e.type === 'immunity' && !e.immuneTo) n++;
+      }
+      return n;
+    }
+    case 'giftPresentation':
+      return 0;
+    case 'giftClaimRules': {
+      const cr = value as any;
+      if (!cr || typeof cr !== 'object') return 0;
+      let n = 0;
+      if (cr.limitPerPlayer !== undefined && (isNaN(Number(cr.limitPerPlayer)) || Number(cr.limitPerPlayer) < 1)) n++;
+      if (cr.expiresInSeconds !== undefined && (isNaN(Number(cr.expiresInSeconds)) || Number(cr.expiresInSeconds) < 1)) n++;
+      return n;
+    }
+    case 'itemEquipData': {
+      const ed = value as any;
+      if (!ed || typeof ed !== 'object') return 0;
+      if (ed.slot !== undefined && typeof ed.slot === 'string' && ed.slot.trim() === '') return 1;
+      return 0;
+    }
     default:
       return 0;
   }

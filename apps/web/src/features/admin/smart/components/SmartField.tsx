@@ -24,6 +24,12 @@ import { AscensionEditor, MasteryEditor } from './structured/AscensionMasteryEdi
 import InitEditor from './structured/InitEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 import UniquesEditor from './structured/UniquesEditor';
+import SynergySelectorEditor from './structured/SynergySelectorEditor';
+import SynergyContextEditor from './structured/SynergyContextEditor';
+import SynergyEffectsEditor from './structured/SynergyEffectsEditor';
+import GiftPresentationEditor from './structured/GiftPresentationEditor';
+import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
+import ItemEquipDataEditor from './structured/ItemEquipDataEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 interface Props {
@@ -393,6 +399,48 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       );
     }
 
+    if (t === 'synergySelector') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <SynergySelectorEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'synergyContext') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <SynergyContextEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'synergyEffectsArray') {
+      const safeVal = Array.isArray(value) ? value : [];
+      return renderStructured(
+        <SynergyEffectsEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'giftPresentation') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <GiftPresentationEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'giftClaimRules') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <GiftClaimRulesEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'itemEquipData') {
+      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+      return renderStructured(
+        <ItemEquipDataEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
     if (t === 'rulesWithUniques') {
       const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
       const { uniques, ...otherRules } = safeVal;
@@ -575,7 +623,7 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       );
     }
 
-    if (t === 'json' || t === 'levelRules' || t === 'requirements' || t === 'timer' || t === 'giftPresentation' || t === 'giftClaimRules' || t === 'giftRewardSpec' || t === 'outcomeBlock' || t === 'costObject') {
+    if (t === 'json' || t === 'levelRules' || t === 'requirements' || t === 'timer' || t === 'giftRewardSpec' || t === 'outcomeBlock' || t === 'costObject') {
       const safeVal = value ?? (fieldDef.default !== undefined ? fieldDef.default : {});
       return (
         <JSONField
