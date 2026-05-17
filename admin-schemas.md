@@ -455,6 +455,60 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 | `odds` | Override the def's own odds (leave unset to use the def's value) |
 | `pickMin` / `pickMax` | Override the def's pick range |
 
+---
+
+## SelectionRuleDef — Reusable Rule Library
+
+`SelectionRuleDef` rows store named, reusable `RichSelection` trees. Any `requirements` or `visibilityRequirements` field (on missions, buildings, recipes, etc.) can embed a reference to one via a `rule_ref` node instead of copy-pasting the full condition tree.
+
+Managed through the generic admin smart-editor at `GET /api/admin/records/selectionRuleDef`.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `rule_ninja_team`) |
+| `name` | string | ✓ | Admin-facing display name |
+| `description` | string | | What condition this rule represents |
+| `tags` | string[] | | Classification tags for filtering |
+| `selection` | Json (`RichSelection`) | ✓ | The reusable condition tree |
+| `enabled` | boolean | | Default `true`. Disabled rules always return `false` when referenced. |
+| `createdAt` | datetime | auto | Row creation time |
+| `updatedAt` | datetime | auto | Row last-updated time |
+
+---
+
+## `rule_ref` Node Type
+
+Within any `RichSelection` tree (requirements, visibilityRequirements, etc.), a child node can be a `rule_ref` instead of a plain rule or group:
+
+```json
+{
+  "op": "AND",
+  "rules": [
+    { "scope": "player", "field": "keeperLevel", "operator": "gte", "value": 5 },
+    { "type": "rule_ref", "id": "rule_ninja_team", "label": "Ninja team check" }
+  ]
+}
+```
+
+### `rule_ref` fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | `"rule_ref"` | ✓ | Discriminator. Identifies this node as a library rule reference. |
+| `id` | string | ✓ | ID of the `SelectionRuleDef` row to evaluate. |
+| `label` | string | | Optional human-readable label for admin display. |
+
+### Resolver behaviour
+
+- The resolver fetches the referenced `SelectionRuleDef` by `id` and evaluates its `selection` tree inline, transparently to the caller.
+- If the referenced rule does not exist or is **disabled**, the node evaluates to `false`.
+- **Circular references** are detected at resolve time: if a `rule_ref` chain visits the same `id` more than once, resolution short-circuits to `false` and logs a warning. The game never hangs.
+- For synchronous evaluation (no DB access): call `preloadRuleDefs(ids)` before `evaluate()` to warm the per-request cache. For fully automatic loading, use the `evaluateAsync()` / `evaluateAllAsync()` variants.
+
+---
+
 ### Using `nothing` to express low-probability rewards
 
 In pick-mode bundles `odds` values are **relative weights**, not percentages. To express a 2% chance of dropping an item alongside a 98% chance of nothing:

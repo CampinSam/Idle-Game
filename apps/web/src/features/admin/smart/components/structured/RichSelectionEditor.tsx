@@ -1,5 +1,5 @@
-import { useState, type CSSProperties } from 'react';
-import type { RichSelection, RichSelectionRule, ScopeType, OperatorType, AggregateType } from '@derp/shared';
+import { useState, useEffect, type CSSProperties } from 'react';
+import type { RichSelection, RichSelectionRule, RuleRefNode, ScopeType, OperatorType, AggregateType } from '@derp/shared';
 import {
   containerStyle,
   inputStyle,
@@ -10,8 +10,9 @@ import {
   fieldGroupStyle,
   ghostButtonStyle,
 } from './editorStyles';
+import { ensureRefCache } from '../RefSelect';
 
-type RssNode = RichSelection | RichSelectionRule;
+type RssNode = RichSelection | RichSelectionRule | RuleRefNode;
 
 function isGroup(n: unknown): n is RichSelection {
   return (
@@ -22,6 +23,20 @@ function isGroup(n: unknown): n is RichSelection {
     'rules' in (n as object) &&
     Array.isArray((n as any).rules)
   );
+}
+
+function isRuleRef(n: unknown): n is RuleRefNode {
+  return (
+    n !== null &&
+    typeof n === 'object' &&
+    !Array.isArray(n) &&
+    (n as any).type === 'rule_ref' &&
+    typeof (n as any).id === 'string'
+  );
+}
+
+function defaultRuleRef(): RuleRefNode {
+  return { type: 'rule_ref', id: '' };
 }
 
 const SCOPE_OPTIONS: ScopeType[] = [
@@ -146,6 +161,136 @@ const reorderBtnDisabled: CSSProperties = {
   borderColor: '#222',
   cursor: 'default',
 };
+
+interface RuleRefEditorProps {
+  node: RuleRefNode;
+  onChange: (n: RuleRefNode) => void;
+  onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+}
+
+function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast }: RuleRefEditorProps) {
+  const [options, setOptions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    ensureRefCache('selectionRuleDef').then(rows => {
+      setOptions(rows);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const selected = options.find(o => o.id === node.id);
+
+  const rowStyle: CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'flex-end',
+    padding: '6px 8px',
+    background: '#0d1a2e',
+    borderRadius: 4,
+    border: '1px solid #1e2e3e',
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 6 }}>
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          style={isFirst ? reorderBtnDisabled : reorderBtnBase}
+          title="Move up"
+        >↑</button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast}
+          style={isLast ? reorderBtnDisabled : reorderBtnBase}
+          title="Move down"
+        >↓</button>
+      </div>
+
+      <div style={{ ...rowStyle, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            color: '#7C3AED',
+            background: '#2a1060',
+            padding: '2px 6px',
+            borderRadius: 3,
+            border: '1px solid #7C3AED40',
+            flexShrink: 0,
+          }}>
+            RULE REF
+          </span>
+        </div>
+
+        <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 200 }}>
+          <span style={{ ...labelStyle, ...(!node.id ? { color: '#f87171' } : {}) }}>
+            rule id{!node.id ? ' ✕' : ''}
+          </span>
+          {loading ? (
+            <input
+              type="text"
+              value=""
+              placeholder="Loading rules…"
+              disabled
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          ) : (
+            <select
+              value={node.id}
+              onChange={e => onChange({ ...node, id: e.target.value })}
+              style={{
+                ...selectStyle,
+                width: '100%',
+                ...(!node.id ? { borderColor: '#f87171', background: '#1f0a0a' } : {}),
+              }}
+            >
+              <option value="">— select a rule —</option>
+              {options.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.id}{o.name ? ` — ${o.name}` : ''}{o.enabled === false ? ' (disabled)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {selected && (
+          <div style={{ fontSize: 11, color: '#888', fontStyle: 'italic', flex: 1, minWidth: 120 }}>
+            {selected.description || selected.name || ''}
+          </div>
+        )}
+
+        <div style={{ ...fieldGroupStyle, minWidth: 120 }}>
+          <span style={labelStyle}>label (optional)</span>
+          <input
+            type="text"
+            value={node.label ?? ''}
+            onChange={e => onChange({ ...node, label: e.target.value || undefined })}
+            placeholder="e.g. Ninja team check"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{ ...dangerIconButtonStyle, alignSelf: 'flex-end', marginBottom: 1 }}
+          title="Remove rule ref"
+        >×</button>
+      </div>
+    </div>
+  );
+}
 
 interface RuleEditorProps {
   rule: RichSelectionRule;
@@ -354,6 +499,7 @@ function GroupEditor({
 
   const addRule = () => onChange({ ...node, rules: [...node.rules, defaultRule()] });
   const addGroup = () => onChange({ ...node, rules: [...node.rules, defaultGroup()] });
+  const addRuleRef = () => onChange({ ...node, rules: [...node.rules, defaultRuleRef()] });
   const setOp = (op: 'AND' | 'OR' | 'NOT') => onChange({ ...node, op });
 
   return (
@@ -476,6 +622,17 @@ function GroupEditor({
                   isLast={i === node.rules.length - 1}
                   depth={depth + 1}
                 />
+              ) : isRuleRef(child) ? (
+                <RuleRefEditor
+                  key={i}
+                  node={child as RuleRefNode}
+                  onChange={n => updateChild(i, n)}
+                  onRemove={() => removeChild(i)}
+                  onMoveUp={() => moveChild(i, -1)}
+                  onMoveDown={() => moveChild(i, 1)}
+                  isFirst={i === 0}
+                  isLast={i === node.rules.length - 1}
+                />
               ) : (
                 <RuleEditor
                   key={i}
@@ -506,7 +663,7 @@ function GroupEditor({
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button type="button" onClick={addRule} style={addButtonStyle}>
               + rule
             </button>
@@ -516,6 +673,14 @@ function GroupEditor({
               style={{ ...addButtonStyle, borderColor: '#555', color: '#aaa' }}
             >
               + group
+            </button>
+            <button
+              type="button"
+              onClick={addRuleRef}
+              style={{ ...addButtonStyle, borderColor: '#7C3AED80', color: '#a78bfa' }}
+              title="Embed a named reusable rule from the Selection Rule Library"
+            >
+              + rule ref
             </button>
           </div>
         </>

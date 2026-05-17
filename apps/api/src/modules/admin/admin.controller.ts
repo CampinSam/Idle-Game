@@ -57,6 +57,7 @@ export class AdminController {
       { key: 'homeBannerDef', name: 'Home Banners', table: 'home_banner_defs' },
       { key: 'systemIconDef', name: 'System Icon Definitions', table: 'system_icon_defs' },
       { key: 'synergyRule', name: 'Synergy Rules', table: 'synergy_rules' },
+      { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
     ];
   }
 

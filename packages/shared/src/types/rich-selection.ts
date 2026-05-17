@@ -49,9 +49,17 @@ export type OperatorType =
   | 'ends_with'
   | 'regex';
 
+export interface RuleRefNode {
+  type: 'rule_ref';
+  id: string;
+  label?: string;
+}
+
+export type RichSelectionChild = RichSelection | RichSelectionRule | RuleRefNode;
+
 export interface RichSelection {
   op: 'AND' | 'OR' | 'NOT';
-  rules: Array<RichSelection | RichSelectionRule>;
+  rules: Array<RichSelectionChild>;
   label?: string;
   description?: string;
   failText?: string;
@@ -94,8 +102,17 @@ export type SynergyCondition = RichSelection;
 export type BonusCondition = RichSelection;
 export type UnlockCondition = RichSelection;
 
+export function isRuleRefNode(node: unknown): node is RuleRefNode {
+  return (
+    node !== null &&
+    typeof node === 'object' &&
+    (node as any).type === 'rule_ref' &&
+    typeof (node as any).id === 'string'
+  );
+}
+
 export function isRichSelectionGroup(
-  node: RichSelection | RichSelectionRule,
+  node: RichSelection | RichSelectionRule | RuleRefNode,
 ): node is RichSelection {
   return (
     node !== null &&

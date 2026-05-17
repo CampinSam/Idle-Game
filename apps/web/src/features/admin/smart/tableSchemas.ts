@@ -23,6 +23,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   HomeBannerDef: 'homeBannerDef',
   SystemIconDef: 'systemIconDef',
   SynergyRule: 'synergyRule',
+  SelectionRuleDef: 'selectionRuleDef',
 };
 
 export interface FieldDef {
@@ -501,6 +502,18 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       endsAt: { type: 'string', description: 'ISO datetime — rule stops firing after this time (blank = no expiry).' },
     },
   },
+  SelectionRuleDef: {
+    color: '#7C3AED',
+    group: 'Rules',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. rule_ninja_team)' },
+      name: { type: 'string', required: true, description: 'Admin-facing display name' },
+      description: { type: 'string', description: 'What condition this rule represents' },
+      tags: { type: 'stringArray', default: [], description: 'Classification tags for filtering' },
+      selection: { type: 'richSelection', default: null, description: 'The reusable RichSelection condition tree' },
+      enabled: { type: 'boolean', default: true, description: 'Disabled rules always return false when referenced via rule_ref' },
+    },
+  },
   HomeBannerDef: {
     color: '#22D3EE',
     group: 'UI',
@@ -535,6 +548,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Entities: ['EntityDefinition'],
   Effects: ['EffectDef'],
   Synergy: ['SynergyRule'],
+  Rules: ['SelectionRuleDef'],
   System: ['EventDefinition', 'SystemIconDef'],
 };
 

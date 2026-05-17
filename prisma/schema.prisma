@@ -110,6 +110,24 @@ model NftCollectionDef {
 }
 
 // ═══════════════════════════════════════════════════
+// SELECTION RULE LIBRARY
+// ═══════════════════════════════════════════════════
+
+model SelectionRuleDef {
+  id          String   @id
+  name        String
+  description String?
+  tags        String[]
+  selection   Json
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+  @@map("selection_rule_defs")
+}
+
+// ═══════════════════════════════════════════════════
 // SYNERGY RULES
 // ═══════════════════════════════════════════════════
 

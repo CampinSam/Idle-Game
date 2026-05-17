@@ -3,6 +3,72 @@
   "title": "Derp Universe — Game Definition Schemas",
   "description": "JSON schema documentation for all game definition data files loaded by the definitions seed.",
   "definitions": {
+    "RuleRefNode": {
+      "type": "object",
+      "description": "A reference to a named reusable SelectionRuleDef row. Embeds the referenced rule's selection tree inline at evaluation time.",
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "const": "rule_ref", "description": "Discriminator — must be exactly \"rule_ref\"." },
+        "id": { "type": "string", "description": "ID of the SelectionRuleDef to evaluate." },
+        "label": { "type": "string", "description": "Optional admin-facing label for this reference." }
+      },
+      "additionalProperties": false
+    },
+    "RichSelectionRule": {
+      "type": "object",
+      "description": "A single leaf condition node in a RichSelection tree.",
+      "required": ["scope", "field", "operator"],
+      "properties": {
+        "id": { "type": "string", "description": "Optional stable identifier for this rule node." },
+        "label": { "type": "string", "description": "Admin-facing label." },
+        "description": { "type": "string" },
+        "scope": { "type": "string", "description": "Which context object to read from (player, entity, team, location, etc.)." },
+        "field": { "type": "string", "description": "Dot-path field on the scope object (e.g. keeperLevel, flags.beta_tester)." },
+        "aggregate": { "type": "string", "enum": ["self","any","all","none","count","sum","avg","min","max","distinct_count","ratio"], "description": "How to reduce multiple values (entity/team scopes)." },
+        "operator": { "type": "string", "enum": ["eq","neq","gt","gte","lt","lte","in","not_in","contains","not_contains","exists","not_exists","between","starts_with","ends_with","regex"] },
+        "value": { "description": "Comparison value (number, string, boolean, or array)." },
+        "where": { "$ref": "#/definitions/RichSelection" },
+        "caseSensitive": { "type": "boolean" },
+        "failText": { "type": "string" },
+        "passText": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    },
+    "RichSelectionChild": {
+      "description": "A single child node inside a RichSelection group — either a sub-group, a leaf rule, or a rule_ref.",
+      "oneOf": [
+        { "$ref": "#/definitions/RichSelection" },
+        { "$ref": "#/definitions/RichSelectionRule" },
+        { "$ref": "#/definitions/RuleRefNode" }
+      ]
+    },
+    "RichSelection": {
+      "type": "object",
+      "description": "A boolean condition tree used for requirements, visibility, and other eligibility checks.",
+      "required": ["op", "rules"],
+      "properties": {
+        "op": { "type": "string", "enum": ["AND", "OR", "NOT"], "description": "Boolean operator applied to all child rules." },
+        "rules": { "type": "array", "items": { "$ref": "#/definitions/RichSelectionChild" }, "description": "Child nodes — each is a sub-group, a leaf rule, or a rule_ref." },
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "failText": { "type": "string" },
+        "passText": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    },
+    "SelectionRuleDef": {
+      "type": "object",
+      "description": "A named, reusable RichSelection condition stored in the database and referenced by rule_ref nodes.",
+      "required": ["id", "name", "selection"],
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier (e.g. rule_ninja_team)." },
+        "name": { "type": "string", "description": "Admin-facing display name." },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Classification tags." },
+        "selection": { "$ref": "#/definitions/RichSelection", "description": "The condition tree this rule encapsulates." },
+        "enabled": { "type": "boolean", "default": true, "description": "Disabled rules always return false when referenced." }
+      }
+    },
     "SynergySelector": {
       "type": "object",
       "description": "Filters which entities a SynergyRule applies to. All fields are optional; an empty object {} matches any entity.",

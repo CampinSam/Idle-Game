@@ -925,6 +925,7 @@ export class AdminService {
       season: (this.prisma as any).season,
       homeBannerDef: (this.prisma as any).homeBannerDef,
       systemIconDef: (this.prisma as any).systemIconDef,
+      selectionRuleDef: (this.prisma as any).selectionRuleDef,
     };
 
     if (!models[table]) {

@@ -3,8 +3,10 @@ import { SelectionResolverService } from './selection-resolver.service';
 import type { SelectionContext } from './selection.types';
 import type { RichSelection, RichSelectionRule } from '@derp/shared';
 
+const mockPrisma = { selectionRuleDef: { findMany: jest.fn().mockResolvedValue([]) } } as any;
+
 function makeService(): SelectionResolverService {
-  const svc = new SelectionResolverService();
+  const svc = new SelectionResolverService(mockPrisma);
   (svc as any).logger = {
     warn: jest.fn(),
     log: jest.fn(),

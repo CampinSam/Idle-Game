@@ -63,7 +63,8 @@ function makeSynergyResolver(): SynergyResolverService {
 }
 
 function makeSelectionResolver(): SelectionResolverService {
-  const svc = new SelectionResolverService();
+  const mockPrisma = { selectionRuleDef: { findMany: jest.fn().mockResolvedValue([]) } } as any;
+  const svc = new SelectionResolverService(mockPrisma);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return svc;
 }
