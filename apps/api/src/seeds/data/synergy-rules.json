@@ -7,7 +7,6 @@
     "sourceSelector": { "traitsAny": ["ninja"] },
     "targetSelector": { "traitsAny": ["magic"] },
     "context": {},
-    "conditions": [],
     "effects": [
       { "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }
     ],
@@ -24,7 +23,6 @@
     "sourceSelector": { "traitsAny": ["corpo"] },
     "targetSelector": { "traitsAny": ["viking"] },
     "context": {},
-    "conditions": [],
     "effects": [
       { "type": "synergy_score_modifier", "operation": "flat_add", "value": -2 }
     ],
@@ -41,7 +39,6 @@
     "sourceSelector": { "factions": ["derps"] },
     "targetSelector": { "factions": ["vamps"] },
     "context": { "activityTypes": ["mission"], "missionTagsAny": ["stealth"] },
-    "conditions": [],
     "effects": [
       { "type": "duration_modifier", "activity": "mission", "operation": "percent_add", "value": -10 }
     ],
@@ -58,7 +55,6 @@
     "sourceSelector": { "traitsAny": ["pred"] },
     "targetSelector": { "traitsAny": ["deity", "monk"] },
     "context": { "activityTypes": ["mission"] },
-    "conditions": [],
     "effects": [
       { "type": "synergy_score_modifier", "operation": "flat_add", "value": -5 }
     ],
@@ -75,7 +71,6 @@
     "sourceSelector": { "traitsAny": ["mad scientist"] },
     "targetSelector": { "speciesIds": ["derp_bird"] },
     "context": { "activityTypes": ["crafting"] },
-    "conditions": [],
     "effects": [
       { "type": "duration_modifier", "activity": "crafting", "operation": "percent_add", "value": -15 }
     ],

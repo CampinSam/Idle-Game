@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import type { SelectionRuleDef } from '@prisma/client';
 import {
   RichSelection,
   RichSelectionRule,
@@ -14,11 +15,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 type AnyNode = RichSelection | RichSelectionRule | RuleRefNode;
 
+/**
+ * Cache entry: `undefined` = not yet loaded; `null` = definitively absent; `SelectionRuleDef` = loaded.
+ */
+type CacheEntry = SelectionRuleDef | null | undefined;
+
 @Injectable()
 export class SelectionResolverService implements OnModuleInit {
   private readonly logger = new Logger(SelectionResolverService.name);
 
-  private readonly _ruleDefCache = new Map<string, any | null>();
+  private readonly _ruleDefCache = new Map<string, SelectionRuleDef | null>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -28,14 +34,19 @@ export class SelectionResolverService implements OnModuleInit {
 
   /**
    * Reload the in-memory SelectionRuleDef cache from the database.
-   * Loads ALL rows (enabled and disabled) so that disabled-rule evaluation
-   * is handled at resolve time, not load time.
-   * Transitively loads any rule_ref IDs referenced inside loaded selections
-   * until no new IDs are discovered.
+   * Loads ALL rows (enabled and disabled) so disabled-rule enforcement
+   * happens at evaluation time, not at load time.
+   *
+   * After loading the initial set, performs a BFS to discover transitive
+   * rule_ref IDs referenced inside loaded selections and loads those too —
+   * repeated until no new IDs are found (up to 20 iterations).
+   *
+   * Called automatically on startup (OnModuleInit) and after any admin
+   * create/update/delete on the selectionRuleDef table.
    */
   async reloadRuleCache(): Promise<void> {
     try {
-      const rows: any[] = await (this.prisma as any).selectionRuleDef.findMany({});
+      const rows = await this.prisma.selectionRuleDef.findMany({});
       this._ruleDefCache.clear();
       for (const row of rows) {
         this._ruleDefCache.set(row.id, row);
@@ -48,36 +59,36 @@ export class SelectionResolverService implements OnModuleInit {
   }
 
   /**
-   * After loading the initial set of rule defs, find any rule_ref IDs
-   * referenced inside their selections that are NOT yet in the cache,
-   * and load those too. Repeat until stable (handles arbitrary depth).
+   * BFS through already-loaded rule def selections to find nested rule_ref
+   * IDs that haven't been loaded yet, then load those from DB.
+   * Continues until no new IDs are discovered.
    */
   private async _loadTransitiveRefs(): Promise<void> {
-    let iterations = 0;
     const MAX_ITERATIONS = 20;
-
-    while (iterations++ < MAX_ITERATIONS) {
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
       const unknownIds = new Set<string>();
       for (const def of this._ruleDefCache.values()) {
         if (!def) continue;
-        this._collectRuleRefIds(def.selection as AnyNode, unknownIds);
+        this._collectRuleRefIds(def.selection as unknown as AnyNode, unknownIds);
       }
       const toFetch = [...unknownIds].filter(id => !this._ruleDefCache.has(id));
       if (toFetch.length === 0) break;
 
-      const rows: any[] = await (this.prisma as any).selectionRuleDef.findMany({
+      const rows = await this.prisma.selectionRuleDef.findMany({
         where: { id: { in: toFetch } },
       });
       for (const row of rows) {
         this._ruleDefCache.set(row.id, row);
       }
       for (const id of toFetch) {
-        if (!this._ruleDefCache.has(id)) this._ruleDefCache.set(id, null);
+        if (!this._ruleDefCache.has(id)) {
+          this._ruleDefCache.set(id, null);
+        }
       }
     }
   }
 
-  /** Collect all rule_ref IDs present anywhere in a selection tree. */
+  /** Recursively collect all rule_ref IDs found anywhere in a selection tree. */
   private _collectRuleRefIds(node: AnyNode | null | undefined, out: Set<string>): void {
     if (!node || typeof node !== 'object') return;
     if (isRuleRefNode(node)) {
@@ -86,7 +97,7 @@ export class SelectionResolverService implements OnModuleInit {
     }
     if (isRichSelectionGroup(node)) {
       for (const child of (node as RichSelection).rules) {
-        this._collectRuleRefIds(child, out);
+        this._collectRuleRefIds(child as AnyNode, out);
       }
     }
   }
@@ -130,18 +141,23 @@ export class SelectionResolverService implements OnModuleInit {
       return false;
     }
 
-    const def = this._ruleDefCache.get(ref.id);
-    if (def === undefined) {
+    const entry: CacheEntry = this._ruleDefCache.get(ref.id);
+
+    if (entry === undefined) {
+      // Cache miss: rule was added after startup and cache hasn't been reloaded yet.
+      // Admin CRUD calls reloadRuleCache() after every write, so this window is small.
       this.logger.warn(
-        `SelectionResolver: rule_ref id="${ref.id}" not in cache — returning false (cache may need reload)`,
+        `SelectionResolver: rule_ref id="${ref.id}" not in cache (cache may be stale — returning false)`,
       );
       return false;
     }
-    if (def === null) {
+
+    if (entry === null) {
       this.logger.warn(`SelectionResolver: rule_ref id="${ref.id}" not found in DB — returning false`);
       return false;
     }
-    if (!def.enabled) {
+
+    if (!entry.enabled) {
       this.logger.warn(`SelectionResolver: rule_ref id="${ref.id}" is disabled — returning false`);
       return false;
     }
@@ -149,22 +165,23 @@ export class SelectionResolverService implements OnModuleInit {
     const childVisited = new Set(visited);
     childVisited.add(ref.id);
 
-    return this._evaluate(def.selection as AnyNode, ctx, childVisited);
+    return this._evaluate(entry.selection as unknown as AnyNode, ctx, childVisited);
   }
 
   private _evaluateGroup(group: RichSelection, ctx: SelectionContext, visited: Set<string>): boolean {
     const { op, rules } = group;
     if (!rules || rules.length === 0) return true;
 
+    const children = rules as RichSelectionChild[];
     switch (op) {
       case 'AND':
-        return (rules as RichSelectionChild[]).every(r => this._evaluate(r as AnyNode, ctx, visited));
+        return children.every(r => this._evaluate(r as AnyNode, ctx, visited));
       case 'OR':
-        return (rules as RichSelectionChild[]).some(r => this._evaluate(r as AnyNode, ctx, visited));
+        return children.some(r => this._evaluate(r as AnyNode, ctx, visited));
       case 'NOT':
-        return !(rules as RichSelectionChild[]).every(r => this._evaluate(r as AnyNode, ctx, visited));
+        return !children.every(r => this._evaluate(r as AnyNode, ctx, visited));
       default:
-        return (rules as RichSelectionChild[]).every(r => this._evaluate(r as AnyNode, ctx, visited));
+        return children.every(r => this._evaluate(r as AnyNode, ctx, visited));
     }
   }
 

@@ -502,10 +502,10 @@ Within any `RichSelection` tree (requirements, visibilityRequirements, etc.), a 
 
 ### Resolver behaviour
 
-- The resolver fetches the referenced `SelectionRuleDef` by `id` and evaluates its `selection` tree inline, transparently to the caller.
-- If the referenced rule does not exist or is **disabled**, the node evaluates to `false`.
+- The resolver fetches the referenced `SelectionRuleDef` by `id` from an in-memory cache and evaluates its `selection` tree inline, transparently to the caller.
+- If the referenced rule does not exist, is not in the cache, or is **disabled**, the node evaluates to `false`.
 - **Circular references** are detected at resolve time: if a `rule_ref` chain visits the same `id` more than once, resolution short-circuits to `false` and logs a warning. The game never hangs.
-- For synchronous evaluation (no DB access): call `preloadRuleDefs(ids)` before `evaluate()` to warm the per-request cache. For fully automatic loading, use the `evaluateAsync()` / `evaluateAllAsync()` variants.
+- **Cache lifecycle:** `SelectionResolverService` loads ALL `SelectionRuleDef` rows from the database on startup (`OnModuleInit`) and resolves transitive nested `rule_ref` IDs via BFS. Any admin create/update/delete of a `SelectionRuleDef` row automatically reloads the full cache via `reloadRuleCache()`. Changes are live immediately without a server restart.
 
 ---
 
