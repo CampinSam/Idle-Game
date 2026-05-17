@@ -39,10 +39,12 @@ export function CategoriesGrid({
         const inlineMissions = getInlineMissions(cat.id);
         const navigable = !cat.inlineOnly;
         const bgImg = bgImageCss(display.backgroundImage);
+        const inlineButtonsCfg = display.style?.inlineButtons || {};
+        const bottomPlacement = !unavailable && inlineMissions.length > 0 && inlineButtonsCfg.placement === 'bottom';
         return (
           <div
             key={cat.id}
-            className={`relative overflow-hidden rounded-xl border-2 min-h-[110px] transition-all duration-200 motion-safe:animate-[card-enter_0.25s_ease-out_both] ${unavailable ? 'opacity-60' : 'hover:brightness-110 hover:-translate-y-px'}`}
+            className={`relative overflow-hidden rounded-xl border-2 min-h-[110px] transition-all duration-200 motion-safe:animate-[card-enter_0.25s_ease-out_both] ${bottomPlacement ? 'flex flex-col' : ''} ${unavailable ? 'opacity-60' : 'hover:brightness-110 hover:-translate-y-px'}`}
             style={{
               backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
               borderColor: display.borderColor,
@@ -68,7 +70,7 @@ export function CategoriesGrid({
               className="absolute inset-0 z-0 pointer-events-none"
               style={{ background: overlay ?? DEFAULT_OVERLAY }}
             />
-            <div className="relative z-10 p-3 flex flex-col gap-2">
+            <div className={`relative z-10 p-3 flex flex-col gap-2 ${bottomPlacement ? 'flex-1' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="m-0 font-cinzel text-[15px] font-extrabold text-white tracking-[0.02em] truncate" style={titleStyle}>
                   {cat.name}
@@ -83,7 +85,7 @@ export function CategoriesGrid({
                 <div className="text-[11px] text-[#f87171] font-semibold mt-1">🚫 Currently Unavailable</div>
               )}
               {!unavailable && inlineMissions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className={`flex flex-wrap gap-1.5 ${bottomPlacement ? 'mt-auto pt-1' : 'mt-1.5'}`} onClick={(e) => e.stopPropagation()}>
                   {inlineMissions.map((def: any) => {
                     const inlineCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
                     const canAffordInline = inlineCost.every((entry) => {
@@ -92,17 +94,35 @@ export function CategoriesGrid({
                         : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
                       return have >= entry.amount;
                     });
+                    const customState = canAffordInline
+                      ? (inlineButtonsCfg.normal || null)
+                      : (inlineButtonsCfg.requirementsNotMet || null);
+                    const defaultBg = canAffordInline
+                      ? 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))'
+                      : undefined;
+                    const buttonStyle: React.CSSProperties = {};
+                    if (customState) {
+                      buttonStyle.background = customState.background || defaultBg;
+                      if (customState.color) buttonStyle.color = customState.color;
+                      if (customState.borderColor) buttonStyle.borderColor = customState.borderColor;
+                      if (typeof customState.opacity === 'number') buttonStyle.opacity = customState.opacity;
+                    } else if (defaultBg) {
+                      buttonStyle.background = defaultBg;
+                    }
+                    const buttonClassName = `px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 cursor-pointer ${
+                      customState
+                        ? ''
+                        : (canAffordInline
+                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110'
+                            : 'text-white/50 border-white/15 bg-white/5')
+                    }`;
                     return (
                       <button
                         key={def.id}
                         title={!canAffordInline ? 'View requirements' : undefined}
                         onClick={() => onSelectInlineMission(cat.id, def.id)}
-                        className={`px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 cursor-pointer ${
-                          canAffordInline
-                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110'
-                            : 'text-white/50 border-white/15 bg-white/5'
-                        }`}
-                        style={canAffordInline ? { background: 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))' } : undefined}
+                        className={buttonClassName}
+                        style={buttonStyle}
                       >
                         {getInlineLabel(def)}
                       </button>

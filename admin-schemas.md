@@ -337,3 +337,76 @@ All fields are optional. Trait matching is case-insensitive (`"ninja"` matches `
 | `unique` | Rule fires exactly once if any pairs match, regardless of pair count |
 | `best_only` | Within the `stackGroup`, only the rule with the highest positive effect value fires |
 | `highest_abs_only` | Within the `stackGroup`, only the rule with the highest absolute effect value fires |
+
+---
+
+## DisplayDef — `style` field
+
+`DisplayDef.style` is a JSON blob that controls visual overrides for any entity that references the def (Mission Category cards, Mission hero headers, etc.). All sub-objects are optional; omitted keys fall back to hardcoded defaults.
+
+### Top-level keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `overlay` | object | Colour/gradient rendered on top of the background image |
+| `background` | object | CSS background-image layout |
+| `title` | object | Card heading / hero title font overrides |
+| `body` | object | Body / inline text font overrides |
+| `inlineButtons` | object | Inline button placement and per-state styling (Mission Category only) |
+| `data` | object | Admin-editor UI hints — `data._mode` stores the selected editing context and is ignored by the game engine |
+
+### `overlay`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `color` | string | Solid CSS colour, e.g. `#0F0A28` |
+| `opacity` | number 0–1 | Overlay opacity |
+| `gradient` | string | Raw CSS gradient — overrides `color`+`opacity` when set |
+
+### `background`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `position` | string | CSS `background-position` |
+| `size` | string | CSS `background-size` |
+| `repeat` | string | CSS `background-repeat` |
+| `attachment` | string | CSS `background-attachment` |
+
+### `title` / `body`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fontFamily` | string | CSS font-family stack |
+| `fontWeight` | string \| number | CSS font-weight |
+| `fontSize` | string | CSS font-size, e.g. `22px` |
+| `color` | string | CSS colour |
+| `letterSpacing` | string | CSS letter-spacing (`title` only) |
+| `textTransform` | string | CSS text-transform (`title` only) |
+| `textShadow` | string | CSS text-shadow (`title` only) |
+| `lineHeight` | string | CSS line-height |
+
+### `inlineButtons`
+
+Controls the inline mission-launch buttons shown on Mission Category cards.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `placement` | `"inline"` \| `"bottom"` | `"inline"` (default) — buttons sit beside card content; `"bottom"` — pushed to card bottom edge |
+| `normal` | `DisplayButtonStateStyle` | Style when player can afford the mission |
+| `requirementsNotMet` | `DisplayButtonStateStyle` | Style when player cannot afford the mission |
+| `disabled` | `DisplayButtonStateStyle` | Style for explicitly disabled buttons |
+
+#### `DisplayButtonStateStyle`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `background` | string | CSS `background` — plain colour or gradient |
+| `color` | string | CSS text colour |
+| `borderColor` | string | CSS border colour |
+| `opacity` | number 0–1 | Element opacity |
+
+### `data` (admin-editor hints)
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `_mode` | `"missionCategory"` \| `"mission"` \| `"generic"` | Remembers which editing context was last selected in `DisplayStyleEditor`. Persisted so the choice survives navigation. **Ignored by the game engine.** |

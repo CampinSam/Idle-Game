@@ -764,6 +764,105 @@
         }
       }
     },
+    "DisplayButtonStateStyle": {
+      "description": "Per-state visual overrides for an inline mission button. All fields are optional; omitting a field falls back to the hardcoded default.",
+      "properties": {
+        "background": {
+          "type": "string",
+          "description": "CSS background value — plain colour or full gradient, e.g. 'linear-gradient(135deg, #3b1fa8, #6d28d9)'"
+        },
+        "color": {
+          "type": "string",
+          "description": "CSS text colour, e.g. '#ffffff'"
+        },
+        "borderColor": {
+          "type": "string",
+          "description": "CSS border colour, e.g. 'rgba(167,139,250,0.55)'"
+        },
+        "opacity": {
+          "type": "number",
+          "min": 0,
+          "max": 1,
+          "description": "Overall element opacity (0 = invisible, 1 = fully opaque)"
+        }
+      }
+    },
+    "DisplayInlineButtonsStyle": {
+      "description": "Placement and per-state styling for inline mission buttons shown on a Mission Category card.",
+      "properties": {
+        "placement": {
+          "type": "string",
+          "enum": ["inline", "bottom"],
+          "default": "inline",
+          "description": "'inline' (default) — buttons sit beside the card content; 'bottom' — buttons are pushed to the card's bottom edge via flex layout"
+        },
+        "normal": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the player can afford the mission"
+        },
+        "requirementsNotMet": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the player cannot afford the mission (cost not met)"
+        },
+        "disabled": {
+          "$ref": "#/complexTypes/DisplayButtonStateStyle",
+          "description": "Style when the button is explicitly disabled"
+        }
+      }
+    },
+    "DisplayStyle": {
+      "description": "Visual style overrides stored on a DisplayDef. All sub-objects are optional; missing keys use runtime defaults. The `data._mode` key is a UI-only hint stored by the admin editor (never read by the game engine).",
+      "properties": {
+        "overlay": {
+          "description": "Colour overlay rendered on top of the background image",
+          "properties": {
+            "color": { "type": "string", "description": "Solid overlay colour, e.g. '#0F0A28'" },
+            "opacity": { "type": "number", "min": 0, "max": 1, "description": "Overlay opacity (0–1)" },
+            "gradient": { "type": "string", "description": "Raw CSS gradient — overrides color+opacity when set" }
+          }
+        },
+        "background": {
+          "description": "Background image layout",
+          "properties": {
+            "position": { "type": "string", "description": "CSS background-position" },
+            "size": { "type": "string", "description": "CSS background-size" },
+            "repeat": { "type": "string", "description": "CSS background-repeat" },
+            "attachment": { "type": "string", "description": "CSS background-attachment" }
+          }
+        },
+        "title": {
+          "description": "Card heading / hero title font overrides",
+          "properties": {
+            "fontFamily": { "type": "string" },
+            "fontWeight": { "type": "string" },
+            "fontSize": { "type": "string" },
+            "color": { "type": "string" },
+            "letterSpacing": { "type": "string" },
+            "textTransform": { "type": "string" },
+            "textShadow": { "type": "string" },
+            "lineHeight": { "type": "string" }
+          }
+        },
+        "body": {
+          "description": "Body / inline text font overrides (everything else inside the card)",
+          "properties": {
+            "fontFamily": { "type": "string" },
+            "fontWeight": { "type": "string" },
+            "fontSize": { "type": "string" },
+            "color": { "type": "string" },
+            "lineHeight": { "type": "string" }
+          }
+        },
+        "inlineButtons": {
+          "$ref": "#/complexTypes/DisplayInlineButtonsStyle",
+          "description": "Inline mission button layout and per-state styling (Mission Category cards only)"
+        },
+        "data": {
+          "type": "object",
+          "description": "Admin-editor UI hints. Currently used keys: `_mode` (string) — the selected editing context ('missionCategory' | 'mission' | 'generic'). Ignored by the game engine."
+        }
+      }
+    },
     "LevelBlock": {
       "description": "Configuration for a specific level within level-based rules. Sparse entries inherit downward via resolveLevelConfig().",
       "properties": {
@@ -2537,6 +2636,11 @@
           "type": "string",
           "nullable": true,
           "description": "CSS background value"
+        },
+        "style": {
+          "$ref": "#/complexTypes/DisplayStyle",
+          "default": {},
+          "description": "Overlay, background layout, title & body font overrides, and (for Mission Category cards) inline button placement + per-state styling. The special `data._mode` sub-key is a UI-only hint used by the admin editor to remember the selected editing context; it has no effect on game rendering."
         },
         "data": {
           "type": "json",
