@@ -406,3 +406,88 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return 0;
   }
 }
+
+function richSelectionMessages(value: any, prefix: string): string[] {
+  const msgs: string[] = [];
+  if (!value || Array.isArray(value)) return msgs;
+  if (typeof value !== 'object' || !('op' in value) || !('rules' in value)) return msgs;
+  (value.rules ?? []).forEach((rule: any, i: number) => {
+    if (Array.isArray(rule?.rules)) {
+      msgs.push(...richSelectionMessages(rule, `${prefix} group[${i}]`));
+    } else if (rule?.type === 'rule_ref') {
+      if (!rule.id?.trim()) msgs.push(`${prefix} rule[${i}]: rule_ref missing id`);
+    } else {
+      if (!rule?.scope) msgs.push(`${prefix} rule[${i}]: scope required`);
+      if (!rule?.field) msgs.push(`${prefix} rule[${i}]: field required`);
+      if (!rule?.operator) msgs.push(`${prefix} rule[${i}]: operator required`);
+    }
+  });
+  return msgs;
+}
+
+function costArrayMessages(value: any, fieldName: string): string[] {
+  const errs = validateCostList(value);
+  const msgs: string[] = [];
+  errs.forEach((e, i) => {
+    Object.values(e).forEach(msg => msgs.push(`${fieldName}[${i}]: ${msg}`));
+  });
+  return msgs;
+}
+
+function outcomeMessages(items: any, prefix: string): string[] {
+  const arr = Array.isArray(items) ? items : [];
+  const msgs: string[] = [];
+  arr.forEach((o: any, i: number) => {
+    const errs = validateOutcome(o);
+    Object.values(errs).forEach(msg => msgs.push(`${prefix}[${i}]: ${msg}`));
+    if (Array.isArray(o?.bundle)) {
+      msgs.push(...outcomeMessages(o.bundle, `${prefix}[${i}].bundle`));
+    }
+  });
+  return msgs;
+}
+
+function outcomeSpecMessages(value: any, fieldName: string): string[] {
+  if (Array.isArray(value)) return outcomeMessages(value, fieldName);
+  if (value && typeof value === 'object' && Array.isArray((value as any).rewards)) {
+    return outcomeMessages((value as any).rewards, `${fieldName}.rewards`);
+  }
+  return [];
+}
+
+function timerMessages(value: any, fieldName: string): string[] {
+  const msgs = Object.values(validateTimer(value)).map(msg => `${fieldName}: ${msg}`);
+  if (value?.skipable && Array.isArray(value?.skip_cost)) {
+    msgs.push(...costArrayMessages(value.skip_cost, `${fieldName}.skip_cost`));
+  }
+  return msgs;
+}
+
+export function structuredFieldMessages(type: string | undefined, fieldName: string, value: any): string[] {
+  switch (type) {
+    case 'costArray':
+      return costArrayMessages(value, fieldName);
+    case 'richSelection':
+      return richSelectionMessages(value, fieldName);
+    case 'outcomeSpec':
+      return outcomeSpecMessages(value, fieldName);
+    case 'timerSpec':
+      return timerMessages(value, fieldName);
+    case 'progression': {
+      return Object.values(validateProgression(value)).map(msg => `${fieldName}: ${msg}`);
+    }
+    case 'init': {
+      return Object.values(validateInit(value)).map(msg => `${fieldName}: ${msg}`);
+    }
+    case 'ascension': {
+      return ascensionErrorCount(value) > 0 ? [`${fieldName}: invalid ascension config`] : [];
+    }
+    case 'mastery': {
+      return masteryErrorCount(value) > 0 ? [`${fieldName}: invalid mastery config`] : [];
+    }
+    default: {
+      const n = structuredFieldErrorCount(type, value);
+      return n > 0 ? [`${fieldName}: ${n} issue${n === 1 ? '' : 's'}`] : [];
+    }
+  }
+}

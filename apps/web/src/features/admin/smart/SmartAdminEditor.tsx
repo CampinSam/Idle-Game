@@ -3,7 +3,7 @@ import { adminApi } from '../adminApi';
 import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS, TableSchema } from './tableSchemas';
 import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
-import { structuredFieldErrorCount } from './components/structured/validation';
+import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
 
 interface TableEntry {
   key: string;
@@ -278,14 +278,16 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     return sn ? TABLE_SCHEMAS[sn] : null;
   }, [activeTable, tables]);
 
-  const structuredErrorCount = useMemo(() => {
-    if (!schema || !editorState.record) return 0;
-    let n = 0;
+  const structuredErrorMessages = useMemo(() => {
+    if (!schema || !editorState.record) return [] as string[];
+    const msgs: string[] = [];
     Object.entries(schema.fields).forEach(([fname, fdef]) => {
-      n += structuredFieldErrorCount(fdef.type, editorState.record![fname]);
+      msgs.push(...structuredFieldMessages(fdef.type, fname, editorState.record![fname]));
     });
-    return n;
+    return msgs;
   }, [schema, editorState.record]);
+
+  const structuredErrorCount = structuredErrorMessages.length;
 
   const handleSave = async () => {
     if (!editorState.record) return;
@@ -711,12 +713,18 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   </>
                 )}
                 {structuredErrorCount > 0 && (
-                  <span
-                    style={{ color: '#ef4444', fontSize: 12, flexShrink: 0 }}
-                    title="Fix the highlighted fields below before saving"
-                  >
-                    {structuredErrorCount} validation issue{structuredErrorCount === 1 ? '' : 's'}
-                  </span>
+                  <details style={{ flexShrink: 0, maxWidth: 320 }}>
+                    <summary style={{ color: '#ef4444', fontSize: 12, cursor: 'pointer', userSelect: 'none', listStyle: 'none' }}>
+                      ▸ {structuredErrorCount} validation issue{structuredErrorCount === 1 ? '' : 's'}
+                    </summary>
+                    <ul style={{ margin: '4px 0 0 8px', padding: 0, listStyle: 'none' }}>
+                      {structuredErrorMessages.map((msg, i) => (
+                        <li key={i} style={{ color: '#fca5a5', fontSize: 11, fontFamily: 'monospace', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                          · {msg}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
                 <button
                   type="button"
