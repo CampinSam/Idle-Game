@@ -544,10 +544,30 @@ export interface CommandRequest {
   idempotencyKey: string;
 }
 
+export interface SynergyMatchedRule {
+  ruleId: string;
+  name: string;
+  applications: number;
+  scoreContrib: number;
+  mpBonusContrib: number;
+  durationBonusContrib: number;
+  isPenalty: boolean;
+}
+
+export interface SynergyPreview {
+  matchedRules: SynergyMatchedRule[];
+  synergyScore: number;
+  missionPowerBonus: number;
+  durationBonus: number;
+}
+
 export interface CommandResponse {
   patches: Patch[];
   ui: UiIntent[];
   cursor: { delta: string };
+  meta?: {
+    synergyPreview?: SynergyPreview;
+  };
 }
 
 export interface DeltaResponse {

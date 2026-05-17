@@ -5,6 +5,7 @@ import { Badge } from '../../../components/ui';
 import { EntityCard, EntityList } from '../../entities/components';
 import { getEntityMP } from '../../entities/utils';
 import { MissionDetailFooter } from './MissionDetailFooter';
+import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
   displayCssVars,
@@ -15,6 +16,7 @@ import {
   type ReqStatusEntry,
 } from './missionUtils';
 import { BUSY_PICKER_TOOLTIP } from '../../inventory/utils/statChangeHelpers';
+import type { SynergyPreview } from '../../../services/api';
 
 interface MissionDetailProps {
   selectedDef: any;
@@ -34,6 +36,8 @@ interface MissionDetailProps {
   onBack: () => void;
   onStart: () => void;
   entityPickerRef: React.RefObject<HTMLDivElement>;
+  synergyPreview?: SynergyPreview | null;
+  onDismissSynergy?: () => void;
 }
 
 export function MissionDetail(props: MissionDetailProps) {
@@ -55,6 +59,8 @@ export function MissionDetail(props: MissionDetailProps) {
     onBack,
     onStart,
     entityPickerRef,
+    synergyPreview,
+    onDismissSynergy,
   } = props;
 
   const teamGridRef = useRef<HTMLDivElement>(null);
@@ -159,6 +165,9 @@ export function MissionDetail(props: MissionDetailProps) {
           ...heroCss.vars,
         } as React.CSSProperties}
       >
+        {synergyPreview && onDismissSynergy && (
+          <SynergyPanel synergyPreview={synergyPreview} onDismiss={onDismissSynergy} />
+        )}
         <div
           className="relative w-full h-[185px] flex-shrink-0 bg-center bg-cover bg-no-repeat px-4 pt-4 pb-3"
           style={{ backgroundImage: bgImageCss(display.backgroundImage) }}

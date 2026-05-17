@@ -418,7 +418,20 @@ export class MissionService {
     return {
       ...response,
       synergyPreview: {
-        matchedRules: startSynergyResult.matchedRules.map(r => ({ ruleId: r.ruleId, name: r.name, applications: r.applications })),
+        matchedRules: startSynergyResult.matchedRules.map(r => {
+          const apps = r.applications;
+          const scoreContrib = r.effects
+            .filter(e => e.type === 'synergy_score_modifier' && e.operation === 'flat_add')
+            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
+          const mpBonusContrib = r.effects
+            .filter(e => e.type === 'stat_modifier' && e.stat === 'MISSION_POWER' && e.operation === 'percent_add')
+            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
+          const durationBonusContrib = r.effects
+            .filter(e => e.type === 'duration_modifier' && e.operation === 'percent_add')
+            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
+          const isPenalty = scoreContrib < 0 || mpBonusContrib < 0 || durationBonusContrib > 0;
+          return { ruleId: r.ruleId, name: r.name, applications: apps, scoreContrib, mpBonusContrib, durationBonusContrib, isPenalty };
+        }),
         synergyScore: startSynergyResult.totals.synergyScore,
         missionPowerBonus: startSynergyResult.totals.statModifiers['MISSION_POWER']?.percentAdd ?? 0,
         durationBonus: missionDurationMod?.percentAdd ?? 0,

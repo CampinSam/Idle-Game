@@ -16,6 +16,7 @@ export interface CommandOutput {
   patches: Patch[];
   ui: UiIntent[];
   cursor: { delta: string };
+  meta?: Record<string, any>;
 }
 
 @Injectable()
@@ -69,6 +70,7 @@ export class CommandService {
             patches: handlerResult.patches,
             ui: handlerResult.ui,
             cursor: { delta: delta.id.toString() },
+            ...(handlerResult.meta ? { meta: handlerResult.meta } : {}),
           };
 
           await this.idempotency.store(

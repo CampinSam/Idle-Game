@@ -88,6 +88,7 @@ export default function MissionsPage() {
 
   const [error, setError] = useState('');
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [synergyPreview, setSynergyPreview] = useState<import('../../services/api').SynergyPreview | null>(null);
 
   const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
   const currentCategoryId = categoryStack[categoryStack.length - 1] ?? null;
@@ -129,13 +130,23 @@ export default function MissionsPage() {
     if (!selectedMission) return;
     setError('');
     try {
-      await execute('StartMission', { defId: selectedMission, entityIds: selectedEntities });
+      const response = await execute('StartMission', { defId: selectedMission, entityIds: selectedEntities });
       audioEngine.play('sfx.mission.start');
-      backToCategories();
+      const preview = response.meta?.synergyPreview ?? null;
+      if (preview) {
+        setSynergyPreview(preview);
+      } else {
+        backToCategories();
+      }
     } catch (e: any) {
       audioEngine.play('ui.error');
       setError(e.message || 'Failed to start mission');
     }
+  };
+
+  const handleDismissSynergy = () => {
+    setSynergyPreview(null);
+    backToCategories();
   };
 
   const handleComplete = async (missionId: string) => {
@@ -176,6 +187,8 @@ export default function MissionsPage() {
         onBack={handleBackFromMissionDetail}
         onStart={handleStart}
         entityPickerRef={entityPickerRef}
+        synergyPreview={synergyPreview}
+        onDismissSynergy={handleDismissSynergy}
       />
     );
   }

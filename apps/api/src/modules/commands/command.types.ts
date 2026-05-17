@@ -13,6 +13,7 @@ export type UiIntent =
 export interface CommandHandlerResult {
   patches: Patch[];
   ui: UiIntent[];
+  meta?: Record<string, any>;
 }
 
 export interface CommandContext {

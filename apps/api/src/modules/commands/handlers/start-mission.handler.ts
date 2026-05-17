@@ -27,6 +27,9 @@ export class StartMissionHandler implements CommandHandler {
     return {
       patches: pb.build(),
       ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Mission started!' }],
+      meta: {
+        synergyPreview: result.synergyPreview,
+      },
     };
   }
 }
