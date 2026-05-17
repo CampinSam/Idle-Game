@@ -607,6 +607,95 @@ describe('SynergyResolverService', () => {
     expect(result.totals.synergyScore).toBe(30);
   });
 
+  // ── Descriptor fields wired in live paths ────────────────────────────────
+  // These tests confirm that the richer descriptor fields now populated by
+  // startMission, startCrafting, and settleLocationTx (entityType, rarity,
+  // regionId) are correctly evaluated by the resolver.
+
+  it('rarities selector: fires for legendary entity (as populated by startMission builder)', async () => {
+    const rule = makeRule({
+      sourceSelector: { rarities: ['legendary'] },
+      effects: [{ type: 'stat_modifier', stat: 'MISSION_POWER', operation: 'percent_add', value: 25 }],
+    });
+    prismaFindMany.mockResolvedValue([rule]);
+
+    const legendaryEntity = descriptor({ rarity: 'legendary', entityType: 'player_unit', traits: {} });
+    const result = await service.resolveRules(missionCtx(), [legendaryEntity], [legendaryEntity]);
+    expect(result.totals.statModifiers['MISSION_POWER']?.percentAdd).toBe(25);
+
+    const commonEntity = descriptor({ rarity: 'common', entityType: 'player_unit', traits: {} });
+    const noMatch = await service.resolveRules(missionCtx(), [commonEntity], [commonEntity]);
+    expect((noMatch.totals.statModifiers['MISSION_POWER']?.percentAdd) ?? 0).toBe(0);
+  });
+
+  it('regionIds context: fires when mission regionId matches (as populated by startMission context)', async () => {
+    const rule = makeRule({
+      context: { activityTypes: ['mission'], regionIds: ['forest-region'] },
+      effects: [{ type: 'duration_modifier', activity: 'mission', operation: 'percent_add', value: -10 }],
+    });
+    prismaFindMany.mockResolvedValue([rule]);
+
+    const d = descriptor();
+    const withRegion = await service.resolveRules({ activityType: 'mission', regionId: 'forest-region' }, [d], [d]);
+    expect(withRegion.totals.durationModifiers['mission']?.percentAdd).toBe(-10);
+
+    const noRegion = await service.resolveRules({ activityType: 'mission' }, [d], [d]);
+    expect((noRegion.totals.durationModifiers['mission']?.percentAdd) ?? 0).toBe(0);
+  });
+
+  it('missionTypes context: fires when missionType matches category (as populated by startMission context)', async () => {
+    const rule = makeRule({
+      context: { missionTypes: ['dungeon-category'] },
+      effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 15 }],
+    });
+    prismaFindMany.mockResolvedValue([rule]);
+
+    const d = descriptor();
+    const withType = await service.resolveRules({ activityType: 'mission', missionType: 'dungeon-category' }, [d], [d]);
+    expect(withType.totals.synergyScore).toBe(15);
+
+    const wrongType = await service.resolveRules({ activityType: 'mission', missionType: 'patrol' }, [d], [d]);
+    expect(wrongType.totals.synergyScore).toBe(0);
+  });
+
+  it('entityTypes selector: fires for player_unit role (as populated by mission/crafting builders)', async () => {
+    const rule = makeRule({
+      sourceSelector: { entityTypes: ['player_unit'] },
+      effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 8 }],
+    });
+    prismaFindMany.mockResolvedValue([rule]);
+
+    const playerUnit = descriptor({ entityType: 'player_unit', traits: {} });
+    const r1 = await service.resolveRules(missionCtx(), [playerUnit], [playerUnit]);
+    expect(r1.totals.synergyScore).toBe(8);
+
+    const npc = descriptor({ entityType: 'npc', traits: {} });
+    const r2 = await service.resolveRules(missionCtx(), [npc], [npc]);
+    expect(r2.totals.synergyScore).toBe(0);
+  });
+
+  it('outpost: regionId in context fires region-specific yield rule (as populated by settleLocationTx)', async () => {
+    const rule = makeRule({
+      context: { activityTypes: ['outpost'], regionIds: ['arctic-zone'] },
+      effects: [{ type: 'resource_yield_modifier', resourceId: 'ice-crystal', operation: 'percent_add', value: 50 }],
+    });
+    prismaFindMany.mockResolvedValue([rule]);
+
+    const worker = descriptor({ entityType: 'player_unit', regionId: 'arctic-zone', traits: {} });
+    const result = await service.resolveRules(
+      { activityType: 'outpost', regionId: 'arctic-zone', teamSize: 1 },
+      [worker], [worker],
+    );
+    const mod = result.totals.resourceYieldModifiers.find(m => m.resourceId === 'ice-crystal');
+    expect(mod?.percentAdd).toBe(50);
+
+    const wrongRegion = await service.resolveRules(
+      { activityType: 'outpost', regionId: 'desert-zone', teamSize: 1 },
+      [worker], [worker],
+    );
+    expect(wrongRegion.totals.resourceYieldModifiers).toHaveLength(0);
+  });
+
   // ── isSelectorEmpty helper ────────────────────────────────────────────────
 
   it('isSelectorEmpty returns true for empty object, null, or undefined', () => {

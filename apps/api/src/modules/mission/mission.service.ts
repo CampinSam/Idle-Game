@@ -348,15 +348,24 @@ export class MissionService {
     // Call the synergy resolver at start time so the result can be persisted
     // in Job.data.synergy. completeMission reads the snapshot instead of
     // re-querying rules, ensuring rewards use the state captured here.
+    const missionDefData = (dbDef.data as any) ?? {};
+    const missionRegionId: string | undefined = missionDefData.regionId ?? undefined;
+    const missionType: string | undefined =
+      missionDefData.missionType ?? dbDef.missionCategoryDefId ?? undefined;
     const synergyDescriptorsForStart = entities.map((e: any) => ({
       entityId: e.id as string,
+      entityType: (e.role as string | undefined) ?? undefined,
       traits: (e.traits ?? {}) as Record<string, string>,
       speciesId: e.definitionId as string | undefined,
       collectionId: e.nftCollectionDefId as string | undefined,
+      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+      regionId: missionRegionId,
     }));
     const synergyContextForStart = {
       activityType: 'mission' as const,
+      missionType,
       missionTags: Array.isArray(dbDef.tags) ? (dbDef.tags as string[]) : [],
+      regionId: missionRegionId,
       teamSize: entityIds.length,
     };
     const startSynergyResult = await this.synergyResolver.resolveRules(

@@ -439,9 +439,11 @@ export class CraftingService {
     // without re-querying rules.
     const craftingDescriptor = [{
       entityId: (entity as any).id as string,
+      entityType: ((entity as any).role as string | undefined) ?? undefined,
       traits: ((entity as any).traits ?? {}) as Record<string, string>,
       speciesId: (entity as any).definitionId as string | undefined,
       collectionId: (entity as any).nftCollectionDefId as string | undefined,
+      rarity: (((entity as any).traits as any)?.rarity as string | undefined) ?? undefined,
     }];
     const craftingSynergyResult = await this.synergyResolver.resolveRules(
       { activityType: 'crafting', teamSize: 1 },

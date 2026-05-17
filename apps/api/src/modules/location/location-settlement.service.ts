@@ -226,16 +226,20 @@ export class LocationSettlementService {
       if (workerEntityIds.length > 0) {
         const workerEntities = await (tx as any).entity.findMany({
           where: { id: { in: workerEntityIds } },
-          select: { id: true, traits: true, definitionId: true, nftCollectionDefId: true },
+          select: { id: true, role: true, traits: true, definitionId: true, nftCollectionDefId: true },
         });
+        const locationRegionId: string | undefined = (location.regionId as string | undefined) ?? undefined;
         const workerDescriptors = workerEntities.map((e: any) => ({
           entityId: e.id as string,
+          entityType: (e.role as string | undefined) ?? undefined,
           traits: (e.traits ?? {}) as Record<string, string>,
           speciesId: e.definitionId as string | undefined,
           collectionId: e.nftCollectionDefId as string | undefined,
+          rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+          regionId: locationRegionId,
         }));
         const synergyResult = await this.synergyResolver.resolveRules(
-          { activityType: 'outpost', teamSize: workerEntityIds.length },
+          { activityType: 'outpost', teamSize: workerEntityIds.length, regionId: locationRegionId },
           workerDescriptors,
           workerDescriptors,
         );
