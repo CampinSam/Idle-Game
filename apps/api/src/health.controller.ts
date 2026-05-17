@@ -1,10 +1,14 @@
 import {
   Controller,
   Get,
+  Headers,
   HttpException,
   HttpStatus,
   Logger,
+  Next,
+  Res,
 } from '@nestjs/common';
+import { NextFunction, Response } from 'express';
 import { PrismaService } from './prisma/prisma.service';
 
 @Controller()
@@ -16,9 +20,22 @@ export class HealthController {
   // Liveness — cheap, no I/O. Used by orchestrators to decide if the process
   // is still up. If this ever does I/O, a slow DB will cause the
   // orchestrator to kill a perfectly healthy app.
+  //
+  // Replit's deployment health probe always sends `x-replit-healthcheck: 1`.
+  // Real browser visits do not. We return JSON only for probe requests so
+  // that ServeStaticModule can serve index.html to first-time visitors who
+  // don't yet have a cached PWA service worker.
   @Get()
-  root() {
-    return { status: 'ok', service: 'derp-universe' };
+  root(
+    @Headers('x-replit-healthcheck') healthCheck: string,
+    @Res() res: Response,
+    @Next() next: NextFunction,
+  ): void {
+    if (healthCheck) {
+      res.json({ status: 'ok', service: 'derp-universe' });
+    } else {
+      next();
+    }
   }
 
   @Get('health')
