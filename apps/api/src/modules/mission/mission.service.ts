@@ -417,26 +417,76 @@ export class MissionService {
     // Include synergy preview so the client can display which rules fired.
     return {
       ...response,
-      synergyPreview: {
-        matchedRules: startSynergyResult.matchedRules.map(r => {
-          const apps = r.applications;
-          const scoreContrib = r.effects
-            .filter(e => e.type === 'synergy_score_modifier' && e.operation === 'flat_add')
-            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
-          const mpBonusContrib = r.effects
-            .filter(e => e.type === 'stat_modifier' && e.stat === 'MISSION_POWER' && e.operation === 'percent_add')
-            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
-          const durationBonusContrib = r.effects
-            .filter(e => e.type === 'duration_modifier' && e.operation === 'percent_add')
-            .reduce((sum, e) => sum + (e.value ?? 0), 0) * apps;
-          const isPenalty = scoreContrib < 0 || mpBonusContrib < 0 || durationBonusContrib > 0;
-          return { ruleId: r.ruleId, name: r.name, applications: apps, scoreContrib, mpBonusContrib, durationBonusContrib, isPenalty };
-        }),
-        synergyScore: startSynergyResult.totals.synergyScore,
-        missionPowerBonus: startSynergyResult.totals.statModifiers['MISSION_POWER']?.percentAdd ?? 0,
-        durationBonus: missionDurationMod?.percentAdd ?? 0,
-      },
+      synergyPreview: this.buildSynergyPreviewPayload(startSynergyResult.matchedRules, startSynergyResult.totals),
     };
+  }
+
+  private buildSynergyPreviewPayload(matchedRules: any[], totals: any) {
+    const missionDurationMod = totals.durationModifiers['mission'];
+    return {
+      matchedRules: matchedRules.map(r => {
+        const apps = r.applications;
+        const scoreContrib = r.effects
+          .filter((e: any) => e.type === 'synergy_score_modifier' && e.operation === 'flat_add')
+          .reduce((sum: number, e: any) => sum + (e.value ?? 0), 0) * apps;
+        const mpBonusContrib = r.effects
+          .filter((e: any) => e.type === 'stat_modifier' && e.stat === 'MISSION_POWER' && e.operation === 'percent_add')
+          .reduce((sum: number, e: any) => sum + (e.value ?? 0), 0) * apps;
+        const durationBonusContrib = r.effects
+          .filter((e: any) => e.type === 'duration_modifier' && e.operation === 'percent_add')
+          .reduce((sum: number, e: any) => sum + (e.value ?? 0), 0) * apps;
+        const isPenalty = scoreContrib < 0 || mpBonusContrib < 0 || durationBonusContrib > 0;
+        return { ruleId: r.ruleId, name: r.name, applications: apps, scoreContrib, mpBonusContrib, durationBonusContrib, isPenalty };
+      }),
+      synergyScore: totals.synergyScore,
+      missionPowerBonus: totals.statModifiers['MISSION_POWER']?.percentAdd ?? 0,
+      durationBonus: missionDurationMod?.percentAdd ?? 0,
+    };
+  }
+
+  async getMissionSynergyPreview(userId: string, defId: string, entityIds: string[]): Promise<any> {
+    const def = await (this.prisma as any).missionDef.findUnique({ where: { id: defId } });
+    if (!def) throw new NotFoundException('Mission not found');
+
+    const entities: any[] = [];
+    for (const entityId of entityIds) {
+      const entity = await (this.prisma as any).entity.findFirst({
+        where: { id: entityId, ownerUserId: userId },
+      });
+      if (!entity) throw new NotFoundException(`Entity ${entityId} not found`);
+      entities.push(entity);
+    }
+
+    const missionDefData = (def.data as any) ?? {};
+    const missionRegionId: string | undefined = missionDefData.regionId ?? undefined;
+    const missionType: string | undefined =
+      missionDefData.missionType ?? def.missionCategoryDefId ?? undefined;
+
+    const synergyDescriptors = entities.map((e: any) => ({
+      entityId: e.id as string,
+      entityType: (e.role as string | undefined) ?? undefined,
+      traits: (e.traits ?? {}) as Record<string, string>,
+      speciesId: e.definitionId as string | undefined,
+      collectionId: e.nftCollectionDefId as string | undefined,
+      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+      regionId: missionRegionId,
+    }));
+
+    const synergyContext = {
+      activityType: 'mission' as const,
+      missionType,
+      missionTags: Array.isArray(def.tags) ? (def.tags as string[]) : [],
+      regionId: missionRegionId,
+      teamSize: entityIds.length,
+    };
+
+    const result = await this.synergyResolver.resolveRules(
+      synergyContext,
+      synergyDescriptors,
+      synergyDescriptors,
+    );
+
+    return this.buildSynergyPreviewPayload(result.matchedRules, result.totals);
   }
 
   async completeMission(userId: string, missionId: string, externalTx?: any): Promise<any> {

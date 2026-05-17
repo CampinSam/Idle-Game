@@ -38,6 +38,8 @@ interface MissionDetailProps {
   entityPickerRef: React.RefObject<HTMLDivElement>;
   synergyPreview?: SynergyPreview | null;
   onDismissSynergy?: () => void;
+  liveSynergyPreview?: SynergyPreview | null;
+  liveSynergyLoading?: boolean;
 }
 
 export function MissionDetail(props: MissionDetailProps) {
@@ -61,6 +63,8 @@ export function MissionDetail(props: MissionDetailProps) {
     entityPickerRef,
     synergyPreview,
     onDismissSynergy,
+    liveSynergyPreview,
+    liveSynergyLoading,
   } = props;
 
   const teamGridRef = useRef<HTMLDivElement>(null);
@@ -344,6 +348,84 @@ export function MissionDetail(props: MissionDetailProps) {
               </div>
             </div>
           </div>
+
+          {selectedEntities.length > 0 && (liveSynergyLoading || liveSynergyPreview) && (
+            <div className="rounded-xl border border-[rgba(139,92,246,0.25)] bg-black/20 p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className={panelTitleClass}>⚡ Synergy Preview</span>
+                {liveSynergyLoading && (
+                  <span className="text-[10px] text-text-secondary animate-pulse">Calculating…</span>
+                )}
+                {!liveSynergyLoading && liveSynergyPreview && (
+                  <span
+                    className="font-cinzel text-[15px] font-black tabular-nums"
+                    style={{ color: liveSynergyPreview.synergyScore > 0 ? '#10b981' : liveSynergyPreview.synergyScore < 0 ? '#ef4444' : '#94a3b8' }}
+                  >
+                    {liveSynergyPreview.synergyScore > 0 ? '+' : ''}{liveSynergyPreview.synergyScore}
+                  </span>
+                )}
+              </div>
+              {!liveSynergyLoading && liveSynergyPreview && (
+                <>
+                  {(liveSynergyPreview.missionPowerBonus !== 0 || liveSynergyPreview.durationBonus !== 0) && (
+                    <div className="flex gap-2 flex-wrap">
+                      {liveSynergyPreview.missionPowerBonus !== 0 && (
+                        <span
+                          className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
+                          style={{ color: liveSynergyPreview.missionPowerBonus > 0 ? '#10b981' : '#ef4444' }}
+                        >
+                          MP {liveSynergyPreview.missionPowerBonus > 0 ? '+' : ''}{Number(liveSynergyPreview.missionPowerBonus.toFixed(1))}%
+                        </span>
+                      )}
+                      {liveSynergyPreview.durationBonus !== 0 && (
+                        <span
+                          className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
+                          style={{ color: liveSynergyPreview.durationBonus < 0 ? '#10b981' : '#ef4444' }}
+                        >
+                          Dur {liveSynergyPreview.durationBonus > 0 ? '+' : ''}{Number(liveSynergyPreview.durationBonus.toFixed(1))}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {liveSynergyPreview.matchedRules.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {liveSynergyPreview.matchedRules.map((rule) => {
+                        const color = rule.isPenalty ? '#ef4444' : '#10b981';
+                        const borderColor = rule.isPenalty ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)';
+                        const bgColor = rule.isPenalty ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.05)';
+                        const parts: string[] = [];
+                        if (rule.scoreContrib !== 0) parts.push(`${rule.scoreContrib > 0 ? '+' : ''}${Number(rule.scoreContrib.toFixed(1))} pts`);
+                        if (rule.mpBonusContrib !== 0) parts.push(`MP ${rule.mpBonusContrib > 0 ? '+' : ''}${Number(rule.mpBonusContrib.toFixed(1))}%`);
+                        if (rule.durationBonusContrib !== 0) parts.push(`Dur ${rule.durationBonusContrib > 0 ? '+' : ''}${Number(rule.durationBonusContrib.toFixed(1))}%`);
+                        const label = parts.join(' · ');
+                        return (
+                          <div
+                            key={rule.ruleId}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg border"
+                            style={{ background: bgColor, borderColor }}
+                          >
+                            <span className="text-sm leading-none flex-shrink-0">{rule.isPenalty ? '💀' : '⚡'}</span>
+                            <span className="flex-1 text-[11px] font-bold text-text-primary truncate">{rule.name}</span>
+                            {rule.applications > 1 && (
+                              <span className="text-[10px] text-text-secondary flex-shrink-0">×{rule.applications}</span>
+                            )}
+                            {label && (
+                              <span className="text-[10px] font-extrabold tabular-nums flex-shrink-0" style={{ color }}>{label}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
+                      <span className="text-sm leading-none">🔮</span>
+                      <span className="text-[11px] text-text-secondary italic">No synergy rules matched for this team</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {showEntityPicker && (
             <div ref={entityPickerRef} className="rounded-xl border border-[rgba(139,92,246,0.3)] bg-black/30 p-3 flex flex-col gap-2">

@@ -166,6 +166,14 @@ class ApiClient {
     });
   }
 
+  missionSynergyPreview(defId: string, entityIds: string[], signal?: AbortSignal) {
+    return this.request<SynergyPreview>('/missions/synergy-preview', {
+      method: 'POST',
+      body: JSON.stringify({ defId, entityIds }),
+      signal,
+    });
+  }
+
   markJobsNotified(jobIds: string[]) {
     return this.request<any>('/jobs/notify', {
       method: 'POST',

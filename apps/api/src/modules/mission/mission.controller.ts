@@ -15,6 +15,16 @@ class StartMissionDto {
   entityIds: string[];
 }
 
+class SynergyPreviewDto {
+  @IsString()
+  defId: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  entityIds: string[];
+}
+
 @Controller('missions')
 @UseGuards(JwtAuthGuard)
 export class MissionController {
@@ -71,6 +81,14 @@ export class MissionController {
       { missionId: id },
       () => this.missionService.completeMission(user.id, id),
     );
+  }
+
+  @Post('synergy-preview')
+  getSynergyPreview(
+    @CurrentUser() user: { id: string },
+    @Body() dto: SynergyPreviewDto,
+  ) {
+    return this.missionService.getMissionSynergyPreview(user.id, dto.defId, dto.entityIds);
   }
 
 }
