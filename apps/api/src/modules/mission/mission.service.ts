@@ -501,20 +501,19 @@ export class MissionService {
       missionTags: Array.isArray(def.tags) ? (def.tags as string[]) : [],
       teamSize: entities.length,
     };
-    try {
-      const synergyResult = await this.synergyResolver.resolveRules(
-        synergyContext,
-        synergyDescriptors,
-        synergyDescriptors,
+    // Only `synergyScore` is applied here as a flat MP add.
+    // Other resolver outputs (statModifiers, durationModifiers, resourceYieldModifiers)
+    // are reserved for future wiring in the Task B integration pass.
+    const synergyResult = await this.synergyResolver.resolveRules(
+      synergyContext,
+      synergyDescriptors,
+      synergyDescriptors,
+    );
+    if (synergyResult.totals.synergyScore !== 0) {
+      rawTeamMP += synergyResult.totals.synergyScore;
+      this.logger.debug(
+        `Mission ${missionId}: synergy bonus=${synergyResult.totals.synergyScore} from ${synergyResult.matchedRules.length} rule(s)`,
       );
-      if (synergyResult.totals.synergyScore !== 0) {
-        rawTeamMP += synergyResult.totals.synergyScore;
-        this.logger.debug(
-          `Mission ${missionId}: synergy bonus=${synergyResult.totals.synergyScore} from ${synergyResult.matchedRules.length} rule(s)`,
-        );
-      }
-    } catch (err) {
-      this.logger.warn(`Mission ${missionId}: synergy resolution failed, skipping bonus — ${err}`);
     }
 
     const mpMod = this.effectService.resolve(playerEffects, EffectCategory.MISSION_POWER);
