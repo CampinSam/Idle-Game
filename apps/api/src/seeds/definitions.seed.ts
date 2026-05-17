@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { normalizeOutcomeFieldsForModel } from '../modules/game-rules/outcome-spec.util';
+import type { GlobalPowerType, UniqueLocationEntry } from '@derp/shared';
 
 const logger = new Logger('DefinitionsSeed');
 
@@ -314,11 +315,11 @@ const NFT_POWER_TYPES = [
 
 const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
 
-function buildUniquesMap(assetIds: string[]): Record<string, { powers: { powerType: string; value: number; durationMinutes: number; dailyLimit: number }[] }> {
-  const uniques: Record<string, any> = {};
+function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry> {
+  const uniques: Record<string, UniqueLocationEntry> = {};
   for (let i = 0; i < assetIds.length; i++) {
     const id = assetIds[i];
-    const powerType = NFT_POWER_TYPES[i % NFT_POWER_TYPES.length];
+    const powerType: GlobalPowerType = NFT_POWER_TYPES[i % NFT_POWER_TYPES.length];
     const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
     uniques[id] = {
       powers: [{ powerType, value, durationMinutes: 60, dailyLimit: 1 }],
@@ -356,7 +357,7 @@ async function seedNftUniquePowers(prisma: any) {
         continue;
       }
 
-      const currentRules = (existing.rules as any) || {};
+      const currentRules = (existing.rules as Record<string, unknown>) || {};
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.entityDefinition.update({
@@ -381,7 +382,7 @@ async function seedNftUniquePowers(prisma: any) {
         continue;
       }
 
-      const currentRules = (existing.rules as any) || {};
+      const currentRules = (existing.rules as Record<string, unknown>) || {};
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.locationDefinition.update({
