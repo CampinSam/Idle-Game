@@ -36,7 +36,8 @@ type OutcomeKind =
   | 'entity_xp'
   | 'keeper_xp'
   | 'flag'
-  | 'text';
+  | 'text'
+  | 'effect';
 
 interface Outcome {
   type?: string;
@@ -73,29 +74,32 @@ function detectKind(entry: Outcome): OutcomeKind {
   if (t === 'keeper_xp') return 'keeper_xp';
   if (t === 'flag') return 'flag';
   if (t === 'text') return 'text';
+  if (t === 'effect') return 'effect';
   return 'currency';
 }
 
 function defaultForKind(kind: OutcomeKind): Outcome {
   switch (kind) {
     case 'bundle':
-      return { bundle: [], odds: 1 };
+      return { bundle: [], odds: 100 };
     case 'pick_bundle':
-      return { bundle: [], odds: 1, pickMin: 1, pickMax: 1 };
+      return { bundle: [], odds: 100, pickMin: 1, pickMax: 1 };
     case 'bundle_ref':
       return { type: 'bundle_ref', bundleDefId: '' };
     case 'currency':
-      return { type: 'currency', key: '', min: 1, max: 10, odds: 1 };
+      return { type: 'currency', key: '', min: 1, max: 10, odds: 100 };
     case 'item':
-      return { type: 'item', key: '', min: 1, max: 1, odds: 0.5 };
+      return { type: 'item', key: '', min: 1, max: 1, odds: 100 };
     case 'entity_xp':
-      return { type: 'entity_xp', min: 10, max: 50 };
+      return { type: 'entity_xp', min: 10, max: 50, odds: 100 };
     case 'keeper_xp':
-      return { type: 'keeper_xp', min: 10, max: 50 };
+      return { type: 'keeper_xp', min: 10, max: 50, odds: 100 };
     case 'flag':
-      return { type: 'flag', operation: 'set', key: '', value: true };
+      return { type: 'flag', operation: 'set', key: '', value: true, odds: 100 };
     case 'text':
       return { type: 'text', message: '' };
+    case 'effect':
+      return { type: 'effect', odds: 100 };
   }
 }
 
@@ -111,6 +115,7 @@ function summary(entry: Outcome): string {
   if (kind === 'keeper_xp') return `keeper_xp ${entry.min ?? 0}-${entry.max ?? 0}`;
   if (kind === 'flag') return `flag ${entry.operation || 'set'} ${entry.key || '?'}`;
   if (kind === 'text') return `text "${(entry.message || '').slice(0, 30)}"`;
+  if (kind === 'effect') return `effect (odds ${entry.odds ?? 100}%)`;
   return 'outcome';
 }
 
@@ -264,6 +269,7 @@ function OutcomeEntryEditor({
                 <option value="keeper_xp">keeper_xp</option>
                 <option value="flag">flag</option>
                 <option value="text">text</option>
+                <option value="effect">effect</option>
               </select>
             </div>
 
@@ -287,7 +293,7 @@ function OutcomeEntryEditor({
             )}
 
             {(kind === 'entity_xp' || kind === 'keeper_xp') && (
-              <MinMaxOdds entry={entry} onChange={onChange} showOdds={false} hasRangeError={!!errs.range} />
+              <MinMaxOdds entry={entry} onChange={onChange} hasRangeError={!!errs.range} />
             )}
 
             {kind === 'flag' && (
@@ -331,7 +337,34 @@ function OutcomeEntryEditor({
                     style={{ ...inputStyle, width: '100%' }}
                   />
                 </div>
+                <div style={fieldGroupStyle}>
+                  <span style={labelStyle}>odds %</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={entry.odds ?? ''}
+                    onChange={e => onChange({ ...entry, odds: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    style={{ ...numberInputStyle, width: '100%' }}
+                  />
+                </div>
               </>
+            )}
+
+            {kind === 'effect' && (
+              <div style={fieldGroupStyle}>
+                <span style={labelStyle}>odds %</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={entry.odds ?? ''}
+                  onChange={e => onChange({ ...entry, odds: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  style={{ ...numberInputStyle, width: '100%' }}
+                />
+              </div>
             )}
 
             {(kind === 'bundle' || kind === 'pick_bundle') && (
@@ -424,6 +457,13 @@ function OutcomeEntryEditor({
               {errs.range && <span style={errorTextStyle}>{errs.range}</span>}
               {errs.pickRange && <span style={errorTextStyle}>{errs.pickRange}</span>}
               {errs.bundle && <span style={errorTextStyle}>{errs.bundle}</span>}
+            </div>
+          )}
+
+          {kind === 'effect' && (
+            <div style={{ borderLeft: '2px solid #2a2a4e', marginLeft: 4, paddingLeft: 10 }}>
+              <span style={{ ...labelStyle, display: 'block', marginBottom: 4, color: '#888' }}>effect data — backend not yet wired</span>
+              <CollapsibleObject value={entry} onChange={onChange} />
             </div>
           )}
 
@@ -522,6 +562,7 @@ function OutcomeArrayEditor({ items, onChange }: { items: Outcome[]; onChange: (
         <button type="button" style={addButtonStyle} onClick={() => add('keeper_xp')}>+ keeper_xp</button>
         <button type="button" style={addButtonStyle} onClick={() => add('flag')}>+ flag</button>
         <button type="button" style={addButtonStyle} onClick={() => add('text')}>+ text</button>
+        <button type="button" style={addButtonStyle} onClick={() => add('effect')}>+ effect</button>
       </div>
       <OutcomeTestPanel spec={items} />
     </div>
