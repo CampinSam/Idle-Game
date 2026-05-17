@@ -88,39 +88,39 @@ export function CategoriesGrid({
                 <div className={`flex flex-wrap gap-1.5 ${bottomPlacement ? 'mt-auto pt-1' : 'mt-1.5'}`} onClick={(e) => e.stopPropagation()}>
                   {inlineMissions.map((def: any) => {
                     const inlineCost: Array<{ type: string; id: string; amount: number }> = Array.isArray(def.cost) ? def.cost : [];
-                    const canAffordInline = inlineCost.every((entry) => {
+                    const isDisabled = def.enabled === false;
+                    const canAffordInline = !isDisabled && inlineCost.every((entry) => {
                       const have = entry.type === 'currency'
                         ? (currencyBalances[entry.id] ?? 0)
                         : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
                       return have >= entry.amount;
                     });
-                    const customState = canAffordInline
-                      ? (inlineButtonsCfg.normal || null)
-                      : (inlineButtonsCfg.requirementsNotMet || null);
-                    const defaultBg = canAffordInline
-                      ? 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))'
-                      : undefined;
+                    const customState = isDisabled
+                      ? (inlineButtonsCfg.disabled || null)
+                      : canAffordInline
+                        ? (inlineButtonsCfg.normal || null)
+                        : (inlineButtonsCfg.requirementsNotMet || null);
                     const buttonStyle: React.CSSProperties = {};
-                    if (customState) {
-                      buttonStyle.background = customState.background || defaultBg;
-                      if (customState.color) buttonStyle.color = customState.color;
-                      if (customState.borderColor) buttonStyle.borderColor = customState.borderColor;
-                      if (typeof customState.opacity === 'number') buttonStyle.opacity = customState.opacity;
-                    } else if (defaultBg) {
-                      buttonStyle.background = defaultBg;
+                    if (canAffordInline && !customState?.background) {
+                      buttonStyle.background = 'linear-gradient(135deg, rgba(139,92,246,0.4), rgba(109,40,217,0.5))';
                     }
-                    const buttonClassName = `px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 cursor-pointer ${
-                      customState
-                        ? ''
-                        : (canAffordInline
-                            ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110'
-                            : 'text-white/50 border-white/15 bg-white/5')
+                    if (customState?.background) buttonStyle.background = customState.background;
+                    if (customState?.color) buttonStyle.color = customState.color;
+                    if (customState?.borderColor) buttonStyle.borderColor = customState.borderColor;
+                    if (typeof customState?.opacity === 'number') buttonStyle.opacity = customState.opacity;
+                    const buttonClassName = `px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 ${
+                      isDisabled
+                        ? 'text-white/30 border-white/10 bg-white/5 cursor-not-allowed'
+                        : canAffordInline
+                          ? 'text-white border-[rgba(167,139,250,0.55)] hover:brightness-110 cursor-pointer'
+                          : 'text-white/50 border-white/15 bg-white/5 cursor-pointer'
                     }`;
                     return (
                       <button
                         key={def.id}
-                        title={!canAffordInline ? 'View requirements' : undefined}
-                        onClick={() => onSelectInlineMission(cat.id, def.id)}
+                        title={!canAffordInline && !isDisabled ? 'View requirements' : undefined}
+                        disabled={isDisabled}
+                        onClick={() => !isDisabled && onSelectInlineMission(cat.id, def.id)}
                         className={buttonClassName}
                         style={buttonStyle}
                       >
