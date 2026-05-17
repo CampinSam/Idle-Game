@@ -95,15 +95,18 @@ export function MissionDetail(props: MissionDetailProps) {
     }, 0);
   }, [selectedEntities, entities]);
 
+  const synergyMPBonus = liveSynergyPreview?.missionPowerBonus ?? 0;
+  const adjustedTeamMP = synergyMPBonus !== 0 ? teamMP * (1 + synergyMPBonus / 100) : teamMP;
+
   const successChance = useMemo(() => {
     if (selectedEntities.length === 0) return 0;
     const minChance = selectedDef.minSuccessChance ?? 0;
     const maxChance = selectedDef.maxSuccessChance ?? 100;
-    const raw = teamMP / (teamMP + difficulty);
+    const raw = adjustedTeamMP / (adjustedTeamMP + difficulty);
     return Math.round(Math.min(Math.max(raw * 100, minChance), maxChance));
-  }, [teamMP, selectedDef, selectedEntities, difficulty]);
+  }, [adjustedTeamMP, selectedDef, selectedEntities, difficulty]);
 
-  const powerRatio = teamMP > 0 ? Math.min(1, teamMP / (teamMP + difficulty)) : 0;
+  const powerRatio = adjustedTeamMP > 0 ? Math.min(1, adjustedTeamMP / (adjustedTeamMP + difficulty)) : 0;
   const teamMeetsMin = selectedEntities.length >= teamMin;
   const teamMeetsMax = selectedEntities.length <= teamMax;
   const canStart = teamMeetsMin && teamMeetsMax && canAffordMission && selectedEntities.length > 0;
@@ -111,8 +114,8 @@ export function MissionDetail(props: MissionDetailProps) {
   const injuryRate = selectedDef.injuryRate ?? 0;
   const injuryChance = useMemo(() => {
     if (injuryRate <= 0) return 0;
-    return Math.round(calculateInjuryChance(difficulty, teamMP, injuryRate) * 100);
-  }, [difficulty, teamMP, injuryRate]);
+    return Math.round(calculateInjuryChance(difficulty, adjustedTeamMP, injuryRate) * 100);
+  }, [difficulty, adjustedTeamMP, injuryRate]);
   const injuryColor = injuryChance >= 60 ? '#EF4444' : '#F59E0B';
 
   const grade = successChance >= 90 ? 'A' : successChance >= 75 ? 'B' : successChance >= 55 ? 'C' : successChance >= 35 ? 'D' : 'F';
@@ -239,8 +242,10 @@ export function MissionDetail(props: MissionDetailProps) {
               <div className="flex flex-col gap-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <div className="flex flex-col items-start">
-                    <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(teamMP.toFixed(2))}</span>
-                    <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">MP</span>
+                    <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(adjustedTeamMP.toFixed(2))}</span>
+                    <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
+                      MP{synergyMPBonus !== 0 && <span className="ml-1 text-[#a78bfa] normal-case font-semibold">w/ synergy</span>}
+                    </span>
                   </div>
                   <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
                   <div className="flex flex-col items-end">
