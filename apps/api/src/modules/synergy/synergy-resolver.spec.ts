@@ -3,6 +3,7 @@ import { StackMode } from '@prisma/client';
 import { SynergyResolverService } from './synergy-resolver.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SynergyEntityDescriptor, SynergyActivityContext } from './synergy.types';
+import type { RichSelection } from '@derp/shared';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,6 +35,34 @@ function descriptor(overrides: Partial<SynergyEntityDescriptor> = {}): SynergyEn
 function missionCtx(overrides: Partial<SynergyActivityContext> = {}): SynergyActivityContext {
   return { activityType: 'mission', ...overrides };
 }
+
+// ── RichSelection builder helpers ─────────────────────────────────────────
+const rs = (...rules: any[]): RichSelection => ({ op: 'AND', rules });
+const rsR = (scope: string, field: string, op: string, value: any, agg?: string): any =>
+  ({ scope, field, operator: op, value, ...(agg ? { aggregate: agg } : {}) });
+const rsEntityType  = (v: string[]): RichSelection => rs(rsR('entity', 'entityType', 'in', v, 'any'));
+const rsSpecies     = (v: string[]): RichSelection => rs(rsR('entity', 'speciesId', 'in', v, 'any'));
+const rsCollection  = (v: string[]): RichSelection => rs(rsR('entity', 'collectionId', 'in', v, 'any'));
+const rsEntityIds   = (v: string[]): RichSelection => rs(rsR('entity', 'id', 'in', v, 'any'));
+const rsRarities    = (v: string[]): RichSelection => rs(rsR('entity', 'rarity', 'in', v, 'any'));
+const rsRegions     = (v: string[]): RichSelection => rs(rsR('entity', 'regionId', 'in', v, 'any'));
+const rsFactions    = (v: string[]): RichSelection => rs({ op: 'OR', rules: v.map(f => rsR('entity', 'traitValues', 'contains', f, 'any')) });
+const rsMinTraitCount = (n: number): RichSelection => rs(rsR('entity', 'traitCount', 'gte', n, 'any'));
+const rsTraitsAny   = (v: string[]): RichSelection =>
+  v.length === 1
+    ? rs(rsR('entity', 'traitValues', 'contains', v[0], 'any'))
+    : rs({ op: 'OR', rules: v.map(t => rsR('entity', 'traitValues', 'contains', t, 'any')) });
+const rsTraitsAll   = (...v: string[]): RichSelection => rs(...v.map(t => rsR('entity', 'traitValues', 'contains', t, 'any')));
+const rsCtxActivity = (v: string[]): RichSelection => rs(rsR('context', 'activityType', 'in', v));
+const rsCtxMissionType = (v: string[]): RichSelection => rs(rsR('context', 'missionType', 'in', v));
+const rsCtxMissionTags = (v: string[]): RichSelection =>
+  v.length === 1
+    ? rs(rsR('context', 'missionTags', 'contains', v[0]))
+    : rs({ op: 'OR', rules: v.map(t => rsR('context', 'missionTags', 'contains', t)) });
+const rsCtxTeamSizeMin = (n: number): RichSelection => rs(rsR('context', 'teamSize', 'gte', n));
+const rsCtxTeamSizeMax = (n: number): RichSelection => rs(rsR('context', 'teamSize', 'lte', n));
+const rsCtxSeason   = (v: string[]): RichSelection => rs(rsR('context', 'seasonId', 'in', v));
+const rsCtxRegion   = (v: string[]): RichSelection => rs(rsR('context', 'regionId', 'in', v));
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -74,7 +103,7 @@ describe('SynergyResolverService', () => {
 
   it('matches entityTypes selector', async () => {
     const rule = makeRule({
-      sourceSelector: { entityTypes: ['hero'] },
+      sourceSelector: rsEntityType(['hero']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 10 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -91,7 +120,7 @@ describe('SynergyResolverService', () => {
 
   it('matches speciesIds selector', async () => {
     const rule = makeRule({
-      sourceSelector: { speciesIds: ['elf'] },
+      sourceSelector: rsSpecies(['elf']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 5 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -105,7 +134,7 @@ describe('SynergyResolverService', () => {
 
   it('matches collections selector', async () => {
     const rule = makeRule({
-      sourceSelector: { collections: ['genesis'] },
+      sourceSelector: rsCollection(['genesis']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 20 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -119,7 +148,7 @@ describe('SynergyResolverService', () => {
 
   it('matches traitsAny selector (case-insensitive)', async () => {
     const rule = makeRule({
-      sourceSelector: { traitsAny: ['Ninja', 'Rogue'] },
+      sourceSelector: rsTraitsAny(['Ninja', 'Rogue']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 8 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -136,7 +165,7 @@ describe('SynergyResolverService', () => {
 
   it('matches traitsAll selector — all required traits must be present', async () => {
     const rule = makeRule({
-      sourceSelector: { traitsAll: ['fire', 'dragon'] },
+      sourceSelector: rsTraitsAll('fire', 'dragon'),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 15 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -153,7 +182,7 @@ describe('SynergyResolverService', () => {
 
   it('matches minTraitCount selector', async () => {
     const rule = makeRule({
-      sourceSelector: { minTraitCount: 3 },
+      sourceSelector: rsMinTraitCount(3),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 5 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -170,7 +199,7 @@ describe('SynergyResolverService', () => {
 
   it('matches entityIds selector', async () => {
     const rule = makeRule({
-      sourceSelector: { entityIds: ['entity-abc'] },
+      sourceSelector: rsEntityIds(['entity-abc']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 7 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -184,7 +213,7 @@ describe('SynergyResolverService', () => {
 
   it('matches rarities selector', async () => {
     const rule = makeRule({
-      sourceSelector: { rarities: ['legendary'] },
+      sourceSelector: rsRarities(['legendary']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 50 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -198,7 +227,7 @@ describe('SynergyResolverService', () => {
 
   it('matches regions selector', async () => {
     const rule = makeRule({
-      sourceSelector: { regions: ['arctic'] },
+      sourceSelector: rsRegions(['arctic']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 3 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -212,7 +241,7 @@ describe('SynergyResolverService', () => {
 
   it('matches factions selector (case-insensitive via traits.faction)', async () => {
     const rule = makeRule({
-      sourceSelector: { factions: ['Syndicate'] },
+      sourceSelector: rsFactions(['Syndicate']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 12 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -228,7 +257,7 @@ describe('SynergyResolverService', () => {
 
   it('filters by activityTypes context', async () => {
     const rule = makeRule({
-      context: { activityTypes: ['crafting'] },
+      context: rsCtxActivity(['crafting']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 10 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -243,7 +272,7 @@ describe('SynergyResolverService', () => {
 
   it('filters by missionTagsAny context', async () => {
     const rule = makeRule({
-      context: { missionTagsAny: ['dungeon', 'raid'] },
+      context: rsCtxMissionTags(['dungeon', 'raid']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 6 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -258,7 +287,7 @@ describe('SynergyResolverService', () => {
 
   it('filters by requiresTeamSizeMin', async () => {
     const rule = makeRule({
-      context: { requiresTeamSizeMin: 3 },
+      context: rsCtxTeamSizeMin(3),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 4 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -273,7 +302,7 @@ describe('SynergyResolverService', () => {
 
   it('filters by requiresTeamSizeMax', async () => {
     const rule = makeRule({
-      context: { requiresTeamSizeMax: 2 },
+      context: rsCtxTeamSizeMax(2),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 9 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -333,8 +362,8 @@ describe('SynergyResolverService', () => {
     const rule = makeRule({
       id: 'ninja-magician',
       name: 'Ninja + Magician',
-      sourceSelector: { traitsAny: ['ninja'] },
-      targetSelector: { traitsAny: ['magician'] },
+      sourceSelector: rsTraitsAny(['ninja']),
+      targetSelector: rsTraitsAny(['magician']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 30 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -356,8 +385,8 @@ describe('SynergyResolverService', () => {
     const rule = makeRule({
       id: 'corpo-viking-clash',
       name: 'Corpo + Viking Clash',
-      sourceSelector: { traitsAny: ['corpo'] },
-      targetSelector: { traitsAny: ['viking'] },
+      sourceSelector: rsTraitsAny(['corpo']),
+      targetSelector: rsTraitsAny(['viking']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: -20 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -504,7 +533,7 @@ describe('SynergyResolverService', () => {
 
   it('emits CRAFTING_LUCK percentAdd in statModifiers', async () => {
     const rule = makeRule({
-      context: { activityTypes: ['crafting'] },
+      context: rsCtxActivity(['crafting']),
       effects: [{ type: 'stat_modifier', stat: 'CRAFTING_LUCK', operation: 'percent_add', value: 20 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -614,7 +643,7 @@ describe('SynergyResolverService', () => {
 
   it('rarities selector: fires for legendary entity (as populated by startMission builder)', async () => {
     const rule = makeRule({
-      sourceSelector: { rarities: ['legendary'] },
+      sourceSelector: rsRarities(['legendary']),
       effects: [{ type: 'stat_modifier', stat: 'MISSION_POWER', operation: 'percent_add', value: 25 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -630,7 +659,7 @@ describe('SynergyResolverService', () => {
 
   it('regionIds context: fires when mission regionId matches (as populated by startMission context)', async () => {
     const rule = makeRule({
-      context: { activityTypes: ['mission'], regionIds: ['forest-region'] },
+      context: rs(rsR('context', 'activityType', 'in', ['mission']), rsR('context', 'regionId', 'in', ['forest-region'])),
       effects: [{ type: 'duration_modifier', activity: 'mission', operation: 'percent_add', value: -10 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -645,7 +674,7 @@ describe('SynergyResolverService', () => {
 
   it('missionTypes context: fires when missionType matches category (as populated by startMission context)', async () => {
     const rule = makeRule({
-      context: { missionTypes: ['dungeon-category'] },
+      context: rsCtxMissionType(['dungeon-category']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 15 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -660,7 +689,7 @@ describe('SynergyResolverService', () => {
 
   it('entityTypes selector: fires for player_unit role (as populated by mission/crafting builders)', async () => {
     const rule = makeRule({
-      sourceSelector: { entityTypes: ['player_unit'] },
+      sourceSelector: rsEntityType(['player_unit']),
       effects: [{ type: 'synergy_score_modifier', operation: 'flat_add', value: 8 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -676,7 +705,7 @@ describe('SynergyResolverService', () => {
 
   it('outpost: regionId in context fires region-specific yield rule (as populated by settleLocationTx)', async () => {
     const rule = makeRule({
-      context: { activityTypes: ['outpost'], regionIds: ['arctic-zone'] },
+      context: rs(rsR('context', 'activityType', 'in', ['outpost']), rsR('context', 'regionId', 'in', ['arctic-zone'])),
       effects: [{ type: 'resource_yield_modifier', resourceId: 'ice-crystal', operation: 'percent_add', value: 50 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
@@ -699,21 +728,21 @@ describe('SynergyResolverService', () => {
   // ── isSelectorEmpty helper ────────────────────────────────────────────────
 
   it('isSelectorEmpty returns true for empty object, null, or undefined', () => {
-    expect(service.isSelectorEmpty({})).toBe(true);
+    expect(service.isSelectorEmpty(null)).toBe(true);
     expect(service.isSelectorEmpty(null as any)).toBe(true);
     expect(service.isSelectorEmpty(undefined as any)).toBe(true);
-    expect(service.isSelectorEmpty({ traitsAny: ['ninja'] })).toBe(false);
+    expect(service.isSelectorEmpty(rsTraitsAny(['ninja']))).toBe(false);
   });
 
   // ── matchesContext helper ─────────────────────────────────────────────────
 
   it('matchesContext returns true for empty rule context', () => {
-    expect(service.matchesContext({ activityType: 'mission' }, {})).toBe(true);
+    expect(service.matchesContext({ activityType: 'mission' }, null)).toBe(true);
   });
 
   it('matchesContext blocks when seasonId is required and not provided', () => {
-    expect(service.matchesContext({ activityType: 'mission' }, { seasonIds: ['summer'] })).toBe(false);
-    expect(service.matchesContext({ activityType: 'mission', seasonId: 'summer' }, { seasonIds: ['summer'] })).toBe(true);
+    expect(service.matchesContext({ activityType: 'mission' }, rsCtxSeason(['summer']))).toBe(false);
+    expect(service.matchesContext({ activityType: 'mission', seasonId: 'summer' }, rsCtxSeason(['summer']))).toBe(true);
   });
 
   // ── Disabled rule is skipped (via enabled filter in loadRules) ────────────

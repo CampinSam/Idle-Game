@@ -1056,3 +1056,58 @@ describe('Stub regression — item', () => {
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 });
+
+// ─── checkRequirements — fail-closed enforcement & RSS parity ────────────────
+
+describe('checkRequirements — fail-closed enforcement & RSS parity', () => {
+  let grs: GameRulesService;
+  let sel: SelectionResolverService;
+
+  beforeEach(() => {
+    grs = makeGameRules();
+    sel = makeSelectionResolver();
+  });
+
+  it('returns true for null requirements (no gate)', () => {
+    const ctx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
+    expect(grs.checkRequirements(null, ctx)).toBe(true);
+  });
+
+  it('returns true for empty RichSelection { op: AND, rules: [] }', () => {
+    const ctx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
+    expect(grs.checkRequirements({ op: 'AND', rules: [] }, ctx)).toBe(true);
+  });
+
+  it('returns true for empty array (no requirements)', () => {
+    const ctx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
+    expect(grs.checkRequirements([], ctx)).toBe(true);
+  });
+
+  it('fails-closed for legacy Requirement[] — never grants access regardless of player state', () => {
+    const ctx: RequirementContext = { user: { keeperLevel: 99 }, userFlags: { vip: true } };
+    expect(grs.checkRequirements([{ type: 'keeper_level', value: 1 }] as any, ctx)).toBe(false);
+  });
+
+  it.each([
+    { keeperLevel: 10, required: 5, op: 'gte', expected: true },
+    { keeperLevel: 4,  required: 5, op: 'gte', expected: false },
+    { keeperLevel: 5,  required: 5, op: 'eq',  expected: true },
+    { keeperLevel: 6,  required: 5, op: 'eq',  expected: false },
+  ])('RichSelection keeper_level $op: level=$keeperLevel required=$required → parity with sel.evaluate()', ({ keeperLevel, required, op, expected }) => {
+    const richSel: RichSelection = { op: 'AND', rules: [{ scope: 'player', field: 'keeperLevel', operator: op as any, value: required } satisfies RichSelectionRule] };
+    const reqCtx: RequirementContext = { user: { keeperLevel }, userFlags: {} };
+    const selCtx = reqCtxToSelCtx(reqCtx);
+    expect(grs.checkRequirements(richSel, reqCtx)).toBe(sel.evaluate(richSel, selCtx));
+    expect(grs.checkRequirements(richSel, reqCtx)).toBe(expected);
+  });
+
+  it('RichSelection flag check — parity with sel.evaluate()', () => {
+    const richSel: RichSelection = { op: 'AND', rules: [{ scope: 'player', field: 'flags.unlocked', operator: 'eq', value: true } satisfies RichSelectionRule] };
+    const metCtx: RequirementContext = { user: {}, userFlags: { unlocked: true } };
+    const failCtx: RequirementContext = { user: {}, userFlags: {} };
+    expect(grs.checkRequirements(richSel, metCtx)).toBe(sel.evaluate(richSel, reqCtxToSelCtx(metCtx)));
+    expect(grs.checkRequirements(richSel, failCtx)).toBe(sel.evaluate(richSel, reqCtxToSelCtx(failCtx)));
+    expect(grs.checkRequirements(richSel, metCtx)).toBe(true);
+    expect(grs.checkRequirements(richSel, failCtx)).toBe(false);
+  });
+});

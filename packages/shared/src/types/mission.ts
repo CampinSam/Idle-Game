@@ -4,14 +4,6 @@ export type MissionStatus = 'active' | 'completed' | 'failed';
 
 export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
 
-export type RequirementType = 'keeper_level' | 'flag' | 'building' | 'currency' | 'item' | 'team_size' | 'trait';
-
-export interface Requirement {
-  type: RequirementType;
-  key?: string;
-  value?: number | string | boolean;
-  operator?: ComparisonOperator;
-}
 
 export type FlagOperation = 'set' | 'increment' | 'decrement' | 'invert';
 

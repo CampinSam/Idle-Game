@@ -66,8 +66,8 @@ export class GameRulesService {
       return this.selectionResolver.evaluate(requirements as RichSelection, this.reqCtxToSelCtx(context));
     }
     if (Array.isArray(requirements)) {
-      this.logger.warn('checkRequirements: received legacy Requirement[] — run the migration script to convert to RichSelection');
-      return true;
+      this.logger.error('checkRequirements: legacy Requirement[] format detected — failing closed; run migration script to convert to RichSelection');
+      return false;
     }
     return true;
   }

@@ -121,7 +121,7 @@ export class SynergyResolverService {
     }));
   }
 
-  isSelectorEmpty(selector: RichSelection | Record<string, unknown> | null | undefined): boolean {
+  isSelectorEmpty(selector: RichSelection | null | undefined): boolean {
     if (!selector || typeof selector !== 'object') return true;
     if (Object.keys(selector).length === 0) return true;
     // An empty RichSelection { op: 'AND'|'OR', rules: [] } is also unconstrained
@@ -140,13 +140,14 @@ export class SynergyResolverService {
     );
   }
 
-  matchesSelector(entity: SynergyEntityDescriptor, selector: RichSelection | Record<string, unknown> | null): boolean {
+  matchesSelector(entity: SynergyEntityDescriptor, selector: RichSelection | null): boolean {
     if (this.isSelectorEmpty(selector)) return true;
 
-    const richSel = this.isRichSelection(selector)
-      ? (selector as unknown as RichSelection)
-      : this.selectorToRichSelection(selector as any);
-    if (!richSel) return true;
+    if (!this.isRichSelection(selector)) {
+      this.logger.error('matchesSelector: non-RichSelection data in DB — failing closed; run migration script');
+      return false;
+    }
+    const richSel = selector as unknown as RichSelection;
 
     const selCtx: SelectionContext = {
       player: { keeperLevel: 0, flags: {} },
@@ -158,13 +159,15 @@ export class SynergyResolverService {
     return this.selectionResolver.evaluate(richSel, selCtx);
   }
 
-  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: RichSelection | Record<string, unknown> | null): boolean {
-    if (!ruleCtx || Object.keys(ruleCtx).length === 0) return true;
+  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: RichSelection | null): boolean {
+    if (!ruleCtx) return true;
+    if (this.isRichSelection(ruleCtx) && ruleCtx.rules.length === 0) return true;
 
-    const richSel = this.isRichSelection(ruleCtx)
-      ? (ruleCtx as unknown as RichSelection)
-      : this.contextToRichSelection(ruleCtx as any);
-    if (!richSel) return true;
+    if (!this.isRichSelection(ruleCtx)) {
+      this.logger.error('matchesContext: non-RichSelection data in DB — failing closed; run migration script');
+      return false;
+    }
+    const richSel = ruleCtx as unknown as RichSelection;
 
     const selCtx: SelectionContext = {
       player: { keeperLevel: 0, flags: {} },
@@ -198,109 +201,6 @@ export class SynergyResolverService {
       buildingTags: entity.buildingTags,
       missionTags: entity.missionTags,
     };
-  }
-
-  private selectorToRichSelection(selector: any): RichSelection | null {
-    type R = RichSelection | RichSelectionRule;
-    const rules: R[] = [];
-
-    if (selector.entityTypes?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'entityType', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.entityTypes });
-    }
-    if (selector.speciesIds?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'speciesId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.speciesIds });
-    }
-    if (selector.collections?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'collectionId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.collections });
-    }
-    if (selector.entityIds?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'id', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.entityIds });
-    }
-    if (selector.rarities?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'rarity', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.rarities });
-    }
-    if (selector.regions?.length) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'regionId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.regions });
-    }
-    if (selector.factions?.length) {
-      rules.push({
-        op: 'OR',
-        rules: selector.factions.map((f: string) => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: f } satisfies RichSelectionRule)),
-      });
-    }
-    if (selector.traitsAny?.length) {
-      if (selector.traitsAny.length === 1) {
-        rules.push({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.traitsAny[0] });
-      } else {
-        rules.push({ op: 'OR', rules: selector.traitsAny.map((t: string) => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t } satisfies RichSelectionRule)) });
-      }
-    }
-    if (selector.traitsAll?.length) {
-      for (const t of selector.traitsAll) {
-        rules.push({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t });
-      }
-    }
-    if (selector.minTraitCount !== undefined) {
-      rules.push({ scope: 'entity' as ScopeType, field: 'traitCount', aggregate: 'any' as AggregateType, operator: 'gte' as OperatorType, value: selector.minTraitCount });
-    }
-    if (selector.locationTypes?.length) {
-      if (selector.locationTypes.length === 1) {
-        rules.push({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.locationTypes[0] });
-      } else {
-        rules.push({ op: 'OR', rules: selector.locationTypes.map((lt: string) => ({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: lt } satisfies RichSelectionRule)) });
-      }
-    }
-    if (selector.buildingTagsAny?.length) {
-      if (selector.buildingTagsAny.length === 1) {
-        rules.push({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.buildingTagsAny[0] });
-      } else {
-        rules.push({ op: 'OR', rules: selector.buildingTagsAny.map((bt: string) => ({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: bt } satisfies RichSelectionRule)) });
-      }
-    }
-    if (selector.missionTagsAny?.length) {
-      if (selector.missionTagsAny.length === 1) {
-        rules.push({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.missionTagsAny[0] });
-      } else {
-        rules.push({ op: 'OR', rules: selector.missionTagsAny.map((mt: string) => ({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
-      }
-    }
-
-    if (rules.length === 0) return null;
-    return { op: 'AND', rules };
-  }
-
-  private contextToRichSelection(ruleCtx: any): RichSelection | null {
-    type R = RichSelection | RichSelectionRule;
-    const rules: R[] = [];
-
-    if (ruleCtx.activityTypes?.length) {
-      rules.push({ scope: 'context' as ScopeType, field: 'activityType', operator: 'in' as OperatorType, value: ruleCtx.activityTypes });
-    }
-    if (ruleCtx.missionTypes?.length) {
-      rules.push({ scope: 'context' as ScopeType, field: 'missionType', operator: 'in' as OperatorType, value: ruleCtx.missionTypes });
-    }
-    if (ruleCtx.missionTagsAny?.length) {
-      if (ruleCtx.missionTagsAny.length === 1) {
-        rules.push({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: ruleCtx.missionTagsAny[0] });
-      } else {
-        rules.push({ op: 'OR', rules: ruleCtx.missionTagsAny.map((mt: string) => ({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
-      }
-    }
-    if (ruleCtx.regionIds?.length) {
-      rules.push({ scope: 'context' as ScopeType, field: 'regionId', operator: 'in' as OperatorType, value: ruleCtx.regionIds });
-    }
-    if (ruleCtx.seasonIds?.length) {
-      rules.push({ scope: 'context' as ScopeType, field: 'seasonId', operator: 'in' as OperatorType, value: ruleCtx.seasonIds });
-    }
-    if (ruleCtx.requiresTeamSizeMin !== undefined) {
-      rules.push({ scope: 'context' as ScopeType, field: 'teamSize', operator: 'gte' as OperatorType, value: ruleCtx.requiresTeamSizeMin });
-    }
-    if (ruleCtx.requiresTeamSizeMax !== undefined) {
-      rules.push({ scope: 'context' as ScopeType, field: 'teamSize', operator: 'lte' as OperatorType, value: ruleCtx.requiresTeamSizeMax });
-    }
-
-    if (rules.length === 0) return null;
-    return { op: 'AND', rules };
   }
 
   private applyStackGroupLogic(

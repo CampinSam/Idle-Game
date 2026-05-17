@@ -238,7 +238,6 @@ export class MissionService {
       }
     }
 
-    const reqs: any[] = Array.isArray(dbDef.requirements) ? dbDef.requirements : [];
 
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
@@ -272,16 +271,6 @@ export class MissionService {
         throw new BadRequestException(`"${entity.name}" is currently ${entityStatus}`);
       }
       entities.push(entity);
-    }
-
-    const traitReqs = reqs.filter((r: any) => r.type === 'trait');
-    for (const req of traitReqs) {
-      const traitKey = req.key;
-      const op = req.operator ?? 'gte';
-      const traitCount = this.gameRules.countTeamTraits(entities, traitKey);
-      if (!this.gameRules.compareValues(traitCount, Number(req.value ?? 0), op)) {
-        throw new BadRequestException(`Team trait requirement not met: ${traitKey} ${op} ${req.value} (team has ${traitCount})`);
-      }
     }
 
     const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(dbDef.cost) ? dbDef.cost : [];
