@@ -25,7 +25,6 @@ export type RequirementType =
   | 'building'
   | 'currency'
   | 'item'
-  | 'team_size'
   | 'trait';
 
 const REQUIREMENT_TYPES: RequirementType[] = [
@@ -34,7 +33,6 @@ const REQUIREMENT_TYPES: RequirementType[] = [
   'building',
   'currency',
   'item',
-  'team_size',
   'trait',
 ];
 
@@ -74,8 +72,6 @@ function defaultForType(type: RequirementType): Requirement {
       return { type, key: '', operator: 'gte', value: 0 };
     case 'item':
       return { type, key: '', operator: 'exists' };
-    case 'team_size':
-      return { type, operator: 'gte', value: 1 };
     case 'trait':
       return { type, key: '', operator: 'exists' };
   }
@@ -138,7 +134,7 @@ function RequirementEditor({
 }) {
   const type: RequirementType = (entry.type as RequirementType) || 'keeper_level';
   const refTable = TYPE_REF_TABLE[type];
-  const showKey = type !== 'keeper_level' && type !== 'team_size';
+  const showKey = type !== 'keeper_level';
   const showValue = type !== 'building' && type !== 'item' && type !== 'trait'
     ? true
     : entry.operator !== 'exists' && entry.operator !== 'dne';

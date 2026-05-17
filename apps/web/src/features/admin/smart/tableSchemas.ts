@@ -25,6 +25,13 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SynergyRule: 'synergyRule',
 };
 
+export interface BespokeFieldDescriptor {
+  label: string;
+  requirementType: string;
+  operator: string;
+  inputType?: 'number' | 'text';
+}
+
 export interface FieldDef {
   type: string;
   required?: boolean;
@@ -33,6 +40,10 @@ export interface FieldDef {
   enum?: string;
   refTable?: string;
   options?: string[];
+  /** Bespoke field descriptors for `requirementsBlock` type fields. */
+  bespokeFields?: BespokeFieldDescriptor[];
+  /** Section heading label for the bespoke fields panel in a `requirementsBlock`. */
+  bespokeSectionLabel?: string;
   /** Optional tab/section id this field belongs to. Only meaningful when the
    *  parent TableSchema declares `sections`. Fields without a section land
    *  in the first section. */
@@ -136,7 +147,16 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       timer: { type: 'timerSpec', description: 'Duration and skip settings' },
       success: { type: 'outcomeSpec', description: 'Success outcome' },
       failure: { type: 'outcomeSpec', description: 'Failure outcome' },
-      requirements: { type: 'requirementsArray', default: [], description: 'All conditions' },
+      requirements: {
+        type: 'requirementsBlock',
+        default: [],
+        description: 'All conditions',
+        bespokeSectionLabel: 'Team Size',
+        bespokeFields: [
+          { label: 'Min Team Size', requirementType: 'team_size', operator: 'gte' },
+          { label: 'Max Team Size', requirementType: 'team_size', operator: 'lte' },
+        ],
+      },
       visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       rewardPreview: { type: 'costArray', default: [], description: 'Reward preview' },

@@ -5,6 +5,7 @@ import CollapsibleObject from './CollapsibleObject';
 import MediaUploader from './MediaUploader';
 import CostListEditor from './structured/CostListEditor';
 import RequirementsListEditor from './structured/RequirementsListEditor';
+import RequirementsBlockEditor from './structured/RequirementsBlockEditor';
 import TimerEditor from './structured/TimerEditor';
 import OutcomeListEditor from './structured/OutcomeListEditor';
 import ObjectivesListEditor from './structured/ObjectivesListEditor';
@@ -264,6 +265,15 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       const safeVal = Array.isArray(value) ? value : [];
       return renderStructured(
         <RequirementsListEditor value={safeVal} onChange={onChange} />
+      );
+    }
+
+    if (t === 'requirementsBlock') {
+      const safeVal = Array.isArray(value) ? value : [];
+      const bespoke = fieldDef.bespokeFields ?? [];
+      const sectionLabel = fieldDef.bespokeSectionLabel ?? 'Bespoke Fields';
+      return renderStructured(
+        <RequirementsBlockEditor value={safeVal} onChange={onChange} bespokeFields={bespoke} sectionLabel={sectionLabel} />
       );
     }
 

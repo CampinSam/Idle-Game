@@ -20,7 +20,6 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'building', description: 'Has a building', color: SKY, template: () => ({ type: 'building', key: '', operator: 'exists' }) },
     { label: 'currency', description: 'Currency balance check', color: EMERALD, template: () => ({ type: 'currency', key: '', operator: 'gte', value: 0 }) },
     { label: 'item', description: 'Has an item', color: EMERALD, template: () => ({ type: 'item', key: '', operator: 'exists' }) },
-    { label: 'team_size', description: 'Team member count', color: EMERALD, template: () => ({ type: 'team_size', operator: 'gte', value: 1 }) },
     { label: 'trait', description: 'Entity trait check', color: EMERALD, template: () => ({ type: 'trait', key: '', operator: 'exists' }) },
   ],
   visibilityRequirements: [

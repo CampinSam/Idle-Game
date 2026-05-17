@@ -391,6 +391,7 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
     case 'costArray':
       return costListErrorCount(value);
     case 'requirementsArray':
+    case 'requirementsBlock':
       return requirementsErrorCount(value);
     case 'outcomeSpec':
       return outcomeSpecErrorCount(value);
