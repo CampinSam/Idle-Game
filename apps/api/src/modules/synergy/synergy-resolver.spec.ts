@@ -4,6 +4,7 @@ import { SynergyResolverService } from './synergy-resolver.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SynergyEntityDescriptor, SynergyActivityContext } from './synergy.types';
 import type { RichSelection } from '@derp/shared';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -14,9 +15,9 @@ function makeRule(overrides: Partial<any> = {}): any {
     id: 'rule-' + Math.random().toString(36).slice(2),
     name: 'Test Rule',
     enabled: true,
-    sourceSelector: {},
-    targetSelector: {},
-    context: {},
+    sourceSelector: null,
+    targetSelector: null,
+    context: null,
     effects: [],
     priority: 100,
     stackGroup: null,
@@ -78,6 +79,7 @@ describe('SynergyResolverService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SynergyResolverService,
+        SelectionResolverService,
         {
           provide: PrismaService,
           useValue: {
@@ -590,7 +592,7 @@ describe('SynergyResolverService', () => {
 
   it('aggregates resourceYieldModifiers per resourceId', async () => {
     const rule = makeRule({
-      context: { activityTypes: ['outpost'] },
+      context: rsCtxActivity(['outpost']),
       effects: [{ type: 'resource_yield_modifier', resourceId: 'gold', operation: 'percent_add', value: 25 }],
     });
     prismaFindMany.mockResolvedValue([rule]);
