@@ -4,6 +4,8 @@ import { synergyEffectsErrorCount } from './SynergyEffectsEditor';
 import { giftPresentationErrorCount } from './GiftPresentationEditor';
 import { giftClaimRulesErrorCount } from './GiftClaimRulesEditor';
 import { itemEquipDataErrorCount } from './ItemEquipDataEditor';
+import { homeBannerConfigErrorCount } from './HomeBannerConfigEditor';
+import { eventSecurityErrorCount } from './EventSecurityEditor';
 
 // Re-export shared contract types so existing editor imports keep working.
 export type { StructuredEditorProps, ValidationResult } from './editorContract';
@@ -414,6 +416,10 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return giftClaimRulesErrorCount(value);
     case 'itemEquipData':
       return itemEquipDataErrorCount(value);
+    case 'homeBannerConfig':
+      return homeBannerConfigErrorCount(value);
+    case 'eventSecurity':
+      return eventSecurityErrorCount(value);
     default:
       return 0;
   }

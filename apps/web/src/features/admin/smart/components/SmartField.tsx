@@ -30,6 +30,8 @@ import SynergyEffectsEditor from './structured/SynergyEffectsEditor';
 import GiftPresentationEditor from './structured/GiftPresentationEditor';
 import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
 import ItemEquipDataEditor from './structured/ItemEquipDataEditor';
+import HomeBannerConfigEditor from './structured/HomeBannerConfigEditor';
+import EventSecurityEditor from './structured/EventSecurityEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -64,6 +66,8 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   giftPresentation:  { Component: GiftPresentationEditor,  safe: 'object' },
   giftClaimRules:    { Component: GiftClaimRulesEditor,    safe: 'object' },
   itemEquipData:     { Component: ItemEquipDataEditor,     safe: 'object' },
+  homeBannerConfig:  { Component: HomeBannerConfigEditor,  safe: 'object' },
+  eventSecurity:     { Component: EventSecurityEditor,     safe: 'object' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {

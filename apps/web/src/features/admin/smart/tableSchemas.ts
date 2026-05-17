@@ -397,7 +397,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       version: { type: 'number', default: 1, description: 'Schema version' },
       kind: { type: 'enum', enum: 'eventKind', default: 'system', description: 'Event kind' },
       handlerKey: { type: 'enum', enum: 'handlerKey', required: true, description: 'Handler function' },
-      security: { type: 'json', default: {}, description: 'Access control' },
+      security: { type: 'eventSecurity', default: {}, description: 'Access control (allowedEmitters restricts which job types may fire this event)' },
       inputSchema: { type: 'json', default: {}, description: 'Expected payload schema' },
       enabled: { type: 'boolean', default: true, description: 'Is active?' },
     },
@@ -539,7 +539,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       endsAt: { type: 'string', description: 'ISO datetime — banner is hidden after this; powers countdown (blank = no countdown)' },
       status: { type: 'options', options: ['active', 'draft', 'archived'], default: 'active', description: 'Visibility status' },
       seasonId: { type: 'ref', refTable: 'Season', description: 'Optional Season link (substitutes title/endsAt from the Season row)' },
-      config: { type: 'json', default: {}, description: 'Extra config: { autoAdvanceMs?: number, tagline?: string, deriveFromActiveSeason?: boolean }' },
+      config: { type: 'homeBannerConfig', default: {}, description: 'Banner carousel config (autoAdvanceMs, tagline, deriveFromActiveSeason)' },
     },
   },
 };
