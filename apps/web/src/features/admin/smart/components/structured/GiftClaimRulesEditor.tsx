@@ -45,6 +45,11 @@ export function giftClaimRulesErrorCount(v: GiftClaimRules | null | undefined): 
   return Object.keys(validateGiftClaimRules(v)).length;
 }
 
+export function giftClaimRulesErrorMessages(v: GiftClaimRules | null | undefined, fieldName: string): string[] {
+  const errs = validateGiftClaimRules(v);
+  return Object.entries(errs).map(([key, msg]) => `${fieldName}.${key}: ${msg}`);
+}
+
 export default function GiftClaimRulesEditor({ value, onChange }: Props) {
   const rules: GiftClaimRules = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
 

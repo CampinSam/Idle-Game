@@ -334,3 +334,39 @@ export function levelRulesErrorCount(value: any): number {
 
   return n;
 }
+
+export function levelRulesErrorMessages(value: any, fieldName: string): string[] {
+  const safe = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+  const msgs: string[] = [];
+
+  if (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1) {
+    msgs.push(`${fieldName}.maxLevel: must be a positive integer`);
+  }
+
+  const level = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level)) ? safe.level : {};
+  for (const [levelKey, entry] of Object.entries(level)) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const e = entry as Record<string, any>;
+    if ('timer' in e && e.timer && typeof e.timer === 'object') {
+      const timerDuration = e.timer.duration;
+      if (timerDuration === undefined || timerDuration === null || isNaN(Number(timerDuration)) || Number(timerDuration) < 0) {
+        msgs.push(`${fieldName}.level[${levelKey}].timer.duration: must be a non-negative number`);
+      }
+    }
+    if ('constructionCost' in e) {
+      const costs = Array.isArray(e.constructionCost) ? e.constructionCost : [];
+      costs.forEach((cost: any, costIdx: number) => {
+        const type = cost?.type || 'currency';
+        const refKey = type === 'entity' ? cost?.definitionId : cost?.id;
+        if (!refKey || String(refKey).trim() === '') {
+          msgs.push(`${fieldName}.level[${levelKey}].constructionCost[${costIdx}]: id required`);
+        }
+        if (cost?.amount === undefined || cost?.amount === null || isNaN(Number(cost.amount)) || Number(cost.amount) <= 0) {
+          msgs.push(`${fieldName}.level[${levelKey}].constructionCost[${costIdx}]: amount must be > 0`);
+        }
+      });
+    }
+  }
+
+  return msgs;
+}

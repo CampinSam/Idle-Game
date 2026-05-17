@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import CollapsibleObject from '../CollapsibleObject';
 import RefSelect from '../RefSelect';
-import ResourceEntryListEditor, { resourceEntryListErrorCount } from './ResourceEntryListEditor';
+import ResourceEntryListEditor, { resourceEntryListErrorCount, resourceEntryListErrorMessages } from './ResourceEntryListEditor';
 import type { ResourceEntry } from './ResourceEntryListEditor';
 import {
   containerStyle,
@@ -962,4 +962,50 @@ export function locationLevelRulesErrorCount(value: unknown): number {
   }
 
   return n;
+}
+
+export function locationLevelRulesErrorMessages(value: unknown, fieldName: string): string[] {
+  const safe: LocationLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
+    ? value as LocationLevelRules
+    : {};
+  const msgs: string[] = [];
+
+  if (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1) {
+    msgs.push(`${fieldName}.maxLevel: must be a positive integer`);
+  }
+
+  if (Array.isArray(safe.xpDepositCosts)) {
+    (safe.xpDepositCosts as XpDepositCost[]).forEach((c, i) => {
+      const errs = validateDepositCost(c);
+      Object.entries(errs).forEach(([key, msg]) => {
+        msgs.push(`${fieldName}.xpDepositCosts[${i}].${key}: ${msg}`);
+      });
+    });
+  }
+
+  const level = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level))
+    ? safe.level as Record<string, LocationLevelBlock>
+    : {};
+
+  for (const [levelKey, block] of Object.entries(level)) {
+    if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
+
+    msgs.push(...resourceEntryListErrorMessages(block.storage, 'baseCapacity', `${fieldName}.level[${levelKey}].storage`));
+    msgs.push(...resourceEntryListErrorMessages(block.production, 'ratePerHour', `${fieldName}.level[${levelKey}].production`));
+    msgs.push(...resourceEntryListErrorMessages(block.consumption, 'ratePerHour', `${fieldName}.level[${levelKey}].consumption`));
+    msgs.push(...resourceEntryListErrorMessages(block.constructionCost, 'amount', `${fieldName}.level[${levelKey}].constructionCost`));
+
+    (block.buildings?.allowed ?? []).forEach((ab, idx) => {
+      if (!ab.buildingDefId || ab.buildingDefId.trim() === '') {
+        msgs.push(`${fieldName}.level[${levelKey}].buildings.allowed[${idx}]: buildingDefId required`);
+      }
+    });
+    (block.rooms?.allowed ?? []).forEach((ar, idx) => {
+      if (!ar.roomDefId || ar.roomDefId.trim() === '') {
+        msgs.push(`${fieldName}.level[${levelKey}].rooms.allowed[${idx}]: roomDefId required`);
+      }
+    });
+  }
+
+  return msgs;
 }

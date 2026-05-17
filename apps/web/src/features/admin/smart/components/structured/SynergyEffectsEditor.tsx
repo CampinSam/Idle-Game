@@ -84,6 +84,16 @@ export function synergyEffectsErrorCount(effects: any): number {
   return validateSynergyEffects(effects).reduce((n, e) => n + Object.keys(e).length, 0);
 }
 
+export function synergyEffectsErrorMessages(effects: any, fieldName: string): string[] {
+  const arr = Array.isArray(effects) ? effects : [];
+  const msgs: string[] = [];
+  arr.forEach((effect: SynergyEffect, i: number) => {
+    const errs = validateSynergyEffect(effect);
+    Object.values(errs).forEach(msg => msgs.push(`${fieldName}[${i}]: ${msg}`));
+  });
+  return msgs;
+}
+
 function defaultEffect(type: SynergyEffectType): SynergyEffect {
   switch (type) {
     case 'synergy_score_modifier':

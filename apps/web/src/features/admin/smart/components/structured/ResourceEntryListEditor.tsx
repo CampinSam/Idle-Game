@@ -51,6 +51,17 @@ export function resourceEntryListErrorCount(value: unknown, primaryField: Primar
   );
 }
 
+export function resourceEntryListErrorMessages(value: unknown, primaryField: PrimaryField, prefix: string): string[] {
+  if (!Array.isArray(value)) return [];
+  const msgs: string[] = [];
+  (value as ResourceEntry[]).forEach((entry, i) => {
+    const errs = validateEntry(entry, primaryField);
+    if (errs.id) msgs.push(`${prefix}[${i}]: ${errs.id}`);
+    if (errs.primary) msgs.push(`${prefix}[${i}]: ${errs.primary}`);
+  });
+  return msgs;
+}
+
 function ResourceEntryRow({
   entry,
   onChange,

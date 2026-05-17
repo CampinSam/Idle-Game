@@ -37,6 +37,11 @@ export function itemEquipDataErrorCount(v: ItemEquipData | null | undefined): nu
   return Object.keys(validateItemEquipData(v)).length;
 }
 
+export function itemEquipDataErrorMessages(v: ItemEquipData | null | undefined, fieldName: string): string[] {
+  const errs = validateItemEquipData(v);
+  return Object.entries(errs).map(([key, msg]) => `${fieldName}.${key}: ${msg}`);
+}
+
 export default function ItemEquipDataEditor({ value, onChange }: Props) {
   const data: ItemEquipData = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
   const errs = validateItemEquipData(data);

@@ -1,12 +1,12 @@
-import { synergyEffectsErrorCount } from './SynergyEffectsEditor';
-import { giftPresentationErrorCount } from './GiftPresentationEditor';
-import { giftClaimRulesErrorCount } from './GiftClaimRulesEditor';
-import { itemEquipDataErrorCount } from './ItemEquipDataEditor';
-import { homeBannerConfigErrorCount } from './HomeBannerConfigEditor';
-import { eventSecurityErrorCount } from './EventSecurityEditor';
-import { levelRulesErrorCount } from './LevelRulesEditor';
-import { locationLevelRulesErrorCount } from './LocationLevelRulesEditor';
-import { productionProfileErrorCount } from './ProductionProfileEditor';
+import { synergyEffectsErrorCount, synergyEffectsErrorMessages } from './SynergyEffectsEditor';
+import { giftPresentationErrorCount, giftPresentationErrorMessages } from './GiftPresentationEditor';
+import { giftClaimRulesErrorCount, giftClaimRulesErrorMessages } from './GiftClaimRulesEditor';
+import { itemEquipDataErrorCount, itemEquipDataErrorMessages } from './ItemEquipDataEditor';
+import { homeBannerConfigErrorCount, homeBannerConfigErrorMessages } from './HomeBannerConfigEditor';
+import { eventSecurityErrorCount, eventSecurityErrorMessages } from './EventSecurityEditor';
+import { levelRulesErrorCount, levelRulesErrorMessages } from './LevelRulesEditor';
+import { locationLevelRulesErrorCount, locationLevelRulesErrorMessages } from './LocationLevelRulesEditor';
+import { productionProfileErrorCount, productionProfileErrorMessages } from './ProductionProfileEditor';
 
 // Re-export shared contract types so existing editor imports keep working.
 export type { StructuredEditorProps, ValidationResult } from './editorContract';
@@ -519,6 +519,24 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
     case 'rulesWithUniques': {
       return uniquesMessages((value as any)?.uniques, `${fieldName}.uniques`);
     }
+    case 'synergyEffectsArray':
+      return synergyEffectsErrorMessages(value, fieldName);
+    case 'giftPresentation':
+      return giftPresentationErrorMessages(value, fieldName);
+    case 'giftClaimRules':
+      return giftClaimRulesErrorMessages(value, fieldName);
+    case 'itemEquipData':
+      return itemEquipDataErrorMessages(value, fieldName);
+    case 'homeBannerConfig':
+      return homeBannerConfigErrorMessages(value, fieldName);
+    case 'eventSecurity':
+      return eventSecurityErrorMessages(value, fieldName);
+    case 'levelRules':
+      return levelRulesErrorMessages(value, fieldName);
+    case 'locationLevelRules':
+      return locationLevelRulesErrorMessages(value, fieldName);
+    case 'productionProfile':
+      return productionProfileErrorMessages(value, fieldName);
     default: {
       const n = structuredFieldErrorCount(type, value);
       return n > 0 ? [`${fieldName}: ${n} issue(s)`] : [];

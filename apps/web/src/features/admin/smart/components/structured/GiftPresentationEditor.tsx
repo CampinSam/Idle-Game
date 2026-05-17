@@ -28,6 +28,13 @@ export function giftPresentationErrorCount(v: GiftPresentation | null | undefine
   return Object.keys(validateGiftPresentation(v)).length;
 }
 
+// NOTE: validateGiftPresentation currently has no validation rules (all fields are optional).
+// If validation rules are added to validateGiftPresentation in the future, update this function
+// to reflect them (e.g. Object.entries(errs).map(([key, msg]) => `${fieldName}.${key}: ${msg}`)).
+export function giftPresentationErrorMessages(_v: GiftPresentation | null | undefined, _fieldName: string): string[] {
+  return [];
+}
+
 export default function GiftPresentationEditor({ value, onChange }: Props) {
   const pres: GiftPresentation = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
 

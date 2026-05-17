@@ -36,6 +36,11 @@ export function homeBannerConfigErrorCount(v: HomeBannerConfig | null | undefine
   return Object.keys(validateHomeBannerConfig(v)).length;
 }
 
+export function homeBannerConfigErrorMessages(v: HomeBannerConfig | null | undefined, fieldName: string): string[] {
+  const errs = validateHomeBannerConfig(v);
+  return Object.entries(errs).map(([key, msg]) => `${fieldName}.${key}: ${msg}`);
+}
+
 export default function HomeBannerConfigEditor({ value, onChange }: Props) {
   const cfg: HomeBannerConfig = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
 

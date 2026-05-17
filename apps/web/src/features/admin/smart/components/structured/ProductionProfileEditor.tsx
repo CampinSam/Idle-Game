@@ -1,4 +1,4 @@
-import ResourceEntryListEditor, { resourceEntryListErrorCount } from './ResourceEntryListEditor';
+import ResourceEntryListEditor, { resourceEntryListErrorCount, resourceEntryListErrorMessages } from './ResourceEntryListEditor';
 import type { ResourceEntry } from './ResourceEntryListEditor';
 import {
   containerStyle,
@@ -38,6 +38,25 @@ export function productionProfileErrorCount(value: unknown): number {
     n += 1;
   }
   return n;
+}
+
+export function productionProfileErrorMessages(value: unknown, fieldName: string): string[] {
+  const v = (value && typeof value === 'object' && !Array.isArray(value)) ? value as ProductionProfile : null;
+  if (!v) return [];
+  const msgs: string[] = [];
+  if (v.outputs !== undefined) {
+    msgs.push(...resourceEntryListErrorMessages(v.outputs, 'ratePerHour', `${fieldName}.outputs`));
+  }
+  if (v.inputs !== undefined) {
+    msgs.push(...resourceEntryListErrorMessages(v.inputs, 'ratePerHour', `${fieldName}.inputs`));
+  }
+  if (v.onStarve !== undefined && !VALID_ON_STARVE.has(v.onStarve as string)) {
+    msgs.push(`${fieldName}.onStarve: must be "starved" or "paused"`);
+  }
+  if (v.enabled !== undefined && typeof v.enabled !== 'boolean') {
+    msgs.push(`${fieldName}.enabled: must be a boolean`);
+  }
+  return msgs;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

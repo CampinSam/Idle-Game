@@ -60,6 +60,16 @@ export function eventSecurityErrorCount(v: EventSecurity | null | undefined): nu
   return errs.emitters.filter(e => e !== '').length;
 }
 
+export function eventSecurityErrorMessages(v: EventSecurity | null | undefined, fieldName: string): string[] {
+  const errs = validateEventSecurity(v);
+  if (!errs.emitters) return [];
+  const msgs: string[] = [];
+  errs.emitters.forEach((msg, idx) => {
+    if (msg) msgs.push(`${fieldName}.allowedEmitters[${idx}]: ${msg}`);
+  });
+  return msgs;
+}
+
 export default function EventSecurityEditor({ value, onChange }: Props) {
   const sec: EventSecurity = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
   // Coerce each entry to string to handle malformed legacy data gracefully
