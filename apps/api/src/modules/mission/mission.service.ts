@@ -246,7 +246,27 @@ export class MissionService {
       throw new BadRequestException('Mission is not available');
     }
 
-    const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length });
+    const entities = [];
+    for (const entityId of entityIds) {
+      const entity = await (db as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId }, include: { equipment: true } });
+      if (!entity) throw new NotFoundException(`Entity ${entityId} not found`);
+      const entityStatus = (entity as any).state?.status || 'idle';
+      if (entityStatus !== 'idle') {
+        throw new BadRequestException(`"${entity.name}" is currently ${entityStatus}`);
+      }
+      entities.push(entity);
+    }
+
+    const team = entities.map((e: any) => ({
+      id: e.id as string,
+      entityType: (e.role as string | undefined) ?? undefined,
+      traits: (e.traits ?? {}) as Record<string, string>,
+      speciesId: (e.definitionId as string | undefined) ?? undefined,
+      collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
+      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+    }));
+
+    const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length, team });
 
     if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
       throw new BadRequestException('Mission requirements not met');
@@ -260,17 +280,6 @@ export class MissionService {
       throw new BadRequestException(
         `Maximum ${maxMissions} active missions allowed at Keeper Level ${user.keeperLevel}`,
       );
-    }
-
-    const entities = [];
-    for (const entityId of entityIds) {
-      const entity = await (db as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId }, include: { equipment: true } });
-      if (!entity) throw new NotFoundException(`Entity ${entityId} not found`);
-      const entityStatus = (entity as any).state?.status || 'idle';
-      if (entityStatus !== 'idle') {
-        throw new BadRequestException(`"${entity.name}" is currently ${entityStatus}`);
-      }
-      entities.push(entity);
     }
 
     const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(dbDef.cost) ? dbDef.cost : [];

@@ -113,6 +113,23 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
       return [undefined];
     }
 
+    case 'currentLocation': {
+      const loc = ctx.currentLocation;
+      if (!loc) return [];
+      if (field === 'regionId') return [loc.regionId ?? null];
+      if (field.startsWith('buildings.')) {
+        const bId = field.substring(10);
+        return [loc.buildings.some(b => b.buildingDefId === bId) ? 1 : 0];
+      }
+      if (field.startsWith('rooms.')) {
+        const rId = field.substring(6);
+        const inBuilding = loc.buildings.some(b => b.rooms?.some(r => r.roomDefId === rId));
+        const inLocation = loc.rooms.some(r => r.roomDefId === rId);
+        return [inBuilding || inLocation ? 1 : 0];
+      }
+      return [undefined];
+    }
+
     case 'building': {
       if (!ctx.parentBuilding) return [undefined];
       if (field.startsWith('rooms.')) {

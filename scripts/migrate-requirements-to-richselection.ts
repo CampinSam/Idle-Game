@@ -96,14 +96,22 @@ function convertRequirement(item: LegacyRequirement): RichSelection | RichSelect
         value: rawOp === 'exists' || rawOp === 'dne' ? undefined : item.value,
       };
 
-    case 'has_building':
-    case 'parent_has_building': {
+    case 'has_building': {
       const ids = Array.isArray(item.ids) ? item.ids : [];
       if (ids.length === 0) return null;
       if (ids.length === 1) {
         return { scope: 'location', field: `buildings.${ids[0]}`, aggregate: 'any', operator: 'eq', value: 1 };
       }
       return { op: 'OR', rules: ids.map(id => ({ scope: 'location', field: `buildings.${id}`, aggregate: 'any', operator: 'eq', value: 1 })) };
+    }
+
+    case 'parent_has_building': {
+      const ids = Array.isArray(item.ids) ? item.ids : [];
+      if (ids.length === 0) return null;
+      if (ids.length === 1) {
+        return { scope: 'currentLocation', field: `buildings.${ids[0]}`, operator: 'eq', value: 1 };
+      }
+      return { op: 'OR', rules: ids.map(id => ({ scope: 'currentLocation', field: `buildings.${id}`, operator: 'eq', value: 1 })) };
     }
 
     case 'has_room': {
@@ -132,6 +140,12 @@ function convertRequirement(item: LegacyRequirement): RichSelection | RichSelect
 
     case 'team_size': {
       return { scope: 'context', field: 'teamSize', operator: rawOp, value: item.value };
+    }
+
+    case 'trait': {
+      const key = item.key ?? '';
+      const value = typeof item.value === 'number' ? item.value : 1;
+      return { scope: 'entity', field: `traits.${key}`, aggregate: 'sum', operator: rssOp, value };
     }
 
     default:

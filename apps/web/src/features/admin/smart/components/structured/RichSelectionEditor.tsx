@@ -25,7 +25,7 @@ function isGroup(n: unknown): n is RichSelection {
 }
 
 const SCOPE_OPTIONS: ScopeType[] = [
-  'player', 'entity', 'team', 'team_member', 'location', 'building',
+  'player', 'entity', 'team', 'team_member', 'location', 'currentLocation', 'building',
   'context', 'currency_balance', 'item', 'inventory',
 ];
 
@@ -71,14 +71,30 @@ function upgradeFromLegacy(items: any[]): RichSelection {
           value: rawOp === 'exists' || rawOp === 'dne' ? undefined : item.value,
         };
       case 'has_building':
-      case 'parent_has_building':
         return {
           scope: 'location',
           field: `buildings.${(Array.isArray(item.ids) ? item.ids[0] : item.key) ?? ''}`,
           aggregate: 'any',
           operator: 'eq',
           value: 1,
-          label: `Migrated: ${type}${Array.isArray(item.ids) && item.ids.length > 1 ? ' (multi-id — review)' : ''}`,
+          label: `Migrated: has_building${Array.isArray(item.ids) && item.ids.length > 1 ? ' (multi-id — review)' : ''}`,
+        };
+      case 'parent_has_building':
+        return {
+          scope: 'currentLocation',
+          field: `buildings.${(Array.isArray(item.ids) ? item.ids[0] : item.key) ?? ''}`,
+          operator: 'eq',
+          value: 1,
+          label: `Migrated: parent_has_building${Array.isArray(item.ids) && item.ids.length > 1 ? ' (multi-id — review)' : ''}`,
+        };
+      case 'trait':
+        return {
+          scope: 'entity',
+          field: `traits.${item.key ?? ''}`,
+          aggregate: 'sum',
+          operator: (rawOp as OperatorType) ?? 'gte',
+          value: typeof item.value === 'number' ? item.value : 1,
+          label: `Migrated: trait`,
         };
       case 'has_room':
       case 'parent_has_room':
@@ -168,6 +184,9 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
     return s;
   };
 
+  const fieldError = !rule.field.trim();
+  const valueError = needsValue && (rule.value === undefined || rule.value === null || valueStr === '');
+
   const rowStyle: CSSProperties = {
     display: 'flex',
     flexWrap: 'wrap',
@@ -215,13 +234,15 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
         </div>
 
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 140 }}>
-          <span style={labelStyle}>field</span>
+          <span style={{ ...labelStyle, ...(fieldError ? { color: '#f87171' } : {}) }}>
+            field{fieldError ? ' ✕' : ''}
+          </span>
           <input
             type="text"
             value={rule.field}
             onChange={e => set('field', e.target.value)}
             placeholder="e.g. keeperLevel, flags.key"
-            style={{ ...inputStyle, width: '100%' }}
+            style={{ ...inputStyle, width: '100%', ...(fieldError ? { borderColor: '#f87171', background: '#1f0a0a' } : {}) }}
           />
         </div>
 
@@ -251,13 +272,15 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
 
         {needsValue && (
           <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
-            <span style={labelStyle}>value</span>
+            <span style={{ ...labelStyle, ...(valueError ? { color: '#f87171' } : {}) }}>
+              value{valueError ? ' ✕' : ''}
+            </span>
             <input
               type="text"
               value={valueStr}
               onChange={e => set('value', parseValue(e.target.value))}
               placeholder='number, "text", or ["a","b"]'
-              style={{ ...inputStyle, width: '100%' }}
+              style={{ ...inputStyle, width: '100%', ...(valueError ? { borderColor: '#f87171', background: '#1f0a0a' } : {}) }}
             />
           </div>
         )}

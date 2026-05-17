@@ -17,6 +17,15 @@ export interface LocationContext {
   parentBuildingRooms?: { roomDefId: string }[];
 }
 
+export interface TeamEntitySnap {
+  id: string;
+  entityType?: string;
+  traits?: Record<string, string>;
+  speciesId?: string;
+  collectionId?: string;
+  rarity?: string;
+}
+
 export interface RequirementContext {
   user: GameUser;
   userFlags: Record<string, unknown>;
@@ -24,6 +33,7 @@ export interface RequirementContext {
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
   teamSize?: number;
+  team?: TeamEntitySnap[];
 }
 
 @Injectable()
@@ -96,7 +106,15 @@ export class GameRulesService {
         keeperLevel: Number(context.user.keeperLevel ?? 0),
         flags: context.userFlags,
       },
-      entities: [],
+      entities: (context.team ?? []).map(e => ({
+        id: e.id,
+        entityType: e.entityType,
+        speciesId: e.speciesId,
+        collectionId: e.collectionId,
+        traits: (e.traits ?? {}) as Record<string, string>,
+        stats: {},
+        rarity: e.rarity,
+      })),
       inventory: { currencies: {}, items: {} },
       locations: (context.allPlayerLocations ?? []).map(loc => ({
         regionId: loc.regionId,

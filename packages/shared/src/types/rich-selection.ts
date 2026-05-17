@@ -8,6 +8,7 @@ export type ScopeType =
   | 'currency_balance'
   | 'item'
   | 'location'
+  | 'currentLocation'
   | 'building'
   | 'room'
   | 'job'
