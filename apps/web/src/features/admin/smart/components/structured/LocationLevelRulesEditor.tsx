@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CollapsibleObject from '../CollapsibleObject';
+import RefSelect from '../RefSelect';
 import ResourceEntryListEditor, { resourceEntryListErrorCount } from './ResourceEntryListEditor';
 import type { ResourceEntry } from './ResourceEntryListEditor';
 import {
@@ -14,6 +15,7 @@ import {
   inputStyle,
   selectStyle,
 } from './editorStyles';
+import { errorTextStyle, errorWrapperStyle } from './validation';
 
 // ─── Local types (mirrors level-config.util.ts shapes) ────────────────────────
 
@@ -139,18 +141,15 @@ function XpDepositCostRow({
         </div>
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 140 }}>
           <span style={labelStyle}>id</span>
-          <input
-            type="text"
-            value={cost.id || ''}
-            onChange={e => onChange({ ...cost, id: e.target.value })}
-            style={{
-              ...inputStyle,
-              width: '100%',
-              borderColor: errs.id ? '#ef4444' : (inputStyle.borderColor as string | undefined),
-            }}
-            placeholder="currency or item id"
-          />
-          {errs.id && <span style={{ color: '#ef4444', fontSize: 11 }}>{errs.id}</span>}
+          <div style={errs.id ? errorWrapperStyle : undefined}>
+            <RefSelect
+              refTable={cost.type === 'item' ? 'ItemDef' : 'Currency'}
+              value={cost.id || null}
+              onChange={v => onChange({ ...cost, id: v ?? '' })}
+              placeholder={`Select ${cost.type === 'item' ? 'ItemDef' : 'Currency'}...`}
+            />
+          </div>
+          {errs.id && <span style={errorTextStyle}>{errs.id}</span>}
         </div>
         <div style={{ ...fieldGroupStyle, maxWidth: 90 }}>
           <span style={labelStyle}>amount</span>

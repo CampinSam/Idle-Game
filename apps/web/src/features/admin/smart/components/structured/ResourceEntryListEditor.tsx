@@ -1,8 +1,8 @@
+import RefSelect from '../RefSelect';
 import {
   containerStyle,
   entryCardStyle,
   entryHeaderStyle,
-  inputStyle,
   numberInputStyle,
   selectStyle,
   dangerIconButtonStyle,
@@ -10,6 +10,8 @@ import {
   fieldGroupStyle,
   labelStyle,
 } from './editorStyles';
+
+import { errorTextStyle, errorWrapperStyle } from './validation';
 
 export type GrowthRate = 'flat' | 'linear' | 'exp';
 export type ResourceEntryType = 'currency' | 'item';
@@ -79,18 +81,15 @@ function ResourceEntryRow({
         </div>
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 140 }}>
           <span style={labelStyle}>id</span>
-          <input
-            type="text"
-            value={entry.id || ''}
-            onChange={e => onChange({ ...entry, id: e.target.value })}
-            style={{
-              ...inputStyle,
-              width: '100%',
-              borderColor: errs.id ? '#ef4444' : (inputStyle.borderColor as string | undefined),
-            }}
-            placeholder="currency or item id"
-          />
-          {errs.id && <span style={{ color: '#ef4444', fontSize: 11 }}>{errs.id}</span>}
+          <div style={errs.id ? errorWrapperStyle : undefined}>
+            <RefSelect
+              refTable={entry.type === 'item' ? 'ItemDef' : 'Currency'}
+              value={entry.id || null}
+              onChange={v => onChange({ ...entry, id: v ?? '' })}
+              placeholder={`Select ${entry.type === 'item' ? 'ItemDef' : 'Currency'}...`}
+            />
+          </div>
+          {errs.id && <span style={errorTextStyle}>{errs.id}</span>}
         </div>
         <div style={{ ...fieldGroupStyle, maxWidth: 110 }}>
           <span style={labelStyle}>{primaryField}</span>
