@@ -20,6 +20,7 @@ import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, Effect
 import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
+import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 
 @Injectable()
 export class MissionService {
@@ -37,6 +38,7 @@ export class MissionService {
     private eventService: EventService,
     private telemetryService: TelemetryService,
     private effectService: EffectService,
+    private synergyResolver: SynergyResolverService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -486,6 +488,35 @@ export class MissionService {
     });
 
     let rawTeamMP = calculateTeamMP(teamForMP);
+
+    // Apply synergy bonus via the data-driven SynergyResolverService.
+    // Build entity descriptors from the team; source and target are the same array
+    // (the resolver finds matching pairs within it).
+    const synergyDescriptors = entities.map((b: any) => ({
+      entityId: b.id as string,
+      traits: (b.traits ?? {}) as Record<string, string>,
+    }));
+    const synergyContext = {
+      activityType: 'mission' as const,
+      missionTags: Array.isArray(def.tags) ? (def.tags as string[]) : [],
+      teamSize: entities.length,
+    };
+    try {
+      const synergyResult = await this.synergyResolver.resolveRules(
+        synergyContext,
+        synergyDescriptors,
+        synergyDescriptors,
+      );
+      if (synergyResult.totals.synergyScore !== 0) {
+        rawTeamMP += synergyResult.totals.synergyScore;
+        this.logger.debug(
+          `Mission ${missionId}: synergy bonus=${synergyResult.totals.synergyScore} from ${synergyResult.matchedRules.length} rule(s)`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`Mission ${missionId}: synergy resolution failed, skipping bonus — ${err}`);
+    }
+
     const mpMod = this.effectService.resolve(playerEffects, EffectCategory.MISSION_POWER);
     rawTeamMP = applyModifier(rawTeamMP, mpMod);
 
