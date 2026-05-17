@@ -94,7 +94,10 @@ export class MissionService {
     }
 
     return filtered.map((c: any) => {
-      const requirementStatus: any[] = [];
+      const requirementStatus: any[] =
+        reqContext && c.requirements
+          ? [{ met: this.gameRules.checkRequirements(c.requirements, reqContext) }]
+          : [];
 
       return {
         id: c.id,
@@ -152,7 +155,10 @@ export class MissionService {
       ),
     };
 
-    const requirementStatus: any[] = [];
+    const requirementStatus: any[] =
+      reqContext && def.requirements
+        ? [{ met: this.gameRules.checkRequirements(def.requirements, reqContext) }]
+        : [];
 
     return {
       id: def.id,

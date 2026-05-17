@@ -79,7 +79,8 @@ export class GameRulesService {
       this.logger.error('checkRequirements: legacy Requirement[] format detected — failing closed; run migration script to convert to RichSelection');
       return false;
     }
-    return true;
+    this.logger.error('checkRequirements: unknown non-null requirements shape — failing closed', { requirements });
+    return false;
   }
 
   checkVisibility(
@@ -146,22 +147,6 @@ export class GameRulesService {
         : undefined,
     };
   }
-
-  private reqCtxToParentBuildingSelCtx(context: RequirementContext): SelectionContext {
-    const base = this.reqCtxToSelCtx(context);
-    if (!context.currentLocation) return { ...base, locations: [] };
-    return {
-      ...base,
-      locations: [
-        {
-          regionId: context.currentLocation.regionId,
-          buildings: context.currentLocation.buildings ?? [],
-          rooms: context.currentLocation.rooms ?? [],
-        },
-      ],
-    };
-  }
-
 
   async applyFlagEffect(userId: string, effect: Record<string, unknown>): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
