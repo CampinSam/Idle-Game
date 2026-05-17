@@ -358,6 +358,10 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
+      if (currentRules.uniques) {
+        logger.log(`NFT unique powers: skipping entityDefinition "${definitionId}" — uniques already seeded`);
+        continue;
+      }
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.entityDefinition.update({
@@ -383,6 +387,10 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
+      if (currentRules.uniques) {
+        logger.log(`NFT unique powers: skipping locationDefinition "${definitionId}" — uniques already seeded`);
+        continue;
+      }
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.locationDefinition.update({
