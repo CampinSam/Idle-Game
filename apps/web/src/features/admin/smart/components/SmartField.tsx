@@ -32,6 +32,7 @@ import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
 import ItemEquipDataEditor from './structured/ItemEquipDataEditor';
 import HomeBannerConfigEditor from './structured/HomeBannerConfigEditor';
 import EventSecurityEditor from './structured/EventSecurityEditor';
+import LevelRulesEditor from './structured/LevelRulesEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -68,6 +69,7 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   itemEquipData:     { Component: ItemEquipDataEditor,     safe: 'object' },
   homeBannerConfig:  { Component: HomeBannerConfigEditor,  safe: 'object' },
   eventSecurity:     { Component: EventSecurityEditor,     safe: 'object' },
+  levelRules:        { Component: LevelRulesEditor,        safe: 'passthrough' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {
@@ -508,7 +510,7 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       );
     }
 
-    if (t === 'json' || t === 'levelRules' || t === 'requirements' || t === 'timer' || t === 'giftRewardSpec' || t === 'outcomeBlock' || t === 'costObject') {
+    if (t === 'json' || t === 'requirements' || t === 'timer' || t === 'giftRewardSpec' || t === 'outcomeBlock' || t === 'costObject') {
       const safeVal = value ?? (fieldDef.default !== undefined ? fieldDef.default : {});
       return (
         <JSONField
