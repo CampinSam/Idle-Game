@@ -1,5 +1,19 @@
 import type { OperatorType } from '@derp/shared';
 
+/**
+ * Apply a comparison operator against an actual value and an expected value.
+ *
+ * Array-aware semantics (when actual is an array):
+ *   contains      → actual array includes the expected scalar (tag membership)
+ *   not_contains  → actual array does NOT include the expected scalar
+ *   in            → at least one element of actual is present in expected array
+ *   not_in        → no element of actual is present in expected array
+ *   exists        → actual array is non-null (array presence check)
+ *   not_exists    → actual is null/undefined
+ *   eq / neq      → delegate to JSON-serialised equality when both sides are arrays
+ *
+ * All string comparisons are case-insensitive by default (caseSensitive=false).
+ */
 export function applyOperator(
   operator: OperatorType,
   actual: any,
@@ -11,10 +25,43 @@ export function applyOperator(
 
   if (actual === undefined || actual === null) return false;
 
-  const norm = (v: any): any =>
+  const normStr = (v: any): any =>
     !caseSensitive && typeof v === 'string' ? v.toLowerCase() : v;
-  const a = norm(actual);
-  const e = norm(expected);
+
+  // ── Array-actual branch ────────────────────────────────────────────────────
+  if (Array.isArray(actual)) {
+    const normArr = actual.map(normStr);
+    switch (operator) {
+      case 'contains': {
+        const e = normStr(expected);
+        return normArr.includes(e);
+      }
+      case 'not_contains': {
+        const e = normStr(expected);
+        return !normArr.includes(e);
+      }
+      case 'in': {
+        if (!Array.isArray(expected)) return false;
+        const normExpected = expected.map(normStr);
+        return normArr.some(v => normExpected.includes(v));
+      }
+      case 'not_in': {
+        if (!Array.isArray(expected)) return true;
+        const normExpected = expected.map(normStr);
+        return !normArr.some(v => normExpected.includes(v));
+      }
+      case 'eq':
+        return JSON.stringify(normArr) === JSON.stringify(Array.isArray(expected) ? expected.map(normStr) : expected);
+      case 'neq':
+        return JSON.stringify(normArr) !== JSON.stringify(Array.isArray(expected) ? expected.map(normStr) : expected);
+      default:
+        return false;
+    }
+  }
+
+  // ── Scalar-actual branch ───────────────────────────────────────────────────
+  const a = normStr(actual);
+  const e = normStr(expected);
 
   switch (operator) {
     case 'eq':
@@ -31,12 +78,12 @@ export function applyOperator(
       return Number(a) <= Number(e);
     case 'in': {
       if (!Array.isArray(expected)) return false;
-      const normExpected = expected.map(norm);
+      const normExpected = expected.map(normStr);
       return normExpected.includes(a);
     }
     case 'not_in': {
       if (!Array.isArray(expected)) return true;
-      const normExpected = expected.map(norm);
+      const normExpected = expected.map(normStr);
       return !normExpected.includes(a);
     }
     case 'contains':

@@ -441,6 +441,70 @@ describe('SelectionResolverService', () => {
       };
       expect(svc.evaluate(rule, makeCtx())).toBe(false);
     });
+
+    it('missionTags contains — passes when tag present', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'contains', value: 'combat',
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('missionTags contains — fails when tag absent', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'contains', value: 'stealth',
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(false);
+    });
+
+    it('missionTags not_contains — passes when tag absent', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'not_contains', value: 'stealth',
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('missionTags in — passes when any tag is in expected list', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'in', value: ['dungeon', 'raid', 'pvp'],
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('missionTags not_in — passes when no tag is in expected list', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'not_in', value: ['raid', 'pvp'],
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('missionTags contains is case-insensitive by default', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'contains', value: 'COMBAT',
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('missionTags contains respects caseSensitive=true', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'contains', value: 'COMBAT', caseSensitive: true,
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: ['combat', 'dungeon'] } });
+      expect(svc.evaluate(rule, ctx)).toBe(false);
+    });
+
+    it('missionTags contains — passes when empty tags but exists', () => {
+      const rule: RichSelectionRule = {
+        scope: 'context', field: 'missionTags', operator: 'exists',
+      };
+      const ctx = makeCtx({ missionContext: { missionTags: [] } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
   });
 
   // ─── stub scopes ─────────────────────────────────────────────────────────
