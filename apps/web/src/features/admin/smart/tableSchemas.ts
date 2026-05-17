@@ -258,7 +258,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       kind: { type: 'string', default: 'outpost_fungible', description: 'Location type' },
       regionId: { type: 'ref', refTable: 'RegionDefinition', description: 'Region reference' },
       isUnique: { type: 'boolean', default: false, description: 'Only one per player?' },
-      rules: { type: 'rulesWithUniques', default: {}, description: 'Level-based rules (xpDepositCosts, maxLevel, xpCurve, baseXP, xpRate, level[].xpThreshold) + unique NFT powers' },
+      rules: { type: 'locationLevelRules', default: {}, description: 'Level-based rules (maxLevel, xpCurve, baseXP, xpRate, xpDepositCosts, level[]) + unique NFT powers (uniques)' },
       productionProfile: { type: 'json', default: {}, description: 'Production configuration' },
       requirements: { type: 'requirementsArray', default: [], description: 'Acquisition conditions' },
       visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
