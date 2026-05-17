@@ -6,6 +6,7 @@ import {
   fieldGroupStyle,
   sectionStyle,
 } from './editorStyles';
+import type { StructuredEditorProps } from './editorContract';
 
 export interface SynergySelector {
   entityTypes?: string[];
@@ -27,10 +28,7 @@ const ENTITY_TYPES = ['keeper', 'creature'];
 const RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'];
 const LOCATION_TYPES = ['outpost', 'dungeon', 'city', 'wilderness', 'sanctum'];
 
-interface Props {
-  value: SynergySelector | null | undefined;
-  onChange: (v: SynergySelector) => void;
-}
+type Props = StructuredEditorProps<SynergySelector>;
 
 function CheckboxGroup({
   label,
@@ -150,6 +148,7 @@ function TagInput({
 
 const EMPTY: SynergySelector = {};
 
+export const validate = validateSynergySelector;
 export function validateSynergySelector(_v: SynergySelector | null | undefined): Record<string, string> {
   return {};
 }

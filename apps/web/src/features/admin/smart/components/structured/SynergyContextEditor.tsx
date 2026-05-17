@@ -6,6 +6,7 @@ import {
   sectionStyle,
   containerStyle,
 } from './editorStyles';
+import type { StructuredEditorProps } from './editorContract';
 
 export interface SynergyRuleContext {
   activityTypes?: string[];
@@ -19,10 +20,7 @@ export interface SynergyRuleContext {
 
 const ACTIVITY_TYPES = ['mission', 'crafting', 'outpost'];
 
-interface Props {
-  value: SynergyRuleContext | null | undefined;
-  onChange: (v: SynergyRuleContext) => void;
-}
+type Props = StructuredEditorProps<SynergyRuleContext>;
 
 function CheckboxGroup({
   label,
@@ -115,6 +113,7 @@ function TagInput({
 
 const EMPTY: SynergyRuleContext = {};
 
+export const validate = validateSynergyContext;
 export function validateSynergyContext(_v: SynergyRuleContext | null | undefined): Record<string, string> {
   const errs: Record<string, string> = {};
   if (!_v) return errs;

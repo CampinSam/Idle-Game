@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import { synergySelectorErrorCount } from './SynergySelectorEditor';
 import { synergyContextErrorCount } from './SynergyContextEditor';
 import { synergyEffectsErrorCount } from './SynergyEffectsEditor';
@@ -6,40 +5,9 @@ import { giftPresentationErrorCount } from './GiftPresentationEditor';
 import { giftClaimRulesErrorCount } from './GiftClaimRulesEditor';
 import { itemEquipDataErrorCount } from './ItemEquipDataEditor';
 
-/**
- * Composable editor contract.
- *
- * Every structured editor must:
- *  1. Accept `StructuredEditorProps<T>` (value + onChange).
- *  2. Export a `validate(value: T): Record<string, string>` function that
- *     returns field-level error strings (empty object = valid).
- *  3. Export an `*ErrorCount(value: T): number` helper used by
- *     `structuredFieldErrorCount` below for the save-button badge.
- *
- * Nesting: parent editors call child `validate()` functions and may pass the
- * resulting errors down as props. On save, editors emit plain objects via
- * onChange — no special serialization step needed.
- */
-export interface StructuredEditorProps<T> {
-  value: T | null | undefined;
-  onChange: (v: T) => void;
-}
-
-export type ValidationResult = Record<string, string>;
-
-export const ERROR_BORDER_COLOR = '#ef4444';
-
-export const errorTextStyle: CSSProperties = {
-  color: '#ef4444',
-  fontSize: 11,
-  marginTop: 2,
-};
-
-export const errorWrapperStyle: CSSProperties = {
-  outline: `1px solid ${ERROR_BORDER_COLOR}`,
-  outlineOffset: 0,
-  borderRadius: 4,
-};
+// Re-export shared contract types so existing editor imports keep working.
+export type { StructuredEditorProps, ValidationResult } from './editorContract';
+export { ERROR_BORDER_COLOR, errorTextStyle, errorWrapperStyle } from './editorContract';
 
 function isBlank(v: any): boolean {
   return v === undefined || v === null || (typeof v === 'string' && v.trim() === '');

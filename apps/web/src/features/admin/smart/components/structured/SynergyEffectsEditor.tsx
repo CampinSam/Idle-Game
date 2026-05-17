@@ -12,6 +12,7 @@ import {
   labelStyle,
 } from './editorStyles';
 import { errorTextStyle } from './validation';
+import type { StructuredEditorProps } from './editorContract';
 
 export type SynergyEffectType =
   | 'synergy_score_modifier'
@@ -76,6 +77,7 @@ export function validateSynergyEffects(effects: any): EffectErrors[] {
   return arr.map(validateSynergyEffect);
 }
 
+export const validate = validateSynergyEffects;
 export function synergyEffectsErrorCount(effects: any): number {
   return validateSynergyEffects(effects).reduce((n, e) => n + Object.keys(e).length, 0);
 }
@@ -237,10 +239,7 @@ function EffectEntryEditor({
   );
 }
 
-interface Props {
-  value: any;
-  onChange: (v: SynergyEffect[]) => void;
-}
+type Props = StructuredEditorProps<SynergyEffect[]>;
 
 export default function SynergyEffectsEditor({ value, onChange }: Props) {
   const items: SynergyEffect[] = Array.isArray(value) ? value : [];

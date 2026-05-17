@@ -5,6 +5,7 @@ import {
   sectionStyle,
   containerStyle,
 } from './editorStyles';
+import type { StructuredEditorProps } from './editorContract';
 
 export interface GiftPresentation {
   iconKey?: string;
@@ -14,13 +15,11 @@ export interface GiftPresentation {
   accentColor?: string;
 }
 
-interface Props {
-  value: GiftPresentation | null | undefined;
-  onChange: (v: GiftPresentation) => void;
-}
+type Props = StructuredEditorProps<GiftPresentation>;
 
 const EMPTY: GiftPresentation = {};
 
+export const validate = validateGiftPresentation;
 export function validateGiftPresentation(_v: GiftPresentation | null | undefined): Record<string, string> {
   return {};
 }

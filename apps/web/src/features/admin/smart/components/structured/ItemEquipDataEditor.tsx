@@ -2,11 +2,12 @@ import StatMapEditor from './StatMapEditor';
 import {
   labelStyle,
   fieldGroupStyle,
-  selectStyle,
+  inputStyle,
   sectionStyle,
   containerStyle,
 } from './editorStyles';
 import { errorTextStyle } from './validation';
+import type { StructuredEditorProps } from './editorContract';
 
 export interface ItemEquipData {
   slot?: string;
@@ -19,13 +20,11 @@ interface EquipDataErrors {
   slot?: string;
 }
 
-interface Props {
-  value: ItemEquipData | null | undefined;
-  onChange: (v: ItemEquipData) => void;
-}
+type Props = StructuredEditorProps<ItemEquipData>;
 
 const EMPTY: ItemEquipData = {};
 
+export const validate = validateItemEquipData;
 export function validateItemEquipData(v: ItemEquipData | null | undefined): EquipDataErrors {
   const errs: EquipDataErrors = {};
   if (v && v.slot !== undefined && v.slot.trim() === '') {
@@ -68,14 +67,18 @@ export default function ItemEquipDataEditor({ value, onChange }: Props) {
         </div>
         <div style={{ ...fieldGroupStyle, maxWidth: 220 }}>
           <span style={labelStyle}>slot</span>
-          <select
+          <span style={{ fontSize: 10, color: '#555' }}>body slot key — leave blank for unequippable items</span>
+          <input
+            type="text"
+            list="equip-slot-suggestions"
             value={data.slot ?? ''}
+            placeholder="e.g. head, body, tail …"
             onChange={e => setSlot(e.target.value)}
-            style={{ ...selectStyle, width: '100%', borderColor: errs.slot ? '#ef4444' : undefined }}
-          >
-            <option value="">— none / unequippable —</option>
-            {BODY_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+            style={{ ...inputStyle, width: '100%', borderColor: errs.slot ? '#ef4444' : undefined }}
+          />
+          <datalist id="equip-slot-suggestions">
+            {BODY_SLOTS.map(s => <option key={s} value={s} />)}
+          </datalist>
           {errs.slot && <span style={errorTextStyle}>{errs.slot}</span>}
         </div>
       </div>

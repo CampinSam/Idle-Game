@@ -7,6 +7,7 @@ import {
   containerStyle,
 } from './editorStyles';
 import { errorTextStyle } from './validation';
+import type { StructuredEditorProps } from './editorContract';
 
 export interface GiftClaimRules {
   limitPerPlayer?: number;
@@ -18,13 +19,16 @@ interface ClaimRulesErrors {
   expiresInSeconds?: string;
 }
 
-interface Props {
-  value: GiftClaimRules | null | undefined;
-  onChange: (v: GiftClaimRules) => void;
-}
+type Props = StructuredEditorProps<GiftClaimRules>;
 
 const EMPTY: GiftClaimRules = {};
 
+export const validate = validateGiftClaimRules;
+/**
+ * Actual backend fields (gift.service.ts):
+ *   limitPerPlayer — max claims per player (undefined = unlimited)
+ *   expiresInSeconds — gift instance TTL after send (undefined = no expiry)
+ */
 export function validateGiftClaimRules(v: GiftClaimRules | null | undefined): ClaimRulesErrors {
   const errs: ClaimRulesErrors = {};
   if (!v) return errs;
