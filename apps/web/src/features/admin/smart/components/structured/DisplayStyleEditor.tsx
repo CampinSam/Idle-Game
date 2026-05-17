@@ -42,7 +42,7 @@ const SECTION_VISIBILITY: Record<string, EditorMode[]> = {
   background: ['missionCategory', 'mission', 'generic'],
   title: ['missionCategory', 'mission', 'generic'],
   body: ['missionCategory', 'mission', 'generic'],
-  inlineButtons: ['missionCategory'],
+  inlineButtons: ['missionCategory', 'generic'],
 };
 
 function sectionVisible(section: string, mode: EditorMode): boolean {
