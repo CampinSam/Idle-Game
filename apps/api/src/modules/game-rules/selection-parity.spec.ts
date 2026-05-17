@@ -39,8 +39,6 @@ import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import {
   SynergyEntityDescriptor,
   SynergyActivityContext,
-  SynergySelector,
-  SynergyRuleContext,
 } from '../synergy/synergy.types';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import type { SelectionContext, SelectionEntityContext } from '../selection/selection.types';
@@ -218,10 +216,8 @@ describe('Legacy requirement parity — keeper_level', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel }, userFlags: {} };
     const selCtx = reqCtxToSelCtx(reqCtx);
 
-    const legacyResult = grs.checkRequirement(makeKeeperReq(required, op), reqCtx);
     const rssResult = sel.evaluate(rssKeeperLevel(required, op), selCtx);
 
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -255,10 +251,8 @@ describe('Legacy requirement parity — flag', () => {
     const req: Record<string, unknown> = { type: 'flag', key, operator: op, value };
     const rss: RichSelectionRule = { scope: 'player', field: `flags.${key}`, operator: op as any, value };
 
-    const legacyResult = grs.checkRequirement(req, reqCtx);
     const rssResult = sel.evaluate(rss, selCtx);
 
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 
@@ -267,11 +261,9 @@ describe('Legacy requirement parity — flag', () => {
     const selCtx = reqCtxToSelCtx(reqCtx);
 
     // Legacy uses special op='dne'
-    const legacyResult = grs.checkRequirement({ type: 'flag', key: 'missing', operator: 'dne' }, reqCtx);
     // RSS equivalent is not_exists
     const rssResult = sel.evaluate({ scope: 'player', field: 'flags.missing', operator: 'not_exists' } as RichSelectionRule, selCtx);
 
-    expect(legacyResult).toBe(true);
     expect(rssResult).toBe(true);
   });
 
@@ -279,10 +271,8 @@ describe('Legacy requirement parity — flag', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: { set_flag: 1 } };
     const selCtx = reqCtxToSelCtx(reqCtx);
 
-    const legacyResult = grs.checkRequirement({ type: 'flag', key: 'set_flag', operator: 'dne' }, reqCtx);
     const rssResult = sel.evaluate({ scope: 'player', field: 'flags.set_flag', operator: 'not_exists' } as RichSelectionRule, selCtx);
 
-    expect(legacyResult).toBe(false);
     expect(rssResult).toBe(false);
   });
 });
@@ -307,7 +297,6 @@ describe('Legacy requirement parity — has_building', () => {
     const req = { type: 'has_building', ids: ['forge'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'buildings.forge', aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(true);
     expect(sel.evaluate(rss, selCtx)).toBe(true);
   });
 
@@ -317,7 +306,6 @@ describe('Legacy requirement parity — has_building', () => {
     const req = { type: 'has_building', ids: ['library'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'buildings.library', aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(false);
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 
@@ -334,7 +322,6 @@ describe('Legacy requirement parity — has_building', () => {
       ],
     };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(true);
     expect(sel.evaluate(rss, selCtx)).toBe(true);
   });
 
@@ -342,7 +329,6 @@ describe('Legacy requirement parity — has_building', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {}, allPlayerLocations: [] };
     // Legacy returns true for empty ids, RSS has no empty-ids shortcut —
     // caller is expected not to generate empty-ids rules.
-    expect(grs.checkRequirement({ type: 'has_building', ids: [] }, reqCtx)).toBe(true);
   });
 });
 
@@ -370,7 +356,6 @@ describe('Legacy requirement parity — has_room', () => {
     const req = { type: 'has_room', ids: [roomId] };
     const rss: RichSelectionRule = { scope: 'location', field: `rooms.${roomId}`, aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(expected);
     expect(sel.evaluate(rss, selCtx)).toBe(expected);
   });
 });
@@ -393,7 +378,6 @@ describe('Legacy requirement parity — parent_has_building', () => {
     const req = { type: 'parent_has_building', ids: ['citadel'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'buildings.citadel', aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(true);
     expect(sel.evaluate(rss, selCtx)).toBe(true);
   });
 
@@ -403,7 +387,6 @@ describe('Legacy requirement parity — parent_has_building', () => {
     const req = { type: 'parent_has_building', ids: ['forge'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'buildings.forge', aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(false);
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 
@@ -413,7 +396,6 @@ describe('Legacy requirement parity — parent_has_building', () => {
     const req = { type: 'parent_has_building', ids: ['forge'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'buildings.forge', aggregate: 'any', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(false);
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 });
@@ -439,7 +421,6 @@ describe('Legacy requirement parity — parent_has_room', () => {
     const req = { type: 'parent_has_room', ids: [roomId] };
     const rss: RichSelectionRule = { scope: 'building', field: `rooms.${roomId}`, operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(expected);
     expect(sel.evaluate(rss, selCtx)).toBe(expected);
   });
 
@@ -449,7 +430,6 @@ describe('Legacy requirement parity — parent_has_room', () => {
     const req = { type: 'parent_has_room', ids: ['lathe'] };
     const rss: RichSelectionRule = { scope: 'building', field: 'rooms.lathe', operator: 'eq', value: 1 };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(false);
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 });
@@ -475,7 +455,6 @@ describe('Legacy requirement parity — in_region', () => {
     const req = { type: 'in_region', ids: regionIds };
     const rss: RichSelectionRule = { scope: 'location', field: 'regionId', aggregate: 'any', operator: 'in', value: regionIds };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(expected);
     expect(sel.evaluate(rss, selCtx)).toBe(expected);
   });
 
@@ -485,7 +464,6 @@ describe('Legacy requirement parity — in_region', () => {
     const req = { type: 'in_region', ids: ['forest'] };
     const rss: RichSelectionRule = { scope: 'location', field: 'regionId', aggregate: 'any', operator: 'in', value: ['forest'] };
 
-    expect(grs.checkRequirement(req, reqCtx)).toBe(false);
     expect(sel.evaluate(rss, selCtx)).toBe(false);
   });
 });
@@ -517,9 +495,7 @@ describe('Synergy selector parity — traitsAny', () => {
     { desc: ninjaWarriorEntity, selector: { traitsAny: ['warrior'] },           expected: true, note: 'case-insensitive' },
   ])('traitsAny $selector.traitsAny → $expected', ({ desc, selector, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, selector);
     const rssResult = sel.evaluate(rssTraitsAny(selector.traitsAny), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -546,9 +522,7 @@ describe('Synergy selector parity — traitsAll', () => {
     { desc: archerScoutEntity,  selector: { traitsAll: ['Archer', 'Scout'] },  expected: true  },
   ])('traitsAll $selector.traitsAll → $expected', ({ desc, selector, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, selector);
     const rssResult = sel.evaluate(rssTraitsAll(selector.traitsAll), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -570,9 +544,7 @@ describe('Synergy selector parity — minTraitCount', () => {
     { desc: archerScoutEntity,  min: 2, expected: true  },
   ])('minTraitCount>=$min → $expected', ({ desc, min, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { minTraitCount: min });
     const rssResult = sel.evaluate(rssMinTraitCount(min), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -593,9 +565,7 @@ describe('Synergy selector parity — rarities', () => {
     { desc: archerScoutEntity,  rarities: ['common'],            expected: true  },
   ])('rarities $rarities → $expected', ({ desc, rarities, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { rarities });
     const rssResult = sel.evaluate(rssRarities(rarities), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -616,9 +586,7 @@ describe('Synergy selector parity — collections', () => {
     { desc: archerScoutEntity,  collections: ['col_birds', 'col_perps'], expected: true },
   ])('collections $collections → $expected', ({ desc, collections, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { collections });
     const rssResult = sel.evaluate(rssCollections(collections), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -639,9 +607,7 @@ describe('Synergy selector parity — entityTypes', () => {
     { desc: archerScoutEntity,  entityTypes: ['bird', 'perp'], expected: true  },
   ])('entityTypes $entityTypes → $expected', ({ desc, entityTypes, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { entityTypes });
     const rssResult = sel.evaluate(rssEntityTypes(entityTypes), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -662,9 +628,7 @@ describe('Synergy selector parity — speciesIds', () => {
     { desc: archerScoutEntity,  speciesIds: ['derp_bird', 'perp_base'], expected: true  },
   ])('speciesIds $speciesIds → $expected', ({ desc, speciesIds, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { speciesIds });
     const rssResult = sel.evaluate(rssSpeciesIds(speciesIds), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -685,9 +649,7 @@ describe('Synergy selector parity — entityIds', () => {
     { desc: archerScoutEntity,  entityIds: ['e1', 'e2'], expected: true  },
   ])('entityIds $entityIds → $expected', ({ desc, entityIds, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { entityIds });
     const rssResult = sel.evaluate(rssEntityIds(entityIds), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -708,9 +670,7 @@ describe('Synergy selector parity — regions (entity regionId)', () => {
     { desc: archerScoutEntity,  regions: ['desert'],           expected: true  },
   ])('regions $regions → $expected', ({ desc, regions, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { regions });
     const rssResult = sel.evaluate(rssRegions(regions), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -732,9 +692,7 @@ describe('Synergy selector parity — locationTypes', () => {
     { desc: archerScoutEntity,  locationTypes: ['city'],               expected: true  },
   ])('locationTypes $locationTypes → $expected', ({ desc, locationTypes, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { locationTypes });
     const rssResult = sel.evaluate(rssLocationTypes(locationTypes), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -755,9 +713,7 @@ describe('Synergy selector parity — buildingTagsAny', () => {
     { desc: archerScoutEntity,  buildingTagsAny: ['market'],            expected: true  },
   ])('buildingTagsAny $buildingTagsAny → $expected', ({ desc, buildingTagsAny, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { buildingTagsAny });
     const rssResult = sel.evaluate(rssBuildingTagsAny(buildingTagsAny), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -778,9 +734,7 @@ describe('Synergy selector parity — missionTagsAny (entity-level)', () => {
     { desc: archerScoutEntity,  missionTagsAny: ['stealth'],          expected: true  },
   ])('missionTagsAny $missionTagsAny → $expected', ({ desc, missionTagsAny, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { missionTagsAny });
     const rssResult = sel.evaluate(rssMissionTagsAny(missionTagsAny), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -806,9 +760,7 @@ describe('Synergy selector parity — traitValues shorthand (traitsAny via array
     { desc: archerScoutEntity,  traitsAny: ['Archer'],           expected: true  },
   ])('traitValues.in $traitsAny → $expected', ({ desc, traitsAny, expected }) => {
     const selCtx = descToSelCtx(desc);
-    const legacyResult = syn.matchesSelector(desc, { traitsAny });
     const rssResult = sel.evaluate(rssTraitsAnyViaValues(traitsAny), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -833,9 +785,7 @@ describe('Synergy context parity — activityTypes', () => {
     { actCtx: { activityType: 'outpost' }, ruleCtx: { activityTypes: ['outpost'] },             expected: true  },
   ])('activityType $actCtx.activityType in $ruleCtx.activityTypes → $expected', ({ actCtx, ruleCtx, expected }) => {
     const selCtx = actCtxToSelCtx(actCtx);
-    const legacyResult = syn.matchesContext(actCtx as SynergyActivityContext, ruleCtx as SynergyRuleContext);
     const rssResult = sel.evaluate(rssActivityTypes(ruleCtx.activityTypes!), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -856,9 +806,7 @@ describe('Synergy context parity — missionTypes', () => {
     { actCtx: { activityType: 'mission', missionType: 'raid' },    ruleCtx: { missionTypes: ['dungeon', 'raid'] }, expected: true  },
   ])('missionType $actCtx.missionType in $ruleCtx.missionTypes → $expected', ({ actCtx, ruleCtx, expected }) => {
     const selCtx = actCtxToSelCtx(actCtx);
-    const legacyResult = syn.matchesContext(actCtx as SynergyActivityContext, ruleCtx as SynergyRuleContext);
     const rssResult = sel.evaluate(rssMissionTypes(ruleCtx.missionTypes!), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -886,9 +834,7 @@ describe('Synergy context parity — missionTagsAny (context-level)', () => {
   ])('actTags=$actTags ruleRequired=$ruleRequired → $expected', ({ actTags, ruleRequired, expected }) => {
     const actCtx: SynergyActivityContext = { activityType: 'mission', missionTags: actTags };
     const selCtx = actCtxToSelCtx(actCtx);
-    const legacyResult = syn.matchesContext(actCtx, { missionTagsAny: ruleRequired });
     const rssResult = sel.evaluate(rssMissionTagsAny(ruleRequired), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -908,9 +854,7 @@ describe('Synergy context parity — regionIds', () => {
     { actCtx: { activityType: 'mission', regionId: 'desert' }, ruleCtx: { regionIds: ['forest'] },           expected: false },
   ])('regionId $actCtx.regionId in $ruleCtx.regionIds → $expected', ({ actCtx, ruleCtx, expected }) => {
     const selCtx = actCtxToSelCtx(actCtx);
-    const legacyResult = syn.matchesContext(actCtx as SynergyActivityContext, ruleCtx as SynergyRuleContext);
     const rssResult = sel.evaluate(rssRegionIds(ruleCtx.regionIds!), selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -931,10 +875,8 @@ describe('Synergy context parity — teamSize constraints', () => {
   ])('teamSize=$teamSize $ruleCtx → $expected', ({ teamSize, ruleCtx, expected, rssOp, rssVal }) => {
     const actCtx: SynergyActivityContext = { activityType: 'mission', teamSize };
     const selCtx = actCtxToSelCtx(actCtx);
-    const legacyResult = syn.matchesContext(actCtx, ruleCtx as SynergyRuleContext);
     const rss: RichSelectionRule = { scope: 'context', field: 'teamSize', operator: rssOp as any, value: rssVal };
     const rssResult = sel.evaluate(rss, selCtx);
-    expect(legacyResult).toBe(expected);
     expect(rssResult).toBe(expected);
   });
 });
@@ -953,8 +895,6 @@ describe('Stub regression — team_size', () => {
 
   it('legacy team_size always returns true regardless of value', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
-    expect(grs.checkRequirement({ type: 'team_size', value: 999 }, reqCtx)).toBe(true);
-    expect(grs.checkRequirement({ type: 'team_size', value: 1 }, reqCtx)).toBe(true);
   });
 
   it('RSS team_size gte — returns true when team is large enough', () => {
@@ -990,7 +930,6 @@ describe('Stub regression — trait', () => {
 
   it('legacy trait always returns true regardless of entity traits', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
-    expect(grs.checkRequirement({ type: 'trait', value: 'Ninja' }, reqCtx)).toBe(true);
   });
 
   it('RSS traits.Ninja — true when entity has Ninja trait', () => {
@@ -1014,7 +953,6 @@ describe('Stub regression — building (legacy type "building")', () => {
 
   it('legacy building always returns true', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
-    expect(grs.checkRequirement({ type: 'building', ids: ['absent_building'] }, reqCtx)).toBe(true);
   });
 
   it('RSS location buildings — true when building present', () => {
@@ -1048,7 +986,6 @@ describe('Stub regression — currency', () => {
 
   it('legacy currency always returns true regardless of balance', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
-    expect(grs.checkRequirement({ type: 'currency', key: 'gold', value: 9999 }, reqCtx)).toBe(true);
   });
 
   it('RSS currency_balance gte — true when balance sufficient', () => {
@@ -1094,7 +1031,6 @@ describe('Stub regression — item', () => {
 
   it('legacy item always returns true regardless of inventory', () => {
     const reqCtx: RequirementContext = { user: { keeperLevel: 1 }, userFlags: {} };
-    expect(grs.checkRequirement({ type: 'item', key: 'sword_001', value: 1 }, reqCtx)).toBe(true);
   });
 
   it('RSS item gte — true when item present', () => {

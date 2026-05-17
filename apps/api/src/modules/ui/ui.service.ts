@@ -515,19 +515,9 @@ export class UiService {
         valueItems: [{ assetKey: cost.id, amount: amt }],
       });
     }
-    const reqArray: any[] = Array.isArray(requirements) ? requirements : [];
-    for (const req of reqArray) {
-      const met = this.gameRulesService.checkRequirement(req, reqContext);
-      const status = met ? ' ✓' : ' ✗';
-      if (req.type === 'keeper_level') {
-        metaRows.push({ label: 'Requires Keeper Lv', value: `${req.value}${status}` });
-      } else if (req.type === 'has_building') {
-        metaRows.push({ label: 'Requires Building', value: `${(req.ids as string[])?.join(' or ') ?? '?'}${status}` });
-      } else if (req.type === 'in_region') {
-        metaRows.push({ label: 'Region Required', value: `${(req.ids as string[])?.join(' or ') ?? '?'}${status}` });
-      } else if (req.type === 'flag') {
-        metaRows.push({ label: `Requires ${req.key}`, value: `${req.value ?? ''}${status}` });
-      }
+    if (requirements) {
+      const met = this.gameRulesService.checkRequirements(requirements, reqContext);
+      metaRows.push({ label: 'Requirements', value: met ? '✓ Met' : '✗ Not met' });
     }
 
     const body: any[] = [];

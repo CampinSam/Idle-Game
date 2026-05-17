@@ -7,8 +7,6 @@ import type { SelectionContext, SelectionEntityContext } from '../selection/sele
 import {
   SynergyEntityDescriptor,
   SynergyActivityContext,
-  SynergySelector,
-  SynergyRuleContext,
   SynergyEffect,
   MatchedRule,
   SynergyResult,
@@ -20,9 +18,9 @@ interface DbSynergyRule {
   id: string;
   name: string;
   enabled: boolean;
-  sourceSelector: SynergySelector;
-  targetSelector: SynergySelector;
-  context: SynergyRuleContext;
+  sourceSelector: RichSelection | null;
+  targetSelector: RichSelection | null;
+  context: RichSelection | null;
   effects: SynergyEffect[];
   priority: number;
   stackGroup: string | null;
@@ -110,9 +108,9 @@ export class SynergyResolverService {
       id: row.id,
       name: row.name,
       enabled: row.enabled,
-      sourceSelector: ((row.sourceSelector as SynergySelector) ?? {}),
-      targetSelector: ((row.targetSelector as SynergySelector) ?? {}),
-      context: ((row.context as SynergyRuleContext) ?? {}),
+      sourceSelector: (row.sourceSelector as RichSelection | null) ?? null,
+      targetSelector: (row.targetSelector as RichSelection | null) ?? null,
+      context: (row.context as RichSelection | null) ?? null,
       effects: (Array.isArray(row.effects) ? (row.effects as unknown as SynergyEffect[]) : []),
       priority: row.priority,
       stackGroup: row.stackGroup,
@@ -123,7 +121,7 @@ export class SynergyResolverService {
     }));
   }
 
-  isSelectorEmpty(selector: SynergySelector | null | undefined): boolean {
+  isSelectorEmpty(selector: RichSelection | Record<string, unknown> | null | undefined): boolean {
     if (!selector || typeof selector !== 'object') return true;
     if (Object.keys(selector).length === 0) return true;
     // An empty RichSelection { op: 'AND'|'OR', rules: [] } is also unconstrained
@@ -142,12 +140,12 @@ export class SynergyResolverService {
     );
   }
 
-  matchesSelector(entity: SynergyEntityDescriptor, selector: SynergySelector): boolean {
+  matchesSelector(entity: SynergyEntityDescriptor, selector: RichSelection | Record<string, unknown> | null): boolean {
     if (this.isSelectorEmpty(selector)) return true;
 
     const richSel = this.isRichSelection(selector)
       ? (selector as unknown as RichSelection)
-      : this.selectorToRichSelection(selector);
+      : this.selectorToRichSelection(selector as any);
     if (!richSel) return true;
 
     const selCtx: SelectionContext = {
@@ -160,12 +158,12 @@ export class SynergyResolverService {
     return this.selectionResolver.evaluate(richSel, selCtx);
   }
 
-  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: SynergyRuleContext): boolean {
+  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: RichSelection | Record<string, unknown> | null): boolean {
     if (!ruleCtx || Object.keys(ruleCtx).length === 0) return true;
 
     const richSel = this.isRichSelection(ruleCtx)
       ? (ruleCtx as unknown as RichSelection)
-      : this.contextToRichSelection(ruleCtx);
+      : this.contextToRichSelection(ruleCtx as any);
     if (!richSel) return true;
 
     const selCtx: SelectionContext = {
@@ -202,7 +200,7 @@ export class SynergyResolverService {
     };
   }
 
-  private selectorToRichSelection(selector: SynergySelector): RichSelection | null {
+  private selectorToRichSelection(selector: any): RichSelection | null {
     type R = RichSelection | RichSelectionRule;
     const rules: R[] = [];
 
@@ -227,14 +225,14 @@ export class SynergyResolverService {
     if (selector.factions?.length) {
       rules.push({
         op: 'OR',
-        rules: selector.factions.map(f => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: f } satisfies RichSelectionRule)),
+        rules: selector.factions.map((f: string) => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: f } satisfies RichSelectionRule)),
       });
     }
     if (selector.traitsAny?.length) {
       if (selector.traitsAny.length === 1) {
         rules.push({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.traitsAny[0] });
       } else {
-        rules.push({ op: 'OR', rules: selector.traitsAny.map(t => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t } satisfies RichSelectionRule)) });
+        rules.push({ op: 'OR', rules: selector.traitsAny.map((t: string) => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t } satisfies RichSelectionRule)) });
       }
     }
     if (selector.traitsAll?.length) {
@@ -249,21 +247,21 @@ export class SynergyResolverService {
       if (selector.locationTypes.length === 1) {
         rules.push({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.locationTypes[0] });
       } else {
-        rules.push({ op: 'OR', rules: selector.locationTypes.map(lt => ({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: lt } satisfies RichSelectionRule)) });
+        rules.push({ op: 'OR', rules: selector.locationTypes.map((lt: string) => ({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: lt } satisfies RichSelectionRule)) });
       }
     }
     if (selector.buildingTagsAny?.length) {
       if (selector.buildingTagsAny.length === 1) {
         rules.push({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.buildingTagsAny[0] });
       } else {
-        rules.push({ op: 'OR', rules: selector.buildingTagsAny.map(bt => ({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: bt } satisfies RichSelectionRule)) });
+        rules.push({ op: 'OR', rules: selector.buildingTagsAny.map((bt: string) => ({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: bt } satisfies RichSelectionRule)) });
       }
     }
     if (selector.missionTagsAny?.length) {
       if (selector.missionTagsAny.length === 1) {
         rules.push({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.missionTagsAny[0] });
       } else {
-        rules.push({ op: 'OR', rules: selector.missionTagsAny.map(mt => ({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
+        rules.push({ op: 'OR', rules: selector.missionTagsAny.map((mt: string) => ({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
       }
     }
 
@@ -271,7 +269,7 @@ export class SynergyResolverService {
     return { op: 'AND', rules };
   }
 
-  private contextToRichSelection(ruleCtx: SynergyRuleContext): RichSelection | null {
+  private contextToRichSelection(ruleCtx: any): RichSelection | null {
     type R = RichSelection | RichSelectionRule;
     const rules: R[] = [];
 
@@ -285,7 +283,7 @@ export class SynergyResolverService {
       if (ruleCtx.missionTagsAny.length === 1) {
         rules.push({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: ruleCtx.missionTagsAny[0] });
       } else {
-        rules.push({ op: 'OR', rules: ruleCtx.missionTagsAny.map(mt => ({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
+        rules.push({ op: 'OR', rules: ruleCtx.missionTagsAny.map((mt: string) => ({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
       }
     }
     if (ruleCtx.regionIds?.length) {

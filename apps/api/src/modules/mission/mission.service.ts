@@ -94,15 +94,7 @@ export class MissionService {
     }
 
     return filtered.map((c: any) => {
-      const reqs: any[] = Array.isArray(c.requirements) ? c.requirements : [];
-      const requirementStatus = reqContext
-        ? reqs
-            .filter((r: any) => r.type !== 'team_size')
-            .map((r: any) => ({
-              ...r,
-              met: this.gameRules.checkRequirement(r, reqContext),
-            }))
-        : [];
+      const requirementStatus: any[] = [];
 
       return {
         id: c.id,
@@ -160,15 +152,7 @@ export class MissionService {
       ),
     };
 
-    const reqs: any[] = Array.isArray(def.requirements) ? def.requirements : [];
-    const requirementStatus = reqContext
-      ? reqs
-          .filter((r: any) => r.type !== 'team_size')
-          .map((r: any) => ({
-            ...r,
-            met: this.gameRules.checkRequirement(r, reqContext),
-          }))
-      : [];
+    const requirementStatus: any[] = [];
 
     return {
       id: def.id,
@@ -265,28 +249,8 @@ export class MissionService {
 
     const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length });
 
-    if (
-      dbDef.requirements &&
-      !Array.isArray(dbDef.requirements) &&
-      typeof dbDef.requirements === 'object' &&
-      'op' in (dbDef.requirements as object)
-    ) {
-      if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
-        throw new BadRequestException('Mission requirements not met');
-      }
-    } else {
-      for (const req of reqs) {
-        if (req.type === 'team_size') {
-          const op = req.operator ?? 'gte';
-          if (!this.gameRules.compareValues(entityIds.length, Number(req.value ?? 0), op)) {
-            throw new BadRequestException(`Team size does not meet requirement: ${op} ${req.value}`);
-          }
-        } else if (req.type === 'trait') {
-          continue;
-        } else if (!this.gameRules.checkRequirement(req, reqContext)) {
-          throw new BadRequestException(`Requirement not met: ${req.type}${req.key ? ` (${req.key})` : ''}`);
-        }
-      }
+    if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
+      throw new BadRequestException('Mission requirements not met');
     }
 
     const activeMissions = await (db as any).job.count({

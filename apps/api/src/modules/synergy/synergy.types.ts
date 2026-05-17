@@ -27,31 +27,6 @@ export interface SynergyActivityContext {
   teamSize?: number;
 }
 
-export interface SynergySelector {
-  entityTypes?: string[];
-  speciesIds?: string[];
-  collections?: string[];
-  traitsAny?: string[];
-  traitsAll?: string[];
-  minTraitCount?: number;
-  entityIds?: string[];
-  rarities?: string[];
-  regions?: string[];
-  locationTypes?: string[];
-  buildingTagsAny?: string[];
-  missionTagsAny?: string[];
-  factions?: string[];
-}
-
-export interface SynergyRuleContext {
-  activityTypes?: string[];
-  missionTypes?: string[];
-  missionTagsAny?: string[];
-  regionIds?: string[];
-  seasonIds?: string[];
-  requiresTeamSizeMin?: number;
-  requiresTeamSizeMax?: number;
-}
 
 export interface SynergyEffect {
   type:

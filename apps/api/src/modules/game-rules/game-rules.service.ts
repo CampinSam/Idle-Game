@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { EntityTraits, RichSelection, RichSelectionRule, ScopeType, OperatorType, AggregateType } from '@derp/shared';
+import type { EntityTraits, RichSelection } from '@derp/shared';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import type { SelectionContext } from '../selection/selection.types';
 
@@ -56,28 +56,20 @@ export class GameRulesService {
     }
   }
 
-  checkRequirement(req: Record<string, unknown>, context: RequirementContext): boolean {
-    const richSel = this.legacyReqToRichSelection(req);
-    if (richSel === null) return true;
-    const selCtx =
-      req.type === 'parent_has_building'
-        ? this.reqCtxToParentBuildingSelCtx(context)
-        : this.reqCtxToSelCtx(context);
-    return this.selectionResolver.evaluate(richSel, selCtx);
-  }
-
-  checkRequirements(reqs: unknown, context: RequirementContext): boolean {
-    if (!reqs) return true;
+  checkRequirements(requirements: unknown, context: RequirementContext): boolean {
+    if (!requirements || (Array.isArray(requirements) && requirements.length === 0)) return true;
     if (
-      typeof reqs === 'object' &&
-      !Array.isArray(reqs) &&
-      'op' in (reqs as object) &&
-      'rules' in (reqs as object)
+      typeof requirements === 'object' &&
+      !Array.isArray(requirements) &&
+      'op' in (requirements as object)
     ) {
-      return this.selectionResolver.evaluate(reqs as RichSelection, this.reqCtxToSelCtx(context));
+      return this.selectionResolver.evaluate(requirements as RichSelection, this.reqCtxToSelCtx(context));
     }
-    if (!Array.isArray(reqs) || reqs.length === 0) return true;
-    return reqs.every((req: Record<string, unknown>) => this.checkRequirement(req, context));
+    if (Array.isArray(requirements)) {
+      this.logger.warn('checkRequirements: received legacy Requirement[] — run the migration script to convert to RichSelection');
+      return true;
+    }
+    return true;
   }
 
   checkVisibility(
@@ -152,122 +144,6 @@ export class GameRulesService {
     };
   }
 
-  private legacyReqToRichSelection(
-    req: Record<string, unknown>,
-  ): RichSelection | RichSelectionRule | null {
-    const op = (req.operator as string) ?? (req.type === 'flag' ? 'eq' : 'gte');
-
-    switch (req.type) {
-      case 'keeper_level':
-        return {
-          scope: 'player' as ScopeType,
-          field: 'keeperLevel',
-          operator: op as OperatorType,
-          value: req.value,
-        };
-
-      case 'flag': {
-        const rssOp: OperatorType = op === 'dne' ? 'not_exists' : (op as OperatorType);
-        return {
-          scope: 'player' as ScopeType,
-          field: `flags.${req.key ?? ''}`,
-          operator: rssOp,
-          value: op === 'exists' || op === 'dne' ? undefined : req.value,
-        };
-      }
-
-      case 'has_building':
-      case 'parent_has_building': {
-        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
-        if (ids.length === 0) return null;
-        if (ids.length === 1) {
-          return {
-            scope: 'location' as ScopeType,
-            field: `buildings.${ids[0]}`,
-            aggregate: 'any' as AggregateType,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          };
-        }
-        return {
-          op: 'OR',
-          rules: ids.map(id => ({
-            scope: 'location' as ScopeType,
-            field: `buildings.${id}`,
-            aggregate: 'any' as AggregateType,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          })),
-        };
-      }
-
-      case 'has_room': {
-        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
-        if (ids.length === 0) return null;
-        if (ids.length === 1) {
-          return {
-            scope: 'location' as ScopeType,
-            field: `rooms.${ids[0]}`,
-            aggregate: 'any' as AggregateType,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          };
-        }
-        return {
-          op: 'OR',
-          rules: ids.map(id => ({
-            scope: 'location' as ScopeType,
-            field: `rooms.${id}`,
-            aggregate: 'any' as AggregateType,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          })),
-        };
-      }
-
-      case 'parent_has_room': {
-        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
-        if (ids.length === 0) return null;
-        if (ids.length === 1) {
-          return {
-            scope: 'building' as ScopeType,
-            field: `rooms.${ids[0]}`,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          };
-        }
-        return {
-          op: 'OR',
-          rules: ids.map(id => ({
-            scope: 'building' as ScopeType,
-            field: `rooms.${id}`,
-            operator: 'eq' as OperatorType,
-            value: 1,
-          })),
-        };
-      }
-
-      case 'in_region': {
-        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
-        if (ids.length === 0) return null;
-        return {
-          scope: 'location' as ScopeType,
-          field: 'regionId',
-          aggregate: 'any' as AggregateType,
-          operator: 'in' as OperatorType,
-          value: ids,
-        };
-      }
-
-      case 'team_size':
-      case 'trait':
-      case 'building':
-      case 'currency':
-      case 'item':
-      default:
-        return null;
-    }
-  }
 
   async applyFlagEffect(userId: string, effect: Record<string, unknown>): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

@@ -132,9 +132,6 @@ model SynergyRule {
   // missionTagsAny, regionIds, seasonIds, requiresTeamSizeMin/Max.
   context         Json      @default("{}")
 
-  // Reserved for future condition expressions.
-  conditions      Json      @default("[]")
-
   // Array of effect objects:
   // { type: "synergy_score_modifier"|"stat_modifier"|"duration_modifier"|
   //         "resource_yield_modifier"|"immunity", ...}

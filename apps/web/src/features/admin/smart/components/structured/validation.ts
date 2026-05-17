@@ -382,8 +382,6 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return masteryErrorCount(value);
     case 'rulesWithUniques':
       return uniquesErrorCount((value as any)?.uniques);
-    case 'richSelection':
-      return 0;
     case 'synergyEffectsArray':
       return synergyEffectsErrorCount(value);
     case 'giftPresentation':
