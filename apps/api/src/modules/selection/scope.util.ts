@@ -68,11 +68,16 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
     }
 
     case 'currency_balance': {
-      return [ctx.inventory.currencies[field] ?? 0];
+      const balance = ctx.inventory.currencies[field];
+      // Preserve undefined for exists/not_exists semantics on absent keys.
+      // Numeric operators (gte, lte, …) treat undefined as false via applyOperator guard.
+      return [balance];
     }
 
     case 'item': {
-      return [ctx.inventory.items[field] ?? 0];
+      const count = ctx.inventory.items[field];
+      // Same as currency_balance: preserve undefined so exists/not_exists work correctly.
+      return [count];
     }
 
     case 'location': {

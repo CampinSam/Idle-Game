@@ -302,12 +302,36 @@ describe('SelectionResolverService', () => {
       expect(svc.evaluate(rule, ctx)).toBe(false);
     });
 
-    it('defaults to 0 when currency not present', () => {
+    it('absent currency returns undefined — gte fails correctly', () => {
       const rule: RichSelectionRule = {
         scope: 'currency_balance', field: 'gold', operator: 'gte', value: 1,
       };
       const ctx = makeCtx({ inventory: { currencies: {}, items: {} } });
       expect(svc.evaluate(rule, ctx)).toBe(false);
+    });
+
+    it('exists — false when currency key absent', () => {
+      const rule: RichSelectionRule = {
+        scope: 'currency_balance', field: 'gold', operator: 'exists',
+      };
+      const ctx = makeCtx({ inventory: { currencies: {}, items: {} } });
+      expect(svc.evaluate(rule, ctx)).toBe(false);
+    });
+
+    it('not_exists — true when currency key absent', () => {
+      const rule: RichSelectionRule = {
+        scope: 'currency_balance', field: 'gold', operator: 'not_exists',
+      };
+      const ctx = makeCtx({ inventory: { currencies: {}, items: {} } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('exists — true when currency key is present (even if 0)', () => {
+      const rule: RichSelectionRule = {
+        scope: 'currency_balance', field: 'gold', operator: 'exists',
+      };
+      const ctx = makeCtx({ inventory: { currencies: { gold: 0 }, items: {} } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
     });
   });
 
@@ -322,9 +346,25 @@ describe('SelectionResolverService', () => {
       expect(svc.evaluate(rule, ctx)).toBe(true);
     });
 
-    it('item not_exists passes when item absent', () => {
+    it('not_exists — true when item key absent', () => {
       const rule: RichSelectionRule = {
         scope: 'item', field: 'rare_gem', operator: 'not_exists',
+      };
+      const ctx = makeCtx({ inventory: { currencies: {}, items: {} } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('exists — true when item key present', () => {
+      const rule: RichSelectionRule = {
+        scope: 'item', field: 'potion', operator: 'exists',
+      };
+      const ctx = makeCtx({ inventory: { currencies: {}, items: { potion: 3 } } });
+      expect(svc.evaluate(rule, ctx)).toBe(true);
+    });
+
+    it('exists — false when item key absent', () => {
+      const rule: RichSelectionRule = {
+        scope: 'item', field: 'potion', operator: 'exists',
       };
       const ctx = makeCtx({ inventory: { currencies: {}, items: {} } });
       expect(svc.evaluate(rule, ctx)).toBe(false);
@@ -562,6 +602,37 @@ describe('SelectionResolverService', () => {
         scope: 'entity', field: 'rarity', aggregate: 'distinct_count', operator: 'eq', value: 2,
       };
       expect(svc.evaluate(rule, makeCtx({ entities: entities as any }))).toBe(true);
+    });
+  });
+
+  // ─── ConditionalEffect structure ─────────────────────────────────────────
+
+  describe('ConditionalEffect', () => {
+    it('condition evaluates correctly when embedded in a ConditionalEffect payload', () => {
+      const { isRichSelectionGroup } = require('@derp/shared');
+      const conditionalEffect = {
+        id: 'ce_vip_bonus',
+        label: 'VIP Keeper bonus',
+        condition: {
+          op: 'AND',
+          rules: [
+            { scope: 'player', field: 'keeperLevel', operator: 'gte', value: 10 } as RichSelectionRule,
+            { scope: 'player', field: 'flags.vip', operator: 'exists' } as RichSelectionRule,
+          ],
+        } as RichSelection,
+        effects: [{ type: 'stat_modifier', stat: 'ATK', operation: 'percent_add', value: 10 }],
+        priority: 1,
+        stackingPolicy: 'stack' as const,
+      };
+
+      const ctxPass = makeCtx({ player: { keeperLevel: 15, flags: { vip: '1' } } });
+      const ctxFail = makeCtx({ player: { keeperLevel: 5, flags: {} } });
+
+      expect(isRichSelectionGroup(conditionalEffect.condition)).toBe(true);
+      expect(svc.evaluate(conditionalEffect.condition, ctxPass)).toBe(true);
+      expect(svc.evaluate(conditionalEffect.condition, ctxFail)).toBe(false);
+      expect(conditionalEffect.effects).toHaveLength(1);
+      expect(conditionalEffect.stackingPolicy).toBe('stack');
     });
   });
 
