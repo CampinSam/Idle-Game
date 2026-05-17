@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import RefSelect, { getCachedRefRow } from '../RefSelect';
 import {
   containerStyle,
   entryCardStyle,
@@ -11,7 +13,7 @@ import {
   fieldGroupStyle,
   labelStyle,
 } from './editorStyles';
-import { errorTextStyle } from './validation';
+import { errorTextStyle, errorWrapperStyle } from './validation';
 import type { StructuredEditorProps } from './editorContract';
 
 export type SynergyEffectType =
@@ -103,6 +105,8 @@ function operationsFor(type: SynergyEffectType): SynergyOperation[] {
   return ['flat_add', 'percent_add', 'multiplier'];
 }
 
+type ResourceKind = 'currency' | 'item';
+
 function EffectEntryEditor({
   effect,
   onChange,
@@ -120,6 +124,12 @@ function EffectEntryEditor({
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
+  const [resourceKind, setResourceKind] = useState<ResourceKind>(() => {
+    const id = effect.resourceId;
+    if (!id) return 'currency';
+    if (getCachedRefRow('ItemDef', id)) return 'item';
+    return 'currency';
+  });
   const errs = validateSynergyEffect(effect);
   const ops = operationsFor(effect.type);
 
@@ -202,17 +212,34 @@ function EffectEntryEditor({
         )}
 
         {effect.type === 'resource_yield_modifier' && (
-          <div style={fieldGroupStyle}>
-            <span style={labelStyle}>resourceId</span>
-            <input
-              type="text"
-              value={effect.resourceId ?? ''}
-              placeholder="currency or item ID"
-              onChange={e => onChange({ ...effect, resourceId: e.target.value })}
-              style={{ ...inputStyle, width: '100%', borderColor: errs.resourceId ? '#ef4444' : undefined }}
-            />
-            {errs.resourceId && <span style={errorTextStyle}>{errs.resourceId}</span>}
-          </div>
+          <>
+            <div style={fieldGroupStyle}>
+              <span style={labelStyle}>resource type</span>
+              <select
+                value={resourceKind}
+                onChange={e => {
+                  setResourceKind(e.target.value as ResourceKind);
+                  onChange({ ...effect, resourceId: '' });
+                }}
+                style={{ ...selectStyle, width: '100%' }}
+              >
+                <option value="currency">currency</option>
+                <option value="item">item</option>
+              </select>
+            </div>
+            <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 160 }}>
+              <span style={labelStyle}>resourceId</span>
+              <div style={errs.resourceId ? errorWrapperStyle : undefined}>
+                <RefSelect
+                  refTable={resourceKind === 'currency' ? 'Currency' : 'ItemDef'}
+                  value={effect.resourceId ?? null}
+                  onChange={v => onChange({ ...effect, resourceId: v ?? '' })}
+                  placeholder={resourceKind === 'currency' ? 'Select Currency...' : 'Select Item...'}
+                />
+              </div>
+              {errs.resourceId && <span style={errorTextStyle}>{errs.resourceId}</span>}
+            </div>
+          </>
         )}
 
         {effect.type === 'immunity' && (
