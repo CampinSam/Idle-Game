@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
 import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
 import { MissionService } from '../mission/mission.service';
@@ -42,6 +43,7 @@ export class AdminService {
     private gameRules: GameRulesService,
     private homeBannerService: HomeBannerService,
     private pubsub: PubSubService,
+    private selectionResolver: SelectionResolverService,
   ) {}
 
   async searchPlayers(query: string) {
@@ -286,6 +288,7 @@ export class AdminService {
     }
     const created = await model.create({ data });
     await this.broadcastIfHomeBanner(table);
+    await this.invalidateIfSelectionRule(table);
     return serializeBigInts(created);
   }
 
@@ -307,6 +310,7 @@ export class AdminService {
 
     const updated = await model.update({ where: { id }, data });
     await this.broadcastIfHomeBanner(table);
+    await this.invalidateIfSelectionRule(table);
     return serializeBigInts(updated);
   }
 
@@ -345,7 +349,17 @@ export class AdminService {
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
     const deleted = await model.delete({ where: { id } });
     await this.broadcastIfHomeBanner(table);
+    await this.invalidateIfSelectionRule(table);
     return serializeBigInts(deleted);
+  }
+
+  private async invalidateIfSelectionRule(table: string): Promise<void> {
+    if (table !== 'selectionRuleDef') return;
+    try {
+      await this.selectionResolver.reloadRuleCache();
+    } catch (err) {
+      this.logger.warn(`SelectionRuleDef cache reload failed: ${(err as any)?.message ?? err}`);
+    }
   }
 
   async getPlayerJobs(userId: string) {
