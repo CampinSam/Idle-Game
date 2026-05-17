@@ -59,6 +59,8 @@ export function richSelectionErrorCount(value: any): number {
   for (const rule of (value.rules ?? [])) {
     if (Array.isArray(rule?.rules)) {
       n += richSelectionErrorCount(rule);
+    } else if (rule?.type === 'rule_ref') {
+      if (!rule.id?.trim()) n++;
     } else {
       if (!rule?.scope) n++;
       if (!rule?.field) n++;
