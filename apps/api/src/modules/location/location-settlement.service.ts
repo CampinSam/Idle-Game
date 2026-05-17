@@ -13,6 +13,7 @@ import {
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { EffectService } from '../effect/effect.service';
+import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { EffectCategory, EffectTargetType } from '@derp/shared';
 import { sumEquippedStatsForEntities, StatMap } from '../entity/entity-stats.util';
 
@@ -131,6 +132,7 @@ export class LocationSettlementService {
     private effectService: EffectService,
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
+    private synergyResolver: SynergyResolverService,
   ) {}
 
   async settleLocationTx(
@@ -217,6 +219,38 @@ export class LocationSettlementService {
     const { productionMultBps, consumptionMultBps } = getWorkerMultsBps(workerStatsTotal);
     const threatMultBps = getThreatMultBps(location.threatLevel);
 
+    // Synergy: build descriptors from assigned workers and resolve rules.
+    // resourceYieldModifiers per-resourceId scale production rates.
+    const synergyYieldMap = new Map<string, { percentAdd: number; flat: number; multiplier: number }>();
+    try {
+      if (workerEntityIds.length > 0) {
+        const workerEntities = await (tx as any).entity.findMany({
+          where: { id: { in: workerEntityIds } },
+          select: { id: true, traits: true, definitionId: true, nftCollectionDefId: true },
+        });
+        const workerDescriptors = workerEntities.map((e: any) => ({
+          entityId: e.id as string,
+          traits: (e.traits ?? {}) as Record<string, string>,
+          speciesId: e.definitionId as string | undefined,
+          collectionId: e.nftCollectionDefId as string | undefined,
+        }));
+        const synergyResult = await this.synergyResolver.resolveRules(
+          { activityType: 'outpost', teamSize: workerEntityIds.length },
+          workerDescriptors,
+          workerDescriptors,
+        );
+        for (const mod of synergyResult.totals.resourceYieldModifiers) {
+          synergyYieldMap.set(mod.resourceId, {
+            percentAdd: mod.percentAdd,
+            flat: mod.flat,
+            multiplier: mod.multiplier,
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Synergy resolution failed for location ${locationId}: ${err}`);
+    }
+
     let effectProductionBps = BigInt(10000);
     try {
       const prodMod = await this.effectService.resolveForTarget(
@@ -242,7 +276,13 @@ export class LocationSettlementService {
 
     if (!hasAnyConsumption) {
       for (const [resourceId, ratePerHour] of Object.entries(mergedOutputs)) {
-        let output = BigInt(Math.floor(ratePerHour * Number(elapsedTicks))) / BigInt(3600);
+        // Apply per-resource synergy yield modifier before computing output.
+        const synergyMod = synergyYieldMap.get(resourceId);
+        const effectiveRate = synergyMod
+          ? (ratePerHour * (1 + synergyMod.percentAdd / 100) * synergyMod.multiplier) + synergyMod.flat
+          : ratePerHour;
+
+        let output = BigInt(Math.floor(effectiveRate * Number(elapsedTicks))) / BigInt(3600);
         output = output * productionMultBps / BPS_BASE;
         output = output * threatMultBps / BPS_BASE;
         output = output * effectProductionBps / BPS_BASE;
@@ -263,8 +303,25 @@ export class LocationSettlementService {
       const globalResourceTypes = this.collectResourceTypes(bundles);
       const walletBalances = await this.fetchPlayerResourceBalances(tx, userId, globalResourceTypes);
 
+      // Scale bundle produce rates by synergy resourceYieldModifiers before
+      // phased settlement so the modifier applies per-resource correctly.
+      const settlementBundles = synergyYieldMap.size > 0
+        ? bundles.map(b => ({
+            ...b,
+            produces: Object.fromEntries(
+              Object.entries(b.produces).map(([rid, rate]) => {
+                const mod = synergyYieldMap.get(rid);
+                const scaled = mod
+                  ? (rate * (1 + mod.percentAdd / 100) * mod.multiplier) + mod.flat
+                  : rate;
+                return [rid, scaled];
+              }),
+            ),
+          }))
+        : bundles;
+
       const result = this.runPhasedSettlement(
-        bundles,
+        settlementBundles,
         storedAmounts,
         walletBalances,
         locStorageCapacity,

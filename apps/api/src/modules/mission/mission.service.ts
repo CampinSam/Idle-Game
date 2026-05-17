@@ -345,6 +345,41 @@ export class MissionService {
       durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
     }
 
+    // Call the synergy resolver at start time so the result can be persisted
+    // in Job.data.synergy. completeMission reads the snapshot instead of
+    // re-querying rules, ensuring rewards use the state captured here.
+    const synergyDescriptorsForStart = entities.map((e: any) => ({
+      entityId: e.id as string,
+      traits: (e.traits ?? {}) as Record<string, string>,
+      speciesId: e.definitionId as string | undefined,
+      collectionId: e.nftCollectionDefId as string | undefined,
+    }));
+    const synergyContextForStart = {
+      activityType: 'mission' as const,
+      missionTags: Array.isArray(dbDef.tags) ? (dbDef.tags as string[]) : [],
+      teamSize: entityIds.length,
+    };
+    const startSynergyResult = await this.synergyResolver.resolveRules(
+      synergyContextForStart,
+      synergyDescriptorsForStart,
+      synergyDescriptorsForStart,
+    );
+    const synergySnapshot = {
+      ruleIds: startSynergyResult.matchedRules.map(r => r.ruleId),
+      totals: startSynergyResult.totals,
+    };
+
+    // Apply synergy duration modifier (shortens/lengthens the mission timer).
+    const missionDurationMod = startSynergyResult.totals.durationModifiers['mission'];
+    if (missionDurationMod) {
+      if (missionDurationMod.percentAdd !== 0) {
+        durationTicks = Math.max(1, Math.floor(durationTicks * (1 + missionDurationMod.percentAdd / 100)));
+      }
+      if (missionDurationMod.flatSeconds !== 0) {
+        durationTicks = Math.max(1, durationTicks + Math.round(missionDurationMod.flatSeconds));
+      }
+    }
+
     const seed = randomUUID();
 
     const job = await (db as any).job.create({
@@ -355,7 +390,7 @@ export class MissionService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: entityIds,
-        data: { difficulty: dbDef.difficulty, seed },
+        data: { difficulty: dbDef.difficulty, seed, synergy: synergySnapshot },
         readyAtTick: Math.floor(currentTick) + durationTicks,
       },
     });
@@ -369,7 +404,17 @@ export class MissionService {
       data: { sessionId: job.id },
     });
 
-    return this.mapJobToMissionResponse(job);
+    const response = this.mapJobToMissionResponse(job);
+    // Include synergy preview so the client can display which rules fired.
+    return {
+      ...response,
+      synergyPreview: {
+        matchedRules: startSynergyResult.matchedRules.map(r => ({ ruleId: r.ruleId, name: r.name, applications: r.applications })),
+        synergyScore: startSynergyResult.totals.synergyScore,
+        missionPowerBonus: startSynergyResult.totals.statModifiers['MISSION_POWER']?.percentAdd ?? 0,
+        durationBonus: missionDurationMod?.percentAdd ?? 0,
+      },
+    };
   }
 
   async completeMission(userId: string, missionId: string, externalTx?: any): Promise<any> {
@@ -489,30 +534,25 @@ export class MissionService {
 
     let rawTeamMP = calculateTeamMP(teamForMP);
 
-    // Apply synergy bonus via the data-driven SynergyResolverService.
-    // Build entity descriptors from the team; source and target are the same array
-    // (the resolver finds matching pairs within it).
-    const synergyDescriptors = entities.map((b: any) => ({
-      entityId: b.id as string,
-      traits: (b.traits ?? {}) as Record<string, string>,
-    }));
-    const synergyContext = {
-      activityType: 'mission' as const,
-      missionTags: Array.isArray(def.tags) ? (def.tags as string[]) : [],
-      teamSize: entities.length,
-    };
-    // Only `synergyScore` is applied here as a flat MP add.
-    // Other resolver outputs (statModifiers, durationModifiers, resourceYieldModifiers)
-    // are reserved for future wiring in the Task B integration pass.
-    const synergyResult = await this.synergyResolver.resolveRules(
-      synergyContext,
-      synergyDescriptors,
-      synergyDescriptors,
-    );
-    if (synergyResult.totals.synergyScore !== 0) {
-      rawTeamMP += synergyResult.totals.synergyScore;
+    // Read the synergy snapshot persisted by startMission instead of
+    // re-querying rules. This guarantees reward outcomes use the rule state
+    // that was captured when the mission launched.
+    const persistedSynergy = (mission.data as any)?.synergy as
+      | { ruleIds: string[]; totals: import('./../../modules/synergy/synergy.types').SynergyTotals }
+      | undefined;
+    if (persistedSynergy) {
+      const syn = persistedSynergy.totals;
+      // Flat synergy-score add (synergy_score_modifier effects).
+      if (syn.synergyScore !== 0) {
+        rawTeamMP += syn.synergyScore;
+      }
+      // Percent add from MISSION_POWER stat_modifier effects.
+      const mpPercentBonus = syn.statModifiers?.['MISSION_POWER']?.percentAdd ?? 0;
+      if (mpPercentBonus !== 0) {
+        rawTeamMP *= 1 + mpPercentBonus / 100;
+      }
       this.logger.debug(
-        `Mission ${missionId}: synergy bonus=${synergyResult.totals.synergyScore} from ${synergyResult.matchedRules.length} rule(s)`,
+        `Mission ${missionId}: synergy snapshot applied (score=${syn.synergyScore}, mpPct=${mpPercentBonus}) from ${persistedSynergy.ruleIds.length} rule(s)`,
       );
     }
 

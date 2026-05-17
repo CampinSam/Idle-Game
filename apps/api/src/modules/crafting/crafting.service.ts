@@ -11,6 +11,7 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
 import {
@@ -59,6 +60,7 @@ export class CraftingService {
     private eventService: EventService,
     private effectService: EffectService,
     private telemetryService: TelemetryService,
+    private synergyResolver: SynergyResolverService,
   ) {}
 
   private mapJobToCraftingResponse(job: any) {
@@ -432,6 +434,34 @@ export class CraftingService {
       }
     }
 
+    // Call synergy resolver before the atomic write so the snapshot can be
+    // persisted in Job.data.synergy and collectCrafting can apply CRAFTING_LUCK
+    // without re-querying rules.
+    const craftingDescriptor = [{
+      entityId: (entity as any).id as string,
+      traits: ((entity as any).traits ?? {}) as Record<string, string>,
+      speciesId: (entity as any).definitionId as string | undefined,
+      collectionId: (entity as any).nftCollectionDefId as string | undefined,
+    }];
+    const craftingSynergyResult = await this.synergyResolver.resolveRules(
+      { activityType: 'crafting', teamSize: 1 },
+      craftingDescriptor,
+      craftingDescriptor,
+    );
+    const craftingSynergySnapshot = {
+      ruleIds: craftingSynergyResult.matchedRules.map(r => r.ruleId),
+      totals: craftingSynergyResult.totals,
+    };
+    const craftingDurationMod = craftingSynergyResult.totals.durationModifiers['crafting'];
+    if (craftingDurationMod) {
+      if (craftingDurationMod.percentAdd !== 0) {
+        durationTicks = Math.max(1, Math.floor(durationTicks * (1 + craftingDurationMod.percentAdd / 100)));
+      }
+      if (craftingDurationMod.flatSeconds !== 0) {
+        durationTicks = Math.max(1, durationTicks + Math.round(craftingDurationMod.flatSeconds));
+      }
+    }
+
     const doWrites = async (tx: any) => {
       for (const cost of costEntries) {
         if (cost.amount <= 0) continue;
@@ -451,7 +481,7 @@ export class CraftingService {
           status: 'active',
           timer: { startTick: currentTick, durationTicks },
           team: [entityId],
-          data: { seed: randomUUID(), locationId: effectiveLocationId },
+          data: { seed: randomUUID(), locationId: effectiveLocationId, synergy: craftingSynergySnapshot },
           readyAtTick: Math.floor(currentTick) + durationTicks,
         },
       });
@@ -486,7 +516,18 @@ export class CraftingService {
     const entity = await (this.prisma as any).entity.findUnique({ where: { id: entityId } });
     if (!entity) throw new NotFoundException('Entity not found');
 
-    const rawCl = calculateCraftingLuck(entity.stats as any);
+    let rawCl = calculateCraftingLuck(entity.stats as any);
+    // Apply CRAFTING_LUCK percentAdd from the persisted synergy snapshot.
+    const persistedCraftingSynergy = (job.data as any)?.synergy as
+      | { ruleIds: string[]; totals: import('../synergy/synergy.types').SynergyTotals }
+      | undefined;
+    if (persistedCraftingSynergy) {
+      const luckPctAdd = persistedCraftingSynergy.totals.statModifiers?.['CRAFTING_LUCK']?.percentAdd ?? 0;
+      if (luckPctAdd !== 0) {
+        rawCl = rawCl * (1 + luckPctAdd / 100);
+        this.logger.debug(`collectCrafting ${jobId}: synergy CRAFTING_LUCK +${luckPctAdd}% → rawCl=${rawCl}`);
+      }
+    }
     const jobLocationId = (job.data as { locationId?: string | null })?.locationId ?? undefined;
     const workshopTier = await this.getMaxWorkshopTier(userId, jobLocationId);
     const luckFloor = workshopLuckFloor(workshopTier);
