@@ -30,7 +30,8 @@ function makeFakes() {
     }),
   };
 
-  const gameRules = new GameRulesService(prisma);
+  const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true) };
+  const gameRules = new GameRulesService(prisma, fakeSelectionResolver);
 
   return { prisma, currencyService, inventoryService, gameRules, bundleDefs, credited, items };
 }

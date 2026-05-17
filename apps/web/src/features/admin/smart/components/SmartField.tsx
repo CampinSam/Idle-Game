@@ -4,8 +4,7 @@ import RefSelect from './RefSelect';
 import CollapsibleObject from './CollapsibleObject';
 import MediaUploader from './MediaUploader';
 import CostListEditor from './structured/CostListEditor';
-import RequirementsListEditor from './structured/RequirementsListEditor';
-import RequirementsBlockEditor from './structured/RequirementsBlockEditor';
+import RichSelectionEditor from './structured/RichSelectionEditor';
 import TimerEditor from './structured/TimerEditor';
 import OutcomeListEditor from './structured/OutcomeListEditor';
 import ObjectivesListEditor from './structured/ObjectivesListEditor';
@@ -44,7 +43,7 @@ interface RegistryEntry {
 }
 
 const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
-  requirementsArray: { Component: RequirementsListEditor, safe: 'array' },
+  richSelection:     { Component: RichSelectionEditor,    safe: 'passthrough' },
   timerSpec:         { Component: TimerEditor,             safe: 'passthrough' },
   outcomeSpec:       { Component: OutcomeListEditor,       safe: 'passthrough' },
   objectivesArray:   { Component: ObjectivesListEditor,    safe: 'array' },
@@ -314,15 +313,6 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       const allowEntity = fieldName === 'contents';
       return renderStructured(
         <CostListEditor value={safeVal} onChange={onChange} allowEntity={allowEntity} />
-      );
-    }
-
-    if (t === 'requirementsBlock') {
-      const safeVal = Array.isArray(value) ? value : [];
-      const bespoke = fieldDef.bespokeFields ?? [];
-      const sectionLabel = fieldDef.bespokeSectionLabel ?? 'Bespoke Fields';
-      return renderStructured(
-        <RequirementsBlockEditor value={safeVal} onChange={onChange} bespokeFields={bespoke} sectionLabel={sectionLabel} />
       );
     }
 

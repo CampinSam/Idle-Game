@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { EntityTraits } from '@derp/shared';
+import type { EntityTraits, RichSelection, RichSelectionRule, ScopeType, OperatorType, AggregateType } from '@derp/shared';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
+import type { SelectionContext } from '../selection/selection.types';
 
 export interface GameUser {
   keeperLevel?: number;
@@ -27,7 +29,10 @@ export interface RequirementContext {
 export class GameRulesService {
   private readonly logger = new Logger(GameRulesService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly selectionResolver: SelectionResolverService,
+  ) {}
 
   compareValues(actual: number, target: number, operator: string): boolean {
     switch (operator) {
@@ -51,91 +56,206 @@ export class GameRulesService {
   }
 
   checkRequirement(req: Record<string, unknown>, context: RequirementContext): boolean {
+    const richSel = this.legacyReqToRichSelection(req);
+    if (richSel === null) return true;
+    const selCtx =
+      req.type === 'parent_has_building'
+        ? this.reqCtxToParentBuildingSelCtx(context)
+        : this.reqCtxToSelCtx(context);
+    return this.selectionResolver.evaluate(richSel, selCtx);
+  }
+
+  checkRequirements(reqs: unknown, context: RequirementContext): boolean {
+    if (!reqs) return true;
+    if (
+      typeof reqs === 'object' &&
+      !Array.isArray(reqs) &&
+      'op' in (reqs as object) &&
+      'rules' in (reqs as object)
+    ) {
+      return this.selectionResolver.evaluate(reqs as RichSelection, this.reqCtxToSelCtx(context));
+    }
+    if (!Array.isArray(reqs) || reqs.length === 0) return true;
+    return reqs.every((req: Record<string, unknown>) => this.checkRequirement(req, context));
+  }
+
+  checkVisibility(
+    visReqs: unknown,
+    user: GameUser,
+    userFlags?: Record<string, unknown>,
+    extra?: Partial<RequirementContext>,
+  ): boolean {
+    if (!visReqs) return true;
+    const flags: Record<string, unknown> =
+      userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {});
+    return this.checkRequirements(visReqs, { user, userFlags: flags, ...extra });
+  }
+
+  buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {
+    const userFlags: Record<string, unknown> =
+      (user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {};
+    return { user, userFlags, ...extra };
+  }
+
+  private reqCtxToSelCtx(context: RequirementContext): SelectionContext {
+    return {
+      player: {
+        keeperLevel: Number(context.user.keeperLevel ?? 0),
+        flags: context.userFlags,
+      },
+      entities: [],
+      inventory: { currencies: {}, items: {} },
+      locations: (context.allPlayerLocations ?? []).map(loc => ({
+        regionId: loc.regionId,
+        buildings: loc.buildings ?? [],
+        rooms: loc.rooms ?? [],
+      })),
+      currentLocation: context.currentLocation
+        ? {
+            regionId: context.currentLocation.regionId,
+            buildings: context.currentLocation.buildings ?? [],
+            rooms: context.currentLocation.rooms ?? [],
+          }
+        : undefined,
+      parentBuilding: context.parentBuilding
+        ? {
+            buildingDefId: context.parentBuilding.buildingDefId,
+            rooms: context.parentBuilding.rooms ?? [],
+          }
+        : undefined,
+    };
+  }
+
+  private reqCtxToParentBuildingSelCtx(context: RequirementContext): SelectionContext {
+    const base = this.reqCtxToSelCtx(context);
+    if (!context.currentLocation) return { ...base, locations: [] };
+    return {
+      ...base,
+      locations: [
+        {
+          regionId: context.currentLocation.regionId,
+          buildings: context.currentLocation.buildings ?? [],
+          rooms: context.currentLocation.rooms ?? [],
+        },
+      ],
+    };
+  }
+
+  private legacyReqToRichSelection(
+    req: Record<string, unknown>,
+  ): RichSelection | RichSelectionRule | null {
     const op = (req.operator as string) ?? (req.type === 'flag' ? 'eq' : 'gte');
 
     switch (req.type) {
       case 'keeper_level':
-        return this.compareValues(Number(context.user.keeperLevel ?? 0), Number(req.value ?? 0), op);
-      case 'team_size':
-        return true;
-      case 'trait':
-        return true;
+        return {
+          scope: 'player' as ScopeType,
+          field: 'keeperLevel',
+          operator: op as OperatorType,
+          value: req.value,
+        };
+
       case 'flag': {
-        const flagVal = context.userFlags[req.key as string];
-        if (op === 'exists') return flagVal !== undefined && flagVal !== null;
-        if (op === 'dne') return flagVal === undefined || flagVal === null;
-        if (flagVal === undefined || flagVal === null) return false;
-        const numFlag = Number(flagVal);
-        const numTarget = Number(req.value);
-        const bothNumeric = !isNaN(numFlag) && !isNaN(numTarget);
-        if (bothNumeric) return this.compareValues(numFlag, numTarget, op);
-        if (op === 'eq') return String(flagVal) === String(req.value);
-        if (op === 'neq') return String(flagVal) !== String(req.value);
-        return false;
+        const rssOp: OperatorType = op === 'dne' ? 'not_exists' : (op as OperatorType);
+        return {
+          scope: 'player' as ScopeType,
+          field: `flags.${req.key ?? ''}`,
+          operator: rssOp,
+          value: op === 'exists' || op === 'dne' ? undefined : req.value,
+        };
       }
-      case 'has_building': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const allLocs = context.allPlayerLocations ?? [];
-        return ids.some(id =>
-          allLocs.some(loc => loc.buildings?.some(b => b.buildingDefId === id)),
-        );
-      }
-      case 'has_room': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const allLocs = context.allPlayerLocations ?? [];
-        return ids.some(id =>
-          allLocs.some(loc =>
-            loc.buildings?.some(b => b.rooms?.some(r => r.roomDefId === id)) ||
-            loc.rooms?.some(r => r.roomDefId === id),
-          ),
-        );
-      }
+
+      case 'has_building':
       case 'parent_has_building': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const loc = context.currentLocation;
-        if (!loc) return false;
-        return ids.some(id => loc.buildings?.some(b => b.buildingDefId === id));
+        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
+        if (ids.length === 0) return null;
+        if (ids.length === 1) {
+          return {
+            scope: 'location' as ScopeType,
+            field: `buildings.${ids[0]}`,
+            aggregate: 'any' as AggregateType,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          };
+        }
+        return {
+          op: 'OR',
+          rules: ids.map(id => ({
+            scope: 'location' as ScopeType,
+            field: `buildings.${id}`,
+            aggregate: 'any' as AggregateType,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          })),
+        };
       }
+
+      case 'has_room': {
+        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
+        if (ids.length === 0) return null;
+        if (ids.length === 1) {
+          return {
+            scope: 'location' as ScopeType,
+            field: `rooms.${ids[0]}`,
+            aggregate: 'any' as AggregateType,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          };
+        }
+        return {
+          op: 'OR',
+          rules: ids.map(id => ({
+            scope: 'location' as ScopeType,
+            field: `rooms.${id}`,
+            aggregate: 'any' as AggregateType,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          })),
+        };
+      }
+
       case 'parent_has_room': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const bld = context.parentBuilding;
-        if (!bld) return false;
-        return ids.some(id => bld.rooms?.some(r => r.roomDefId === id));
+        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
+        if (ids.length === 0) return null;
+        if (ids.length === 1) {
+          return {
+            scope: 'building' as ScopeType,
+            field: `rooms.${ids[0]}`,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          };
+        }
+        return {
+          op: 'OR',
+          rules: ids.map(id => ({
+            scope: 'building' as ScopeType,
+            field: `rooms.${id}`,
+            operator: 'eq' as OperatorType,
+            value: 1,
+          })),
+        };
       }
+
       case 'in_region': {
-        const ids = req.ids as string[];
-        if (!ids || !Array.isArray(ids) || ids.length === 0) return true;
-        const loc = context.currentLocation;
-        if (!loc || !loc.regionId) return false;
-        return ids.includes(loc.regionId);
+        const ids = Array.isArray(req.ids) ? (req.ids as string[]) : [];
+        if (ids.length === 0) return null;
+        return {
+          scope: 'location' as ScopeType,
+          field: 'regionId',
+          aggregate: 'any' as AggregateType,
+          operator: 'in' as OperatorType,
+          value: ids,
+        };
       }
+
+      case 'team_size':
+      case 'trait':
       case 'building':
       case 'currency':
       case 'item':
-        return true;
       default:
-        return true;
+        return null;
     }
-  }
-
-  checkRequirements(reqs: unknown, context: RequirementContext): boolean {
-    if (!reqs || !Array.isArray(reqs) || reqs.length === 0) return true;
-    return reqs.every((req: Record<string, unknown>) => this.checkRequirement(req, context));
-  }
-
-  checkVisibility(visReqs: unknown, user: GameUser, userFlags?: Record<string, unknown>, extra?: Partial<RequirementContext>): boolean {
-    if (!visReqs || !Array.isArray(visReqs) || visReqs.length === 0) return true;
-    const flags: Record<string, unknown> = userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags : {});
-    return visReqs.every((req: Record<string, unknown>) => this.checkRequirement(req, { user, userFlags: flags, ...extra }));
-  }
-
-  buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {
-    const userFlags: Record<string, unknown> = (user.flags && typeof user.flags === 'object') ? user.flags : {};
-    return { user, userFlags, ...extra };
   }
 
   async applyFlagEffect(userId: string, effect: Record<string, unknown>): Promise<void> {

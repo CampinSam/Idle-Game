@@ -39,7 +39,8 @@ function makeFakes(rewardSpec: any, status: 'completed' | 'active' | 'claimed' =
       return Promise.resolve();
     }),
   };
-  const gameRules = new GameRulesService(prisma);
+  const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true) };
+  const gameRules = new GameRulesService(prisma, fakeSelectionResolver);
 
   const svc = new QuestService(prisma, notification, telemetry, currency, inventory, gameRules);
   return { svc, credited, items, updates };

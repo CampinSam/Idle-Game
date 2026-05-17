@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { StackMode, SynergyRule as PrismaSynergyRule } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { RichSelection, RichSelectionRule, ScopeType, AggregateType, OperatorType } from '@derp/shared';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
+import type { SelectionContext, SelectionEntityContext } from '../selection/selection.types';
 import {
   SynergyEntityDescriptor,
   SynergyActivityContext,
@@ -33,7 +36,10 @@ interface DbSynergyRule {
 export class SynergyResolverService {
   private readonly logger = new Logger(SynergyResolverService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly selectionResolver: SelectionResolverService,
+  ) {}
 
   /**
    * Evaluate all enabled SynergyRules against a set of source and target
@@ -125,102 +131,160 @@ export class SynergyResolverService {
   matchesSelector(entity: SynergyEntityDescriptor, selector: SynergySelector): boolean {
     if (this.isSelectorEmpty(selector)) return true;
 
-    const traitValues = Object.values(entity.traits ?? {}).map(v => v.toLowerCase());
+    const richSel = this.selectorToRichSelection(selector);
+    if (!richSel) return true;
 
-    if (selector.entityTypes?.length) {
-      if (!entity.entityType || !selector.entityTypes.includes(entity.entityType)) return false;
-    }
+    const selCtx: SelectionContext = {
+      player: { keeperLevel: 0, flags: {} },
+      entities: [this.descriptorToEntityCtx(entity)],
+      inventory: { currencies: {}, items: {} },
+      locations: [],
+    };
 
-    if (selector.speciesIds?.length) {
-      if (!entity.speciesId || !selector.speciesIds.includes(entity.speciesId)) return false;
-    }
-
-    if (selector.collections?.length) {
-      if (!entity.collectionId || !selector.collections.includes(entity.collectionId)) return false;
-    }
-
-    if (selector.entityIds?.length) {
-      if (!entity.entityId || !selector.entityIds.includes(entity.entityId)) return false;
-    }
-
-    if (selector.rarities?.length) {
-      if (!entity.rarity || !selector.rarities.includes(entity.rarity)) return false;
-    }
-
-    if (selector.regions?.length) {
-      if (!entity.regionId || !selector.regions.includes(entity.regionId)) return false;
-    }
-
-    if (selector.factions?.length) {
-      const faction = entity.traits?.faction?.toLowerCase();
-      if (!faction || !selector.factions.map(f => f.toLowerCase()).includes(faction)) return false;
-    }
-
-    if (selector.traitsAny?.length) {
-      const needLow = selector.traitsAny.map(t => t.toLowerCase());
-      if (!needLow.some(t => traitValues.includes(t))) return false;
-    }
-
-    if (selector.traitsAll?.length) {
-      const needLow = selector.traitsAll.map(t => t.toLowerCase());
-      if (!needLow.every(t => traitValues.includes(t))) return false;
-    }
-
-    if (selector.minTraitCount !== undefined) {
-      if (traitValues.length < selector.minTraitCount) return false;
-    }
-
-    if (selector.locationTypes?.length) {
-      const entityTypes = entity.locationTypes ?? [];
-      if (!selector.locationTypes.some(lt => entityTypes.includes(lt))) return false;
-    }
-
-    if (selector.buildingTagsAny?.length) {
-      const bTags = entity.buildingTags ?? [];
-      if (!selector.buildingTagsAny.some(bt => bTags.includes(bt))) return false;
-    }
-
-    if (selector.missionTagsAny?.length) {
-      const mTags = entity.missionTags ?? [];
-      if (!selector.missionTagsAny.some(mt => mTags.includes(mt))) return false;
-    }
-
-    return true;
+    return this.selectionResolver.evaluate(richSel, selCtx);
   }
 
   matchesContext(activityCtx: SynergyActivityContext, ruleCtx: SynergyRuleContext): boolean {
     if (!ruleCtx || Object.keys(ruleCtx).length === 0) return true;
 
+    const richSel = this.contextToRichSelection(ruleCtx);
+    if (!richSel) return true;
+
+    const selCtx: SelectionContext = {
+      player: { keeperLevel: 0, flags: {} },
+      entities: [],
+      inventory: { currencies: {}, items: {} },
+      locations: [],
+      missionContext: {
+        activityType: activityCtx.activityType,
+        missionType: activityCtx.missionType,
+        missionTags: activityCtx.missionTags,
+        regionId: activityCtx.regionId,
+        seasonId: activityCtx.seasonId,
+        teamSize: activityCtx.teamSize,
+      },
+    };
+
+    return this.selectionResolver.evaluate(richSel, selCtx);
+  }
+
+  private descriptorToEntityCtx(entity: SynergyEntityDescriptor): SelectionEntityContext {
+    return {
+      id: entity.entityId,
+      entityType: entity.entityType,
+      speciesId: entity.speciesId,
+      collectionId: entity.collectionId,
+      traits: entity.traits ?? {},
+      stats: {},
+      rarity: entity.rarity,
+      regionId: entity.regionId,
+      locationTypes: entity.locationTypes,
+      buildingTags: entity.buildingTags,
+      missionTags: entity.missionTags,
+    };
+  }
+
+  private selectorToRichSelection(selector: SynergySelector): RichSelection | null {
+    type R = RichSelection | RichSelectionRule;
+    const rules: R[] = [];
+
+    if (selector.entityTypes?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'entityType', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.entityTypes });
+    }
+    if (selector.speciesIds?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'speciesId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.speciesIds });
+    }
+    if (selector.collections?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'collectionId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.collections });
+    }
+    if (selector.entityIds?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'id', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.entityIds });
+    }
+    if (selector.rarities?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'rarity', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.rarities });
+    }
+    if (selector.regions?.length) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'regionId', aggregate: 'any' as AggregateType, operator: 'in' as OperatorType, value: selector.regions });
+    }
+    if (selector.factions?.length) {
+      rules.push({
+        op: 'OR',
+        rules: selector.factions.map(f => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: f } satisfies RichSelectionRule)),
+      });
+    }
+    if (selector.traitsAny?.length) {
+      if (selector.traitsAny.length === 1) {
+        rules.push({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.traitsAny[0] });
+      } else {
+        rules.push({ op: 'OR', rules: selector.traitsAny.map(t => ({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t } satisfies RichSelectionRule)) });
+      }
+    }
+    if (selector.traitsAll?.length) {
+      for (const t of selector.traitsAll) {
+        rules.push({ scope: 'entity' as ScopeType, field: 'traitValues', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: t });
+      }
+    }
+    if (selector.minTraitCount !== undefined) {
+      rules.push({ scope: 'entity' as ScopeType, field: 'traitCount', aggregate: 'any' as AggregateType, operator: 'gte' as OperatorType, value: selector.minTraitCount });
+    }
+    if (selector.locationTypes?.length) {
+      if (selector.locationTypes.length === 1) {
+        rules.push({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.locationTypes[0] });
+      } else {
+        rules.push({ op: 'OR', rules: selector.locationTypes.map(lt => ({ scope: 'entity' as ScopeType, field: 'locationTypes', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: lt } satisfies RichSelectionRule)) });
+      }
+    }
+    if (selector.buildingTagsAny?.length) {
+      if (selector.buildingTagsAny.length === 1) {
+        rules.push({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.buildingTagsAny[0] });
+      } else {
+        rules.push({ op: 'OR', rules: selector.buildingTagsAny.map(bt => ({ scope: 'entity' as ScopeType, field: 'buildingTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: bt } satisfies RichSelectionRule)) });
+      }
+    }
+    if (selector.missionTagsAny?.length) {
+      if (selector.missionTagsAny.length === 1) {
+        rules.push({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: selector.missionTagsAny[0] });
+      } else {
+        rules.push({ op: 'OR', rules: selector.missionTagsAny.map(mt => ({ scope: 'entity' as ScopeType, field: 'missionTags', aggregate: 'any' as AggregateType, operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
+      }
+    }
+
+    if (rules.length === 0) return null;
+    return { op: 'AND', rules };
+  }
+
+  private contextToRichSelection(ruleCtx: SynergyRuleContext): RichSelection | null {
+    type R = RichSelection | RichSelectionRule;
+    const rules: R[] = [];
+
     if (ruleCtx.activityTypes?.length) {
-      if (!ruleCtx.activityTypes.includes(activityCtx.activityType)) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'activityType', operator: 'in' as OperatorType, value: ruleCtx.activityTypes });
     }
-
     if (ruleCtx.missionTypes?.length) {
-      if (!activityCtx.missionType || !ruleCtx.missionTypes.includes(activityCtx.missionType)) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'missionType', operator: 'in' as OperatorType, value: ruleCtx.missionTypes });
     }
-
     if (ruleCtx.missionTagsAny?.length) {
-      const mTags = activityCtx.missionTags ?? [];
-      if (!ruleCtx.missionTagsAny.some(t => mTags.includes(t))) return false;
+      if (ruleCtx.missionTagsAny.length === 1) {
+        rules.push({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: ruleCtx.missionTagsAny[0] });
+      } else {
+        rules.push({ op: 'OR', rules: ruleCtx.missionTagsAny.map(mt => ({ scope: 'context' as ScopeType, field: 'missionTags', operator: 'contains' as OperatorType, value: mt } satisfies RichSelectionRule)) });
+      }
     }
-
     if (ruleCtx.regionIds?.length) {
-      if (!activityCtx.regionId || !ruleCtx.regionIds.includes(activityCtx.regionId)) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'regionId', operator: 'in' as OperatorType, value: ruleCtx.regionIds });
     }
-
     if (ruleCtx.seasonIds?.length) {
-      if (!activityCtx.seasonId || !ruleCtx.seasonIds.includes(activityCtx.seasonId)) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'seasonId', operator: 'in' as OperatorType, value: ruleCtx.seasonIds });
     }
-
     if (ruleCtx.requiresTeamSizeMin !== undefined) {
-      if ((activityCtx.teamSize ?? 0) < ruleCtx.requiresTeamSizeMin) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'teamSize', operator: 'gte' as OperatorType, value: ruleCtx.requiresTeamSizeMin });
     }
-
     if (ruleCtx.requiresTeamSizeMax !== undefined) {
-      if ((activityCtx.teamSize ?? 0) > ruleCtx.requiresTeamSizeMax) return false;
+      rules.push({ scope: 'context' as ScopeType, field: 'teamSize', operator: 'lte' as OperatorType, value: ruleCtx.requiresTeamSizeMax });
     }
 
-    return true;
+    if (rules.length === 0) return null;
+    return { op: 'AND', rules };
   }
 
   private applyStackGroupLogic(

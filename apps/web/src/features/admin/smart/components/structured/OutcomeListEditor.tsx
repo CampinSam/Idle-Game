@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import RefSelect, { ensureRefCache, getCachedRefRow } from '../RefSelect';
 import CollapsibleObject from '../CollapsibleObject';
-import RequirementsListEditor from './RequirementsListEditor';
+import RichSelectionEditor from './RichSelectionEditor';
 import { adminApi } from '../../../adminApi';
 import {
   containerStyle,
@@ -525,11 +525,12 @@ function OutcomeEntryEditor({
           {kind === 'bundle_ref' && (
             <div style={{ borderLeft: '2px solid #2a2a4e', marginLeft: 4, paddingLeft: 10 }}>
               <span style={{ ...labelStyle, display: 'block', marginBottom: 6 }}>requirements (optional)</span>
-              <RequirementsListEditor
-                value={Array.isArray(entry.requirements) ? entry.requirements : []}
+              <RichSelectionEditor
+                value={entry.requirements ?? null}
                 onChange={v => {
                   const next: any = { ...entry };
-                  if (Array.isArray(v) && v.length > 0) next.requirements = v;
+                  const hasRules = v && typeof v === 'object' && !Array.isArray(v) && Array.isArray(v.rules) && v.rules.length > 0;
+                  if (hasRules) next.requirements = v;
                   else delete next.requirements;
                   onChange(next);
                 }}

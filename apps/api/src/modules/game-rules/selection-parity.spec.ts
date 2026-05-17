@@ -50,14 +50,16 @@ import type { RichSelection, RichSelectionRule } from '@derp/shared';
 
 function makeGameRules(): GameRulesService {
   const fakePrisma: any = {};
-  const svc = new GameRulesService(fakePrisma);
+  const selectionResolver = makeSelectionResolver();
+  const svc = new GameRulesService(fakePrisma, selectionResolver);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return svc;
 }
 
 function makeSynergyResolver(): SynergyResolverService {
   const fakePrisma: any = {};
-  const svc = new SynergyResolverService(fakePrisma);
+  const selectionResolver = makeSelectionResolver();
+  const svc = new SynergyResolverService(fakePrisma, selectionResolver);
   (svc as any).logger = { warn: jest.fn(), log: jest.fn(), debug: jest.fn(), error: jest.fn() } as unknown as Logger;
   return svc;
 }

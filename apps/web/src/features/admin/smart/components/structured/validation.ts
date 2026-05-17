@@ -53,43 +53,21 @@ export function costListErrorCount(value: any): number {
   return validateCostList(value).reduce((n, e) => n + Object.keys(e).length, 0);
 }
 
-export interface RequirementErrors {
-  key?: string;
-  value?: string;
-}
-
-const REQUIREMENT_TYPES_NEEDING_KEY = new Set([
-  'flag',
-  'building',
-  'currency',
-  'item',
-  'trait',
-]);
-
-const OPERATORS_REQUIRING_VALUE = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte']);
-
-export function validateRequirement(req: any): RequirementErrors {
-  const errs: RequirementErrors = {};
-  const type = req?.type || 'keeper_level';
-  if (REQUIREMENT_TYPES_NEEDING_KEY.has(type) && isBlank(req?.key)) {
-    errs.key = 'key required';
-  }
-  const operator = req?.operator || 'eq';
-  if (OPERATORS_REQUIRING_VALUE.has(operator)) {
-    if (req?.value === undefined || req?.value === null || req?.value === '') {
-      errs.value = 'value required';
+export function richSelectionErrorCount(value: any): number {
+  if (!value) return 0;
+  if (Array.isArray(value)) return 0;
+  if (typeof value !== 'object' || !('op' in value) || !('rules' in value)) return 0;
+  let n = 0;
+  for (const rule of (value.rules ?? [])) {
+    if (Array.isArray(rule?.rules)) {
+      n += richSelectionErrorCount(rule);
+    } else {
+      if (!rule?.scope) n++;
+      if (!rule?.field) n++;
+      if (!rule?.operator) n++;
     }
   }
-  return errs;
-}
-
-export function validateRequirements(value: any): RequirementErrors[] {
-  const items = Array.isArray(value) ? value : [];
-  return items.map(validateRequirement);
-}
-
-export function requirementsErrorCount(value: any): number {
-  return validateRequirements(value).reduce((n, e) => n + Object.keys(e).length, 0);
+  return n;
 }
 
 export interface OutcomeErrors {
@@ -390,9 +368,8 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
   switch (type) {
     case 'costArray':
       return costListErrorCount(value);
-    case 'requirementsArray':
-    case 'requirementsBlock':
-      return requirementsErrorCount(value);
+    case 'richSelection':
+      return richSelectionErrorCount(value);
     case 'outcomeSpec':
       return outcomeSpecErrorCount(value);
     case 'timerSpec':

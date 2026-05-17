@@ -25,13 +25,6 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SynergyRule: 'synergyRule',
 };
 
-export interface BespokeFieldDescriptor {
-  label: string;
-  requirementType: string;
-  operator: string;
-  inputType?: 'number' | 'text';
-}
-
 export interface FieldDef {
   type: string;
   required?: boolean;
@@ -40,10 +33,6 @@ export interface FieldDef {
   enum?: string;
   refTable?: string;
   options?: string[];
-  /** Bespoke field descriptors for `requirementsBlock` type fields. */
-  bespokeFields?: BespokeFieldDescriptor[];
-  /** Section heading label for the bespoke fields panel in a `requirementsBlock`. */
-  bespokeSectionLabel?: string;
   /** Optional tab/section id this field belongs to. Only meaningful when the
    *  parent TableSchema declares `sections`. Fields without a section land
    *  in the first section. */
@@ -147,17 +136,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       timer: { type: 'timerSpec', description: 'Duration and skip settings' },
       success: { type: 'outcomeSpec', description: 'Success outcome' },
       failure: { type: 'outcomeSpec', description: 'Failure outcome' },
-      requirements: {
-        type: 'requirementsBlock',
-        default: [],
-        description: 'All conditions',
-        bespokeSectionLabel: 'Team Size',
-        bespokeFields: [
-          { label: 'Min Team Size', requirementType: 'team_size', operator: 'gte' },
-          { label: 'Max Team Size', requirementType: 'team_size', operator: 'lte' },
-        ],
-      },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      requirements:           { type: 'richSelection', default: null, description: 'Eligibility conditions (team size, keeper level, flags, etc.)' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       rewardPreview: { type: 'costArray', default: [], description: 'Reward preview' },
       cost: { type: 'costArray', default: [], description: 'Cost to start mission (currency/item entries)' },
@@ -183,8 +163,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       parentId: { type: 'ref', refTable: 'MissionCategoryDef', description: 'Parent category' },
       displayDefId: { type: 'ref', refTable: 'DisplayDef', description: 'Visual styling' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Access conditions' },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      requirements:           { type: 'richSelection', default: null, description: 'Access conditions' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       enabled: { type: 'boolean', default: true, description: 'Is active?' },
       sortOrder: { type: 'number', default: 0, description: 'Display order' },
       inlineOnly: { type: 'boolean', default: false, description: 'Treat as a leaf — disable drill-in; missions can only be launched via inline pills on the parent card' },
@@ -204,9 +184,9 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       timer: { type: 'timerSpec', description: 'Duration and skip settings' },
       requiredKeeperLevel: { type: 'number', default: 1, description: 'Min keeper level' },
       rewards: { type: 'outcomeSpec', default: {}, description: 'Crafting output' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Crafting conditions' },
+      requirements:           { type: 'richSelection', default: null, description: 'Crafting conditions' },
       effects: { type: 'effectsArray', default: [], description: 'Effects applied to entities on completion (array of { effectDefId, targetType })' },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       displayDefId: { type: 'ref', refTable: 'DisplayDef', description: 'Visual styling' },
       activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal while crafting' },
       readyModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal when crafting is ready (falls back to active)' },
@@ -226,8 +206,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       category: { type: 'string', description: 'Building category (e.g. PRODUCTION)' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       rules: { type: 'levelRules', default: { level: {}, maxLevel: 1 }, description: 'Level-keyed rules ({ level: { "1": { timer, constructionCost, ... } }, maxLevel })' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Construction conditions' },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      requirements: { type: 'richSelection', default: null, description: 'Construction conditions' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       displayDefId: { type: 'ref', refTable: 'DisplayDef', description: 'Visual styling' },
       activeModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal while under construction' },
       readyModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Custom modal when building is ready (falls back to active)' },
@@ -245,8 +225,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       description: { type: 'string', description: 'Flavor text' },
       tags: { type: 'stringArray', default: [], description: 'Classification tags' },
       rules: { type: 'levelRules', default: { level: {}, maxLevel: 1 }, description: 'Level-keyed rules ({ level: { "1": { timer, constructionCost, storage, ... } }, maxLevel })' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Construction conditions' },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      requirements: { type: 'richSelection', default: null, description: 'Construction conditions' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     },
   },
@@ -260,8 +240,8 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       isUnique: { type: 'boolean', default: false, description: 'Only one per player?' },
       rules: { type: 'locationLevelRules', default: {}, description: 'Level-based rules (maxLevel, xpCurve, baseXP, xpRate, xpDepositCosts, level[]) + unique NFT powers (uniques)' },
       productionProfile: { type: 'productionProfile', default: {}, description: 'Production profile (outputs, inputs, onStarve, enabled override)' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Acquisition conditions' },
-      visibilityRequirements: { type: 'requirementsArray', default: [], description: 'Visibility conditions' },
+      requirements: { type: 'richSelection', default: null, description: 'Acquisition conditions' },
+      visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions' },
       levelUpModalDefId: { type: 'ref', refTable: 'ModalDef', description: 'Optional ModalDef merged into the level-up modal' },
       data: { type: 'json', default: {}, description: 'Extra data' },
     },
@@ -349,7 +329,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       version: { type: 'number', default: 1, description: 'Schema version' },
       objectives: { type: 'objectivesArray', default: [], description: 'Quest objectives (array of { eventType, target, description })' },
       rewardSpec: { type: 'outcomeSpec', default: {}, description: 'Quest completion rewards' },
-      requirements: { type: 'requirementsArray', default: [], description: 'Conditions to unlock quest' },
+      requirements: { type: 'richSelection', default: null, description: 'Conditions to unlock quest' },
       repeatable: { type: 'boolean', default: false, description: 'Can be completed multiple times?' },
       enabled: { type: 'boolean', default: true, description: 'Active?' },
       sortOrder: { type: 'number', default: 0, description: 'Display sort order' },
