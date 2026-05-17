@@ -778,12 +778,6 @@
         "borderColor": {
           "type": "string",
           "description": "CSS border colour, e.g. 'rgba(167,139,250,0.55)'"
-        },
-        "opacity": {
-          "type": "number",
-          "min": 0,
-          "max": 1,
-          "description": "Overall element opacity (0 = invisible, 1 = fully opaque)"
         }
       }
     },
