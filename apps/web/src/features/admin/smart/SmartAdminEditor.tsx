@@ -287,7 +287,14 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     return msgs;
   }, [schema, editorState.record]);
 
-  const structuredErrorCount = structuredErrorMessages.length;
+  const structuredErrorCount = useMemo(() => {
+    if (!schema || !editorState.record) return 0;
+    let n = 0;
+    Object.entries(schema.fields).forEach(([fname, fdef]) => {
+      n += structuredFieldErrorCount(fdef.type, editorState.record![fname]);
+    });
+    return n;
+  }, [schema, editorState.record]);
 
   const handleSave = async () => {
     if (!editorState.record) return;
