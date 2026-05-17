@@ -407,6 +407,37 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
   }
 }
 
+function uniquesMessages(value: any, fieldName: string): string[] {
+  const msgs: string[] = [];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return msgs;
+  for (const [key, entry] of Object.entries(value) as [string, any][]) {
+    const keyLabel = key && key.trim() ? key : '(blank key)';
+    if (!key || key.trim() === '') {
+      msgs.push(`${fieldName}.${keyLabel}: key is blank`);
+    }
+    if (!entry || typeof entry !== 'object') {
+      msgs.push(`${fieldName}.${keyLabel}: invalid entry`);
+      continue;
+    }
+    const powers = entry.powers;
+    if (!Array.isArray(powers)) {
+      msgs.push(`${fieldName}.${keyLabel}: powers must be an array`);
+      continue;
+    }
+    powers.forEach((p: any, i: number) => {
+      if (!p || typeof p !== 'object') {
+        msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: invalid power`);
+        return;
+      }
+      if (!p.powerType) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: powerType required`);
+      if (p.value === undefined || p.value === null || isNaN(Number(p.value))) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: value required`);
+      if (!p.durationMinutes || Number(p.durationMinutes) < 1) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: durationMinutes must be ≥ 1`);
+      if (!p.dailyLimit || Number(p.dailyLimit) < 1) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: dailyLimit must be ≥ 1`);
+    });
+  }
+  return msgs;
+}
+
 function richSelectionMessages(value: any, prefix: string): string[] {
   const msgs: string[] = [];
   if (!value || Array.isArray(value)) return msgs;
@@ -484,6 +515,9 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
     }
     case 'mastery': {
       return masteryErrorCount(value) > 0 ? [`${fieldName}: invalid mastery config`] : [];
+    }
+    case 'rulesWithUniques': {
+      return uniquesMessages((value as any)?.uniques, `${fieldName}.uniques`);
     }
     default: {
       const n = structuredFieldErrorCount(type, value);
