@@ -6,7 +6,7 @@ import {
   fieldGroupStyle,
   sectionStyle,
 } from './editorStyles';
-import type { StructuredEditorProps } from './editorContract';
+import { type StructuredEditorProps, omitKey } from './editorContract';
 
 export interface SynergySelector {
   entityTypes?: string[];
@@ -161,11 +161,11 @@ export default function SynergySelectorEditor({ value, onChange }: Props) {
   const sel: SynergySelector = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
 
   const set = <K extends keyof SynergySelector>(key: K, v: SynergySelector[K]) => {
-    const isEmptyArray = Array.isArray(v) && (v as any[]).length === 0;
+    const isEmptyArray = Array.isArray(v) && (v as unknown[]).length === 0;
     const isUndefined = v === undefined || v === null || isEmptyArray;
     if (isUndefined) {
-      const { [key]: _, ...rest } = sel as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(sel, key);
+      onChange(Object.keys(rest).length > 0 ? rest as SynergySelector : EMPTY);
     } else {
       onChange({ ...sel, [key]: v });
     }

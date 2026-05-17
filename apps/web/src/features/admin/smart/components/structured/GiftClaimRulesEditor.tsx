@@ -7,7 +7,7 @@ import {
   containerStyle,
 } from './editorStyles';
 import { errorTextStyle } from './validation';
-import type { StructuredEditorProps } from './editorContract';
+import { type StructuredEditorProps, omitKey } from './editorContract';
 
 export interface GiftClaimRules {
   limitPerPlayer?: number;
@@ -50,8 +50,8 @@ export default function GiftClaimRulesEditor({ value, onChange }: Props) {
 
   const set = <K extends keyof GiftClaimRules>(key: K, v: number | undefined) => {
     if (v === undefined) {
-      const { [key]: _, ...rest } = rules as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(rules, key);
+      onChange(Object.keys(rest).length > 0 ? rest as GiftClaimRules : EMPTY);
     } else {
       onChange({ ...rules, [key]: v });
     }

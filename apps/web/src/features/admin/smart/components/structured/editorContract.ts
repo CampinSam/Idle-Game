@@ -33,3 +33,13 @@ export const errorWrapperStyle: CSSProperties = {
   outlineOffset: 0,
   borderRadius: 4,
 };
+
+/**
+ * Typed key-omit helper. Removes `key` from a shallow copy of `obj`.
+ * Avoids `as any` in editor key-removal patterns.
+ */
+export function omitKey<T extends object, K extends keyof T>(obj: T, key: K): Omit<T, K> {
+  const copy = { ...obj } as Partial<T>;
+  delete copy[key];
+  return copy as Omit<T, K>;
+}

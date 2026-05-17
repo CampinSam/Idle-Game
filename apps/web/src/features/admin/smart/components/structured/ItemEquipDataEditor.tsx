@@ -7,7 +7,7 @@ import {
   containerStyle,
 } from './editorStyles';
 import { errorTextStyle } from './validation';
-import type { StructuredEditorProps } from './editorContract';
+import { type StructuredEditorProps, omitKey } from './editorContract';
 
 export interface ItemEquipData {
   slot?: string;
@@ -43,8 +43,8 @@ export default function ItemEquipDataEditor({ value, onChange }: Props) {
 
   const setSlot = (slot: string) => {
     if (slot === '') {
-      const { slot: _, ...rest } = data as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(data, 'slot');
+      onChange(Object.keys(rest).length > 0 ? rest as ItemEquipData : EMPTY);
     } else {
       onChange({ ...data, slot });
     }
@@ -52,8 +52,8 @@ export default function ItemEquipDataEditor({ value, onChange }: Props) {
 
   const setStats = (stats: Record<string, number | number[]>) => {
     if (Object.keys(stats).length === 0) {
-      const { stats: _, ...rest } = data as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(data, 'stats');
+      onChange(Object.keys(rest).length > 0 ? rest as ItemEquipData : EMPTY);
     } else {
       onChange({ ...data, stats });
     }

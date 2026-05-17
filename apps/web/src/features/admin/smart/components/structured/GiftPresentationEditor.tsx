@@ -5,7 +5,7 @@ import {
   sectionStyle,
   containerStyle,
 } from './editorStyles';
-import type { StructuredEditorProps } from './editorContract';
+import { type StructuredEditorProps, omitKey } from './editorContract';
 
 export interface GiftPresentation {
   iconKey?: string;
@@ -33,8 +33,8 @@ export default function GiftPresentationEditor({ value, onChange }: Props) {
 
   const set = <K extends keyof GiftPresentation>(key: K, v: string) => {
     if (v === '') {
-      const { [key]: _, ...rest } = pres as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(pres, key);
+      onChange(Object.keys(rest).length > 0 ? rest as GiftPresentation : EMPTY);
     } else {
       onChange({ ...pres, [key]: v });
     }

@@ -6,7 +6,7 @@ import {
   sectionStyle,
   containerStyle,
 } from './editorStyles';
-import type { StructuredEditorProps } from './editorContract';
+import { type StructuredEditorProps, omitKey } from './editorContract';
 
 export interface SynergyRuleContext {
   activityTypes?: string[];
@@ -133,11 +133,11 @@ export default function SynergyContextEditor({ value, onChange }: Props) {
   const ctx: SynergyRuleContext = (value && typeof value === 'object' && !Array.isArray(value)) ? value : EMPTY;
 
   const set = <K extends keyof SynergyRuleContext>(key: K, v: SynergyRuleContext[K]) => {
-    const isEmptyArray = Array.isArray(v) && (v as any[]).length === 0;
+    const isEmptyArray = Array.isArray(v) && (v as unknown[]).length === 0;
     const isUndefined = v === undefined || v === null || isEmptyArray;
     if (isUndefined) {
-      const { [key]: _, ...rest } = ctx as any;
-      onChange(Object.keys(rest).length > 0 ? rest : EMPTY);
+      const rest = omitKey(ctx, key);
+      onChange(Object.keys(rest).length > 0 ? rest as SynergyRuleContext : EMPTY);
     } else {
       onChange({ ...ctx, [key]: v });
     }
