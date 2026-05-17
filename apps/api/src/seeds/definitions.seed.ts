@@ -289,5 +289,106 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
+  await seedNftUniquePowers(prisma);
+
   logger.log('Definition seeding complete');
+}
+
+/**
+ * The ordered list of GlobalPowerType values used for deterministic power
+ * assignment. `tick_boost` is intentionally excluded — it is a legacy alias
+ * remapped to `tick_speed_boost` at trigger time and should not appear in new
+ * seed data.
+ */
+const NFT_POWER_TYPES = [
+  'tick_speed_boost',
+  'keeper_xp_boost',
+  'entity_xp_boost',
+  'mission_power_boost',
+  'mission_duration_reduction',
+  'crafting_duration_reduction',
+  'building_build_duration_reduction',
+  'building_upgrade_duration_reduction',
+  'injury_recovery_boost',
+] as const;
+
+const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
+
+function buildUniquesMap(assetIds: string[]): Record<string, { powers: { powerType: string; value: number; durationMinutes: number; dailyLimit: number }[] }> {
+  const uniques: Record<string, any> = {};
+  for (let i = 0; i < assetIds.length; i++) {
+    const id = assetIds[i];
+    const powerType = NFT_POWER_TYPES[i % NFT_POWER_TYPES.length];
+    const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
+    uniques[id] = {
+      powers: [{ powerType, value, durationMinutes: 60, dailyLimit: 1 }],
+    };
+  }
+  return uniques;
+}
+
+/**
+ * Merge `rules.uniques` onto entity_definitions and location_definitions using
+ * the asset ID lists in nft-unique-powers.json. Runs after the main definition
+ * seed so the base records already exist. Power types are assigned
+ * deterministically (cycling through NFT_POWER_TYPES by index) so the output
+ * is stable across boots. Existing rules keys (e.g. `level` on derp_outpost)
+ * are preserved — only the `uniques` key is overwritten.
+ */
+async function seedNftUniquePowers(prisma: any) {
+  const data = loadJson('nft-unique-powers.json');
+  if (!data) {
+    logger.warn('nft-unique-powers.json not found — skipping NFT unique power seed');
+    return;
+  }
+
+  if (Array.isArray(data.entityDefinitions)) {
+    for (const entry of data.entityDefinitions) {
+      const { definitionId, assetIds } = entry;
+      if (!definitionId || !Array.isArray(assetIds) || assetIds.length === 0) continue;
+
+      const existing = await prisma.entityDefinition.findUnique({
+        where: { id: definitionId },
+        select: { rules: true },
+      });
+      if (!existing) {
+        logger.warn(`entityDefinition "${definitionId}" not found — skipping NFT unique powers for it`);
+        continue;
+      }
+
+      const currentRules = (existing.rules as any) || {};
+      const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
+
+      await prisma.entityDefinition.update({
+        where: { id: definitionId },
+        data: { rules: mergedRules },
+      });
+      logger.log(`NFT unique powers: seeded ${assetIds.length} entries on entityDefinition "${definitionId}"`);
+    }
+  }
+
+  if (Array.isArray(data.locationDefinitions)) {
+    for (const entry of data.locationDefinitions) {
+      const { definitionId, assetIds } = entry;
+      if (!definitionId || !Array.isArray(assetIds) || assetIds.length === 0) continue;
+
+      const existing = await prisma.locationDefinition.findUnique({
+        where: { id: definitionId },
+        select: { rules: true },
+      });
+      if (!existing) {
+        logger.warn(`locationDefinition "${definitionId}" not found — skipping NFT unique powers for it`);
+        continue;
+      }
+
+      const currentRules = (existing.rules as any) || {};
+      const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
+
+      await prisma.locationDefinition.update({
+        where: { id: definitionId },
+        data: { rules: mergedRules },
+      });
+      logger.log(`NFT unique powers: seeded ${assetIds.length} entries on locationDefinition "${definitionId}"`);
+    }
+  }
 }
