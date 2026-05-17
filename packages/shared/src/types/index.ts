@@ -9,3 +9,4 @@ export * from './command-pipeline';
 export * from './effects';
 export * from './displayStyle';
 export * from './location';
+export * from './rich-selection';

@@ -41,6 +41,7 @@ import { EffectModule } from './modules/effect/effect.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { ClientErrorsModule } from './modules/client-errors/client-errors.module';
 import { SynergyModule } from './modules/synergy/synergy.module';
+import { SelectionModule } from './modules/selection/selection.module';
 
 const isProductionLog = process.env.NODE_ENV === 'production';
 
@@ -159,6 +160,7 @@ const imports: any[] = [
   AudioModule,
   ClientErrorsModule,
   SynergyModule,
+  SelectionModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {
