@@ -37,7 +37,8 @@ type OutcomeKind =
   | 'keeper_xp'
   | 'flag'
   | 'text'
-  | 'effect';
+  | 'effect'
+  | 'nothing';
 
 interface Outcome {
   type?: string;
@@ -75,6 +76,7 @@ function detectKind(entry: Outcome): OutcomeKind {
   if (t === 'flag') return 'flag';
   if (t === 'text') return 'text';
   if (t === 'effect') return 'effect';
+  if (t === 'nothing') return 'nothing';
   return 'currency';
 }
 
@@ -100,6 +102,8 @@ function defaultForKind(kind: OutcomeKind): Outcome {
       return { type: 'text', message: '' };
     case 'effect':
       return { type: 'effect', odds: 100 };
+    case 'nothing':
+      return { type: 'nothing', odds: 98 };
   }
 }
 
@@ -116,6 +120,7 @@ function summary(entry: Outcome): string {
   if (kind === 'flag') return `flag ${entry.operation || 'set'} ${entry.key || '?'}`;
   if (kind === 'text') return `text "${(entry.message || '').slice(0, 30)}"`;
   if (kind === 'effect') return `effect (odds ${entry.odds ?? 100}%)`;
+  if (kind === 'nothing') return `nothing (weight ${entry.odds ?? 98})`;
   return 'outcome';
 }
 
@@ -270,6 +275,7 @@ function OutcomeEntryEditor({
                 <option value="flag">flag</option>
                 <option value="text">text</option>
                 <option value="effect">effect</option>
+                <option value="nothing">nothing</option>
               </select>
             </div>
 
@@ -350,6 +356,20 @@ function OutcomeEntryEditor({
                   />
                 </div>
               </>
+            )}
+
+            {kind === 'nothing' && (
+              <div style={fieldGroupStyle}>
+                <span style={labelStyle}>weight</span>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={entry.odds ?? ''}
+                  onChange={e => onChange({ ...entry, odds: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  style={{ ...numberInputStyle, width: '100%' }}
+                />
+              </div>
             )}
 
             {kind === 'effect' && (
@@ -563,6 +583,7 @@ function OutcomeArrayEditor({ items, onChange }: { items: Outcome[]; onChange: (
         <button type="button" style={addButtonStyle} onClick={() => add('flag')}>+ flag</button>
         <button type="button" style={addButtonStyle} onClick={() => add('text')}>+ text</button>
         <button type="button" style={addButtonStyle} onClick={() => add('effect')}>+ effect</button>
+        <button type="button" style={addButtonStyle} onClick={() => add('nothing')}>+ nothing</button>
       </div>
       <OutcomeTestPanel spec={items} />
     </div>

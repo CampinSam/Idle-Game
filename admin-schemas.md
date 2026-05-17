@@ -410,3 +410,64 @@ Controls the inline mission-launch buttons shown on Mission Category cards.
 | Key | Type | Description |
 |-----|------|-------------|
 | `_mode` | `"missionCategory"` \| `"mission"` \| `"generic"` | Remembers which editing context was last selected in `DisplayStyleEditor`. Persisted so the choice survives navigation. **Ignored by the game engine.** |
+
+---
+
+## Outcome Entry Types
+
+Outcome arrays appear on mission `success` / `failure` blocks and inside bundle defs. Each entry in a `rewards` array is one of the following types.
+
+### Common fields
+
+| Field | Applies to | Description |
+|-------|-----------|-------------|
+| `type` | all leaf types | Discriminator string — see type table below |
+| `odds` | most types | In **flat** resolve: percentage gate (0–100). In **pick-mode** bundles (`pickMin`/`pickMax`): relative weight used by the weighted-random picker. |
+
+### Entry types
+
+| `type` | Fields | Description |
+|--------|--------|-------------|
+| `currency` | `key`, `min`, `max`, `odds` | Grants `min`–`max` units of the named currency |
+| `item` | `key`, `min`, `max`, `odds` | Grants `min`–`max` copies of the named item |
+| `entity_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP split across all mission entities |
+| `keeper_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP to the keeper (player account) |
+| `flag` | `operation`, `key`, `value`, `odds` | Mutates a user flag. Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove` |
+| `text` | `message`, `odds` | Weighted flavor-text entry; the resolver picks one text per bundle pass and surfaces it in the result modal |
+| `emitEvent` | `defId`, `payload`, `idempotencyKey`, `odds` | Dispatches a named game event |
+| `nothing` | `odds` | **No-op weight entry** — selected by the picker but grants nothing. Use this to express low-probability rewards in pick-mode bundles (see example below). |
+| `effect` | `odds`, _any effect fields_ | **UI only — backend not yet wired.** Placeholder for a future in-game effect grant. |
+
+### Inline bundle / pick-bundle wrapper
+
+| Field | Description |
+|-------|-------------|
+| `bundle` | Array of leaf entries — when present the entry is an inline bundle |
+| `pickMin` / `pickMax` | If set, `bundle` is resolved in pick-mode: `pickMin`–`pickMax` entries are drawn by weighted-random selection |
+| `odds` | On a bundle wrapper: gate odds (flat) or weight (pick-mode parent) |
+
+### `bundle_ref` — reference to a BundleDef
+
+| Field | Description |
+|-------|-------------|
+| `type` | `"bundle_ref"` |
+| `bundleDefId` | ID of the `BundleDef` record to expand |
+| `odds` | Override the def's own odds (leave unset to use the def's value) |
+| `pickMin` / `pickMax` | Override the def's pick range |
+
+### Using `nothing` to express low-probability rewards
+
+In pick-mode bundles `odds` values are **relative weights**, not percentages. To express a 2% chance of dropping an item alongside a 98% chance of nothing:
+
+```json
+{
+  "bundle": [
+    { "type": "item", "key": "mat_golden_hay_core", "min": 1, "max": 1, "odds": 2 },
+    { "type": "nothing", "odds": 98 }
+  ],
+  "pickMin": 1,
+  "pickMax": 1
+}
+```
+
+The picker draws one entry. `nothing` wins ~98% of the time and produces no reward.

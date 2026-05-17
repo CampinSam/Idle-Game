@@ -462,6 +462,7 @@ export class GameRulesService {
           }
         } else {
           if (item.type === 'text') continue;
+          if (item.type === 'nothing') continue;
           if (item.type === 'flag') {
             if (!this.rollOdds(item.odds, rng)) continue;
             switch (item.operation) {
