@@ -83,7 +83,7 @@ class ClientErrorDto {
 // scope below is what's actually enforced.
 @Controller('v1')
 @UseGuards(ThrottlerGuard)
-@SkipThrottle({ commands: true, auth: true })
+@SkipThrottle({ commands: true, auth: true, synergyPreview: true })
 export class ClientErrorsController {
   private readonly logger = new Logger('ClientError');
 

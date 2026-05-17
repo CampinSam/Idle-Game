@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Param, Body, UseGuards, Headers } from '@nestjs/common';
 import { IsString, IsArray, ArrayMinSize } from 'class-validator';
+import { SkipThrottle } from '@nestjs/throttler';
+import { UserThrottlerGuard } from '../../common/guards/user-throttler.guard';
 import { MissionService } from './mission.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -84,6 +86,8 @@ export class MissionController {
   }
 
   @Post('synergy-preview')
+  @UseGuards(UserThrottlerGuard)
+  @SkipThrottle({ commands: true, auth: true, clientErrors: true })
   getSynergyPreview(
     @CurrentUser() user: { id: string },
     @Body() dto: SynergyPreviewDto,

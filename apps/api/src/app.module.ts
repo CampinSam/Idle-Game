@@ -115,6 +115,15 @@ const imports: any[] = [
       ttl: 60_000,
       limit: 60,
     },
+    {
+      // Synergy-preview runs full resolver evaluation (DB + matching logic)
+      // on every debounced team change. 30/min is well above normal gameplay
+      // (a player picks a team at most a few times per minute) while
+      // preventing a malicious client from hammering the DB.
+      name: 'synergyPreview',
+      ttl: 60_000,
+      limit: 30,
+    },
   ]),
   PrismaModule,
   GameRulesModule,
