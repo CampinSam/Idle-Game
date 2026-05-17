@@ -721,8 +721,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                 )}
                 {structuredErrorCount > 0 && (
                   <details style={{ flexShrink: 0, maxWidth: 320 }}>
-                    <summary style={{ color: '#ef4444', fontSize: 12, cursor: 'pointer', userSelect: 'none', listStyle: 'none' }}>
-                      ▸ {structuredErrorCount} validation issue{structuredErrorCount === 1 ? '' : 's'}
+                    <summary style={{ color: '#ef4444', fontSize: 12, cursor: 'pointer', userSelect: 'none' }}>
+                      {structuredErrorCount} validation issue{structuredErrorCount === 1 ? '' : 's'}
                     </summary>
                     <ul style={{ margin: '4px 0 0 8px', padding: 0, listStyle: 'none' }}>
                       {structuredErrorMessages.map((msg, i) => (

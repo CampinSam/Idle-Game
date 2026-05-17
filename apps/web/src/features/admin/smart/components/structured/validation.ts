@@ -521,7 +521,7 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
     }
     default: {
       const n = structuredFieldErrorCount(type, value);
-      return n > 0 ? [`${fieldName}: ${n} issue${n === 1 ? '' : 's'}`] : [];
+      return n > 0 ? [`${fieldName}: ${n} issue(s)`] : [];
     }
   }
 }
