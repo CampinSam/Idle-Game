@@ -2343,9 +2343,9 @@
           "description": "Level-based rules (workers, buildings, rooms, storage, production, construction costs)"
         },
         "productionProfile": {
-          "type": "json",
+          "type": "productionProfile",
           "default": {},
-          "description": "Production configuration"
+          "description": "Production profile: outputs[] and inputs[] (ResourceEntry arrays with ratePerHour), optional onStarve (starved|paused), optional enabled boolean"
         },
         "requirements": {
           "$ref": "#/complexTypes/Requirements",

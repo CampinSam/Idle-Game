@@ -360,7 +360,7 @@ Defines a type of player-owned location (outpost). Locations contain buildings, 
 | `regionId` | string | No | — | References a [RegionDefinition](#regiondefinition) |
 | `isUnique` | boolean | No | false | Whether only one instance of this location can exist per player |
 | `rules` | JSON | No | `{}` | Level-based rules (see [Unified Level-Based Rules System](#unified-level-based-rules-system)) |
-| `productionProfile` | JSON | No | `{}` | Additional production configuration |
+| `productionProfile` | structured | No | `{}` | Production profile — `outputs[]`, `inputs[]` (ResourceEntry arrays with ratePerHour), optional `onStarve` (`starved`\|`paused`), optional `enabled` boolean |
 | `requirements` | JSON | No | `[]` | Conditions to acquire this location (see [Requirements](#requirements)) |
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for this location to appear (see [Visibility Requirements](#visibility-requirements)) |
 | `levelUpModalDefId` | string | No | — | Optional `ModalDef.id`. When set, its spec is merged into the auto-generated outpost level-up modal (header/body overrides + replaced buttons) so designers can theme each outpost's celebration. |

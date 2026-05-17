@@ -8,6 +8,7 @@ import { homeBannerConfigErrorCount } from './HomeBannerConfigEditor';
 import { eventSecurityErrorCount } from './EventSecurityEditor';
 import { levelRulesErrorCount } from './LevelRulesEditor';
 import { locationLevelRulesErrorCount } from './LocationLevelRulesEditor';
+import { productionProfileErrorCount } from './ProductionProfileEditor';
 
 // Re-export shared contract types so existing editor imports keep working.
 export type { StructuredEditorProps, ValidationResult } from './editorContract';
@@ -426,6 +427,8 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return levelRulesErrorCount(value);
     case 'locationLevelRules':
       return locationLevelRulesErrorCount(value);
+    case 'productionProfile':
+      return productionProfileErrorCount(value);
     default:
       return 0;
   }

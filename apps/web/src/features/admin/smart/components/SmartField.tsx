@@ -34,6 +34,7 @@ import HomeBannerConfigEditor from './structured/HomeBannerConfigEditor';
 import EventSecurityEditor from './structured/EventSecurityEditor';
 import LevelRulesEditor from './structured/LevelRulesEditor';
 import LocationLevelRulesEditor from './structured/LocationLevelRulesEditor';
+import ProductionProfileEditor from './structured/ProductionProfileEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -72,6 +73,7 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   eventSecurity:     { Component: EventSecurityEditor,     safe: 'object' },
   levelRules:           { Component: LevelRulesEditor,            safe: 'passthrough' },
   locationLevelRules:   { Component: LocationLevelRulesEditor,    safe: 'passthrough' },
+  productionProfile:    { Component: ProductionProfileEditor,     safe: 'passthrough' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {
