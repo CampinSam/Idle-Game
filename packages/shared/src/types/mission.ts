@@ -1,3 +1,5 @@
+import type { Requirements } from './rich-selection';
+
 export type MissionStatus = 'active' | 'completed' | 'failed';
 
 export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
@@ -45,7 +47,7 @@ export interface OutcomeBundle {
   odds?: number;
   pickMin?: number;
   pickMax?: number;
-  requirements?: Requirement[];
+  requirements?: Requirements;
 }
 
 export interface BundleRefEntry {
@@ -54,7 +56,7 @@ export interface BundleRefEntry {
   odds?: number;
   pickMin?: number;
   pickMax?: number;
-  requirements?: Requirement[];
+  requirements?: Requirements;
 }
 
 export interface BundleDefinition {
@@ -85,8 +87,8 @@ export interface MissionDefinition {
   timer: import('./timer').Timer;
   success: OutcomeBlock;
   failure: OutcomeBlock;
-  requirements: Requirement[];
-  visibilityRequirements?: Requirement[];
+  requirements: Requirements;
+  visibilityRequirements?: Requirements;
 }
 
 export interface Mission {

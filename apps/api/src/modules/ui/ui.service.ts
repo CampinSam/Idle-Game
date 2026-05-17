@@ -515,7 +515,8 @@ export class UiService {
         valueItems: [{ assetKey: cost.id, amount: amt }],
       });
     }
-    for (const req of requirements) {
+    const reqArray: any[] = Array.isArray(requirements) ? requirements : [];
+    for (const req of reqArray) {
       const met = this.gameRulesService.checkRequirement(req, reqContext);
       const status = met ? ' ✓' : ' ✗';
       if (req.type === 'keeper_level') {

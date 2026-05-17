@@ -23,8 +23,6 @@ import { AscensionEditor, MasteryEditor } from './structured/AscensionMasteryEdi
 import InitEditor from './structured/InitEditor';
 import ModalSpecEditor from '../../modal-editor/ModalSpecEditor';
 import UniquesEditor from './structured/UniquesEditor';
-import SynergySelectorEditor from './structured/SynergySelectorEditor';
-import SynergyContextEditor from './structured/SynergyContextEditor';
 import SynergyEffectsEditor from './structured/SynergyEffectsEditor';
 import GiftPresentationEditor from './structured/GiftPresentationEditor';
 import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
@@ -62,8 +60,6 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   mastery:           { Component: MasteryEditor,           safe: 'passthrough' },
   init:              { Component: InitEditor,              safe: 'passthrough' },
   modalSpec:         { Component: ModalSpecEditor,         safe: 'passthrough' },
-  synergySelector:   { Component: SynergySelectorEditor,   safe: 'object' },
-  synergyContext:    { Component: SynergyContextEditor,    safe: 'object' },
   synergyEffectsArray: { Component: SynergyEffectsEditor, safe: 'array' },
   giftPresentation:  { Component: GiftPresentationEditor,  safe: 'object' },
   giftClaimRules:    { Component: GiftClaimRulesEditor,    safe: 'object' },

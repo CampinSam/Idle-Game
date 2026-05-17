@@ -1,4 +1,5 @@
-import type { Requirement, RewardOrBundle, EffectOrBundle } from './mission';
+import type { RewardOrBundle, EffectOrBundle } from './mission';
+import type { Requirements } from './rich-selection';
 import type { SkipCostEntry } from './timer';
 
 export type CraftingRecipeId = string;
@@ -13,9 +14,9 @@ export interface CraftingRecipe {
   timer: import('./timer').Timer;
   requiredKeeperLevel: number;
   rewards?: RewardOrBundle[];
-  requirements?: Requirement[];
+  requirements?: Requirements;
   effects?: EffectOrBundle[];
-  visibilityRequirements?: Requirement[];
+  visibilityRequirements?: Requirements;
 }
 
 export type CraftingJobStatus = 'active' | 'ready_notified' | 'completed' | 'collected';

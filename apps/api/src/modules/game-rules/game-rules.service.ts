@@ -23,6 +23,7 @@ export interface RequirementContext {
   allPlayerLocations?: LocationContext[];
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
+  teamSize?: number;
 }
 
 @Injectable()
@@ -121,6 +122,16 @@ export class GameRulesService {
         ? {
             buildingDefId: context.parentBuilding.buildingDefId,
             rooms: context.parentBuilding.rooms ?? [],
+          }
+        : undefined,
+      missionContext: context.teamSize !== undefined
+        ? {
+            activityType: '',
+            missionType: undefined,
+            missionTags: [],
+            regionId: undefined,
+            seasonId: undefined,
+            teamSize: context.teamSize,
           }
         : undefined,
     };

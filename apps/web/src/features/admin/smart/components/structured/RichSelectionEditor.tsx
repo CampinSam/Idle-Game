@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { RichSelection, RichSelectionRule, ScopeType, OperatorType, AggregateType } from '@derp/shared';
 import {
   containerStyle,
@@ -112,13 +112,36 @@ function upgradeFromLegacy(items: any[]): RichSelection {
   return { op: 'AND', rules };
 }
 
+const reorderBtnBase: CSSProperties = {
+  padding: '1px 4px',
+  background: 'transparent',
+  border: '1px solid #333',
+  borderRadius: 3,
+  color: '#666',
+  cursor: 'pointer',
+  fontSize: 10,
+  lineHeight: 1,
+  fontFamily: 'inherit',
+};
+
+const reorderBtnDisabled: CSSProperties = {
+  ...reorderBtnBase,
+  color: '#333',
+  borderColor: '#222',
+  cursor: 'default',
+};
+
 interface RuleEditorProps {
   rule: RichSelectionRule;
   onChange: (r: RichSelectionRule) => void;
   onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }
 
-function RuleEditor({ rule, onChange, onRemove }: RuleEditorProps) {
+function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast }: RuleEditorProps) {
   const needsValue = rule.operator !== 'exists' && rule.operator !== 'not_exists';
   const showAggregate = MULTI_ENTITY_SCOPES.has(rule.scope);
 
@@ -157,86 +180,109 @@ function RuleEditor({ rule, onChange, onRemove }: RuleEditorProps) {
   };
 
   return (
-    <div style={rowStyle}>
-      <div style={{ ...fieldGroupStyle, minWidth: 100 }}>
-        <span style={labelStyle}>scope</span>
-        <select
-          value={rule.scope}
-          onChange={e => set('scope', e.target.value as ScopeType)}
-          style={{ ...selectStyle, width: '100%' }}
+    <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 6 }}>
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={isFirst}
+          style={isFirst ? reorderBtnDisabled : reorderBtnBase}
+          title="Move up"
         >
-          {SCOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+          ↑
+        </button>
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={isLast}
+          style={isLast ? reorderBtnDisabled : reorderBtnBase}
+          title="Move down"
+        >
+          ↓
+        </button>
       </div>
 
-      <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 140 }}>
-        <span style={labelStyle}>field</span>
-        <input
-          type="text"
-          value={rule.field}
-          onChange={e => set('field', e.target.value)}
-          placeholder="e.g. keeperLevel, flags.key"
-          style={{ ...inputStyle, width: '100%' }}
-        />
-      </div>
-
-      {showAggregate && (
-        <div style={{ ...fieldGroupStyle, minWidth: 80 }}>
-          <span style={labelStyle}>aggregate</span>
+      <div style={{ ...rowStyle, flex: 1, minWidth: 0 }}>
+        <div style={{ ...fieldGroupStyle, minWidth: 100 }}>
+          <span style={labelStyle}>scope</span>
           <select
-            value={rule.aggregate ?? 'self'}
-            onChange={e => set('aggregate', e.target.value as AggregateType)}
+            value={rule.scope}
+            onChange={e => set('scope', e.target.value as ScopeType)}
             style={{ ...selectStyle, width: '100%' }}
           >
-            {AGGREGATE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+            {SCOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-      )}
 
-      <div style={{ ...fieldGroupStyle, minWidth: 90 }}>
-        <span style={labelStyle}>operator</span>
-        <select
-          value={rule.operator}
-          onChange={e => set('operator', e.target.value as OperatorType)}
-          style={{ ...selectStyle, width: '100%' }}
+        <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 140 }}>
+          <span style={labelStyle}>field</span>
+          <input
+            type="text"
+            value={rule.field}
+            onChange={e => set('field', e.target.value)}
+            placeholder="e.g. keeperLevel, flags.key"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+
+        {showAggregate && (
+          <div style={{ ...fieldGroupStyle, minWidth: 80 }}>
+            <span style={labelStyle}>aggregate</span>
+            <select
+              value={rule.aggregate ?? 'self'}
+              onChange={e => set('aggregate', e.target.value as AggregateType)}
+              style={{ ...selectStyle, width: '100%' }}
+            >
+              {AGGREGATE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+        )}
+
+        <div style={{ ...fieldGroupStyle, minWidth: 90 }}>
+          <span style={labelStyle}>operator</span>
+          <select
+            value={rule.operator}
+            onChange={e => set('operator', e.target.value as OperatorType)}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            {OPERATOR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+
+        {needsValue && (
+          <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
+            <span style={labelStyle}>value</span>
+            <input
+              type="text"
+              value={valueStr}
+              onChange={e => set('value', parseValue(e.target.value))}
+              placeholder='number, "text", or ["a","b"]'
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </div>
+        )}
+
+        {rule.label && (
+          <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
+            <span style={labelStyle}>label</span>
+            <input
+              type="text"
+              value={rule.label}
+              onChange={e => set('label', e.target.value || undefined)}
+              style={{ ...inputStyle, width: '100%' }}
+            />
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{ ...dangerIconButtonStyle, alignSelf: 'flex-end', marginBottom: 1 }}
+          title="Remove rule"
         >
-          {OPERATOR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
+          ×
+        </button>
       </div>
-
-      {needsValue && (
-        <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
-          <span style={labelStyle}>value</span>
-          <input
-            type="text"
-            value={valueStr}
-            onChange={e => set('value', parseValue(e.target.value))}
-            placeholder='number, "text", or ["a","b"]'
-            style={{ ...inputStyle, width: '100%' }}
-          />
-        </div>
-      )}
-
-      {rule.label && (
-        <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
-          <span style={labelStyle}>label</span>
-          <input
-            type="text"
-            value={rule.label}
-            onChange={e => set('label', e.target.value || undefined)}
-            style={{ ...inputStyle, width: '100%' }}
-          />
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={onRemove}
-        style={{ ...dangerIconButtonStyle, alignSelf: 'flex-end', marginBottom: 1 }}
-        title="Remove rule"
-      >
-        ×
-      </button>
     </div>
   );
 }
@@ -245,11 +291,26 @@ interface GroupEditorProps {
   node: RichSelection;
   onChange: (n: RichSelection) => void;
   onRemove?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
   depth?: number;
 }
 
-function GroupEditor({ node, onChange, onRemove, depth = 0 }: GroupEditorProps) {
+function GroupEditor({
+  node,
+  onChange,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  isFirst = true,
+  isLast = true,
+  depth = 0,
+}: GroupEditorProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const color = OP_COLOR[node.op] ?? '#6366f1';
+  const isNested = depth > 0;
 
   const updateChild = (i: number, next: RssNode) => {
     const rules = [...node.rules];
@@ -260,30 +321,54 @@ function GroupEditor({ node, onChange, onRemove, depth = 0 }: GroupEditorProps) 
   const removeChild = (i: number) =>
     onChange({ ...node, rules: node.rules.filter((_, idx) => idx !== i) });
 
+  const moveChild = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= node.rules.length) return;
+    const rules = [...node.rules];
+    [rules[i], rules[j]] = [rules[j], rules[i]];
+    onChange({ ...node, rules });
+  };
+
   const addRule = () => onChange({ ...node, rules: [...node.rules, defaultRule()] });
   const addGroup = () => onChange({ ...node, rules: [...node.rules, defaultGroup()] });
-
   const setOp = (op: 'AND' | 'OR' | 'NOT') => onChange({ ...node, op });
 
   return (
     <div
       style={{
-        borderLeft: depth > 0 ? `3px solid ${color}` : 'none',
-        paddingLeft: depth > 0 ? 10 : 0,
+        borderLeft: isNested ? `3px solid ${color}` : 'none',
+        paddingLeft: isNested ? 10 : 0,
       }}
     >
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 8,
+          gap: 5,
+          marginBottom: collapsed ? 0 : 8,
           padding: '4px 8px',
           background: `${color}18`,
           borderRadius: 4,
           border: `1px solid ${color}30`,
         }}
       >
+        {isNested && (
+          <button
+            type="button"
+            onClick={() => setCollapsed(c => !c)}
+            style={{
+              ...reorderBtnBase,
+              color: '#aaa',
+              borderColor: '#444',
+              fontSize: 9,
+              padding: '2px 4px',
+            }}
+            title={collapsed ? 'Expand group' : 'Collapse group'}
+          >
+            {collapsed ? '▶' : '▼'}
+          </button>
+        )}
+
         <span style={{ fontSize: 10, color: '#888', fontWeight: 600, letterSpacing: '0.06em' }}>
           MATCH
         </span>
@@ -308,7 +393,38 @@ function GroupEditor({ node, onChange, onRemove, depth = 0 }: GroupEditorProps) 
             {op}
           </button>
         ))}
+
+        {isNested && (
+          <span style={{ fontSize: 10, color: '#555' }}>
+            ({node.rules.length} rule{node.rules.length !== 1 ? 's' : ''})
+          </span>
+        )}
+
         <span style={{ flex: 1 }} />
+
+        {isNested && (
+          <>
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={isFirst}
+              style={isFirst ? reorderBtnDisabled : reorderBtnBase}
+              title="Move group up"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={isLast}
+              style={isLast ? reorderBtnDisabled : reorderBtnBase}
+              title="Move group down"
+            >
+              ↓
+            </button>
+          </>
+        )}
+
         {onRemove && (
           <button
             type="button"
@@ -321,54 +437,66 @@ function GroupEditor({ node, onChange, onRemove, depth = 0 }: GroupEditorProps) 
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-        {node.rules.map((child, i) =>
-          isGroup(child) ? (
-            <GroupEditor
-              key={i}
-              node={child as RichSelection}
-              onChange={n => updateChild(i, n)}
-              onRemove={() => removeChild(i)}
-              depth={depth + 1}
-            />
-          ) : (
-            <RuleEditor
-              key={i}
-              rule={child as RichSelectionRule}
-              onChange={r => updateChild(i, r)}
-              onRemove={() => removeChild(i)}
-            />
-          ),
-        )}
+      {!collapsed && (
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+            {node.rules.map((child, i) =>
+              isGroup(child) ? (
+                <GroupEditor
+                  key={i}
+                  node={child as RichSelection}
+                  onChange={n => updateChild(i, n)}
+                  onRemove={() => removeChild(i)}
+                  onMoveUp={() => moveChild(i, -1)}
+                  onMoveDown={() => moveChild(i, 1)}
+                  isFirst={i === 0}
+                  isLast={i === node.rules.length - 1}
+                  depth={depth + 1}
+                />
+              ) : (
+                <RuleEditor
+                  key={i}
+                  rule={child as RichSelectionRule}
+                  onChange={r => updateChild(i, r)}
+                  onRemove={() => removeChild(i)}
+                  onMoveUp={() => moveChild(i, -1)}
+                  onMoveDown={() => moveChild(i, 1)}
+                  isFirst={i === 0}
+                  isLast={i === node.rules.length - 1}
+                />
+              ),
+            )}
 
-        {node.rules.length === 0 && (
-          <div
-            style={{
-              padding: '8px 10px',
-              fontSize: 11,
-              color: '#555',
-              fontStyle: 'italic',
-              border: '1px dashed #222',
-              borderRadius: 4,
-            }}
-          >
-            No rules yet — add one below
+            {node.rules.length === 0 && (
+              <div
+                style={{
+                  padding: '8px 10px',
+                  fontSize: 11,
+                  color: '#555',
+                  fontStyle: 'italic',
+                  border: '1px dashed #222',
+                  borderRadius: 4,
+                }}
+              >
+                No rules yet — add one below
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" onClick={addRule} style={addButtonStyle}>
-          + rule
-        </button>
-        <button
-          type="button"
-          onClick={addGroup}
-          style={{ ...addButtonStyle, borderColor: '#555', color: '#aaa' }}
-        >
-          + group
-        </button>
-      </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" onClick={addRule} style={addButtonStyle}>
+              + rule
+            </button>
+            <button
+              type="button"
+              onClick={addGroup}
+              style={{ ...addButtonStyle, borderColor: '#555', color: '#aaa' }}
+            >
+              + group
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -380,9 +508,6 @@ export default function RichSelectionEditor({
   value: any;
   onChange: (v: any) => void;
 }) {
-  const isEmpty = !value || (Array.isArray(value) && value.length === 0) ||
-    (isGroup(value) && (value as RichSelection).rules.length === 0);
-
   if (!value || (Array.isArray(value) && value.length === 0)) {
     return (
       <div style={containerStyle}>
@@ -407,14 +532,7 @@ export default function RichSelectionEditor({
           background: '#1a140a',
         }}
       >
-        <div
-          style={{
-            fontSize: 11,
-            color: '#f59e0b',
-            marginBottom: 6,
-            fontWeight: 700,
-          }}
-        >
+        <div style={{ fontSize: 11, color: '#f59e0b', marginBottom: 6, fontWeight: 700 }}>
           Legacy format ({value.length} rule{value.length !== 1 ? 's' : ''}) — upgrade to edit
         </div>
         <div
@@ -454,6 +572,7 @@ export default function RichSelectionEditor({
   }
 
   if (isGroup(value)) {
+    const isEmpty = (value as RichSelection).rules.length === 0;
     return (
       <div style={containerStyle}>
         <GroupEditor

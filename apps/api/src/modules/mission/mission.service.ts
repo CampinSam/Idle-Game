@@ -263,18 +263,29 @@ export class MissionService {
       throw new BadRequestException('Mission is not available');
     }
 
-    const reqContext = this.gameRules.buildRequirementContext(user);
+    const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length });
 
-    for (const req of reqs) {
-      if (req.type === 'team_size') {
-        const op = req.operator ?? 'gte';
-        if (!this.gameRules.compareValues(entityIds.length, Number(req.value ?? 0), op)) {
-          throw new BadRequestException(`Team size does not meet requirement: ${op} ${req.value}`);
+    if (
+      dbDef.requirements &&
+      !Array.isArray(dbDef.requirements) &&
+      typeof dbDef.requirements === 'object' &&
+      'op' in (dbDef.requirements as object)
+    ) {
+      if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
+        throw new BadRequestException('Mission requirements not met');
+      }
+    } else {
+      for (const req of reqs) {
+        if (req.type === 'team_size') {
+          const op = req.operator ?? 'gte';
+          if (!this.gameRules.compareValues(entityIds.length, Number(req.value ?? 0), op)) {
+            throw new BadRequestException(`Team size does not meet requirement: ${op} ${req.value}`);
+          }
+        } else if (req.type === 'trait') {
+          continue;
+        } else if (!this.gameRules.checkRequirement(req, reqContext)) {
+          throw new BadRequestException(`Requirement not met: ${req.type}${req.key ? ` (${req.key})` : ''}`);
         }
-      } else if (req.type === 'trait') {
-        continue;
-      } else if (!this.gameRules.checkRequirement(req, reqContext)) {
-        throw new BadRequestException(`Requirement not met: ${req.type}${req.key ? ` (${req.key})` : ''}`);
       }
     }
 

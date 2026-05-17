@@ -1,5 +1,3 @@
-import { synergySelectorErrorCount } from './SynergySelectorEditor';
-import { synergyContextErrorCount } from './SynergyContextEditor';
 import { synergyEffectsErrorCount } from './SynergyEffectsEditor';
 import { giftPresentationErrorCount } from './GiftPresentationEditor';
 import { giftClaimRulesErrorCount } from './GiftClaimRulesEditor';
@@ -384,10 +382,8 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return masteryErrorCount(value);
     case 'rulesWithUniques':
       return uniquesErrorCount((value as any)?.uniques);
-    case 'synergySelector':
-      return synergySelectorErrorCount(value);
-    case 'synergyContext':
-      return synergyContextErrorCount(value);
+    case 'richSelection':
+      return 0;
     case 'synergyEffectsArray':
       return synergyEffectsErrorCount(value);
     case 'giftPresentation':

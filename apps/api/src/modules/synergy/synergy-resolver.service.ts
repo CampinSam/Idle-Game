@@ -125,13 +125,29 @@ export class SynergyResolverService {
 
   isSelectorEmpty(selector: SynergySelector | null | undefined): boolean {
     if (!selector || typeof selector !== 'object') return true;
-    return Object.keys(selector).length === 0;
+    if (Object.keys(selector).length === 0) return true;
+    // An empty RichSelection { op: 'AND'|'OR', rules: [] } is also unconstrained
+    if (this.isRichSelection(selector) && (selector as unknown as RichSelection).rules.length === 0) return true;
+    return false;
+  }
+
+  private isRichSelection(v: unknown): v is RichSelection {
+    return (
+      v !== null &&
+      typeof v === 'object' &&
+      !Array.isArray(v) &&
+      'op' in (v as object) &&
+      'rules' in (v as object) &&
+      Array.isArray((v as any).rules)
+    );
   }
 
   matchesSelector(entity: SynergyEntityDescriptor, selector: SynergySelector): boolean {
     if (this.isSelectorEmpty(selector)) return true;
 
-    const richSel = this.selectorToRichSelection(selector);
+    const richSel = this.isRichSelection(selector)
+      ? (selector as unknown as RichSelection)
+      : this.selectorToRichSelection(selector);
     if (!richSel) return true;
 
     const selCtx: SelectionContext = {
@@ -147,7 +163,9 @@ export class SynergyResolverService {
   matchesContext(activityCtx: SynergyActivityContext, ruleCtx: SynergyRuleContext): boolean {
     if (!ruleCtx || Object.keys(ruleCtx).length === 0) return true;
 
-    const richSel = this.contextToRichSelection(ruleCtx);
+    const richSel = this.isRichSelection(ruleCtx)
+      ? (ruleCtx as unknown as RichSelection)
+      : this.contextToRichSelection(ruleCtx);
     if (!richSel) return true;
 
     const selCtx: SelectionContext = {
