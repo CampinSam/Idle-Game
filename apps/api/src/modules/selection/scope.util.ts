@@ -23,6 +23,15 @@ function resolveEntityField(entity: SelectionEntityContext, field: string): any 
   if (field === 'entityType') return entity.entityType;
   if (field === 'speciesId') return entity.speciesId;
   if (field === 'collectionId') return entity.collectionId;
+  if (field === 'regionId') return entity.regionId;
+  // traitValues — all trait values as a string[] for 'in' / 'contains' checks
+  if (field === 'traitValues') return Object.values(entity.traits ?? []);
+  // traitCount — total number of filled trait slots (e.g. minTraitCount equivalent)
+  if (field === 'traitCount') return Object.keys(entity.traits ?? {}).length;
+  // Array fields — returned as-is for array-aware operators (in, contains, not_contains …)
+  if (field === 'missionTags') return entity.missionTags ?? [];
+  if (field === 'buildingTags') return entity.buildingTags ?? [];
+  if (field === 'locationTypes') return entity.locationTypes ?? [];
 
   const dot = field.indexOf('.');
   if (dot === -1) return undefined;
@@ -31,6 +40,7 @@ function resolveEntityField(entity: SelectionEntityContext, field: string): any 
   const key = field.substring(dot + 1);
 
   if (prefix === 'traits') {
+    // traits.Ninja — returns 1 if any trait slot holds value "Ninja", else 0
     const traitValues = Object.values(entity.traits ?? {}).map(v => v.toLowerCase());
     return traitValues.includes(key.toLowerCase()) ? 1 : 0;
   }
