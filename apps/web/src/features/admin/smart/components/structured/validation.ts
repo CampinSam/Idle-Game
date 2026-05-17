@@ -1,4 +1,10 @@
 import type { CSSProperties } from 'react';
+import { synergySelectorErrorCount } from './SynergySelectorEditor';
+import { synergyContextErrorCount } from './SynergyContextEditor';
+import { synergyEffectsErrorCount } from './SynergyEffectsEditor';
+import { giftPresentationErrorCount } from './GiftPresentationEditor';
+import { giftClaimRulesErrorCount } from './GiftClaimRulesEditor';
+import { itemEquipDataErrorCount } from './ItemEquipDataEditor';
 
 /**
  * Composable editor contract.
@@ -429,47 +435,17 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
     case 'rulesWithUniques':
       return uniquesErrorCount((value as any)?.uniques);
     case 'synergySelector':
-      return 0;
-    case 'synergyContext': {
-      const ctx = value as any;
-      if (!ctx || typeof ctx !== 'object') return 0;
-      const min = ctx.requiresTeamSizeMin;
-      const max = ctx.requiresTeamSizeMax;
-      if (min !== undefined && max !== undefined && Number(min) > Number(max)) return 1;
-      return 0;
-    }
-    case 'synergyEffectsArray': {
-      const arr = Array.isArray(value) ? value : [];
-      let n = 0;
-      for (const e of arr) {
-        if (!e || !e.type) { n++; continue; }
-        if (e.type !== 'immunity') {
-          if (!e.operation) n++;
-          if (e.value === undefined || e.value === null || isNaN(Number(e.value))) n++;
-        }
-        if (e.type === 'stat_modifier' && !e.stat) n++;
-        if (e.type === 'duration_modifier' && !e.activity) n++;
-        if (e.type === 'resource_yield_modifier' && !e.resourceId) n++;
-        if (e.type === 'immunity' && !e.immuneTo) n++;
-      }
-      return n;
-    }
+      return synergySelectorErrorCount(value);
+    case 'synergyContext':
+      return synergyContextErrorCount(value);
+    case 'synergyEffectsArray':
+      return synergyEffectsErrorCount(value);
     case 'giftPresentation':
-      return 0;
-    case 'giftClaimRules': {
-      const cr = value as any;
-      if (!cr || typeof cr !== 'object') return 0;
-      let n = 0;
-      if (cr.limitPerPlayer !== undefined && (isNaN(Number(cr.limitPerPlayer)) || Number(cr.limitPerPlayer) < 1)) n++;
-      if (cr.expiresInSeconds !== undefined && (isNaN(Number(cr.expiresInSeconds)) || Number(cr.expiresInSeconds) < 1)) n++;
-      return n;
-    }
-    case 'itemEquipData': {
-      const ed = value as any;
-      if (!ed || typeof ed !== 'object') return 0;
-      if (ed.slot !== undefined && typeof ed.slot === 'string' && ed.slot.trim() === '') return 1;
-      return 0;
-    }
+      return giftPresentationErrorCount(value);
+    case 'giftClaimRules':
+      return giftClaimRulesErrorCount(value);
+    case 'itemEquipData':
+      return itemEquipDataErrorCount(value);
     default:
       return 0;
   }

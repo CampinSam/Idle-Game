@@ -83,6 +83,16 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
   effects: [
     { label: 'effect', description: 'Effect entry for consumable', color: PURPLE, template: () => ({ effectDefId: '', targetType: 'player' }) },
   ],
+  passiveEffects: [
+    { label: 'effect', description: 'Passive effect (applied while equipped)', color: PURPLE, template: () => ({ effectDefId: '', targetType: 'entity' }) },
+  ],
+  synergyEffectsArray: [
+    { label: 'synergy_score_modifier', description: 'Adjust synergy score', color: PURPLE, template: () => ({ type: 'synergy_score_modifier', operation: 'flat_add', value: 1 }) },
+    { label: 'stat_modifier', description: 'Modify an entity stat', color: AMBER, template: () => ({ type: 'stat_modifier', stat: '', operation: 'flat_add', value: 1 }) },
+    { label: 'duration_modifier', description: 'Modify activity duration', color: ORANGE, template: () => ({ type: 'duration_modifier', activity: 'mission', operation: 'percent_add', value: -10 }) },
+    { label: 'resource_yield_modifier', description: 'Modify resource yield', color: EMERALD, template: () => ({ type: 'resource_yield_modifier', resourceId: '', operation: 'percent_add', value: 10 }) },
+    { label: 'immunity', description: 'Grant immunity to a status', color: PINK, template: () => ({ type: 'immunity', immuneTo: '' }) },
+  ],
   body: [
     { label: 'richText', description: 'Formatted text block', color: AMBER, template: () => ({ type: 'richText', text: '' }) },
     { label: 'timer', description: 'Countdown timer display', color: AMBER, template: () => ({ type: 'timer', label: '' }) },

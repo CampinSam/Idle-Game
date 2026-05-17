@@ -32,6 +32,46 @@ import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
 import ItemEquipDataEditor from './structured/ItemEquipDataEditor';
 import { uniquesErrorCount } from './structured/validation';
 
+type SafeKind = 'array' | 'object' | 'passthrough';
+interface RegistryEntry {
+  Component: React.ComponentType<{ value: any; onChange: (v: any) => void }>;
+  safe: SafeKind;
+}
+
+const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
+  requirementsArray: { Component: RequirementsListEditor, safe: 'array' },
+  timerSpec:         { Component: TimerEditor,             safe: 'passthrough' },
+  outcomeSpec:       { Component: OutcomeListEditor,       safe: 'passthrough' },
+  objectivesArray:   { Component: ObjectivesListEditor,    safe: 'array' },
+  checkInDaysArray:  { Component: CheckInDaysEditor,       safe: 'array' },
+  effectsArray:      { Component: EffectListEditor,        safe: 'array' },
+  consumableData:    { Component: ConsumableDataEditor,    safe: 'passthrough' },
+  frequency:         { Component: FrequencyEditor,         safe: 'passthrough' },
+  displayStyle:      { Component: DisplayStyleEditor,      safe: 'passthrough' },
+  statMap:           { Component: StatMapEditor,           safe: 'object' },
+  slotStatsMap:      { Component: SlotStatsEditor,         safe: 'object' },
+  slotArchetypesMap: { Component: SlotArchetypesEditor,    safe: 'object' },
+  equipmentSlotsMap: { Component: EquipmentSlotsEditor,    safe: 'object' },
+  traits:            { Component: TraitsEditor,            safe: 'object' },
+  progression:       { Component: ProgressionEditor,       safe: 'passthrough' },
+  ascension:         { Component: AscensionEditor,         safe: 'passthrough' },
+  mastery:           { Component: MasteryEditor,           safe: 'passthrough' },
+  init:              { Component: InitEditor,              safe: 'passthrough' },
+  modalSpec:         { Component: ModalSpecEditor,         safe: 'passthrough' },
+  synergySelector:   { Component: SynergySelectorEditor,   safe: 'object' },
+  synergyContext:    { Component: SynergyContextEditor,    safe: 'object' },
+  synergyEffectsArray: { Component: SynergyEffectsEditor, safe: 'array' },
+  giftPresentation:  { Component: GiftPresentationEditor,  safe: 'object' },
+  giftClaimRules:    { Component: GiftClaimRulesEditor,    safe: 'object' },
+  itemEquipData:     { Component: ItemEquipDataEditor,     safe: 'object' },
+};
+
+function safeValue(value: any, kind: SafeKind): any {
+  if (kind === 'array') return Array.isArray(value) ? value : [];
+  if (kind === 'object') return (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+  return value;
+}
+
 interface Props {
   fieldName: string;
   fieldDef: FieldDef;
@@ -267,13 +307,6 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       );
     }
 
-    if (t === 'requirementsArray') {
-      const safeVal = Array.isArray(value) ? value : [];
-      return renderStructured(
-        <RequirementsListEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
     if (t === 'requirementsBlock') {
       const safeVal = Array.isArray(value) ? value : [];
       const bespoke = fieldDef.bespokeFields ?? [];
@@ -283,162 +316,10 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
       );
     }
 
-    if (t === 'timerSpec') {
-      return renderStructured(
-        <TimerEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'outcomeSpec') {
-      return renderStructured(
-        <OutcomeListEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'objectivesArray') {
-      const safeVal = Array.isArray(value) ? value : [];
-      return renderStructured(
-        <ObjectivesListEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'checkInDaysArray') {
-      const safeVal = Array.isArray(value) ? value : [];
-      return renderStructured(
-        <CheckInDaysEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'effectsArray') {
-      const safeVal = Array.isArray(value) ? value : [];
-      return renderStructured(
-        <EffectListEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'consumableData') {
-      return renderStructured(
-        <ConsumableDataEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'frequency') {
-      return renderStructured(
-        <FrequencyEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'displayStyle') {
-      return renderStructured(
-        <DisplayStyleEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'statMap') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <StatMapEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'slotStatsMap') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <SlotStatsEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'slotArchetypesMap') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <SlotArchetypesEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'equipmentSlotsMap') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <EquipmentSlotsEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'traits') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <TraitsEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'progression') {
-      return renderStructured(
-        <ProgressionEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'ascension') {
-      return renderStructured(
-        <AscensionEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'mastery') {
-      return renderStructured(
-        <MasteryEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'init') {
-      return renderStructured(
-        <InitEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'modalSpec') {
-      return renderStructured(
-        <ModalSpecEditor value={value} onChange={onChange} />
-      );
-    }
-
-    if (t === 'synergySelector') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <SynergySelectorEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'synergyContext') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <SynergyContextEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'synergyEffectsArray') {
-      const safeVal = Array.isArray(value) ? value : [];
-      return renderStructured(
-        <SynergyEffectsEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'giftPresentation') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <GiftPresentationEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'giftClaimRules') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <GiftClaimRulesEditor value={safeVal} onChange={onChange} />
-      );
-    }
-
-    if (t === 'itemEquipData') {
-      const safeVal = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return renderStructured(
-        <ItemEquipDataEditor value={safeVal} onChange={onChange} />
-      );
+    const registryEntry = STRUCTURED_REGISTRY[t];
+    if (registryEntry) {
+      const { Component, safe } = registryEntry;
+      return renderStructured(<Component value={safeValue(value, safe)} onChange={onChange} />);
     }
 
     if (t === 'rulesWithUniques') {
