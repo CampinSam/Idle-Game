@@ -102,6 +102,61 @@ model NftCollectionDef {
   @@map("nft_collection_defs")
 }
 
+// ═══════════════════════════════════════════════════
+// SYNERGY RULES
+// ═══════════════════════════════════════════════════
+
+model SynergyRule {
+  id              String    @id
+  name            String
+  description     String?
+  enabled         Boolean   @default(true)
+
+  // Selector: which source entities this rule applies to.
+  // Supported fields: entityTypes, speciesIds, collections, traitsAny,
+  // traitsAll, minTraitCount, entityIds, rarities, regions, locationTypes,
+  // buildingTagsAny, missionTagsAny, factions.
+  sourceSelector  Json      @default("{}")
+
+  // Selector: which target entities trigger the rule when paired with a source.
+  targetSelector  Json      @default("{}")
+
+  // Activity context constraints: activityTypes, missionTypes,
+  // missionTagsAny, regionIds, seasonIds, requiresTeamSizeMin/Max.
+  context         Json      @default("{}")
+
+  // Reserved for future condition expressions.
+  conditions      Json      @default("[]")
+
+  // Array of effect objects:
+  // { type: "synergy_score_modifier"|"stat_modifier"|"duration_modifier"|
+  //         "resource_yield_modifier"|"immunity", ...}
+  effects         Json
+
+  // Lower priority number = evaluated earlier. Default 100.
+  priority        Int       @default(100)
+
+  // Group name for cross-rule stack behaviour (e.g. "trait_pair_synergy").
+  stackGroup      String?
+
+  // How multiple matching pairs/rules in the same stackGroup are handled.
+  // Allowed: additive | best_only | highest_abs_only | unique
+  stackMode       String    @default("additive")
+
+  // Max number of times this rule may apply (per resolver call).
+  maxApplications Int       @default(1)
+
+  // Optional date-gate. Rule only fires when now is within [startsAt, endsAt].
+  startsAt        DateTime?
+  endsAt          DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([enabled])
+  @@map("synergy_rules")
+}
+
 model NftAsset {
   nftAssetId    String    @id
   collectionId  String

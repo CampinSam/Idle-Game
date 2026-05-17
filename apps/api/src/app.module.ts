@@ -40,6 +40,7 @@ import { ShopModule } from './modules/shop/shop.module';
 import { EffectModule } from './modules/effect/effect.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { ClientErrorsModule } from './modules/client-errors/client-errors.module';
+import { SynergyModule } from './modules/synergy/synergy.module';
 
 const isProductionLog = process.env.NODE_ENV === 'production';
 
@@ -148,6 +149,7 @@ const imports: any[] = [
   EffectModule,
   AudioModule,
   ClientErrorsModule,
+  SynergyModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

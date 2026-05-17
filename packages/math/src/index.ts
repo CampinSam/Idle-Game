@@ -13,7 +13,6 @@ export {
   type LevelUpResult,
   type StatGainConfig,
 } from './entity-progression';
-export { calculateSynergyBonus, calculateSynergyScore } from './synergy';
 export { calculateSuccessChance } from './success-probability';
 export {
   calculateCraftingLuck,

@@ -56,6 +56,7 @@ export class AdminController {
       { key: 'visualEffectDef', name: 'Visual Effect Definitions', table: 'visual_effect_defs' },
       { key: 'homeBannerDef', name: 'Home Banners', table: 'home_banner_defs' },
       { key: 'systemIconDef', name: 'System Icon Definitions', table: 'system_icon_defs' },
+      { key: 'synergyRule', name: 'Synergy Rules', table: 'synergy_rules' },
     ];
   }
 

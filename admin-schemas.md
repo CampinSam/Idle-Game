@@ -207,3 +207,141 @@ The `NftAsset` table is the **single mandatory gateway** between the app and Blo
 | `lastSyncedAt` | DateTime? | When this row was last fetched from Blockfrost |
 | `createdAt` | DateTime | Row creation time |
 | `updatedAt` | DateTime | Row last-updated time |
+
+---
+
+## Synergy Rules — `/api/admin/synergy`
+
+### `POST /api/admin/synergy/preview`
+Dry-run a draft `SynergyRule` against supplied entity descriptors and activity context. Nothing is persisted. Used by the admin "Test Rule" button.
+
+**Auth:** Admin (`X-Admin-Secret`)
+
+**Body:**
+```json
+{
+  "rule": {
+    "id": "draft",
+    "name": "Draft Rule",
+    "sourceSelector": { "traitsAny": ["ninja"] },
+    "targetSelector": { "traitsAny": ["magic"] },
+    "context": { "activityTypes": ["mission"] },
+    "effects": [{ "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }],
+    "stackMode": "additive",
+    "maxApplications": 3
+  },
+  "activityContext": {
+    "activityType": "mission",
+    "missionTags": ["stealth"],
+    "teamSize": 4
+  },
+  "sourceDescriptors": [
+    { "entityId": "ent_1", "traits": { "head": "Ninja", "body": "Ninja" } }
+  ],
+  "targetDescriptors": [
+    { "entityId": "ent_2", "traits": { "head": "magic", "body": "Dave" } }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "matchedRules": [
+    {
+      "ruleId": "draft",
+      "name": "Draft Rule",
+      "applications": 1,
+      "effects": [{ "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }]
+    }
+  ],
+  "totals": {
+    "synergyScore": 3,
+    "statModifiers": {},
+    "durationModifiers": {},
+    "resourceYieldModifiers": [],
+    "immunities": []
+  }
+}
+```
+
+---
+
+## SynergyRule — Admin Smart Table
+
+`SynergyRule` rows are managed through the generic admin smart-editor at `GET /api/admin/records/synergyRule`.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `syn_ninja_magician`) |
+| `name` | string | ✓ | Admin-facing display name |
+| `description` | string | | What this rule does and when it fires |
+| `enabled` | boolean | | Default `true`. Disabled rules are never evaluated. |
+| `sourceSelector` | Json | | Which entities match the "source" side. Empty `{}` = unconstrained. |
+| `targetSelector` | Json | | Which entities match the "target" side. Empty `{}` = unconstrained. |
+| `context` | Json | | Activity context constraints. Empty `{}` = all contexts. |
+| `conditions` | Json | | Reserved for future condition expressions (leave as `[]`). |
+| `effects` | Json | ✓ | Array of effect objects (see effect types below). |
+| `priority` | number | | Evaluation order. Lower = first. Default `100`. |
+| `stackGroup` | string | | Group name for cross-rule stacking logic. |
+| `stackMode` | enum | | `additive` \| `best_only` \| `highest_abs_only` \| `unique`. Default `additive`. |
+| `maxApplications` | number | | Max times this rule may fire per resolver call. Default `1`. |
+| `startsAt` | datetime | | ISO — rule only fires after this time. |
+| `endsAt` | datetime | | ISO — rule stops firing after this time. |
+
+### Selector shape
+
+```json
+{
+  "entityTypes": ["derp_bird"],
+  "speciesIds": ["derp_bird"],
+  "collections": ["derp_birds_s1"],
+  "traitsAny": ["ninja", "magic"],
+  "traitsAll": ["ninja"],
+  "minTraitCount": 2,
+  "entityIds": ["ent_abc"],
+  "rarities": ["rare", "legendary"],
+  "regions": ["region_1"],
+  "locationTypes": ["outpost"],
+  "buildingTagsAny": ["forge"],
+  "missionTagsAny": ["stealth"],
+  "factions": ["derps", "vamps"]
+}
+```
+
+All fields are optional. Trait matching is case-insensitive (`"ninja"` matches `"Ninja"`).
+
+### Context shape
+
+```json
+{
+  "activityTypes": ["mission", "crafting"],
+  "missionTypes": ["boss", "quick"],
+  "missionTagsAny": ["stealth", "rescue"],
+  "regionIds": ["region_forest"],
+  "seasonIds": ["s1"],
+  "requiresTeamSizeMin": 2,
+  "requiresTeamSizeMax": 6
+}
+```
+
+### Effect types
+
+| Effect type | Extra fields | Description |
+|-------------|--------------|-------------|
+| `synergy_score_modifier` | `operation: "flat_add"`, `value: number` | Adds/subtracts from the team's total synergy score |
+| `stat_modifier` | `stat: string`, `operation: "flat_add"\|"percent_add"\|"multiplier"`, `value: number` | Modifies an entity stat (ATK, DEF, SPD, …) |
+| `duration_modifier` | `activity: string`, `operation: "flat_seconds"\|"percent_add"\|"multiplier"`, `value: number` | Modifies activity duration (negative = faster) |
+| `resource_yield_modifier` | `resourceId: string`, `operation: "flat_add"\|"percent_add"\|"multiplier"`, `value: number` | Modifies resource output |
+| `immunity` | `immuneTo: string` | Grants immunity to a named effect/debuff type |
+
+### Stack modes
+
+| Mode | Behaviour |
+|------|-----------|
+| `additive` | Each matching (source, target) pair triggers the rule independently, up to `maxApplications` |
+| `unique` | Rule fires exactly once if any pairs match, regardless of pair count |
+| `best_only` | Within the `stackGroup`, only the rule with the highest positive effect value fires |
+| `highest_abs_only` | Within the `stackGroup`, only the rule with the highest absolute effect value fires |

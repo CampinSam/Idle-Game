@@ -1,10 +1,8 @@
 import { EntityStats } from '@derp/shared';
-import { calculateSynergyBonus } from './synergy';
-import { EntityArchetype, EntityTraits } from '@derp/shared';
 
 export interface EntityForMP {
   stats: EntityStats;
-  traits: EntityTraits;
+  traits: Record<string, string>;
 }
 
 /**
@@ -23,13 +21,13 @@ export const calculateMP = (stats: EntityStats): number => {
 };
 
 /**
- * Calculate total team Mission Power with synergy bonus.
+ * Calculate total team Mission Power (base stats only).
+ * Synergy bonuses are now data-driven and applied separately via
+ * SynergyResolverService — callers should add the resolver's output
+ * on top of this base total.
  */
 export const calculateTeamMP = (entities: EntityForMP[]): number => {
-  const individualMPs = entities.map((b) => calculateMP(b.stats));
-  const baseMPTotal = individualMPs.reduce((a, b) => a + b, 0);
-  const synergyBonus = calculateSynergyBonus(entities.map((b) => b.traits));
-  return baseMPTotal * (1 + synergyBonus);
+  return entities.reduce((sum, e) => sum + calculateMP(e.stats), 0);
 };
 
 /**

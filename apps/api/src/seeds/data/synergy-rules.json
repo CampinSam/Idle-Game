@@ -1,0 +1,87 @@
+[
+  {
+    "id": "syn_ninja_magician",
+    "name": "Ninja + Magician Synergy",
+    "description": "Each Ninja-Magician pair in the team boosts synergy score by 3 (up to 3 applications). Represents complementary stealth-magic playstyle.",
+    "enabled": true,
+    "sourceSelector": { "traitsAny": ["ninja"] },
+    "targetSelector": { "traitsAny": ["magic"] },
+    "context": {},
+    "conditions": [],
+    "effects": [
+      { "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }
+    ],
+    "priority": 100,
+    "stackGroup": "trait_pair_synergy",
+    "stackMode": "additive",
+    "maxApplications": 3
+  },
+  {
+    "id": "syn_corpo_viking_conflict",
+    "name": "Corpo + Viking Conflict",
+    "description": "Corporate and Viking traits clash — each such pair reduces synergy score by 2 (up to 3 applications). Represents contrasting leadership styles.",
+    "enabled": true,
+    "sourceSelector": { "traitsAny": ["corpo"] },
+    "targetSelector": { "traitsAny": ["viking"] },
+    "context": {},
+    "conditions": [],
+    "effects": [
+      { "type": "synergy_score_modifier", "operation": "flat_add", "value": -2 }
+    ],
+    "priority": 100,
+    "stackGroup": "trait_pair_synergy",
+    "stackMode": "additive",
+    "maxApplications": 3
+  },
+  {
+    "id": "syn_derps_vamps_stealth",
+    "name": "Derps + Vampires Stealth Bonus",
+    "description": "On stealth missions, teams mixing Derps and Vampires gain +10% mission duration reduction. Only the best matching faction-mission rule applies.",
+    "enabled": true,
+    "sourceSelector": { "factions": ["derps"] },
+    "targetSelector": { "factions": ["vamps"] },
+    "context": { "activityTypes": ["mission"], "missionTagsAny": ["stealth"] },
+    "conditions": [],
+    "effects": [
+      { "type": "duration_modifier", "activity": "mission", "operation": "percent_add", "value": -10 }
+    ],
+    "priority": 90,
+    "stackGroup": "faction_mission_synergy",
+    "stackMode": "best_only",
+    "maxApplications": 1
+  },
+  {
+    "id": "syn_pred_holy_conflict",
+    "name": "Predator + Holy Conflict",
+    "description": "Predators and holy-archetype entities (Deity or Monk) conflict on any mission — synergy score drops by 5 once regardless of team size.",
+    "enabled": true,
+    "sourceSelector": { "traitsAny": ["pred"] },
+    "targetSelector": { "traitsAny": ["deity", "monk"] },
+    "context": { "activityTypes": ["mission"] },
+    "conditions": [],
+    "effects": [
+      { "type": "synergy_score_modifier", "operation": "flat_add", "value": -5 }
+    ],
+    "priority": 80,
+    "stackGroup": null,
+    "stackMode": "unique",
+    "maxApplications": 1
+  },
+  {
+    "id": "syn_mad_scientist_derpling_crafting",
+    "name": "Mad Scientist + Derpling Crafting Boost",
+    "description": "A Mad Scientist paired with any Derpling on a crafting job reduces crafting time by 15%. Fires once per pair, up to 2 times.",
+    "enabled": true,
+    "sourceSelector": { "traitsAny": ["mad scientist"] },
+    "targetSelector": { "speciesIds": ["derp_bird"] },
+    "context": { "activityTypes": ["crafting"] },
+    "conditions": [],
+    "effects": [
+      { "type": "duration_modifier", "activity": "crafting", "operation": "percent_add", "value": -15 }
+    ],
+    "priority": 110,
+    "stackGroup": "crafting_synergy",
+    "stackMode": "additive",
+    "maxApplications": 2
+  }
+]

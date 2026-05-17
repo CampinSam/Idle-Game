@@ -279,5 +279,15 @@ export async function seedDefinitions(prisma: any) {
     await upsertMany(prisma, 'systemIconDef', defs.systemIconDefs);
   }
 
+  const synergyRules = loadJson('synergy-rules.json');
+  if (Array.isArray(synergyRules) && synergyRules.length > 0) {
+    await upsertManyForce(prisma, 'synergyRule', synergyRules, (r: any) => {
+      const copy = { ...r };
+      if (copy.startsAt) copy.startsAt = new Date(copy.startsAt);
+      if (copy.endsAt) copy.endsAt = new Date(copy.endsAt);
+      return copy;
+    });
+  }
+
   logger.log('Definition seeding complete');
 }

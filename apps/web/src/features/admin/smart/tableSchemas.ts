@@ -22,6 +22,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   EffectDef: 'effectDef',
   HomeBannerDef: 'homeBannerDef',
   SystemIconDef: 'systemIconDef',
+  SynergyRule: 'synergyRule',
 };
 
 export interface FieldDef {
@@ -458,6 +459,48 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, description: 'Display name shown in the Icon Manager (e.g. "Season XP").' },
     },
   },
+  SynergyRule: {
+    color: '#8B5CF6',
+    group: 'Synergy',
+    fields: {
+      id: { type: 'string', required: true, description: 'Unique identifier (e.g. syn_ninja_magician)' },
+      name: { type: 'string', required: true, description: 'Admin-facing display name' },
+      description: { type: 'string', description: 'What this rule does and when it fires' },
+      enabled: { type: 'boolean', default: true, description: 'Active? Disabled rules are never evaluated.' },
+      sourceSelector: {
+        type: 'json',
+        default: {},
+        description: 'Entity selector for the "source" side. Supported keys: entityTypes, speciesIds, collections, traitsAny, traitsAll, minTraitCount, entityIds, rarities, regions, locationTypes, buildingTagsAny, missionTagsAny, factions. Empty {} = any entity.',
+      },
+      targetSelector: {
+        type: 'json',
+        default: {},
+        description: 'Entity selector for the "target" side. Same shape as sourceSelector. Empty {} = any entity.',
+      },
+      context: {
+        type: 'json',
+        default: {},
+        description: 'Activity context filter. Supported keys: activityTypes, missionTypes, missionTagsAny, regionIds, seasonIds, requiresTeamSizeMin, requiresTeamSizeMax. Empty {} = all contexts.',
+      },
+      conditions: { type: 'json', default: [], description: 'Reserved for future condition expressions (leave as [])' },
+      effects: {
+        type: 'json',
+        required: true,
+        description: 'Array of effect objects. Each effect has a "type" field and operation-specific fields. Types: synergy_score_modifier, stat_modifier, duration_modifier, resource_yield_modifier, immunity.',
+      },
+      priority: { type: 'number', default: 100, description: 'Evaluation order. Lower number = evaluated first.' },
+      stackGroup: { type: 'string', description: 'Optional group name for cross-rule stacking logic (e.g. trait_pair_synergy).' },
+      stackMode: {
+        type: 'options',
+        options: ['additive', 'best_only', 'highest_abs_only', 'unique'],
+        default: 'additive',
+        description: 'How multiple matching pairs/rules in the same stackGroup are resolved.',
+      },
+      maxApplications: { type: 'number', default: 1, description: 'Max times this rule may fire per resolver call (applies per matching pair unless unique).' },
+      startsAt: { type: 'string', description: 'ISO datetime — rule only fires after this time (blank = always active).' },
+      endsAt: { type: 'string', description: 'ISO datetime — rule stops firing after this time (blank = no expiry).' },
+    },
+  },
   HomeBannerDef: {
     color: '#22D3EE',
     group: 'UI',
@@ -491,6 +534,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition'],
   Effects: ['EffectDef'],
+  Synergy: ['SynergyRule'],
   System: ['EventDefinition', 'SystemIconDef'],
 };
 
