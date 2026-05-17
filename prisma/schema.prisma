@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StackMode {
+  additive
+  best_only
+  highest_abs_only
+  unique
+}
+
 enum CurrencyType {
   SOFT
   HARD
@@ -140,8 +147,7 @@ model SynergyRule {
   stackGroup      String?
 
   // How multiple matching pairs/rules in the same stackGroup are handled.
-  // Allowed: additive | best_only | highest_abs_only | unique
-  stackMode       String    @default("additive")
+  stackMode       StackMode @default(additive)
 
   // Max number of times this rule may apply (per resolver call).
   maxApplications Int       @default(1)

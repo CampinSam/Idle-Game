@@ -1,5 +1,5 @@
 import { calculateMP, calculateTeamMP, calculateInjuryChance, calculateInjuryRecoveryTicks, EntityForMP } from '../src/mission-power';
-import { EntityStats, EntityTraits } from '@derp/shared';
+import { EntityStats } from '@derp/shared';
 
 const makeStats = (overrides: Partial<EntityStats> = {}): EntityStats => ({
   ATK: 10,
@@ -11,14 +11,14 @@ const makeStats = (overrides: Partial<EntityStats> = {}): EntityStats => ({
   ...overrides,
 });
 
-const makeTraits = (archetype: string = 'Dave'): EntityTraits => ({
-  head: archetype as any,
-  ears: archetype as any,
-  beak: archetype as any,
-  eyes: archetype as any,
-  body: archetype as any,
-  back: archetype as any,
-  tail: archetype as any,
+const makeTraits = (archetype: string = 'Dave'): Record<string, string> => ({
+  head: archetype,
+  ears: archetype,
+  beak: archetype,
+  eyes: archetype,
+  body: archetype,
+  back: archetype,
+  tail: archetype,
 });
 
 describe('MissionPower', () => {
@@ -35,22 +35,25 @@ describe('MissionPower', () => {
     expect(atkHeavy).toBeGreaterThan(defHeavy);
   });
 
-  it('calculates team MP with synergy bonus', () => {
+  it('calculates team MP as a plain sum of individual MPs (synergy bonuses are applied by SynergyResolverService)', () => {
     const entities: EntityForMP[] = [
       { stats: makeStats(), traits: makeTraits('Dave') },
       { stats: makeStats(), traits: makeTraits('Dave') },
     ];
     const teamMP = calculateTeamMP(entities);
-    // Two identical-archetype entities should get synergy bonus
-    expect(teamMP).toBeGreaterThan(22); // > 2 * 11 base
+    expect(teamMP).toBeCloseTo(22, 5);
   });
 
-  it('single entity team has no synergy', () => {
+  it('single entity team MP equals individual MP', () => {
     const entities: EntityForMP[] = [
       { stats: makeStats(), traits: makeTraits('Dave') },
     ];
     const teamMP = calculateTeamMP(entities);
     expect(teamMP).toBeCloseTo(11, 5);
+  });
+
+  it('empty team has MP of 0', () => {
+    expect(calculateTeamMP([])).toBe(0);
   });
 });
 

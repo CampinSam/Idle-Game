@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { StackMode } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SynergyEntityDescriptor,
@@ -16,13 +17,13 @@ interface DbSynergyRule {
   id: string;
   name: string;
   enabled: boolean;
-  sourceSelector: any;
-  targetSelector: any;
-  context: any;
-  effects: any;
+  sourceSelector: SynergySelector;
+  targetSelector: SynergySelector;
+  context: SynergyRuleContext;
+  effects: SynergyEffect[];
   priority: number;
   stackGroup: string | null;
-  stackMode: string;
+  stackMode: StackMode;
   maxApplications: number;
   startsAt: Date | null;
   endsAt: Date | null;
@@ -58,34 +59,33 @@ export class SynergyResolverService {
       if (rule.startsAt && now < rule.startsAt) continue;
       if (rule.endsAt && now > rule.endsAt) continue;
 
-      if (!this.matchesContext(activityContext, rule.context as SynergyRuleContext)) {
+      if (!this.matchesContext(activityContext, rule.context)) {
         continue;
       }
 
-      const srcSelector = rule.sourceSelector as SynergySelector;
-      const tgtSelector = rule.targetSelector as SynergySelector;
-
-      const srcEmpty = this.isSelectorEmpty(srcSelector);
-      const tgtEmpty = this.isSelectorEmpty(tgtSelector);
+      const srcEmpty = this.isSelectorEmpty(rule.sourceSelector);
+      const tgtEmpty = this.isSelectorEmpty(rule.targetSelector);
 
       let pairCount = 0;
 
       if (srcEmpty && tgtEmpty) {
         pairCount = 1;
       } else if (srcEmpty) {
-        pairCount = targetDescriptors.filter(t => this.matchesSelector(t, tgtSelector)).length;
+        pairCount = targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector)).length;
       } else if (tgtEmpty) {
-        pairCount = sourceDescriptors.filter(s => this.matchesSelector(s, srcSelector)).length;
+        pairCount = sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector)).length;
       } else {
-        const matchingSources = sourceDescriptors.filter(s => this.matchesSelector(s, srcSelector));
-        const matchingTargets = targetDescriptors.filter(t => this.matchesSelector(t, tgtSelector));
+        const matchingSources = sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector));
+        const matchingTargets = targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector));
         pairCount = matchingSources.length * matchingTargets.length;
       }
 
       if (pairCount === 0) continue;
 
       const applications =
-        rule.stackMode === 'unique' ? 1 : Math.min(pairCount, rule.maxApplications);
+        rule.stackMode === StackMode.unique
+          ? 1
+          : Math.min(pairCount, rule.maxApplications);
 
       candidates.push({ rule, applications });
     }
@@ -97,70 +97,15 @@ export class SynergyResolverService {
     return { matchedRules, totals };
   }
 
-  /**
-   * Preview evaluation without hitting the database — used by the admin
-   * preview endpoint to test a draft rule without persisting it.
-   */
-  previewRule(
-    draftRule: Partial<DbSynergyRule>,
-    activityContext: SynergyActivityContext,
-    sourceDescriptors: SynergyEntityDescriptor[],
-    targetDescriptors: SynergyEntityDescriptor[],
-  ): SynergyResult {
-    const rule: DbSynergyRule = {
-      id: draftRule.id ?? 'preview',
-      name: draftRule.name ?? 'Preview Rule',
-      enabled: true,
-      sourceSelector: draftRule.sourceSelector ?? {},
-      targetSelector: draftRule.targetSelector ?? {},
-      context: draftRule.context ?? {},
-      effects: draftRule.effects ?? [],
-      priority: draftRule.priority ?? 100,
-      stackGroup: draftRule.stackGroup ?? null,
-      stackMode: draftRule.stackMode ?? 'additive',
-      maxApplications: draftRule.maxApplications ?? 1,
-      startsAt: null,
-      endsAt: null,
-    };
-
-    const srcSelector = rule.sourceSelector as SynergySelector;
-    const tgtSelector = rule.targetSelector as SynergySelector;
-
-    const srcEmpty = this.isSelectorEmpty(srcSelector);
-    const tgtEmpty = this.isSelectorEmpty(tgtSelector);
-
-    let pairCount = 0;
-    if (srcEmpty && tgtEmpty) {
-      pairCount = 1;
-    } else if (srcEmpty) {
-      pairCount = targetDescriptors.filter(t => this.matchesSelector(t, tgtSelector)).length;
-    } else if (tgtEmpty) {
-      pairCount = sourceDescriptors.filter(s => this.matchesSelector(s, srcSelector)).length;
-    } else {
-      const matchingSources = sourceDescriptors.filter(s => this.matchesSelector(s, srcSelector));
-      const matchingTargets = targetDescriptors.filter(t => this.matchesSelector(t, tgtSelector));
-      pairCount = matchingSources.length * matchingTargets.length;
-    }
-
-    const applications =
-      pairCount === 0 ? 0 : rule.stackMode === 'unique' ? 1 : Math.min(pairCount, rule.maxApplications);
-
-    const matchedRules: MatchedRule[] = applications > 0
-      ? [{ ruleId: rule.id, name: rule.name, applications, effects: rule.effects as SynergyEffect[] }]
-      : [];
-    const totals = this.aggregateTotals(matchedRules);
-
-    return { matchedRules, totals };
-  }
-
   private async loadRules(): Promise<DbSynergyRule[]> {
-    return (this.prisma as any).synergyRule.findMany({
+    const rows = await this.prisma.synergyRule.findMany({
       where: { enabled: true },
       orderBy: { priority: 'asc' },
     });
+    return rows as unknown as DbSynergyRule[];
   }
 
-  private isSelectorEmpty(selector: SynergySelector): boolean {
+  isSelectorEmpty(selector: SynergySelector | null | undefined): boolean {
     if (!selector || typeof selector !== 'object') return true;
     return Object.keys(selector).length === 0;
   }
@@ -282,23 +227,28 @@ export class SynergyResolverService {
     const winners: Array<{ rule: DbSynergyRule; applications: number }> = [...ungrouped];
 
     for (const [, members] of groups) {
-      const mode = members[0]?.rule.stackMode ?? 'additive';
+      const mode = members[0]?.rule.stackMode ?? StackMode.additive;
 
-      if (mode === 'additive') {
+      if (mode === StackMode.additive || mode === StackMode.unique) {
         winners.push(...members);
-      } else if (mode === 'unique') {
-        winners.push(...members);
-      } else if (mode === 'best_only') {
+      } else if (mode === StackMode.best_only) {
+        // Only keep the rule with the highest *positive* leading effect value.
+        // If no rule has a positive value, no rule from this group fires.
+        let best: { rule: DbSynergyRule; applications: number } | null = null;
+        let bestVal = 0; // threshold: must beat 0 to qualify
+        for (const c of members) {
+          const val = this.leadingEffectValue(c.rule.effects);
+          if (val > bestVal) {
+            bestVal = val;
+            best = c;
+          }
+        }
+        if (best) winners.push(best);
+      } else if (mode === StackMode.highest_abs_only) {
+        // Keep the rule with the highest absolute value (positive or negative).
         const best = members.reduce((prev, curr) => {
-          const pVal = this.leadingEffectValue(prev.rule.effects as SynergyEffect[]);
-          const cVal = this.leadingEffectValue(curr.rule.effects as SynergyEffect[]);
-          return cVal > pVal ? curr : prev;
-        });
-        winners.push(best);
-      } else if (mode === 'highest_abs_only') {
-        const best = members.reduce((prev, curr) => {
-          const pVal = Math.abs(this.leadingEffectValue(prev.rule.effects as SynergyEffect[]));
-          const cVal = Math.abs(this.leadingEffectValue(curr.rule.effects as SynergyEffect[]));
+          const pVal = Math.abs(this.leadingEffectValue(prev.rule.effects));
+          const cVal = Math.abs(this.leadingEffectValue(curr.rule.effects));
           return cVal > pVal ? curr : prev;
         });
         winners.push(best);
@@ -324,7 +274,7 @@ export class SynergyResolverService {
       ruleId: rule.id,
       name: rule.name,
       applications,
-      effects: (Array.isArray(rule.effects) ? rule.effects : []) as SynergyEffect[],
+      effects: rule.effects,
     }));
   }
 
