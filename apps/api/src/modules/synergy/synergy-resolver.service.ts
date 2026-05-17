@@ -63,22 +63,17 @@ export class SynergyResolverService {
         continue;
       }
 
-      const srcEmpty = this.isSelectorEmpty(rule.sourceSelector);
-      const tgtEmpty = this.isSelectorEmpty(rule.targetSelector);
+      // An empty selector is unconstrained — it matches every descriptor on that side.
+      // Always compute the full Cartesian product: matchedSources × matchedTargets.
+      const matchedSources = this.isSelectorEmpty(rule.sourceSelector)
+        ? sourceDescriptors
+        : sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector));
 
-      let pairCount = 0;
+      const matchedTargets = this.isSelectorEmpty(rule.targetSelector)
+        ? targetDescriptors
+        : targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector));
 
-      if (srcEmpty && tgtEmpty) {
-        pairCount = 1;
-      } else if (srcEmpty) {
-        pairCount = targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector)).length;
-      } else if (tgtEmpty) {
-        pairCount = sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector)).length;
-      } else {
-        const matchingSources = sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector));
-        const matchingTargets = targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector));
-        pairCount = matchingSources.length * matchingTargets.length;
-      }
+      const pairCount = matchedSources.length * matchedTargets.length;
 
       if (pairCount === 0) continue;
 
