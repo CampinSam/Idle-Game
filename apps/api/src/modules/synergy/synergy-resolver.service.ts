@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { StackMode } from '@prisma/client';
+import { StackMode, SynergyRule as PrismaSynergyRule } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SynergyEntityDescriptor,
@@ -98,11 +98,28 @@ export class SynergyResolverService {
   }
 
   private async loadRules(): Promise<DbSynergyRule[]> {
-    const rows = await this.prisma.synergyRule.findMany({
+    const rows: PrismaSynergyRule[] = await this.prisma.synergyRule.findMany({
       where: { enabled: true },
       orderBy: { priority: 'asc' },
     });
-    return rows as unknown as DbSynergyRule[];
+    // Normalize Prisma's JsonValue fields into typed domain interfaces.
+    // Each JSON column is stored as authored (selector/context objects or effects array),
+    // so explicit coercion here is justified by the schema contract enforced at write time.
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      enabled: row.enabled,
+      sourceSelector: ((row.sourceSelector as SynergySelector) ?? {}),
+      targetSelector: ((row.targetSelector as SynergySelector) ?? {}),
+      context: ((row.context as SynergyRuleContext) ?? {}),
+      effects: (Array.isArray(row.effects) ? (row.effects as unknown as SynergyEffect[]) : []),
+      priority: row.priority,
+      stackGroup: row.stackGroup,
+      stackMode: row.stackMode,
+      maxApplications: row.maxApplications,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+    }));
   }
 
   isSelectorEmpty(selector: SynergySelector | null | undefined): boolean {

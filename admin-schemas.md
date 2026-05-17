@@ -213,50 +213,42 @@ The `NftAsset` table is the **single mandatory gateway** between the app and Blo
 ## Synergy Rules — `/api/admin/synergy`
 
 ### `POST /api/admin/synergy/preview`
-Dry-run a draft `SynergyRule` against supplied entity descriptors and activity context. Nothing is persisted. Used by the admin "Test Rule" button.
+Runs all **enabled** `SynergyRule` rows from the database against the supplied entity descriptors and activity context. Nothing is persisted. Used by the admin "Test Rules" button to validate the live rule set against an example team.
 
 **Auth:** Admin (`X-Admin-Secret`)
 
 **Body:**
 ```json
 {
-  "rule": {
-    "id": "draft",
-    "name": "Draft Rule",
-    "sourceSelector": { "traitsAny": ["ninja"] },
-    "targetSelector": { "traitsAny": ["magic"] },
-    "context": { "activityTypes": ["mission"] },
-    "effects": [{ "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }],
-    "stackMode": "additive",
-    "maxApplications": 3
-  },
+  "entityDescriptors": [
+    { "entityId": "ent_1", "traits": { "head": "Ninja", "body": "Ninja" } },
+    { "entityId": "ent_2", "traits": { "head": "magic", "body": "Dave" } }
+  ],
   "activityContext": {
     "activityType": "mission",
     "missionTags": ["stealth"],
-    "teamSize": 4
-  },
-  "sourceDescriptors": [
-    { "entityId": "ent_1", "traits": { "head": "Ninja", "body": "Ninja" } }
-  ],
-  "targetDescriptors": [
-    { "entityId": "ent_2", "traits": { "head": "magic", "body": "Dave" } }
-  ]
+    "teamSize": 2
+  }
 }
 ```
+
+> `entityDescriptors` — an array of entity trait objects representing the team.  
+> The resolver uses the **same array** for both source and target selector matching (any entity can match either side of a pair-based rule).  
+> `activityContext` — the activity the team is participating in. `activityType` is required; `missionTags` and `teamSize` are optional.
 
 **Response:**
 ```json
 {
   "matchedRules": [
     {
-      "ruleId": "draft",
-      "name": "Draft Rule",
+      "ruleId": "syn_ninja_magician",
+      "name": "Ninja + Magician Synergy",
       "applications": 1,
-      "effects": [{ "type": "synergy_score_modifier", "operation": "flat_add", "value": 3 }]
+      "effects": [{ "type": "synergy_score_modifier", "operation": "flat_add", "value": 5 }]
     }
   ],
   "totals": {
-    "synergyScore": 3,
+    "synergyScore": 5,
     "statModifiers": {},
     "durationModifiers": {},
     "resourceYieldModifiers": [],
