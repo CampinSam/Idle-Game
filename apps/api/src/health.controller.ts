@@ -1,3 +1,4 @@
+import { join } from 'path';
 import {
   Controller,
   Get,
@@ -5,11 +6,12 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-  Next,
   Res,
 } from '@nestjs/common';
-import { NextFunction, Response } from 'express';
+import { Response } from 'express';
 import { PrismaService } from './prisma/prisma.service';
+
+const FRONTEND_INDEX = join(__dirname, '..', '..', 'web', 'dist', 'index.html');
 
 @Controller()
 export class HealthController {
@@ -18,23 +20,26 @@ export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   // Liveness — cheap, no I/O. Used by orchestrators to decide if the process
-  // is still up. If this ever does I/O, a slow DB will cause the
-  // orchestrator to kill a perfectly healthy app.
+  // is still up.
   //
-  // Replit's deployment health probe always sends `x-replit-healthcheck: 1`.
-  // Real browser visits do not. We return JSON only for probe requests so
-  // that ServeStaticModule can serve index.html to first-time visitors who
-  // don't yet have a cached PWA service worker.
+  // Replit's deployment health probe sends `x-replit-healthcheck: 1`.
+  // Real browser visits do not. For probe requests we return a small JSON
+  // payload. For browser visits (no cached PWA service worker yet) we serve
+  // the frontend's index.html directly so the app loads instead of a 404.
   @Get()
   root(
     @Headers('x-replit-healthcheck') healthCheck: string,
     @Res() res: Response,
-    @Next() next: NextFunction,
   ): void {
     if (healthCheck) {
       res.json({ status: 'ok', service: 'derp-universe' });
     } else {
-      next();
+      res.sendFile(FRONTEND_INDEX, (err) => {
+        if (err) {
+          this.logger.warn(`Could not serve index.html: ${err.message}`);
+          res.json({ status: 'ok', service: 'derp-universe' });
+        }
+      });
     }
   }
 
