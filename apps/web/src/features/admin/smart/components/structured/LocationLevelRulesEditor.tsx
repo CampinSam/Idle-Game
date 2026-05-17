@@ -12,7 +12,6 @@ import {
   labelStyle,
   fieldGroupStyle,
   numberInputStyle,
-  inputStyle,
   selectStyle,
 } from './editorStyles';
 import { errorTextStyle, errorWrapperStyle } from './validation';
@@ -241,18 +240,15 @@ function AllowedBuildingRow({
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
       <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 160 }}>
         <span style={labelStyle}>buildingDefId</span>
-        <input
-          type="text"
-          value={entry.buildingDefId || ''}
-          onChange={e => onChange({ ...entry, buildingDefId: e.target.value })}
-          style={{
-            ...inputStyle,
-            width: '100%',
-            borderColor: hasErr ? '#ef4444' : (inputStyle.borderColor as string | undefined),
-          }}
-          placeholder="building def id"
-        />
-        {hasErr && <span style={{ color: '#ef4444', fontSize: 11 }}>required</span>}
+        <div style={hasErr ? errorWrapperStyle : undefined}>
+          <RefSelect
+            refTable="BuildingDef"
+            value={entry.buildingDefId || null}
+            onChange={v => onChange({ ...entry, buildingDefId: v ?? '' })}
+            placeholder="Select BuildingDef..."
+          />
+        </div>
+        {hasErr && <span style={errorTextStyle}>required</span>}
       </div>
       <div style={{ ...fieldGroupStyle, maxWidth: 68 }}>
         <span style={labelStyle}>min</span>
@@ -297,18 +293,15 @@ function AllowedRoomRow({
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
       <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 160 }}>
         <span style={labelStyle}>roomDefId</span>
-        <input
-          type="text"
-          value={entry.roomDefId || ''}
-          onChange={e => onChange({ ...entry, roomDefId: e.target.value })}
-          style={{
-            ...inputStyle,
-            width: '100%',
-            borderColor: hasErr ? '#ef4444' : (inputStyle.borderColor as string | undefined),
-          }}
-          placeholder="room def id"
-        />
-        {hasErr && <span style={{ color: '#ef4444', fontSize: 11 }}>required</span>}
+        <div style={hasErr ? errorWrapperStyle : undefined}>
+          <RefSelect
+            refTable="RoomDef"
+            value={entry.roomDefId || null}
+            onChange={v => onChange({ ...entry, roomDefId: v ?? '' })}
+            placeholder="Select RoomDef..."
+          />
+        </div>
+        {hasErr && <span style={errorTextStyle}>required</span>}
       </div>
       <div style={{ ...fieldGroupStyle, maxWidth: 68 }}>
         <span style={labelStyle}>min</span>
