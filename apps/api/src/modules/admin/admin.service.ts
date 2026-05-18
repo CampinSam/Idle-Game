@@ -16,6 +16,14 @@ import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util'
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
+import { CommandService } from '../commands/command.service';
+import {
+  PatchBuilder,
+  buildCurrencyPatches,
+  buildItemPatches,
+  buildEntityPatch,
+  buildLocationPatches,
+} from '../commands/patch-builder';
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -48,7 +56,36 @@ export class AdminService {
     private homeBannerService: HomeBannerService,
     private pubsub: PubSubService,
     private selectionResolver: SelectionResolverService,
+    private commandService: CommandService,
   ) {}
+
+  /**
+   * Creates a PlayerDelta row and notifies the player's SSE stream so any
+   * in-flight admin mutation is immediately visible to the player without
+   * a manual page refresh.
+   *
+   * Delta creation is not best-effort: if the DB write fails the error is
+   * re-thrown so the admin knows something went wrong and the client does not
+   * silently drift. The PubSub publish is best-effort — a missed notification
+   * only delays the update until the next SSE heartbeat, which is recoverable.
+   */
+  private async emitAdminDelta(
+    userId: string,
+    patches: any[],
+    ui: any[] = [],
+  ): Promise<void> {
+    const delta = await (this.prisma as any).playerDelta.create({
+      data: { userId, patches, ui },
+    });
+    try {
+      this.pubsub.publish(`player:${userId}`, {
+        userId,
+        deltaId: delta.id.toString(),
+      });
+    } catch (err) {
+      this.logger.warn(`emitAdminDelta pubsub publish failed for user ${userId}: ${(err as any)?.message ?? err}`);
+    }
+  }
 
   async searchPlayers(query: string) {
     const users = await this.prisma.user.findMany({
@@ -88,6 +125,11 @@ export class AdminService {
     if (data.prestigeTokens !== undefined) updateData.prestigeTokens = data.prestigeTokens;
 
     const updated = await this.prisma.user.update({ where: { id }, data: updateData });
+
+    const pb = new PatchBuilder();
+    pb.upsertPlayer(updated);
+    await this.emitAdminDelta(id, pb.build());
+
     return serializeBigInts(updated);
   }
 
@@ -101,6 +143,11 @@ export class AdminService {
       where: { id },
       data: { bonusOutpostSlots: slots },
     });
+
+    const pb = new PatchBuilder();
+    pb.upsertPlayer(updated);
+    await this.emitAdminDelta(id, pb.build());
+
     return serializeBigInts(updated);
   }
 
@@ -121,6 +168,11 @@ export class AdminService {
         balance: BigInt(balance),
       },
     });
+
+    const pb = new PatchBuilder();
+    await buildCurrencyPatches(pb, this.prisma, userId);
+    await this.emitAdminDelta(userId, pb.build());
+
     return serializeBigInts(result);
   }
 
@@ -254,6 +306,8 @@ export class AdminService {
     } catch (err) {
       this.logger.warn(`Failed to send welcome gift for ${uid}: ${err}`);
     }
+
+    await this.emitAdminDelta(uid, [], [{ type: 'full_reset' }]);
 
     return serializeBigInts(updated);
   }
@@ -394,8 +448,12 @@ export class AdminService {
         where: { id: jobId },
         data: { startTick: adjustedStart, status: 'active' },
       });
-      const result = await this.missionService.completeMission(userId, jobId);
-      return serializeBigInts(result ?? { forced: true, jobId });
+      const result = await this.commandService.execute(userId, {
+        type: 'CompleteMission',
+        payload: { jobId },
+        idempotencyKey: `admin-force-complete-${jobId}`,
+      });
+      return serializeBigInts({ ...result, forced: true, jobId });
     }
 
     if (job.type === 'BuildingJob') {
@@ -410,8 +468,12 @@ export class AdminService {
         where: { id: jobId },
         data: { status: 'active', timer: { ...jobTimer, startTick: adjustedStartTick } },
       });
-      const result = await this.locationService.completeBuilding(userId, jobData.locationId, jobData.buildingId);
-      return serializeBigInts(result ?? { forced: true, jobId });
+      const result = await this.commandService.execute(userId, {
+        type: 'CompleteBuilding',
+        payload: { locationId: jobData.locationId, buildingId: jobData.buildingId },
+        idempotencyKey: `admin-force-complete-${jobId}`,
+      });
+      return serializeBigInts({ ...result, forced: true, jobId });
     }
 
     if (job.type === 'CraftingJob') {
@@ -422,8 +484,12 @@ export class AdminService {
         where: { id: jobId },
         data: { status: 'active', timer: { ...jobTimer, startTick: adjustedStartTick } },
       });
-      const result = await this.craftingService.collectCrafting(userId, jobId);
-      return serializeBigInts(result ?? { forced: true, jobId });
+      const result = await this.commandService.execute(userId, {
+        type: 'CollectCrafting',
+        payload: { jobId },
+        idempotencyKey: `admin-force-complete-${jobId}`,
+      });
+      return serializeBigInts({ ...result, forced: true, jobId });
     }
 
     const updated = await (this.prisma as any).job.update({
@@ -442,6 +508,8 @@ export class AdminService {
     const itemDef = await this.prisma.itemDefinition.findUnique({ where: { id: itemId } });
     if (!itemDef) throw new NotFoundException(`Item "${itemId}" not found`);
 
+    let result: any;
+
     if (itemDef.stackable) {
       const newQty = await this.inventoryService.addItem({
         userId,
@@ -451,31 +519,40 @@ export class AdminService {
         sourceType: 'admin',
         sourceId: 'admin',
       });
-      return { userId, itemId, quantity, granted: quantity, newQty };
+      result = { userId, itemId, quantity, granted: quantity, newQty };
+    } else {
+      const instanceIds: string[] = [];
+      await this.prisma.$transaction(async (tx) => {
+        for (let i = 0; i < quantity; i++) {
+          const inst = await tx.itemInstance.create({
+            data: { userId, definitionId: itemId, quantity: 1 },
+          });
+          instanceIds.push(inst.id);
+        }
+        await tx.itemLedger.create({
+          data: {
+            userId,
+            itemId,
+            delta: BigInt(quantity),
+            reason: 'Admin grant',
+            sourceType: 'admin',
+            sourceId: 'admin',
+            metadata: {},
+          },
+        });
+      });
+      result = { userId, itemId, quantity, granted: quantity, instanceIds };
     }
 
-    const instanceIds: string[] = [];
-    await this.prisma.$transaction(async (tx) => {
-      for (let i = 0; i < quantity; i++) {
-        const inst = await tx.itemInstance.create({
-          data: { userId, definitionId: itemId, quantity: 1 },
-        });
-        instanceIds.push(inst.id);
-      }
-      await tx.itemLedger.create({
-        data: {
-          userId,
-          itemId,
-          delta: BigInt(quantity),
-          reason: 'Admin grant',
-          sourceType: 'admin',
-          sourceId: 'admin',
-          metadata: {},
-        },
-      });
-    });
+    const pb = new PatchBuilder();
+    await buildItemPatches(pb, this.prisma, userId);
+    await this.emitAdminDelta(userId, pb.build(), [{
+      type: 'toast',
+      tone: 'success',
+      message: `Admin granted ${quantity}x ${itemDef.name}`,
+    }]);
 
-    return { userId, itemId, quantity, granted: quantity, instanceIds };
+    return result;
   }
 
   async getPlayerItems(userId: string) {
@@ -501,6 +578,11 @@ export class AdminService {
     }
 
     const updated = await (this.prisma as any).entity.update({ where: { id: entityId }, data: updateData });
+
+    const pb = new PatchBuilder();
+    await buildEntityPatch(pb, this.prisma, entityId);
+    await this.emitAdminDelta(userId, pb.build());
+
     return serializeBigInts(updated);
   }
 
@@ -508,6 +590,11 @@ export class AdminService {
     const loc = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId, ownerUserId: userId } });
     if (!loc) throw new NotFoundException(`Location ${locationId} not found for player`);
     await this.settlementService.recalculateLocationMeta(locationId);
+
+    const pb = new PatchBuilder();
+    await buildLocationPatches(pb, this.prisma, userId, locationId);
+    await this.emitAdminDelta(userId, pb.build());
+
     return { settled: true, locationId };
   }
 
@@ -525,6 +612,11 @@ export class AdminService {
     const effect = await (this.prisma as any).activeEffect.findFirst({ where: { id: effectId, userId } });
     if (!effect) throw new NotFoundException(`Effect ${effectId} not found for player`);
     await (this.prisma as any).activeEffect.delete({ where: { id: effectId } });
+
+    const pb = new PatchBuilder();
+    pb.deleteActiveEffect(effectId);
+    await this.emitAdminDelta(userId, pb.build());
+
     return { deleted: true, effectId };
   }
 
@@ -548,6 +640,16 @@ export class AdminService {
     await (this.prisma as any).entityPowerUsage.delete({
       where: { entityId_powerKey: { entityId, powerKey } },
     });
+
+    const remainingUsages = await (this.prisma as any).entityPowerUsage.findMany({ where: { entityId } });
+    const usageMap: Record<string, { usageCount: number; lastUsedUtcDay: string }> = {};
+    for (const u of remainingUsages) {
+      usageMap[u.powerKey] = { usageCount: u.usageCount, lastUsedUtcDay: u.lastUsedUtcDay };
+    }
+    const pb = new PatchBuilder();
+    pb.upsert('entityPowerUsage', entityId, usageMap);
+    await this.emitAdminDelta(userId, pb.build());
+
     return { deleted: true, entityId, powerKey };
   }
 

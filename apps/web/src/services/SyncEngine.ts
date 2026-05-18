@@ -257,6 +257,14 @@ export class SyncEngine {
       }
 
       const deltaRes = res as DeltaResponse;
+
+      if (Array.isArray(deltaRes.ui) && deltaRes.ui.some((u) => u.type === 'full_reset')) {
+        console.warn('[SyncEngine] Admin full-reset signal received, re-bootstrapping...');
+        this.closeStream();
+        await this.start();
+        return;
+      }
+
       if (deltaRes.patches.length > 0) {
         this.store.dispatch(applyPatches({
           patches: deltaRes.patches,

@@ -596,6 +596,7 @@ export type Patch =
 export type UiIntent =
   | { type: 'modal'; spec: import('@derp/shared').ModalSpecV1 }
   | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
-  | { type: 'navigate'; deepLink: string };
+  | { type: 'navigate'; deepLink: string }
+  | { type: 'full_reset' };
 
 export const api = new ApiClient();

@@ -11,11 +11,12 @@ import { InventoryModule } from '../inventory/inventory.module';
 import { HomeBannerModule } from '../home-banner/home-banner.module';
 import { GlobalPowerModule } from '../global-power/global-power.module';
 import { CraftingModule } from '../crafting/crafting.module';
+import { CommandsModule } from '../commands/commands.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule, CraftingModule],
+  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule, CraftingModule, CommandsModule],
   controllers: [AdminController],
   providers: [AdminService],
 })
