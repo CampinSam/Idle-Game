@@ -58,9 +58,12 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (!tickBroadcast) return;
+    let accepted = false;
     setSnapshot((prev) => {
       if (!prev) return prev;
       if (tickBroadcast.receivedAt <= prev.fetchedAt) return prev;
+      accepted = true;
+      interpolatedRef.current = { currentTick: tickBroadcast.currentTick };
       return {
         ...prev,
         currentTick: tickBroadcast.currentTick,
@@ -70,8 +73,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
         fetchedAt: tickBroadcast.receivedAt,
       };
     });
-    interpolatedRef.current = { currentTick: tickBroadcast.currentTick };
-    setTrigger((t) => t + 1);
+    if (accepted) setTrigger((t) => t + 1);
   }, [tickBroadcast]);
 
   useEffect(() => {
