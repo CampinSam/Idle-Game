@@ -101,7 +101,7 @@ export class GameRulesService {
     return { user, userFlags, ...extra };
   }
 
-  private reqCtxToSelCtx(context: RequirementContext): SelectionContext {
+  reqCtxToSelCtx(context: RequirementContext): SelectionContext {
     return {
       player: {
         keeperLevel: Number(context.user.keeperLevel ?? 0),

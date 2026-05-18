@@ -559,6 +559,24 @@ export class AdminController {
     return this.globalPowerService.cancelPower(id);
   }
 
+  @Post('selection/evaluate')
+  evaluateSelection(
+    @Body() body: {
+      rule: any;
+      userId: string;
+      entityIds?: string[];
+      activityContext?: {
+        activityType?: string;
+        missionType?: string;
+        missionTags?: string[];
+        regionId?: string;
+        seasonId?: string;
+      };
+    },
+  ) {
+    return this.adminService.evaluateSelection(body);
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   @Get(':table')

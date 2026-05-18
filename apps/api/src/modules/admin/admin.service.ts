@@ -11,7 +11,9 @@ import { CraftingService } from '../crafting/crafting.service';
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
-import { GameRulesService, GameUser } from '../game-rules/game-rules.service';
+import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
+import type { SelectionContext } from '../selection/selection.types';
+import type { RichSelection } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
@@ -1083,5 +1085,80 @@ export class AdminService {
     }
 
     return models[table];
+  }
+
+  async evaluateSelection(body: {
+    rule: RichSelection;
+    userId: string;
+    entityIds?: string[];
+    activityContext?: {
+      activityType?: string;
+      missionType?: string;
+      missionTags?: string[];
+      regionId?: string;
+      seasonId?: string;
+    };
+  }): Promise<{ passed: boolean; resolvedContext: SelectionContext }> {
+    // 1. Load user — same as mission.service.ts
+    const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
+    if (!user) throw new NotFoundException('Player not found');
+
+    // 2. Load & map entities — same pattern as mission.service.ts:250-268
+    const team: TeamEntitySnap[] = [];
+    for (const entityId of body.entityIds ?? []) {
+      const entity = await (this.prisma as any).entity.findFirst({
+        where: { id: entityId, ownerUserId: body.userId },
+        include: { equipment: true },
+      });
+      if (!entity) throw new NotFoundException(`Entity ${entityId} not found`);
+      team.push({
+        id: entity.id,
+        entityType: (entity.role as string | undefined) ?? undefined,
+        traits: ((entity.traits ?? {}) as Record<string, string>),
+        speciesId: (entity.definitionId as string | undefined) ?? undefined,
+        collectionId: (entity.nftCollectionDefId as string | undefined) ?? undefined,
+        rarity: ((entity.traits as any)?.rarity as string | undefined) ?? undefined,
+      });
+    }
+
+    // 3. Build RequirementContext — same as mission.service.ts:270
+    const reqCtx = this.gameRules.buildRequirementContext(user as any, {
+      teamSize: team.length > 0 ? team.length : undefined,
+      team: team.length > 0 ? team : undefined,
+    });
+
+    // 4. Convert to SelectionContext via the now-public reqCtxToSelCtx
+    const selCtx = this.gameRules.reqCtxToSelCtx(reqCtx);
+
+    // 5. Overlay admin-supplied activity context fields.
+    //    In the game these are filled from the mission/recipe definition at
+    //    synergy-evaluation time; the tester supplies them explicitly.
+    if (body.activityContext) {
+      if (selCtx.missionContext) {
+        selCtx.missionContext = {
+          ...selCtx.missionContext,
+          activityType: body.activityContext.activityType ?? selCtx.missionContext.activityType,
+          missionType: body.activityContext.missionType,
+          missionTags: body.activityContext.missionTags ?? [],
+          regionId: body.activityContext.regionId,
+          seasonId: body.activityContext.seasonId,
+        };
+      } else {
+        // teamSize was 0/undefined so missionContext was not set — create it for testing
+        selCtx.missionContext = {
+          activityType: body.activityContext.activityType ?? '',
+          missionType: body.activityContext.missionType,
+          missionTags: body.activityContext.missionTags ?? [],
+          regionId: body.activityContext.regionId,
+          seasonId: body.activityContext.seasonId,
+          teamSize: team.length,
+        };
+      }
+    }
+
+    // 6. Evaluate using the same resolver called by checkRequirements
+    const passed = this.selectionResolver.evaluate(body.rule, selCtx);
+
+    return { passed, resolvedContext: selCtx };
   }
 }

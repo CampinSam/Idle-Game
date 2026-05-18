@@ -222,6 +222,23 @@ export const adminApi = {
     });
   },
 
+  evaluateSelection: (body: {
+    rule: unknown;
+    userId: string;
+    entityIds?: string[];
+    activityContext?: {
+      activityType?: string;
+      missionType?: string;
+      missionTags?: string[];
+      regionId?: string;
+      seasonId?: string;
+    };
+  }) =>
+    adminRequest<{ passed: boolean; resolvedContext: unknown }>('/selection/evaluate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();
     formData.append('file', file);

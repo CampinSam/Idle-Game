@@ -32,6 +32,7 @@ const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPag
 const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
 const BalancePage = lazy(() => import('./features/admin/balance/BalancePage'));
 const TagEditorPage = lazy(() => import('./features/admin/tag-editor/TagEditorPage'));
+const SelectionTesterPage = lazy(() => import('./features/admin/selection-tester/SelectionTesterPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
@@ -131,6 +132,13 @@ export default function App() {
     return (
       <Suspense fallback={<PageLoader />}>
         <TagEditorPage />
+      </Suspense>
+    );
+  }
+  if (location.pathname.startsWith('/admin/selection-tester')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <SelectionTesterPage />
       </Suspense>
     );
   }
