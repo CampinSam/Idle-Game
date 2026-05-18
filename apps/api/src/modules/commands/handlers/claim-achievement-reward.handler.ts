@@ -19,7 +19,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { achievementInstanceId } = payload;
 
-    const { grants } = await this.achievementService.claimReward(
+    const { grants, markedReadNotif } = await this.achievementService.claimReward(
       ctx.userId,
       achievementInstanceId,
       ctx.tx,
@@ -34,6 +34,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
     if (updatedInstance) {
       pb.upsertAchievement(updatedInstance);
     }
+    if (markedReadNotif) pb.upsertNotification(markedReadNotif);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     // Sync the new permanent effect (if any) so the UI sees the bonus

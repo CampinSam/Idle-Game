@@ -177,3 +177,34 @@ Creating a functional lootbox requires two definition records:
 2. **`ItemDef`** with `type: LOOTBOX` and `lootboxDefId` pointing to the `LootboxDef`.
 
 When the player opens the item, the handler reads `lootboxDefId` from the item definition to locate the outcome pool. If `lootboxDefId` is missing, the command throws `BadRequestException`. This same two-step pattern applies to any item type that delegates behavior to a separate definition record.
+
+---
+
+## 15. Notification Source Lifecycle
+
+Every notification is created with a `sourceType` / `sourceId` that identifies
+the entity whose state the notification represents (a gift, job, quest, mission,
+achievement, etc.). When that source entity transitions to a terminal state
+(claimed, completed, collected, cancelled), the notification's relevance ends.
+The command handler responsible for that transition **must** do both:
+
+1. **Mark the notification read inside the transaction** — do an inline
+   `findFirst` + `update` within the `ctx.tx` scope so the updated record is
+   available as a return value from the service method. `markReadBySource` (which
+   uses `updateMany` and returns only a count) is acceptable only for REST
+   fire-and-forget paths that don't feed a patch back to the client.
+
+2. **Emit a notification patch** — call `pb.upsertNotification(markedReadNotif)`
+   so the client's Redux store reflects the read state in the same response cycle.
+   Omitting this step causes the bell badge and unread indicator to persist after
+   the player has acted — a "ghost notification" that silently erodes trust.
+
+**Correct reference handlers:** `complete-mission.handler.ts`,
+`collect-crafting.handler.ts`, `complete-building.handler.ts`,
+`claim-gift.handler.ts`, `claim-quest-reward.handler.ts`,
+`claim-achievement-reward.handler.ts`.
+
+**Risk pattern to avoid:** any handler that mutates or removes a sourced entity
+without a corresponding `pb.upsertNotification()` or `pb.delete('notification', id)`
+call. When adding a new command handler, explicitly ask: *does this action make
+an existing notification irrelevant?* If yes, mark it read and emit the patch.

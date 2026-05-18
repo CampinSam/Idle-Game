@@ -221,7 +221,7 @@ export class AchievementService implements TelemetrySubscriber, OnModuleInit {
     userId: string,
     achievementInstanceId: string,
     tx?: any,
-  ): Promise<{ grants: any[]; permanentEffectId: string | null }> {
+  ): Promise<{ grants: any[]; permanentEffectId: string | null; markedReadNotif: any }> {
     const db = tx || this.prisma;
 
     const instance = await (db as any).achievementInstance.findUnique({
@@ -325,6 +325,18 @@ export class AchievementService implements TelemetrySubscriber, OnModuleInit {
       data: { status: 'claimed', claimedAt: new Date() },
     });
 
-    return { grants, permanentEffectId };
+    const notifModel = (tx as any)?.notification ?? (this.prisma as any).notification;
+    const existingNotif = await notifModel.findFirst({
+      where: { userId, sourceType: 'achievement', sourceId: achievementInstanceId, readAt: null },
+    });
+    let markedReadNotif: any = null;
+    if (existingNotif) {
+      markedReadNotif = await notifModel.update({
+        where: { id: existingNotif.id },
+        data: { readAt: new Date() },
+      });
+    }
+
+    return { grants, permanentEffectId, markedReadNotif };
   }
 }

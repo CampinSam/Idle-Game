@@ -236,7 +236,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     return reset;
   }
 
-  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[] }> {
+  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; markedReadNotif: any }> {
     const db = tx || this.prisma;
 
     const instance = await (db as any).questInstance.findUnique({
@@ -323,7 +323,19 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       });
     }
 
-    return { grants };
+    const notifModel = (tx as any)?.notification ?? (this.prisma as any).notification;
+    const existingNotif = await notifModel.findFirst({
+      where: { userId, sourceType: 'quest', sourceId: questInstanceId, readAt: null },
+    });
+    let markedReadNotif: any = null;
+    if (existingNotif) {
+      markedReadNotif = await notifModel.update({
+        where: { id: existingNotif.id },
+        data: { readAt: new Date() },
+      });
+    }
+
+    return { grants, markedReadNotif };
   }
 
   async listInstances(userId: string): Promise<any[]> {
