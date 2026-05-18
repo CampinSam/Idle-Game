@@ -11,6 +11,12 @@ import {
   ghostButtonStyle,
 } from './editorStyles';
 import { ensureRefCache } from '../RefSelect';
+import {
+  SINGLE_VALUE_SCOPES,
+  STUBBED_SCOPES,
+  allowedAggregates,
+  allowedOperators,
+} from './selectionRuleConstraints';
 
 type RssNode = RichSelection | RichSelectionRule | RuleRefNode;
 
@@ -146,23 +152,11 @@ const SCOPE_FIELD_SUGGESTIONS: Partial<Record<ScopeType, FieldSuggestion[]>> = {
   ],
 };
 
-const AGGREGATE_OPTIONS: AggregateType[] = [
-  'self', 'any', 'all', 'none', 'count', 'sum', 'avg', 'min', 'max', 'distinct_count',
-];
-
-const OPERATOR_OPTIONS: OperatorType[] = [
-  'eq', 'neq', 'gt', 'gte', 'lt', 'lte',
-  'in', 'not_in', 'contains', 'not_contains',
-  'exists', 'not_exists', 'between',
-];
-
 const OP_COLOR: Record<string, string> = {
   AND: '#6366f1',
   OR: '#f59e0b',
   NOT: '#ef4444',
 };
-
-const MULTI_ENTITY_SCOPES = new Set<ScopeType>(['entity', 'team', 'team_member', 'location']);
 
 function defaultRule(): RichSelectionRule {
   return { scope: 'player', field: 'keeperLevel', operator: 'gte', value: 1 };
@@ -406,7 +400,10 @@ interface RuleEditorProps {
 
 function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast }: RuleEditorProps) {
   const needsValue = rule.operator !== 'exists' && rule.operator !== 'not_exists';
-  const showAggregate = MULTI_ENTITY_SCOPES.has(rule.scope);
+  const showAggregate = !SINGLE_VALUE_SCOPES.has(rule.scope);
+
+  const aggOptions = showAggregate ? allowedAggregates(rule.scope, rule.field) : [];
+  const opOptions = allowedOperators(rule.scope, rule.field);
 
   const set = <K extends keyof RichSelectionRule>(k: K, v: RichSelectionRule[K]) =>
     onChange({ ...rule, [k]: v });
@@ -414,7 +411,50 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
   const handleScopeChange = (newScope: ScopeType) => {
     const oldOptions = SCOPE_FIELD_SUGGESTIONS[rule.scope] ?? [];
     const wasKnown = oldOptions.some(o => o.value === rule.field);
-    onChange({ ...rule, scope: newScope, field: wasKnown ? '' : rule.field });
+    const newField = wasKnown ? '' : rule.field;
+    const newIsSingleValue = SINGLE_VALUE_SCOPES.has(newScope);
+    const newAggOptions = newIsSingleValue ? [] : allowedAggregates(newScope, newField);
+    const newOpOptions = allowedOperators(newScope, newField);
+    const newAggregate = newIsSingleValue
+      ? undefined
+      : (newAggOptions.includes(rule.aggregate as AggregateType)
+          ? rule.aggregate
+          : newAggOptions[0]);
+    const newOperator = newOpOptions.includes(rule.operator)
+      ? rule.operator
+      : newOpOptions[0];
+    const updated: RichSelectionRule = {
+      ...rule,
+      scope: newScope,
+      field: newField,
+      operator: newOperator,
+    };
+    if (newIsSingleValue) {
+      delete updated.aggregate;
+    } else {
+      updated.aggregate = newAggregate;
+    }
+    onChange(updated);
+  };
+
+  const handleFieldChange = (newField: string) => {
+    const newAggOptions = showAggregate ? allowedAggregates(rule.scope, newField) : [];
+    const newOpOptions = allowedOperators(rule.scope, newField);
+    const newAggregate = showAggregate
+      ? (newAggOptions.includes(rule.aggregate as AggregateType)
+          ? rule.aggregate
+          : newAggOptions[0])
+      : undefined;
+    const newOperator = newOpOptions.includes(rule.operator)
+      ? rule.operator
+      : newOpOptions[0];
+    const updated: RichSelectionRule = { ...rule, field: newField, operator: newOperator };
+    if (showAggregate) {
+      updated.aggregate = newAggregate;
+    } else {
+      delete updated.aggregate;
+    }
+    onChange(updated);
   };
 
   const uid = useId();
@@ -486,7 +526,11 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
             onChange={e => handleScopeChange(e.target.value as ScopeType)}
             style={{ ...selectStyle, width: '100%' }}
           >
-            {SCOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            {SCOPE_OPTIONS.map(s => (
+              <option key={s} value={s}>
+                {STUBBED_SCOPES.has(s) ? `* ${s}` : s}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -498,7 +542,7 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
             type="text"
             list={fieldOptions.length > 0 ? datalistId : undefined}
             value={rule.field}
-            onChange={e => set('field', e.target.value)}
+            onChange={e => handleFieldChange(e.target.value)}
             placeholder="e.g. keeperLevel, flags.key"
             style={{ ...inputStyle, width: '100%', ...(fieldError ? { borderColor: '#f87171', background: '#1f0a0a' } : {}) }}
           />
@@ -511,15 +555,15 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           )}
         </div>
 
-        {showAggregate && (
+        {showAggregate && aggOptions.length > 0 && (
           <div style={{ ...fieldGroupStyle, minWidth: 80 }}>
             <span style={labelStyle}>aggregate</span>
             <select
-              value={rule.aggregate ?? 'self'}
+              value={rule.aggregate ?? aggOptions[0]}
               onChange={e => set('aggregate', e.target.value as AggregateType)}
               style={{ ...selectStyle, width: '100%' }}
             >
-              {AGGREGATE_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+              {aggOptions.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
         )}
@@ -527,11 +571,11 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
         <div style={{ ...fieldGroupStyle, minWidth: 90 }}>
           <span style={labelStyle}>operator</span>
           <select
-            value={rule.operator}
+            value={opOptions.includes(rule.operator) ? rule.operator : opOptions[0]}
             onChange={e => set('operator', e.target.value as OperatorType)}
             style={{ ...selectStyle, width: '100%' }}
           >
-            {OPERATOR_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+            {opOptions.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         </div>
 
