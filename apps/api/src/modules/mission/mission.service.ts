@@ -14,6 +14,7 @@ import { PlayerService } from '../player/player.service';
 import { TickService } from '../tick/tick.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
+import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.util';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
@@ -142,17 +143,6 @@ export class MissionService {
       .map((d: any) => this.mapDefToLegacy(d, reqContext));
   }
 
-  private evaluateTopLevelRules(
-    selection: any,
-    reqContext: any,
-  ): { label?: string; met: boolean }[] {
-    if (!selection || !Array.isArray((selection as any).rules)) return [];
-    return (selection as any).rules.map((rule: any) => ({
-      label: rule.label,
-      met: this.gameRules.checkRequirements({ combinator: 'AND', rules: [rule] }, reqContext),
-    }));
-  }
-
   private mapDefToLegacy(def: any, reqContext?: any) {
     const catDisplay = def.missionCategoryDef?.displayDef;
     const missionDisplay = def.displayDef;
@@ -168,11 +158,11 @@ export class MissionService {
     };
 
     const requirementStatus: any[] = reqContext
-      ? this.evaluateTopLevelRules(def.requirements, reqContext)
+      ? evaluateTopLevelRules(def.requirements, reqContext, this.gameRules)
       : [];
 
     const launchRequirementStatus: any[] = reqContext
-      ? this.evaluateTopLevelRules(def.launchRequirements, reqContext)
+      ? evaluateTopLevelRules(def.launchRequirements, reqContext, this.gameRules)
       : [];
 
     return {

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GameRulesService, TeamEntitySnap, RequirementContext } from '../game-rules/game-rules.service';
+import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.util';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { EffectService } from '../effect/effect.service';
 import { CurrencyService } from '../currency/currency.service';
@@ -91,8 +92,8 @@ export class JobPreviewService {
       team,
     });
 
-    const requirementStatus = this.evaluateTopLevelRules(def.requirements, reqContext);
-    const launchRequirementStatus = this.evaluateTopLevelRules(def.launchRequirements, reqContext);
+    const requirementStatus = evaluateTopLevelRules(def.requirements, reqContext, this.gameRules);
+    const launchRequirementStatus = evaluateTopLevelRules(def.launchRequirements, reqContext, this.gameRules);
 
     const allRequirements: JobPreviewRequirement[] = [
       ...requirementStatus.map(r => ({ ...r, source: 'requirements' as const })),
@@ -226,16 +227,6 @@ export class JobPreviewService {
     };
   }
 
-  private evaluateTopLevelRules(
-    selection: any,
-    reqContext: RequirementContext,
-  ): { label?: string; met: boolean }[] {
-    if (!selection || !Array.isArray((selection as any).rules)) return [];
-    return (selection as any).rules.map((rule: any) => ({
-      label: rule.label,
-      met: this.gameRules.checkRequirements({ combinator: 'AND', rules: [rule] }, reqContext),
-    }));
-  }
 
   private extractTeamSizeBounds(
     requirements: any,
