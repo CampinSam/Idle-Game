@@ -142,6 +142,17 @@ export class MissionService {
       .map((d: any) => this.mapDefToLegacy(d, reqContext));
   }
 
+  private evaluateTopLevelRules(
+    selection: any,
+    reqContext: any,
+  ): { label?: string; met: boolean }[] {
+    if (!selection || !Array.isArray((selection as any).rules)) return [];
+    return (selection as any).rules.map((rule: any) => ({
+      label: rule.label,
+      met: this.gameRules.checkRequirements({ combinator: 'AND', rules: [rule] }, reqContext),
+    }));
+  }
+
   private mapDefToLegacy(def: any, reqContext?: any) {
     const catDisplay = def.missionCategoryDef?.displayDef;
     const missionDisplay = def.displayDef;
@@ -156,10 +167,13 @@ export class MissionService {
       ),
     };
 
-    const requirementStatus: any[] =
-      reqContext && def.requirements
-        ? [{ met: this.gameRules.checkRequirements(def.requirements, reqContext) }]
-        : [];
+    const requirementStatus: any[] = reqContext
+      ? this.evaluateTopLevelRules(def.requirements, reqContext)
+      : [];
+
+    const launchRequirementStatus: any[] = reqContext
+      ? this.evaluateTopLevelRules(def.launchRequirements, reqContext)
+      : [];
 
     return {
       id: def.id,
@@ -170,6 +184,7 @@ export class MissionService {
       success: def.success,
       failure: def.failure,
       requirements: def.requirements,
+      launchRequirements: def.launchRequirements ?? null,
       visibilityRequirements: def.visibilityRequirements,
       tags: def.tags ?? [],
       rewardPreview: def.rewardPreview ?? [],
@@ -181,6 +196,7 @@ export class MissionService {
       missionCategoryDefId: def.missionCategoryDefId,
       display: resolvedDisplay,
       requirementStatus,
+      launchRequirementStatus,
     };
   }
 
@@ -277,6 +293,13 @@ export class MissionService {
 
     if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
       throw new BadRequestException('Mission requirements not met');
+    }
+
+    if (
+      dbDef.launchRequirements &&
+      !this.gameRules.checkRequirements(dbDef.launchRequirements, reqContext)
+    ) {
+      throw new BadRequestException('Mission launch requirements not met');
     }
 
     const activeMissions = await (db as any).job.count({

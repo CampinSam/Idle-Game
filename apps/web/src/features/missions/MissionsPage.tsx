@@ -89,36 +89,6 @@ export default function MissionsPage() {
   const [error, setError] = useState('');
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [synergyPreview, setSynergyPreview] = useState<import('../../services/api').SynergyPreview | null>(null);
-  const [liveSynergyPreview, setLiveSynergyPreview] = useState<import('../../services/api').SynergyPreview | null>(null);
-  const [liveSynergyLoading, setLiveSynergyLoading] = useState(false);
-
-  useEffect(() => {
-    if (!selectedMission || selectedEntities.length === 0) {
-      setLiveSynergyPreview(null);
-      setLiveSynergyLoading(false);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setLiveSynergyLoading(true);
-      try {
-        const preview = await api.missionSynergyPreview(selectedMission, selectedEntities, controller.signal);
-        setLiveSynergyPreview(preview);
-      } catch (err: any) {
-        if (err?.name !== 'AbortError') {
-          setLiveSynergyPreview(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLiveSynergyLoading(false);
-        }
-      }
-    }, 400);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [selectedMission, selectedEntities]);
 
   const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
   const currentCategoryId = categoryStack[categoryStack.length - 1] ?? null;
@@ -219,8 +189,6 @@ export default function MissionsPage() {
         entityPickerRef={entityPickerRef}
         synergyPreview={synergyPreview}
         onDismissSynergy={handleDismissSynergy}
-        liveSynergyPreview={liveSynergyPreview}
-        liveSynergyLoading={liveSynergyLoading}
       />
     );
   }

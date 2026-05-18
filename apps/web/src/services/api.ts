@@ -174,6 +174,17 @@ class ApiClient {
     });
   }
 
+  jobPreview(
+    dto: { jobType: string; defId: string; entityIds?: string[]; locationId?: string },
+    signal?: AbortSignal,
+  ) {
+    return this.request<any>('/jobs/preview', {
+      method: 'POST',
+      body: JSON.stringify(dto),
+      signal,
+    });
+  }
+
   markJobsNotified(jobIds: string[]) {
     return this.request<any>('/jobs/notify', {
       method: 'POST',

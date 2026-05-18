@@ -8,6 +8,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { IdempotencyService } from '../infrastructure/idempotency.service';
 import { JobService } from './job.service';
+import { JobPreviewService, JobPreviewDto } from './job-preview.service';
 import { JOB_TYPE_CONFIG } from './job.constants';
 
 @Controller('jobs')
@@ -23,7 +24,16 @@ export class JobController {
     private pubsub: PubSubService,
     private jobService: JobService,
     private idempotency: IdempotencyService,
+    private jobPreviewService: JobPreviewService,
   ) {}
+
+  @Post('preview')
+  async getJobPreview(
+    @CurrentUser() user: { id: string },
+    @Body() dto: JobPreviewDto,
+  ) {
+    return this.jobPreviewService.getPreview(user.id, dto);
+  }
 
   @Post(':id/cancel')
   async cancelJob(

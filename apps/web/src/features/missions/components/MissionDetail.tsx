@@ -1,9 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { getDifficultyDisplay } from '@derp/shared';
-import { calculateInjuryChance } from '@derp/math';
 import { Badge } from '../../../components/ui';
 import { EntityCard, EntityList } from '../../entities/components';
-import { getEntityMP } from '../../entities/utils';
 import { MissionDetailFooter } from './MissionDetailFooter';
 import { SynergyPanel } from './SynergyPanel';
 import {
@@ -19,6 +17,7 @@ import {
 } from './missionUtils';
 import { BUSY_PICKER_TOOLTIP } from '../../inventory/utils/statChangeHelpers';
 import type { SynergyPreview } from '../../../services/api';
+import { useJobPreview } from '../../jobs/useJobPreview';
 
 interface MissionDetailProps {
   selectedDef: any;
@@ -40,8 +39,6 @@ interface MissionDetailProps {
   entityPickerRef: React.RefObject<HTMLDivElement>;
   synergyPreview?: SynergyPreview | null;
   onDismissSynergy?: () => void;
-  liveSynergyPreview?: SynergyPreview | null;
-  liveSynergyLoading?: boolean;
 }
 
 export function MissionDetail(props: MissionDetailProps) {
@@ -65,11 +62,15 @@ export function MissionDetail(props: MissionDetailProps) {
     entityPickerRef,
     synergyPreview,
     onDismissSynergy,
-    liveSynergyPreview,
-    liveSynergyLoading,
   } = props;
 
   const teamGridRef = useRef<HTMLDivElement>(null);
+
+  const { preview, loading: previewLoading } = useJobPreview({
+    jobType: 'mission',
+    defId: selectedDef.id,
+    entityIds: selectedEntities,
+  });
 
   const diffInfo = getDifficultyDisplay(selectedDef.difficulty);
   const display = resolveDisplay(selectedDef, missionCategoryDefs);
@@ -80,45 +81,33 @@ export function MissionDetail(props: MissionDetailProps) {
     entry.type === 'currency'
       ? (currencyBalances[entry.id] ?? 0)
       : Object.values(inventoryItems).filter((it: any) => it.definitionId === entry.id).reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
-  const canAffordMission = missionCost.every(e => getHaveForEntry(e) >= e.amount);
 
   const heroCss = displayCssVars(display, { hero: true });
 
-  const { min: teamMin, max: teamMax } = extractTeamSizeBounds(selectedDef.requirements);
+  const localBounds = extractTeamSizeBounds(selectedDef.requirements);
+  const teamMin = preview?.mission?.teamMin ?? localBounds.min;
+  const teamMax = preview?.mission?.teamMax ?? localBounds.max;
+
   const keeperLvl = extractRuleValue(selectedDef.requirements, 'player', 'keeperLevel');
   const duration = selectedDef.timer?.duration ?? 0;
-  const difficulty = selectedDef.difficulty || 100;
+  const difficulty = preview?.mission?.difficulty ?? selectedDef.difficulty ?? 100;
 
-  const teamMP = useMemo(() => {
-    return selectedEntities.reduce((sum, id) => {
-      const entity = entities.find((b: any) => b.id === id);
-      return sum + (entity ? getEntityMP(entity) : 0);
-    }, 0);
-  }, [selectedEntities, entities]);
-
-  const synergyMPBonus = liveSynergyPreview?.missionPowerBonus ?? 0;
-  const adjustedTeamMP = synergyMPBonus !== 0 ? teamMP * (1 + synergyMPBonus / 100) : teamMP;
-
-  const successChance = useMemo(() => {
-    if (selectedEntities.length === 0) return 0;
-    const minChance = selectedDef.minSuccessChance ?? 0;
-    const maxChance = selectedDef.maxSuccessChance ?? 100;
-    const raw = adjustedTeamMP / (adjustedTeamMP + difficulty);
-    return Math.round(Math.min(Math.max(raw * 100, minChance), maxChance));
-  }, [adjustedTeamMP, selectedDef, selectedEntities, difficulty]);
-
-  const powerRatio = adjustedTeamMP > 0 ? Math.min(1, adjustedTeamMP / (adjustedTeamMP + difficulty)) : 0;
-  const teamMeetsMin = selectedEntities.length >= teamMin;
-  const teamMeetsMax = selectedEntities.length <= teamMax;
-  const canStart = teamMeetsMin && teamMeetsMax && canAffordMission && selectedEntities.length > 0;
-
+  const missionPower = preview?.mission?.missionPower ?? 0;
+  const successChance = preview?.mission?.successChance ?? 0;
+  const injuryChance = preview?.mission?.injuryChance ?? 0;
   const injuryRate = selectedDef.injuryRate ?? 0;
-  const injuryChance = useMemo(() => {
-    if (injuryRate <= 0) return 0;
-    return Math.round(calculateInjuryChance(difficulty, adjustedTeamMP, injuryRate) * 100);
-  }, [difficulty, adjustedTeamMP, injuryRate]);
-  const injuryColor = injuryChance >= 60 ? '#EF4444' : '#F59E0B';
+  const liveSynergy = preview?.mission?.synergy ?? null;
 
+  const canAffordMission = preview?.canAfford ?? false;
+  const powerRatio = missionPower > 0 ? Math.min(1, missionPower / (missionPower + difficulty)) : 0;
+
+  const canStart = !!(
+    preview &&
+    preview.requirements.every(r => r.met) &&
+    selectedEntities.length > 0
+  );
+
+  const injuryColor = injuryChance >= 60 ? '#EF4444' : '#F59E0B';
   const grade = successChance >= 90 ? 'A' : successChance >= 75 ? 'B' : successChance >= 55 ? 'C' : successChance >= 35 ? 'D' : 'F';
   const gradeColor = successChance >= 75 ? '#10B981' : successChance >= 55 ? '#F59E0B' : '#EF4444';
   const successColor = successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444';
@@ -159,6 +148,10 @@ export function MissionDetail(props: MissionDetailProps) {
 
   const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
+
+  const previewRequirements = preview?.requirements ?? [];
+  const reqRows = previewRequirements.filter(r => r.source === 'requirements');
+  const launchReqRows = previewRequirements.filter(r => r.source === 'launchRequirements');
 
   return (
     <div className="flex flex-col flex-1 min-h-0 pt-2">
@@ -239,27 +232,31 @@ export function MissionDetail(props: MissionDetailProps) {
             <div className={panelClass}>
               <div className={panelTitleClass}>Team Power vs Difficulty</div>
               <div className="flex flex-col gap-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="flex flex-col items-start">
-                    <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(adjustedTeamMP.toFixed(2))}</span>
-                    <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">
-                      MP{synergyMPBonus !== 0 && <span className="ml-1 text-[#a78bfa] normal-case font-semibold">w/ synergy</span>}
-                    </span>
-                  </div>
-                  <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
-                  <div className="flex flex-col items-end">
-                    <span className="font-cinzel text-[22px] font-black text-[#ef4444] tabular-nums">{Number(difficulty.toFixed(2))}</span>
-                    <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">D</span>
-                  </div>
-                </div>
-                <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
-                  <div className="h-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-[width] duration-300" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
-                  <div className="h-full bg-gradient-to-r from-[#ef4444] to-[#f87171] transition-[width] duration-300" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Success Chance</span>
-                  <span className="text-[16px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
-                </div>
+                {previewLoading && !preview ? (
+                  <div className="text-[11px] text-text-secondary animate-pulse py-2 text-center">Calculating…</div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex flex-col items-start">
+                        <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(missionPower.toFixed(2))}</span>
+                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">MP</span>
+                      </div>
+                      <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-cinzel text-[22px] font-black text-[#ef4444] tabular-nums">{Number(difficulty.toFixed(2))}</span>
+                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">D</span>
+                      </div>
+                    </div>
+                    <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
+                      <div className="h-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-[width] duration-300" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
+                      <div className="h-full bg-gradient-to-r from-[#ef4444] to-[#f87171] transition-[width] duration-300" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Success Chance</span>
+                      <span className="text-[16px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -309,91 +306,121 @@ export function MissionDetail(props: MissionDetailProps) {
 
             <div className={panelClass}>
               <div className={panelTitleClass}>Mission Readiness</div>
-              <div className="flex items-baseline gap-3" style={{ color: gradeColor }}>
-                <span className="font-cinzel text-[40px] font-black leading-none">{grade}</span>
-                <span className="text-[16px] font-bold tabular-nums">{successChance}%</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  {
-                    icon: teamMeetsMin && teamMeetsMax ? '✅' : teamMeetsMax && !teamMeetsMin ? '⚠️' : '❌',
-                    name: 'Team Size',
-                    val: `${selectedEntities.length}/${teamMax}`,
-                    color: undefined,
-                  },
-                  {
-                    icon: canAffordMission ? '✅' : '❌',
-                    name: 'Can Afford',
-                    val: canAffordMission ? 'Yes' : 'No',
-                    color: undefined,
-                  },
-                  ...(keeperLvl > 0 ? [{ icon: '🛡️', name: 'Keeper Lv', val: `${keeperLvl}+`, color: undefined }] : []),
-                  {
-                    icon: successChance >= 70 ? '✅' : successChance >= 40 ? '⚠️' : '❌',
-                    name: 'Power Ratio',
-                    val: successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low',
-                    color: successColor,
-                  },
-                  ...(injuryRate > 0 ? [{
-                    icon: '⚠️',
-                    name: 'Injury on Failure',
-                    val: `${injuryChance}% chance`,
-                    color: injuryColor,
-                  }] : []),
-                ].map((row, i) => (
-                  <div key={i} className="flex items-center gap-2 text-[12px]">
-                    <span className="text-base leading-none">{row.icon}</span>
-                    <span className="flex-1 text-text-secondary">{row.name}</span>
-                    <span className="font-bold text-text-primary tabular-nums" style={row.color ? { color: row.color } : undefined}>
-                      {row.val}
-                    </span>
+              {previewLoading && !preview ? (
+                <div className="text-[11px] text-text-secondary animate-pulse py-2 text-center">Calculating…</div>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-3" style={{ color: gradeColor }}>
+                    <span className="font-cinzel text-[40px] font-black leading-none">{grade}</span>
+                    <span className="text-[16px] font-bold tabular-nums">{successChance}%</span>
                   </div>
-                ))}
-              </div>
+                  <div className="flex flex-col gap-1.5">
+                    {reqRows.length > 0 && (
+                      <>
+                        {reqRows.length > 0 && launchReqRows.length > 0 && (
+                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Requirements</span>
+                        )}
+                        {reqRows.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-[12px]">
+                            <span className="text-base leading-none">{r.met ? '✅' : '❌'}</span>
+                            <span className="flex-1 text-text-secondary">{r.label ?? 'Requirement'}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {launchReqRows.length > 0 && (
+                      <>
+                        {reqRows.length > 0 && launchReqRows.length > 0 && (
+                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Launch Requirements</span>
+                        )}
+                        {launchReqRows.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-[12px]">
+                            <span className="text-base leading-none">{r.met ? '✅' : '❌'}</span>
+                            <span className="flex-1 text-text-secondary">{r.label ?? 'Requirement'}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {reqRows.length === 0 && launchReqRows.length === 0 && (
+                      <>
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <span className="text-base leading-none">{selectedEntities.length >= teamMin && selectedEntities.length <= teamMax ? '✅' : '⚠️'}</span>
+                          <span className="flex-1 text-text-secondary">Team Size</span>
+                          <span className="font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <span className="text-base leading-none">{canAffordMission ? '✅' : '❌'}</span>
+                          <span className="flex-1 text-text-secondary">Can Afford</span>
+                          <span className="font-bold text-text-primary tabular-nums">{canAffordMission ? 'Yes' : 'No'}</span>
+                        </div>
+                        {keeperLvl > 0 && (
+                          <div className="flex items-center gap-2 text-[12px]">
+                            <span className="text-base leading-none">🛡️</span>
+                            <span className="flex-1 text-text-secondary">Keeper Lv</span>
+                            <span className="font-bold text-text-primary tabular-nums">{keeperLvl}+</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-[12px]">
+                          <span className="text-base leading-none">{successChance >= 70 ? '✅' : successChance >= 40 ? '⚠️' : '❌'}</span>
+                          <span className="flex-1 text-text-secondary">Power Ratio</span>
+                          <span className="font-bold tabular-nums" style={{ color: successColor }}>{successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low'}</span>
+                        </div>
+                        {injuryRate > 0 && (
+                          <div className="flex items-center gap-2 text-[12px]">
+                            <span className="text-base leading-none">⚠️</span>
+                            <span className="flex-1 text-text-secondary">Injury on Failure</span>
+                            <span className="font-bold tabular-nums" style={{ color: injuryColor }}>{injuryChance}% chance</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {selectedEntities.length > 0 && (liveSynergyLoading || liveSynergyPreview) && (
+          {(previewLoading || liveSynergy) && (
             <div className="rounded-xl border border-[rgba(139,92,246,0.25)] bg-black/20 p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <span className={panelTitleClass}>⚡ Synergy Preview</span>
-                {liveSynergyLoading && (
+                {previewLoading && (
                   <span className="text-[10px] text-text-secondary animate-pulse">Calculating…</span>
                 )}
-                {!liveSynergyLoading && liveSynergyPreview && (
+                {!previewLoading && liveSynergy && (
                   <span
                     className="font-cinzel text-[15px] font-black tabular-nums"
-                    style={{ color: liveSynergyPreview.synergyScore > 0 ? '#10b981' : liveSynergyPreview.synergyScore < 0 ? '#ef4444' : '#94a3b8' }}
+                    style={{ color: liveSynergy.synergyScore > 0 ? '#10b981' : liveSynergy.synergyScore < 0 ? '#ef4444' : '#94a3b8' }}
                   >
-                    {liveSynergyPreview.synergyScore > 0 ? '+' : ''}{liveSynergyPreview.synergyScore}
+                    {liveSynergy.synergyScore > 0 ? '+' : ''}{liveSynergy.synergyScore}
                   </span>
                 )}
               </div>
-              {!liveSynergyLoading && liveSynergyPreview && (
+              {!previewLoading && liveSynergy && (
                 <>
-                  {(liveSynergyPreview.missionPowerBonus !== 0 || liveSynergyPreview.durationBonus !== 0) && (
+                  {(liveSynergy.missionPowerBonus !== 0 || liveSynergy.durationBonus !== 0) && (
                     <div className="flex gap-2 flex-wrap">
-                      {liveSynergyPreview.missionPowerBonus !== 0 && (
+                      {liveSynergy.missionPowerBonus !== 0 && (
                         <span
                           className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
-                          style={{ color: liveSynergyPreview.missionPowerBonus > 0 ? '#10b981' : '#ef4444' }}
+                          style={{ color: liveSynergy.missionPowerBonus > 0 ? '#10b981' : '#ef4444' }}
                         >
-                          MP {liveSynergyPreview.missionPowerBonus > 0 ? '+' : ''}{Number(liveSynergyPreview.missionPowerBonus.toFixed(1))}%
+                          MP {liveSynergy.missionPowerBonus > 0 ? '+' : ''}{Number(liveSynergy.missionPowerBonus.toFixed(1))}%
                         </span>
                       )}
-                      {liveSynergyPreview.durationBonus !== 0 && (
+                      {liveSynergy.durationBonus !== 0 && (
                         <span
                           className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
-                          style={{ color: liveSynergyPreview.durationBonus < 0 ? '#10b981' : '#ef4444' }}
+                          style={{ color: liveSynergy.durationBonus < 0 ? '#10b981' : '#ef4444' }}
                         >
-                          Dur {liveSynergyPreview.durationBonus > 0 ? '+' : ''}{Number(liveSynergyPreview.durationBonus.toFixed(1))}%
+                          Dur {liveSynergy.durationBonus > 0 ? '+' : ''}{Number(liveSynergy.durationBonus.toFixed(1))}%
                         </span>
                       )}
                     </div>
                   )}
-                  {liveSynergyPreview.matchedRules.length > 0 ? (
+                  {liveSynergy.matchedRules.length > 0 ? (
                     <div className="flex flex-col gap-1">
-                      {liveSynergyPreview.matchedRules.map((rule) => {
+                      {liveSynergy.matchedRules.map((rule) => {
                         const color = rule.isPenalty ? '#ef4444' : '#10b981';
                         const borderColor = rule.isPenalty ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)';
                         const bgColor = rule.isPenalty ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.05)';

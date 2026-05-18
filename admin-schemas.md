@@ -457,6 +457,84 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 
 ---
 
+## `launchRequirements` — Mission Launch Gate
+
+`MissionDef` now has a **second** `RichSelection` field alongside the existing `requirements`:
+
+| Field | Evaluated at | Purpose |
+|-------|-------------|---------|
+| `requirements` | Browse / listing time (no team) | Gates whether the mission row is open and clickable. Drives the lock icon. Use for player-level rules (`keeperLevel`, flags). |
+| `launchRequirements` | Launch time (real selected team) | Gates `startMission`. Evaluated with the actual team context (`teamSize`, entity traits, stats). Both blocks must pass for the mission to start. |
+
+`launchRequirements` is nullable (`Json?`). If omitted, only `requirements` is checked. When present its top-level rule labels are returned in the `launchRequirementStatus` array on each mission-def in `GET /api/missions/definitions`.
+
+---
+
+## Player Jobs — `POST /api/jobs/preview`
+
+Returns a real-time server-computed preview of a job context. Replaces any client-side math for power, success chance, synergy, cost affordability, and requirements evaluation.
+
+**Auth:** Player JWT required.
+
+### Request body
+
+```json
+{
+  "jobType": "mission",
+  "defId": "my_mission_id",
+  "entityIds": ["entity_a", "entity_b"],
+  "locationId": "optional_location_id"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jobType` | `"mission"` | Job type discriminator. `"crafting"` and `"building"` are reserved for future support. |
+| `defId` | string | The `MissionDef.id` (or recipe/building def id for future types) |
+| `entityIds` | string[] | IDs of the entities currently selected. Pass `[]` for an empty-team preview. |
+| `locationId` | string? | Workshop / outpost id (crafting/building only; ignored for missions) |
+
+### Response
+
+```json
+{
+  "jobType": "mission",
+  "requirements": [
+    { "label": "Keeper Level 5+", "met": true, "source": "requirements" },
+    { "label": "Team size 1–4", "met": false, "source": "launchRequirements" }
+  ],
+  "allRequirementsMet": false,
+  "canAfford": true,
+  "cost": [{ "type": "currency", "id": "gold", "amount": 100 }],
+  "durationSeconds": 300,
+  "mission": {
+    "teamMin": 1,
+    "teamMax": 4,
+    "missionPower": 142.5,
+    "difficulty": 100,
+    "successChance": 75,
+    "injuryChance": 12,
+    "synergy": {
+      "synergyScore": 3,
+      "missionPowerBonus": 10,
+      "durationBonus": -5,
+      "matchedRules": [...]
+    }
+  }
+}
+```
+
+The `requirements` array lists every **top-level rule** in both `requirements` and `launchRequirements` with its evaluated `met` status and the `source` block it came from. Rules without a `label` use `null`. `allRequirementsMet` is `true` only when every entry is `met`.
+
+**Error responses:**
+
+| Status | Reason |
+|--------|--------|
+| `400` | Unknown `jobType`, or `"crafting"` / `"building"` (not yet implemented) |
+| `404` | `defId` not found |
+
+---
+
 ## SelectionRuleDef — Reusable Rule Library
 
 `SelectionRuleDef` rows store named, reusable `RichSelection` trees. Any `requirements` or `visibilityRequirements` field (on missions, buildings, recipes, etc.) can embed a reference to one via a `rule_ref` node instead of copy-pasting the full condition tree.

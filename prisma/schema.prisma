@@ -634,6 +634,7 @@ model MissionDef {
   success                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
   failure                  Json               @default("{\"rewards\":[],\"effects\":[],\"text\":[]}")
   requirements             Json               @default("[]")
+  launchRequirements       Json?
   visibilityRequirements   Json               @default("[]")
   tags                     Json               @default("[]")
   rewardPreview            Json               @default("[]")

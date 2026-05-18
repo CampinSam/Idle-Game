@@ -158,6 +158,21 @@
       }
     }
   },
+  "definitions_extra": {
+    "MissionDef_requirements_fields": {
+      "description": "MissionDef has two separate RichSelection gate fields that the game engine evaluates at different times.",
+      "properties": {
+        "requirements": {
+          "$ref": "#/definitions/RichSelection",
+          "description": "Evaluated at browse/listing time (no team context). Use for player-level rules such as keeperLevel, flags, or season. Drives the lock icon on mission rows. Null = always open."
+        },
+        "launchRequirements": {
+          "$ref": "#/definitions/RichSelection",
+          "description": "Evaluated at launch time with the actual selected team in context (teamSize, entity traits, entity stats). Both requirements AND launchRequirements must pass for startMission to succeed. Null = no additional team-level gating. Top-level rule labels are returned in launchRequirementStatus on GET /api/missions/definitions."
+        }
+      }
+    }
+  },
   "files": {
     "synergy-rules.json": {
       "description": "Seed file for SynergyRule records. Loaded by definitions.seed.ts and upserted with upsertManyForce on every boot.",
