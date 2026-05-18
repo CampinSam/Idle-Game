@@ -262,6 +262,7 @@ export class MissionService {
       id: e.id as string,
       entityType: (e.role as string | undefined) ?? undefined,
       traits: (e.traits ?? {}) as Record<string, string>,
+      stats: (e.stats ?? {}) as Record<string, number>,
       speciesId: (e.definitionId as string | undefined) ?? undefined,
       collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
       rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,

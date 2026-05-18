@@ -1116,6 +1116,7 @@ export class AdminService {
         id: entity.id,
         entityType: (entity.role as string | undefined) ?? undefined,
         traits: ((entity.traits ?? {}) as Record<string, string>),
+        stats: ((entity.stats ?? {}) as Record<string, number>),
         speciesId: (entity.definitionId as string | undefined) ?? undefined,
         collectionId: (entity.nftCollectionDefId as string | undefined) ?? undefined,
         rarity: ((entity.traits as any)?.rarity as string | undefined) ?? undefined,

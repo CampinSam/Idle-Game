@@ -21,6 +21,7 @@ export interface TeamEntitySnap {
   id: string;
   entityType?: string;
   traits?: Record<string, string>;
+  stats?: Record<string, number>;
   speciesId?: string;
   collectionId?: string;
   rarity?: string;
@@ -113,7 +114,7 @@ export class GameRulesService {
         speciesId: e.speciesId,
         collectionId: e.collectionId,
         traits: (e.traits ?? {}) as Record<string, string>,
-        stats: {},
+        stats: (e.stats ?? {}) as Record<string, number>,
         rarity: e.rarity,
       })),
       inventory: { currencies: {}, items: {} },
