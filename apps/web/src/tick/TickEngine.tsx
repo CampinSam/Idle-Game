@@ -37,7 +37,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
   const [snapshot, setSnapshot] = useState<TickSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setTrigger] = useState(0);
-  const interpolatedRef = useRef({ currentTick: 0, tickRate: 1 });
+  const interpolatedRef = useRef({ currentTick: 0 });
 
   const tickAnchor = useSelector((s: RootState) => s.sync.tickAnchor);
   const tickBroadcast = useSelector((s: RootState) => s.sync.tickBroadcast);
@@ -52,10 +52,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       activeBoosts: tickAnchor.activeBoosts ?? tickBroadcast?.boosts ?? [],
     };
     setSnapshot(snap);
-    interpolatedRef.current = {
-      currentTick: snap.currentTick,
-      tickRate: snap.tickRate,
-    };
+    interpolatedRef.current = { currentTick: snap.currentTick };
     setLoading(false);
   }, [tickAnchor]);
 
@@ -73,10 +70,8 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
         fetchedAt: tickBroadcast.receivedAt,
       };
     });
-    interpolatedRef.current = {
-      currentTick: tickBroadcast.currentTick,
-      tickRate: tickBroadcast.tickRate,
-    };
+    interpolatedRef.current = { currentTick: tickBroadcast.currentTick };
+    setTrigger((t) => t + 1);
   }, [tickBroadcast]);
 
   useEffect(() => {
@@ -90,10 +85,7 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       const wallElapsedSec = (now - serverTimeMs) / 1000;
       const interpolatedTick = snapshot.currentTick + wallElapsedSec * snapshot.tickRate;
 
-      interpolatedRef.current = {
-        currentTick: interpolatedTick,
-        tickRate: snapshot.tickRate,
-      };
+      interpolatedRef.current = { currentTick: interpolatedTick };
       setTrigger((t) => t + 1);
     }, UPDATE_INTERVAL_MS);
 
@@ -114,13 +106,13 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
       activeBoosts: anchor.activeBoosts ?? broadcast?.boosts ?? [],
     };
     setSnapshot(snap);
-    interpolatedRef.current = { currentTick: snap.currentTick, tickRate: snap.tickRate };
+    interpolatedRef.current = { currentTick: snap.currentTick };
   }, [store]);
 
   const value = useMemo((): TickEngineState => ({
     snapshot,
     currentTick: interpolatedRef.current.currentTick,
-    tickRate: interpolatedRef.current.tickRate,
+    tickRate: snapshot?.tickRate ?? 1,
     activeBoosts: snapshot?.activeBoosts ?? [],
     loading,
     refresh,
@@ -146,4 +138,3 @@ export function useTickRate(): number {
   const { tickRate } = useContext(TickEngineContext);
   return tickRate;
 }
-
