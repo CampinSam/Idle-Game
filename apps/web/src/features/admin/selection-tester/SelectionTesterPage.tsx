@@ -16,10 +16,10 @@ interface ActivityContextFields {
   seasonId: string;
 }
 
-const SCENARIO_DEFAULTS: Record<Scenario, Partial<ActivityContextFields>> = {
-  player: { activityType: '' },
-  mission: { activityType: 'mission' },
-  crafting: { activityType: 'crafting' },
+const SCENARIO_DEFAULTS: Record<Scenario, ActivityContextFields> = {
+  player:   { activityType: '', missionType: '', missionTags: '', regionId: '', seasonId: '' },
+  mission:  { activityType: 'mission', missionType: '', missionTags: '', regionId: '', seasonId: '' },
+  crafting: { activityType: 'crafting', missionType: '', missionTags: '', regionId: '', seasonId: '' },
 };
 
 const s: Record<string, React.CSSProperties> = {
@@ -124,15 +124,17 @@ function ActivityContextPanel({
               />
             </div>
           )}
-          <div>
-            <div style={s.fieldLabel}>Season ID</div>
-            <input
-              style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const }}
-              value={value.seasonId}
-              placeholder="e.g. summer"
-              onChange={e => update('seasonId', e.target.value)}
-            />
-          </div>
+          {scenario !== 'crafting' && (
+            <div>
+              <div style={s.fieldLabel}>Season ID</div>
+              <input
+                style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const }}
+                value={value.seasonId}
+                placeholder="e.g. summer"
+                onChange={e => update('seasonId', e.target.value)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -213,13 +215,9 @@ export default function SelectionTesterPage() {
   const [subTab, setSubTab] = useState<SubTab>('selection');
 
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
-  const [activityContext, setActivityContext] = useState<ActivityContextFields>({
-    activityType: 'mission',
-    missionType: '',
-    missionTags: '',
-    regionId: '',
-    seasonId: '',
-  });
+  const [activityContext, setActivityContext] = useState<ActivityContextFields>(
+    SCENARIO_DEFAULTS['player'],
+  );
 
   const [result, setResult] = useState<{ passed: boolean; resolvedContext: unknown } | null>(null);
   const [running, setRunning] = useState(false);
@@ -228,10 +226,7 @@ export default function SelectionTesterPage() {
   const handleScenarioChange = useCallback((sc: Scenario) => {
     setScenario(sc);
     setSelectedEntityIds([]);
-    setActivityContext(prev => ({
-      ...prev,
-      activityType: SCENARIO_DEFAULTS[sc].activityType ?? prev.activityType,
-    }));
+    setActivityContext(SCENARIO_DEFAULTS[sc]);
     setResult(null);
     setRunError(null);
   }, []);
