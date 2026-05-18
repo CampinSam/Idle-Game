@@ -1075,6 +1075,7 @@ export class AdminService {
       homeBannerDef: (this.prisma as any).homeBannerDef,
       systemIconDef: (this.prisma as any).systemIconDef,
       selectionRuleDef: (this.prisma as any).selectionRuleDef,
+      synergyRule: (this.prisma as any).synergyRule,
     };
 
     if (!models[table]) {

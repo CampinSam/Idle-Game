@@ -44,6 +44,85 @@ const SCOPE_OPTIONS: ScopeType[] = [
   'context', 'currency_balance', 'item', 'inventory',
 ];
 
+interface FieldSuggestion { value: string; hint?: string; }
+
+const SCOPE_FIELD_SUGGESTIONS: Partial<Record<ScopeType, FieldSuggestion[]>> = {
+  player: [
+    { value: 'keeperLevel', hint: 'player level (number)' },
+    { value: 'flags.<key>', hint: 'player flag — replace <key> with the flag name' },
+  ],
+  entity: [
+    { value: 'level', hint: 'entity level (number)' },
+    { value: 'rarity', hint: 'rarity string (common, rare, …)' },
+    { value: 'id', hint: 'entity instance id' },
+    { value: 'entityType', hint: 'entity type string' },
+    { value: 'speciesId', hint: 'species definition id' },
+    { value: 'collectionId', hint: 'NFT collection id' },
+    { value: 'regionId', hint: 'current region id' },
+    { value: 'traitValues', hint: 'all trait values as array — use contains/in operators' },
+    { value: 'traitCount', hint: 'number of filled trait slots' },
+    { value: 'missionTags', hint: 'array of mission tags on this entity' },
+    { value: 'buildingTags', hint: 'array of building tags on this entity' },
+    { value: 'locationTypes', hint: 'array of location types this entity can work at' },
+    { value: 'traits.<traitValue>', hint: 'has a specific trait value (1/0) — replace <traitValue>' },
+    { value: 'stats.ATK', hint: 'ATK stat value' },
+    { value: 'stats.DEF', hint: 'DEF stat value' },
+    { value: 'stats.SPD', hint: 'SPD stat value' },
+    { value: 'stats.INT', hint: 'INT stat value' },
+    { value: 'stats.HP', hint: 'HP stat value' },
+    { value: 'stats.<stat>', hint: 'any stat — replace <stat> with stat name' },
+  ],
+  team_member: [
+    { value: 'level', hint: 'entity level (number)' },
+    { value: 'rarity', hint: 'rarity string' },
+    { value: 'speciesId', hint: 'species definition id' },
+    { value: 'traitValues', hint: 'all trait values as array' },
+    { value: 'traitCount', hint: 'number of filled trait slots' },
+    { value: 'traits.<traitValue>', hint: 'has trait value (1/0) — replace <traitValue>' },
+    { value: 'stats.ATK' }, { value: 'stats.DEF' }, { value: 'stats.SPD' }, { value: 'stats.INT' },
+    { value: 'stats.<stat>', hint: 'any stat — replace <stat>' },
+  ],
+  team: [
+    { value: 'level', hint: 'aggregate across all team members' },
+    { value: 'rarity', hint: 'aggregate across all team members' },
+    { value: 'traitValues', hint: 'trait values — use aggregate + contains/in' },
+    { value: 'traitCount', hint: 'trait slot count per entity' },
+    { value: 'traits.<traitValue>', hint: 'has trait value (1/0) — replace <traitValue>' },
+    { value: 'stats.ATK' }, { value: 'stats.DEF' }, { value: 'stats.SPD' }, { value: 'stats.INT' },
+    { value: 'stats.<stat>', hint: 'any stat — replace <stat>' },
+    { value: 'entities', hint: 'entity count (use with aggregate: count)' },
+  ],
+  context: [
+    { value: 'teamSize', hint: 'number of entities in the team' },
+    { value: 'activityType', hint: 'mission, crafting, building, etc.' },
+    { value: 'missionTags', hint: 'tags on the current mission — use contains/in' },
+    { value: 'missionType', hint: 'mission type string' },
+    { value: 'regionId', hint: 'region the activity is happening in' },
+    { value: 'seasonId', hint: 'current season id' },
+  ],
+  location: [
+    { value: 'regionId', hint: 'region this location belongs to' },
+    { value: 'buildings.<buildingDefId>', hint: 'has building (1/0) — replace <buildingDefId>' },
+    { value: 'rooms.<roomDefId>', hint: 'has room (1/0) — replace <roomDefId>' },
+  ],
+  currentLocation: [
+    { value: 'regionId', hint: 'region of the entity\'s current location' },
+    { value: 'buildings.<buildingDefId>', hint: 'has building (1/0) — replace <buildingDefId>' },
+    { value: 'rooms.<roomDefId>', hint: 'has room (1/0) — replace <roomDefId>' },
+  ],
+  building: [
+    { value: 'buildingDefId', hint: 'building definition id' },
+    { value: 'rooms.<roomDefId>', hint: 'has room (1/0) — replace <roomDefId>' },
+    { value: 'tags.<tag>', hint: 'has tag (1/0) — replace <tag>' },
+  ],
+  currency_balance: [
+    { value: '<currencyId>', hint: 'replace with the currency definition id (e.g. gold)' },
+  ],
+  item: [
+    { value: '<itemDefId>', hint: 'replace with the item definition id — evaluates quantity owned' },
+  ],
+};
+
 const AGGREGATE_OPTIONS: AggregateType[] = [
   'self', 'any', 'all', 'none', 'count', 'sum', 'avg', 'min', 'max', 'distinct_count',
 ];
@@ -309,6 +388,15 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
   const set = <K extends keyof RichSelectionRule>(k: K, v: RichSelectionRule[K]) =>
     onChange({ ...rule, [k]: v });
 
+  const handleScopeChange = (newScope: ScopeType) => {
+    const oldOptions = SCOPE_FIELD_SUGGESTIONS[rule.scope] ?? [];
+    const wasKnown = oldOptions.some(o => o.value === rule.field);
+    onChange({ ...rule, scope: newScope, field: wasKnown ? '' : rule.field });
+  };
+
+  const fieldOptions = SCOPE_FIELD_SUGGESTIONS[rule.scope] ?? [];
+  const datalistId = `rss-field-opts-${rule.scope}`;
+
   const valueStr =
     rule.value !== undefined && rule.value !== null
       ? typeof rule.value === 'object'
@@ -371,7 +459,7 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           <span style={labelStyle}>scope</span>
           <select
             value={rule.scope}
-            onChange={e => set('scope', e.target.value as ScopeType)}
+            onChange={e => handleScopeChange(e.target.value as ScopeType)}
             style={{ ...selectStyle, width: '100%' }}
           >
             {SCOPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -384,11 +472,19 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           </span>
           <input
             type="text"
+            list={fieldOptions.length > 0 ? datalistId : undefined}
             value={rule.field}
             onChange={e => set('field', e.target.value)}
             placeholder="e.g. keeperLevel, flags.key"
             style={{ ...inputStyle, width: '100%', ...(fieldError ? { borderColor: '#f87171', background: '#1f0a0a' } : {}) }}
           />
+          {fieldOptions.length > 0 && (
+            <datalist id={datalistId}>
+              {fieldOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.hint ?? ''}</option>
+              ))}
+            </datalist>
+          )}
         </div>
 
         {showAggregate && (
