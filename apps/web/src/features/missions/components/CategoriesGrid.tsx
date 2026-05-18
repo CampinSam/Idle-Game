@@ -102,17 +102,18 @@ export function CategoriesGrid({
                         : (inlineButtonsCfg.requirementsNotMet || null);
                     const buttonStyle: React.CSSProperties = {};
                     if (canAffordInline && !customState?.background) {
-                      buttonStyle.background = 'linear-gradient(135deg, rgba(139,92,246,0.75), rgba(109,40,217,0.85))';
+                      buttonStyle.background = 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
                     }
                     if (customState?.background) buttonStyle.background = customState.background;
                     if (customState?.color) buttonStyle.color = customState.color;
                     if (customState?.borderColor) buttonStyle.borderColor = customState.borderColor;
+                    if (customState?.opacity != null) buttonStyle.opacity = customState.opacity;
                     const buttonClassName = `px-3 py-1 rounded-full text-[11px] font-extrabold tracking-wide uppercase border transition-[filter,transform] active:scale-95 ${
                       isDisabled
-                        ? 'text-white/30 border-white/10 bg-white/15 cursor-not-allowed'
+                        ? 'text-white/30 border-white/10 bg-[#3f3f46] cursor-not-allowed'
                         : canAffordInline
-                          ? 'text-white border-[rgba(167,139,250,0.75)] hover:brightness-110 cursor-pointer'
-                          : 'text-white/50 border-white/20 bg-white/15 cursor-pointer'
+                          ? 'text-white border-[#a78bfa] hover:brightness-110 cursor-pointer'
+                          : 'text-white/50 border-white/20 bg-[#3f3f46] cursor-pointer'
                     }`;
                     return (
                       <button

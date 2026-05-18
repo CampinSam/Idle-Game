@@ -153,27 +153,25 @@ export function MissionShell({
               <EmptyState message="No mission activity yet." />
             ) : (
               <div className="flex flex-col gap-2">
-                {missionHistory.slice(0, 5).map((m: any) => (
-                  <div
-                    key={m.id}
-                    onClick={() => onOpenJob(m.id)}
-                    className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:border-white/15 transition-colors"
-                  >
-                    <span className="flex-1 min-w-0 text-[13px] font-bold text-text-primary truncate">
-                      {missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}
-                    </span>
-                    <span className={`text-[12px] ${STATUS_COLORS[m.status] || 'text-text-secondary'}`}>
-                      {m.status === 'completed' ? '✅' : '❌'}
-                    </span>
-                    {(m.results?.rewards || m.result?.rewards) && (
-                      <span className="text-[11px] text-text-secondary truncate max-w-[40%]">
-                        {((m.results?.rewards || m.result?.rewards) as any[])
-                          .map((r: any) => `+${r.amount} ${r.name || r.key || r.type}`)
-                          .join(', ')}
+                {missionHistory.slice(0, 5).map((m: any) => {
+                  const histDefId = m.defId ?? m.missionDefId;
+                  const histName = missionDefs.find((d: any) => d.id === histDefId)?.name ?? histDefId ?? 'Unknown Mission';
+                  const isCompleted = m.status === 'completed';
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => onOpenJob(m.id)}
+                      className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[rgba(139,92,246,0.2)] bg-bg-card hover:border-[rgba(139,92,246,0.45)] transition-colors"
+                    >
+                      <span className="flex-1 min-w-0 text-[13px] font-bold text-text-primary truncate">
+                        {histName}
                       </span>
-                    )}
-                  </div>
-                ))}
+                      <span className={`text-[11px] font-bold tracking-wide whitespace-nowrap ${isCompleted ? STATUS_COLORS.completed : STATUS_COLORS.failed}`}>
+                        {isCompleted ? '✅ READY' : '❌ FAILED'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
