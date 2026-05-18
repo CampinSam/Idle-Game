@@ -12,13 +12,24 @@ import {
   EffectTargetType,
   applyModifier,
   applyStatModifiers,
+  emptyResolvedModifier,
 } from '@derp/shared';
 import {
   calculateTeamMP,
   calculateSuccessChance,
   calculateInjuryChance,
+  durationSecondsToTicks,
+  workshopTimerMultiplier,
+  workshopParallelSlots,
+  workshopRecipeTierCap,
 } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
+import {
+  resolveLevelConfig,
+  resolveConstructionCosts,
+  calcGrowth,
+  type LevelRules,
+} from '../game-rules/level-config.util';
 
 export interface JobPreviewDto {
   jobType: 'mission' | 'crafting' | 'building';
@@ -48,8 +59,9 @@ export class JobPreviewService {
       case 'mission':
         return this.getMissionPreview(userId, dto);
       case 'crafting':
+        return this.getCraftingPreview(userId, dto);
       case 'building':
-        throw new BadRequestException(`Job type '${dto.jobType}' preview is not yet supported`);
+        return this.getBuildingPreview(userId, dto);
       default:
         throw new BadRequestException(`Unknown jobType: ${(dto as any).jobType}`);
     }
@@ -227,6 +239,280 @@ export class JobPreviewService {
     };
   }
 
+  private async getCraftingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
+    const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: dto.defId } });
+    if (!recipe) throw new NotFoundException('Recipe not found');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const reqContext = this.gameRules.buildRequirementContext(user as any);
+    const requirementStatus = evaluateTopLevelRules(recipe.requirements, reqContext, this.gameRules);
+    const keeperLevelMet = user.keeperLevel >= recipe.requiredKeeperLevel;
+    const baseRequirementsMet = requirementStatus.every(r => r.met) && keeperLevelMet;
+
+    const costEntries: Array<{ type: string; id: string; amount: number }> =
+      Array.isArray(recipe.cost) ? recipe.cost : [];
+    const canAfford = await this.checkCanAfford(userId, costEntries);
+
+    const timer = (recipe.timer as any) ?? {};
+    const baseDurationSeconds: number = timer.duration ?? 0;
+    const boostable: boolean = timer.boostable ?? true;
+
+    let effectiveDurationTicks = boostable
+      ? durationSecondsToTicks(baseDurationSeconds)
+      : baseDurationSeconds;
+
+    const [timerMod, legacyTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.CRAFTING_TIMER_SPEED),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+    ]);
+    const combinedTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: timerMod.flatAdd + legacyTimerMod.flatAdd,
+      percentAdd: timerMod.percentAdd + legacyTimerMod.percentAdd,
+      multiplier: timerMod.multiplier * legacyTimerMod.multiplier,
+    };
+    if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
+      effectiveDurationTicks = Math.max(1, Math.floor(applyModifier(effectiveDurationTicks, combinedTimer)));
+    }
+
+    const recipeTier: number =
+      typeof (recipe.data as any)?.tier === 'number' ? (recipe.data as any).tier : 1;
+
+    let workshopTier = 0;
+    let slotsTotal = 0;
+    let slotsUsed = 0;
+    let recipeTierCap = 1;
+    let timerMultiplier = 1;
+    let recipeTierMet: boolean | null = null;
+
+    if (dto.locationId) {
+      const workshop = await (this.prisma as any).locationBuildingInstance.findFirst({
+        where: {
+          locationId: dto.locationId,
+          location: { ownerUserId: userId },
+          buildingDef: { category: 'WORKSHOP' },
+        },
+      });
+
+      if (workshop) {
+        workshopTier = Number(workshop.level ?? 0);
+        slotsTotal = workshopParallelSlots(workshopTier);
+        timerMultiplier = workshopTimerMultiplier(workshopTier);
+        recipeTierCap = workshopRecipeTierCap(workshopTier);
+        recipeTierMet = recipeTier <= recipeTierCap;
+
+        const activeJobs = await (this.prisma as any).job.findMany({
+          where: { userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified'] } },
+          select: { data: true },
+        });
+        slotsUsed = activeJobs.filter(
+          (j: any) => (j.data?.locationId ?? null) === dto.locationId,
+        ).length;
+
+        if (timerMultiplier !== 1) {
+          effectiveDurationTicks = Math.max(1, Math.floor(effectiveDurationTicks * timerMultiplier));
+        }
+      }
+    }
+
+    const allRequirementsMet = baseRequirementsMet && (recipeTierMet !== false);
+
+    return {
+      jobType: 'crafting',
+      requirements: requirementStatus,
+      allRequirementsMet,
+      canAfford,
+      cost: costEntries,
+      durationSeconds: baseDurationSeconds,
+      crafting: {
+        recipeId: recipe.id,
+        recipeName: recipe.name,
+        recipeTier,
+        requiredKeeperLevel: recipe.requiredKeeperLevel,
+        keeperLevelMet,
+        effectiveDurationTicks,
+        rewards: recipe.rewards ?? null,
+        workshopTier,
+        slotsTotal,
+        slotsUsed,
+        slotsOpen: Math.max(0, slotsTotal - slotsUsed),
+        recipeTierCap,
+        timerMultiplier,
+        recipeTierMet,
+      },
+    };
+  }
+
+  private async getBuildingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
+    const def = await (this.prisma as any).buildingDef.findUnique({ where: { id: dto.defId } });
+    if (!def) throw new NotFoundException('Building definition not found');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    let location: any = null;
+    if (dto.locationId) {
+      location = await (this.prisma as any).locationInstance.findFirst({
+        where: { id: dto.locationId, ownerUserId: userId },
+        include: {
+          definition: true,
+          buildings: {
+            include: {
+              buildingDef: true,
+              rooms: { include: { roomDef: true } },
+            },
+          },
+        },
+      });
+    }
+
+    const allLocations = await (this.prisma as any).locationInstance.findMany({
+      where: { ownerUserId: userId },
+      include: {
+        definition: true,
+        buildings: {
+          include: {
+            buildingDef: true,
+            rooms: { include: { roomDef: true } },
+          },
+        },
+      },
+    });
+
+    const allPlayerLocations = allLocations.map((loc: any) => ({
+      buildings: (loc.buildings ?? []).map((b: any) => ({
+        buildingDefId: b.buildingDefId,
+        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
+      })),
+      regionId: loc.definition?.regionId ?? null,
+    }));
+
+    const currentLocationCtx = location
+      ? {
+          buildings: (location.buildings ?? []).map((b: any) => ({
+            buildingDefId: b.buildingDefId,
+            rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
+          })),
+          regionId: location.definition?.regionId ?? null,
+        }
+      : undefined;
+
+    const reqContext = this.gameRules.buildRequirementContext(user as any, {
+      allPlayerLocations,
+      currentLocation: currentLocationCtx,
+    });
+
+    const requirementStatus = evaluateTopLevelRules(def.requirements, reqContext, this.gameRules);
+    const allRequirementsMet = requirementStatus.every(r => r.met);
+
+    const defRules = (def.rules as LevelRules) ?? {};
+    const maxLevel: number = defRules.maxLevel ?? 10;
+    const buildLevel = 1;
+    const buildConfig = resolveLevelConfig(defRules, buildLevel);
+    const costs = resolveConstructionCosts(buildConfig.constructionCost, buildLevel);
+
+    const timerCfg = (buildConfig.timer as any) ?? {};
+    const baseDurationSeconds: number = calcGrowth(
+      timerCfg.duration ?? 0,
+      timerCfg.growthRate,
+      timerCfg.growthScalar,
+      buildLevel,
+    );
+    let effectiveDurationTicks = baseDurationSeconds;
+
+    const [buildTimerMod, legacyBuildTimerMod] = await Promise.all([
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_BUILD_TIMER_SPEED),
+      this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+    ]);
+    const combinedBuildTimer = {
+      ...emptyResolvedModifier(),
+      flatAdd: buildTimerMod.flatAdd + legacyBuildTimerMod.flatAdd,
+      percentAdd: buildTimerMod.percentAdd + legacyBuildTimerMod.percentAdd,
+      multiplier: buildTimerMod.multiplier * legacyBuildTimerMod.multiplier,
+    };
+    if (combinedBuildTimer.flatAdd !== 0 || combinedBuildTimer.percentAdd !== 0 || combinedBuildTimer.multiplier !== 1) {
+      effectiveDurationTicks = Math.max(0, Math.floor(applyModifier(effectiveDurationTicks, combinedBuildTimer)));
+    }
+
+    const canAfford = await this.checkCanAfford(userId, costs as any);
+
+    let upgrade: {
+      toLevel: number;
+      cost: any[];
+      durationSeconds: number;
+      effectiveDurationTicks: number;
+      canAfford: boolean;
+    } | null = null;
+
+    if (dto.locationId) {
+      const existingBuilding = await (this.prisma as any).locationBuildingInstance.findFirst({
+        where: {
+          locationId: dto.locationId,
+          buildingDefId: dto.defId,
+          location: { ownerUserId: userId },
+        },
+      });
+
+      const buildingState = (existingBuilding?.state as any) ?? {};
+      if (existingBuilding && buildingState.status === 'active' && existingBuilding.level < maxLevel) {
+        const nextLevel: number = existingBuilding.level + 1;
+        const nextConfig = resolveLevelConfig(defRules, nextLevel);
+        const upgradeCosts = resolveConstructionCosts(nextConfig.constructionCost, nextLevel);
+
+        const nextTimerCfg = (nextConfig.timer as any) ?? {};
+        const upgradeBaseDuration: number = calcGrowth(
+          nextTimerCfg.duration ?? 0,
+          nextTimerCfg.growthRate,
+          nextTimerCfg.growthScalar,
+          nextLevel,
+        );
+        let upgradeEffectiveTicks = upgradeBaseDuration;
+
+        const [upgradeTimerMod, legacyUpgradeTimerMod] = await Promise.all([
+          this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.BUILDING_UPGRADE_TIMER_SPEED),
+          this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+        ]);
+        const combinedUpgradeTimer = {
+          ...emptyResolvedModifier(),
+          flatAdd: upgradeTimerMod.flatAdd + legacyUpgradeTimerMod.flatAdd,
+          percentAdd: upgradeTimerMod.percentAdd + legacyUpgradeTimerMod.percentAdd,
+          multiplier: upgradeTimerMod.multiplier * legacyUpgradeTimerMod.multiplier,
+        };
+        if (combinedUpgradeTimer.flatAdd !== 0 || combinedUpgradeTimer.percentAdd !== 0 || combinedUpgradeTimer.multiplier !== 1) {
+          upgradeEffectiveTicks = Math.max(0, Math.floor(applyModifier(upgradeEffectiveTicks, combinedUpgradeTimer)));
+        }
+
+        upgrade = {
+          toLevel: nextLevel,
+          cost: upgradeCosts as any[],
+          durationSeconds: upgradeBaseDuration,
+          effectiveDurationTicks: upgradeEffectiveTicks,
+          canAfford: await this.checkCanAfford(userId, upgradeCosts as any),
+        };
+      }
+    }
+
+    return {
+      jobType: 'building',
+      requirements: requirementStatus,
+      allRequirementsMet,
+      canAfford,
+      cost: costs,
+      durationSeconds: baseDurationSeconds,
+      building: {
+        buildingDefId: def.id,
+        name: def.name,
+        description: def.description,
+        category: def.category ?? null,
+        buildLevel,
+        maxLevel,
+        effectiveDurationTicks,
+        upgrade,
+      },
+    };
+  }
 
   private extractTeamSizeBounds(
     requirements: any,

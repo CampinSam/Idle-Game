@@ -472,7 +472,7 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 
 ## Player Jobs — `POST /api/jobs/preview`
 
-Returns a real-time server-computed preview of a job context. Replaces any client-side math for power, success chance, synergy, cost affordability, and requirements evaluation.
+Returns a real-time server-computed preview of a job context. Replaces any client-side math for power, success chance, synergy, cost affordability, and requirements evaluation. Supports `"mission"`, `"crafting"`, and `"building"` job types.
 
 **Auth:** Player JWT required.
 
@@ -480,21 +480,21 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 
 ```json
 {
-  "jobType": "mission",
-  "defId": "my_mission_id",
-  "entityIds": ["entity_a", "entity_b"],
+  "jobType": "mission" | "crafting" | "building",
+  "defId": "string",
+  "entityIds": ["entity_a"],
   "locationId": "optional_location_id"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `jobType` | `"mission"` | Job type discriminator. `"crafting"` and `"building"` are reserved for future support. |
-| `defId` | string | The `MissionDef.id` (or recipe/building def id for future types) |
-| `entityIds` | string[] | IDs of the entities currently selected. Pass `[]` for an empty-team preview. |
-| `locationId` | string? | Workshop / outpost id (crafting/building only; ignored for missions) |
+| `jobType` | `"mission"` \| `"crafting"` \| `"building"` | Job type discriminator. |
+| `defId` | string | `MissionDef.id` for missions; `RecipeDef.id` for crafting; `BuildingDef.id` for building. |
+| `entityIds` | string[]? | Entity IDs for the mission team. Pass `[]` or omit for crafting/building. |
+| `locationId` | string? | Workshop/outpost `LocationInstance.id`. Required for full workshop context in crafting; enables upgrade preview in building. |
 
-### Response
+### Response — `jobType: "mission"`
 
 ```json
 {
@@ -524,13 +524,120 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 }
 ```
 
-The `requirements` array lists every **top-level rule** in both `requirements` and `launchRequirements` with its evaluated `met` status and the `source` block it came from. Rules without a `label` use `null`. `allRequirementsMet` is `true` only when every entry is `met`.
+### Response — `jobType: "crafting"`
+
+```json
+{
+  "jobType": "crafting",
+  "requirements": [{ "label": "Keeper Level 3+", "met": true }],
+  "allRequirementsMet": true,
+  "canAfford": true,
+  "cost": [{ "type": "currency", "id": "gold", "amount": 50 }],
+  "durationSeconds": 120,
+  "crafting": {
+    "recipeId": "recipe_sword",
+    "recipeName": "Iron Sword",
+    "recipeTier": 1,
+    "requiredKeeperLevel": 3,
+    "keeperLevelMet": true,
+    "effectiveDurationTicks": 108,
+    "rewards": { ... },
+    "workshopTier": 2,
+    "slotsTotal": 2,
+    "slotsUsed": 1,
+    "slotsOpen": 1,
+    "recipeTierCap": 2,
+    "timerMultiplier": 0.9,
+    "recipeTierMet": true
+  }
+}
+```
+
+**`crafting` sub-object fields:**
+
+| Field | Description |
+|-------|-------------|
+| `recipeId` | The `RecipeDef.id` |
+| `recipeName` | Display name of the recipe |
+| `recipeTier` | Recipe tier (1–3) read from `recipeDef.data.tier` |
+| `requiredKeeperLevel` | Minimum Keeper level to start |
+| `keeperLevelMet` | Whether player's current level satisfies the requirement |
+| `effectiveDurationTicks` | Post-modifier duration in ticks (reflects player effects and workshop tier) |
+| `rewards` | Raw rewards JSON from the recipe definition (yield preview) |
+| `workshopTier` | Level of the workshop at `locationId` (0 if no `locationId` or no workshop found) |
+| `slotsTotal` | Parallel crucible slots available at this workshop |
+| `slotsUsed` | Active crafting jobs currently occupying slots at this location |
+| `slotsOpen` | Available slots (`slotsTotal - slotsUsed`) |
+| `recipeTierCap` | Highest recipe tier supported by this workshop |
+| `timerMultiplier` | Timer speed factor applied by the workshop tier |
+| `recipeTierMet` | Whether the recipe tier is within the workshop's cap (`null` when no `locationId` given) |
+
+`allRequirementsMet` is `false` if any requirement rule fails **or** `keeperLevelMet` is `false`.
+
+### Response — `jobType: "building"`
+
+```json
+{
+  "jobType": "building",
+  "requirements": [{ "label": "Outpost Level 2+", "met": true }],
+  "allRequirementsMet": true,
+  "canAfford": false,
+  "cost": [{ "type": "currency", "id": "stone", "amount": 200 }],
+  "durationSeconds": 600,
+  "building": {
+    "buildingDefId": "forge",
+    "name": "Forge",
+    "description": "A workshop for crafting gear.",
+    "category": "WORKSHOP",
+    "buildLevel": 1,
+    "maxLevel": 3,
+    "effectiveDurationTicks": 540,
+    "upgrade": {
+      "toLevel": 2,
+      "cost": [{ "type": "currency", "id": "stone", "amount": 400 }],
+      "durationSeconds": 1200,
+      "effectiveDurationTicks": 1080,
+      "canAfford": true
+    }
+  }
+}
+```
+
+**`building` sub-object fields:**
+
+| Field | Description |
+|-------|-------------|
+| `buildingDefId` | The `BuildingDef.id` |
+| `name` | Display name |
+| `description` | Flavor text |
+| `category` | Building category (e.g. `"WORKSHOP"`) |
+| `buildLevel` | Always `1` — new-construction cost/timer |
+| `maxLevel` | Maximum allowed level from `rules.maxLevel` |
+| `effectiveDurationTicks` | Post-modifier build duration in ticks (reflects `BUILDING_BUILD_TIMER_SPEED` effects) |
+| `upgrade` | Upgrade preview to the next level (present only when `locationId` is given and the building already exists and is below max level); `null` otherwise |
+| `upgrade.toLevel` | Target level of the upgrade |
+| `upgrade.cost` | Resource cost entries for the upgrade |
+| `upgrade.durationSeconds` | Base duration for the upgrade in seconds |
+| `upgrade.effectiveDurationTicks` | Post-modifier upgrade duration in ticks (reflects `BUILDING_UPGRADE_TIMER_SPEED` effects) |
+| `upgrade.canAfford` | Whether the player can currently afford the upgrade |
+
+The top-level `cost`, `canAfford`, and `durationSeconds` always reflect the **new-build** (level 1) scenario regardless of whether the building already exists at `locationId`.
+
+**Common fields (all job types):**
+
+| Field | Description |
+|-------|-------------|
+| `requirements` | Top-level rules from the def's `requirements` block, each with `label` and `met` |
+| `allRequirementsMet` | `true` only when every requirement entry is met |
+| `canAfford` | Whether the player has sufficient resources for the primary cost |
+| `cost` | Primary cost entries array |
+| `durationSeconds` | Base timer duration in seconds (raw, before player effect modifiers) |
 
 **Error responses:**
 
 | Status | Reason |
 |--------|--------|
-| `400` | Unknown `jobType`, or `"crafting"` / `"building"` (not yet implemented) |
+| `400` | Unknown `jobType` |
 | `404` | `defId` not found |
 
 ---
