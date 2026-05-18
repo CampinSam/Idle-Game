@@ -399,6 +399,10 @@ export class AdminService {
     }
 
     if (job.type === 'BuildingJob') {
+      const jobData = job.data as any;
+      if (!jobData?.locationId || !jobData?.buildingId) {
+        throw new BadRequestException(`BuildingJob ${jobId} is missing required data fields (locationId, buildingId)`);
+      }
       const jobTimer = (job.timer as any) || {};
       const durationTicks = Number(jobTimer.durationTicks ?? 0);
       const adjustedStartTick = Math.floor(currentTick) - durationTicks - 1;
@@ -406,7 +410,6 @@ export class AdminService {
         where: { id: jobId },
         data: { status: 'active', timer: { ...jobTimer, startTick: adjustedStartTick } },
       });
-      const jobData = job.data as any;
       const result = await this.locationService.completeBuilding(userId, jobData.locationId, jobData.buildingId);
       return serializeBigInts(result ?? { forced: true, jobId });
     }
