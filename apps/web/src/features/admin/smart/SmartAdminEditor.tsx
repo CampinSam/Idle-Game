@@ -617,6 +617,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               style={{
                 ...controlStyle,
                 flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
                 opacity: !activeTable ? 0.4 : 1,
                 cursor: !activeTable ? 'not-allowed' : 'pointer',
               }}
