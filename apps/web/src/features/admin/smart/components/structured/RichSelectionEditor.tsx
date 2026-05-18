@@ -1,4 +1,4 @@
-import { useState, useEffect, type CSSProperties } from 'react';
+import { useState, useEffect, useId, type CSSProperties } from 'react';
 import type { RichSelection, RichSelectionRule, RuleRefNode, ScopeType, OperatorType, AggregateType } from '@derp/shared';
 import {
   containerStyle,
@@ -417,8 +417,9 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
     onChange({ ...rule, scope: newScope, field: wasKnown ? '' : rule.field });
   };
 
+  const uid = useId();
   const fieldOptions = SCOPE_FIELD_SUGGESTIONS[rule.scope] ?? [];
-  const datalistId = `rss-field-opts-${rule.scope}`;
+  const datalistId = `rss-field-opts-${uid}-${rule.scope}`;
 
   const valueStr =
     rule.value !== undefined && rule.value !== null
@@ -504,7 +505,7 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           {fieldOptions.length > 0 && (
             <datalist id={datalistId}>
               {fieldOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.hint ?? ''}</option>
+                <option key={opt.value} value={opt.value} label={opt.hint ?? opt.value} />
               ))}
             </datalist>
           )}
