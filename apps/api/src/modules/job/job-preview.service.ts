@@ -270,10 +270,10 @@ export class JobPreviewService {
         const balance = await this.currencyService.getBalance(userId, cost.id);
         if (balance < cost.amount) return false;
       } else {
-        const items = await (this.prisma as any).inventoryItem.findMany({
+        const items = await this.prisma.itemInstance.findMany({
           where: { userId, definitionId: cost.id },
         });
-        const total = items.reduce((s: number, it: any) => s + (Number(it.quantity) ?? 1), 0);
+        const total = items.reduce((s: number, it: any) => s + (it.quantity ?? 1), 0);
         if (total < cost.amount) return false;
       }
     }
