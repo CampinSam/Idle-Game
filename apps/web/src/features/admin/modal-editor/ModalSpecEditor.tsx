@@ -242,17 +242,18 @@ function resolveSpecClient(spec: ModalSpecV1, ctx: Record<string, any>): ModalSp
 }
 
 function computeEffectivePageClient(spec: ModalSpecV1, pageIdx: number) {
+  const pages = spec.pages ?? [];
   let header: ModalHeader = { ...spec.header };
-  let buttons: ModalButton[] = [...spec.buttons];
+  let buttons: ModalButton[] = [...(spec.buttons ?? [])];
   let dismiss = { ...spec.dismiss };
-  const clampedIdx = Math.max(0, Math.min(pageIdx, spec.pages.length - 1));
+  const clampedIdx = Math.max(0, Math.min(pageIdx, pages.length - 1));
   for (let i = 0; i <= clampedIdx; i++) {
-    const page = spec.pages[i];
-    if (page.header) header = { ...header, ...page.header };
-    if (page.buttons !== undefined) buttons = page.buttons;
-    if (page.dismiss) dismiss = { ...dismiss, ...page.dismiss };
+    const page = pages[i];
+    if (page?.header) header = { ...header, ...page.header };
+    if (page?.buttons !== undefined) buttons = page.buttons;
+    if (page?.dismiss) dismiss = { ...dismiss, ...page.dismiss };
   }
-  return { header, buttons, dismiss, body: spec.pages[clampedIdx].body };
+  return { header, buttons, dismiss, body: pages[clampedIdx]?.body ?? [] };
 }
 
 // ─── Flatten payload JSON to dot-notation paths ──────────────────────────────
@@ -1513,7 +1514,7 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
 
   useEffect(() => {
     setPreviewPage(0);
-  }, [spec.pages.length]);
+  }, [spec?.pages?.length]);
 
   const resolvedSpec = useMemo(() => {
     let ctx: Record<string, any> | null = null;
@@ -1524,7 +1525,7 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
     return spec;
   }, [spec, payloadJson]);
 
-  const totalPages = resolvedSpec.pages.length;
+  const totalPages = resolvedSpec?.pages?.length ?? 0;
   const clampedPage = Math.max(0, Math.min(previewPage, totalPages - 1));
   const { header, body, buttons, dismiss } = computeEffectivePageClient(resolvedSpec, clampedPage);
 
@@ -1599,7 +1600,9 @@ interface ModalSpecEditorProps {
 
 export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProps) {
   const spec: ModalSpecV1 = useMemo(() => {
-    if (value && typeof value === 'object' && value.version) return value as ModalSpecV1;
+    if (value && typeof value === 'object' && value.version) {
+      return { ...DEFAULT_SPEC, ...(value as ModalSpecV1), pages: (value as any).pages ?? DEFAULT_SPEC.pages } as ModalSpecV1;
+    }
     return { ...DEFAULT_SPEC };
   }, [value]);
 
