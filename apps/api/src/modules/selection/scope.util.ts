@@ -40,9 +40,10 @@ function resolveEntityField(entity: SelectionEntityContext, field: string): any 
   const key = field.substring(dot + 1);
 
   if (prefix === 'traits') {
-    // traits.Ninja — returns 1 if any trait slot holds value "Ninja", else 0
-    const traitValues = Object.values(entity.traits ?? {}).map(v => v.toLowerCase());
-    return traitValues.includes(key.toLowerCase()) ? 1 : 0;
+    // traits.faction — returns the value stored at that slot (e.g. "kraashers"), or null if absent.
+    // Use eq/neq/in/contains/regex to compare the value, or exists/not_exists to check presence.
+    // To match across all trait values (any slot), use field "traitValues" with contains/in.
+    return entity.traits?.[key] ?? null;
   }
 
   if (prefix === 'stats') {
