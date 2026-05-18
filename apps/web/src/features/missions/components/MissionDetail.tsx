@@ -319,7 +319,7 @@ export function MissionDetail(props: MissionDetailProps) {
                   <div className="flex flex-col gap-1.5">
                     {reqRows.length > 0 && (
                       <>
-                        {reqRows.length > 0 && launchReqRows.length > 0 && (
+                        {launchReqRows.length > 0 && (
                           <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Requirements</span>
                         )}
                         {reqRows.map((r, i) => (
@@ -332,7 +332,7 @@ export function MissionDetail(props: MissionDetailProps) {
                     )}
                     {launchReqRows.length > 0 && (
                       <>
-                        {reqRows.length > 0 && launchReqRows.length > 0 && (
+                        {reqRows.length > 0 && (
                           <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Launch Requirements</span>
                         )}
                         {launchReqRows.map((r, i) => (
@@ -343,38 +343,29 @@ export function MissionDetail(props: MissionDetailProps) {
                         ))}
                       </>
                     )}
-                    {reqRows.length === 0 && launchReqRows.length === 0 && (
-                      <>
-                        <div className="flex items-center gap-2 text-[12px]">
-                          <span className="text-base leading-none">{selectedEntities.length >= teamMin && selectedEntities.length <= teamMax ? '✅' : '⚠️'}</span>
-                          <span className="flex-1 text-text-secondary">Team Size</span>
-                          <span className="font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[12px]">
-                          <span className="text-base leading-none">{canAffordMission ? '✅' : '❌'}</span>
-                          <span className="flex-1 text-text-secondary">Can Afford</span>
-                          <span className="font-bold text-text-primary tabular-nums">{canAffordMission ? 'Yes' : 'No'}</span>
-                        </div>
-                        {keeperLvl > 0 && (
-                          <div className="flex items-center gap-2 text-[12px]">
-                            <span className="text-base leading-none">🛡️</span>
-                            <span className="flex-1 text-text-secondary">Keeper Lv</span>
-                            <span className="font-bold text-text-primary tabular-nums">{keeperLvl}+</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-[12px]">
-                          <span className="text-base leading-none">{successChance >= 70 ? '✅' : successChance >= 40 ? '⚠️' : '❌'}</span>
-                          <span className="flex-1 text-text-secondary">Power Ratio</span>
-                          <span className="font-bold tabular-nums" style={{ color: successColor }}>{successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low'}</span>
-                        </div>
-                        {injuryRate > 0 && (
-                          <div className="flex items-center gap-2 text-[12px]">
-                            <span className="text-base leading-none">⚠️</span>
-                            <span className="flex-1 text-text-secondary">Injury on Failure</span>
-                            <span className="font-bold tabular-nums" style={{ color: injuryColor }}>{injuryChance}% chance</span>
-                          </div>
-                        )}
-                      </>
+                    <div className="flex items-center gap-2 text-[12px]">
+                      <span className="text-base leading-none">{selectedEntities.length > 0 && selectedEntities.length >= teamMin && selectedEntities.length <= teamMax ? '✅' : '⚠️'}</span>
+                      <span className="flex-1 text-text-secondary">Team Size</span>
+                      <span className="font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
+                    </div>
+                    {missionCost.length > 0 && (
+                      <div className="flex items-center gap-2 text-[12px]">
+                        <span className="text-base leading-none">{canAffordMission ? '✅' : '❌'}</span>
+                        <span className="flex-1 text-text-secondary">Can Afford</span>
+                        <span className="font-bold text-text-primary tabular-nums">{canAffordMission ? 'Yes' : 'No'}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-[12px]">
+                      <span className="text-base leading-none">{successChance >= 70 ? '✅' : successChance >= 40 ? '⚠️' : '❌'}</span>
+                      <span className="flex-1 text-text-secondary">Power Ratio</span>
+                      <span className="font-bold tabular-nums" style={{ color: successColor }}>{successChance >= 70 ? 'Good' : successChance >= 40 ? 'Marginal' : 'Low'}</span>
+                    </div>
+                    {injuryRate > 0 && (
+                      <div className="flex items-center gap-2 text-[12px]">
+                        <span className="text-base leading-none">⚠️</span>
+                        <span className="flex-1 text-text-secondary">Injury on Failure</span>
+                        <span className="font-bold tabular-nums" style={{ color: injuryColor }}>{injuryChance}% chance</span>
+                      </div>
                     )}
                   </div>
                 </>
