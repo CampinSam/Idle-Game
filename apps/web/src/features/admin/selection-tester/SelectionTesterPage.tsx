@@ -1,8 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Play, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import type { RichSelection } from '@derp/shared';
 import { adminApi, getAdminKey, setAdminKey, type TraceNode } from '../adminApi';
 import RichSelectionEditor from '../smart/components/structured/RichSelectionEditor';
+import EntityList from '../../entities/components/EntityList';
+import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import '../admin.css';
 
 type Scenario = 'player' | 'mission' | 'crafting';
@@ -41,9 +43,6 @@ const s: Record<string, React.CSSProperties> = {
   tabBar: { display: 'flex', gap: 4, borderBottom: '1px solid #1e1e2e', marginBottom: 14 },
   tab: { padding: '8px 16px', borderRadius: '8px 8px 0 0', border: 'none', background: 'transparent', color: '#64748b', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
   tabActive: { padding: '8px 16px', borderRadius: '8px 8px 0 0', border: 'none', background: 'rgba(109,40,217,0.25)', color: '#a78bfa', fontWeight: 600, fontSize: 13, cursor: 'pointer', borderBottom: '2px solid #7c3aed' },
-  entityList: { display: 'flex', flexDirection: 'column' as const, gap: 6, maxHeight: 260, overflowY: 'auto' as const },
-  entityRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#16162a', borderRadius: 8, border: '1px solid #1e1e2e', cursor: 'pointer', fontSize: 13 },
-  entityRowSelected: { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#1e1040', borderRadius: 8, border: '1px solid #7c3aed', cursor: 'pointer', fontSize: 13 },
   fieldGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px', marginTop: 12 },
   fieldLabel: { fontSize: 11, color: '#64748b', marginBottom: 3 },
   runBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', background: '#059669', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer' },
@@ -141,41 +140,14 @@ function ActivityContextPanel({
   );
 }
 
-function EntityPicker({
-  entities,
-  selected,
-  onToggle,
-  singleSelect,
-}: {
-  entities: any[];
-  selected: string[];
-  onToggle: (id: string) => void;
-  singleSelect?: boolean;
-}) {
-  if (!entities.length) {
-    return <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>No entities found for this player.</p>;
-  }
-  return (
-    <div style={s.entityList}>
-      {entities.map((e: any) => {
-        const isSelected = selected.includes(e.id);
-        const status = e.state?.status ?? 'idle';
-        return (
-          <div
-            key={e.id}
-            style={isSelected ? s.entityRowSelected : s.entityRow}
-            onClick={() => onToggle(e.id)}
-          >
-            <span style={{ width: 14, height: 14, borderRadius: singleSelect ? 7 : 3, border: `2px solid ${isSelected ? '#7c3aed' : '#2a2a3e'}`, background: isSelected ? '#7c3aed' : 'transparent', flexShrink: 0, display: 'inline-block' }} />
-            <span style={{ fontWeight: 600, color: '#e2e8f0', flex: 1 }}>{e.name || e.id}</span>
-            <span style={{ color: '#64748b', fontSize: 11 }}>{e.role ?? e.entityType ?? ''}</span>
-            <span style={{ color: '#64748b', fontSize: 11 }}>Lv.{e.level ?? '?'}</span>
-            <span style={{ color: status === 'idle' ? '#34d399' : '#f59e0b', fontSize: 11 }}>{status}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+function normalizeAdminEntity(e: any): any {
+  return {
+    ...e,
+    name: e.name || e.display?.name || e.display?.displayName || '',
+    level: e.level ?? e.progression?.level ?? 1,
+    status: e.status || e.state?.status || 'idle',
+    imageUrl: e.imageUrl || e.display?.imageUrl || null,
+  };
 }
 
 function TraceNodeRow({ node, depth = 0 }: { node: TraceNode; depth?: number }) {
@@ -276,6 +248,10 @@ export default function SelectionTesterPage() {
   const [subTab, setSubTab] = useState<SubTab>('selection');
 
   const [selectedEntityIds, setSelectedEntityIds] = useState<string[]>([]);
+  const [entitySearch, setEntitySearch] = useState('');
+  const [entityFilter, setEntityFilter] = useState<EntityFilter>('ALL');
+  const [entitySortBy, setEntitySortBy] = useState<EntitySortBy>('name');
+
   const [activityContext, setActivityContext] = useState<ActivityContextFields>(
     SCENARIO_DEFAULTS['player'],
   );
@@ -369,6 +345,7 @@ export default function SelectionTesterPage() {
   }, [rule, playerData, selectedEntityIds, activityContext]);
 
   const entities: any[] = playerData?.entities ?? [];
+  const normalizedEntities = useMemo(() => entities.map(normalizeAdminEntity), [entities]);
 
   if (!authed) {
     return (
@@ -504,11 +481,24 @@ export default function SelectionTesterPage() {
                   <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
                     Select team members (multi-select). These mirror the entity IDs passed to <code style={{ color: '#a78bfa' }}>startMission</code>.
                   </div>
-                  <EntityPicker
-                    entities={entities}
-                    selected={selectedEntityIds}
-                    onToggle={id => toggleEntity(id, false)}
-                  />
+                  {normalizedEntities.length === 0
+                    ? <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>No entities found for this player.</p>
+                    : <EntityList
+                        entities={normalizedEntities}
+                        mode="picker"
+                        useCase="mission"
+                        showControls
+                        search={entitySearch}
+                        onSearchChange={setEntitySearch}
+                        activeFilter={entityFilter}
+                        onFilterChange={setEntityFilter}
+                        sortBy={entitySortBy}
+                        onSortChange={setEntitySortBy}
+                        selectedIds={selectedEntityIds}
+                        onSelect={e => toggleEntity(e.id, false)}
+                        emptyMessage="No entities match."
+                      />
+                  }
                 </div>
               )}
 
@@ -517,12 +507,24 @@ export default function SelectionTesterPage() {
                   <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
                     Select one entity (crafting slots are single-entity). This mirrors the entity passed to <code style={{ color: '#a78bfa' }}>startCrafting</code>.
                   </div>
-                  <EntityPicker
-                    entities={entities}
-                    selected={selectedEntityIds}
-                    onToggle={id => toggleEntity(id, true)}
-                    singleSelect
-                  />
+                  {normalizedEntities.length === 0
+                    ? <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>No entities found for this player.</p>
+                    : <EntityList
+                        entities={normalizedEntities}
+                        mode="picker"
+                        useCase="crafting"
+                        showControls
+                        search={entitySearch}
+                        onSearchChange={setEntitySearch}
+                        activeFilter={entityFilter}
+                        onFilterChange={setEntityFilter}
+                        sortBy={entitySortBy}
+                        onSortChange={setEntitySortBy}
+                        selectedIds={selectedEntityIds}
+                        onSelect={e => toggleEntity(e.id, true)}
+                        emptyMessage="No entities match."
+                      />
+                  }
                 </div>
               )}
 
