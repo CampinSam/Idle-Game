@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 
 export interface JobPreviewRequirement {
@@ -67,13 +67,10 @@ export function useJobPreview({
 
   const entityKey = JSON.stringify(entityIds ?? []);
 
-  const abortRef = useRef<AbortController | null>(null);
-
   useEffect(() => {
     if (!defId) return;
 
     const controller = new AbortController();
-    abortRef.current = controller;
 
     setLoading(true);
     setError(null);
