@@ -1,6 +1,14 @@
 const API_BASE = '/api/admin';
 const NFT_API_BASE = '/api';
 
+export interface TraceNode {
+  type: 'group' | 'rule' | 'rule_ref';
+  label: string;
+  passed: boolean;
+  children?: TraceNode[];
+  error?: string;
+}
+
 let adminKey = sessionStorage.getItem('adminKey') || '';
 
 export function setAdminKey(key: string) {
@@ -234,7 +242,7 @@ export const adminApi = {
       seasonId?: string;
     };
   }) =>
-    adminRequest<{ passed: boolean; resolvedContext: unknown }>('/selection/evaluate', {
+    adminRequest<{ passed: boolean; resolvedContext: unknown; trace: TraceNode }>('/selection/evaluate', {
       method: 'POST',
       body: JSON.stringify(body),
     }),

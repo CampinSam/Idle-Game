@@ -15,6 +15,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 type AnyNode = RichSelection | RichSelectionRule | RuleRefNode;
 
+export interface TraceNode {
+  type: 'group' | 'rule' | 'rule_ref';
+  label: string;
+  passed: boolean;
+  children?: TraceNode[];
+  error?: string;
+}
+
 /**
  * Cache entry: `undefined` = not yet loaded; `null` = definitively absent; `SelectionRuleDef` = loaded.
  */
@@ -119,6 +127,98 @@ export class SelectionResolverService implements OnModuleInit {
       return true;
     }
     return this.evaluate(condition, ctx);
+  }
+
+  /**
+   * Evaluate a node and return a structured trace annotating every sub-node
+   * with its boolean outcome. Unlike `evaluate`, this does NOT short-circuit
+   * AND/OR groups so designers always see the full pass/fail picture.
+   */
+  evaluateWithTrace(node: AnyNode, ctx: SelectionContext): TraceNode {
+    try {
+      return this._traceNode(node, ctx, new Set<string>());
+    } catch (err) {
+      this.logger.warn(`SelectionResolver trace error: ${err}`);
+      return { type: 'rule', label: 'Error during evaluation', passed: false, error: String(err) };
+    }
+  }
+
+  // ─── Internal trace evaluation ────────────────────────────────────────────
+
+  private _traceNode(node: AnyNode, ctx: SelectionContext, visited: Set<string>): TraceNode {
+    if (isRuleRefNode(node)) {
+      return this._traceRuleRef(node, ctx, visited);
+    }
+    if (isRichSelectionGroup(node)) {
+      return this._traceGroup(node as RichSelection, ctx, visited);
+    }
+    return this._traceRule(node as RichSelectionRule, ctx, visited);
+  }
+
+  private _traceRuleRef(ref: RuleRefNode, ctx: SelectionContext, visited: Set<string>): TraceNode {
+    const baseLabel = `rule_ref: ${ref.id}`;
+
+    if (visited.has(ref.id)) {
+      return { type: 'rule_ref', label: baseLabel, passed: false, error: 'Circular reference detected' };
+    }
+
+    const entry: CacheEntry = this._ruleDefCache.get(ref.id);
+
+    if (entry === undefined) {
+      return { type: 'rule_ref', label: baseLabel, passed: false, error: 'Not in cache (cache may be stale)' };
+    }
+    if (entry === null) {
+      return { type: 'rule_ref', label: baseLabel, passed: false, error: 'Rule not found in DB' };
+    }
+    if (!entry.enabled) {
+      return { type: 'rule_ref', label: `rule_ref: ${entry.name ?? ref.id} (disabled)`, passed: false, error: 'Rule is disabled' };
+    }
+
+    const childVisited = new Set(visited);
+    childVisited.add(ref.id);
+
+    const child = this._traceNode(entry.selection as unknown as AnyNode, ctx, childVisited);
+    const label = `rule_ref: ${entry.name ?? ref.id}`;
+    return { type: 'rule_ref', label, passed: child.passed, children: [child] };
+  }
+
+  private _traceGroup(group: RichSelection, ctx: SelectionContext, visited: Set<string>): TraceNode {
+    const { op, rules } = group;
+    const children = (rules ?? []) as RichSelectionChild[];
+
+    if (children.length === 0) {
+      return { type: 'group', label: op ?? 'AND', passed: true, children: [] };
+    }
+
+    const childTraces = children.map(r => this._traceNode(r as AnyNode, ctx, visited));
+
+    let passed: boolean;
+    switch (op) {
+      case 'OR':
+        passed = childTraces.some(t => t.passed);
+        break;
+      case 'NOT':
+        passed = !childTraces.every(t => t.passed);
+        break;
+      case 'AND':
+      default:
+        passed = childTraces.every(t => t.passed);
+        break;
+    }
+
+    return { type: 'group', label: op ?? 'AND', passed, children: childTraces };
+  }
+
+  private _traceRule(rule: RichSelectionRule, ctx: SelectionContext, visited: Set<string>): TraceNode {
+    const parts: string[] = [];
+    if (rule.scope) parts.push(rule.scope);
+    if (rule.field) parts.push(rule.field);
+    if (rule.operator) parts.push(rule.operator);
+    if (rule.value !== undefined && rule.value !== null) parts.push(String(rule.value));
+    const label = parts.length > 0 ? parts.join(' ') : 'rule';
+
+    const passed = this._evaluateRule(rule, ctx, visited);
+    return { type: 'rule', label, passed };
   }
 
   // ─── Internal evaluation ──────────────────────────────────────────────────

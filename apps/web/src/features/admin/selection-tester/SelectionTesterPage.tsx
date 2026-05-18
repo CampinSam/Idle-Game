@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { ArrowLeft, Play, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Play, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import type { RichSelection } from '@derp/shared';
-import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { adminApi, getAdminKey, setAdminKey, type TraceNode } from '../adminApi';
 import RichSelectionEditor from '../smart/components/structured/RichSelectionEditor';
 import '../admin.css';
 
 type Scenario = 'player' | 'mission' | 'crafting';
-type SubTab = 'selection' | 'context';
+type SubTab = 'selection' | 'context' | 'trace';
 
 interface ActivityContextFields {
   activityType: string;
@@ -178,6 +178,67 @@ function EntityPicker({
   );
 }
 
+function TraceNodeRow({ node, depth = 0 }: { node: TraceNode; depth?: number }) {
+  const hasChildren = node.children && node.children.length > 0;
+  const [open, setOpen] = useState(true);
+
+  const passColor = node.passed ? '#34d399' : '#f87171';
+  const passBg = node.passed ? 'rgba(5,150,105,0.12)' : 'rgba(220,38,38,0.12)';
+  const passBorder = node.passed ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)';
+
+  const typeTag: Record<string, string> = {
+    group: node.label,
+    rule: 'RULE',
+    rule_ref: 'REF',
+  };
+
+  return (
+    <div style={{ marginLeft: depth * 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '5px 10px',
+          borderRadius: 7,
+          background: passBg,
+          border: `1px solid ${passBorder}`,
+          marginBottom: 4,
+          cursor: hasChildren ? 'pointer' : 'default',
+        }}
+        onClick={() => hasChildren && setOpen(o => !o)}
+      >
+        {hasChildren ? (
+          open
+            ? <ChevronDown size={13} color="#64748b" style={{ flexShrink: 0 }} />
+            : <ChevronRight size={13} color="#64748b" style={{ flexShrink: 0 }} />
+        ) : (
+          <span style={{ width: 13, flexShrink: 0 }} />
+        )}
+        <span style={{ color: passColor, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+          {node.passed ? '✓' : '✗'}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#64748b', background: '#16162a', border: '1px solid #2a2a3e', borderRadius: 4, padding: '1px 5px', flexShrink: 0 }}>
+          {typeTag[node.type] ?? node.type}
+        </span>
+        <span style={{ fontSize: 13, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {node.label}
+        </span>
+        {node.error && (
+          <span style={{ fontSize: 11, color: '#f59e0b', flexShrink: 0 }} title={node.error}>⚠ {node.error}</span>
+        )}
+      </div>
+      {open && hasChildren && (
+        <div>
+          {node.children!.map((child, i) => (
+            <TraceNodeRow key={i} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SelectionTesterPage() {
   const DEV_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
   const adminKey = getAdminKey();
@@ -219,7 +280,7 @@ export default function SelectionTesterPage() {
     SCENARIO_DEFAULTS['player'],
   );
 
-  const [result, setResult] = useState<{ passed: boolean; resolvedContext: unknown } | null>(null);
+  const [result, setResult] = useState<{ passed: boolean; resolvedContext: unknown; trace: TraceNode } | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
 
@@ -299,7 +360,7 @@ export default function SelectionTesterPage() {
         activityContext: actCtxPayload,
       });
       setResult(res);
-      setSubTab('context');
+      setSubTab('trace');
     } catch (e: any) {
       setRunError(e.message || 'Evaluation failed');
     } finally {
@@ -419,13 +480,13 @@ export default function SelectionTesterPage() {
 
           {/* Sub-tabs */}
           <div style={{ ...s.tabBar, borderBottomColor: '#0d0d14', marginBottom: 16 }}>
-            {(['selection', 'context'] as SubTab[]).map(st => (
+            {(['selection', 'trace', 'context'] as SubTab[]).map(st => (
               <button
                 key={st}
                 style={subTab === st ? { ...s.tabActive, fontSize: 12, padding: '6px 12px' } : { ...s.tab, fontSize: 12, padding: '6px 12px' }}
                 onClick={() => setSubTab(st)}
               >
-                {st === 'selection' ? 'Selection Setup' : 'Raw Context'}
+                {st === 'selection' ? 'Selection Setup' : st === 'trace' ? 'Trace' : 'Raw Context'}
               </button>
             ))}
           </div>
@@ -470,6 +531,22 @@ export default function SelectionTesterPage() {
                 value={activityContext}
                 onChange={setActivityContext}
               />
+            </div>
+          )}
+
+          {subTab === 'trace' && (
+            <div>
+              {result
+                ? (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 12 }}>
+                      Each node shows whether it passed (✓) or failed (✗). Click a group row to expand or collapse its children.
+                    </div>
+                    <TraceNodeRow node={result.trace} />
+                  </div>
+                )
+                : <div style={s.infoBox}>Run a test to see the rule-by-rule trace.</div>
+              }
             </div>
           )}
 

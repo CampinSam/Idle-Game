@@ -13,6 +13,7 @@ import { generateEntityData } from '../entity/entity-generator.util';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
+import type { TraceNode } from '../selection/selection-resolver.service';
 import type { RichSelection } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { SeededRng } from '@derp/math';
@@ -1098,7 +1099,7 @@ export class AdminService {
       regionId?: string;
       seasonId?: string;
     };
-  }): Promise<{ passed: boolean; resolvedContext: SelectionContext }> {
+  }): Promise<{ passed: boolean; resolvedContext: SelectionContext; trace: TraceNode }> {
     // 1. Load user — same as mission.service.ts
     const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
     if (!user) throw new NotFoundException('Player not found');
@@ -1156,9 +1157,11 @@ export class AdminService {
       }
     }
 
-    // 6. Evaluate using the same resolver called by checkRequirements
+    // 6. Evaluate using the same resolver called by checkRequirements.
+    //    Also run the trace variant (full non-short-circuit) for the breakdown.
     const passed = this.selectionResolver.evaluate(body.rule, selCtx);
+    const trace = this.selectionResolver.evaluateWithTrace(body.rule, selCtx);
 
-    return { passed, resolvedContext: selCtx };
+    return { passed, resolvedContext: selCtx, trace };
   }
 }
