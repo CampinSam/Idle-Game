@@ -98,13 +98,18 @@ export function MissionDetail(props: MissionDetailProps) {
   const injuryRate = selectedDef.injuryRate ?? 0;
   const liveSynergy = preview?.mission?.synergy ?? null;
 
-  const canAffordMission = preview?.canAfford ?? false;
+  const canAffordMission = missionCost.every(e => getHaveForEntry(e) >= e.amount);
   const powerRatio = missionPower > 0 ? Math.min(1, missionPower / (missionPower + difficulty)) : 0;
 
+  const reqRows: ReqStatusEntry[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
+  const launchReqRows: ReqStatusEntry[] = Array.isArray(selectedDef.launchRequirementStatus) ? selectedDef.launchRequirementStatus : [];
+
+  const allDefReqsMet = reqRows.length === 0 || reqRows.every(r => r.met);
   const canStart = !!(
-    preview &&
-    preview.requirements.every(r => r.met) &&
-    selectedEntities.length > 0
+    selectedEntities.length >= teamMin &&
+    selectedEntities.length <= teamMax &&
+    allDefReqsMet &&
+    canAffordMission
   );
 
   const injuryColor = injuryChance >= 60 ? '#EF4444' : '#F59E0B';
@@ -112,7 +117,7 @@ export function MissionDetail(props: MissionDetailProps) {
   const gradeColor = successChance >= 75 ? '#10B981' : successChance >= 55 ? '#F59E0B' : '#EF4444';
   const successColor = successChance >= 70 ? '#10B981' : successChance >= 40 ? '#F59E0B' : '#EF4444';
 
-  const reqStatus: ReqStatusEntry[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
+  const reqStatus: ReqStatusEntry[] = reqRows;
   const catIcon = getCategoryIcon(currentCat.name);
 
   const traitReqs = extractTraitRequirements(selectedDef.requirements);
@@ -148,10 +153,6 @@ export function MissionDetail(props: MissionDetailProps) {
 
   const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
-
-  const previewRequirements = preview?.requirements ?? [];
-  const reqRows = previewRequirements.filter(r => r.source === 'requirements');
-  const launchReqRows = previewRequirements.filter(r => r.source === 'launchRequirements');
 
   return (
     <div className="flex flex-col flex-1 min-h-0 pt-2">
