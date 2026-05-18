@@ -500,6 +500,38 @@ Within any `RichSelection` tree (requirements, visibilityRequirements, etc.), a 
 | `id` | string | ✓ | ID of the `SelectionRuleDef` row to evaluate. |
 | `label` | string | | Optional human-readable label for admin display. |
 
+---
+
+## Player Jobs — `/api/admin/players/:id/jobs`
+
+### `POST /api/admin/players/:id/jobs/:jobId/force-complete`
+
+Force-complete an active job for a player, driving all side effects exactly as if the player had completed the action normally.
+
+**Auth:** Admin
+
+**Behaviour by job type:**
+
+| Job type | Side effects executed |
+|----------|-----------------------|
+| `MissionJob` | Calls `completeMission` — entities return to idle, rewards are granted, notifications are updated |
+| `BuildingJob` | Calls `completeBuilding` — building instance state is set to `active` (or levelled up for upgrades), settlement is recalculated |
+| `CraftingJob` | Calls `collectCrafting` — item results are rolled with full luck/synergy, items are granted, entity returns to idle |
+| *(other)* | Job status is stamped `completed`; no additional side effects |
+
+For all types the job's internal timer is backdated so that the completion-time check passes without error.
+
+**Error responses:**
+
+| Status | Reason |
+|--------|--------|
+| `400` | Job is already `completed` or `failed` |
+| `404` | Job not found for this player |
+
+**Response:** The result object returned by the underlying service call (serialised), or `{ forced: true, jobId }` if the service returns nothing.
+
+---
+
 ### Resolver behaviour
 
 - The resolver fetches the referenced `SelectionRuleDef` by `id` from an in-memory cache and evaluates its `selection` tree inline, transparently to the caller.

@@ -5,7 +5,9 @@ import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
 import { MissionService } from '../mission/mission.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
+import { CraftingService } from '../crafting/crafting.service';
 import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
@@ -39,7 +41,9 @@ export class AdminService {
     private eventService: EventService,
     private missionService: MissionService,
     private inventoryService: InventoryService,
+    private locationService: LocationService,
     private settlementService: LocationSettlementService,
+    private craftingService: CraftingService,
     private gameRules: GameRulesService,
     private homeBannerService: HomeBannerService,
     private pubsub: PubSubService,
@@ -381,8 +385,9 @@ export class AdminService {
       throw new BadRequestException(`Job is already ${job.status}`);
     }
 
+    const currentTick = await this.tickService.getCurrentTick();
+
     if (job.type === 'MissionJob') {
-      const currentTick = await this.tickService.getCurrentTick();
       const durationTicks = Number(job.durationTicks ?? 0);
       const adjustedStart = BigInt(Math.floor(currentTick)) - BigInt(durationTicks) - 1n;
       await (this.prisma as any).job.update({
@@ -390,6 +395,31 @@ export class AdminService {
         data: { startTick: adjustedStart, status: 'active' },
       });
       const result = await this.missionService.completeMission(userId, jobId);
+      return serializeBigInts(result ?? { forced: true, jobId });
+    }
+
+    if (job.type === 'BuildingJob') {
+      const jobTimer = (job.timer as any) || {};
+      const durationTicks = Number(jobTimer.durationTicks ?? 0);
+      const adjustedStartTick = Math.floor(currentTick) - durationTicks - 1;
+      await (this.prisma as any).job.update({
+        where: { id: jobId },
+        data: { status: 'active', timer: { ...jobTimer, startTick: adjustedStartTick } },
+      });
+      const jobData = job.data as any;
+      const result = await this.locationService.completeBuilding(userId, jobData.locationId, jobData.buildingId);
+      return serializeBigInts(result ?? { forced: true, jobId });
+    }
+
+    if (job.type === 'CraftingJob') {
+      const jobTimer = (job.timer as any) || {};
+      const durationTicks = Number(jobTimer.durationTicks ?? 0);
+      const adjustedStartTick = Math.floor(currentTick) - durationTicks - 1;
+      await (this.prisma as any).job.update({
+        where: { id: jobId },
+        data: { status: 'active', timer: { ...jobTimer, startTick: adjustedStartTick } },
+      });
+      const result = await this.craftingService.collectCrafting(userId, jobId);
       return serializeBigInts(result ?? { forced: true, jobId });
     }
 
