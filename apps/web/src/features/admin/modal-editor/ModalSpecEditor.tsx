@@ -1601,7 +1601,8 @@ interface ModalSpecEditorProps {
 export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProps) {
   const spec: ModalSpecV1 = useMemo(() => {
     if (value && typeof value === 'object' && value.version) {
-      return { ...DEFAULT_SPEC, ...(value as ModalSpecV1), pages: (value as any).pages ?? DEFAULT_SPEC.pages } as ModalSpecV1;
+      const incoming = value as Partial<ModalSpecV1>;
+      return { ...DEFAULT_SPEC, ...incoming, pages: incoming.pages ?? DEFAULT_SPEC.pages };
     }
     return { ...DEFAULT_SPEC };
   }, [value]);
