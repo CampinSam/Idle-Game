@@ -183,11 +183,6 @@ export class MissionService {
     };
   }
 
-  private getReqValues(reqs: any[], type: string): any[] {
-    if (!reqs || !Array.isArray(reqs)) return [];
-    return reqs.filter((r: any) => r.type === type);
-  }
-
   async getActiveMissions(userId: string) {
     const jobs = await (this.prisma as any).job.findMany({
       where: { userId, type: 'MissionJob', status: { in: ['active', 'ready_notified'] } },

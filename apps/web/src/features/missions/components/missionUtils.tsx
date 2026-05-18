@@ -158,14 +158,110 @@ export function formatDuration(seconds: number): string {
   return rm ? `${h}h ${rm}m` : `${h}h`;
 }
 
-export function getReqValue(reqs: any[], type: string, defaultValue: any = 0, operator?: string): any {
-  if (!Array.isArray(reqs)) return defaultValue;
-  if (operator) {
-    const found = reqs.find((r: any) => r.type === type && (r.operator ?? 'gte') === operator);
-    return found ? found.value : defaultValue;
+// Maps a legacy requirement type+key to the equivalent RichSelection scope+field.
+function legacyToScopeField(r: any): [string, string] | null {
+  switch (r?.type) {
+    case 'keeper_level': return ['player', 'keeperLevel'];
+    case 'team_size':    return ['context', 'teamSize'];
+    case 'trait':        return ['entity', `traits.${r.key ?? ''}`];
+    case 'flag':         return ['player', `flags.${r.key ?? ''}`];
+    default:             return r?.type ? ['player', `${r.type}.${r.key ?? ''}`] : null;
   }
-  const found = reqs.find((r: any) => r.type === type);
-  return found ? found.value : defaultValue;
+}
+
+// Internal recursive walk — returns undefined when no match found.
+function _walkRuleValue(node: any, scope: string, field: string, operator: string | undefined): any {
+  if (!node || typeof node !== 'object') return undefined;
+
+  // Leaf rule: { scope, field, operator, value }
+  if ('scope' in node && 'field' in node) {
+    if (node.scope === scope && node.field === field) {
+      if (!operator || node.operator === operator) return node.value;
+    }
+    return undefined;
+  }
+
+  // Group node: { op, rules: [...] }
+  if (Array.isArray(node.rules)) {
+    for (const child of node.rules) {
+      const v = _walkRuleValue(child, scope, field, operator);
+      if (v !== undefined) return v;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Walks a RichSelection tree and returns the value of the first leaf rule
+ * that matches scope + field (and optionally operator).
+ * Falls back to reading the legacy flat-array format for in-flight data.
+ * Returns defaultValue when no match is found.
+ */
+export function extractRuleValue(
+  requirements: any,
+  scope: string,
+  field: string,
+  operator?: string,
+  defaultValue: any = 0,
+): any {
+  if (!requirements) return defaultValue;
+
+  // Legacy flat-array fallback (data still in old format during migration window)
+  if (Array.isArray(requirements)) {
+    for (const r of requirements) {
+      const mapped = legacyToScopeField(r);
+      if (!mapped) continue;
+      const [rScope, rField] = mapped;
+      if (rScope === scope && rField === field) {
+        if (!operator || (r.operator ?? 'gte') === operator) {
+          return r.value ?? defaultValue;
+        }
+      }
+    }
+    return defaultValue;
+  }
+
+  const found = _walkRuleValue(requirements, scope, field, operator);
+  return found !== undefined ? found : defaultValue;
+}
+
+/**
+ * Extracts all trait requirements from a RichSelection tree.
+ * Falls back to reading the legacy flat-array format for in-flight data.
+ * Returns an array of { key, value } for display (traits are advisory/recommended, not hard-blocking).
+ */
+export function extractTraitRequirements(requirements: any): Array<{ key: string; value: number }> {
+  if (!requirements) return [];
+
+  // Legacy flat-array fallback
+  if (Array.isArray(requirements)) {
+    return requirements
+      .filter((r: any) => r?.type === 'trait' && r.key)
+      .map((r: any) => ({ key: r.key as string, value: Number(r.value ?? 1) }));
+  }
+
+  if (typeof requirements !== 'object') return [];
+
+  // Leaf rule: { scope: 'entity', field: 'traits.KEY', ... }
+  if ('scope' in requirements && 'field' in requirements) {
+    if (requirements.scope === 'entity' && typeof requirements.field === 'string' && requirements.field.startsWith('traits.')) {
+      const key = requirements.field.slice('traits.'.length);
+      return [{ key, value: Number(requirements.value ?? 1) }];
+    }
+    return [];
+  }
+
+  // Group node
+  if (Array.isArray(requirements.rules)) {
+    const results: Array<{ key: string; value: number }> = [];
+    for (const child of requirements.rules) {
+      results.push(...extractTraitRequirements(child));
+    }
+    return results;
+  }
+
+  return [];
 }
 
 export function formatTimeShort(ms: number) {

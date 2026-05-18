@@ -4650,13 +4650,18 @@
       "tags": [
         "outpost"
       ],
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 5
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 5
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "enabled": true,
       "sortOrder": 3,
       "data": {}
@@ -4669,8 +4674,8 @@
       "tags": [
         "story"
       ],
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "enabled": true,
       "sortOrder": 1,
       "data": {}
@@ -4683,8 +4688,8 @@
       "tags": [
         "quick"
       ],
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "enabled": true,
       "sortOrder": 1,
       "data": {}
@@ -4697,13 +4702,18 @@
       "tags": [
         "scavenging"
       ],
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 3
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 3
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "enabled": true,
       "sortOrder": 4,
       "data": {}
@@ -4716,8 +4726,8 @@
       "tags": [
         "seasonal"
       ],
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "enabled": false,
       "sortOrder": 5,
       "data": {}
@@ -4730,8 +4740,8 @@
       "tags": [
         "standard"
       ],
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "enabled": true,
       "sortOrder": 2,
       "data": {}
@@ -4793,8 +4803,8 @@
       },
       "productionProfile": {},
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": []
+      "requirements": null,
+      "visibilityRequirements": null
     },
     {
       "id": "loc_glitch_incubator_site",
@@ -4849,8 +4859,8 @@
       },
       "productionProfile": {},
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": []
+      "requirements": null,
+      "visibilityRequirements": null
     }
   ],
   "roomDefs": [
@@ -4880,8 +4890,8 @@
         }
       },
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": []
+      "requirements": null,
+      "visibilityRequirements": null
     },
     {
       "id": "room_workshop",
@@ -4903,14 +4913,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 2,
-          "operator": "gte"
-        }
-      ],
-      "visibilityRequirements": []
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "visibilityRequirements": null
     }
   ],
   "buildingDefs": [
@@ -4944,8 +4958,8 @@
       "data": {
         "purpose": "crafting"
       },
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "displayDefId": "display_forge",
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -4977,13 +4991,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 2
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5023,8 +5042,8 @@
         }
       },
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5064,13 +5083,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 4
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 4
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5116,8 +5140,8 @@
         }
       },
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5166,14 +5190,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 2,
-          "operator": "gte"
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5210,14 +5238,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 3,
-          "operator": "gte"
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 3
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5263,8 +5295,8 @@
         }
       },
       "data": {},
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5299,14 +5331,18 @@
         }
       },
       "data": {},
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 3,
-          "operator": "gte"
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 3
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "category": null,
       "iconKey": null,
       "activeModalDefId": null,
@@ -5392,14 +5428,18 @@
           }
         ]
       },
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 2,
-          "operator": "gte"
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [
         "Some Iron Ore",
@@ -5447,8 +5487,8 @@
         "effects": [],
         "rewards": []
       },
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [],
       "enabled": true,
@@ -5493,14 +5533,19 @@
         "effects": [],
         "rewards": []
       },
-      "requirements": [
-        {
-          "key": "item_fake_badge",
-          "type": "item",
-          "value": 1
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "item.item_fake_badge",
+            "operator": "gte",
+            "value": 1,
+            "label": "Migrated legacy: item"
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [],
       "enabled": true,
@@ -5553,14 +5598,18 @@
         "effects": [],
         "rewards": []
       },
-      "requirements": [
-        {
-          "key": "incubator_secured",
-          "type": "flag",
-          "value": true
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "flags.incubator_secured",
+            "operator": "eq",
+            "value": true
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [],
       "enabled": true,
@@ -5608,15 +5657,18 @@
         "effects": [],
         "rewards": []
       },
-      "requirements": [
-        {
-          "key": "clone_created",
-          "type": "flag",
-          "value": true,
-          "operator": "eq"
-        }
-      ],
-      "visibilityRequirements": [],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "flags.clone_created",
+            "operator": "eq",
+            "value": true
+          }
+        ]
+      },
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [],
       "enabled": true,
@@ -5728,8 +5780,8 @@
           }
         ]
       },
-      "requirements": [],
-      "visibilityRequirements": [],
+      "requirements": null,
+      "visibilityRequirements": null,
       "tags": [],
       "rewardPreview": [
         "Test Preview Item"
@@ -5831,28 +5883,40 @@
           }
         ]
       },
-      "requirements": [
-        {
-          "type": "team_size",
-          "value": 2,
-          "operator": "gte"
-        },
-        {
-          "type": "team_size",
-          "value": 3,
-          "operator": "lte"
-        },
-        {
-          "type": "keeper_level",
-          "value": 2
-        }
-      ],
-      "visibilityRequirements": [
-        {
-          "type": "keeper_level",
-          "value": 2
-        }
-      ],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "context",
+            "field": "teamSize",
+            "operator": "gte",
+            "value": 2
+          },
+          {
+            "scope": "context",
+            "field": "teamSize",
+            "operator": "lte",
+            "value": 3
+          },
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "visibilityRequirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 2
+          }
+        ]
+      },
       "tags": [],
       "rewardPreview": [
         "⚡ 40-80 XP",
@@ -5909,9 +5973,9 @@
           "type": "item"
         }
       ],
-      "requirements": [],
+      "requirements": null,
       "effects": [],
-      "visibilityRequirements": [],
+      "visibilityRequirements": null,
       "data": {},
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -5954,19 +6018,29 @@
           "type": "item"
         }
       ],
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 10
-        }
-      ],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 10
+          }
+        ]
+      },
       "effects": [],
-      "visibilityRequirements": [
-        {
-          "type": "keeper_level",
-          "value": 7
-        }
-      ],
+      "visibilityRequirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 7
+          }
+        ]
+      },
       "data": {
         "tier": 3
       },
@@ -6011,19 +6085,29 @@
           "type": "item"
         }
       ],
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 15
-        }
-      ],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 15
+          }
+        ]
+      },
       "effects": [],
-      "visibilityRequirements": [
-        {
-          "type": "keeper_level",
-          "value": 10
-        }
-      ],
+      "visibilityRequirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 10
+          }
+        ]
+      },
       "data": {
         "tier": 3
       },
@@ -6072,9 +6156,9 @@
           }
         ]
       },
-      "requirements": [],
+      "requirements": null,
       "effects": [],
-      "visibilityRequirements": [],
+      "visibilityRequirements": null,
       "data": {},
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -6116,9 +6200,9 @@
           }
         ]
       },
-      "requirements": [],
+      "requirements": null,
       "effects": [],
-      "visibilityRequirements": [],
+      "visibilityRequirements": null,
       "data": {},
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -6165,9 +6249,9 @@
           }
         ]
       },
-      "requirements": [],
+      "requirements": null,
       "effects": [],
-      "visibilityRequirements": [],
+      "visibilityRequirements": null,
       "data": {},
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -6203,9 +6287,9 @@
           }
         ]
       },
-      "requirements": [],
+      "requirements": null,
       "effects": [],
-      "visibilityRequirements": [],
+      "visibilityRequirements": null,
       "data": {},
       "activeModalDefId": null,
       "completedModalDefId": null,
@@ -6248,19 +6332,29 @@
           "type": "item"
         }
       ],
-      "requirements": [
-        {
-          "type": "keeper_level",
-          "value": 5
-        }
-      ],
+      "requirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 5
+          }
+        ]
+      },
       "effects": [],
-      "visibilityRequirements": [
-        {
-          "type": "keeper_level",
-          "value": 3
-        }
-      ],
+      "visibilityRequirements": {
+        "op": "AND",
+        "rules": [
+          {
+            "scope": "player",
+            "field": "keeperLevel",
+            "operator": "gte",
+            "value": 3
+          }
+        ]
+      },
       "data": {
         "tier": 2
       },
@@ -6967,7 +7061,7 @@
         "min": 50,
         "max": 50
       },
-      "requirements": [],
+      "requirements": null,
       "repeatable": false,
       "enabled": true
     },
@@ -6991,7 +7085,7 @@
         "min": 200,
         "max": 200
       },
-      "requirements": [],
+      "requirements": null,
       "repeatable": false,
       "enabled": true
     },
@@ -7020,7 +7114,7 @@
         "min": 25,
         "max": 25
       },
-      "requirements": [],
+      "requirements": null,
       "repeatable": false,
       "enabled": true
     }

@@ -5,7 +5,7 @@ import {
   DEFAULT_OVERLAY,
   bgImageCss,
   displayCssVars,
-  getReqValue,
+  extractRuleValue,
   meetsNonTeamRequirements,
   renderTags,
 } from './missionUtils';
@@ -114,13 +114,16 @@ export function MissionsList({
                   })}
                 </div>
               )}
-              {locked && (
-                <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">
-                  🔒 {getReqValue(def.requirements, 'keeper_level') > 0
-                    ? `Requires Keeper Lv ${getReqValue(def.requirements, 'keeper_level')}`
-                    : 'Requirements not met'}
-                </div>
-              )}
+              {locked && (() => {
+                const keeperLvl = extractRuleValue(def.requirements, 'player', 'keeperLevel');
+                return (
+                  <div className="text-[11px] text-[#fbbf24] font-semibold mt-1">
+                    🔒 {keeperLvl > 0
+                      ? `Requires Keeper Lv ${keeperLvl}`
+                      : 'Requirements not met'}
+                  </div>
+                );
+              })()}
               {!missionEnabled && !locked && (
                 <div className="text-[11px] text-[#f87171] font-semibold mt-1">🚫 Currently Unavailable</div>
               )}

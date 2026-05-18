@@ -9,10 +9,11 @@ import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
   displayCssVars,
+  extractRuleValue,
   extractTeamSizeBounds,
+  extractTraitRequirements,
   formatDuration,
   getCategoryIcon,
-  getReqValue,
   resolveDisplay,
   type ReqStatusEntry,
 } from './missionUtils';
@@ -84,7 +85,7 @@ export function MissionDetail(props: MissionDetailProps) {
   const heroCss = displayCssVars(display, { hero: true });
 
   const { min: teamMin, max: teamMax } = extractTeamSizeBounds(selectedDef.requirements);
-  const keeperLvl = getReqValue(selectedDef.requirements, 'keeper_level');
+  const keeperLvl = extractRuleValue(selectedDef.requirements, 'player', 'keeperLevel');
   const duration = selectedDef.timer?.duration ?? 0;
   const difficulty = selectedDef.difficulty || 100;
 
@@ -125,11 +126,9 @@ export function MissionDetail(props: MissionDetailProps) {
   const reqStatus: ReqStatusEntry[] = Array.isArray(selectedDef.requirementStatus) ? selectedDef.requirementStatus : [];
   const catIcon = getCategoryIcon(currentCat.name);
 
-  const traitReqs = Array.isArray(selectedDef.requirements)
-    ? selectedDef.requirements.filter((r: { type: string }) => r.type === 'trait')
-    : [];
+  const traitReqs = extractTraitRequirements(selectedDef.requirements);
   const recommendedNote = traitReqs.length > 0
-    ? ` · ${traitReqs.map((r: { key?: string; value?: number }) => `${r.key ?? 'trait'} ${r.value ?? 1}+`).join(', ')} preferred`
+    ? ` · ${traitReqs.map((r: { key: string; value: number }) => `${r.key} ${r.value}+`).join(', ')} preferred`
     : null;
 
   const costSubtitleParts: string[] = [];
