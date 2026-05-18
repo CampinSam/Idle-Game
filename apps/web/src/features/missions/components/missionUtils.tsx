@@ -103,6 +103,21 @@ export function extractTeamSizeBounds(
 ): { min: number; max: number } {
   if (!requirements || typeof requirements !== 'object') return _out;
 
+  // Legacy flat-array format: [{ type: 'team_size', operator: 'gte', value: N }]
+  if (Array.isArray(requirements)) {
+    for (const r of requirements) {
+      if (r?.type === 'team_size') {
+        const op = r.operator ?? 'gte';
+        const v = Number(r.value ?? 1);
+        if (op === 'gte' || op === 'gt') _out.min = Math.max(_out.min, op === 'gt' ? v + 1 : v);
+        else if (op === 'lte' || op === 'lt') _out.max = Math.min(_out.max, op === 'lt' ? v - 1 : v);
+        else if (op === 'eq') { _out.min = Math.max(_out.min, v); _out.max = Math.min(_out.max, v); }
+      }
+    }
+    return _out;
+  }
+
+  // Rich selector group node: { op, rules: [...] }
   if (Array.isArray(requirements.rules)) {
     for (const child of requirements.rules) {
       extractTeamSizeBounds(child, _out);
@@ -110,18 +125,21 @@ export function extractTeamSizeBounds(
     return _out;
   }
 
+  // Rich selector leaf rule: { scope: 'context', field: 'teamSize', operator, value }
   if (requirements.scope === 'context' && requirements.field === 'teamSize') {
     const { operator, value } = requirements;
     if (operator === 'gte' || operator === 'gt') {
-      _out.min = Number(value) + (operator === 'gt' ? 1 : 0);
+      const v = Number(value) + (operator === 'gt' ? 1 : 0);
+      _out.min = Math.max(_out.min, v);
     } else if (operator === 'lte' || operator === 'lt') {
-      _out.max = Number(value) - (operator === 'lt' ? 1 : 0);
+      const v = Number(value) - (operator === 'lt' ? 1 : 0);
+      _out.max = Math.min(_out.max, v);
     } else if (operator === 'between' && Array.isArray(value)) {
-      _out.min = Number(value[0]);
-      _out.max = Number(value[1]);
+      _out.min = Math.max(_out.min, Number(value[0]));
+      _out.max = Math.min(_out.max, Number(value[1]));
     } else if (operator === 'eq') {
-      _out.min = Number(value);
-      _out.max = Number(value);
+      _out.min = Math.max(_out.min, Number(value));
+      _out.max = Math.min(_out.max, Number(value));
     }
   }
   return _out;
