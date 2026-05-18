@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EntityService } from '../entity/entity.service';
+import { computeEquippedStats } from '../entity/entity-stats.util';
 import { CurrencyService } from '../currency/currency.service';
 import { PlayerService } from '../player/player.service';
 import { TickService } from '../tick/tick.service';
@@ -258,15 +259,19 @@ export class MissionService {
       entities.push(entity);
     }
 
-    const team = entities.map((e: any) => ({
-      id: e.id as string,
-      entityType: (e.role as string | undefined) ?? undefined,
-      traits: (e.traits ?? {}) as Record<string, string>,
-      stats: (e.stats ?? {}) as Record<string, number>,
-      speciesId: (e.definitionId as string | undefined) ?? undefined,
-      collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
-      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
-    }));
+    const team: import('../game-rules/game-rules.service').TeamEntitySnap[] = [];
+    for (const e of entities) {
+      const stats = await computeEquippedStats(db, e);
+      team.push({
+        id: e.id as string,
+        entityType: (e.role as string | undefined) ?? undefined,
+        traits: (e.traits ?? {}) as Record<string, string>,
+        stats,
+        speciesId: (e.definitionId as string | undefined) ?? undefined,
+        collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
+        rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+      });
+    }
 
     const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length, team });
 

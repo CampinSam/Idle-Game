@@ -16,6 +16,7 @@ import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
 import type { RichSelection } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
+import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
@@ -1112,11 +1113,12 @@ export class AdminService {
         include: { equipment: true },
       });
       if (!entity) throw new NotFoundException(`Entity ${entityId} not found`);
+      const entityStats = await computeEquippedStats(this.prisma, entity);
       team.push({
         id: entity.id,
         entityType: (entity.role as string | undefined) ?? undefined,
         traits: ((entity.traits ?? {}) as Record<string, string>),
-        stats: ((entity.stats ?? {}) as Record<string, number>),
+        stats: entityStats,
         speciesId: (entity.definitionId as string | undefined) ?? undefined,
         collectionId: (entity.nftCollectionDefId as string | undefined) ?? undefined,
         rarity: ((entity.traits as any)?.rarity as string | undefined) ?? undefined,
