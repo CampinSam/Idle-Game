@@ -94,11 +94,37 @@ export function meetsNonTeamRequirements(def: any): boolean {
   if (Array.isArray(status) && status.length > 0) {
     return status.every((r: any) => r.met);
   }
-  const reqs = def.requirements;
-  if (Array.isArray(reqs) && reqs.some((r: any) => r.type !== 'team_size')) {
-    return false;
-  }
   return true;
+}
+
+export function extractTeamSizeBounds(
+  requirements: any,
+  _out = { min: 1, max: 1 },
+): { min: number; max: number } {
+  if (!requirements || typeof requirements !== 'object') return _out;
+
+  if (Array.isArray(requirements.rules)) {
+    for (const child of requirements.rules) {
+      extractTeamSizeBounds(child, _out);
+    }
+    return _out;
+  }
+
+  if (requirements.scope === 'context' && requirements.field === 'teamSize') {
+    const { operator, value } = requirements;
+    if (operator === 'gte' || operator === 'gt') {
+      _out.min = Number(value) + (operator === 'gt' ? 1 : 0);
+    } else if (operator === 'lte' || operator === 'lt') {
+      _out.max = Number(value) - (operator === 'lt' ? 1 : 0);
+    } else if (operator === 'between' && Array.isArray(value)) {
+      _out.min = Number(value[0]);
+      _out.max = Number(value[1]);
+    } else if (operator === 'eq') {
+      _out.min = Number(value);
+      _out.max = Number(value);
+    }
+  }
+  return _out;
 }
 
 export function formatDuration(seconds: number): string {

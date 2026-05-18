@@ -9,6 +9,7 @@ import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
   displayCssVars,
+  extractTeamSizeBounds,
   formatDuration,
   getCategoryIcon,
   getReqValue,
@@ -82,8 +83,7 @@ export function MissionDetail(props: MissionDetailProps) {
 
   const heroCss = displayCssVars(display, { hero: true });
 
-  const teamMin = getReqValue(selectedDef.requirements, 'team_size', 1, 'gte');
-  const teamMax = getReqValue(selectedDef.requirements, 'team_size', 1, 'lte');
+  const { min: teamMin, max: teamMax } = extractTeamSizeBounds(selectedDef.requirements);
   const keeperLvl = getReqValue(selectedDef.requirements, 'keeper_level');
   const duration = selectedDef.timer?.duration ?? 0;
   const difficulty = selectedDef.difficulty || 100;
