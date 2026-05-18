@@ -106,6 +106,7 @@ export function MissionDetail(props: MissionDetailProps) {
 
   const allDefReqsMet = reqRows.length === 0 || reqRows.every(r => r.met);
   const canStart = !!(
+    selectedEntities.length > 0 &&
     selectedEntities.length >= teamMin &&
     selectedEntities.length <= teamMax &&
     allDefReqsMet &&
