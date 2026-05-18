@@ -76,23 +76,34 @@ export function TickEngineProvider({ children }: { children: React.ReactNode }) 
     if (accepted) setTrigger((t) => t + 1);
   }, [tickBroadcast]);
 
+  const reanchor = useCallback((snap: TickSnapshot) => {
+    const now = Date.now();
+    const serverTimeMs = new Date(snap.serverTime).getTime();
+    if (!isFinite(serverTimeMs)) return;
+    const wallElapsedSec = (now - serverTimeMs) / 1000;
+    const interpolatedTick = snap.currentTick + wallElapsedSec * snap.tickRate;
+    interpolatedRef.current = { currentTick: interpolatedTick };
+    setTrigger((t) => t + 1);
+  }, []);
+
   useEffect(() => {
     if (!snapshot) return;
 
-    const id = setInterval(() => {
-      const now = Date.now();
-      const serverTimeMs = new Date(snapshot.serverTime).getTime();
-      if (!isFinite(serverTimeMs)) return;
+    const id = setInterval(() => reanchor(snapshot), UPDATE_INTERVAL_MS);
 
-      const wallElapsedSec = (now - serverTimeMs) / 1000;
-      const interpolatedTick = snapshot.currentTick + wallElapsedSec * snapshot.tickRate;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        reanchor(snapshot);
+      }
+    };
 
-      interpolatedRef.current = { currentTick: interpolatedTick };
-      setTrigger((t) => t + 1);
-    }, UPDATE_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    return () => clearInterval(id);
-  }, [snapshot]);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [snapshot, reanchor]);
 
   const store = useStore<RootState>();
   const refresh = useCallback(async () => {
