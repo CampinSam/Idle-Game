@@ -263,7 +263,14 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         availableData={availableData}
         hasWarehouse={hasWarehouse}
         warehouseDefId={WAREHOUSE_DEF_ID}
+        locationId={id}
         onBuild={openBuildModal}
+        onUpgrade={(buildingDefId) => {
+          const building = buildingsData.find(
+            (b: any) => (b.buildingDefId || b.defId || b.definitionId) === buildingDefId,
+          );
+          if (building) openUpgradeModal(building);
+        }}
       />
         </div>
       </div>

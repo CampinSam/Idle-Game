@@ -30,14 +30,40 @@ export interface MissionPreviewData {
   } | null;
 }
 
+export interface CostEntry {
+  type: string;
+  id: string;
+  amount: number;
+}
+
+export interface BuildingUpgradePreview {
+  toLevel: number;
+  cost: CostEntry[];
+  durationSeconds: number;
+  effectiveDurationTicks: number;
+  canAfford: boolean;
+}
+
+export interface BuildingPreviewData {
+  buildingDefId: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  buildLevel: number;
+  maxLevel: number;
+  effectiveDurationTicks: number;
+  upgrade: BuildingUpgradePreview | null;
+}
+
 export interface JobPreviewResult {
   jobType: string;
   requirements: JobPreviewRequirement[];
   allRequirementsMet: boolean;
   canAfford: boolean;
-  cost: { type: string; id: string; amount: number }[];
+  cost: CostEntry[];
   durationSeconds: number;
   mission?: MissionPreviewData;
+  building?: BuildingPreviewData;
 }
 
 interface UseJobPreviewOptions {
