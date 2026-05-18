@@ -319,26 +319,22 @@ export function MissionDetail(props: MissionDetailProps) {
                   <div className="flex flex-col gap-1.5">
                     {reqRows.length > 0 && (
                       <>
-                        {launchReqRows.length > 0 && (
-                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Requirements</span>
-                        )}
+                        <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Requirements</span>
                         {reqRows.map((r, i) => (
                           <div key={i} className="flex items-center gap-2 text-[12px]">
                             <span className="text-base leading-none">{r.met ? '✅' : '❌'}</span>
-                            <span className="flex-1 text-text-secondary">{r.label ?? 'Requirement'}</span>
+                            <span className="flex-1 font-medium" style={{ color: r.met ? '#10b981' : '#ef4444' }}>{r.label ?? 'Requirement'}</span>
                           </div>
                         ))}
                       </>
                     )}
                     {launchReqRows.length > 0 && (
                       <>
-                        {reqRows.length > 0 && (
-                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Launch Requirements</span>
-                        )}
+                        <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary mt-0.5">Launch Requirements</span>
                         {launchReqRows.map((r, i) => (
                           <div key={i} className="flex items-center gap-2 text-[12px]">
                             <span className="text-base leading-none">{r.met ? '✅' : '❌'}</span>
-                            <span className="flex-1 text-text-secondary">{r.label ?? 'Requirement'}</span>
+                            <span className="flex-1 font-medium" style={{ color: r.met ? '#10b981' : '#ef4444' }}>{r.label ?? 'Requirement'}</span>
                           </div>
                         ))}
                       </>
