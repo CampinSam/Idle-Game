@@ -440,6 +440,26 @@ export default function SelectionTesterPage() {
           <RichSelectionEditor value={rule} onChange={setRule} />
         </div>
 
+        {/* Run + Result */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
+          <button
+            style={running ? s.runBtnDisabled : s.runBtn}
+            onClick={runTest}
+            disabled={running}
+          >
+            <Play size={16} />
+            {running ? 'Running…' : 'Run Test'}
+          </button>
+
+          {result && (
+            result.passed
+              ? <span style={s.resultPassed}>✓ PASSED</span>
+              : <span style={s.resultFailed}>✗ FAILED</span>
+          )}
+
+          {runError && <div style={s.errorBox}>{runError}</div>}
+        </div>
+
         {/* Scenario Tabs */}
         <div style={s.section}>
           <div style={s.sectionTitle}>Scenario</div>
@@ -486,7 +506,7 @@ export default function SelectionTesterPage() {
                     : <EntityList
                         entities={normalizedEntities}
                         mode="picker"
-                        useCase="mission"
+                        useCase="browse"
                         showControls
                         search={entitySearch}
                         onSearchChange={setEntitySearch}
@@ -562,25 +582,6 @@ export default function SelectionTesterPage() {
           )}
         </div>
 
-        {/* Run + Result */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
-          <button
-            style={running ? s.runBtnDisabled : s.runBtn}
-            onClick={runTest}
-            disabled={running}
-          >
-            <Play size={16} />
-            {running ? 'Running…' : 'Run Test'}
-          </button>
-
-          {result && (
-            result.passed
-              ? <span style={s.resultPassed}>✓ PASSED</span>
-              : <span style={s.resultFailed}>✗ FAILED</span>
-          )}
-
-          {runError && <div style={s.errorBox}>{runError}</div>}
-        </div>
       </div>
     </div>
   );

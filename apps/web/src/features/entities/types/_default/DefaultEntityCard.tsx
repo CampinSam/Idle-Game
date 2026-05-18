@@ -84,6 +84,13 @@ export default function DefaultEntityCard({
             <span className="text-[8px] font-black text-[rgba(167,139,250,0.85)] tracking-[0.5px]">LVL</span>
             <span className="text-sm font-black text-white leading-none">{entity.level}</span>
           </div>
+          {selected && (
+            <div className="absolute top-[6px] left-[6px] w-[22px] h-[22px] rounded-full bg-[#059669] border-2 border-[#34d399] flex items-center justify-center z-[3] shadow-[0_0_8px_rgba(52,211,153,0.6)]">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
           <GameImage
             src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
             category="entities"
@@ -180,17 +187,26 @@ export default function DefaultEntityCard({
     return (
       <button type="button" className={cls} onClick={handleClick} disabled={disabled}>
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-14 h-14 rounded-full shrink-0 flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.12)]"
-            style={{ background: archetypeDisplay.gradient }}
-          >
-            <GameImage
-              src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
-              category="entities"
-              alt={entity.name}
-              fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-              className="!w-full !h-full object-cover !rounded-full drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
-            />
+          <div className="relative shrink-0">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden border border-[rgba(255,255,255,0.12)]"
+              style={{ background: archetypeDisplay.gradient }}
+            >
+              <GameImage
+                src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
+                category="entities"
+                alt={entity.name}
+                fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+                className="!w-full !h-full object-cover !rounded-full drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]"
+              />
+            </div>
+            {selected && (
+              <div className="absolute -top-[3px] -right-[3px] w-[18px] h-[18px] rounded-full bg-[#f97316] border-2 border-[rgba(15,12,38,0.9)] flex items-center justify-center z-[2]">
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                  <path d="M1.5 4.5l2 2 4-4" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-[2px] min-w-0">
             <div className="text-[13px] font-bold text-[#fff7ed]">{entity.name}</div>
