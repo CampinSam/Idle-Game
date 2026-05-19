@@ -61,12 +61,10 @@ describe('OpenGiftPackageHandler [integration]', () => {
         userId: user.id,
         definitionId: packageDef.id,
         quantity: 1,
-        // OpenGiftPackageHandler reads state.rewardSpec and resolves via
-        // resolveRewardSpec — which expects a single outcome entry (it
-        // delegates to GameRulesService.resolveOutcomesAsync). 100% odds +
-        // identical min/max means we deterministically grant 50 GEMS.
+        // rewardSpec is stored as an array of canonical outcome entries.
+        // 100% odds + identical min/max means we deterministically grant 50 GEMS.
         state: {
-          rewardSpec: { type: 'currency', key: 'GEMS', min: 50, max: 50, odds: 100 },
+          rewardSpec: [{ type: 'currency', key: 'GEMS', min: 50, max: 50, odds: 100 }],
         },
       },
     });

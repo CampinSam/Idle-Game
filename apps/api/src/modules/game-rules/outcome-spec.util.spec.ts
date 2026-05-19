@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import {
   normalizeOutcomeSpec,
   normalizeOutcomeFieldsForModel,
+  migrateGiftRewardSpec,
   OUTCOME_SPEC_FIELDS_BY_MODEL,
 } from './outcome-spec.util';
 
@@ -105,6 +106,54 @@ describe('normalizeOutcomeFieldsForModel', () => {
     const data: any = {};
     const changed = normalizeOutcomeFieldsForModel('giftDef', data);
     expect(changed).toBe(0);
+  });
+});
+
+describe('migrateGiftRewardSpec', () => {
+  it('wraps a single-object spec into an array, changed=1', () => {
+    const { value, changed } = migrateGiftRewardSpec({ type: 'currency', key: 'GEMS', min: 10, max: 10, odds: 100 });
+    expect(value).toEqual([{ type: 'currency', key: 'GEMS', min: 10, max: 10, odds: 100 }]);
+    expect(changed).toBe(1);
+  });
+
+  it('converts a lootTable entry (with lootboxDefId) to item, changed=1', () => {
+    const { value, changed } = migrateGiftRewardSpec([
+      { type: 'lootTable', lootboxDefId: 'lt_chest', qty: 1 },
+    ]);
+    expect(value).toEqual([{ type: 'item', key: 'lt_chest', min: 1, max: 1, odds: 1 }]);
+    expect(changed).toBe(1);
+  });
+
+  it('leaves a lootTable entry missing lootboxDefId unchanged, changed=0', () => {
+    const { value, changed } = migrateGiftRewardSpec([
+      { type: 'lootTable', key: 'lt_chest' },
+    ]);
+    expect(value).toEqual([{ type: 'lootTable', key: 'lt_chest' }]);
+    expect(changed).toBe(0);
+  });
+
+  it('is a no-op for a valid array with no legacy entries, changed=0', () => {
+    const spec = [{ type: 'currency', key: 'GOLD', min: 5, max: 5, odds: 100 }];
+    const { value, changed } = migrateGiftRewardSpec(spec);
+    expect(value).toEqual(spec);
+    expect(changed).toBe(0);
+  });
+
+  it('handles an empty array without changes', () => {
+    const { value, changed } = migrateGiftRewardSpec([]);
+    expect(value).toEqual([]);
+    expect(changed).toBe(0);
+  });
+
+  it('handles null / undefined gracefully, changed=0', () => {
+    expect(migrateGiftRewardSpec(null).changed).toBe(0);
+    expect(migrateGiftRewardSpec(undefined).changed).toBe(0);
+  });
+
+  it('normalises an empty-object {} spec to [], changed=1', () => {
+    const { value, changed } = migrateGiftRewardSpec({});
+    expect(value).toEqual([]);
+    expect(changed).toBe(1);
   });
 });
 

@@ -6,6 +6,7 @@
  *   2. The GiftInstance flips UNCLAIMED → CLAIMED with a claimTxId
  *   3. A GiftClaimTx row records the grants for audit
  *   4. A downstream throw rolls EVERY write back
+ *   5. An entity entry with a missing definitionId throws BadRequestException
  */
 import { createTestHarness, TestHarness } from './db-harness';
 import { ClaimGiftHandler } from '../../src/modules/commands/handlers/claim-gift.handler';
@@ -52,7 +53,7 @@ describe('ClaimGiftHandler [integration]', () => {
         name: 'Test Gift',
         instant: true,
         enabled: true,
-        rewardSpec: { type: 'currency', key: 'GEMS', min: 25, max: 25, odds: 100 },
+        rewardSpec: [{ type: 'currency', key: 'GEMS', min: 25, max: 25, odds: 100 }],
       },
     });
 
@@ -62,12 +63,11 @@ describe('ClaimGiftHandler [integration]', () => {
         giftDefId: giftDef.id,
         giftDefVersion: 1,
         status: 'UNCLAIMED',
-        // ClaimGiftHandler → GiftService.claimGift reads snapshot.rewardSpec
-        // and snapshot.instant. Single outcome entry shape (see
-        // reward-resolver.util.ts), 100% odds for deterministic 25 GEMS.
+        // rewardSpec is stored as an array of canonical outcome entries.
+        // 100% odds + identical min/max means we deterministically grant 25 GEMS.
         snapshot: {
           instant: true,
-          rewardSpec: { type: 'currency', key: 'GEMS', min: 25, max: 25, odds: 100 },
+          rewardSpec: [{ type: 'currency', key: 'GEMS', min: 25, max: 25, odds: 100 }],
           presentation: { title: 'A Gift!' },
         },
       },
@@ -145,5 +145,54 @@ describe('ClaimGiftHandler [integration]', () => {
 
     const ledger = await prisma.currencyLedger.findMany({ where: { userId: user.id } });
     expect(ledger).toHaveLength(0);
+  });
+
+  it('throws BadRequestException when an entity reward entry is missing definitionId', async () => {
+    const user = await prisma.user.create({
+      data: {
+        username: `tester-${Math.random().toString(36).slice(2, 8)}`,
+        email: `test-${Date.now()}@example.com`,
+        passwordHash: 'x',
+        keeperLevel: 1,
+        keeperXp: BigInt(0),
+        flags: {},
+      },
+    });
+
+    const giftDef = await (prisma as any).giftDef.create({
+      data: {
+        id: 'gift_bad_entity',
+        name: 'Bad Entity Gift',
+        instant: true,
+        enabled: true,
+        rewardSpec: [{ type: 'entity' }],
+      },
+    });
+
+    const gift = await (prisma as any).giftInstance.create({
+      data: {
+        userId: user.id,
+        giftDefId: giftDef.id,
+        giftDefVersion: 1,
+        status: 'UNCLAIMED',
+        snapshot: {
+          instant: true,
+          rewardSpec: [{ type: 'entity' }],
+          presentation: { title: 'A Gift!' },
+        },
+      },
+    });
+
+    await expect(
+      prisma.$transaction(
+        async (tx) => {
+          await handler.execute(
+            { userId: user.id, tx: tx as any },
+            { giftId: gift.id },
+          );
+        },
+        { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' },
+      ),
+    ).rejects.toThrow('definitionId');
   });
 });

@@ -900,9 +900,9 @@ function ResultSection({ title, empty, children }: { title: string; empty: strin
 
 /**
  * Top-level outcome editor. Accepts either:
- *  - an array (e.g. LootboxDef.outcomes) — edits the array directly
+ *  - an array (e.g. LootboxDef.outcomes, GiftDef.rewardSpec) — edits the array directly
  *  - an OutcomeBlock object `{ rewards: [...] }` (e.g. MissionDef.success/failure) — edits the inner rewards
- *  - any other object with no `rewards` key — wraps it as a single-entry array (legacy fallback)
+ *  - anything else — shown as empty with a single init button (array is the only canonical authoring format)
  */
 export default function OutcomeListEditor({ value, onChange }: ListProps) {
   if (Array.isArray(value)) {
@@ -918,7 +918,6 @@ export default function OutcomeListEditor({ value, onChange }: ListProps) {
     );
   }
 
-  // Empty or unrecognized — initialize as OutcomeBlock-style structure
   return (
     <div style={containerStyle}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -929,13 +928,6 @@ export default function OutcomeListEditor({ value, onChange }: ListProps) {
           onClick={() => onChange([])}
         >
           Initialize as array
-        </button>
-        <button
-          type="button"
-          style={addButtonStyle}
-          onClick={() => onChange({ rewards: [] })}
-        >
-          Initialize as {`{rewards: []}`}
         </button>
       </div>
     </div>

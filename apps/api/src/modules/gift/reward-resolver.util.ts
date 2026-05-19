@@ -1,9 +1,9 @@
+import { BadRequestException } from '@nestjs/common';
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import type { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
 
 function makeRng() {
   return {
-    // Matches GameRulesService.rollOdds contract: `p` is a 0..1 fraction.
     chance: (p: number) => Math.random() < p,
     nextInt: (min: number, max: number) =>
       Math.floor(Math.random() * (max - min + 1)) + min,
@@ -43,9 +43,13 @@ async function grantOutcomeEntry(
 }
 
 async function resolveEntityGrant(prisma: any, userId: string, spec: any): Promise<any> {
-  const definitionId = spec.definitionId ?? spec.key;
-  const name = spec.overrides?.name ?? spec.name ?? 'New Entity';
-  const entityData = await generateEntityData(prisma, userId, definitionId, name);
+  if (!spec.definitionId) {
+    throw new BadRequestException(
+      'Entity reward spec is missing required field "definitionId"',
+    );
+  }
+  const name = spec.overrides?.name ?? 'New Entity';
+  const entityData = await generateEntityData(prisma, userId, spec.definitionId, name);
 
   if (spec.overrides) {
     const overrides = spec.overrides;
@@ -82,7 +86,7 @@ async function resolveEntityGrant(prisma: any, userId: string, spec: any): Promi
   }
 
   const entity = await prisma.entity.create({ data: entityData });
-  return { type: 'entity', entityId: entity.id, definitionId };
+  return { type: 'entity', entityId: entity.id, definitionId: spec.definitionId };
 }
 
 export async function resolveRewardSpec(
@@ -94,62 +98,49 @@ export async function resolveRewardSpec(
   spec: any,
   sourceId: string,
 ): Promise<any[]> {
-  if (!spec || !spec.type) return [];
-
-  // `entity` and `lootTable` have side effects outside the canonical outcome
-  // resolver (entity creation / lootbox-item grant), so they stay as one-offs.
-  if (spec.type === 'entity') {
-    return [await resolveEntityGrant(prisma, userId, spec)];
-  }
-  if (spec.type === 'lootTable') {
-    if (!spec.lootboxDefId) return [];
-    const qty = spec.qty ?? 1;
-    await inventoryService.addItemTx(prisma, {
-      userId, itemId: spec.lootboxDefId, quantity: qty,
-      reason: 'Reward (lootbox)', sourceType: 'reward', sourceId,
-    });
-    return [{ type: 'lootTable', lootboxDefId: spec.lootboxDefId, qty }];
+  // Normalise: accept an array of entries (canonical) or a bare single-object
+  // (legacy stored format — wrapped for backward compat with existing snapshots
+  // that were saved before the array migration ran). New GiftDef records and
+  // all records processed by the write-boundary migration will always be arrays.
+  let entries: any[];
+  if (Array.isArray(spec)) {
+    entries = spec;
+  } else if (spec && typeof spec === 'object' && spec.type) {
+    entries = [spec];
+  } else {
+    return [];
   }
 
-  // Pre-check bundle_ref so gift telemetry can record an explicit
-  // "missing_or_disabled" status grant alongside the resolver's warn log.
-  if (spec.type === 'bundle_ref') {
-    if (!spec.bundleDefId) {
-      return [{ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing' }];
-    }
-    const defs = await gameRules.loadBundleDefs([spec]);
-    const def = defs.get(spec.bundleDefId);
-    if (!def || def.enabled === false || !Array.isArray(def.bundle)) {
-      return [{ type: 'bundle_ref', bundleDefId: spec.bundleDefId, status: 'missing_or_disabled' }];
-    }
-  }
-
-  // Everything else (`currency`, `item`, `bundle`, `bundle_ref`) routes
-  // through the canonical resolver so all reward paths share field names
-  // (`key`, `bundle`), bundle/bundle_ref semantics, requirement gating,
-  // and weighted/odds rolls.
-  if (
-    spec.type !== 'currency' &&
-    spec.type !== 'item' &&
-    spec.type !== 'bundle' &&
-    spec.type !== 'bundle_ref'
-  ) {
-    return [{ type: 'unknown', specType: spec.type, status: 'not_implemented' }];
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  const reqContext: RequirementContext = user
-    ? gameRules.buildRequirementContext(user as any)
-    : { user: {}, userFlags: {} };
-  const { resolved } = await gameRules.resolveOutcomesAsync([spec], reqContext, makeRng());
+  if (entries.length === 0) return [];
 
   const grants: any[] = [];
-  for (const r of resolved) {
-    const granted = await grantOutcomeEntry(
-      prisma, currencyService, inventoryService, userId, sourceId,
-      r.entry, r.amount ?? 0,
-    );
-    if (granted) grants.push(granted);
+
+  // Entity grants create entity instances — this is outside the canonical
+  // resolveOutcomesAsync pipeline which only knows about currencies, items,
+  // XP, flags, and bundles. All other types route through the pipeline.
+  const entityEntries = entries.filter((e: any) => e?.type === 'entity');
+  const outcomeEntries = entries.filter((e: any) => e?.type !== 'entity');
+
+  for (const entry of entityEntries) {
+    const grant = await resolveEntityGrant(prisma, userId, entry);
+    if (grant) grants.push(grant);
   }
+
+  if (outcomeEntries.length > 0) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const reqContext: RequirementContext = user
+      ? gameRules.buildRequirementContext(user as any)
+      : { user: {}, userFlags: {} };
+    const { resolved } = await gameRules.resolveOutcomesAsync(outcomeEntries, reqContext, makeRng());
+
+    for (const r of resolved) {
+      const granted = await grantOutcomeEntry(
+        prisma, currencyService, inventoryService, userId, sourceId,
+        r.entry, r.amount ?? 0,
+      );
+      if (granted) grants.push(granted);
+    }
+  }
+
   return grants;
 }

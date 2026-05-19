@@ -89,6 +89,55 @@ export function normalizeOutcomeSpec(value: any): NormalizeResult {
 }
 
 /**
+ * Migrate a GiftDef rewardSpec from legacy formats to the canonical array shape.
+ *
+ * Two legacy forms are handled:
+ *  1. Single-object spec  `{ type, key, ... }` — wrapped in a one-element array.
+ *  2. `lootTable` entry   `{ type: 'lootTable', lootboxDefId, qty }` — rewritten
+ *     to a canonical item entry `{ type: 'item', key: lootboxDefId, min: qty,
+ *     max: qty, odds: 1 }`. A lootbox is just an item; nothing about granting it
+ *     is special — the lootbox-open behavior triggers later when the player opens
+ *     the item instance, not at grant time.
+ *
+ * Returns the migrated value and how many mutations were applied (for logging).
+ * Idempotent: if the input is already a canonical array with no lootTable entries,
+ * changed === 0 and value is returned unchanged.
+ */
+export function migrateGiftRewardSpec(value: any): NormalizeResult {
+  if (value == null) return { value, changed: 0 };
+
+  let entries: any[];
+  let wrappingCount = 0;
+
+  if (Array.isArray(value)) {
+    entries = value;
+  } else if (typeof value === 'object' && value.type) {
+    // Legacy single bare-object — wrap in array.
+    entries = [value];
+    wrappingCount = 1;
+  } else {
+    // Empty object `{}` or unrecognised shape — normalise to empty array.
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+      return { value: [], changed: 1 };
+    }
+    return { value, changed: 0 };
+  }
+
+  let lootTableCount = 0;
+  const migrated = entries.map((entry: any) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    if (entry.type !== 'lootTable') return entry;
+    if (!entry.lootboxDefId) return entry;
+    const qty = entry.qty ?? 1;
+    lootTableCount += 1;
+    return { type: 'item', key: entry.lootboxDefId, min: qty, max: qty, odds: 1 };
+  });
+
+  const totalChanged = wrappingCount + lootTableCount;
+  return { value: migrated, changed: totalChanged };
+}
+
+/**
  * Map of Prisma model name → list of JSON columns that hold an outcomeSpec.
  *
  * Single source of truth for outcomeSpec storage. Verified against:
@@ -111,7 +160,9 @@ export const OUTCOME_SPEC_FIELDS_BY_MODEL: Record<string, string[]> = {
 
 /**
  * In-place: normalize every outcomeSpec field on `data` for the given model.
- * Returns the total number of legacy `amount` entries that were rewritten.
+ * For giftDef.rewardSpec, also runs the gift-specific legacy migration
+ * (lootTable → item, single-object → array) before the general normalization.
+ * Returns the total number of legacy entries that were rewritten.
  */
 export function normalizeOutcomeFieldsForModel(modelName: string, data: any): number {
   if (!data || typeof data !== 'object') return 0;
@@ -120,6 +171,13 @@ export function normalizeOutcomeFieldsForModel(modelName: string, data: any): nu
   let total = 0;
   for (const f of fields) {
     if (data[f] === undefined) continue;
+    // Gift rewardSpec gets a gift-specific migration pass first:
+    // lootTable → item conversion and single-object → array wrapping.
+    if (modelName === 'giftDef' && f === 'rewardSpec') {
+      const { value: migrated, changed: giftChanged } = migrateGiftRewardSpec(data[f]);
+      data[f] = migrated;
+      total += giftChanged;
+    }
     const { value, changed } = normalizeOutcomeSpec(data[f]);
     data[f] = value;
     total += changed;

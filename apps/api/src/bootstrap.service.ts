@@ -13,6 +13,7 @@ import {
 import {
   OUTCOME_SPEC_FIELDS_BY_MODEL,
   normalizeOutcomeSpec,
+  migrateGiftRewardSpec,
 } from './modules/game-rules/outcome-spec.util';
 
 @Injectable()
@@ -84,6 +85,10 @@ export class BootstrapService implements OnModuleInit {
     } else {
       await this.backfillOutcomeSpecAmounts();
     }
+    // Idempotent: convert any GiftDef records that still carry a legacy
+    // single-object rewardSpec or lootTable-type entries to the canonical
+    // array format. Safe to run on every boot — no-op once converged.
+    await this.backfillLegacyGiftSpecs();
     // Idempotent: rebuilds missing levelHistory entries / stat gains for any
     // entity that pre-dates the canonical addEntityXp pipeline.
     // Set ENTITY_BACKFILL_DISABLED=1 to skip — useful once the dataset has
@@ -642,6 +647,28 @@ export class BootstrapService implements OnModuleInit {
     if (totalRewrites > 0) {
       this.logger.log(
         `OutcomeSpec backfill: rewrote ${totalRewrites} legacy amount→min/max entries across ${totalRows} rows`,
+      );
+    }
+  }
+
+  private async backfillLegacyGiftSpecs() {
+    const model = (this.prisma as any).giftDef;
+    if (!model) return;
+    const rows: any[] = await model.findMany();
+    let totalRows = 0;
+    let totalChanges = 0;
+    for (const row of rows) {
+      if (row.rewardSpec === undefined || row.rewardSpec === null) continue;
+      const { value, changed } = migrateGiftRewardSpec(row.rewardSpec);
+      if (changed > 0) {
+        await model.update({ where: { id: row.id }, data: { rewardSpec: value } });
+        totalRows += 1;
+        totalChanges += changed;
+      }
+    }
+    if (totalChanges > 0) {
+      this.logger.log(
+        `GiftDef rewardSpec backfill: migrated ${totalChanges} legacy entries across ${totalRows} rows`,
       );
     }
   }
