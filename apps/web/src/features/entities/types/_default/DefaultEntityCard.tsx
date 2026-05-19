@@ -18,6 +18,24 @@ const BASE_CARD = [
 const SELECTED_GLOW = 'border-[#8B5CF6] shadow-[0_0_12px_rgba(139,92,246,0.5),inset_0_0_8px_rgba(139,92,246,0.15)]';
 const ACTIVE_GLOW = '!border-[#8B5CF6] shadow-[0_0_12px_rgba(139,92,246,0.5),inset_0_0_8px_rgba(139,92,246,0.15)] bg-[rgba(139,92,246,0.15)]';
 
+const STATUS_PILL_CFG: Record<string, { label: string; color: string }> = {
+  mission: { label: 'On Mission', color: '#3B82F6' },
+  working: { label: 'Working',    color: '#F59E0B' },
+  injured: { label: 'Injured',    color: '#EF4444' },
+};
+
+function BusyPill({ status }: { status: string }) {
+  const cfg = STATUS_PILL_CFG[status] ?? { label: 'Busy', color: 'rgba(255,255,255,0.55)' };
+  return (
+    <div
+      className="absolute bottom-[6px] left-1/2 -translate-x-1/2 rounded-[10px] px-2 py-[2px] text-[9px] font-extrabold tracking-wider uppercase whitespace-nowrap z-[3] border border-white/20 bg-black/60"
+      style={{ color: cfg.color }}
+    >
+      {cfg.label}
+    </div>
+  );
+}
+
 function StarRating({ rating }: { rating: number }) {
   const fullStars = Math.floor(rating);
   const hasHalf = rating % 1 >= 0.5;
@@ -133,8 +151,8 @@ export default function DefaultEntityCard({
       'border-2 border-[var(--border)]',
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
-        ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
-        : disabled && 'entity-card--disabled cursor-not-allowed',
+        ? 'entity-card--selected !border-[#22c55e] shadow-[0_0_14px_rgba(34,197,94,0.55),inset_0_0_8px_rgba(34,197,94,0.12)]'
+        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
       className,
     ].filter(Boolean).join(' ');
 
@@ -156,6 +174,14 @@ export default function DefaultEntityCard({
               aria-label="Remove entity"
             >✕</button>
           )}
+          {selected && !onRemove && (
+            <div className="absolute top-[6px] left-[6px] w-[22px] h-[22px] rounded-full bg-[#059669] border-2 border-[#34d399] flex items-center justify-center z-[3] shadow-[0_0_8px_rgba(52,211,153,0.6)]">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
+          {disabled && <BusyPill status={entity.status} />}
           <span className="absolute top-[6px] right-[6px] z-[2] bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.2)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
@@ -254,8 +280,8 @@ export default function DefaultEntityCard({
       'border-2 border-[var(--border)]',
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
-        ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
-        : disabled && 'entity-card--disabled cursor-not-allowed',
+        ? 'entity-card--selected !border-[#22c55e] shadow-[0_0_14px_rgba(34,197,94,0.55),inset_0_0_8px_rgba(34,197,94,0.12)]'
+        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
       className,
     ].filter(Boolean).join(' ');
 
@@ -277,6 +303,14 @@ export default function DefaultEntityCard({
               aria-label="Remove worker"
             >✕</button>
           )}
+          {selected && !onRemove && (
+            <div className="absolute top-[6px] left-[6px] w-[22px] h-[22px] rounded-full bg-[#059669] border-2 border-[#34d399] flex items-center justify-center z-[3] shadow-[0_0_8px_rgba(52,211,153,0.6)]">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                <path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
+          {disabled && <BusyPill status={entity.status} />}
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
