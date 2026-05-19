@@ -80,30 +80,6 @@ export function useMissionsNavigation(opts: {
     setSearchParams({}, { replace: true });
   }, [repeatMissionDefId, missionDefs, setSearchParams]);
 
-  useEffect(() => {
-    if (!showEntityPicker) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (target === document.documentElement || target === document.body) return;
-      if (e.clientX > document.documentElement.clientWidth) return;
-      if (e.clientY > document.documentElement.clientHeight) return;
-      if (target instanceof HTMLElement) {
-        const rect = target.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
-        if (offsetX > target.clientWidth || offsetY > target.clientHeight) return;
-      }
-      const insidePicker = entityPickerRef.current?.contains(target);
-      if (!insidePicker) {
-        setShowEntityPicker(false);
-        setActiveSlotIndex(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showEntityPicker]);
-
   const resetSelection = () => {
     setSelectedMission(null);
     setSelectedEntities([]);

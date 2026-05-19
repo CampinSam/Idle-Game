@@ -186,12 +186,17 @@ export default function DefaultEntityCard({
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
-          <span
-            className="inline-block px-[6px] py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px] truncate max-w-full"
-            style={{ backgroundColor: tagOverride?.color ?? archetypeDisplay.color }}
-          >
-            {tagOverride?.label ?? (archetype || 'UNKNOWN').toUpperCase()}
-          </span>
+          <div className="flex items-center justify-center gap-[4px] flex-wrap">
+            <span className="inline-block px-[5px] py-[2px] rounded-[4px] text-[9px] font-extrabold text-[#94a3b8] tracking-[0.6px] bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.1)]">
+              Lv {entity.level}
+            </span>
+            <span
+              className="inline-block px-[6px] py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px] truncate max-w-full"
+              style={{ backgroundColor: tagOverride?.color ?? archetypeDisplay.color }}
+            >
+              {tagOverride?.label ?? (archetype || 'UNKNOWN').toUpperCase()}
+            </span>
+          </div>
         </div>
       </div>
     );
