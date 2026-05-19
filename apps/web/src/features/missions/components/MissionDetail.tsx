@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { getDifficultyDisplay } from '@derp/shared';
 import { Badge } from '../../../components/ui';
 import { EntityCard, EntityList } from '../../entities/components';
+import { buildCollectionOptions, SORT_OPTIONS } from '../../entities/entityListUtils';
 import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
@@ -142,6 +143,7 @@ export function MissionDetail(props: MissionDetailProps) {
   );
 
   const previewRequirements = preview?.requirements ?? [];
+  const collectionOptions = buildCollectionOptions(entities);
 
   const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
@@ -348,26 +350,57 @@ export function MissionDetail(props: MissionDetailProps) {
                 </div>
               </div>
             )}
+
+            {/* Picker search/filter/sort — sticky when picker is open */}
+            {showEntityPicker && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary flex-shrink-0">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    className="flex-1 bg-transparent border-none text-text-primary text-[12px] outline-none min-w-0 placeholder:text-text-secondary [font-family:'Exo_2',system-ui,sans-serif]"
+                  />
+                </div>
+                <select
+                  className="entity-list__select entity-list__select--collection"
+                  value={pickerFilter}
+                  onChange={(e) => setPickerFilter(e.target.value as EntityFilter)}
+                  aria-label="Filter by collection"
+                >
+                  {collectionOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                  ))}
+                </select>
+                <select
+                  className="entity-list__select entity-list__select--sort"
+                  value={pickerSort}
+                  onChange={(e) => setPickerSort(e.target.value as EntitySortBy)}
+                  aria-label="Sort by"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Your Team picker + error — scrolls below the sticky row */}
           <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
             <div ref={entityPickerRef} className={panelClass}>
-              <div className="flex items-center justify-between gap-2">
-                <span className={panelTitleClass}>Your Team</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowEntityPicker(!showEntityPicker)}
-                    className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
-                  >
-                    {showEntityPicker ? '▲ Close' : '▼ Add'}
-                  </button>
-                </div>
-              </div>
 
-              {/* Current team + empty slot — hidden while picker is open */}
+              {/* Roster view header: "Your Team (X/Y)" — shown only when picker is closed */}
+              {!showEntityPicker && (
+                <span className={panelTitleClass}>Your Team ({selectedEntities.length}/{teamMax})</span>
+              )}
+
+              {/* Roster: current team cards + icon-only empty slot */}
               {!showEntityPicker && (
                 <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
                   {selectedEntities.map((entityId) => {
@@ -388,30 +421,36 @@ export function MissionDetail(props: MissionDetailProps) {
                     <button
                       type="button"
                       onClick={() => setShowEntityPicker(true)}
-                      className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
+                      className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden p-0 transition-colors"
                     >
                       <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
                         <span className="text-[28px] text-white/20 font-light">＋</span>
-                      </div>
-                      <div className="px-2 py-2 bg-bg-card text-center">
-                        <span className="block text-[11px] font-extrabold text-text-primary uppercase tracking-wide">Add</span>
                       </div>
                     </button>
                   )}
                 </div>
               )}
 
-              {/* Multi-select open picker */}
+              {/* Picker view: status row + entity grid (controls are in the sticky block above) */}
               {showEntityPicker && (
-                <div className="mt-1 flex flex-col gap-1">
-                  <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary px-1">
-                    Tap to toggle · {selectedEntities.length}/{teamMax} chosen
+                <>
+                  <div className="flex items-center justify-between gap-2 px-1">
+                    <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
+                      Tap to toggle · {selectedEntities.length}/{teamMax} chosen
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowEntityPicker(false)}
+                      className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
+                    >
+                      ▲ Close
+                    </button>
                   </div>
                   <EntityList
                     entities={entities}
                     mode="picker"
                     useCase="mission"
-                    showControls
+                    showControls={false}
                     search={pickerSearch}
                     onSearchChange={setPickerSearch}
                     activeFilter={pickerFilter}
@@ -423,7 +462,7 @@ export function MissionDetail(props: MissionDetailProps) {
                     busyDisabledTooltip="Busy"
                     onSelect={(entity) => toggleEntity(entity.id)}
                   />
-                </div>
+                </>
               )}
             </div>
 
