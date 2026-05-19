@@ -96,6 +96,12 @@ export class SelectionResolverService implements OnModuleInit {
     }
   }
 
+  /** Return the name of a rule definition (used as fallback label), or undefined if not found. */
+  getRuleDefLabel(id: string): string | undefined {
+    const entry = this._ruleDefCache.get(id);
+    return entry ? entry.name : undefined;
+  }
+
   /** Recursively collect all rule_ref IDs found anywhere in a selection tree. */
   private _collectRuleRefIds(node: AnyNode | null | undefined, out: Set<string>): void {
     if (!node || typeof node !== 'object') return;

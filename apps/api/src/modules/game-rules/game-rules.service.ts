@@ -46,6 +46,10 @@ export class GameRulesService {
     private readonly selectionResolver: SelectionResolverService,
   ) {}
 
+  getRuleDefLabel(id: string): string | undefined {
+    return this.selectionResolver.getRuleDefLabel(id);
+  }
+
   compareValues(actual: number, target: number, operator: string): boolean {
     switch (operator) {
       case 'exists':
