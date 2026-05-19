@@ -379,10 +379,31 @@ function EntityPowerUsageSection({ playerId, entityId }: { playerId: string; ent
   );
 }
 
-function EntitiesTab({ player }: { player: any }) {
+const STATUS_BADGE_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  idle:     { bg: 'rgba(76,175,80,0.15)',   color: '#81c784', border: 'rgba(76,175,80,0.3)' },
+  mission:  { bg: 'rgba(79,195,247,0.15)',  color: '#4fc3f7', border: 'rgba(79,195,247,0.3)' },
+  crafting: { bg: 'rgba(255,183,77,0.15)',  color: '#ffb74d', border: 'rgba(255,183,77,0.3)' },
+  working:  { bg: 'rgba(206,147,216,0.15)', color: '#ce93d8', border: 'rgba(206,147,216,0.3)' },
+  injured:  { bg: 'rgba(229,115,115,0.15)', color: '#e57373', border: 'rgba(229,115,115,0.3)' },
+};
+
+function EntityStatusBadge({ status }: { status: string }) {
+  const colors = STATUS_BADGE_COLORS[status] ?? { bg: 'rgba(136,136,136,0.15)', color: '#aaa', border: 'rgba(136,136,136,0.3)' };
+  return (
+    <span style={{
+      fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: 4, fontWeight: 600,
+      background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`,
+      textTransform: 'uppercase', letterSpacing: '0.03em',
+    }}>{status}</span>
+  );
+}
+
+function EntitiesTab({ player, onReload }: { player: any; onReload: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [entityEdits, setEntityEdits] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState<string | null>(null);
+  const [entityMsgs, setEntityMsgs] = useState<Record<string, { text: string; type: 'success' | 'error' }>>({});
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const initEdit = (entity: any) => {
@@ -426,6 +447,28 @@ function EntitiesTab({ player }: { player: any }) {
     } finally { setSaving(null); }
   };
 
+  const reconcileEntity = async (entity: any) => {
+    setReconciling(entity.id);
+    setEntityMsgs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    try {
+      const result = await adminApi.reconcileEntityStatus(player.id, entity.id);
+      if (result.changed) {
+        setEntityMsgs((prev) => ({
+          ...prev,
+          [entity.id]: { text: `Status: ${result.previousStatus} → ${result.newStatus}${result.jobId ? ` (job ${result.jobId.slice(0, 8)})` : ''}`, type: 'success' },
+        }));
+        onReload();
+      } else {
+        setEntityMsgs((prev) => ({
+          ...prev,
+          [entity.id]: { text: `Already correct: ${result.newStatus}${result.jobId ? ` (job ${result.jobId.slice(0, 8)})` : ''}`, type: 'success' },
+        }));
+      }
+    } catch (e: any) {
+      setEntityMsgs((prev) => ({ ...prev, [entity.id]: { text: e.message, type: 'error' } }));
+    } finally { setReconciling(null); }
+  };
+
   const entities = player.entities || [];
 
   return (
@@ -438,19 +481,41 @@ function EntitiesTab({ player }: { player: any }) {
         const edit = entityEdits[entity.id] || {};
         return (
           <div key={entity.id} style={{ marginBottom: 8, background: '#0f1a30', borderRadius: 8, border: '1px solid #2a2a4e', overflow: 'hidden' }}>
-            <button
-              onClick={() => toggle(entity)}
-              style={{
-                width: '100%', padding: '0.65rem 0.9rem', background: 'transparent', border: 'none',
-                color: '#e0e0ff', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
-              }}
-            >
-              <span style={{ fontSize: '1rem' }}>{isOpen ? '▼' : '▶'}</span>
-              <span style={{ fontWeight: 600 }}>{display.name || entity.id.slice(0, 12)}</span>
-              <span style={{ color: '#888', fontSize: '0.8rem' }}>{entity.definitionId}</span>
-              <span style={{ marginLeft: 'auto', color: '#b8b8ff', fontSize: '0.8rem' }}>Lv.{entity.level}</span>
-              <span style={{ color: '#666', fontSize: '0.75rem', marginLeft: 8 }}>{entity.rarity}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <button
+                onClick={() => toggle(entity)}
+                style={{
+                  flex: 1, padding: '0.65rem 0.9rem', background: 'transparent', border: 'none',
+                  color: '#e0e0ff', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8,
+                  minWidth: 0,
+                }}
+              >
+                <span style={{ fontSize: '1rem' }}>{isOpen ? '▼' : '▶'}</span>
+                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{display.name || entity.id.slice(0, 12)}</span>
+                <span style={{ color: '#888', fontSize: '0.8rem', flexShrink: 0 }}>{entity.definitionId}</span>
+                <EntityStatusBadge status={(entity.state as any)?.status || 'idle'} />
+                <span style={{ marginLeft: 'auto', color: '#b8b8ff', fontSize: '0.8rem', flexShrink: 0 }}>Lv.{entity.level}</span>
+                <span style={{ color: '#666', fontSize: '0.75rem', marginLeft: 8, flexShrink: 0 }}>{entity.rarity}</span>
+              </button>
+              <button
+                onClick={() => reconcileEntity(entity)}
+                disabled={reconciling === entity.id}
+                title="Check active jobs and set correct status"
+                style={{
+                  padding: '0.35rem 0.65rem', margin: '0 0.5rem', border: '1px solid #444', borderRadius: 6,
+                  background: 'rgba(255,255,255,0.05)', color: '#888', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {reconciling === entity.id ? '...' : '⚙ Reconcile'}
+              </button>
+            </div>
+
+            {entityMsgs[entity.id] && (
+              <div style={{ margin: '0 0.9rem 0.5rem' }}>
+                <StatusMsg msg={entityMsgs[entity.id].text} type={entityMsgs[entity.id].type} />
+              </div>
+            )}
 
             {isOpen && (
               <div style={{ padding: '0 0.9rem 0.9rem' }}>
@@ -717,7 +782,7 @@ export function GodModePanel({ player, onBack, onReload }: GodModePanelProps) {
         {tab === 'profile' && <ProfileTab player={player} onReload={onReload} />}
         {tab === 'items' && <ItemsTab player={player} />}
         {tab === 'jobs' && <JobsTab player={player} />}
-        {tab === 'entities' && <EntitiesTab player={player} />}
+        {tab === 'entities' && <EntitiesTab player={player} onReload={onReload} />}
         {tab === 'locations' && <LocationsTab player={player} />}
         {tab === 'effects' && <EffectsTab player={player} />}
         {tab === 'telemetry' && <TelemetryTab player={player} />}

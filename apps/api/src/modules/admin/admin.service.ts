@@ -624,6 +624,53 @@ export class AdminService {
     return { deleted: true, effectId };
   }
 
+  async reconcileEntityStatus(userId: string, entityId: string) {
+    const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
+    if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);
+
+    const currentState = (entity.state as any) || {};
+    const previousStatus: string = currentState.status || 'idle';
+
+    const activeJobs = await (this.prisma as any).job.findMany({
+      where: { userId, status: { in: ['active', 'ready_notified', 'pending'] } },
+    });
+
+    const JOB_TYPE_TO_STATUS: Record<string, string> = {
+      MissionJob: 'mission',
+      CraftingJob: 'crafting',
+      BuildingJob: 'working',
+    };
+
+    let correctStatus = 'idle';
+    let matchedJobId: string | null = null;
+    let matchedJobType: string | null = null;
+
+    for (const job of activeJobs) {
+      const team: string[] = Array.isArray(job.team) ? job.team : [];
+      if (team.includes(entityId)) {
+        correctStatus = JOB_TYPE_TO_STATUS[job.type] ?? 'idle';
+        matchedJobId = job.id;
+        matchedJobType = job.type;
+        break;
+      }
+    }
+
+    if (previousStatus === correctStatus) {
+      return { changed: false, newStatus: correctStatus, previousStatus, jobId: matchedJobId, jobType: matchedJobType };
+    }
+
+    const newState = { ...currentState, status: correctStatus };
+    await (this.prisma as any).entity.update({ where: { id: entityId }, data: { state: newState } });
+
+    const pb = new PatchBuilder();
+    await buildEntityPatch(pb, this.prisma, entityId);
+    await this.emitAdminDelta(userId, pb.build());
+
+    this.logger.log(`Admin reconciled entity ${entityId} status: ${previousStatus} → ${correctStatus} (job: ${matchedJobId ?? 'none'})`);
+
+    return { changed: true, newStatus: correctStatus, previousStatus, jobId: matchedJobId, jobType: matchedJobType };
+  }
+
   async getEntityPowerUsage(userId: string, entityId: string) {
     const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
     if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player ${userId}`);

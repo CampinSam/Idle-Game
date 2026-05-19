@@ -398,6 +398,14 @@ export class AdminController {
     return this.adminService.deletePlayerEffect(id, effectId);
   }
 
+  @Post('players/:userId/entities/:entityId/reconcile-status')
+  reconcileEntityStatus(
+    @Param('userId') userId: string,
+    @Param('entityId') entityId: string,
+  ) {
+    return this.adminService.reconcileEntityStatus(userId, entityId);
+  }
+
   @Get('players/:userId/entities/:entityId/power-usage')
   getEntityPowerUsage(
     @Param('userId') userId: string,

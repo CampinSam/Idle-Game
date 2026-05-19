@@ -95,6 +95,12 @@ export const adminApi = {
   updatePlayerEntity: (id: string, entityId: string, data: { stats?: any; level?: number; name?: string }) =>
     adminRequest<any>(`/players/${id}/entities/${entityId}`, { method: 'PUT', body: JSON.stringify(data) }),
 
+  reconcileEntityStatus: (userId: string, entityId: string) =>
+    adminRequest<{ changed: boolean; newStatus: string; previousStatus: string; jobId: string | null; jobType: string | null }>(
+      `/players/${userId}/entities/${entityId}/reconcile-status`,
+      { method: 'POST' },
+    ),
+
   getEntityPowerUsage: (userId: string, entityId: string) =>
     adminRequest<any[]>(`/players/${userId}/entities/${entityId}/power-usage`),
   resetEntityPowerUsage: (userId: string, entityId: string, powerKey: string) =>
