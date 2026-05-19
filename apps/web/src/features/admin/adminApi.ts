@@ -236,6 +236,12 @@ export const adminApi = {
     });
   },
 
+  addPlayerWallet: (userId: string, chain: string, address: string) =>
+    adminRequest<{ success: boolean; walletId: string; alreadyLinked: boolean }>(
+      `/players/${userId}/wallets`,
+      { method: 'POST', body: JSON.stringify({ chain, address }) },
+    ),
+
   evaluateSelection: (body: {
     rule: unknown;
     userId: string;

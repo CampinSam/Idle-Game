@@ -2,9 +2,6 @@ import type { Requirements } from './rich-selection';
 
 export type MissionStatus = 'active' | 'completed' | 'failed';
 
-export type ComparisonOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'exists';
-
-
 export type FlagOperation = 'set' | 'increment' | 'decrement' | 'invert';
 
 export type TextBehavior = 'overwrite' | 'append';
@@ -108,18 +105,10 @@ export interface StartMissionDto {
   entityIds: string[];
 }
 
-/** @deprecated Use OutcomeEntry instead */
-export type EditorEffect = EffectEntry;
-/** @deprecated Use OutcomeBundle instead */
-export type RewardBundle = OutcomeBundle;
 /** @deprecated Use OutcomeOrBundle instead */
 export type RewardOrBundle = OutcomeOrBundle;
-/** @deprecated Use OutcomeBundle instead */
-export type EffectBundle = OutcomeBundle;
 /** @deprecated Use OutcomeOrBundle instead */
 export type EffectOrBundle = OutcomeOrBundle;
-/** @deprecated Use TextEntry instead */
-export type OutcomeText = TextEntry;
 
 export function isBundle(entry: OutcomeOrBundle): entry is OutcomeBundle;
 export function isBundle<T>(entry: T | { bundle: T[]; odds?: number }): entry is { bundle: T[]; odds?: number };

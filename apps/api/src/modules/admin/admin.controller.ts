@@ -398,6 +398,34 @@ export class AdminController {
     return this.adminService.deletePlayerEffect(id, effectId);
   }
 
+  @Post('players/:id/wallets')
+  async addPlayerWallet(
+    @Param('id') id: string,
+    @Body() body: { chain: string; address: string },
+  ) {
+    const { chain, address } = body;
+    if (!chain || !address?.trim()) {
+      throw new BadRequestException('chain and address are required');
+    }
+    const normalizedAddress = chain === 'CARDANO' ? address.trim() : address.trim().toLowerCase();
+    const existing = await (this.prisma as any).linkedWallet.findUnique({
+      where: { chain_address: { chain, address: normalizedAddress } },
+    });
+    if (existing && existing.userId !== id) {
+      throw new BadRequestException('This wallet is already linked to a different account');
+    }
+    if (existing && existing.userId === id) {
+      return { success: true, walletId: existing.id, alreadyLinked: true };
+    }
+    const hasPrimary = await (this.prisma as any).linkedWallet.findFirst({
+      where: { userId: id, isPrimary: true },
+    });
+    const wallet = await (this.prisma as any).linkedWallet.create({
+      data: { userId: id, chain, address: normalizedAddress, isPrimary: !hasPrimary },
+    });
+    return { success: true, walletId: wallet.id, alreadyLinked: false };
+  }
+
   @Post('players/:userId/entities/:entityId/reconcile-status')
   reconcileEntityStatus(
     @Param('userId') userId: string,

@@ -115,9 +115,6 @@ export default function SettingsPage() {
   const [wallets, setWallets] = useState<LinkedWallet[]>([]);
   const [walletsLoading, setWalletsLoading] = useState(false);
   const [walletOpError, setWalletOpError] = useState<string | null>(null);
-  const [manualChain, setManualChain] = useState<string>('ETH');
-  const [manualAddress, setManualAddress] = useState<string>('');
-  const [manualSubmitting, setManualSubmitting] = useState(false);
   const [resyncing, setResyncing] = useState(false);
   const [resyncResult, setResyncResult] = useState<{
     claimed: number;
@@ -212,27 +209,6 @@ export default function SettingsPage() {
       setWalletOpError(message);
     } finally {
       setResyncing(false);
-    }
-  };
-
-  const handleAddManualWallet = async () => {
-    clearConnectError();
-    setWalletOpError(null);
-    const trimmed = manualAddress.trim();
-    if (!trimmed) {
-      setWalletOpError('Address is required');
-      return;
-    }
-    setManualSubmitting(true);
-    try {
-      await api.addManualWallet(manualChain, trimmed);
-      setManualAddress('');
-      await loadWallets();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to add wallet';
-      setWalletOpError(message);
-    } finally {
-      setManualSubmitting(false);
     }
   };
 
@@ -408,39 +384,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   )}
-                  <div className="pt-1.5 mt-3.5 border-t border-dashed border-[rgba(139,92,246,0.18)]">
-                    <h3 className="text-[11px] font-bold text-text-secondary m-0 mb-2.5 uppercase tracking-[0.6px]">
-                      Add wallet (no verification — dev only)
-                    </h3>
-                    <div className="flex gap-2">
-                      <select
-                        className={`${INPUT_CLASS} flex-[0_0_120px] cursor-pointer`}
-                        value={manualChain}
-                        onChange={(e) => setManualChain(e.target.value)}
-                        disabled={manualSubmitting}
-                      >
-                        <option value="ETH">Ethereum</option>
-                        <option value="BASE">Base</option>
-                        <option value="MATIC">Polygon</option>
-                        <option value="CARDANO">Cardano</option>
-                      </select>
-                      <input
-                        className={`${INPUT_CLASS} flex-1 min-w-0`}
-                        type="text"
-                        placeholder="Wallet address"
-                        value={manualAddress}
-                        onChange={(e) => setManualAddress(e.target.value)}
-                        disabled={manualSubmitting}
-                      />
-                    </div>
-                    <button
-                      className={`${WALLET_BTN_EVM} mt-2`}
-                      onClick={handleAddManualWallet}
-                      disabled={manualSubmitting}
-                    >
-                      {manualSubmitting ? 'Adding...' : 'Add Wallet'}
-                    </button>
-                  </div>
                 </>
               )}
             </div>

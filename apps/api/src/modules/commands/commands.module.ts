@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { CommandService } from './command.service';
 import { CommandRouter } from './command.router';
 import { CommandController } from './command.controller';
-import { ExampleTestCommandHandler } from './handlers/example-test.handler';
 import { StartMissionHandler } from './handlers/start-mission.handler';
 import { CompleteMissionHandler } from './handlers/complete-mission.handler';
 import { ClaimRewardHandler } from './handlers/claim-reward.handler';
@@ -65,7 +64,6 @@ import { GlobalPowerModule } from '../global-power/global-power.module';
   providers: [
     CommandService,
     CommandRouter,
-    ExampleTestCommandHandler,
     StartMissionHandler,
     CompleteMissionHandler,
     ClaimRewardHandler,

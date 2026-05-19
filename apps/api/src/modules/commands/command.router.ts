@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { CommandHandler } from './command.types';
-import { ExampleTestCommandHandler } from './handlers/example-test.handler';
 import { StartMissionHandler } from './handlers/start-mission.handler';
 import { CompleteMissionHandler } from './handlers/complete-mission.handler';
 import { ClaimRewardHandler } from './handlers/claim-reward.handler';
@@ -35,7 +34,6 @@ export class CommandRouter {
   private handlers = new Map<string, CommandHandler>();
 
   constructor(
-    private exampleTest: ExampleTestCommandHandler,
     private startMission: StartMissionHandler,
     private completeMission: CompleteMissionHandler,
     private claimReward: ClaimRewardHandler,
@@ -65,7 +63,6 @@ export class CommandRouter {
     private triggerLocationPower: TriggerLocationPowerHandler,
     private triggerEntityPower: TriggerEntityPowerHandler,
   ) {
-    this.handlers.set('ExampleTestCommand', this.exampleTest);
     this.handlers.set('StartMission', this.startMission);
     this.handlers.set('CompleteMission', this.completeMission);
     this.handlers.set('ClaimReward', this.claimReward);
