@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { getDifficultyDisplay } from '@derp/shared';
 import { Badge } from '../../../components/ui';
-import { EntityCard } from '../../entities/components';
+import { EntityCard, EntityList } from '../../entities/components';
 import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
@@ -13,8 +13,6 @@ import {
   getCategoryIcon,
   resolveDisplay,
 } from './missionUtils';
-import { getEntityStatus, isEntityBusy } from '../../inventory/utils/statChangeHelpers';
-import { buildCollectionOptions, SORT_OPTIONS, getFilteredSortedEntities } from '../../entities/entityListUtils';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import type { SynergyPreview } from '../../../services/api';
 import { useJobPreview } from '../../jobs/useJobPreview';
@@ -39,13 +37,6 @@ interface MissionDetailProps {
   onDismissSynergy?: () => void;
 }
 
-function entityStatusLabel(entity: any): string {
-  const s = getEntityStatus(entity);
-  if (s === 'mission') return 'On Mission';
-  if (s === 'working') return 'Working';
-  if (s === 'injured') return 'Injured';
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 export function MissionDetail(props: MissionDetailProps) {
   const {
@@ -150,10 +141,10 @@ export function MissionDetail(props: MissionDetailProps) {
   const [pickerFilter, setPickerFilter] = useState<EntityFilter>('ALL');
   const [pickerSort, setPickerSort] = useState<EntitySortBy>('name');
 
-  const pickerCollectionOptions = useMemo(() => buildCollectionOptions(entities), [entities]);
-  const pickerEntities = useMemo(
-    () => getFilteredSortedEntities(entities, pickerFilter, pickerSearch, pickerSort),
-    [entities, pickerFilter, pickerSearch, pickerSort],
+  const atMax = selectedEntities.length >= teamMax;
+  const pickerDisabledIds = useMemo(
+    () => atMax ? entities.filter((e: any) => !selectedEntities.includes(e.id)).map((e: any) => e.id) : [],
+    [atMax, entities, selectedEntities],
   );
 
   const previewRequirements = preview?.requirements ?? [];
@@ -403,78 +394,27 @@ export function MissionDetail(props: MissionDetailProps) {
 
             {/* Multi-select open picker */}
             {showEntityPicker && (
-              <div className="mt-1 flex flex-col gap-2">
-                {/* Search / filter / sort controls */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-                      <circle cx="11" cy="11" r="8"/>
-                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      value={pickerSearch}
-                      onChange={(e) => setPickerSearch(e.target.value)}
-                      className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[12px] outline-none [font-family:'Exo_2',system-ui,sans-serif] min-w-0 placeholder:text-[color:var(--text-secondary)]"
-                    />
-                  </div>
-                  <select
-                    value={pickerFilter}
-                    onChange={(e) => setPickerFilter(e.target.value as EntityFilter)}
-                    className="entity-list__select entity-list__select--collection"
-                    aria-label="Filter by collection"
-                  >
-                    {pickerCollectionOptions.map((opt) => (
-                      <option key={opt.key} value={opt.key}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={pickerSort}
-                    onChange={(e) => setPickerSort(e.target.value as EntitySortBy)}
-                    className="entity-list__select entity-list__select--sort"
-                    aria-label="Sort by"
-                  >
-                    {SORT_OPTIONS.map((opt) => (
-                      <option key={opt.key} value={opt.key}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
+              <div className="mt-1 flex flex-col gap-1">
+                <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary px-1">
                   Tap to toggle · {selectedEntities.length}/{teamMax} chosen
                 </div>
-                <div className="grid gap-2 max-h-[320px] overflow-y-auto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
-                  {pickerEntities.map((entity: any) => {
-                    const isSelected = selectedEntities.includes(entity.id);
-                    const isBusy = isEntityBusy(entity);
-                    const atMax = selectedEntities.length >= teamMax;
-                    const isClickable = isSelected || (!isBusy && !atMax);
-                    return (
-                      <div key={entity.id} className="relative">
-                        <EntityCard
-                          entity={entity}
-                          useCase="mission"
-                          selected={isSelected}
-                          disabled={isBusy || (!isSelected && atMax)}
-                          compact
-                          onClick={isClickable ? () => toggleEntity(entity.id) : undefined}
-                        />
-                        {isSelected && (
-                          <div className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-[#10b981] flex items-center justify-center shadow-lg pointer-events-none">
-                            <span className="text-[10px] text-white font-black leading-none">✓</span>
-                          </div>
-                        )}
-                        {isBusy && (
-                          <div className="absolute bottom-0 inset-x-0 flex items-center justify-center px-1 py-0.5 bg-black/75 rounded-b-xl pointer-events-none">
-                            <span className="text-[9px] font-extrabold uppercase tracking-wide text-[#f59e0b] truncate">
-                              {entityStatusLabel(entity)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <EntityList
+                  entities={entities}
+                  mode="picker"
+                  useCase="mission"
+                  showControls
+                  search={pickerSearch}
+                  onSearchChange={setPickerSearch}
+                  activeFilter={pickerFilter}
+                  onFilterChange={setPickerFilter}
+                  sortBy={pickerSort}
+                  onSortChange={setPickerSort}
+                  selectedIds={selectedEntities}
+                  disabledIds={pickerDisabledIds}
+                  busyDisabledTooltip="Busy"
+                  onSelect={(entity) => toggleEntity(entity.id)}
+                  className="max-h-[360px] overflow-y-auto"
+                />
               </div>
             )}
           </div>
