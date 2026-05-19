@@ -204,7 +204,7 @@ export class JobPreviewService {
       const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
       missionPower = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
 
-      successChance = calculateSuccessChance(
+      const rawSuccessChance = calculateSuccessChance(
         missionPower,
         difficulty,
         def.minSuccessChance ?? 0,
@@ -212,7 +212,7 @@ export class JobPreviewService {
       );
 
       const scMod = this.effectService.resolve(playerEffects, EffectCategory.SUCCESS_CHANCE);
-      successChance = Math.min(100, Math.max(0, successChance + scMod.flatAdd + scMod.percentAdd));
+      successChance = Math.min(100, Math.max(0, rawSuccessChance * 100 + scMod.flatAdd + scMod.percentAdd));
 
       const injuryRate = def.injuryRate ?? 0;
       if (injuryRate > 0) {

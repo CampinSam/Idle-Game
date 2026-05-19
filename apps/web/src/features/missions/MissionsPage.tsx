@@ -179,8 +179,6 @@ export default function MissionsPage() {
         setSelectedEntities={setSelectedEntities}
         showEntityPicker={showEntityPicker}
         setShowEntityPicker={setShowEntityPicker}
-        activeSlotIndex={activeSlotIndex}
-        setActiveSlotIndex={setActiveSlotIndex}
         currencyBalances={currencyBalances}
         inventoryItems={inventoryItems}
         error={error}
