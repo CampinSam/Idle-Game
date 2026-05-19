@@ -15,6 +15,12 @@ function isCadenceQuest(def: any): boolean {
   return def?.cadence === 'daily' || def?.cadence === 'weekly';
 }
 
+// Achievement-category quests are lifetime one-shots that never auto-reset.
+// They follow the same processing pipeline but are filtered/displayed separately.
+function isAchievement(def: any): boolean {
+  return def?.category === 'achievement';
+}
+
 function freshProgress(objectives: any[]): any[] {
   return objectives.map((obj: any, i: number) => ({
     objectiveIndex: i,
@@ -72,30 +78,100 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     this.telemetryService.registerSubscriber(this);
   }
 
+  /**
+   * Process a telemetry event against ALL enabled quest defs whose objectives
+   * could match the event type. Instances are created lazily on first match —
+   * no pre-spawning anywhere in the system.
+   *
+   * This unified path handles all categories: daily/weekly cadence quests,
+   * oneoff story quests, and achievement-category quests (lifetime one-shots).
+   */
   async processEvent(userId: string, event: TelemetryEvent, tx?: any): Promise<void> {
     const db = tx || this.prisma;
 
-    // Lazy cadence reset: before counting this event, roll over any daily/
-    // weekly quests whose previous window has elapsed. We do this on every
-    // event rather than via cron because (a) there is no scheduler in the
-    // codebase yet, (b) it's cheap (a single indexed query + at-most-N
-    // updates), and (c) it guarantees a player who logs in after a multi-day
-    // absence sees fresh quests immediately.
+    // Lazy cadence reset before processing — roll over any daily/weekly quests
+    // whose previous window has elapsed. Cheap (indexed query + few updates),
+    // guarantees fresh windows on a player's first event after midnight.
     await this.resetExpiredCadenceQuests(userId, db);
 
-    const instances = await (db as any).questInstance.findMany({
-      where: { userId, status: 'active' },
-      include: { questDef: true },
+    // Load all enabled defs whose objectives contain the incoming event type.
+    // We pull the full universe so newly-added defs are picked up without a
+    // pre-spawn step — instances materialise here on first hit.
+    const allEnabledDefs = await (db as any).questDef.findMany({
+      where: { enabled: true },
     });
 
-    for (const instance of instances) {
-      const def = instance.questDef;
-      if (!def || !def.enabled) continue;
+    const matchingDefs: Array<{ def: any; objectiveIdxs: number[] }> = [];
+    for (const def of allEnabledDefs) {
+      const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
+      const idxs: number[] = [];
+      for (let i = 0; i < objectives.length; i++) {
+        const obj = objectives[i];
+        if (!obj || obj.eventType !== event.eventType) continue;
+        if (obj.key != null && obj.key !== event.key) continue;
+        if (obj.dataFilter && !shallowMatch(obj.dataFilter, event.data || {})) continue;
+
+        if (obj.selectionRule) {
+          if (event.selectionContext) {
+            const passes = this.selectionResolver.evaluateAll(obj.selectionRule, event.selectionContext);
+            if (!passes) continue;
+          } else {
+            this.logger.warn(
+              `Quest objective has selectionRule but event "${event.eventType}" carries no selectionContext — treating as pass (questDefId=${def.id})`,
+            );
+          }
+        }
+        idxs.push(i);
+      }
+      if (idxs.length > 0) matchingDefs.push({ def, objectiveIdxs: idxs });
+    }
+
+    if (matchingDefs.length === 0) return;
+
+    // Batch-load existing instances for all matching defs.
+    const defIds = matchingDefs.map((m) => m.def.id);
+    const existingInstances = await (db as any).questInstance.findMany({
+      where: { userId, questDefId: { in: defIds } },
+    });
+    const byDefId = new Map<string, any>(
+      existingInstances.map((inst: any) => [inst.questDefId, inst]),
+    );
+
+    for (const { def, objectiveIdxs } of matchingDefs) {
+      let instance = byDefId.get(def.id);
+
+      if (!instance) {
+        // Lazy-create on first matching event.
+        const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
+        const windowStartedAt = isCadenceQuest(def)
+          ? getWindowStart(def.cadence, new Date())
+          : null;
+        instance = await (db as any).questInstance.create({
+          data: {
+            userId,
+            questDefId: def.id,
+            progress: freshProgress(objectives),
+            windowStartedAt,
+          },
+        });
+      } else if (instance.status !== 'active') {
+        // Achievement-category and non-repeatable oneoffs that are already
+        // completed or claimed should never be re-armed.
+        if (isAchievement(def) || (!isCadenceQuest(def) && !def.repeatable)) {
+          continue;
+        }
+        // Cadence/repeatable quests in 'claimed' status remain eligible
+        // (resetExpiredCadenceQuests above handles window rollover).
+        if (instance.status === 'claimed' && (isCadenceQuest(def) || def.repeatable)) {
+          continue;
+        }
+        continue;
+      }
 
       const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
       const progress: any[] = Array.isArray(instance.progress)
         ? [...instance.progress]
-        : objectives.map((_, i) => ({ objectiveIndex: i, current: 0, target: objectives[i]?.target ?? 1, completed: false }));
+        : freshProgress(objectives);
 
       while (progress.length < objectives.length) {
         const i = progress.length;
@@ -103,30 +179,9 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       }
 
       let changed = false;
-      for (let i = 0; i < objectives.length; i++) {
-        const obj = objectives[i];
-        if (!obj || progress[i]?.completed) continue;
-
-        if (obj.eventType !== event.eventType) continue;
-        if (obj.key != null && obj.key !== event.key) continue;
-        if (obj.dataFilter && !shallowMatch(obj.dataFilter, event.data)) continue;
-
-        // Rich selection rule check — optional contextual filter on top of the
-        // basic event-type/key/dataFilter match.
-        if (obj.selectionRule) {
-          if (event.selectionContext) {
-            const passes = this.selectionResolver.evaluateAll(obj.selectionRule, event.selectionContext);
-            if (!passes) continue;
-          } else {
-            // selectionRule set but no context provided: log a warning and
-            // treat as a pass so misconfigured emitters don't silently freeze progress.
-            this.logger.warn(
-              `Quest objective has selectionRule but event "${event.eventType}" carries no selectionContext — treating as pass (questDefId=${def.id})`,
-            );
-          }
-        }
-
+      for (const i of objectiveIdxs) {
         const prog = progress[i];
+        if (!prog || prog.completed) continue;
         const before = prog.current;
         prog.current = Math.min(prog.current + event.amount, prog.target ?? 1);
         if (prog.current >= prog.target) prog.completed = true;
@@ -148,20 +203,22 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       });
 
       if (allDone) {
+        const notifType = isAchievement(def) ? 'achievement_complete' : 'quest_complete';
+        const notifTitle = isAchievement(def) ? 'Achievement Unlocked!' : 'Quest Complete!';
         try {
           await this.notificationService.createNotification({
             userId,
-            type: 'quest_complete',
-            category: 'quest',
+            type: notifType,
+            category: isAchievement(def) ? 'achievement' : 'quest',
             priority: 'high',
-            title: 'Quest Complete!',
+            title: notifTitle,
             body: def.name,
-            meta: { type: 'quest', questInstanceId: instance.id, questDefId: def.id },
+            meta: { type: isAchievement(def) ? 'achievement' : 'quest', questInstanceId: instance.id, questDefId: def.id },
             sourceType: 'quest',
             sourceId: instance.id,
           }, tx);
         } catch (err) {
-          this.logger.warn(`Failed to send quest complete notification: ${err}`);
+          this.logger.warn(`Failed to send quest/achievement complete notification: ${err}`);
         }
       }
     }
@@ -184,9 +241,6 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     if (!def || !def.enabled) return null;
 
     const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
-
-    // Stamp the cadence window start on creation so the very first claim
-    // already has the correct boundary recorded. One-off quests stay null.
     const windowStartedAt = isCadenceQuest(def)
       ? getWindowStart(def.cadence, new Date())
       : null;
@@ -201,18 +255,11 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
    * Roll over any daily/weekly quest instances whose recorded window is
    * older than the current window. Idempotent — instances already in the
    * current window are skipped by the WHERE clause.
-   *
-   * Called lazily from `processEvent` and `listInstances` so the system
-   * needs no cron. The cost is bounded: each user has at most a few dozen
-   * active quest instances, and the WHERE filters down to expired ones
-   * before any update fires.
    */
   async resetExpiredCadenceQuests(userId: string, tx?: any): Promise<number> {
     const db = tx || this.prisma;
     const now = new Date();
 
-    // Pull only the cadence quests the user has touched. We need the def
-    // alongside to compute the window boundary per-cadence.
     const instances = await (db as any).questInstance.findMany({
       where: {
         userId,
@@ -231,9 +278,6 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
         ? getWindowStart(def.cadence, inst.windowStartedAt)
         : null;
 
-      // Same window — nothing to do. We compare both anchored to their
-      // window starts so off-by-millisecond writes can't trigger spurious
-      // resets.
       if (lastWindow && lastWindow.getTime() >= currentWindow.getTime()) continue;
 
       const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
@@ -253,7 +297,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     return reset;
   }
 
-  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; markedReadNotif: any }> {
+  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; permanentEffectId: string | null; markedReadNotif: any }> {
     const db = tx || this.prisma;
 
     const instance = await (db as any).questInstance.findUnique({
@@ -268,10 +312,6 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     const def = instance.questDef;
     const items = normalizeRewardSpec(def.rewardSpec);
 
-    // Route reward resolution through the canonical resolver so quest claims
-    // share field names, bundle semantics, requirement gating, and bundle_ref
-    // expansion with every other reward path (mission, crafting, lootbox, gift
-    // bundle_ref). All entries use canonical { type, key, min, max } shape.
     const user = await (db as any).user.findUnique({ where: { id: userId } });
     const reqContext: RequirementContext = user
       ? this.gameRules.buildRequirementContext(user as any)
@@ -301,11 +341,41 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       }
     }
 
-    // Daily/weekly cadence quests are implicitly repeatable — claiming
-    // resets them inside the SAME window so the user sees them as `active`
-    // immediately, but `windowStartedAt` stays at the current window so
-    // they can't farm the reward again until the window rolls over. The
-    // next call to `resetExpiredCadenceQuests` will pick up the rollover.
+    // Apply permanentEffectSpec if present (used by achievement-category defs
+    // to grant lifetime bonuses on claim). Permanent = expiresAt/expiresAtTick null.
+    let permanentEffectId: string | null = null;
+    const spec = def.permanentEffectSpec as any;
+    if (spec?.effectDefId) {
+      const effectDef = await (db as any).effectDef.findUnique({ where: { id: spec.effectDefId } });
+      if (!effectDef) {
+        this.logger.warn(
+          `Quest ${def.id} references unknown effectDefId ${spec.effectDefId} — skipping permanent effect`,
+        );
+      } else {
+        const created = await (db as any).activeEffect.create({
+          data: {
+            effectDefId: effectDef.id,
+            userId,
+            targetType: spec.targetType ?? effectDef.targetType ?? 'player',
+            targetId: spec.targetId ?? userId,
+            sourceType: 'quest',
+            sourceId: instance.id,
+            category: effectDef.category,
+            valueMode: effectDef.valueMode,
+            value: spec.value ?? effectDef.value ?? 0,
+            stats: spec.stats ?? effectDef.stats ?? null,
+            trait: effectDef.trait ?? null,
+            currentStacks: 1,
+            expiresAt: null,
+            expiresAtTick: null,
+          },
+        });
+        permanentEffectId = created.id;
+      }
+    }
+
+    // Daily/weekly cadence quests are implicitly repeatable — claiming resets
+    // them inside the SAME window. Achievement-category defs are never repeatable.
     const cadence = isCadenceQuest(def);
     if (def.repeatable || cadence) {
       const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
@@ -317,16 +387,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
         progress: freshProgress(objectives),
       };
       if (cadence) {
-        // For cadence quests, set the window to NOW so the player can't
-        // claim again until the next UTC midnight / Monday. We record the
-        // window start (not now) so subsequent rollover comparisons work.
         updateData.windowStartedAt = getWindowStart(def.cadence, now);
-        // For cadence quests we also want claimedAt to mark this cycle as
-        // already-rewarded — a simple way to gate the UI is `status:
-        // 'claimed_this_cycle'` but we keep `active` for backward compat
-        // with the existing quest tabs. The frontend can compare
-        // `claimedAt` vs `windowStartedAt` to render a "Come back tomorrow"
-        // state without breaking the active-list filter.
         updateData.status = 'claimed';
       }
       await (db as any).questInstance.update({
@@ -352,23 +413,69 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       });
     }
 
-    return { grants, markedReadNotif };
+    return { grants, permanentEffectId, markedReadNotif };
   }
 
-  async listInstances(userId: string): Promise<any[]> {
-    // Lazy rollover before returning, so a returning player sees fresh
-    // dailies/weeklies on the very first read after midnight without
-    // needing to fire a telemetry event first.
+  /**
+   * Returns a merged view of quest defs + instances for the given user.
+   * Enabled defs that have no instance appear as "not_started" stubs.
+   * Instances whose def is disabled are excluded (lazy cleanup).
+   *
+   * Optionally filter by category. Pass null to get all categories.
+   */
+  async listMerged(userId: string, category?: string | null): Promise<any[]> {
+    // Lazy cadence rollover so returning players see fresh dailies/weeklies.
     try {
       await this.resetExpiredCadenceQuests(userId);
     } catch (err) {
       this.logger.warn(`Cadence quest reset failed for ${userId}: ${err}`);
     }
 
-    return (this.prisma as any).questInstance.findMany({
-      where: { userId },
-      include: { questDef: true },
-      orderBy: { startedAt: 'desc' },
-    });
+    const where: any = { enabled: true };
+    if (category !== undefined && category !== null) where.category = category;
+
+    const [defs, instances] = await Promise.all([
+      (this.prisma as any).questDef.findMany({ where, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }),
+      (this.prisma as any).questInstance.findMany({
+        where: { userId },
+        include: { questDef: true },
+      }),
+    ]);
+
+    const instanceByDefId = new Map<string, any>();
+    for (const inst of instances) {
+      // Exclude stale instances whose def is now disabled or deleted.
+      if (!inst.questDef || !inst.questDef.enabled) continue;
+      instanceByDefId.set(inst.questDefId, inst);
+    }
+
+    const results: any[] = [];
+    for (const def of defs) {
+      const inst = instanceByDefId.get(def.id);
+      if (inst) {
+        results.push(inst);
+      } else {
+        // Stub for not-yet-started quest/achievement.
+        results.push({
+          id: def.id,
+          userId,
+          questDefId: def.id,
+          questDef: def,
+          progress: freshProgress(Array.isArray(def.objectives) ? def.objectives : []),
+          status: 'not_started',
+          windowStartedAt: null,
+          startedAt: null,
+          completedAt: null,
+          claimedAt: null,
+          _stub: true,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  async listInstances(userId: string): Promise<any[]> {
+    return this.listMerged(userId);
   }
 }

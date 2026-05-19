@@ -57,8 +57,8 @@ export class BootstrapService implements OnModuleInit {
     await this.runStep('seedSounds', () => seedSounds(this.prisma));
     // Retention loop content (daily/weekly quests + achievements). Kept
     // separate from `seedDefinitions` so the giant definitions.json file
-    // doesn't have to know about cadence-aware quest defs or the new
-    // AchievementDef table.
+    // doesn't have to know about cadence-aware quest defs or achievement
+    // defs (which now use category='achievement' in the QuestDef table).
     await this.runStep('seedRetention', () => seedRetention(this.prisma));
     // Visual tag + reusable effect catalog. Cheap; seeded last so any
     // earlier failure (which is far more likely to be schema-related)

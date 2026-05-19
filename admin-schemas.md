@@ -461,6 +461,8 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 
 Quest and achievement objectives support an optional `selectionRule` field in addition to the existing `eventType`, `key`, and `dataFilter` filters. When set, the rule is evaluated against a `SelectionContext` attached in-memory to the telemetry event — progress only increments if the rule **passes**.
 
+> **Note:** Achievements are now unified with quests. Use `category: "achievement"` on a `QuestDef` to mark it as an achievement. The `tier` field (1=bronze, 2=silver, 3=gold) and `permanentEffectSpec` field are available on all `QuestDef` rows.
+
 ### Objective shape
 
 ```json

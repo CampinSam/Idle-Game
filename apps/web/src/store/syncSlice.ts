@@ -219,8 +219,14 @@ const syncSlice = createSlice({
         if (s.buildings) for (const b of s.buildings) state.buildings[b.id] = b;
         if (s.rooms) for (const r of s.rooms) state.rooms[r.id] = r;
         if (s.missions) for (const m of s.missions) state.missions[m.id] = m;
-        if (s.quests) for (const q of s.quests) state.quests[q.id] = q;
-        if (s.achievements) for (const a of s.achievements) state.achievements[a.id] = a;
+        // Key quests by questDefId so not_started stubs (id = questDefId) and
+        // real instances (id = UUID, questDefId = def.id) occupy the same slot,
+        // preventing duplicates after universal lazy init materializes a real instance.
+        if (s.quests) for (const q of s.quests) state.quests[q.questDefId ?? q.id] = q;
+        // Key achievements by questDefId so not_started stubs (id = questDefId)
+        // and real instances (id = UUID, questDefId = def.id) map to the same
+        // slot, preventing duplicates after lazy init creates a real instance.
+        if (s.achievements) for (const a of s.achievements) state.achievements[a.questDefId ?? a.id] = a;
         if (s.checkins) for (const ci of s.checkins) state.checkins[ci.id] = ci;
         if (s.gifts) for (const g of s.gifts) state.gifts[g.id] = g;
       }
@@ -341,6 +347,25 @@ const syncSlice = createSlice({
             state.locationPowerUsages[patch.id] = patch.data as Record<string, { usageCount: number; lastUsedUtcDay: string }>;
           } else if (patch.op === 'delete' && patch.id) {
             delete state.locationPowerUsages[patch.id];
+          }
+          continue;
+        }
+
+        // Quest and achievement patches are keyed by questDefId (not instance UUID)
+        // so stubs and real instances for the same def always occupy the same slot,
+        // preventing duplicates after universal lazy init materializes a real instance.
+        if (patch.entity === 'quest' || patch.entity === 'achievement') {
+          const stateKey = patch.entity === 'achievement' ? 'achievements' : 'quests';
+          if (patch.op === 'upsert') {
+            const slotKey = (patch.data as any)?.questDefId ?? patch.id;
+            state[stateKey][slotKey] = patch.data;
+          } else if (patch.op === 'delete') {
+            // On delete we only have patch.id; clean up both the UUID slot and any
+            // questDefId-keyed slot. The questDefId is unknown here so we scan once.
+            delete state[stateKey][patch.id];
+            for (const [k, v] of Object.entries(state[stateKey])) {
+              if ((v as any)?.id === patch.id) { delete state[stateKey][k]; break; }
+            }
           }
           continue;
         }

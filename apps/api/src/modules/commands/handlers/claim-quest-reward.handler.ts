@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildItemPatches, buildCurrencyPatches } from '../patch-builder';
+import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
 
 @Injectable()
@@ -10,19 +10,24 @@ export class ClaimQuestRewardHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { questInstanceId } = payload;
 
-    const { grants, markedReadNotif } = await this.questService.claimReward(ctx.userId, questInstanceId, ctx.tx);
+    const { grants, permanentEffectId, markedReadNotif } = await this.questService.claimReward(ctx.userId, questInstanceId, ctx.tx);
 
     const updatedInstance = await (ctx.tx as any).questInstance.findUnique({
       where: { id: questInstanceId },
+      include: { questDef: true },
     });
 
     const pb = new PatchBuilder();
     if (updatedInstance) {
-      pb.upsert('quest', updatedInstance.id, updatedInstance);
+      const isAchievement = updatedInstance.questDef?.category === 'achievement';
+      pb.upsert(isAchievement ? 'achievement' : 'quest', updatedInstance.id, updatedInstance);
     }
     if (markedReadNotif) pb.upsertNotification(markedReadNotif);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
+    if (permanentEffectId) {
+      await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
+    }
 
     const rewardSummary = grants
       .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.type}`)

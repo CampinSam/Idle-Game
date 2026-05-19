@@ -58,9 +58,10 @@ export class PatchBuilder {
   }
 
   upsertAchievement(instance: any): this {
-    // Pass through the full row including the included `achievementDef`
+    // Pass through the full row including the included `questDef`
     // so the frontend can render names/descriptions without a second
-    // fetch. Mirrors how QuestInstance is shipped.
+    // fetch. Achievement instances are QuestInstance rows with
+    // category='achievement' on their questDef.
     this.patches.push({
       op: 'upsert',
       entity: 'achievement',

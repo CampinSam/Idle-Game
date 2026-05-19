@@ -29,6 +29,7 @@ function cardClass(status: string): string {
   const base = 'bg-[rgba(20,22,28,0.85)] border rounded-[10px] p-3.5 transition-[border-color,transform] duration-200';
   if (status === 'completed') return `${base} border-[rgba(255,215,0,0.5)] shadow-[0_0_12px_rgba(255,215,0,0.15)]`;
   if (status === 'claimed') return `${base} border-[rgba(100,200,100,0.4)] opacity-[0.85]`;
+  if (status === 'not_started') return `${base} border-[rgba(255,255,255,0.04)] opacity-[0.6]`;
   return `${base} border-[rgba(255,255,255,0.08)]`;
 }
 
@@ -41,13 +42,14 @@ function AchievementCardInner({ achievement }: AchievementCardProps) {
   });
   const [claiming, setClaiming] = useState(false);
 
-  const def = achievement.achievementDef ?? {};
+  const def = achievement.questDef ?? {};
   const objectives: any[] = Array.isArray(def.objectives) ? def.objectives : [];
   const progress: any[] = Array.isArray(achievement.progress) ? achievement.progress : [];
   const status: string = achievement.status ?? 'active';
   const tier: number = def.tier ?? 1;
   const permanentDesc = describePermanentEffect(def.permanentEffectSpec);
   const isDone = status === 'completed' || status === 'claimed';
+  const isNotStarted = status === 'not_started';
 
   const handleClaim = useCallback(async () => {
     if (claiming || status !== 'completed') return;
@@ -77,31 +79,33 @@ function AchievementCardInner({ achievement }: AchievementCardProps) {
         <div className="text-[0.85rem] text-[#b0b0b0] mb-2.5 leading-[1.4]">{def.description}</div>
       )}
 
-      <div className="flex flex-col gap-2 mb-2">
-        {objectives.map((obj: any, i: number) => {
-          const prog = progress[i] ?? { current: 0, target: obj?.target ?? 1, completed: false };
-          const target = prog.target ?? obj?.target ?? 1;
-          const pct = target > 0 ? Math.min(100, (prog.current / target) * 100) : 0;
-          return (
-            <div key={i} className="flex flex-col gap-1">
-              <div className="flex justify-between text-[0.8rem] text-[#c0c0c0]">
-                <span>{obj?.description || obj?.eventType || `Objective ${i + 1}`}</span>
-                <span className="font-semibold text-[#e0e0e0]">{prog.current} / {target}</span>
+      {!isNotStarted && (
+        <div className="flex flex-col gap-2 mb-2">
+          {objectives.map((obj: any, i: number) => {
+            const prog = progress[i] ?? { current: 0, target: obj?.target ?? 1, completed: false };
+            const target = prog.target ?? obj?.target ?? 1;
+            const pct = target > 0 ? Math.min(100, (prog.current / target) * 100) : 0;
+            return (
+              <div key={i} className="flex flex-col gap-1">
+                <div className="flex justify-between text-[0.8rem] text-[#c0c0c0]">
+                  <span>{obj?.description || obj?.eventType || `Objective ${i + 1}`}</span>
+                  <span className="font-semibold text-[#e0e0e0]">{prog.current} / {target}</span>
+                </div>
+                <div className="h-1.5 bg-black/40 rounded-[3px] overflow-hidden">
+                  <div
+                    className={`h-full transition-[width] duration-300 ${
+                      isDone
+                        ? 'bg-gradient-to-r from-[#ffd76a] to-[#ff9c40]'
+                        : 'bg-gradient-to-r from-[#4a90e2] to-[#6bb6ff]'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-1.5 bg-black/40 rounded-[3px] overflow-hidden">
-                <div
-                  className={`h-full transition-[width] duration-300 ${
-                    isDone
-                      ? 'bg-gradient-to-r from-[#ffd76a] to-[#ff9c40]'
-                      : 'bg-gradient-to-r from-[#4a90e2] to-[#6bb6ff]'
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {permanentDesc && (status === 'claimed' || status === 'completed') && (
         <Tag

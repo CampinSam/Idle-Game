@@ -34,7 +34,6 @@ import { ObjectStorageModule } from './integrations/object-storage/object-storag
 import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
-import { AchievementModule } from './modules/achievement/achievement.module';
 import { NftModule } from './modules/nft/nft.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { EffectModule } from './modules/effect/effect.module';
@@ -153,7 +152,6 @@ const imports: any[] = [
   TelemetryModule,
   CheckInModule,
   QuestModule,
-  AchievementModule,
   NftModule,
   ShopModule,
   EffectModule,

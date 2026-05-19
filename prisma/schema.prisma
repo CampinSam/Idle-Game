@@ -55,7 +55,6 @@ model User {
   playerEvents       PlayerEvent[]
   checkInInstances   CheckInInstance[]
   questInstances     QuestInstance[]
-  achievementInstances AchievementInstance[]
   linkedWallets      LinkedWallet[]
   activeEffects      ActiveEffect[]
 
@@ -1114,6 +1113,10 @@ model QuestDef {
   id           String   @id
   name         String
   description  String?
+  // Known category values: "achievement" (lifetime one-shot), "daily",
+  // "weekly", "story", "oneoff". "achievement" defs absorbed from the old
+  // AchievementDef table; they use cadence="oneoff", repeatable=false, and
+  // may carry a permanentEffectSpec applied on claim.
   category     String?
   // Reset cadence: "daily" rolls over at UTC 00:00, "weekly" at UTC Monday
   // 00:00, "oneoff" never auto-resets (default — preserves legacy quest
@@ -1122,10 +1125,17 @@ model QuestDef {
   cadence      String   @default("oneoff")
   objectives   Json     @default("[]")
   rewardSpec   Json     @default("{}")
+  // Optional ActiveEffect template to grant permanently on claim. Shape:
+  // { effectDefId, targetType, targetId?, value?, stats? }. Omit to grant
+  // only the rewardSpec. Primarily used for category="achievement" defs.
+  permanentEffectSpec Json?
   requirements Json     @default("[]")
   repeatable   Boolean  @default(false)
   enabled      Boolean  @default(true)
   sortOrder    Int      @default(0)
+  // Tier hint for UI ordering/cosmetics. 1=bronze, 2=silver, 3=gold etc.
+  // Meaningful for category="achievement" defs; ignored for other categories.
+  tier         Int      @default(1)
   version      Int      @default(1)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1133,6 +1143,7 @@ model QuestDef {
   instances    QuestInstance[]
 
   @@index([cadence, enabled])
+  @@index([category, enabled])
   @@map("quest_defs")
 }
 
@@ -1157,57 +1168,6 @@ model QuestInstance {
   @@map("quest_instances")
 }
 
-// ═══════════════════════════════════════════════════
-// ACHIEVEMENT SYSTEM
-// ═══════════════════════════════════════════════════
-// One-shot lifetime milestones with optional permanent bonuses on claim.
-// Telemetry-driven progress (same subscriber pattern as quests). On claim
-// we resolve `rewardSpec` exactly like quests AND, if `permanentEffectSpec`
-// is set, write a never-expiring ActiveEffect row so the bonus persists for
-// the rest of the player's career.
-
-model AchievementDef {
-  id                   String   @id
-  name                 String
-  description          String?
-  category             String?
-  // 1=bronze, 2=silver, 3=gold etc. Purely cosmetic / sort hint for UI.
-  tier                 Int      @default(1)
-  objectives           Json     @default("[]")
-  rewardSpec           Json     @default("{}")
-  // Optional ActiveEffect template to grant permanently on claim. Shape:
-  // { effectDefId, targetType, targetId?, value?, stats? } — fields that
-  // override the EffectDef defaults. Omit to grant only the rewardSpec.
-  permanentEffectSpec  Json?
-  // Gating conditions for visibility, evaluated by GameRulesService.
-  requirements         Json     @default("[]")
-  enabled              Boolean  @default(true)
-  sortOrder            Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  instances            AchievementInstance[]
-
-  @@index([category, tier])
-  @@map("achievement_defs")
-}
-
-model AchievementInstance {
-  id              String          @id @default(uuid())
-  userId          String
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievementDefId String
-  achievementDef  AchievementDef  @relation(fields: [achievementDefId], references: [id], onDelete: Cascade)
-  progress        Json            @default("[]")
-  status          String          @default("active")
-  startedAt       DateTime        @default(now())
-  completedAt     DateTime?
-  claimedAt       DateTime?
-
-  @@unique([userId, achievementDefId])
-  @@index([userId, status])
-  @@map("achievement_instances")
-}
 
 // ═══════════════════════════════════════════════════
 // SEASONAL CONTENT

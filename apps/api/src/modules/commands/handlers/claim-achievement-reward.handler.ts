@@ -10,36 +10,46 @@ import {
   buildCurrencyPatches,
   buildActiveEffectPatches,
 } from '../patch-builder';
-import { AchievementService } from '../../achievement/achievement.service';
+import { QuestService } from '../../quest/quest.service';
 
+/**
+ * ClaimAchievementReward — thin alias over ClaimQuestReward.
+ *
+ * Achievement instances are now unified with quest instances (they are
+ * QuestInstance rows with category = 'achievement'). This handler accepts
+ * the legacy `achievementInstanceId` payload key for backward compatibility
+ * and delegates to QuestService.claimReward.
+ *
+ * The frontend can also call ClaimQuestReward with questInstanceId directly.
+ */
 @Injectable()
 export class ClaimAchievementRewardHandler implements CommandHandler {
-  constructor(private achievementService: AchievementService) {}
+  constructor(private questService: QuestService) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
-    const { achievementInstanceId } = payload;
+    const questInstanceId = payload.achievementInstanceId ?? payload.questInstanceId;
 
-    const { grants, markedReadNotif } = await this.achievementService.claimReward(
+    const { grants, permanentEffectId, markedReadNotif } = await this.questService.claimReward(
       ctx.userId,
-      achievementInstanceId,
+      questInstanceId,
       ctx.tx,
     );
 
-    const updatedInstance = await (ctx.tx as any).achievementInstance.findUnique({
-      where: { id: achievementInstanceId },
-      include: { achievementDef: true },
+    const updatedInstance = await (ctx.tx as any).questInstance.findUnique({
+      where: { id: questInstanceId },
+      include: { questDef: true },
     });
 
     const pb = new PatchBuilder();
     if (updatedInstance) {
-      pb.upsertAchievement(updatedInstance);
+      pb.upsert('achievement', updatedInstance.id, updatedInstance);
     }
     if (markedReadNotif) pb.upsertNotification(markedReadNotif);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
-    // Sync the new permanent effect (if any) so the UI sees the bonus
-    // appear in the active-effects list immediately.
-    await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
+    if (permanentEffectId) {
+      await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
+    }
 
     const rewardSummary = grants
       .map((g: any) => `${g.amount ?? 1}x ${g.key ?? g.type}`)
@@ -56,12 +66,12 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
           type: 'modal' as const,
           spec: {
             version: 1,
-            id: `achievement-reward-${achievementInstanceId}`,
+            id: `achievement-reward-${questInstanceId}`,
             kind: 'achievement_reward',
             dismiss: { backdrop: true, x: true, escape: true },
             header: {
               title: 'Achievement Unlocked!',
-              subtitle: updatedInstance?.achievementDef?.name ?? undefined,
+              subtitle: updatedInstance?.questDef?.name ?? undefined,
             },
             pages: [
               {

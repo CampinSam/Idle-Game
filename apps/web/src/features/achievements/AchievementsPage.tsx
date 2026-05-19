@@ -13,14 +13,14 @@ export default function AchievementsPage() {
     const unlocked = achievements.filter((a) => a.status === 'claimed').length;
     const total = achievements.length;
     const sorted = [...achievements].sort((a, b) => {
-      const order = { completed: 0, active: 1, claimed: 2 };
-      const ao = order[a.status as keyof typeof order] ?? 3;
-      const bo = order[b.status as keyof typeof order] ?? 3;
+      const order = { completed: 0, active: 1, not_started: 2, claimed: 3 };
+      const ao = order[a.status as keyof typeof order] ?? 4;
+      const bo = order[b.status as keyof typeof order] ?? 4;
       if (ao !== bo) return ao - bo;
-      const at = a.achievementDef?.tier ?? 0;
-      const bt = b.achievementDef?.tier ?? 0;
+      const at = a.questDef?.tier ?? 0;
+      const bt = b.questDef?.tier ?? 0;
       if (at !== bt) return bt - at;
-      return (a.achievementDef?.name ?? '').localeCompare(b.achievementDef?.name ?? '');
+      return (a.questDef?.name ?? '').localeCompare(b.questDef?.name ?? '');
     });
     return { unlocked, total, sorted };
   }, [achievements]);
@@ -51,7 +51,7 @@ export default function AchievementsPage() {
             No achievements yet — start playing to unlock your first one!
           </div>
         ) : (
-          sorted.map((a: any) => <AchievementCard key={a.id} achievement={a} />)
+          sorted.map((a: any) => <AchievementCard key={a.questDefId ?? a.id} achievement={a} />)
         )}
       </div>
     </div>

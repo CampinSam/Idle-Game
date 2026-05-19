@@ -38,7 +38,6 @@ import { CurrencyModule } from '../currency/currency.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { GameRulesModule } from '../game-rules/game-rules.module';
 import { QuestModule } from '../quest/quest.module';
-import { AchievementModule } from '../achievement/achievement.module';
 import { EntityModule } from '../entity/entity.module';
 import { GiftModule } from '../gift/gift.module';
 import { TickModule } from '../tick/tick.module';
@@ -54,7 +53,6 @@ import { GlobalPowerModule } from '../global-power/global-power.module';
     InventoryModule,
     GameRulesModule,
     QuestModule,
-    AchievementModule,
     EntityModule,
     GiftModule,
     TickModule,

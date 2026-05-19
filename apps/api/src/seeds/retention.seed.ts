@@ -257,9 +257,14 @@ export async function seedRetention(prisma: any) {
 
   let achCount = 0;
   for (const a of ACHIEVEMENTS) {
-    const { id, ...data } = a;
-    const before = await prisma.achievementDef.findUnique({ where: { id } });
-    await prisma.achievementDef.upsert({ where: { id }, update: data, create: a });
+    const { id, ...rest } = a;
+    // Achievement defs are unified with QuestDef using category='achievement'.
+    // The sub-category stored on the ACHIEVEMENTS entries (missions/crafting/etc.)
+    // is replaced with the canonical 'achievement' category so the frontend
+    // can reliably filter them from regular quests.
+    const data = { ...rest, category: 'achievement' };
+    const before = await prisma.questDef.findUnique({ where: { id } });
+    await prisma.questDef.upsert({ where: { id }, update: data, create: { id, ...data } });
     if (!before) achCount += 1;
   }
   if (achCount > 0) {

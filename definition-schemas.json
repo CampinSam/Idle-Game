@@ -677,7 +677,7 @@
       }
     },
     "QuestObjective": {
-      "description": "A single objective entry inside QuestDef.objectives or AchievementDef.objectives.",
+      "description": "A single objective entry inside QuestDef.objectives. Applies to both quests and achievements (category='achievement' in QuestDef).",
       "type": "object",
       "required": ["eventType", "target"],
       "properties": {

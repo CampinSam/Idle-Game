@@ -4,6 +4,7 @@ import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
+import { QuestService } from '../quest/quest.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
@@ -132,6 +133,7 @@ export class QueryService {
     private tickService: TickService,
     private homeBannerService: HomeBannerService,
     private globalPowerService: GlobalPowerService,
+    private questService: QuestService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -153,8 +155,7 @@ export class QueryService {
       latestDelta,
       currencyDefs,
       missionHistory,
-      questInstances,
-      achievementInstances,
+      mergedQuestView,
       checkInInstances,
       activeEffects,
       unclaimedGifts,
@@ -245,16 +246,7 @@ export class QueryService {
         orderBy: { updatedAt: 'desc' },
         take: 20,
       }),
-      (this.prisma as any).questInstance.findMany({
-        where: { userId },
-        include: { questDef: true },
-        orderBy: { startedAt: 'desc' },
-      }),
-      (this.prisma as any).achievementInstance.findMany({
-        where: { userId },
-        include: { achievementDef: true },
-        orderBy: { startedAt: 'desc' },
-      }),
+      this.questService.listMerged(userId, null),
       (this.prisma as any).checkInInstance.findMany({
         where: { userId },
         include: { checkInDef: true },
@@ -381,8 +373,8 @@ export class QueryService {
               (b.rooms || []).map((r: any) => ({ ...r, buildingInstanceId: b.id })),
             ),
           ),
-          quests: questInstances,
-          achievements: achievementInstances,
+          quests: (mergedQuestView as any[]).filter((q: any) => q.questDef?.category !== 'achievement'),
+          achievements: (mergedQuestView as any[]).filter((q: any) => q.questDef?.category === 'achievement'),
           checkins: checkInInstances,
           gifts: unclaimedGifts,
           tagDefs,
