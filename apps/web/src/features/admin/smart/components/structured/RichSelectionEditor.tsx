@@ -605,6 +605,28 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           />
         </div>
 
+        <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
+          <span style={labelStyle}>fail text (optional)</span>
+          <input
+            type="text"
+            value={rule.failText ?? ''}
+            onChange={e => set('failText', e.target.value || undefined)}
+            placeholder='e.g. "You need Keeper Level 5 to unlock this"'
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+
+        <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
+          <span style={labelStyle}>pass text (optional)</span>
+          <input
+            type="text"
+            value={rule.passText ?? ''}
+            onChange={e => set('passText', e.target.value || undefined)}
+            placeholder='e.g. "Keeper Level 5 requirement met"'
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+
         <button
           type="button"
           onClick={onRemove}
