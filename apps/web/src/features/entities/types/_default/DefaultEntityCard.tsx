@@ -122,8 +122,8 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'mission') {
-    const cardWidth = compact ? 'w-[80px]' : 'w-[90px]';
-    const portraitSize = compact ? '!w-[72px] !h-[72px]' : '!w-[82px] !h-[82px]';
+    const cardWidth = 'w-full';
+    const portraitSize = '!w-4/5 !h-4/5';
     const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
     const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
     const idStyle = compact
@@ -244,8 +244,8 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'outpost') {
-    const cardWidth = compact ? 'w-[80px]' : 'w-[90px]';
-    const portraitSize = compact ? '!w-[72px] !h-[72px]' : '!w-[82px] !h-[82px]';
+    const cardWidth = 'w-full';
+    const portraitSize = '!w-4/5 !h-4/5';
     const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
     const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
     const idStyle = compact
