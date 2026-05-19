@@ -1,17 +1,11 @@
-import { join } from 'path';
 import {
   Controller,
   Get,
-  Headers,
   HttpException,
   HttpStatus,
   Logger,
-  Res,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { PrismaService } from './prisma/prisma.service';
-
-const FRONTEND_INDEX = join(__dirname, '..', '..', 'web', 'dist', 'index.html');
 
 @Controller()
 export class HealthController {
@@ -19,28 +13,17 @@ export class HealthController {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // Liveness — cheap, no I/O. Used by orchestrators to decide if the process
-  // is still up.
+  // Liveness probe target used by Replit autoscale / Cloud Run.
   //
-  // Replit's deployment health probe sends `x-replit-healthcheck: 1`.
-  // Real browser visits do not. For probe requests we return a small JSON
-  // payload. For browser visits (no cached PWA service worker yet) we serve
-  // the frontend's index.html directly so the app loads instead of a 404.
+  // Always returns a small JSON payload so Cloud Run's promote-step health
+  // check succeeds regardless of which headers the probe sends. The frontend
+  // SPA is served by ServeStaticModule for all unmatched routes; browsers
+  // that hit "/" directly will be caught by that handler. We no longer try
+  // to sendFile index.html here — that HTML response was causing the promote
+  // step to fail because Cloud Run expects a fast, non-HTML 200.
   @Get()
-  root(
-    @Headers('x-replit-healthcheck') healthCheck: string,
-    @Res() res: Response,
-  ): void {
-    if (healthCheck) {
-      res.json({ status: 'ok', service: 'derp-universe' });
-    } else {
-      res.sendFile(FRONTEND_INDEX, (err) => {
-        if (err) {
-          this.logger.warn(`Could not serve index.html: ${err.message}`);
-          res.json({ status: 'ok', service: 'derp-universe' });
-        }
-      });
-    }
+  root() {
+    return { status: 'ok', service: 'derp-universe' };
   }
 
   @Get('health')
