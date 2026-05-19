@@ -156,8 +156,7 @@ export function MissionDetail(props: MissionDetailProps) {
     return [...idle, ...busy];
   }, [entities]);
 
-  const previewRequirements: Array<{ label?: string; met: boolean; source: string }> =
-    (preview as any)?.requirements ?? [];
+  const previewRequirements = preview?.requirements ?? [];
 
   const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
