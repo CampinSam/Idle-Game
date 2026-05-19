@@ -122,9 +122,6 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'mission') {
-    const cardWidth = 'w-full';
-    const portraitSize = '!w-4/5 !h-4/5';
-    const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
     const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
     const idStyle = compact
       ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
@@ -136,7 +133,7 @@ export default function DefaultEntityCard({
     const cls = [
       BASE_CARD,
       'entity-card--mission',
-      cardWidth,
+      'w-full',
       'border-2 border-[var(--border)]',
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
@@ -147,7 +144,14 @@ export default function DefaultEntityCard({
 
     return (
       <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
-        <div className="relative aspect-square flex items-center justify-center" style={{ background: archetypeDisplay.gradient }}>
+        <div className="relative aspect-square overflow-hidden" style={{ background: archetypeDisplay.gradient }}>
+          <GameImage
+            src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
+            category="entities"
+            alt={entity.name}
+            fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+            className="absolute inset-0 !w-full !h-full object-cover !rounded-none"
+          />
           {onRemove && (
             <button
               type="button"
@@ -156,14 +160,7 @@ export default function DefaultEntityCard({
               aria-label="Remove entity"
             >✕</button>
           )}
-          <span className="absolute top-[6px] right-[6px] bg-[rgba(0,0,0,0.5)] border border-[rgba(255,255,255,0.15)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
-          <GameImage
-            src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
-            category="entities"
-            alt={entity.name}
-            fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-            className={`${portraitSize} !rounded-full ${portraitShadow}`}
-          />
+          <span className="absolute top-[6px] right-[6px] z-[2] bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.2)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
@@ -244,9 +241,6 @@ export default function DefaultEntityCard({
   }
 
   if (useCase === 'outpost') {
-    const cardWidth = 'w-full';
-    const portraitSize = '!w-4/5 !h-4/5';
-    const portraitShadow = compact ? 'drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]' : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)]';
     const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
     const idStyle = compact
       ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
@@ -258,7 +252,7 @@ export default function DefaultEntityCard({
     const cls = [
       BASE_CARD,
       'entity-card--outpost',
-      cardWidth,
+      'w-full',
       'border-2 border-[var(--border)]',
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
@@ -269,10 +263,14 @@ export default function DefaultEntityCard({
 
     return (
       <div className={cls} onClick={handleClick} title={disabled && disabledTooltip ? disabledTooltip : undefined}>
-        <div
-          className="relative aspect-square flex items-center justify-center [background:linear-gradient(135deg,rgba(30,20,60,0.8),rgba(20,15,45,0.8))]"
-          style={{ background: archetypeDisplay.gradient }}
-        >
+        <div className="relative aspect-square overflow-hidden" style={{ background: archetypeDisplay.gradient }}>
+          <GameImage
+            src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
+            category="entities"
+            alt={entity.name}
+            fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
+            className="absolute inset-0 !w-full !h-full object-cover !rounded-none"
+          />
           {onRemove && (
             <button
               type="button"
@@ -281,13 +279,6 @@ export default function DefaultEntityCard({
               aria-label="Remove worker"
             >✕</button>
           )}
-          <GameImage
-            src={getEntityImagePath(entity.id, archetype, entity.imageUrl, 'thumb')}
-            category="entities"
-            alt={entity.name}
-            fallbackSrc={ENTITY_ARCHETYPE_IMAGES[archetype] || ENTITY_ARCHETYPE_IMAGES['Warrior']}
-            className={`${portraitSize} !rounded-full ${portraitShadow}`}
-          />
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
