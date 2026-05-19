@@ -115,17 +115,17 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
     expect(grants.length).toBeGreaterThan(0);
   });
 
-  it('records "missing_or_disabled" (and grants nothing) for a missing BundleDef', async () => {
+  it('grants nothing for a missing BundleDef (GameRulesService collapses it to empty bundle)', async () => {
     const f = makeFakes();
     const grants = await resolveRewardSpec(
       f.prisma, f.currencyService, f.inventoryService, f.gameRules, 'user-1',
       { type: 'bundle_ref', bundleDefId: 'nope' }, 'gift-1',
     );
     expect(f.credited).toEqual([]);
-    expect(grants).toEqual([{ type: 'bundle_ref', bundleDefId: 'nope', status: 'missing_or_disabled' }]);
+    expect(grants).toEqual([]);
   });
 
-  it('records "missing_or_disabled" for a disabled BundleDef', async () => {
+  it('grants nothing for a disabled BundleDef (GameRulesService collapses it to empty bundle)', async () => {
     const f = makeFakes();
     f.bundleDefs.set('b.x', { id: 'b.x', enabled: false, bundle: [{ type: 'currency', key: 'gold', min: 1, max: 1 }] });
     const grants = await resolveRewardSpec(
@@ -133,7 +133,7 @@ describe('resolveRewardSpec — bundle_ref (consolidated via GameRulesService)',
       { type: 'bundle_ref', bundleDefId: 'b.x' }, 'gift-1',
     );
     expect(f.credited).toEqual([]);
-    expect(grants[0].status).toBe('missing_or_disabled');
+    expect(grants).toEqual([]);
   });
 
   it('handles a self-cycle safely (no infinite recursion, no grants)', async () => {
