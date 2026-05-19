@@ -2,10 +2,6 @@ import type { Requirements } from './rich-selection';
 
 export type MissionStatus = 'active' | 'completed' | 'failed';
 
-export type FlagOperation = 'set' | 'increment' | 'decrement' | 'invert';
-
-export type TextBehavior = 'overwrite' | 'append';
-
 export interface RewardEntry {
   type: 'entity_xp' | 'keeper_xp' | 'currency' | 'item';
   key?: string;
@@ -16,7 +12,7 @@ export interface RewardEntry {
 
 export interface EffectEntry {
   type: 'flag';
-  operation: FlagOperation;
+  operation: 'set' | 'increment' | 'decrement' | 'invert';
   key: string;
   value?: number | string | boolean;
   odds?: number;
@@ -25,7 +21,7 @@ export interface EffectEntry {
 export interface TextEntry {
   type: 'text';
   message: string;
-  behavior?: TextBehavior;
+  behavior?: 'overwrite' | 'append';
   odds?: number;
 }
 

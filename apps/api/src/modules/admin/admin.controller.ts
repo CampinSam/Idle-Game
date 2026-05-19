@@ -9,6 +9,7 @@ import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
+import { WalletService } from '../player/wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 
@@ -25,6 +26,7 @@ export class AdminController {
     private giftService: GiftService,
     private settlementService: LocationSettlementService,
     private nftCollectionService: NftCollectionService,
+    private walletService: WalletService,
     private prisma: PrismaService,
   ) {}
 
@@ -407,23 +409,8 @@ export class AdminController {
     if (!chain || !address?.trim()) {
       throw new BadRequestException('chain and address are required');
     }
-    const normalizedAddress = chain === 'CARDANO' ? address.trim() : address.trim().toLowerCase();
-    const existing = await (this.prisma as any).linkedWallet.findUnique({
-      where: { chain_address: { chain, address: normalizedAddress } },
-    });
-    if (existing && existing.userId !== id) {
-      throw new BadRequestException('This wallet is already linked to a different account');
-    }
-    if (existing && existing.userId === id) {
-      return { success: true, walletId: existing.id, alreadyLinked: true };
-    }
-    const hasPrimary = await (this.prisma as any).linkedWallet.findFirst({
-      where: { userId: id, isPrimary: true },
-    });
-    const wallet = await (this.prisma as any).linkedWallet.create({
-      data: { userId: id, chain, address: normalizedAddress, isPrimary: !hasPrimary },
-    });
-    return { success: true, walletId: wallet.id, alreadyLinked: false };
+    await this.walletService.addManualWallet(id, chain, address);
+    return { success: true };
   }
 
   @Post('players/:userId/entities/:entityId/reconcile-status')

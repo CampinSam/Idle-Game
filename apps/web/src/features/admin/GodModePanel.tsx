@@ -91,8 +91,8 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
     if (!trimmed) { setMsg({ text: 'Wallet address is required', type: 'error' }); return; }
     setDevWalletSubmitting(true); setMsg(null);
     try {
-      const result = await adminApi.addPlayerWallet(player.id, devWalletChain, trimmed);
-      setMsg({ text: result.alreadyLinked ? 'Wallet already linked to this account' : `Wallet added (${devWalletChain})`, type: 'success' });
+      await adminApi.addPlayerWallet(player.id, devWalletChain, trimmed);
+      setMsg({ text: `Wallet added (${devWalletChain})`, type: 'success' });
       setDevWalletAddress('');
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
