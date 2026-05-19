@@ -8,9 +8,12 @@ import {
   EffectTargetType,
   EffectSourceType,
   EffectValueMode,
+  EffectDefOverrides,
+  EffectSelection,
+  EffectTargetContext,
   ResolvedModifier,
 } from '@derp/shared';
-import { resolveEffects, ActiveEffectRow } from './effect-resolver';
+import { resolveEffects, ActiveEffectRow, matchesSelection } from './effect-resolver';
 import { resolveRnd } from '../entity/rnd-resolver.util';
 
 type PrismaTx = Parameters<Parameters<PrismaService['$transaction']>[0]>[0];
@@ -65,6 +68,8 @@ export interface ApplyEffectParams {
   sourceType: EffectSourceType;
   sourceId: string;
   sessionId?: string;
+  /** Optional overrides applied on top of the EffectDef fields at apply-time. */
+  valueOverrides?: EffectDefOverrides;
 }
 
 @Injectable()
@@ -113,7 +118,13 @@ export class EffectService {
 
   async applyEffect(params: ApplyEffectParams, tx?: PrismaTx): Promise<{ active: ActiveEffectRecord; removedIds: string[] } | { instant: true; def: EffectDefRecord }> {
     const db: DbClient = tx || this.prisma;
-    const def = await this.getEffectDef(params.effectDefId);
+    const baseDef = await this.getEffectDef(params.effectDefId);
+
+    // Merge overrides onto def fields before any logic runs, so the merged
+    // values are used consistently for expiry, stacking, and stat resolution.
+    const def: EffectDefRecord = params.valueOverrides
+      ? ({ ...baseDef, ...params.valueOverrides } as EffectDefRecord)
+      : baseDef;
 
     if (def.durationModel === EffectDurationModel.INSTANT) {
       return { instant: true, def };
@@ -124,7 +135,7 @@ export class EffectService {
     const existing: ActiveEffectRecord[] = await this.activeEffectModel(db).findMany({
       where: {
         userId: params.userId,
-        effectDefId: def.id,
+        effectDefId: baseDef.id,
         targetType: params.targetType,
         targetId: params.targetId,
         OR: [
@@ -142,7 +153,7 @@ export class EffectService {
       const first = existing[0];
       switch (stackingRule) {
         case EffectStackingRule.NO_STACK:
-          throw new BadRequestException(`Effect "${def.name}" is already active and cannot stack`);
+          throw new BadRequestException(`Effect "${baseDef.name}" is already active and cannot stack`);
 
         case EffectStackingRule.REPLACE:
           removedIds.push(...existing.map((e) => e.id));
@@ -164,7 +175,7 @@ export class EffectService {
         case EffectStackingRule.STACK_MULTIPLICATIVE: {
           const maxStacks = def.maxStacks ?? 99;
           if (first.currentStacks >= maxStacks) {
-            throw new BadRequestException(`Effect "${def.name}" is at max stacks (${maxStacks})`);
+            throw new BadRequestException(`Effect "${baseDef.name}" is at max stacks (${maxStacks})`);
           }
           const updated: ActiveEffectRecord = await this.activeEffectModel(db).update({
             where: { id: first.id },
@@ -176,7 +187,7 @@ export class EffectService {
         case EffectStackingRule.STACK_CAPPED: {
           const cap = def.maxStacks ?? 1;
           if (first.currentStacks >= cap) {
-            throw new BadRequestException(`Effect "${def.name}" is at max stacks (${cap})`);
+            throw new BadRequestException(`Effect "${baseDef.name}" is at max stacks (${cap})`);
           }
           const updated: ActiveEffectRecord = await this.activeEffectModel(db).update({
             where: { id: first.id },
@@ -194,26 +205,26 @@ export class EffectService {
       expiresAtTick = currentTick + def.durationTicks;
     }
 
-    // Resolve RND in the effect's stat map before persisting so randomness is
+    // Resolve RND in the merged stat map before persisting so randomness is
     // locked in at creation time rather than re-rolled on every resolution tick.
     const resolvedStats = def.stats ? resolveRnd(def.stats as Record<string, number>) : undefined;
 
     const created: ActiveEffectRecord = await this.activeEffectModel(db).create({
       data: {
-        effectDefId: def.id,
+        effectDefId: baseDef.id,
         userId: params.userId,
         targetType: params.targetType,
         targetId: params.targetId,
         sourceType: params.sourceType,
         sourceId: params.sourceId,
-        category: def.category,
-        valueMode: def.valueMode,
+        category: baseDef.category,
+        valueMode: baseDef.valueMode,
         value: def.value ?? 0,
         stats: resolvedStats ?? undefined,
-        trait: def.trait ?? null,
+        trait: baseDef.trait ?? null,
         currentStacks: 1,
         remainingUses: def.maxUses ?? null,
-        sessionType: def.sessionType ?? (params.sessionId ? 'mission' : null),
+        sessionType: baseDef.sessionType ?? (params.sessionId ? 'mission' : null),
         sessionId: params.sessionId ?? null,
         expiresAt,
         expiresAtTick,
@@ -328,12 +339,20 @@ export class EffectService {
     return resolveEffects(effects, category, cap);
   }
 
+  /**
+   * Resolves the net modifier for a given category targeting a specific entity/player/location.
+   *
+   * Global power rows are filtered through matchesSelection() using the provided userId and
+   * optional targetContext. When targetContext is absent, filter predicates are skipped
+   * (safe default — the effect applies).
+   */
   async resolveForTarget(
     userId: string,
     targetType: EffectTargetType,
     targetId: string,
     category: EffectCategory,
     tx?: PrismaTx,
+    targetContext?: EffectTargetContext,
   ): Promise<ResolvedModifier> {
     const effects = await this.getActiveEffects(userId, targetType, targetId, tx);
 
@@ -342,7 +361,9 @@ export class EffectService {
       : [];
 
     const passiveRows = await this.getPassiveEffectsFromEquipment(userId, targetType, targetId, tx);
-    const globalRows = await this.resolveGlobalPowerRows(category);
+    const globalRows = await this.resolveGlobalPowerRows(category, userId, targetType, targetContext);
+    // Note: resolveGlobalPowerRows calls getGlobalPowerRows(userId, targetType) internally,
+    // so scope + agg:'self' filtering is applied at the base layer.
 
     const allEffects = [...effects, ...playerEffects, ...passiveRows, ...globalRows];
     return resolveEffects(allEffects, category);
@@ -352,32 +373,69 @@ export class EffectService {
    * Returns all active global power records as effect rows (all categories).
    * Used by mission completion and other consumers that resolve multiple
    * categories from a pre-fetched effect list.
+   *
+   * Pass `userId` to enable agg:'self' filtering for that player.
+   * Pass `targetType` to enforce scope filtering (player/entity/location/global).
+   * Filter predicates require targetContext at resolution time — callers
+   * without context get the safe-default (all applicable rows included).
    */
-  async getGlobalPowerRows(): Promise<ActiveEffectRow[]> {
-    const { POWER_TYPE_TO_CATEGORY } = await import('../global-power/global-power.service');
+  async getGlobalPowerRows(userId?: string, targetType?: EffectTargetType): Promise<ActiveEffectRow[]> {
     const activePowers = await this.prisma.globalActivePower.findMany({
       where: { status: 'active' },
+      include: { effectDef: true },
     });
     const rows: ActiveEffectRow[] = [];
-    for (const power of activePowers) {
-      const mappedCategory = POWER_TYPE_TO_CATEGORY[power.powerType];
-      if (!mappedCategory) continue;
+
+    for (const power of activePowers as any[]) {
+      // tick_speed_boost powers have no effectDefId and are handled via the
+      // BoostEvent / TickRateInterval system — skip them for effect resolution.
+      if (!power.effectDefId || !power.effectDef) continue;
+
+      const def = power.effectDef;
+      const overrides = (power.effectOverrides ?? {}) as any;
+      const selection = (power.selection ?? null) as EffectSelection | null;
+
+      // Apply agg:'self' and scope checks when userId/targetType are provided.
+      // Filter predicates that require targetContext are left for the caller's
+      // resolution step (or are skipped via the safe-default).
+      if (selection) {
+        const uid = userId ?? '';
+        if (!matchesSelection(selection, uid, power.triggeredByUserId ?? null, undefined, targetType)) {
+          continue;
+        }
+      }
+
       rows.push({
         effectDefId: `global_power:${power.id}`,
-        category: mappedCategory as string,
-        valueMode: power.valueMode,
-        value: power.value,
-        stats: null,
-        trait: null,
+        category: def.category,
+        valueMode: def.valueMode,
+        value: overrides.value ?? def.value ?? 0,
+        stats: overrides.stats ?? def.stats ?? null,
+        trait: def.trait ?? null,
         currentStacks: 1,
+        selection,
+        triggeredByUserId: power.triggeredByUserId ?? null,
       });
     }
+
     return rows;
   }
 
-  private async resolveGlobalPowerRows(category: EffectCategory): Promise<ActiveEffectRow[]> {
-    const all = await this.getGlobalPowerRows();
-    return all.filter((r) => r.category === category);
+  private async resolveGlobalPowerRows(
+    category: EffectCategory,
+    userId: string,
+    targetType?: EffectTargetType,
+    targetContext?: EffectTargetContext,
+  ): Promise<ActiveEffectRow[]> {
+    // getGlobalPowerRows applies scope + agg:'self' checks using userId + targetType.
+    // We then re-run matchesSelection here to apply targetContext filter predicates
+    // (archetype, rarity, traits, level). The scope/agg re-check is a no-op for rows
+    // that already passed, so there is no double-filtering issue.
+    const all = await this.getGlobalPowerRows(userId, targetType);
+    return all.filter((r) => {
+      if (r.category !== category) return false;
+      return matchesSelection(r.selection ?? null, userId, r.triggeredByUserId ?? null, targetContext, targetType);
+    });
   }
 
   async getPassiveEffectsFromEquipment(
@@ -459,7 +517,7 @@ export class EffectService {
     return result.count;
   }
 
-  private computeExpiry(def: EffectDefRecord): Date | null {
+  private computeExpiry(def: Pick<EffectDefRecord, 'durationModel' | 'durationSec'>): Date | null {
     if (def.durationModel === EffectDurationModel.TIMED && def.durationSec) {
       return new Date(Date.now() + def.durationSec * 1000);
     }

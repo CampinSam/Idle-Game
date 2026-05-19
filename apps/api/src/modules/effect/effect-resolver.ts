@@ -3,6 +3,8 @@ import {
   EffectValueMode,
   ResolvedModifier,
   EffectStatMap,
+  EffectSelection,
+  EffectTargetContext,
   emptyResolvedModifier,
 } from '@derp/shared';
 
@@ -15,6 +17,71 @@ export interface ActiveEffectRow {
   stats?: EffectStatMap | Record<string, number> | null;
   trait?: string | null;
   currentStacks: number;
+  /** Present on global power rows; used by matchesSelection() to filter scope/agg/filter. */
+  selection?: EffectSelection | null;
+  /** Player who activated the power; used for agg: 'self' checks. */
+  triggeredByUserId?: string | null;
+}
+
+/**
+ * Evaluates whether a global power's selection matches the current resolution context.
+ *
+ * Rules:
+ * - `null` selection → always matches (backward compat for records without selection).
+ * - `scope` → gates which target domain the power applies to:
+ *   - `global`   → applies to all target types (default, always passes scope check)
+ *   - `player`   → applies only when resolving for a player target
+ *   - `entity`   → applies only when resolving for an entity target
+ *   - `location` → applies only when resolving for a location target
+ *   When `targetType` is not provided, scope is not checked (safe default).
+ * - `agg: 'self'` → only matches when userId equals triggeredByUserId.
+ *   If triggeredByUserId is null the check is skipped (admin-created powers with no trigger owner).
+ * - `filter` predicates → evaluated against `context` when present;
+ *   skipped (treated as matching) when context is absent (safe default).
+ */
+export function matchesSelection(
+  selection: EffectSelection | null | undefined,
+  userId: string,
+  triggeredByUserId: string | null | undefined,
+  context?: EffectTargetContext,
+  targetType?: string,
+): boolean {
+  if (!selection) return true;
+
+  const { scope, agg, filter } = selection;
+
+  // Scope check: if scope is not 'global', it must match the resolution targetType.
+  // When targetType is absent (caller hasn't provided it), scope check is skipped.
+  if (scope && scope !== 'global' && targetType) {
+    if (scope !== targetType) return false;
+  }
+
+  if (agg === 'self' && triggeredByUserId != null && triggeredByUserId !== userId) {
+    return false;
+  }
+
+  if (filter && context) {
+    if (filter.archetype && context.archetype !== filter.archetype) return false;
+
+    if (filter.rarity && context.rarity != null) {
+      const rarities = Array.isArray(filter.rarity) ? filter.rarity : [filter.rarity];
+      if (!rarities.includes(context.rarity)) return false;
+    }
+
+    if (filter.traits && filter.traits.length > 0 && context.traits) {
+      if (!filter.traits.every((t) => context.traits!.includes(t))) return false;
+    }
+
+    if (filter.minLevel !== undefined && context.level !== undefined && context.level < filter.minLevel) {
+      return false;
+    }
+
+    if (filter.maxLevel !== undefined && context.level !== undefined && context.level > filter.maxLevel) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function resolveEffects(

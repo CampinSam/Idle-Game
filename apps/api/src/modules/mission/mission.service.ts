@@ -18,7 +18,7 @@ import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.ut
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
-import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
+import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
 import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
@@ -565,7 +565,7 @@ export class MissionService {
     });
 
     const allEffects = await this.effectService.getActiveEffectsForUser(userId, db);
-    const globalPowerRows = await this.effectService.getGlobalPowerRows();
+    const globalPowerRows = await this.effectService.getGlobalPowerRows(userId, EffectTargetType.PLAYER);
     const playerEffects = [
       ...allEffects.filter((e: any) =>
         !e.sessionType || (e.sessionType === 'mission' && e.sessionId === missionId)
@@ -573,29 +573,25 @@ export class MissionService {
       ...globalPowerRows,
     ];
 
-    // Per-entity STAT_BOOST resolution: combine player-scoped boosts (mission
-    // potions, global buffs) with each entity's own equipped-gear passives so
-    // gear actually contributes to mission MP. Other categories below stay
-    // player-scoped because gear today only emits STAT_BOOST/FLAT_ADD.
-    const equipmentEffectsByEntity = new Map<string, any[]>();
-    for (const ent of entities) {
-      const passive = await this.effectService.getPassiveEffectsFromEquipment(
-        userId,
-        EffectTargetType.ENTITY,
-        ent.id,
-        db,
-      );
-      equipmentEffectsByEntity.set(ent.id, passive);
-    }
-    const teamForMP: EntityForMP[] = entities.map((b: any) => {
-      const passive = equipmentEffectsByEntity.get(b.id) ?? [];
-      const entityStatMod = this.effectService.resolve(
-        [...playerEffects, ...passive] as any,
-        EffectCategory.STAT_BOOST,
+    // Per-entity STAT_BOOST resolution: resolveForTarget handles entity active
+    // effects, player active effects, equipment passives, AND entity-scoped
+    // global powers with per-entity targetContext filtering (archetype/rarity/
+    // traits). Player-scoped global powers and mission-session potions are
+    // included via the internal getActiveEffects(PLAYER) call. Other categories
+    // (MISSION_POWER, timer speed, etc.) continue using player-scoped playerEffects.
+    const teamForMP: EntityForMP[] = await Promise.all(entities.map(async (b: any) => {
+      const entityTraits = (b.traits as any) || {};
+      const entityContext: EffectTargetContext = {
+        archetype: b.speciesId ?? b.definitionId ?? undefined,
+        rarity: entityTraits.rarity ?? undefined,
+        traits: Object.keys(entityTraits).filter((k: string) => k !== 'rarity'),
+      };
+      const entityStatMod = await this.effectService.resolveForTarget(
+        userId, EffectTargetType.ENTITY, b.id, EffectCategory.STAT_BOOST, db, entityContext,
       );
       const boostedStats = applyStatModifiers(b.stats as any, entityStatMod);
       return { stats: boostedStats, traits: b.traits as any };
-    });
+    }));
 
     let rawTeamMP = calculateTeamMP(teamForMP);
 
@@ -778,8 +774,15 @@ export class MissionService {
             if (rng.chance(injuryChance)) {
               const vit = (entity.stats as any)?.VIT ?? 0;
               let recoveryTicks = calculateInjuryRecoveryTicks(injuryRecoveryTicksBase, vit);
+              const entityTraits = (entity.traits as any) || {};
+              const injuryContext: EffectTargetContext = {
+                level: (entity.progression as any)?.level ?? undefined,
+                archetype: entity.speciesId ?? entity.definitionId ?? undefined,
+                rarity: entityTraits.rarity ?? undefined,
+                traits: Object.keys(entityTraits).filter((k) => k !== 'rarity'),
+              };
               const injuryMod = await this.effectService.resolveForTarget(
-                userId, EffectTargetType.PLAYER, userId, EffectCategory.INJURY_RECOVERY_SPEED, db,
+                userId, EffectTargetType.PLAYER, userId, EffectCategory.INJURY_RECOVERY_SPEED, db, injuryContext,
               );
               if (injuryMod.flatAdd !== 0 || injuryMod.percentAdd !== 0 || injuryMod.multiplier !== 1) {
                 recoveryTicks = Math.max(1, Math.floor(applyModifier(recoveryTicks, injuryMod)));

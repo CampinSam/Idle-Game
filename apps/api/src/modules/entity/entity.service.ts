@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EffectService } from '../effect/effect.service';
 import { NotificationService } from '../notification/notification.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
-import { EffectCategory, EffectTargetType, applyModifier } from '@derp/shared';
+import { EffectCategory, EffectTargetType, EffectTargetContext, applyModifier } from '@derp/shared';
 import { getProgressionRules, xpForNextLevel } from './entity-progression-rules.util';
 import { applyWeightedLevelUp } from '@derp/math';
 
@@ -158,8 +158,15 @@ export class EntityService {
     let effectiveXp = xp;
     if (!opts?.skipEffects && xp > 0) {
       try {
+        const entityTraits = (entity.traits as any) || {};
+        const entityTargetContext: EffectTargetContext = {
+          level: oldLevel,
+          archetype: entity.speciesId ?? entity.definitionId ?? undefined,
+          rarity: entityTraits.rarity ?? undefined,
+          traits: Object.keys(entityTraits).filter((k) => k !== 'rarity'),
+        };
         const xpMod = await this.effectService.resolveForTarget(
-          userId, EffectTargetType.PLAYER, userId, EffectCategory.XP_MULTIPLIER, db,
+          userId, EffectTargetType.ENTITY, entityId, EffectCategory.XP_MULTIPLIER, db, entityTargetContext,
         );
         if (xpMod.flatAdd !== 0 || xpMod.percentAdd !== 0 || xpMod.multiplier !== 1) {
           effectiveXp = Math.floor(applyModifier(xp, xpMod));

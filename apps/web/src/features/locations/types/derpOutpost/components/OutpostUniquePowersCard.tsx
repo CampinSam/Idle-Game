@@ -8,6 +8,11 @@ import type { UniqueLocationPower } from '@derp/shared';
 import type { UiIntent } from '../../../../../services/api';
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown, powerLabel } from '../../../../../features/powers/powerUtils';
 
+/** Derive a stable key for a power used for usage tracking and trigger commands. */
+function getPowerKey(p: UniqueLocationPower): string {
+  return p.powerType ?? p.effectDefId ?? 'unknown';
+}
+
 function powerValueLabel(p: UniqueLocationPower): string {
   const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost';
   return isPercent ? `+${p.value}%` : `+${p.value}`;
@@ -25,7 +30,7 @@ interface PowerRowProps {
 function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }: PowerRowProps) {
   const limit = typeof power.dailyLimit === 'number' && power.dailyLimit > 0 ? power.dailyLimit : 1;
   const remaining = Math.max(0, limit - usageCount);
-  const label = powerLabel(power.powerType);
+  const label = powerLabel(getPowerKey(power));
   const valueLabel = powerValueLabel(power);
 
   return (
@@ -65,7 +70,7 @@ function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }
           <button
             type="button"
             disabled={isBusy}
-            onClick={() => onTrigger(power.powerType)}
+            onClick={() => onTrigger(getPowerKey(power))}
             className="px-3 py-1 rounded-full text-[11px] font-extrabold tracking-[0.04em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F59E0B]/50"
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(245,158,11,0.4))',
@@ -103,8 +108,9 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
   const usageByPower = useMemo<Record<string, number>>(() => {
     const result: Record<string, number> = {};
     for (const p of powers) {
-      const entry = storedUsages[p.powerType];
-      result[p.powerType] = entry && entry.lastUsedUtcDay === today ? entry.usageCount : 0;
+      const key = getPowerKey(p);
+      const entry = storedUsages[key];
+      result[key] = entry && entry.lastUsedUtcDay === today ? entry.usageCount : 0;
     }
     return result;
   }, [storedUsages, powers, today]);
@@ -158,12 +164,13 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
         <div className="flex-1 h-px bg-[rgba(245,158,11,0.15)]" />
       </div>
       {powers.map((p) => {
-        const usageCount = usageByPower[p.powerType] ?? 0;
+        const key = getPowerKey(p);
+        const usageCount = usageByPower[key] ?? 0;
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usageCount >= limit;
         return (
           <PowerRow
-            key={p.powerType}
+            key={key}
             power={p}
             usageCount={usageCount}
             isAtLimit={isAtLimit}

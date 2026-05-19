@@ -47,10 +47,16 @@ export interface HomeBannerSnapshot {
 export interface GlobalPowerSnapshot {
   id: string;
   label: string;
-  powerType: string;
+  /** null for tick_speed_boost powers (handled by BoostEvent machinery). */
+  effectDefId: string | null;
+  /** Human-readable name of the linked EffectDef; null for tick_speed_boost. */
+  effectDefName: string | null;
+  /** EffectCategory of the linked EffectDef; null for tick_speed_boost. */
+  effectCategory: string | null;
   value: number;
   valueMode: string;
   endTime: string;
+  selection: Record<string, any> | null;
 }
 
 interface SyncState {

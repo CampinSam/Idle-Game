@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
-import { GlobalPowerService, VALID_POWER_TYPES } from '../global-power/global-power.service';
+import { GlobalPowerService } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
@@ -544,12 +544,19 @@ export class AdminController {
     return this.adminService.setBonusOutpostSlots(id, body.slots);
   }
 
-  // ─── Global Active Powers ───────────────────────────────────────────────────
+  // ─── Effect Defs (read-only for admin power creation) ───────────────────────
 
-  @Get('global-powers/types')
-  getGlobalPowerTypes() {
-    return { types: VALID_POWER_TYPES };
+  @Get('effect-defs')
+  async getEffectDefs() {
+    const defs = await (this.prisma as any).effectDef.findMany({
+      where: { enabled: true },
+      select: { id: true, name: true, category: true, valueMode: true, value: true, durationModel: true, targetType: true, description: true },
+      orderBy: { name: 'asc' },
+    });
+    return defs;
   }
+
+  // ─── Global Active Powers ───────────────────────────────────────────────────
 
   @Get('global-powers')
   getGlobalPowers(@Query('all') all?: string) {
@@ -559,22 +566,30 @@ export class AdminController {
   }
 
   @Post('global-powers')
-  createGlobalPower(
+  async createGlobalPower(
     @Body() body: {
       label: string;
-      powerType: string;
-      value: number;
-      valueMode?: string;
+      /** null → tick_speed_boost (uses BoostEvent machinery, not effect resolver) */
+      effectDefId: string | null;
+      effectOverrides?: Record<string, any>;
+      selection?: Record<string, any>;
       durationMinutes: number;
       scheduledFor?: string;
       triggeredByUserId?: string;
     },
   ) {
     if (!body.label) throw new BadRequestException('label is required');
-    if (!body.powerType) throw new BadRequestException('powerType is required');
-    if (body.value === undefined || body.value === null) throw new BadRequestException('value is required');
+    if (body.effectDefId === undefined) throw new BadRequestException('effectDefId is required (use null for tick_speed_boost)');
     if (!body.durationMinutes) throw new BadRequestException('durationMinutes is required');
-    return this.globalPowerService.createPower(body);
+    return this.globalPowerService.createPower({
+      label: body.label,
+      effectDefId: body.effectDefId,
+      effectOverrides: body.effectOverrides as any,
+      selection: body.selection as any,
+      durationMinutes: body.durationMinutes,
+      scheduledFor: body.scheduledFor,
+      triggeredByUserId: body.triggeredByUserId,
+    });
   }
 
   @Delete('global-powers/:id')

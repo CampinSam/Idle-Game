@@ -30,19 +30,21 @@ export type BroadcastMessage =
       active: Array<{
         id: string;
         label: string;
-        powerType: string;
+        effectDefId: string | null;
+        effectDefName: string | null;
+        effectCategory: string | null;
         value: number;
         valueMode: string;
         durationMinutes: number;
         startTime: string;
         endTime: string;
         status: string;
+        selection: Record<string, any> | null;
         triggeredByUserId?: string;
       }>;
       changes: Array<{
         event: 'started' | 'ended';
         id: string;
-        powerType: string;
         label: string;
         durationMinutes: number;
       }>;

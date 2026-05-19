@@ -1,26 +1,35 @@
-export const POWER_TYPE_LABELS: Record<string, string> = {
-  tick_speed_boost: 'Global Tick Boost',
-  keeper_xp_boost: 'Keeper XP',
-  entity_xp_boost: 'Entity XP',
-  mission_power_boost: 'Mission Power',
-  mission_duration_reduction: 'Mission Speed',
-  crafting_duration_reduction: 'Crafting Speed',
-  building_build_duration_reduction: 'Build Speed',
-  building_upgrade_duration_reduction: 'Upgrade Speed',
-  injury_recovery_boost: 'Injury Recovery',
-};
+import type { GlobalPowerSnapshot } from '../store/syncSlice';
 
-export const POWER_TYPE_ICONS: Record<string, string> = {
-  tick_speed_boost: '⚡',
-  keeper_xp_boost: '🌟',
-  entity_xp_boost: '✨',
-  mission_power_boost: '⚔️',
-  mission_duration_reduction: '🏃',
-  crafting_duration_reduction: '⚒️',
-  building_build_duration_reduction: '🏗️',
-  building_upgrade_duration_reduction: '⬆️',
-  injury_recovery_boost: '💊',
-};
+/** Returns a human-readable label for the type of boost a power provides. */
+export function getPowerTypeLabel(power: GlobalPowerSnapshot): string {
+  if (power.effectDefId === null) return 'Global Tick Speed';
+  if (power.effectDefName) return power.effectDefName;
+  if (power.effectCategory) return power.effectCategory.replace(/_/g, ' ');
+  return power.label;
+}
+
+/** Returns an emoji icon for the power based on its effect category. */
+export function getPowerIcon(power: GlobalPowerSnapshot): string {
+  if (power.effectDefId === null) return '⚡';
+  const cat = power.effectCategory ?? '';
+  const icons: Record<string, string> = {
+    keeper_xp_multiplier: '🌟',
+    xp_multiplier: '✨',
+    mission_power: '⚔️',
+    mission_timer_speed: '🏃',
+    crafting_timer_speed: '⚒️',
+    building_build_timer_speed: '🏗️',
+    building_upgrade_timer_speed: '⬆️',
+    injury_recovery_speed: '💊',
+    timer_speed: '⏱️',
+    reward_multiplier: '🎁',
+    currency_multiplier: '💰',
+    stat_boost: '📈',
+    production_rate: '🏭',
+    storage_capacity: '📦',
+  };
+  return icons[cat] ?? '🌐';
+}
 
 export function formatPowerValue(value: number, valueMode: string): string {
   if (valueMode === 'multiplier') return `${value}×`;

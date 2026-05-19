@@ -54,14 +54,18 @@ export function gearWouldChangeStats(equipData: unknown): boolean {
  * Used by UseConsumable handler to block stat-changing consumables on busy
  * entities.
  */
-export function effectWouldChangeStats(def: {
-  category: string;
-  durationModel?: string | null;
-  stats?: Record<string, number> | null;
-}): boolean {
+export function effectWouldChangeStats(
+  def: {
+    category: string;
+    durationModel?: string | null;
+    stats?: Record<string, number> | null;
+  },
+  overrides?: { stats?: Record<string, number> | null } | null,
+): boolean {
   if (def.category === EffectCategory.STAT_BOOST) return true;
   if (def.durationModel === EffectDurationModel.INSTANT) {
-    const s = def.stats;
+    // Check merged stats: overrides.stats takes precedence over def.stats.
+    const s = overrides?.stats ?? def.stats;
     if (s && typeof s === 'object') {
       for (const key of STAT_KEYS) {
         const v = (s as Record<string, unknown>)[key];

@@ -97,6 +97,127 @@ export class BootstrapService implements OnModuleInit {
         this.logger.warn(`Entity level-history backfill failed: ${err}`);
       }
     }
+    // Idempotent: cancel any GlobalActivePower rows that have no effectDefId
+    // AND no effectOverrides. These are true legacy rows from before the
+    // effectDefId migration that can no longer be resolved by the effect
+    // system. Tick-speed-boost powers always have effectOverrides, so they
+    // are never affected by this backfill.
+    await this.backfillGlobalPowers();
+  }
+
+  private async backfillGlobalPowers() {
+    // ─── Pass 1: Migrate legacy tick_speed_boost rows ────────────────────────
+    //
+    // Before this task, GlobalActivePower stored powerType/value/valueMode columns.
+    // The ONLY powerType that ever existed in this codebase was 'tick_speed_boost';
+    // all NFT entity powers (definitions.seed.ts) and admin-created powers used it.
+    //
+    // This migration maps those legacy rows → effectOverrides: { value, valueMode }.
+    // tick_speed_boost rows keep effectDefId=null; the BoostEvent machinery uses
+    // effectOverrides.value + effectOverrides.valueMode at trigger time.
+    //
+    // Strategy:
+    //   A) If the legacy "powerType" column still exists in the DB — read actual
+    //      stored value/valueMode and write effectOverrides from them (lossless).
+    //   B) If the column is already gone (--accept-data-loss was used) — all
+    //      effectDefId=null + effectOverrides=null active/scheduled rows must be
+    //      tick_speed_boost (the only type that ever existed) and are safely
+    //      defaulted to { value: 50, valueMode: 'percent_add' }.
+    //
+    // This pass is idempotent: rows that already have effectOverrides are skipped.
+
+    // Check whether the legacy "powerType" column is still present.
+    const colCheck = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM information_schema.columns
+      WHERE table_name  = 'global_active_powers'
+        AND column_name = 'powerType'
+    `;
+    const hasLegacyCols = Number(colCheck[0]?.count ?? 0) > 0;
+
+    if (hasLegacyCols) {
+      // A) Legacy columns present: migrate from actual stored values.
+      //    Only rows with powerType = 'tick_speed_boost' are handled (the only
+      //    type that ever existed). Any unknown powerType rows are left untouched
+      //    so they can be inspected manually.
+      const migrated = await this.prisma.$executeRaw`
+        UPDATE global_active_powers
+        SET    "effectOverrides" = jsonb_build_object(
+                 'value',     COALESCE(value, 50),
+                 'valueMode', COALESCE("valueMode", 'percent_add')
+               )
+        WHERE  "effectDefId"     IS NULL
+          AND  "effectOverrides" IS NULL
+          AND  "powerType"       = 'tick_speed_boost'
+          AND  status IN ('active', 'scheduled')
+      `;
+      if (migrated > 0) {
+        this.logger.log(
+          `GlobalActivePower backfill (A): migrated ${migrated} tick_speed_boost row(s) ` +
+          `from legacy powerType/value/valueMode → effectOverrides.`,
+        );
+      }
+
+      // Log any remaining unknown powerType rows so admins can act.
+      const unknown = await this.prisma.$queryRaw<Array<{ id: string; powerType: string }>>`
+        SELECT id, "powerType"
+        FROM   global_active_powers
+        WHERE  "effectDefId"     IS NULL
+          AND  "effectOverrides" IS NULL
+          AND  "powerType"       IS DISTINCT FROM 'tick_speed_boost'
+          AND  status IN ('active', 'scheduled')
+      `;
+      if (unknown.length > 0) {
+        this.logger.warn(
+          `GlobalActivePower backfill: ${unknown.length} row(s) have unknown powerType ` +
+          `and could not be auto-migrated: ${unknown.map((r) => `${r.id}(${r.powerType})`).join(', ')}`,
+        );
+      }
+    } else {
+      // B) Legacy columns already dropped (schema was pushed with --accept-data-loss).
+      //    tick_speed_boost was the only GlobalActivePower type in this codebase, so
+      //    effectDefId=null + effectOverrides=null rows are safely defaulted.
+      const unmigratedRows = await (this.prisma as any).globalActivePower.findMany({
+        where: { effectDefId: null, status: { in: ['active', 'scheduled'] } },
+        select: { id: true, effectOverrides: true },
+      });
+      const unmigratedTickBoosts = unmigratedRows.filter(
+        (r: any) => r.effectOverrides === null || r.effectOverrides === undefined,
+      );
+      if (unmigratedTickBoosts.length > 0) {
+        await (this.prisma as any).globalActivePower.updateMany({
+          where: { id: { in: unmigratedTickBoosts.map((r: any) => r.id) } },
+          data: { effectOverrides: { value: 50, valueMode: 'percent_add' } },
+        });
+        this.logger.warn(
+          `GlobalActivePower backfill (B): defaulted ${unmigratedTickBoosts.length} tick_speed_boost row(s) ` +
+          `to effectOverrides { value: 50, valueMode: 'percent_add' } (legacy columns already removed; ` +
+          `tick_speed_boost was the only powerType that ever existed in this system).`,
+        );
+      }
+    }
+
+    // ─── Pass 2: Default selection on all active/scheduled rows ──────────────
+    //
+    // Powers created before the selection field was introduced have selection=null.
+    // Default them to { scope: 'global', agg: 'any' } to preserve pre-migration
+    // behaviour (world-wide, applies to everyone). Idempotent.
+    const noSelectionCandidates = await (this.prisma as any).globalActivePower.findMany({
+      where: { status: { in: ['active', 'scheduled'] } },
+      select: { id: true, selection: true },
+    });
+    const legacyNoSelection = noSelectionCandidates.filter(
+      (r: any) => r.selection === null || r.selection === undefined,
+    );
+    if (legacyNoSelection.length > 0) {
+      await (this.prisma as any).globalActivePower.updateMany({
+        where: { id: { in: legacyNoSelection.map((r: any) => r.id) } },
+        data: { selection: { scope: 'global', agg: 'any' } },
+      });
+      this.logger.log(
+        `GlobalActivePower backfill: set default selection on ${legacyNoSelection.length} row(s) that had no selection.`,
+      );
+    }
   }
 
   private async seedTickRateIntervals() {

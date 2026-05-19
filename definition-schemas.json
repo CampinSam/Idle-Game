@@ -1,91 +1,304 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Derp Universe — Game Definition Schemas",
+  "title": "Derp Universe \u2014 Game Definition Schemas",
   "description": "JSON schema documentation for all game definition data files loaded by the definitions seed.",
   "definitions": {
     "RuleRefNode": {
       "type": "object",
       "description": "A reference to a named reusable SelectionRuleDef row. Embeds the referenced rule's selection tree inline at evaluation time.",
-      "required": ["type", "id"],
+      "required": [
+        "type",
+        "id"
+      ],
       "properties": {
-        "type": { "type": "string", "const": "rule_ref", "description": "Discriminator — must be exactly \"rule_ref\"." },
-        "id": { "type": "string", "description": "ID of the SelectionRuleDef to evaluate." },
-        "label": { "type": "string", "description": "Optional admin-facing label for this reference." }
+        "type": {
+          "type": "string",
+          "const": "rule_ref",
+          "description": "Discriminator \u2014 must be exactly \"rule_ref\"."
+        },
+        "id": {
+          "type": "string",
+          "description": "ID of the SelectionRuleDef to evaluate."
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional admin-facing label for this reference."
+        }
       },
       "additionalProperties": false
     },
     "RichSelectionRule": {
       "type": "object",
       "description": "A single leaf condition node in a RichSelection tree.",
-      "required": ["scope", "field", "operator"],
+      "required": [
+        "scope",
+        "field",
+        "operator"
+      ],
       "properties": {
-        "id": { "type": "string", "description": "Optional stable identifier for this rule node." },
-        "label": { "type": "string", "description": "Admin-facing label." },
-        "description": { "type": "string" },
-        "scope": { "type": "string", "description": "Which context object to read from (player, entity, team, location, etc.)." },
-        "field": { "type": "string", "description": "Dot-path field on the scope object (e.g. keeperLevel, flags.beta_tester)." },
-        "aggregate": { "type": "string", "enum": ["self","any","all","none","count","sum","avg","min","max","distinct_count","ratio"], "description": "How to reduce multiple values (entity/team scopes)." },
-        "operator": { "type": "string", "enum": ["eq","neq","gt","gte","lt","lte","in","not_in","contains","not_contains","exists","not_exists","between","starts_with","ends_with","regex"] },
-        "value": { "description": "Comparison value (number, string, boolean, or array)." },
-        "where": { "$ref": "#/definitions/RichSelection" },
-        "caseSensitive": { "type": "boolean" },
-        "failText": { "type": "string" },
-        "passText": { "type": "string" },
-        "data": { "type": "object" }
+        "id": {
+          "type": "string",
+          "description": "Optional stable identifier for this rule node."
+        },
+        "label": {
+          "type": "string",
+          "description": "Admin-facing label."
+        },
+        "description": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string",
+          "description": "Which context object to read from (player, entity, team, location, etc.)."
+        },
+        "field": {
+          "type": "string",
+          "description": "Dot-path field on the scope object (e.g. keeperLevel, flags.beta_tester)."
+        },
+        "aggregate": {
+          "type": "string",
+          "enum": [
+            "self",
+            "any",
+            "all",
+            "none",
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max",
+            "distinct_count",
+            "ratio"
+          ],
+          "description": "How to reduce multiple values (entity/team scopes)."
+        },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "eq",
+            "neq",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "in",
+            "not_in",
+            "contains",
+            "not_contains",
+            "exists",
+            "not_exists",
+            "between",
+            "starts_with",
+            "ends_with",
+            "regex"
+          ]
+        },
+        "value": {
+          "description": "Comparison value (number, string, boolean, or array)."
+        },
+        "where": {
+          "$ref": "#/definitions/RichSelection"
+        },
+        "caseSensitive": {
+          "type": "boolean"
+        },
+        "failText": {
+          "type": "string"
+        },
+        "passText": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        }
       }
     },
     "RichSelectionChild": {
-      "description": "A single child node inside a RichSelection group — either a sub-group, a leaf rule, or a rule_ref.",
+      "description": "A single child node inside a RichSelection group \u2014 either a sub-group, a leaf rule, or a rule_ref.",
       "oneOf": [
-        { "$ref": "#/definitions/RichSelection" },
-        { "$ref": "#/definitions/RichSelectionRule" },
-        { "$ref": "#/definitions/RuleRefNode" }
+        {
+          "$ref": "#/definitions/RichSelection"
+        },
+        {
+          "$ref": "#/definitions/RichSelectionRule"
+        },
+        {
+          "$ref": "#/definitions/RuleRefNode"
+        }
       ]
     },
     "RichSelection": {
       "type": "object",
       "description": "A boolean condition tree used for requirements, visibility, and other eligibility checks.",
-      "required": ["op", "rules"],
+      "required": [
+        "op",
+        "rules"
+      ],
       "properties": {
-        "op": { "type": "string", "enum": ["AND", "OR", "NOT"], "description": "Boolean operator applied to all child rules." },
-        "rules": { "type": "array", "items": { "$ref": "#/definitions/RichSelectionChild" }, "description": "Child nodes — each is a sub-group, a leaf rule, or a rule_ref." },
-        "label": { "type": "string" },
-        "description": { "type": "string" },
-        "failText": { "type": "string" },
-        "passText": { "type": "string" },
-        "data": { "type": "object" }
+        "op": {
+          "type": "string",
+          "enum": [
+            "AND",
+            "OR",
+            "NOT"
+          ],
+          "description": "Boolean operator applied to all child rules."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RichSelectionChild"
+          },
+          "description": "Child nodes \u2014 each is a sub-group, a leaf rule, or a rule_ref."
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "failText": {
+          "type": "string"
+        },
+        "passText": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        }
       }
     },
     "SelectionRuleDef": {
       "type": "object",
       "description": "A named, reusable RichSelection condition stored in the database and referenced by rule_ref nodes.",
-      "required": ["id", "name", "selection"],
+      "required": [
+        "id",
+        "name",
+        "selection"
+      ],
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier (e.g. rule_ninja_team)." },
-        "name": { "type": "string", "description": "Admin-facing display name." },
-        "description": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" }, "description": "Classification tags." },
-        "selection": { "$ref": "#/definitions/RichSelection", "description": "The condition tree this rule encapsulates." },
-        "enabled": { "type": "boolean", "default": true, "description": "Disabled rules always return false when referenced." }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (e.g. rule_ninja_team)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Admin-facing display name."
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification tags."
+        },
+        "selection": {
+          "$ref": "#/definitions/RichSelection",
+          "description": "The condition tree this rule encapsulates."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled rules always return false when referenced."
+        }
       }
     },
     "SynergySelector": {
       "type": "object",
       "description": "Filters which entities a SynergyRule applies to. All fields are optional; an empty object {} matches any entity.",
       "properties": {
-        "entityTypes": { "type": "array", "items": { "type": "string" }, "description": "Match entities whose entityType is in this list." },
-        "speciesIds": { "type": "array", "items": { "type": "string" }, "description": "Match entities whose speciesId (entityDefinitionId) is in this list." },
-        "collections": { "type": "array", "items": { "type": "string" }, "description": "Match entities whose collectionId (NftCollectionDef.id) is in this list." },
-        "traitsAny": { "type": "array", "items": { "type": "string" }, "description": "Match entities that have at least one of these archetype values in any trait slot. Case-insensitive." },
-        "traitsAll": { "type": "array", "items": { "type": "string" }, "description": "Match entities that have ALL of these archetype values (each in any slot). Case-insensitive." },
-        "minTraitCount": { "type": "integer", "minimum": 1, "description": "Minimum number of distinct non-null trait values the entity must have." },
-        "entityIds": { "type": "array", "items": { "type": "string" }, "description": "Match specific entity instance IDs." },
-        "rarities": { "type": "array", "items": { "type": "string" }, "description": "Match entities whose rarity is in this list (e.g. 'common', 'rare', 'legendary')." },
-        "regions": { "type": "array", "items": { "type": "string" }, "description": "Match entities currently stationed in one of these regionIds." },
-        "locationTypes": { "type": "array", "items": { "type": "string" }, "description": "Match entities currently in a location of one of these types." },
-        "buildingTagsAny": { "type": "array", "items": { "type": "string" }, "description": "Match entities at a location that has at least one of these building tags." },
-        "missionTagsAny": { "type": "array", "items": { "type": "string" }, "description": "Match entities with at least one of these mission tags." },
-        "factions": { "type": "array", "items": { "type": "string" }, "description": "Match entities whose traits.faction value is in this list. Case-insensitive." }
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities whose entityType is in this list."
+        },
+        "speciesIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities whose speciesId (entityDefinitionId) is in this list."
+        },
+        "collections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities whose collectionId (NftCollectionDef.id) is in this list."
+        },
+        "traitsAny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities that have at least one of these archetype values in any trait slot. Case-insensitive."
+        },
+        "traitsAll": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities that have ALL of these archetype values (each in any slot). Case-insensitive."
+        },
+        "minTraitCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum number of distinct non-null trait values the entity must have."
+        },
+        "entityIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match specific entity instance IDs."
+        },
+        "rarities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities whose rarity is in this list (e.g. 'common', 'rare', 'legendary')."
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities currently stationed in one of these regionIds."
+        },
+        "locationTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities currently in a location of one of these types."
+        },
+        "buildingTagsAny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities at a location that has at least one of these building tags."
+        },
+        "missionTagsAny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities with at least one of these mission tags."
+        },
+        "factions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match entities whose traits.faction value is in this list. Case-insensitive."
+        }
       },
       "additionalProperties": false
     },
@@ -93,68 +306,359 @@
       "type": "object",
       "description": "Constrains which activity contexts trigger a SynergyRule. All fields are optional; an empty object {} matches any context.",
       "properties": {
-        "activityTypes": { "type": "array", "items": { "type": "string" }, "description": "Match activities whose activityType is in this list (e.g. 'mission', 'crafting', 'outpost')." },
-        "missionTypes": { "type": "array", "items": { "type": "string" }, "description": "Match missions whose missionType is in this list (e.g. 'quick', 'boss', 'seasonal')." },
-        "missionTagsAny": { "type": "array", "items": { "type": "string" }, "description": "Match activities tagged with at least one of these mission tags." },
-        "regionIds": { "type": "array", "items": { "type": "string" }, "description": "Match activities occurring in one of these regions." },
-        "seasonIds": { "type": "array", "items": { "type": "string" }, "description": "Match activities occurring during one of these seasons." },
-        "requiresTeamSizeMin": { "type": "integer", "minimum": 1, "description": "Rule only fires when the team has at least this many entities." },
-        "requiresTeamSizeMax": { "type": "integer", "minimum": 1, "description": "Rule only fires when the team has at most this many entities." }
+        "activityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match activities whose activityType is in this list (e.g. 'mission', 'crafting', 'outpost')."
+        },
+        "missionTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match missions whose missionType is in this list (e.g. 'quick', 'boss', 'seasonal')."
+        },
+        "missionTagsAny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match activities tagged with at least one of these mission tags."
+        },
+        "regionIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match activities occurring in one of these regions."
+        },
+        "seasonIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match activities occurring during one of these seasons."
+        },
+        "requiresTeamSizeMin": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Rule only fires when the team has at least this many entities."
+        },
+        "requiresTeamSizeMax": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Rule only fires when the team has at most this many entities."
+        }
       },
       "additionalProperties": false
     },
     "SynergyEffect": {
       "type": "object",
       "description": "A single effect emitted by a SynergyRule when it fires.",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["synergy_score_modifier", "stat_modifier", "duration_modifier", "resource_yield_modifier", "immunity"],
+          "enum": [
+            "synergy_score_modifier",
+            "stat_modifier",
+            "duration_modifier",
+            "resource_yield_modifier",
+            "immunity"
+          ],
           "description": "Effect type discriminant."
         },
         "operation": {
           "type": "string",
-          "enum": ["flat_add", "percent_add", "multiplier", "flat_seconds"],
+          "enum": [
+            "flat_add",
+            "percent_add",
+            "multiplier",
+            "flat_seconds"
+          ],
           "description": "How the value is applied. flat_add: absolute addition. percent_add: percentage addition (e.g. -10 = -10%). multiplier: multiplicative (compound exponent with applications). flat_seconds: absolute seconds added to duration."
         },
-        "value": { "type": "number", "description": "Numeric value for the operation. Negative = penalty/reduction." },
-        "stat": { "type": "string", "description": "Stat key for stat_modifier (e.g. ATK, DEF, SPD, FOC, VIT, LCK)." },
-        "activity": { "type": "string", "description": "Activity key for duration_modifier (e.g. 'mission', 'crafting')." },
-        "resourceId": { "type": "string", "description": "Resource/currency ID for resource_yield_modifier." },
-        "immuneTo": { "type": "string", "description": "Named debuff or effect type for immunity." }
+        "value": {
+          "type": "number",
+          "description": "Numeric value for the operation. Negative = penalty/reduction."
+        },
+        "stat": {
+          "type": "string",
+          "description": "Stat key for stat_modifier (e.g. ATK, DEF, SPD, FOC, VIT, LCK)."
+        },
+        "activity": {
+          "type": "string",
+          "description": "Activity key for duration_modifier (e.g. 'mission', 'crafting')."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "Resource/currency ID for resource_yield_modifier."
+        },
+        "immuneTo": {
+          "type": "string",
+          "description": "Named debuff or effect type for immunity."
+        }
       }
     },
     "SynergyRule": {
       "type": "object",
       "description": "A data-driven synergy rule that awards bonuses or penalties based on entity trait combinations and activity context.",
-      "required": ["id", "name", "effects"],
+      "required": [
+        "id",
+        "name",
+        "effects"
+      ],
       "properties": {
-        "id": { "type": "string", "description": "Unique rule identifier (e.g. syn_ninja_magician)." },
-        "name": { "type": "string", "description": "Admin-facing display name." },
-        "description": { "type": "string", "description": "Human-readable explanation of the rule." },
-        "enabled": { "type": "boolean", "default": true, "description": "Disabled rules are never evaluated." },
-        "sourceSelector": { "$ref": "#/definitions/SynergySelector" },
-        "targetSelector": { "$ref": "#/definitions/SynergySelector" },
-        "context": { "$ref": "#/definitions/SynergyContext" },
-        "conditions": { "type": "array", "default": [], "description": "Reserved for future condition expressions." },
+        "id": {
+          "type": "string",
+          "description": "Unique rule identifier (e.g. syn_ninja_magician)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Admin-facing display name."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of the rule."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled rules are never evaluated."
+        },
+        "sourceSelector": {
+          "$ref": "#/definitions/SynergySelector"
+        },
+        "targetSelector": {
+          "$ref": "#/definitions/SynergySelector"
+        },
+        "context": {
+          "$ref": "#/definitions/SynergyContext"
+        },
+        "conditions": {
+          "type": "array",
+          "default": [],
+          "description": "Reserved for future condition expressions."
+        },
         "effects": {
           "type": "array",
-          "items": { "$ref": "#/definitions/SynergyEffect" },
+          "items": {
+            "$ref": "#/definitions/SynergyEffect"
+          },
           "minItems": 1,
           "description": "Effects emitted when the rule fires."
         },
-        "priority": { "type": "integer", "default": 100, "description": "Evaluation order. Lower = evaluated first." },
-        "stackGroup": { "type": "string", "description": "Optional group name for cross-rule stacking logic." },
+        "priority": {
+          "type": "integer",
+          "default": 100,
+          "description": "Evaluation order. Lower = evaluated first."
+        },
+        "stackGroup": {
+          "type": "string",
+          "description": "Optional group name for cross-rule stacking logic."
+        },
         "stackMode": {
           "type": "string",
-          "enum": ["additive", "best_only", "highest_abs_only", "unique"],
+          "enum": [
+            "additive",
+            "best_only",
+            "highest_abs_only",
+            "unique"
+          ],
           "default": "additive",
           "description": "additive: each pair fires independently. unique: fires once if any pair matches. best_only: only the highest-positive-value rule in the stackGroup fires. highest_abs_only: only the highest |value| rule fires."
         },
-        "maxApplications": { "type": "integer", "minimum": 1, "default": 1, "description": "Max times this rule fires per resolver call." },
-        "startsAt": { "type": "string", "format": "date-time", "description": "ISO datetime — rule only fires after this time." },
-        "endsAt": { "type": "string", "format": "date-time", "description": "ISO datetime — rule stops firing after this time." }
+        "maxApplications": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Max times this rule fires per resolver call."
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO datetime \u2014 rule only fires after this time."
+        },
+        "endsAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO datetime \u2014 rule stops firing after this time."
+        }
+      }
+    },
+    "EffectDefOverrides": {
+      "type": "object",
+      "description": "Safe-to-override fields on an EffectDef. Structural fields (category, valueMode, durationModel, stackingRule, targetType) are intentionally excluded. Merged on top of EffectDef defaults at apply time.",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "Overrides the EffectDef value field."
+        },
+        "stats": {
+          "type": "object",
+          "description": "Overrides the EffectDef stats map (EffectStatMap)."
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "Overrides the effect duration in seconds."
+        },
+        "durationTicks": {
+          "type": "number",
+          "description": "Overrides the effect duration in ticks."
+        },
+        "maxStacks": {
+          "type": "integer",
+          "description": "Overrides the EffectDef maxStacks field."
+        },
+        "maxUses": {
+          "type": "integer",
+          "description": "Overrides the EffectDef maxUses field."
+        },
+        "cap": {
+          "type": "number",
+          "description": "Overrides the EffectDef cap field."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "Overrides the EffectDef resourceId field."
+        }
+      }
+    },
+    "EffectSelection": {
+      "type": "object",
+      "description": "Describes exactly who a global power effect applies to. Stored as JSON on GlobalActivePower. Evaluated by matchesSelection() in the effect resolver.",
+      "required": [
+        "scope",
+        "agg"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "global",
+            "player",
+            "entity",
+            "location"
+          ],
+          "description": "global: applies to all target types (default). player: applies only when resolving for a player target. entity: entity-level targets only. location: location-level targets only."
+        },
+        "agg": {
+          "type": "string",
+          "enum": [
+            "any",
+            "self"
+          ],
+          "description": "any: applies to all instances of that scope world-wide. self: applies only to instances belonging to the player who triggered the power (triggeredByUserId)."
+        },
+        "filter": {
+          "type": "object",
+          "description": "Optional predicate map that narrows which targets within a scope are affected. Predicates are skipped when targetContext is absent at resolution time.",
+          "properties": {
+            "archetype": {
+              "type": "string",
+              "description": "Exact archetype match."
+            },
+            "rarity": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "description": "Single rarity or list of rarities to match."
+            },
+            "traits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "All listed traits must be present on the target."
+            },
+            "minLevel": {
+              "type": "integer",
+              "description": "Target level must be >= this value."
+            },
+            "maxLevel": {
+              "type": "integer",
+              "description": "Target level must be <= this value."
+            }
+          }
+        }
+      }
+    },
+    "UniqueLocationPower": {
+      "type": "object",
+      "description": "A unique NFT-gated power for a location. Tick-speed powers use powerType; all other powers must provide effectDefId.",
+      "properties": {
+        "powerType": {
+          "type": "string",
+          "enum": [
+            "tick_boost",
+            "tick_speed_boost"
+          ],
+          "description": "Used only for tick speed boost powers. Omit for all other power types."
+        },
+        "effectDefId": {
+          "type": "string",
+          "description": "Required for non-tick powers. References an EffectDef row."
+        },
+        "effectOverrides": {
+          "$ref": "#/definitions/EffectDefOverrides"
+        },
+        "value": {
+          "type": "number",
+          "description": "Boost magnitude (e.g. 10 for 10%)."
+        },
+        "durationMinutes": {
+          "type": "number",
+          "description": "How long the global power stays active."
+        },
+        "dailyLimit": {
+          "type": "integer",
+          "description": "Max triggers per UTC day. Defaults to 1."
+        }
+      },
+      "required": [
+        "value",
+        "durationMinutes",
+        "dailyLimit"
+      ]
+    },
+    "ConsumableEffectSpec": {
+      "type": "object",
+      "description": "Spec for a single effect emitted by a consumable item.",
+      "required": [
+        "effectDefId",
+        "targetType"
+      ],
+      "properties": {
+        "effectDefId": {
+          "type": "string",
+          "description": "References an EffectDef row."
+        },
+        "targetType": {
+          "type": "string",
+          "enum": [
+            "self_user",
+            "self_entity",
+            "target_entity",
+            "target_location"
+          ],
+          "description": "Which target the effect applies to."
+        },
+        "effectOverrides": {
+          "$ref": "#/definitions/EffectDefOverrides",
+          "description": "Optional overrides merged on top of the EffectDef defaults at apply time."
+        }
       }
     }
   },
@@ -176,7 +680,12 @@
   "files": {
     "synergy-rules.json": {
       "description": "Seed file for SynergyRule records. Loaded by definitions.seed.ts and upserted with upsertManyForce on every boot.",
-      "schema": { "type": "array", "items": { "$ref": "#/definitions/SynergyRule" } }
+      "schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/SynergyRule"
+        }
+      }
     }
   }
 }

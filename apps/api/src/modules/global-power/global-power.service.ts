@@ -1,40 +1,19 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
-import { EffectCategory, EffectValueMode } from '@derp/shared';
+import { EffectDefOverrides, EffectSelection, EffectValueMode } from '@derp/shared';
 import { getCurrentTick } from '@derp/math';
 
-export const POWER_TYPE_TO_CATEGORY: Record<string, EffectCategory> = {
-  keeper_xp_boost: EffectCategory.KEEPER_XP_MULTIPLIER,
-  entity_xp_boost: EffectCategory.XP_MULTIPLIER,
-  mission_power_boost: EffectCategory.MISSION_POWER,
-  mission_duration_reduction: EffectCategory.MISSION_TIMER_SPEED,
-  crafting_duration_reduction: EffectCategory.CRAFTING_TIMER_SPEED,
-  building_build_duration_reduction: EffectCategory.BUILDING_BUILD_TIMER_SPEED,
-  building_upgrade_duration_reduction: EffectCategory.BUILDING_UPGRADE_TIMER_SPEED,
-  injury_recovery_boost: EffectCategory.INJURY_RECOVERY_SPEED,
-};
-
 // tick_speed_boost acts directly on the BoostEvent / TickRateInterval system
-// rather than the effect resolver, so it lives outside POWER_TYPE_TO_CATEGORY.
+// rather than the effect resolver, so it is identified by effectDefId = null.
 export const TICK_SPEED_BOOST_TYPE = 'tick_speed_boost';
-
-export const VALID_POWER_TYPES = [
-  ...Object.keys(POWER_TYPE_TO_CATEGORY),
-  TICK_SPEED_BOOST_TYPE,
-];
-
-export const VALID_VALUE_MODES = [
-  EffectValueMode.FLAT_ADD,
-  EffectValueMode.PERCENT_ADD,
-  EffectValueMode.MULTIPLIER,
-];
 
 export interface CreateGlobalPowerDto {
   label: string;
-  powerType: string;
-  value: number;
-  valueMode?: string;
+  /** null → tick_speed_boost power (uses BoostEvent, not effect resolver). */
+  effectDefId: string | null;
+  effectOverrides?: EffectDefOverrides & { valueMode?: string };
+  selection?: EffectSelection;
   durationMinutes: number;
   scheduledFor?: Date | string;
   triggeredByUserId?: string;
@@ -43,9 +22,9 @@ export interface CreateGlobalPowerDto {
 export interface GlobalActivePowerRecord {
   id: string;
   label: string;
-  powerType: string;
-  value: number;
-  valueMode: string;
+  effectDefId: string | null;
+  effectOverrides: Record<string, any> | null;
+  selection: Record<string, any> | null;
   durationMinutes: number;
   scheduledFor: Date | null;
   startTime: Date;
@@ -59,7 +38,9 @@ export interface GlobalActivePowerRecord {
 type SerializedPower = {
   id: string;
   label: string;
-  powerType: string;
+  effectDefId: string | null;
+  effectDefName: string | null;
+  effectCategory: string | null;
   value: number;
   valueMode: string;
   durationMinutes: number;
@@ -68,9 +49,10 @@ type SerializedPower = {
   endTime: string;
   status: string;
   triggeredByUserId?: string;
+  selection: Record<string, any> | null;
 };
 
-/** Convert global power value+valueMode into BoostEvent multiplier / percentBoost pair. */
+/** Convert tick_speed_boost value+valueMode (stored in effectOverrides) to BoostEvent params. */
 function toBoostParams(value: number, valueMode: string): { multiplier: number; percentBoost: number } {
   if (valueMode === EffectValueMode.MULTIPLIER) {
     return { multiplier: value, percentBoost: (value - 1) * 100 };
@@ -98,50 +80,76 @@ export class GlobalPowerService {
 
   /** Returns active + scheduled powers. Used by the admin panel default view. */
   async getActiveAndScheduledPowers(): Promise<GlobalActivePowerRecord[]> {
-    return this.prisma.globalActivePower.findMany({
+    const powers = await this.prisma.globalActivePower.findMany({
       where: { status: { in: ['active', 'scheduled'] } },
       orderBy: { startTime: 'asc' },
-    }) as Promise<GlobalActivePowerRecord[]>;
+      include: { effectDef: true },
+    }) as any[];
+    return powers.map((p) => this.attachDefToRecord(p));
   }
 
   async getAllPowers(): Promise<GlobalActivePowerRecord[]> {
-    return this.prisma.globalActivePower.findMany({
+    const powers = await this.prisma.globalActivePower.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
-    }) as Promise<GlobalActivePowerRecord[]>;
+      include: { effectDef: true },
+    }) as any[];
+    return powers.map((p) => this.attachDefToRecord(p));
   }
 
   /**
-   * Triggers a global power, enforcing a no-stack constraint: if a power of
-   * the same `powerType` is already active, a `BadRequestException` is thrown
-   * with a clear message. Use this for player-initiated power triggers (e.g.
-   * unique location powers) to prevent unintended stacking.
+   * Attach effectDefName/effectCategory and resolved effective value/valueMode
+   * from the joined effectDef and effectOverrides onto the serialized record.
+   * - tick_speed_boost (effectDefId=null): value+valueMode from effectOverrides
+   * - effectDef-backed: value+valueMode from effectOverrides (overrides take
+   *   precedence) falling back to null when no override is present.
+   */
+  private attachDefToRecord(p: any): GlobalActivePowerRecord & {
+    effectDefName?: string | null;
+    effectCategory?: string | null;
+    effectiveValue?: number | null;
+    effectiveValueMode?: string | null;
+  } {
+    const { effectDef, ...rest } = p;
+    const overrides = p.effectOverrides as Record<string, any> | null;
+    const effectiveValue: number | null =
+      typeof overrides?.value === 'number' ? overrides.value : null;
+    const effectiveValueMode: string | null =
+      typeof overrides?.valueMode === 'string' ? overrides.valueMode : null;
+    return {
+      ...rest,
+      effectDefName: effectDef?.name ?? null,
+      effectCategory: effectDef?.category ?? null,
+      effectiveValue,
+      effectiveValueMode,
+    };
+  }
+
+  /**
+   * Triggers a global power, enforcing a no-stack constraint per effectDefId:
+   * if a power with the same effectDefId is already active, a BadRequestException
+   * is thrown. For tick_speed_boost (effectDefId = null) the constraint is skipped
+   * since multiple tick boosts can coexist.
    */
   async triggerPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
-    const now = new Date();
-    const existing = await this.prisma.globalActivePower.findFirst({
-      where: { status: 'active', powerType: dto.powerType, endTime: { gt: now } },
-    }) as GlobalActivePowerRecord | null;
+    if (dto.effectDefId !== null) {
+      const now = new Date();
+      const existing = await this.prisma.globalActivePower.findFirst({
+        where: { status: 'active', effectDefId: dto.effectDefId, endTime: { gt: now } },
+      }) as GlobalActivePowerRecord | null;
 
-    if (existing) {
-      const remaining = Math.ceil((existing.endTime.getTime() - now.getTime()) / 60_000);
-      throw new BadRequestException(
-        `A "${dto.powerType}" power is already active. Wait for it to expire (${remaining} minute${remaining !== 1 ? 's' : ''} remaining).`,
-      );
+      if (existing) {
+        const remaining = Math.ceil((existing.endTime.getTime() - now.getTime()) / 60_000);
+        throw new BadRequestException(
+          `A power with effectDef "${dto.effectDefId}" is already active. Wait for it to expire (${remaining} minute${remaining !== 1 ? 's' : ''} remaining).`,
+        );
+      }
     }
 
     return this.createPower(dto);
   }
 
   async createPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
-    if (!VALID_POWER_TYPES.includes(dto.powerType)) {
-      throw new BadRequestException(
-        `Invalid powerType "${dto.powerType}". Valid types: ${VALID_POWER_TYPES.join(', ')}`,
-      );
-    }
-    if (typeof dto.value !== 'number' || !isFinite(dto.value)) {
-      throw new BadRequestException('value must be a finite number');
-    }
     if (typeof dto.durationMinutes !== 'number' || dto.durationMinutes <= 0) {
       throw new BadRequestException('durationMinutes must be a positive number');
     }
@@ -149,21 +157,32 @@ export class GlobalPowerService {
       throw new BadRequestException('durationMinutes must be a whole number and at most 10080 (1 week)');
     }
 
-    const valueMode = dto.valueMode ?? EffectValueMode.PERCENT_ADD;
-    if (!VALID_VALUE_MODES.includes(valueMode as EffectValueMode)) {
-      throw new BadRequestException(
-        `Invalid valueMode "${valueMode}". Valid modes: ${VALID_VALUE_MODES.join(', ')}`,
-      );
-    }
+    const isTickBoost = dto.effectDefId === null;
 
-    if (valueMode === EffectValueMode.MULTIPLIER && dto.value <= 0) {
-      throw new BadRequestException('value must be greater than 0 for multiplier mode');
-    }
-    if (valueMode === EffectValueMode.PERCENT_ADD && (dto.value < -100 || dto.value > 1000)) {
-      throw new BadRequestException('percent_add value must be between -100 and 1000');
-    }
-    if (dto.value === 0) {
-      throw new BadRequestException('value must be non-zero');
+    if (isTickBoost) {
+      // tick_speed_boost: validate value and valueMode from effectOverrides
+      const overrides = dto.effectOverrides as any;
+      const value = overrides?.value;
+      const valueMode = overrides?.valueMode ?? EffectValueMode.PERCENT_ADD;
+      if (typeof value !== 'number' || !isFinite(value)) {
+        throw new BadRequestException('effectOverrides.value must be a finite number for tick_speed_boost');
+      }
+      if (value === 0) throw new BadRequestException('effectOverrides.value must be non-zero');
+      const validModes = [EffectValueMode.FLAT_ADD, EffectValueMode.PERCENT_ADD, EffectValueMode.MULTIPLIER];
+      if (!validModes.includes(valueMode as EffectValueMode)) {
+        throw new BadRequestException(`effectOverrides.valueMode "${valueMode}" is invalid. Valid: ${validModes.join(', ')}`);
+      }
+      if (valueMode === EffectValueMode.MULTIPLIER && value <= 0) {
+        throw new BadRequestException('effectOverrides.value must be > 0 for multiplier mode');
+      }
+      if (valueMode === EffectValueMode.PERCENT_ADD && (value < -100 || value > 1000)) {
+        throw new BadRequestException('effectOverrides.value (percent_add) must be between -100 and 1000');
+      }
+    } else {
+      if (!dto.effectDefId) throw new BadRequestException('effectDefId is required');
+      // Validate effectDefId references a real EffectDef via Prisma
+      const def = await (this.prisma as any).effectDef.findFirst({ where: { id: dto.effectDefId, enabled: true } });
+      if (!def) throw new NotFoundException(`EffectDef "${dto.effectDefId}" not found or disabled`);
     }
 
     // Validate and parse scheduledFor
@@ -182,15 +201,15 @@ export class GlobalPowerService {
     const endTime = new Date(startTime.getTime() + dto.durationMinutes * 60 * 1000);
     const status = isScheduled ? 'scheduled' : 'active';
 
+    const defaultSelection: EffectSelection = { scope: 'global', agg: 'any' };
+
     const power = await this.prisma.globalActivePower.create({
       data: {
         label: dto.label,
-        powerType: dto.powerType,
-        value: dto.value,
-        valueMode,
+        effectDefId: dto.effectDefId,
+        effectOverrides: (dto.effectOverrides as any) ?? null,
+        selection: (dto.selection ?? defaultSelection) as any,
         durationMinutes: dto.durationMinutes,
-        // Only persist scheduledFor when the power is actually deferred; normalize
-        // to null when the provided date is in the past or omitted (immediate activation).
         scheduledFor: isScheduled ? scheduledFor : null,
         startTime,
         endTime,
@@ -201,24 +220,25 @@ export class GlobalPowerService {
 
     if (isScheduled) {
       this.logger.log(
-        `Global power scheduled: ${power.label} (${power.powerType} ${power.value} ${power.valueMode} for ${dto.durationMinutes}min, starts ${startTime.toISOString()})`,
+        `Global power scheduled: ${power.label} (effectDefId=${power.effectDefId ?? 'tick_speed_boost'} for ${dto.durationMinutes}min, starts ${startTime.toISOString()})`,
       );
       return power;
     }
 
     this.logger.log(
-      `Global power activated: ${power.label} (${power.powerType} ${power.value} ${power.valueMode} for ${dto.durationMinutes}min)`,
+      `Global power activated: ${power.label} (effectDefId=${power.effectDefId ?? 'tick_speed_boost'} for ${dto.durationMinutes}min)`,
     );
 
-    if (power.powerType === TICK_SPEED_BOOST_TYPE) {
+    if (isTickBoost) {
       await this.applyTickBoostForPower(power, now);
     }
 
     const active = await this.getActivePowers();
+    const activeSerialized = await Promise.all(active.map((p) => this.serializePower(p)));
     this.pubsub.publishBroadcast({
       type: 'global_power.changed',
-      active: active.map((p) => this.serializePower(p)),
-      changes: [{ event: 'started', id: power.id, powerType: power.powerType, label: power.label, durationMinutes: power.durationMinutes }],
+      active: activeSerialized,
+      changes: [{ event: 'started', id: power.id, label: power.label, durationMinutes: power.durationMinutes }],
     });
 
     return power;
@@ -244,15 +264,17 @@ export class GlobalPowerService {
 
     this.logger.log(`Global power cancelled: ${power.label} (${id})`);
 
-    if (power.status === 'active' && power.powerType === TICK_SPEED_BOOST_TYPE) {
+    const isTickBoost = power.effectDefId === null;
+    if (power.status === 'active' && isTickBoost) {
       await this.cancelTickBoostForPower(id, new Date());
     }
 
     const active = await this.getActivePowers();
+    const activeSerialized = await Promise.all(active.map((p) => this.serializePower(p)));
     this.pubsub.publishBroadcast({
       type: 'global_power.changed',
-      active: active.map((p) => this.serializePower(p)),
-      changes: [{ event: 'ended', id: updated.id, powerType: updated.powerType, label: updated.label, durationMinutes: updated.durationMinutes }],
+      active: activeSerialized,
+      changes: [{ event: 'ended', id: updated.id, label: updated.label, durationMinutes: updated.durationMinutes }],
     });
 
     return updated;
@@ -280,19 +302,19 @@ export class GlobalPowerService {
       });
 
       for (const p of toActivate) {
-        if (p.powerType === TICK_SPEED_BOOST_TYPE) {
+        if (p.effectDefId === null) {
           await this.applyTickBoostForPower({ ...p, status: 'active' }, now);
         }
       }
 
       const active = await this.getActivePowers();
+      const activeSerialized = await Promise.all(active.map((p) => this.serializePower(p)));
       this.pubsub.publishBroadcast({
         type: 'global_power.changed',
-        active: active.map((p) => this.serializePower(p)),
+        active: activeSerialized,
         changes: toActivate.map((p) => ({
           event: 'started' as const,
           id: p.id,
-          powerType: p.powerType,
           label: p.label,
           durationMinutes: p.durationMinutes,
         })),
@@ -313,19 +335,19 @@ export class GlobalPowerService {
       data: { status: 'expired' },
     });
 
-    const tickPowers = expiring.filter((p) => p.powerType === TICK_SPEED_BOOST_TYPE);
+    const tickPowers = expiring.filter((p) => p.effectDefId === null);
     if (tickPowers.length > 0) {
       await this.expireTickBoostsForPowers(tickPowers.map((p) => p.id), now);
     }
 
     const active = await this.getActivePowers();
+    const activeSerialized = await Promise.all(active.map((p) => this.serializePower(p)));
     this.pubsub.publishBroadcast({
       type: 'global_power.changed',
-      active: active.map((p) => this.serializePower(p)),
+      active: activeSerialized,
       changes: expiring.map((p) => ({
         event: 'ended' as const,
         id: p.id,
-        powerType: p.powerType,
         label: p.label,
         durationMinutes: p.durationMinutes,
       })),
@@ -335,19 +357,48 @@ export class GlobalPowerService {
     return expiring.length;
   }
 
-  serializePower(power: GlobalActivePowerRecord): SerializedPower {
+  async serializePower(power: GlobalActivePowerRecord): Promise<SerializedPower> {
+    const overrides = (power.effectOverrides ?? {}) as any;
+    const isTickBoost = power.effectDefId === null;
+
+    let effectDefName: string | null = null;
+    let effectCategory: string | null = null;
+    let value = 0;
+    let valueMode = EffectValueMode.PERCENT_ADD;
+
+    if (isTickBoost) {
+      value = overrides.value ?? 0;
+      valueMode = overrides.valueMode ?? EffectValueMode.PERCENT_ADD;
+    } else {
+      try {
+        const def = await (this.prisma as any).effectDef.findUnique({
+          where: { id: power.effectDefId },
+          select: { name: true, category: true, value: true, valueMode: true },
+        });
+        if (def) {
+          effectDefName = def.name;
+          effectCategory = def.category;
+          value = overrides.value ?? def.value ?? 0;
+          valueMode = def.valueMode;
+        }
+      } catch { /* graceful fallback */ }
+    }
+
     return {
       id: power.id,
       label: power.label,
-      powerType: power.powerType,
-      value: power.value,
-      valueMode: power.valueMode,
+      effectDefId: power.effectDefId,
+      effectDefName,
+      effectCategory,
+      value,
+      valueMode,
       durationMinutes: power.durationMinutes,
       ...(power.scheduledFor ? { scheduledFor: power.scheduledFor.toISOString() } : {}),
       startTime: power.startTime.toISOString(),
       endTime: power.endTime.toISOString(),
       status: power.status,
       ...(power.triggeredByUserId ? { triggeredByUserId: power.triggeredByUserId } : {}),
+      selection: power.selection,
     };
   }
 
@@ -370,10 +421,13 @@ export class GlobalPowerService {
 
   /**
    * Creates a BoostEvent linked to this power and recomputes the tick rate.
-   * Errors propagate to the caller so createPower can surface them cleanly.
+   * Value and valueMode are read from effectOverrides for tick_speed_boost powers.
    */
   private async applyTickBoostForPower(power: GlobalActivePowerRecord, now: Date): Promise<void> {
-    const { multiplier, percentBoost } = toBoostParams(power.value, power.valueMode);
+    const overrides = (power.effectOverrides ?? {}) as any;
+    const value = overrides.value ?? 0;
+    const valueMode = overrides.valueMode ?? EffectValueMode.PERCENT_ADD;
+    const { multiplier, percentBoost } = toBoostParams(value, valueMode);
     const boostEvent = await this.boostEvent.create({
       data: {
         name: this.boostEventName(power.id),

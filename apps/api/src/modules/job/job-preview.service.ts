@@ -9,6 +9,7 @@ import { computeEquippedStats } from '../entity/entity-stats.util';
 import {
   ANTI_WHALE_CAPS,
   EffectCategory,
+  EffectTargetContext,
   EffectTargetType,
   applyModifier,
   applyStatModifiers,
@@ -134,28 +135,26 @@ export class JobPreviewService {
 
     if (entities.length > 0) {
       const allEffects = await this.effectService.getActiveEffectsForUser(userId);
-      const globalPowerRows = await this.effectService.getGlobalPowerRows();
+      const globalPowerRows = await this.effectService.getGlobalPowerRows(userId, EffectTargetType.PLAYER);
       const playerEffects = [...allEffects, ...globalPowerRows];
 
-      const equipmentEffectsByEntity = new Map<string, any[]>();
-      for (const ent of entities) {
-        const passive = await this.effectService.getPassiveEffectsFromEquipment(
-          userId,
-          EffectTargetType.ENTITY,
-          ent.id,
-        );
-        equipmentEffectsByEntity.set(ent.id, passive);
-      }
-
-      const teamForMP: EntityForMP[] = entities.map((b: any) => {
-        const passive = equipmentEffectsByEntity.get(b.id) ?? [];
-        const entityStatMod = this.effectService.resolve(
-          [...playerEffects, ...passive] as any,
-          EffectCategory.STAT_BOOST,
+      // Per-entity STAT_BOOST: resolveForTarget handles entity active effects,
+      // player active effects, equipment passives, AND entity-scoped global
+      // powers with per-entity targetContext filtering (archetype/rarity/traits).
+      // Other categories (timer speed, etc.) keep player-scoped playerEffects.
+      const teamForMP: EntityForMP[] = await Promise.all(entities.map(async (b: any) => {
+        const entityTraits = (b.traits as any) || {};
+        const entityContext: EffectTargetContext = {
+          archetype: b.speciesId ?? b.definitionId ?? undefined,
+          rarity: entityTraits.rarity ?? undefined,
+          traits: Object.keys(entityTraits).filter((k: string) => k !== 'rarity'),
+        };
+        const entityStatMod = await this.effectService.resolveForTarget(
+          userId, EffectTargetType.ENTITY, b.id, EffectCategory.STAT_BOOST, undefined, entityContext,
         );
         const boostedStats = applyStatModifiers(b.stats as any, entityStatMod);
         return { stats: boostedStats as any, traits: b.traits as any };
-      });
+      }));
 
       let rawTeamMP = calculateTeamMP(teamForMP);
 

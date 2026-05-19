@@ -7,7 +7,7 @@ import { api } from '../../services/api';
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
 import { useGlobalPowers } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
-import { POWER_TYPE_LABELS, POWER_TYPE_ICONS, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
+import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
@@ -42,8 +42,8 @@ function GlobalPowerRow({ power }: { power: GlobalPowerSnapshot }) {
     return () => clearInterval(id);
   }, []);
 
-  const icon = POWER_TYPE_ICONS[power.powerType] ?? '🌐';
-  const typeLabel = POWER_TYPE_LABELS[power.powerType] ?? power.powerType.replace(/_/g, ' ');
+  const icon = getPowerIcon(power);
+  const typeLabel = getPowerTypeLabel(power);
   const valueLabel = formatPowerValue(power.value, power.valueMode);
   const countdown = formatCountdown(power.endTime);
 

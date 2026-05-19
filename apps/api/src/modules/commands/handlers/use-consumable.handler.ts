@@ -53,7 +53,7 @@ export class UseConsumableHandler implements CommandHandler {
       throw new BadRequestException('Item has no consumable effect configuration');
     }
 
-    const effects: Array<{ effectDefId: string; targetType?: string }> = consumableData.effects;
+    const effects: Array<{ effectDefId: string; targetType?: string; effectOverrides?: Record<string, any> }> = consumableData.effects;
     const pb = new PatchBuilder();
 
     // Pre-resolve all effect defs once so we can both (a) gate on busy
@@ -72,7 +72,9 @@ export class UseConsumableHandler implements CommandHandler {
     // the player or a location) are still allowed.
     const entityTargetedStatChange = resolvedDefs.some(({ spec, def }) => {
       const tt = (spec.targetType ?? def.targetType) as EffectTargetType;
-      return tt === EffectTargetType.ENTITY && effectWouldChangeStats(def);
+      // Pass spec.effectOverrides so override-driven stat changes (e.g. overrides.stats)
+      // are also caught by the busy-entity guard, not just base def stats.
+      return tt === EffectTargetType.ENTITY && effectWouldChangeStats(def, spec.effectOverrides ?? null);
     });
     if (entityTargetedStatChange) {
       if (!targetId) throw new BadRequestException('targetId is required for entity effects');
@@ -115,7 +117,10 @@ export class UseConsumableHandler implements CommandHandler {
       }
 
       if (def.durationModel === EffectDurationModel.INSTANT) {
-        await this.applyInstantEffect(ctx, def, resolvedTargetId, effectTargetType);
+        const mergedValue = effectSpec.effectOverrides?.value ?? def.value ?? 0;
+        const mergedStats = effectSpec.effectOverrides?.stats ?? def.stats ?? null;
+        const mergedResourceId = effectSpec.effectOverrides?.resourceId ?? (def as any).resourceId ?? null;
+        await this.applyInstantEffect(ctx, { ...def, value: mergedValue, stats: mergedStats as any, resourceId: mergedResourceId }, resolvedTargetId, effectTargetType);
       } else {
         const result = await this.effectService.applyEffect(
           {
@@ -125,6 +130,7 @@ export class UseConsumableHandler implements CommandHandler {
             targetId: resolvedTargetId,
             sourceType: EffectSourceType.CONSUMABLE,
             sourceId: item.definitionId,
+            valueOverrides: effectSpec.effectOverrides as any,
           },
           ctx.tx,
         );

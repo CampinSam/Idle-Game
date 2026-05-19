@@ -14,7 +14,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
-import { EffectCategory, EffectTargetType } from '@derp/shared';
+import { EffectCategory, EffectTargetType, EffectTargetContext } from '@derp/shared';
 import { sumEquippedStatsForEntities, StatMap } from '../entity/entity-stats.util';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -257,8 +257,11 @@ export class LocationSettlementService {
 
     let effectProductionBps = BigInt(10000);
     try {
+      const locationTargetContext: EffectTargetContext = {
+        archetype: location.definition?.id ?? undefined,
+      };
       const prodMod = await this.effectService.resolveForTarget(
-        userId, EffectTargetType.LOCATION, locationId, EffectCategory.PRODUCTION_RATE, tx,
+        userId, EffectTargetType.LOCATION, locationId, EffectCategory.PRODUCTION_RATE, tx, locationTargetContext,
       );
       const effectMultiplier = 1 + prodMod.flatAdd / 100 + prodMod.percentAdd / 100;
       effectProductionBps = BigInt(Math.round(effectMultiplier * Number(BPS_BASE) * prodMod.multiplier));

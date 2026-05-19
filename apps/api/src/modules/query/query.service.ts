@@ -17,10 +17,13 @@ const MAX_DELTA_AGE = 10000;
 export interface ActiveGlobalPowerSummary {
   id: string;
   label: string;
-  powerType: string;
+  effectDefId: string | null;
+  effectDefName: string | null;
+  effectCategory: string | null;
   value: number;
   valueMode: string;
   endTime: string;
+  selection: Record<string, any> | null;
 }
 
 export interface BootstrapResult {
@@ -471,13 +474,19 @@ export class QueryService {
               config: activeSeason.config ?? {},
             }
           : null,
-        activePowers: activePowers.map((p) => this.globalPowerService.serializePower(p)).map((p) => ({
-          id: p.id,
-          label: p.label,
-          powerType: p.powerType,
-          value: p.value,
-          valueMode: p.valueMode,
-          endTime: p.endTime,
+        activePowers: await Promise.all(activePowers.map(async (p) => {
+          const s = await this.globalPowerService.serializePower(p);
+          return {
+            id: s.id,
+            label: s.label,
+            effectDefId: s.effectDefId,
+            effectDefName: s.effectDefName,
+            effectCategory: s.effectCategory,
+            value: s.value,
+            valueMode: s.valueMode,
+            endTime: s.endTime,
+            selection: s.selection,
+          };
         })),
         entityPowerUsages,
         locationPowerUsages,

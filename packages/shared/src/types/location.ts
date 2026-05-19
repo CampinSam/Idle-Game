@@ -1,17 +1,16 @@
-export type GlobalPowerType =
-  | 'tick_boost'
-  | 'tick_speed_boost'
-  | 'keeper_xp_boost'
-  | 'entity_xp_boost'
-  | 'mission_power_boost'
-  | 'mission_duration_reduction'
-  | 'crafting_duration_reduction'
-  | 'building_build_duration_reduction'
-  | 'building_upgrade_duration_reduction'
-  | 'injury_recovery_boost';
+/**
+ * Legacy tick-only power type. Only tick_boost / tick_speed_boost remain
+ * as first-class sentinel values; all other powers must provide effectDefId.
+ */
+export type GlobalPowerType = 'tick_boost' | 'tick_speed_boost';
 
 export interface UniqueLocationPower {
-  powerType: GlobalPowerType;
+  /** Legacy: only valid for tick_boost / tick_speed_boost powers. */
+  powerType?: GlobalPowerType;
+  /** Required for non-tick powers. Points to an EffectDef row. */
+  effectDefId?: string | null;
+  /** Optional override values merged on top of the EffectDef defaults. */
+  effectOverrides?: Record<string, any>;
   value: number;
   durationMinutes: number;
   dailyLimit: number;

@@ -7,7 +7,7 @@ import type { RootState } from '../store';
 
 export type GlobalPowerChangeHandler = (
   event: 'started' | 'ended',
-  change: { id: string; powerType: string; label: string; durationMinutes: number },
+  change: { id: string; label: string; durationMinutes: number },
 ) => void;
 
 export type BoostChangeHandler = (data: {

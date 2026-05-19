@@ -98,6 +98,67 @@ export interface EffectStatMap {
   RND?: number | number[];
 }
 
+/**
+ * Safe-to-override fields on an EffectDef. Structural fields (category,
+ * valueMode, durationModel, stackingRule, targetType) are intentionally
+ * excluded — those define the mechanical identity of the effect.
+ */
+export interface EffectDefOverrides {
+  value?: number;
+  stats?: EffectStatMap;
+  durationSec?: number;
+  durationTicks?: number;
+  maxStacks?: number;
+  maxUses?: number;
+  cap?: number;
+  resourceId?: string;
+}
+
+/** Which domain the effect targets. */
+export type EffectScope = 'player' | 'entity' | 'location' | 'global';
+
+/**
+ * `any` = applies to all instances of that scope world-wide.
+ * `self` = applies only to instances belonging to the player who triggered
+ * the power (identified by triggeredByUserId on GlobalActivePower).
+ */
+export type EffectAgg = 'any' | 'self';
+
+/**
+ * Optional predicate map that narrows which targets within a scope are
+ * affected. When filter predicates are present but targetContext is absent
+ * at resolution time, the effect is treated as applicable (safe default).
+ */
+export interface EffectSelectionFilter {
+  archetype?: string;
+  rarity?: string | string[];
+  traits?: string[];
+  minLevel?: number;
+  maxLevel?: number;
+}
+
+/**
+ * Describes exactly who a global power effect applies to. Stored as JSON on
+ * GlobalActivePower. Evaluated by matchesSelection() in the effect resolver.
+ */
+export interface EffectSelection {
+  scope: EffectScope;
+  agg: EffectAgg;
+  filter?: EffectSelectionFilter;
+}
+
+/**
+ * Optional context bag passed to resolveForTarget so the resolver can
+ * evaluate EffectSelection filter predicates against the actual target.
+ * Derived at call time from live entity/player data — never persisted.
+ */
+export interface EffectTargetContext {
+  level?: number;
+  archetype?: string;
+  rarity?: string;
+  traits?: string[];
+}
+
 export interface EffectDefData {
   category: EffectCategory;
   valueMode: EffectValueMode;
@@ -153,6 +214,8 @@ export interface ResolvedModifier {
 export interface ConsumableEffectSpec {
   effectDefId: string;
   targetType: EffectTargetType;
+  /** Optional overrides applied on top of the EffectDef at use-time. */
+  effectOverrides?: EffectDefOverrides;
 }
 
 export interface ConsumableData {

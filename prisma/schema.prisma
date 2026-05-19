@@ -1316,6 +1316,7 @@ model EffectDef {
   updatedAt       DateTime @updatedAt
 
   activeEffects   ActiveEffect[]
+  globalPowers    GlobalActivePower[] @relation("GlobalActivePowerEffectDef")
 
   @@index([category])
   @@index([targetType])
@@ -1519,15 +1520,15 @@ model SystemIconDef {
 model GlobalActivePower {
   id              String    @id @default(uuid())
   label           String
-  // Semantic type. Effect-resolver types map to an EffectCategory; tick_speed_boost
-  // acts directly on BoostEvent / TickRateInterval instead.
-  // Valid values: keeper_xp_boost | entity_xp_boost | mission_power_boost |
-  //   mission_duration_reduction | crafting_duration_reduction |
-  //   building_build_duration_reduction | building_upgrade_duration_reduction |
-  //   injury_recovery_boost | tick_speed_boost
-  powerType       String
-  value           Float
-  valueMode       String    @default("percent_add")
+  // Effect-def based powers reference an EffectDef and carry optional overrides.
+  // tick_speed_boost powers have effectDefId = null and store value+valueMode in
+  // effectOverrides so the BoostEvent machinery can read them.
+  effectDefId     String?
+  effectDef       EffectDef? @relation("GlobalActivePowerEffectDef", fields: [effectDefId], references: [id])
+  effectOverrides Json?
+  // EffectSelection JSON: { scope, agg, filter? } — describes which targets the
+  // effect applies to. Evaluated by matchesSelection() in the effect resolver.
+  selection       Json?
   durationMinutes Int
   scheduledFor    DateTime?
   startTime       DateTime  @default(now())

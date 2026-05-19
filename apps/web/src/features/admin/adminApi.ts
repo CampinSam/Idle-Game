@@ -179,20 +179,20 @@ export const adminApi = {
       { method: 'POST' },
     ),
 
-  getGlobalPowerTypes: () => adminRequest<{ types: string[] }>('/global-powers/types'),
   getGlobalPowers: (all?: boolean) =>
     adminRequest<any[]>(`/global-powers${all ? '?all=true' : ''}`),
   createGlobalPower: (data: {
     label: string;
-    powerType: string;
-    value: number;
-    valueMode?: string;
+    effectDefId: string | null;
+    effectOverrides?: Record<string, any>;
+    selection?: Record<string, any>;
     durationMinutes: number;
     scheduledFor?: string;
     triggeredByUserId?: string;
   }) => adminRequest<any>('/global-powers', { method: 'POST', body: JSON.stringify(data) }),
   cancelGlobalPower: (id: string) =>
     adminRequest<any>(`/global-powers/${id}`, { method: 'DELETE' }),
+  getEffectDefs: () => adminRequest<any[]>('/effect-defs'),
 
   listNftCollections: () =>
     nftAdminRequest<any[]>('/nft/collections'),

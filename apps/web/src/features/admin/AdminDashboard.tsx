@@ -481,18 +481,6 @@ function ToolsPanel() {
   );
 }
 
-const POWER_TYPE_LABELS: Record<string, string> = {
-  tick_speed_boost: 'Global Tick Boost',
-  keeper_xp_boost: 'Keeper XP Boost',
-  entity_xp_boost: 'Entity XP Boost',
-  mission_power_boost: 'Mission Power Boost',
-  mission_duration_reduction: 'Mission Speed',
-  crafting_duration_reduction: 'Crafting Speed',
-  building_build_duration_reduction: 'Build Speed',
-  building_upgrade_duration_reduction: 'Upgrade Speed',
-  injury_recovery_boost: 'Injury Recovery',
-};
-
 const DURATION_PRESETS: { label: string; minutes: number }[] = [
   { label: '30m', minutes: 30 },
   { label: '1h', minutes: 60 },
@@ -501,25 +489,38 @@ const DURATION_PRESETS: { label: string; minutes: number }[] = [
   { label: '24h', minutes: 1440 },
 ];
 
+const TICK_SPEED_BOOST_SENTINEL = '__tick_speed_boost__';
+
 function GlobalPowerPanel() {
   const [powers, setPowers] = useState<any[]>([]);
+  const [effectDefs, setEffectDefs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [form, setForm] = useState({
     label: '',
-    powerType: 'entity_xp_boost',
+    effectDefId: '',
     value: '50',
     valueMode: 'percent_add',
     durationMinutes: '60',
     scheduledFor: '',
+    scope: 'global',
+    agg: 'any',
+    filterArchetype: '',
+    filterRarity: '',
+    filterMinLevel: '',
+    filterMaxLevel: '',
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const p = await adminApi.getGlobalPowers(showAll);
+      const [p, defs] = await Promise.all([
+        adminApi.getGlobalPowers(showAll),
+        adminApi.getEffectDefs(),
+      ]);
       setPowers(p);
+      setEffectDefs(defs);
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally {
@@ -529,20 +530,43 @@ function GlobalPowerPanel() {
 
   useEffect(() => { load(); }, [load]);
 
+  const isTickSpeed = form.effectDefId === TICK_SPEED_BOOST_SENTINEL;
+
   const create = async () => {
     setMsg(null);
     try {
+      const effectDefId = isTickSpeed ? null : (form.effectDefId || null);
+      // For tick-speed-boost, valueMode is part of the mechanics (percent_add/flat_add/multiplier).
+      // For effectDef-backed powers, valueMode is defined by the EffectDef and must not be
+      // overridden via effectOverrides (EffectDefOverrides intentionally excludes valueMode).
+      const effectOverrides = isTickSpeed
+        ? { value: Number(form.value), valueMode: form.valueMode }
+        : form.value.trim()
+          ? { value: Number(form.value) }
+          : undefined;
+
+      const selectionFilter: Record<string, any> = {};
+      if (form.filterArchetype.trim()) selectionFilter.archetype = form.filterArchetype.trim();
+      if (form.filterRarity.trim()) selectionFilter.rarity = form.filterRarity.trim();
+      if (form.filterMinLevel.trim()) selectionFilter.minLevel = Number(form.filterMinLevel);
+      if (form.filterMaxLevel.trim()) selectionFilter.maxLevel = Number(form.filterMaxLevel);
+      const selection = {
+        scope: form.scope,
+        agg: form.agg,
+        ...(Object.keys(selectionFilter).length > 0 ? { filter: selectionFilter } : {}),
+      };
+
       await adminApi.createGlobalPower({
         label: form.label || 'Admin Power',
-        powerType: form.powerType,
-        value: Number(form.value),
-        valueMode: form.valueMode,
+        effectDefId,
+        effectOverrides,
+        selection,
         durationMinutes: Number(form.durationMinutes),
         ...(form.scheduledFor ? { scheduledFor: new Date(form.scheduledFor).toISOString() } : {}),
       });
       const isScheduled = !!form.scheduledFor && new Date(form.scheduledFor) > new Date();
       setMsg({ text: isScheduled ? 'Global power scheduled!' : 'Global power activated!', type: 'success' });
-      setForm({ label: '', powerType: 'entity_xp_boost', value: '50', valueMode: 'percent_add', durationMinutes: '60', scheduledFor: '' });
+      setForm({ label: '', effectDefId: '', value: '50', valueMode: 'percent_add', durationMinutes: '60', scheduledFor: '', scope: 'global', agg: 'any', filterArchetype: '', filterRarity: '', filterMinLevel: '', filterMaxLevel: '' });
       await load();
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -593,6 +617,8 @@ function GlobalPowerPanel() {
     fontWeight: active ? 600 : 400,
   });
 
+  const selectedDef = effectDefs.find((d) => d.id === form.effectDefId);
+
   return (
     <div>
       <h2 style={{ margin: '0 0 1rem', fontSize: '1.3rem' }}>Global Active Powers</h2>
@@ -605,25 +631,49 @@ function GlobalPowerPanel() {
             <input type="text" placeholder="Power label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
           </div>
           <div className="form-field">
-            <label>Power Type</label>
-            <select value={form.powerType} onChange={(e) => setForm({ ...form, powerType: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
-              {Object.entries(POWER_TYPE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+            <label>Effect Definition</label>
+            <select
+              value={form.effectDefId}
+              onChange={(e) => setForm({ ...form, effectDefId: e.target.value })}
+              style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}
+            >
+              <option value="">— pick an effect def —</option>
+              <option value={TICK_SPEED_BOOST_SENTINEL}>⚡ Global Tick Speed Boost</option>
+              {effectDefs.map((d) => (
+                <option key={d.id} value={d.id}>{d.name} ({d.category})</option>
               ))}
             </select>
+            {selectedDef && (
+              <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.25rem' }}>
+                Default: {selectedDef.value ?? '—'} · {selectedDef.valueMode ?? '—'} · {selectedDef.durationModel}
+              </div>
+            )}
           </div>
           <div className="form-field">
-            <label>Value</label>
+            <label>
+              {isTickSpeed ? 'Boost Value' : 'Value Override'}
+              {!isTickSpeed && <span style={{ color: '#888', fontWeight: 400 }}> (leave blank to use def default)</span>}
+            </label>
             <input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
           </div>
-          <div className="form-field">
-            <label>Value Mode</label>
-            <select value={form.valueMode} onChange={(e) => setForm({ ...form, valueMode: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
-              <option value="percent_add">% Add (e.g. +50%)</option>
-              <option value="flat_add">Flat Add</option>
-              <option value="multiplier">Multiplier (e.g. ×1.5)</option>
-            </select>
-          </div>
+          {isTickSpeed && (
+            <div className="form-field">
+              <label>Value Mode</label>
+              <select value={form.valueMode} onChange={(e) => setForm({ ...form, valueMode: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
+                <option value="percent_add">% Add (e.g. +50%)</option>
+                <option value="flat_add">Flat Add</option>
+                <option value="multiplier">Multiplier (e.g. ×1.5)</option>
+              </select>
+            </div>
+          )}
+          {!isTickSpeed && form.effectDefId && (
+            <div className="form-field">
+              <label style={{ color: '#888' }}>Value Mode</label>
+              <div style={{ fontSize: '0.8rem', color: '#666', padding: '0.5rem', border: '1px solid #2a2a4e', borderRadius: 6 }}>
+                Defined by EffectDef · not overridable
+              </div>
+            </div>
+          )}
           <div className="form-field" style={{ gridColumn: 'span 2' }}>
             <label>Duration</label>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
@@ -645,6 +695,38 @@ function GlobalPowerPanel() {
               value={form.durationMinutes}
               onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
             />
+          </div>
+          <div className="form-field">
+            <label>Scope</label>
+            <select value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
+              <option value="global">global — all targets</option>
+              <option value="player">player — player-level only</option>
+              <option value="entity">entity — entity-level only</option>
+              <option value="location">location — location-level only</option>
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Aggregation</label>
+            <select value={form.agg} onChange={(e) => setForm({ ...form, agg: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
+              <option value="any">any — all instances world-wide</option>
+              <option value="self">self — only activating player's targets</option>
+            </select>
+          </div>
+          <div className="form-field">
+            <label>Filter: Archetype <span style={{ color: '#888', fontWeight: 400 }}>(optional)</span></label>
+            <input type="text" placeholder="e.g. derp_bird" value={form.filterArchetype} onChange={(e) => setForm({ ...form, filterArchetype: e.target.value })} />
+          </div>
+          <div className="form-field">
+            <label>Filter: Rarity <span style={{ color: '#888', fontWeight: 400 }}>(optional)</span></label>
+            <input type="text" placeholder="e.g. legendary" value={form.filterRarity} onChange={(e) => setForm({ ...form, filterRarity: e.target.value })} />
+          </div>
+          <div className="form-field">
+            <label>Filter: Min Level <span style={{ color: '#888', fontWeight: 400 }}>(optional)</span></label>
+            <input type="number" min="1" placeholder="e.g. 5" value={form.filterMinLevel} onChange={(e) => setForm({ ...form, filterMinLevel: e.target.value })} />
+          </div>
+          <div className="form-field">
+            <label>Filter: Max Level <span style={{ color: '#888', fontWeight: 400 }}>(optional)</span></label>
+            <input type="number" min="1" placeholder="e.g. 20" value={form.filterMaxLevel} onChange={(e) => setForm({ ...form, filterMaxLevel: e.target.value })} />
           </div>
           <div className="form-field">
             <label>Start At <span style={{ color: '#888', fontWeight: 400 }}>(optional — leave blank to start now)</span></label>
@@ -680,7 +762,7 @@ function GlobalPowerPanel() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Type</th>
+                <th>Effect</th>
                 <th>Value</th>
                 <th>Starts</th>
                 <th>Expires</th>
@@ -692,11 +774,17 @@ function GlobalPowerPanel() {
               {powers.map((p) => {
                 const isActive = p.status === 'active';
                 const isScheduled = p.status === 'scheduled';
-                const valueFmt = p.valueMode === 'percent_add' ? `+${p.value}%` : p.valueMode === 'multiplier' ? `×${p.value}` : `+${p.value}`;
+                const ov = p.effectOverrides ?? {};
+                const val = ov.value ?? p.value ?? '—';
+                const vm = ov.valueMode ?? p.valueMode ?? '';
+                const valueFmt = vm === 'percent_add' ? `+${val}%` : vm === 'multiplier' ? `×${val}` : `+${val}`;
+                const effectLabel = p.effectDefId === null
+                  ? '⚡ Tick Speed Boost'
+                  : (p.effectDefName ?? p.effectDefId ?? '—');
                 return (
                   <tr key={p.id}>
                     <td>{p.label}</td>
-                    <td style={{ fontSize: '0.8rem' }}>{POWER_TYPE_LABELS[p.powerType] ?? p.powerType}</td>
+                    <td style={{ fontSize: '0.8rem' }}>{effectLabel}</td>
                     <td style={{ fontWeight: 600, color: isActive ? '#4caf50' : isScheduled ? '#60a5fa' : '#888' }}>{valueFmt}</td>
                     <td style={{ fontSize: '0.8rem' }}>
                       {new Date(p.startTime).toLocaleString()}

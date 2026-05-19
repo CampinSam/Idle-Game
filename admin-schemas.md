@@ -742,3 +742,66 @@ In pick-mode bundles `odds` values are **relative weights**, not percentages. To
 ```
 
 The picker draws one entry. `nothing` wins ~98% of the time and produces no reward.
+
+---
+
+## Global Active Powers — `/admin/global-powers`
+
+### `GET /admin/global-powers`
+
+Returns active + scheduled powers (by default). Pass `?all=true` to include the full history.
+
+**Response array items:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | UUID |
+| `label` | string | Human-readable label shown in UI |
+| `effectDefId` | string \| null | ID of the linked EffectDef. `null` = tick_speed_boost (handled via BoostEvent, no effect resolver) |
+| `effectDefName` | string \| null | Resolved display name of the EffectDef |
+| `effectCategory` | string \| null | Category of the linked EffectDef (e.g. `xp_multiplier`, `mission_power`) |
+| `effectOverrides` | object \| null | Optional field overrides that shadow the EffectDef defaults (e.g. `{ value, valueMode }`) |
+| `selection` | object \| null | `EffectSelection` restricting which targets the power applies to |
+| `value` | number | Effective value (from effectOverrides or EffectDef) |
+| `valueMode` | string | `percent_add` \| `flat_add` \| `multiplier` |
+| `startTime` | ISO string | When the power activated (or will activate if scheduled) |
+| `endTime` | ISO string | When the power expires |
+| `status` | string | `active` \| `scheduled` \| `expired` \| `cancelled` |
+| `durationMinutes` | number | Total duration |
+| `triggeredByUserId` | string \| null | User that triggered the power, if any |
+
+---
+
+### `POST /admin/global-powers`
+
+**Auth:** Admin
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `label` | string | ✓ | Display label |
+| `effectDefId` | string \| null | ✓ | EffectDef ID. `null` = tick_speed_boost (legacy BoostEvent). Use `GET /admin/effect-defs` to list available defs |
+| `effectOverrides` | object | — | Override fields on the EffectDef (e.g. `{ "value": 50, "valueMode": "percent_add" }`) |
+| `selection` | object | — | `EffectSelection` for targeted global powers (scope/agg/filter) |
+| `durationMinutes` | number | ✓ | Duration in minutes |
+| `scheduledFor` | ISO string | — | If future, schedules the power instead of activating immediately |
+| `triggeredByUserId` | string | — | User to credit for the trigger |
+
+**Response:** Serialized `GlobalActivePower` record.
+
+---
+
+### `DELETE /admin/global-powers/:id`
+
+Cancels an active or scheduled global power.
+
+---
+
+## Effect Defs — `/admin/effect-defs`
+
+### `GET /admin/effect-defs`
+
+Returns all enabled `EffectDef` rows. Used by the admin UI to populate the Effect Definition dropdown when creating Global Active Powers.
+
+**Response array items:** `id`, `name`, `category`, `valueMode`, `value`, `durationModel`, `targetType`, `description`.

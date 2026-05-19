@@ -3,8 +3,8 @@ import { useGlobalPowers } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
 import { Card, SectionHeader } from '../../components/ui';
 import {
-  POWER_TYPE_LABELS,
-  POWER_TYPE_ICONS,
+  getPowerTypeLabel,
+  getPowerIcon,
   formatPowerValue,
   formatCountdown,
 } from '../../utils/globalPowerUtils';
@@ -16,8 +16,8 @@ function BuffRow({ power }: { power: GlobalPowerSnapshot }) {
     return () => clearInterval(id);
   }, []);
 
-  const icon = POWER_TYPE_ICONS[power.powerType] ?? '🌐';
-  const typeLabel = POWER_TYPE_LABELS[power.powerType] ?? power.powerType.replace(/_/g, ' ');
+  const icon = getPowerIcon(power);
+  const typeLabel = getPowerTypeLabel(power);
   const valueLabel = formatPowerValue(power.value, power.valueMode);
   const countdown = formatCountdown(power.endTime);
 

@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { normalizeOutcomeFieldsForModel } from '../modules/game-rules/outcome-spec.util';
-import type { GlobalPowerType, UniqueLocationEntry } from '@derp/shared';
+import type { UniqueLocationEntry } from '@derp/shared';
 
 const logger = new Logger('DefinitionsSeed');
 
@@ -295,34 +295,20 @@ export async function seedDefinitions(prisma: any) {
   logger.log('Definition seeding complete');
 }
 
-/**
- * The ordered list of GlobalPowerType values used for deterministic power
- * assignment. `tick_boost` is intentionally excluded — it is a legacy alias
- * remapped to `tick_speed_boost` at trigger time and should not appear in new
- * seed data.
- */
-const NFT_POWER_TYPES = [
-  'tick_speed_boost',
-  'keeper_xp_boost',
-  'entity_xp_boost',
-  'mission_power_boost',
-  'mission_duration_reduction',
-  'crafting_duration_reduction',
-  'building_build_duration_reduction',
-  'building_upgrade_duration_reduction',
-  'injury_recovery_boost',
-] as const;
-
 const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
 
+/**
+ * Build a uniques map for NFT asset IDs. All seeded powers use tick_speed_boost
+ * (effectDefId=null) for simplicity. Non-tick powers should be configured
+ * manually via the admin panel with a proper effectDefId.
+ */
 function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry> {
   const uniques: Record<string, UniqueLocationEntry> = {};
   for (let i = 0; i < assetIds.length; i++) {
     const id = assetIds[i];
-    const powerType: GlobalPowerType = NFT_POWER_TYPES[i % NFT_POWER_TYPES.length];
     const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
     uniques[id] = {
-      powers: [{ powerType, value, durationMinutes: 60, dailyLimit: 1 }],
+      powers: [{ powerType: 'tick_speed_boost', value, durationMinutes: 60, dailyLimit: 1 }],
     };
   }
   return uniques;

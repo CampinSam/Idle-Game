@@ -59,7 +59,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     }
 
     const powers: any[] = uniqueEntry.powers || [];
-    const power = powers.find((p: any) => p.powerType === powerKey);
+    const power = powers.find((p: any) => p.powerType === powerKey || p.effectDefId === powerKey);
 
     if (!power) {
       throw new BadRequestException(`Power "${powerKey}" not found for this entity`);
@@ -88,17 +88,22 @@ export class TriggerEntityPowerHandler implements CommandHandler {
 
     const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
 
-    // Remap legacy tick_boost powerType to the canonical tick_speed_boost global power type.
-    const resolvedPowerType = power.powerType === 'tick_boost' ? 'tick_speed_boost' : power.powerType;
+    const isTickBoost = power.powerType === 'tick_boost' || power.powerType === 'tick_speed_boost';
     const percentBoost = typeof power.value === 'number' ? power.value : 50;
 
+    if (!isTickBoost && !power.effectDefId) {
+      throw new BadRequestException(`Power "${powerKey}" has no effectDefId defined. Non-tick powers must provide effectDefId.`);
+    }
+
     await this.globalPowerService.triggerPower({
-      label: power.powerType === 'tick_boost'
+      label: isTickBoost
         ? `${entityName} — Global Tick Boost`
         : `${entityName} — ${powerKey}`,
-      powerType: resolvedPowerType,
-      value: power.powerType === 'tick_boost' ? percentBoost : power.value,
-      valueMode: power.powerType === 'tick_boost' ? 'percent_add' : undefined,
+      effectDefId: isTickBoost ? null : (power.effectDefId ?? null),
+      effectOverrides: isTickBoost
+        ? { value: percentBoost, valueMode: 'percent_add' }
+        : power.effectOverrides,
+      selection: power.selection ?? undefined,
       durationMinutes: power.durationMinutes,
       triggeredByUserId: ctx.userId,
     });
