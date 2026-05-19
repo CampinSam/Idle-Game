@@ -594,17 +594,16 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
           </div>
         )}
 
-        {rule.label && (
-          <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
-            <span style={labelStyle}>label</span>
-            <input
-              type="text"
-              value={rule.label}
-              onChange={e => set('label', e.target.value || undefined)}
-              style={{ ...inputStyle, width: '100%' }}
-            />
-          </div>
-        )}
+        <div style={{ ...fieldGroupStyle, flex: 1, minWidth: 80 }}>
+          <span style={labelStyle}>label (optional)</span>
+          <input
+            type="text"
+            value={rule.label ?? ''}
+            onChange={e => set('label', e.target.value || undefined)}
+            placeholder="Shown to players as the requirement description"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
 
         <button
           type="button"
