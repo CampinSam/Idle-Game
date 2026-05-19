@@ -3,7 +3,6 @@ import { getDifficultyDisplay } from '@derp/shared';
 import { Badge } from '../../../components/ui';
 import { EntityCard, EntityList } from '../../entities/components';
 import { buildCollectionOptions, SORT_OPTIONS } from '../../entities/entityListUtils';
-import { SynergyPanel } from './SynergyPanel';
 import {
   bgImageCss,
   displayCssVars,
@@ -15,7 +14,6 @@ import {
   resolveDisplay,
 } from './missionUtils';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
-import type { SynergyPreview } from '../../../services/api';
 import { useJobPreview } from '../../jobs/useJobPreview';
 
 interface MissionDetailProps {
@@ -34,8 +32,6 @@ interface MissionDetailProps {
   onBack: () => void;
   onStart: () => void;
   entityPickerRef: React.RefObject<HTMLDivElement>;
-  synergyPreview?: SynergyPreview | null;
-  onDismissSynergy?: () => void;
 }
 
 
@@ -56,8 +52,6 @@ export function MissionDetail(props: MissionDetailProps) {
     onBack,
     onStart,
     entityPickerRef,
-    synergyPreview,
-    onDismissSynergy,
   } = props;
 
   const { preview, loading: previewLoading } = useJobPreview({
@@ -159,10 +153,6 @@ export function MissionDetail(props: MissionDetailProps) {
           ...heroCss.vars,
         } as React.CSSProperties}
       >
-        {synergyPreview && onDismissSynergy && (
-          <SynergyPanel synergyPreview={synergyPreview} onDismiss={onDismissSynergy} />
-        )}
-
         {/* Single scrollable area — hero scrolls freely, stats row sticks */}
         <div className="flex-1 min-h-0 overflow-y-auto">
 
