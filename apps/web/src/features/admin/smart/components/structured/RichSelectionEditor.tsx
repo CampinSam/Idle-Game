@@ -158,6 +158,8 @@ const OP_COLOR: Record<string, string> = {
   NOT: '#ef4444',
 };
 
+const WHERE_ELIGIBLE_SCOPES = new Set<ScopeType>(['team', 'entity', 'team_member']);
+
 function defaultRule(): RichSelectionRule {
   return { scope: 'player', field: 'keeperLevel', operator: 'gte', value: 1 };
 }
@@ -401,6 +403,8 @@ interface RuleEditorProps {
 function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast }: RuleEditorProps) {
   const needsValue = rule.operator !== 'exists' && rule.operator !== 'not_exists';
   const showAggregate = !SINGLE_VALUE_SCOPES.has(rule.scope);
+  const showWhere = WHERE_ELIGIBLE_SCOPES.has(rule.scope);
+  const [whereOpen, setWhereOpen] = useState(!!rule.where);
 
   const aggOptions = showAggregate ? allowedAggregates(rule.scope, rule.field) : [];
   const opOptions = allowedOperators(rule.scope, rule.field);
@@ -635,6 +639,71 @@ function RuleEditor({ rule, onChange, onRemove, onMoveUp, onMoveDown, isFirst, i
         >
           ×
         </button>
+
+        {showWhere && (
+          <div style={{ flexBasis: '100%', marginTop: 4 }}>
+            {rule.where ? (
+              <div style={{
+                border: '1px solid #f59e0b30',
+                borderRadius: 4,
+                padding: '6px 8px',
+                background: '#0f0a00',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: whereOpen ? 8 : 0 }}>
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    color: '#f59e0b',
+                    background: '#2a1c00',
+                    padding: '2px 6px',
+                    borderRadius: 3,
+                    border: '1px solid #f59e0b30',
+                    flexShrink: 0,
+                  }}>
+                    WHERE
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setWhereOpen(o => !o)}
+                    style={{ ...reorderBtnBase, fontSize: 9, color: '#aaa', borderColor: '#444' }}
+                    title={whereOpen ? 'Collapse where filter' : 'Expand where filter'}
+                  >
+                    {whereOpen ? '▼' : '▶'}
+                  </button>
+                  <span style={{ fontSize: 10, color: '#555', fontStyle: 'italic' }}>
+                    pre-filters entities before this rule applies
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  <button
+                    type="button"
+                    onClick={() => set('where', undefined)}
+                    style={dangerIconButtonStyle}
+                    title="Remove where filter"
+                  >
+                    ×
+                  </button>
+                </div>
+                {whereOpen && (
+                  <GroupEditor
+                    node={rule.where}
+                    onChange={w => set('where', w)}
+                    depth={1}
+                  />
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { set('where', defaultGroup()); setWhereOpen(true); }}
+                style={{ ...addButtonStyle, borderColor: '#f59e0b50', color: '#ca8a04' }}
+                title="Add a sub-filter that restricts which entities are evaluated before this rule applies"
+              >
+                + where filter
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
