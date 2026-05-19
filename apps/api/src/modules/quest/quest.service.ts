@@ -5,6 +5,7 @@ import { TelemetryService, TelemetrySubscriber, TelemetryEvent } from '../teleme
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
 import { getWindowStart } from '../../common/util/cadence';
 
 // A QuestDef.cadence value of 'daily' or 'weekly' means the quest auto-resets
@@ -64,6 +65,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
+    private selectionResolver: SelectionResolverService,
   ) {}
 
   onModuleInit() {
@@ -108,6 +110,21 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
         if (obj.eventType !== event.eventType) continue;
         if (obj.key != null && obj.key !== event.key) continue;
         if (obj.dataFilter && !shallowMatch(obj.dataFilter, event.data)) continue;
+
+        // Rich selection rule check — optional contextual filter on top of the
+        // basic event-type/key/dataFilter match.
+        if (obj.selectionRule) {
+          if (event.selectionContext) {
+            const passes = this.selectionResolver.evaluateAll(obj.selectionRule, event.selectionContext);
+            if (!passes) continue;
+          } else {
+            // selectionRule set but no context provided: log a warning and
+            // treat as a pass so misconfigured emitters don't silently freeze progress.
+            this.logger.warn(
+              `Quest objective has selectionRule but event "${event.eventType}" carries no selectionContext — treating as pass (questDefId=${def.id})`,
+            );
+          }
+        }
 
         const prog = progress[i];
         const before = prog.current;

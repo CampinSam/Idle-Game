@@ -19,6 +19,7 @@ import {
   RequirementContext,
 } from '../game-rules/game-rules.service';
 import { NotificationService } from '../notification/notification.service';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
 
 // Same shallow-equality check QuestService uses to filter telemetry events
 // by the objective's `dataFilter`. Kept local rather than shared so the two
@@ -83,6 +84,7 @@ export class AchievementService implements TelemetrySubscriber, OnModuleInit {
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
+    private selectionResolver: SelectionResolverService,
   ) {}
 
   onModuleInit() {
@@ -110,6 +112,22 @@ export class AchievementService implements TelemetrySubscriber, OnModuleInit {
         if (!obj || obj.eventType !== event.eventType) continue;
         if (obj.key != null && obj.key !== event.key) continue;
         if (obj.dataFilter && !shallowMatch(obj.dataFilter, event.data || {})) continue;
+
+        // Rich selection rule check — optional contextual filter on top of the
+        // basic event-type/key/dataFilter match.
+        if (obj.selectionRule) {
+          if (event.selectionContext) {
+            const passes = this.selectionResolver.evaluateAll(obj.selectionRule, event.selectionContext);
+            if (!passes) continue;
+          } else {
+            // selectionRule set but no context provided: log a warning and
+            // treat as a pass so misconfigured emitters don't silently freeze progress.
+            this.logger.warn(
+              `Achievement objective has selectionRule but event "${event.eventType}" carries no selectionContext — treating as pass (achievementDefId=${def.id})`,
+            );
+          }
+        }
+
         idxs.push(i);
       }
       if (idxs.length > 0) matching.push({ def, objectiveIdxs: idxs });

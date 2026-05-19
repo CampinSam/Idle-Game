@@ -457,6 +457,79 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 
 ---
 
+## `selectionRule` — Rich Contextual Conditions on Quest/Achievement Objectives
+
+Quest and achievement objectives support an optional `selectionRule` field in addition to the existing `eventType`, `key`, and `dataFilter` filters. When set, the rule is evaluated against a `SelectionContext` attached in-memory to the telemetry event — progress only increments if the rule **passes**.
+
+### Objective shape
+
+```json
+{
+  "eventType": "mission_complete",
+  "key": "mission_boss_alpha",
+  "target": 3,
+  "dataFilter": { "outcome": "success" },
+  "selectionRule": {
+    "op": "AND",
+    "rules": [
+      {
+        "scope": "team",
+        "field": "traits.archetype",
+        "aggregate": "any",
+        "operator": "eq",
+        "value": "Ninja"
+      },
+      {
+        "scope": "player",
+        "field": "keeperLevel",
+        "operator": "gte",
+        "value": 5
+      }
+    ]
+  },
+  "label": "Complete the boss 3 times with a Ninja at Keeper Level 5+"
+}
+```
+
+### Objective fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `eventType` | string | ✓ | Telemetry event type that increments progress (e.g. `mission_complete`, `crafting_completed`, `checkin_completed`) |
+| `key` | string | | Narrows matches to events whose key equals this value (e.g. a specific `missionDefId`) |
+| `target` | number | ✓ | Number of qualifying events required to complete this objective |
+| `dataFilter` | object | | Shallow equality filter on the event's `data` payload — all specified keys must match |
+| `selectionRule` | `RichSelection` | | Optional — rich contextual condition tree; see below |
+| `label` | string | | Human-readable label shown in the UI |
+
+### How `selectionRule` is evaluated
+
+1. The `eventType`, `key`, and `dataFilter` checks run first. If any fail, the objective is skipped immediately (no `selectionRule` evaluation).
+2. If `selectionRule` is set and the event carries a `SelectionContext`, `SelectionResolverService.evaluateAll()` is called with the full context. Progress increments only if it returns `true`.
+3. If `selectionRule` is set but the event has **no** `SelectionContext`, a warning is logged and the check is treated as a **pass** — this prevents misconfigured emitters from silently blocking progress on existing objectives.
+4. If `selectionRule` is absent, behaviour is identical to before this feature (fully backward-compatible).
+
+### Events that carry a SelectionContext
+
+| Event type | Context includes |
+|------------|-----------------|
+| `mission_complete` | Team entities (traits, stats, level, rarity), mission metadata (missionTags, missionType, regionId, activityType), player (keeperLevel, flags) |
+| `crafting_completed` | Crafting entity (traits, stats, level, rarity), player (keeperLevel, flags) |
+| `checkin_completed` | Player only (keeperLevel, flags) — no entities |
+
+### Example use cases
+
+| Goal | Rule sketch |
+|------|------------|
+| Complete a mission with a Ninja on the team | `team.traits.archetype eq "Ninja"` with `any` aggregate |
+| Win a mission where all entities are level 5+ | `team.level gte 5` with `all` aggregate |
+| Complete 10 missions in Region A | `missionContext.regionId eq "region_a"` (use `scope: "context"` / `mission` scope) |
+| Craft an item using a Legendary entity | `entity.traits.rarity eq "legendary"` |
+
+`selectionRule` accepts the full `RichSelection` DSL including nested `AND`/`OR`/`NOT` groups and `rule_ref` references to shared `SelectionRuleDef` rows.
+
+---
+
 ## `launchRequirements` — Mission Launch Gate
 
 `MissionDef` now has a **second** `RichSelection` field alongside the existing `requirements`:

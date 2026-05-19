@@ -11,6 +11,7 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { EffectService } from '../effect/effect.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
@@ -61,6 +62,7 @@ export class CraftingService {
     private effectService: EffectService,
     private telemetryService: TelemetryService,
     private synergyResolver: SynergyResolverService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
   ) {}
 
   private mapJobToCraftingResponse(job: any) {
@@ -659,6 +661,14 @@ export class CraftingService {
     // subscribers can tick progress. Run inside externalTx if present so
     // it shares atomicity with the command path; otherwise fire-and-forget.
     try {
+      let selectionContext;
+      try {
+        selectionContext = await this.telemetryContextBuilder.buildContext(userId, {
+          entityIds: entityId ? [entityId] : [],
+        });
+      } catch (ctxErr) {
+        this.logger.warn(`Failed to build selection context for crafting telemetry: ${ctxErr}`);
+      }
       await this.telemetryService.record(
         userId,
         'crafting_completed',
@@ -666,6 +676,7 @@ export class CraftingService {
         1,
         { quality, jobId },
         externalTx,
+        selectionContext,
       );
     } catch (err) {
       this.logger.warn(`Failed to record crafting telemetry: ${err}`);

@@ -675,6 +675,39 @@
           "description": "Evaluated at launch time with the actual selected team in context (teamSize, entity traits, entity stats). Both requirements AND launchRequirements must pass for startMission to succeed. Null = no additional team-level gating. Top-level rule labels are returned in launchRequirementStatus on GET /api/missions/definitions."
         }
       }
+    },
+    "QuestObjective": {
+      "description": "A single objective entry inside QuestDef.objectives or AchievementDef.objectives.",
+      "type": "object",
+      "required": ["eventType", "target"],
+      "properties": {
+        "eventType": {
+          "type": "string",
+          "description": "Telemetry event type that increments this objective (e.g. 'mission_complete', 'crafting_completed', 'checkin_completed')."
+        },
+        "key": {
+          "type": "string",
+          "description": "Optional — narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
+        },
+        "target": {
+          "type": "number",
+          "minimum": 1,
+          "description": "How many qualifying events are required to complete this objective."
+        },
+        "dataFilter": {
+          "type": "object",
+          "description": "Optional shallow equality filter applied to the event's data payload. All specified keys must match for the event to count.",
+          "additionalProperties": true
+        },
+        "selectionRule": {
+          "$ref": "#/definitions/RichSelection",
+          "description": "Optional RichSelection tree evaluated against the event's SelectionContext. When present, progress only increments if this rule passes. Supports entity-level rules (traits, level, rarity, stats), team composition checks, player context, and mission metadata. Requires the emitting event to carry a SelectionContext (mission_complete, crafting_completed, and checkin_completed all do). If the rule is set but the event has no context, the check is treated as a pass with a warning logged."
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional human-readable label shown in the UI for this objective."
+        }
+      }
     }
   },
   "files": {

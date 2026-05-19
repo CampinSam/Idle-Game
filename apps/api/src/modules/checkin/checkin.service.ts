@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 // Window math is shared with the QuestService daily/weekly cadence reset
 // logic so a player's daily check-in and daily quest both roll over at
 // exactly the same UTC moment. See `apps/api/src/common/util/cadence.ts`.
@@ -15,6 +16,7 @@ export class CheckInService {
     private prisma: PrismaService,
     private giftService: GiftService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
   ) {}
 
   async autoCheck(userId: string, tx?: any): Promise<string[]> {
@@ -107,6 +109,12 @@ export class CheckInService {
     });
 
     try {
+      let selectionContext;
+      try {
+        selectionContext = await this.telemetryContextBuilder.buildContext(userId);
+      } catch (ctxErr) {
+        this.logger.warn(`Failed to build selection context for check-in telemetry: ${ctxErr}`);
+      }
       await this.telemetryService.record(
         userId,
         'checkin_completed',
@@ -114,6 +122,7 @@ export class CheckInService {
         newStreak,
         { day: dayIndex, track: def.id },
         db,
+        selectionContext,
       );
     } catch (err) {
       this.logger.warn(`Failed to record check-in telemetry: ${err}`);

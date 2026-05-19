@@ -18,6 +18,7 @@ import { evaluateTopLevelRules } from '../game-rules/evaluate-top-level-rules.ut
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
 import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
@@ -41,6 +42,7 @@ export class MissionService {
     private telemetryService: TelemetryService,
     private effectService: EffectService,
     private synergyResolver: SynergyResolverService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
   ) {}
 
   private async isCategoryChainEnabled(categoryId: string, db?: any): Promise<boolean> {
@@ -866,6 +868,24 @@ export class MissionService {
     this.logger.log(`completeMission success: missionId=${missionId.slice(0,8)}, result=${success ? 'completed' : 'failed'}, rewards=${JSON.stringify(grantedRewards)}`);
 
     try {
+      let selectionContext;
+      try {
+        const missionDefData = (def.data as any) ?? {};
+        const missionRegionId: string | undefined = missionDefData.regionId ?? undefined;
+        const missionType: string | undefined =
+          missionDefData.missionType ?? def.missionCategoryDefId ?? undefined;
+        selectionContext = await this.telemetryContextBuilder.buildContext(userId, {
+          entityIds,
+          missionContext: {
+            activityType: 'mission',
+            missionType,
+            missionTags: Array.isArray(def.tags) ? (def.tags as string[]) : [],
+            regionId: missionRegionId,
+          },
+        });
+      } catch (ctxErr) {
+        this.logger.warn(`Failed to build selection context for mission_complete telemetry: ${ctxErr}`);
+      }
       await this.telemetryService.record(
         userId,
         'mission_complete',
@@ -873,6 +893,7 @@ export class MissionService {
         1,
         { outcome: success ? 'success' : 'failure' },
         externalTx,
+        selectionContext,
       );
     } catch (_) {}
 
