@@ -927,15 +927,13 @@ input:focus {
   -webkit-overflow-scrolling: touch;
 }
 .entity-list--grid .entity-list__grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
 }
 .entity-list--team .entity-list__grid {
-  grid-template-columns: repeat(auto-fill, 90px);
-  justify-content: center;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
 }
 .entity-list--picker .entity-list__grid {
-  grid-template-columns: repeat(auto-fill, 80px);
-  justify-content: center;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 10px;
@@ -944,11 +942,6 @@ input:focus {
 .entity-list--wide .entity-list__grid {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   padding: 0;
-}
-@media (max-width: 400px) {
-  .entity-list--grid .entity-list__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 .entity-list__select {
   height: 34px;
