@@ -36,6 +36,9 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
   const [devWalletChain, setDevWalletChain] = useState('ETH');
   const [devWalletAddress, setDevWalletAddress] = useState('');
   const [devWalletSubmitting, setDevWalletSubmitting] = useState(false);
+  const [wallets, setWallets] = useState<Array<{ id: string; chain: string; address: string; isPrimary: boolean }>>([]);
+  const [walletsLoading, setWalletsLoading] = useState(false);
+  const [removingWalletId, setRemovingWalletId] = useState<string | null>(null);
 
   const savePlayer = async () => {
     setSaving(true); setMsg(null);
@@ -86,6 +89,18 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
     } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
   };
 
+  const loadWallets = useCallback(async () => {
+    setWalletsLoading(true);
+    try {
+      const data = await adminApi.listPlayerWallets(player.id);
+      setWallets(data);
+    } catch {} finally { setWalletsLoading(false); }
+  }, [player.id]);
+
+  useEffect(() => {
+    if (devToolsOpen) loadWallets();
+  }, [devToolsOpen, loadWallets]);
+
   const addDevWallet = async () => {
     const trimmed = devWalletAddress.trim();
     if (!trimmed) { setMsg({ text: 'Wallet address is required', type: 'error' }); return; }
@@ -94,9 +109,22 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
       await adminApi.addPlayerWallet(player.id, devWalletChain, trimmed);
       setMsg({ text: `Wallet added (${devWalletChain})`, type: 'success' });
       setDevWalletAddress('');
+      await loadWallets();
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     } finally { setDevWalletSubmitting(false); }
+  };
+
+  const removeWallet = async (walletId: string) => {
+    if (!confirm('Remove this wallet from the player?')) return;
+    setRemovingWalletId(walletId); setMsg(null);
+    try {
+      await adminApi.removePlayerWallet(player.id, walletId);
+      setMsg({ text: 'Wallet removed', type: 'success' });
+      await loadWallets();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally { setRemovingWalletId(null); }
   };
 
   return (
@@ -175,40 +203,71 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
 
         {devToolsOpen && (
           <div style={{ marginTop: '0.75rem', background: '#0a1020', border: '1px solid #1e2a3e', borderRadius: 8, padding: '0.85rem' }}>
-            <div style={{ color: '#666', fontSize: '0.75rem', marginBottom: '0.6rem', fontStyle: 'italic' }}>
-              Add wallet address without verification (admin only)
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ color: '#8888aa', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+                Linked Wallets {walletsLoading && <span style={{ color: '#555' }}>loading…</span>}
+              </div>
+              {!walletsLoading && wallets.length === 0 && (
+                <div style={{ color: '#555', fontStyle: 'italic', fontSize: '0.8rem' }}>No wallets linked</div>
+              )}
+              {wallets.map((w) => (
+                <div key={w.id} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, background: '#0f1828', borderRadius: 5, padding: '0.4rem 0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#6c8eba', minWidth: 70, fontWeight: 600 }}>{w.chain}</span>
+                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.75rem', color: '#c0c8d8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.address}</span>
+                  {w.isPrimary && (
+                    <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: 4, background: 'rgba(108,99,255,0.2)', color: '#b8b0ff', border: '1px solid rgba(108,99,255,0.3)', whiteSpace: 'nowrap' }}>primary</span>
+                  )}
+                  <button
+                    onClick={() => removeWallet(w.id)}
+                    disabled={removingWalletId === w.id}
+                    style={{
+                      padding: '0.2rem 0.5rem', border: '1px solid rgba(255,107,107,0.4)', borderRadius: 4,
+                      background: 'rgba(255,107,107,0.1)', color: '#ff8888', cursor: 'pointer',
+                      fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {removingWalletId === w.id ? '…' : 'Remove'}
+                  </button>
+                </div>
+              ))}
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-              <select
-                value={devWalletChain}
-                onChange={(e) => setDevWalletChain(e.target.value)}
-                disabled={devWalletSubmitting}
-                style={{ padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', minWidth: 110 }}
-              >
-                <option value="ETH">Ethereum</option>
-                <option value="BASE">Base</option>
-                <option value="MATIC">Polygon</option>
-                <option value="CARDANO">Cardano</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Wallet address"
-                value={devWalletAddress}
-                onChange={(e) => setDevWalletAddress(e.target.value)}
-                disabled={devWalletSubmitting}
-                style={{ flex: 1, minWidth: 160, padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', fontFamily: 'monospace' }}
-              />
-              <button
-                onClick={addDevWallet}
-                disabled={devWalletSubmitting}
-                style={{
-                  padding: '0.4rem 0.85rem', border: '1px solid #4a4a7e', borderRadius: 6,
-                  background: 'rgba(108,99,255,0.15)', color: '#b8b0ff', cursor: 'pointer',
-                  fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap',
-                }}
-              >
-                {devWalletSubmitting ? '...' : 'Add Wallet'}
-              </button>
+
+            <div style={{ borderTop: '1px dashed #1e2a3e', paddingTop: '0.75rem' }}>
+              <div style={{ color: '#666', fontSize: '0.75rem', marginBottom: '0.6rem', fontStyle: 'italic' }}>
+                Add wallet address without verification (admin only)
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <select
+                  value={devWalletChain}
+                  onChange={(e) => setDevWalletChain(e.target.value)}
+                  disabled={devWalletSubmitting}
+                  style={{ padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', minWidth: 110 }}
+                >
+                  <option value="ETH">Ethereum</option>
+                  <option value="BASE">Base</option>
+                  <option value="MATIC">Polygon</option>
+                  <option value="CARDANO">Cardano</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Wallet address"
+                  value={devWalletAddress}
+                  onChange={(e) => setDevWalletAddress(e.target.value)}
+                  disabled={devWalletSubmitting}
+                  style={{ flex: 1, minWidth: 160, padding: '0.4rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                />
+                <button
+                  onClick={addDevWallet}
+                  disabled={devWalletSubmitting}
+                  style={{
+                    padding: '0.4rem 0.85rem', border: '1px solid #4a4a7e', borderRadius: 6,
+                    background: 'rgba(108,99,255,0.15)', color: '#b8b0ff', cursor: 'pointer',
+                    fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {devWalletSubmitting ? '...' : 'Add Wallet'}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -236,10 +236,21 @@ export const adminApi = {
     });
   },
 
+  listPlayerWallets: (userId: string) =>
+    adminRequest<Array<{ id: string; chain: string; address: string; isPrimary: boolean; createdAt: string }>>(
+      `/players/${userId}/wallets`,
+    ),
+
   addPlayerWallet: (userId: string, chain: string, address: string) =>
     adminRequest<{ success: boolean }>(
       `/players/${userId}/wallets`,
       { method: 'POST', body: JSON.stringify({ chain, address }) },
+    ),
+
+  removePlayerWallet: (userId: string, walletId: string) =>
+    adminRequest<{ success: boolean }>(
+      `/players/${userId}/wallets/${walletId}`,
+      { method: 'DELETE' },
     ),
 
   evaluateSelection: (body: {

@@ -400,6 +400,11 @@ export class AdminController {
     return this.adminService.deletePlayerEffect(id, effectId);
   }
 
+  @Get('players/:id/wallets')
+  listPlayerWallets(@Param('id') id: string) {
+    return this.walletService.listWallets(id);
+  }
+
   @Post('players/:id/wallets')
   async addPlayerWallet(
     @Param('id') id: string,
@@ -411,6 +416,11 @@ export class AdminController {
     }
     await this.walletService.addManualWallet(id, chain, address);
     return { success: true };
+  }
+
+  @Delete('players/:id/wallets/:walletId')
+  removePlayerWallet(@Param('id') id: string, @Param('walletId') walletId: string) {
+    return this.walletService.adminRemoveWallet(id, walletId);
   }
 
   @Post('players/:userId/entities/:entityId/reconcile-status')
