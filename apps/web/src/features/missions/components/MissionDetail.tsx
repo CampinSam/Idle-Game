@@ -115,12 +115,6 @@ export function MissionDetail(props: MissionDetailProps) {
     ? ` · ${traitReqs.map((r: { key: string; value: number }) => `${r.key} ${r.value}+`).join(', ')} preferred`
     : null;
 
-  const costSubtitleParts: string[] = [];
-  if (missionCost.length > 0) {
-    costSubtitleParts.push(`Cost: ${missionCost.map((e) => e.amount.toLocaleString()).join('+')} `);
-  }
-  costSubtitleParts.push(`Duration: ${formatDuration(duration)}`);
-  const costSubtitle = costSubtitleParts.join('• ');
 
   const handleAutoAssign = () => {
     const auto = idleEntities.slice(0, teamMax).map((b: any) => b.id);
@@ -166,287 +160,301 @@ export function MissionDetail(props: MissionDetailProps) {
         {synergyPreview && onDismissSynergy && (
           <SynergyPanel synergyPreview={synergyPreview} onDismiss={onDismissSynergy} />
         )}
-        <div
-          className="relative w-full h-[185px] flex-shrink-0 bg-center bg-cover bg-no-repeat px-4 pt-4 pb-3"
-          style={{ backgroundImage: bgImageCss(display.backgroundImage) }}
-        >
-          <button
-            onClick={onBack}
-            className="absolute top-3 left-3 z-20 px-3 py-1 rounded-full bg-black/45 text-white text-[12px] font-bold border border-white/15 backdrop-blur-sm hover:bg-black/60 cursor-pointer"
-          >
-            ← Back
-          </button>
+
+        {/* Single scrollable area — hero scrolls freely, stats row sticks */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+
+          {/* Hero — scrolls up and out of view */}
           <div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(180deg, rgba(15,10,40,0.2) 0%, rgba(15,10,40,0.55) 50%, rgba(15,10,40,0.92) 100%)' }}
-          />
-          <div className="relative z-10 mt-8">
-            <h1
-              className="m-0 font-cinzel text-[24px] font-black tracking-[0.04em] leading-tight text-white flex items-center gap-2 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]"
-              style={heroCss.titleStyle}
+            className="relative w-full h-[185px] flex-shrink-0 bg-center bg-cover bg-no-repeat px-4 pt-4 pb-3"
+            style={{ backgroundImage: bgImageCss(display.backgroundImage) }}
+          >
+            <button
+              onClick={onBack}
+              className="absolute top-3 left-3 z-20 px-3 py-1 rounded-full bg-black/45 text-white text-[12px] font-bold border border-white/15 backdrop-blur-sm hover:bg-black/60 cursor-pointer"
             >
-              <span className="text-[28px]">{catIcon}</span>
-              {selectedDef.name}
-            </h1>
-            <div className="flex flex-wrap gap-1.5 mt-1.5">
-              <Badge tone="info" className="!border-[rgba(168,85,247,0.4)] !bg-[rgba(168,85,247,0.3)] !text-[#C084FC]">{diffInfo.tier}</Badge>
-              <Badge tone="neutral" className="!border-transparent !text-white" style={{ background: diffInfo.color }}>{diffInfo.label}</Badge>
-              <Badge tone="neutral" className="!bg-[rgba(0,0,0,0.35)] !text-white/80 !border-white/10">⏱ {formatDuration(duration)}</Badge>
-              {missionTags.map((tag: any, i: number) => (
-                <Badge key={i} tone="neutral" className="!border-transparent !text-white" style={{ background: tag.color || '#3B82F6' }}>
-                  {tag.text}
-                </Badge>
-              ))}
+              ← Back
+            </button>
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'linear-gradient(180deg, rgba(15,10,40,0.2) 0%, rgba(15,10,40,0.55) 50%, rgba(15,10,40,0.92) 100%)' }}
+            />
+            <div className="relative z-10 mt-8">
+              <h1
+                className="m-0 font-cinzel text-[24px] font-black tracking-[0.04em] leading-tight text-white flex items-center gap-2 [text-shadow:0_2px_8px_rgba(0,0,0,0.7)]"
+                style={heroCss.titleStyle}
+              >
+                <span className="text-[28px]">{catIcon}</span>
+                {selectedDef.name}
+              </h1>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                <Badge tone="info" className="!border-[rgba(168,85,247,0.4)] !bg-[rgba(168,85,247,0.3)] !text-[#C084FC]">{diffInfo.tier}</Badge>
+                <Badge tone="neutral" className="!border-transparent !text-white" style={{ background: diffInfo.color }}>{diffInfo.label}</Badge>
+                <Badge tone="neutral" className="!bg-[rgba(0,0,0,0.35)] !text-white/80 !border-white/10">⏱ {formatDuration(duration)}</Badge>
+                {missionTags.map((tag: any, i: number) => (
+                  <Badge key={i} tone="neutral" className="!border-transparent !text-white" style={{ background: tag.color || '#3B82F6' }}>
+                    {tag.text}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            {/* Hidden for now — kept for future use */}
+            <div className="hidden relative z-10 mt-3 px-2.5 py-1.5 rounded-md bg-black/40 backdrop-blur-sm text-[11px] font-bold tracking-wide text-[#c4b5fd] border border-white/10">
+              👥 RECOMMENDED: {teamMax} {teamMax === 1 ? 'Entity' : 'Entities'}
+              {keeperLvl > 0 && <span className="text-text-secondary"> · Keeper Lv {keeperLvl}+</span>}
+              {recommendedNote && <span className="text-text-secondary">{recommendedNote}</span>}
             </div>
           </div>
-          {/* Hidden for now — kept for future use */}
-          <div className="hidden relative z-10 mt-3 px-2.5 py-1.5 rounded-md bg-black/40 backdrop-blur-sm text-[11px] font-bold tracking-wide text-[#c4b5fd] border border-white/10">
-            👥 RECOMMENDED: {teamMax} {teamMax === 1 ? 'Entity' : 'Entities'}
-            {keeperLvl > 0 && <span className="text-text-secondary"> · Keeper Lv {keeperLvl}+</span>}
-            {recommendedNote && <span className="text-text-secondary">{recommendedNote}</span>}
-          </div>
-        </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3">
+          {/* Description — scrolls */}
           {selectedDef.description && (
-            <p className="m-0 text-[13px] leading-relaxed text-text-secondary">{selectedDef.description}</p>
+            <p className="m-0 px-4 pt-3 text-[13px] leading-relaxed text-text-secondary">{selectedDef.description}</p>
           )}
 
-          {/* Row 1: Requirements | Team Power vs Difficulty */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className={panelClass}>
-              <div className={panelTitleClass}>Requirements</div>
-              {previewLoading && previewRequirements.length === 0 ? (
-                <div className="flex flex-col gap-1.5">
-                  <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-4/5" />
-                  <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-3/5" />
-                </div>
-              ) : previewRequirements.length === 0 ? (
-                <span className="text-[12px] text-text-secondary italic">No requirements</span>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {previewRequirements.map((r, i) => (
-                    <div key={i} className="flex items-center gap-2 text-[12px]">
-                      <span className="text-base leading-none flex-shrink-0">{r.met ? '✅' : '❌'}</span>
-                      <span
-                        className="flex-1 font-medium truncate"
-                        style={{ color: r.met ? '#10b981' : '#ef4444' }}
-                      >
-                        {r.label ?? 'Requirement'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className={panelClass}>
-              <div className={panelTitleClass}>Team Power vs Difficulty</div>
-              <div className="flex flex-col gap-2">
-                {previewLoading && !preview ? (
-                  <div className="text-[11px] text-text-secondary animate-pulse py-2 text-center">Calculating…</div>
+          {/* Sticky stats row — pins when it reaches the top of the scroll container */}
+          <div
+            className="sticky top-0 z-10 px-4 pt-3 pb-2 flex flex-col gap-3"
+            style={{
+              background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+            }}
+          >
+            {/* Requirements | Team Power vs Difficulty */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className={panelClass}>
+                <div className={panelTitleClass}>Requirements</div>
+                {previewLoading && previewRequirements.length === 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-4/5" />
+                    <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-3/5" />
+                  </div>
+                ) : previewRequirements.length === 0 ? (
+                  <span className="text-[12px] text-text-secondary italic">No requirements</span>
                 ) : (
-                  <>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <div className="flex flex-col items-start">
-                        <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(missionPower.toFixed(2))}</span>
-                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">MP</span>
+                  <div className="flex flex-col gap-1.5">
+                    {previewRequirements.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 text-[12px]">
+                        <span className="text-base leading-none flex-shrink-0">{r.met ? '✅' : '❌'}</span>
+                        <span
+                          className="flex-1 font-medium truncate"
+                          style={{ color: r.met ? '#10b981' : '#ef4444' }}
+                        >
+                          {r.label ?? 'Requirement'}
+                        </span>
                       </div>
-                      <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
-                      <div className="flex flex-col items-end">
-                        <span className="font-cinzel text-[22px] font-black text-[#ef4444] tabular-nums">{Number(difficulty.toFixed(2))}</span>
-                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">D</span>
-                      </div>
-                    </div>
-                    <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
-                      <div className="h-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-[width] duration-300" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
-                      <div className="h-full bg-gradient-to-r from-[#ef4444] to-[#f87171] transition-[width] duration-300" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Success Chance</span>
-                      <span className="text-[16px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
-                    </div>
-                    {injuryRate > 0 && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Injury Risk</span>
-                        <span className="text-[13px] font-extrabold tabular-nums" style={{ color: injuryColor }}>{injuryChance}%</span>
-                      </div>
-                    )}
-                  </>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Row 2: Synergy — full width, only when matched rules exist */}
-          {liveSynergy && liveSynergy.matchedRules.length > 0 && (
-            <div className="rounded-xl border border-[rgba(139,92,246,0.25)] bg-black/20 p-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className={panelTitleClass}>⚡ Synergy</span>
-                <span
-                  className="font-cinzel text-[15px] font-black tabular-nums"
-                  style={{ color: liveSynergy.synergyScore > 0 ? '#10b981' : liveSynergy.synergyScore < 0 ? '#ef4444' : '#94a3b8' }}
-                >
-                  {liveSynergy.synergyScore > 0 ? '+' : ''}{liveSynergy.synergyScore}
-                </span>
-              </div>
-              {(liveSynergy.missionPowerBonus !== 0 || liveSynergy.durationBonus !== 0) && (
-                <div className="flex gap-2 flex-wrap">
-                  {liveSynergy.missionPowerBonus !== 0 && (
-                    <span
-                      className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
-                      style={{ color: liveSynergy.missionPowerBonus > 0 ? '#10b981' : '#ef4444' }}
-                    >
-                      MP {liveSynergy.missionPowerBonus > 0 ? '+' : ''}{Number(liveSynergy.missionPowerBonus.toFixed(1))}%
-                    </span>
-                  )}
-                  {liveSynergy.durationBonus !== 0 && (
-                    <span
-                      className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
-                      style={{ color: liveSynergy.durationBonus < 0 ? '#10b981' : '#ef4444' }}
-                    >
-                      Dur {liveSynergy.durationBonus > 0 ? '+' : ''}{Number(liveSynergy.durationBonus.toFixed(1))}%
-                    </span>
+              <div className={panelClass}>
+                <div className={panelTitleClass}>Team Power vs Difficulty</div>
+                <div className="flex flex-col gap-2">
+                  {previewLoading && !preview ? (
+                    <div className="text-[11px] text-text-secondary animate-pulse py-2 text-center">Calculating…</div>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex flex-col items-start">
+                          <span className="font-cinzel text-[22px] font-black text-[#10b981] tabular-nums">{Number(missionPower.toFixed(2))}</span>
+                          <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">MP</span>
+                        </div>
+                        <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
+                        <div className="flex flex-col items-end">
+                          <span className="font-cinzel text-[22px] font-black text-[#ef4444] tabular-nums">{Number(difficulty.toFixed(2))}</span>
+                          <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">D</span>
+                        </div>
+                      </div>
+                      <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
+                        <div className="h-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-[width] duration-300" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
+                        <div className="h-full bg-gradient-to-r from-[#ef4444] to-[#f87171] transition-[width] duration-300" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Success Chance</span>
+                        <span className="text-[16px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
+                      </div>
+                      {injuryRate > 0 && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Injury Risk</span>
+                          <span className="text-[13px] font-extrabold tabular-nums" style={{ color: injuryColor }}>{injuryChance}%</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-              )}
-              <div className="flex flex-col gap-1">
-                {liveSynergy.matchedRules.map((rule) => {
-                  const color = rule.isPenalty ? '#ef4444' : '#10b981';
-                  const borderColor = rule.isPenalty ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)';
-                  const bgColor = rule.isPenalty ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.05)';
-                  const parts: string[] = [];
-                  if (rule.scoreContrib !== 0) parts.push(`${rule.scoreContrib > 0 ? '+' : ''}${Number(rule.scoreContrib.toFixed(1))} pts`);
-                  if (rule.mpBonusContrib !== 0) parts.push(`MP ${rule.mpBonusContrib > 0 ? '+' : ''}${Number(rule.mpBonusContrib.toFixed(1))}%`);
-                  if (rule.durationBonusContrib !== 0) parts.push(`Dur ${rule.durationBonusContrib > 0 ? '+' : ''}${Number(rule.durationBonusContrib.toFixed(1))}%`);
-                  const label = parts.join(' · ');
-                  return (
-                    <div
-                      key={rule.ruleId}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg border"
-                      style={{ background: bgColor, borderColor }}
-                    >
-                      <span className="text-sm leading-none flex-shrink-0">{rule.isPenalty ? '💀' : '⚡'}</span>
-                      <span className="flex-1 text-[11px] font-bold text-text-primary truncate">{rule.name}</span>
-                      {rule.applications > 1 && (
-                        <span className="text-[10px] text-text-secondary flex-shrink-0">×{rule.applications}</span>
-                      )}
-                      {label && (
-                        <span className="text-[10px] font-extrabold tabular-nums flex-shrink-0" style={{ color }}>{label}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Row 3: Entity picker — full width */}
-          <div ref={entityPickerRef} className={panelClass}>
-            <div className="flex items-center justify-between gap-2">
-              <span className={panelTitleClass}>Your Team</span>
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
-                <button
-                  type="button"
-                  onClick={() => setShowEntityPicker(!showEntityPicker)}
-                  className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
-                >
-                  {showEntityPicker ? '▲ Close' : '▼ Add'}
-                </button>
               </div>
             </div>
 
-            {/* Current team + empty slot — hidden while picker is open */}
-            {!showEntityPicker && (
-              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
-                {selectedEntities.map((entityId) => {
-                  const entity = entities.find((b: any) => b.id === entityId);
-                  if (!entity) return null;
-                  return (
-                    <EntityCard
-                      key={entity.id}
-                      entity={entity}
-                      useCase="mission"
-                      selected
-                      onClick={() => toggleEntity(entity.id)}
-                      onRemove={() => toggleEntity(entity.id)}
-                    />
-                  );
-                })}
-                {selectedEntities.length < teamMax && (
+            {/* Synergy — part of the sticky block */}
+            {liveSynergy && liveSynergy.matchedRules.length > 0 && (
+              <div className="rounded-xl border border-[rgba(139,92,246,0.25)] bg-black/20 p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={panelTitleClass}>⚡ Synergy</span>
+                  <span
+                    className="font-cinzel text-[15px] font-black tabular-nums"
+                    style={{ color: liveSynergy.synergyScore > 0 ? '#10b981' : liveSynergy.synergyScore < 0 ? '#ef4444' : '#94a3b8' }}
+                  >
+                    {liveSynergy.synergyScore > 0 ? '+' : ''}{liveSynergy.synergyScore}
+                  </span>
+                </div>
+                {(liveSynergy.missionPowerBonus !== 0 || liveSynergy.durationBonus !== 0) && (
+                  <div className="flex gap-2 flex-wrap">
+                    {liveSynergy.missionPowerBonus !== 0 && (
+                      <span
+                        className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
+                        style={{ color: liveSynergy.missionPowerBonus > 0 ? '#10b981' : '#ef4444' }}
+                      >
+                        MP {liveSynergy.missionPowerBonus > 0 ? '+' : ''}{Number(liveSynergy.missionPowerBonus.toFixed(1))}%
+                      </span>
+                    )}
+                    {liveSynergy.durationBonus !== 0 && (
+                      <span
+                        className="text-[11px] font-extrabold tabular-nums px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]"
+                        style={{ color: liveSynergy.durationBonus < 0 ? '#10b981' : '#ef4444' }}
+                      >
+                        Dur {liveSynergy.durationBonus > 0 ? '+' : ''}{Number(liveSynergy.durationBonus.toFixed(1))}%
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  {liveSynergy.matchedRules.map((rule) => {
+                    const color = rule.isPenalty ? '#ef4444' : '#10b981';
+                    const borderColor = rule.isPenalty ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.15)';
+                    const bgColor = rule.isPenalty ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.05)';
+                    const parts: string[] = [];
+                    if (rule.scoreContrib !== 0) parts.push(`${rule.scoreContrib > 0 ? '+' : ''}${Number(rule.scoreContrib.toFixed(1))} pts`);
+                    if (rule.mpBonusContrib !== 0) parts.push(`MP ${rule.mpBonusContrib > 0 ? '+' : ''}${Number(rule.mpBonusContrib.toFixed(1))}%`);
+                    if (rule.durationBonusContrib !== 0) parts.push(`Dur ${rule.durationBonusContrib > 0 ? '+' : ''}${Number(rule.durationBonusContrib.toFixed(1))}%`);
+                    const label = parts.join(' · ');
+                    return (
+                      <div
+                        key={rule.ruleId}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg border"
+                        style={{ background: bgColor, borderColor }}
+                      >
+                        <span className="text-sm leading-none flex-shrink-0">{rule.isPenalty ? '💀' : '⚡'}</span>
+                        <span className="flex-1 text-[11px] font-bold text-text-primary truncate">{rule.name}</span>
+                        {rule.applications > 1 && (
+                          <span className="text-[10px] text-text-secondary flex-shrink-0">×{rule.applications}</span>
+                        )}
+                        {label && (
+                          <span className="text-[10px] font-extrabold tabular-nums flex-shrink-0" style={{ color }}>{label}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Your Team picker + error — scrolls below the sticky row */}
+          <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
+            <div ref={entityPickerRef} className={panelClass}>
+              <div className="flex items-center justify-between gap-2">
+                <span className={panelTitleClass}>Your Team</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-bold text-text-primary tabular-nums">{selectedEntities.length}/{teamMax}</span>
                   <button
                     type="button"
-                    onClick={() => setShowEntityPicker(true)}
-                    className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
+                    onClick={() => setShowEntityPicker(!showEntityPicker)}
+                    className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
                   >
-                    <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
-                      <span className="text-[28px] text-white/20 font-light">＋</span>
-                    </div>
-                    <div className="px-2 py-2 bg-bg-card text-center">
-                      <span className="block text-[11px] font-extrabold text-text-primary uppercase tracking-wide">Add</span>
-                    </div>
+                    {showEntityPicker ? '▲ Close' : '▼ Add'}
                   </button>
-                )}
-              </div>
-            )}
-
-            {/* Multi-select open picker */}
-            {showEntityPicker && (
-              <div className="mt-1 flex flex-col gap-1">
-                <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary px-1">
-                  Tap to toggle · {selectedEntities.length}/{teamMax} chosen
                 </div>
-                <EntityList
-                  entities={entities}
-                  mode="picker"
-                  useCase="mission"
-                  showControls
-                  search={pickerSearch}
-                  onSearchChange={setPickerSearch}
-                  activeFilter={pickerFilter}
-                  onFilterChange={setPickerFilter}
-                  sortBy={pickerSort}
-                  onSortChange={setPickerSort}
-                  selectedIds={selectedEntities}
-                  disabledIds={pickerDisabledIds}
-                  busyDisabledTooltip="Busy"
-                  onSelect={(entity) => toggleEntity(entity.id)}
-                  className="max-h-[360px] overflow-y-auto"
-                />
+              </div>
+
+              {/* Current team + empty slot — hidden while picker is open */}
+              {!showEntityPicker && (
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
+                  {selectedEntities.map((entityId) => {
+                    const entity = entities.find((b: any) => b.id === entityId);
+                    if (!entity) return null;
+                    return (
+                      <EntityCard
+                        key={entity.id}
+                        entity={entity}
+                        useCase="mission"
+                        selected
+                        onClick={() => toggleEntity(entity.id)}
+                        onRemove={() => toggleEntity(entity.id)}
+                      />
+                    );
+                  })}
+                  {selectedEntities.length < teamMax && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEntityPicker(true)}
+                      className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
+                    >
+                      <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
+                        <span className="text-[28px] text-white/20 font-light">＋</span>
+                      </div>
+                      <div className="px-2 py-2 bg-bg-card text-center">
+                        <span className="block text-[11px] font-extrabold text-text-primary uppercase tracking-wide">Add</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Multi-select open picker */}
+              {showEntityPicker && (
+                <div className="mt-1 flex flex-col gap-1">
+                  <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary px-1">
+                    Tap to toggle · {selectedEntities.length}/{teamMax} chosen
+                  </div>
+                  <EntityList
+                    entities={entities}
+                    mode="picker"
+                    useCase="mission"
+                    showControls
+                    search={pickerSearch}
+                    onSearchChange={setPickerSearch}
+                    activeFilter={pickerFilter}
+                    onFilterChange={setPickerFilter}
+                    sortBy={pickerSort}
+                    onSortChange={setPickerSort}
+                    selectedIds={selectedEntities}
+                    disabledIds={pickerDisabledIds}
+                    busyDisabledTooltip="Busy"
+                    onSelect={(entity) => toggleEntity(entity.id)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
+                {error}
               </div>
             )}
           </div>
-
-          {error && (
-            <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
-              {error}
-            </div>
-          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 p-3 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
+        {/* Bottom action bar */}
+        <div className="grid grid-cols-2 gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
           {idleEntities.length === 0 && selectedEntities.length === 0 ? (
-            <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-2">No entities available</div>
+            <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">No entities available</div>
           ) : (
             <>
               <button
                 onClick={handleAutoAssign}
                 disabled={idleEntities.length === 0}
-                className="flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
               >
-                <span className="text-[13px] font-extrabold tracking-wide uppercase">AUTO BUILD TEAM</span>
-                <span className="text-[10px] font-semibold text-text-secondary">Find the best team</span>
+                AUTO BUILD TEAM
               </button>
               {selectedEntities.length > 0 && (
                 <button
                   disabled={!canStart}
                   onClick={onStart}
-                  className="flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
                 >
-                  <span className="text-[13px] font-extrabold tracking-wide uppercase">START MISSION ⚡</span>
-                  <span className="text-[10px] font-semibold text-white/80">{costSubtitle}</span>
+                  START MISSION ⚡
                 </button>
               )}
             </>
