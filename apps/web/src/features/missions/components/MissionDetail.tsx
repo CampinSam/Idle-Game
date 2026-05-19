@@ -66,8 +66,6 @@ export function MissionDetail(props: MissionDetailProps) {
     onDismissSynergy,
   } = props;
 
-  const teamGridRef = useRef<HTMLDivElement>(null);
-
   const { preview, loading: previewLoading } = useJobPreview({
     jobType: 'mission',
     defId: selectedDef.id,
@@ -135,7 +133,7 @@ export function MissionDetail(props: MissionDetailProps) {
     const auto = idleEntities.slice(0, teamMax).map((b: any) => b.id);
     setSelectedEntities(() => auto);
     setShowEntityPicker(false);
-    setTimeout(() => teamGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    setTimeout(() => entityPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
   };
 
   const toggleEntity = (entityId: string) => {
@@ -352,7 +350,7 @@ export function MissionDetail(props: MissionDetailProps) {
           )}
 
           {/* Row 3: Entity picker — full width */}
-          <div ref={teamGridRef} className={panelClass}>
+          <div ref={entityPickerRef} className={panelClass}>
             <div className="flex items-center justify-between gap-2">
               <span className={panelTitleClass}>Your Team</span>
               <div className="flex items-center gap-2">
@@ -367,8 +365,8 @@ export function MissionDetail(props: MissionDetailProps) {
               </div>
             </div>
 
-            {/* Current team + empty slot */}
-            <div ref={entityPickerRef} className="grid gap-2 justify-start" style={{ gridTemplateColumns: 'repeat(auto-fill, 90px)' }}>
+            {/* Current team + empty slot (hidden while picker is open) */}
+            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
               {selectedEntities.map((entityId) => {
                 const entity = entities.find((b: any) => b.id === entityId);
                 if (!entity) return null;
@@ -383,15 +381,11 @@ export function MissionDetail(props: MissionDetailProps) {
                   />
                 );
               })}
-              {selectedEntities.length < teamMax && (
+              {!showEntityPicker && selectedEntities.length < teamMax && (
                 <button
                   type="button"
                   onClick={() => setShowEntityPicker(true)}
-                  className={`w-[90px] rounded-xl border-2 border-dashed cursor-pointer overflow-hidden flex flex-col p-0 transition-colors ${
-                    showEntityPicker
-                      ? 'border-[rgba(139,92,246,0.5)] bg-[rgba(139,92,246,0.1)] shadow-[0_0_12px_rgba(139,92,246,0.5),inset_0_0_8px_rgba(139,92,246,0.15)]'
-                      : 'border-white/15 bg-bg-card hover:border-white/25'
-                  }`}
+                  className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
                 >
                   <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
                     <span className="text-[28px] text-white/20 font-light">＋</span>
@@ -409,7 +403,7 @@ export function MissionDetail(props: MissionDetailProps) {
                 <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
                   Tap to toggle · {selectedEntities.length}/{teamMax} chosen
                 </div>
-                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, 90px)' }}>
+                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
                   {sortedPickerEntities.map((entity: any) => {
                     const isSelected = selectedEntities.includes(entity.id);
                     const isBusy = isEntityBusy(entity);
