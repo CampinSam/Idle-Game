@@ -80,7 +80,7 @@ export default function MissionsPage() {
   const nav = useMissionsNavigation({ missionDefs, missionCategoryDefs, allCategories });
   const {
     categoryStack, selectedMission, selectedEntities, setSelectedEntities,
-    showEntityPicker, setShowEntityPicker, activeSlotIndex, setActiveSlotIndex,
+    showEntityPicker, setShowEntityPicker,
     activityCollapsed, setActivityCollapsed, entityPickerRef,
     pushCategory, popCategory, selectMission, selectInlineMission,
     backToCategories,

@@ -210,7 +210,7 @@ export function MissionDetail(props: MissionDetailProps) {
             </div>
           </div>
           {/* Hidden for now — kept for future use */}
-          <div hidden className="relative z-10 mt-3 px-2.5 py-1.5 rounded-md bg-black/40 backdrop-blur-sm text-[11px] font-bold tracking-wide text-[#c4b5fd] border border-white/10">
+          <div className="hidden relative z-10 mt-3 px-2.5 py-1.5 rounded-md bg-black/40 backdrop-blur-sm text-[11px] font-bold tracking-wide text-[#c4b5fd] border border-white/10">
             👥 RECOMMENDED: {teamMax} {teamMax === 1 ? 'Entity' : 'Entities'}
             {keeperLvl > 0 && <span className="text-text-secondary"> · Keeper Lv {keeperLvl}+</span>}
             {recommendedNote && <span className="text-text-secondary">{recommendedNote}</span>}
@@ -405,7 +405,7 @@ export function MissionDetail(props: MissionDetailProps) {
 
             {/* Multi-select open picker */}
             {showEntityPicker && (
-              <div className="mt-1 flex flex-col gap-2">
+              <div className="mt-1 flex flex-col gap-2 max-h-[320px] overflow-y-auto">
                 <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
                   Tap to toggle · {selectedEntities.length}/{teamMax} chosen
                 </div>
