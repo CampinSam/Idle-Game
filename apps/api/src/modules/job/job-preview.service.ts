@@ -41,6 +41,7 @@ export interface JobPreviewDto {
 export interface JobPreviewRequirement {
   label?: string;
   met: boolean;
+  text?: string;
   source: 'requirements' | 'launchRequirements';
 }
 

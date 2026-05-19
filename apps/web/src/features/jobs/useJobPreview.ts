@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 export interface JobPreviewRequirement {
   label?: string;
   met: boolean;
+  text?: string;
   source: 'requirements' | 'launchRequirements';
 }
 
