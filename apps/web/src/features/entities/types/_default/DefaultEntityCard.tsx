@@ -3,7 +3,7 @@ import { GameImage } from '../../../../components/GameImage';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
 import { getArchetypeDisplay, getStatusDisplay } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
-import { getEntityMP, getEntityPower, getStarRating, normalizeStats } from '../../utils';
+import { getEntityMP, getEntityPower, getStarRating } from '../../utils';
 import type { EntityCardProps } from '../../types';
 
 const BASE_CARD = [
@@ -56,7 +56,6 @@ export default function DefaultEntityCard({
   const power = useMemo(() => getEntityPower(entity), [entity]);
   const mp = useMemo(() => Math.round(getEntityMP(entity)), [entity]);
   const stars = useMemo(() => getStarRating(entity), [entity]);
-  const stats = normalizeStats(entity.stats);
 
   const handleClick = () => {
     if (disabled) return;
@@ -126,9 +125,6 @@ export default function DefaultEntityCard({
     const idStyle = compact
       ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
       : 'block text-[11px] font-extrabold text-text-primary uppercase tracking-[0.5px] mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis';
-    const subStyle = compact
-      ? 'block text-[9px] text-text-secondary font-semibold'
-      : 'block text-[10px] text-text-secondary font-semibold';
 
     const cls = [
       BASE_CARD,
@@ -138,7 +134,7 @@ export default function DefaultEntityCard({
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
         ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
-        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
+        : disabled && 'entity-card--disabled cursor-not-allowed',
       className,
     ].filter(Boolean).join(' ');
 
@@ -164,7 +160,12 @@ export default function DefaultEntityCard({
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
-          <span className={subStyle}>MP {mp}</span>
+          <span
+            className="inline-block px-[6px] py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px] truncate max-w-full"
+            style={{ backgroundColor: tagOverride?.color ?? archetypeDisplay.color }}
+          >
+            {tagOverride?.label ?? (archetype || 'UNKNOWN').toUpperCase()}
+          </span>
         </div>
       </div>
     );
@@ -245,9 +246,6 @@ export default function DefaultEntityCard({
     const idStyle = compact
       ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
       : 'block text-[11px] font-extrabold text-text-primary uppercase tracking-[0.5px] mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis';
-    const subStyle = compact
-      ? 'block text-[9px] text-text-secondary font-semibold'
-      : 'block text-[10px] text-text-secondary font-semibold';
 
     const cls = [
       BASE_CARD,
@@ -257,7 +255,7 @@ export default function DefaultEntityCard({
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
       selected
         ? '!border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.03)] !shadow-none opacity-40 cursor-not-allowed'
-        : disabled && 'entity-card--disabled opacity-40 cursor-not-allowed',
+        : disabled && 'entity-card--disabled cursor-not-allowed',
       className,
     ].filter(Boolean).join(' ');
 
@@ -282,7 +280,12 @@ export default function DefaultEntityCard({
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>
-          <span className={subStyle}>SPD {stats.SPD} · FOC {stats.FOC}</span>
+          <span
+            className="inline-block px-[6px] py-[2px] rounded-[4px] text-[9px] font-extrabold text-white tracking-[0.8px] truncate max-w-full"
+            style={{ backgroundColor: tagOverride?.color ?? archetypeDisplay.color }}
+          >
+            {tagOverride?.label ?? (archetype || 'UNKNOWN').toUpperCase()}
+          </span>
         </div>
       </div>
     );

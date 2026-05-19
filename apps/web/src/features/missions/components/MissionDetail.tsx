@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { getDifficultyDisplay } from '@derp/shared';
 import { Badge } from '../../../components/ui';
 import { EntityCard } from '../../entities/components';
@@ -14,6 +14,8 @@ import {
   resolveDisplay,
 } from './missionUtils';
 import { getEntityStatus, isEntityBusy } from '../../inventory/utils/statChangeHelpers';
+import { buildCollectionOptions, SORT_OPTIONS, getFilteredSortedEntities } from '../../entities/entityListUtils';
+import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import type { SynergyPreview } from '../../../services/api';
 import { useJobPreview } from '../../jobs/useJobPreview';
 
@@ -144,15 +146,15 @@ export function MissionDetail(props: MissionDetailProps) {
     });
   };
 
-  const sortedPickerEntities = useMemo(() => {
-    const idle: any[] = [];
-    const busy: any[] = [];
-    for (const e of entities) {
-      if (isEntityBusy(e)) busy.push(e);
-      else idle.push(e);
-    }
-    return [...idle, ...busy];
-  }, [entities]);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerFilter, setPickerFilter] = useState<EntityFilter>('ALL');
+  const [pickerSort, setPickerSort] = useState<EntitySortBy>('name');
+
+  const pickerCollectionOptions = useMemo(() => buildCollectionOptions(entities), [entities]);
+  const pickerEntities = useMemo(
+    () => getFilteredSortedEntities(entities, pickerFilter, pickerSearch, pickerSort),
+    [entities, pickerFilter, pickerSearch, pickerSort],
+  );
 
   const previewRequirements = preview?.requirements ?? [];
 
@@ -365,56 +367,90 @@ export function MissionDetail(props: MissionDetailProps) {
               </div>
             </div>
 
-            {/* Current team + empty slot (hidden while picker is open) */}
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
-              {selectedEntities.map((entityId) => {
-                const entity = entities.find((b: any) => b.id === entityId);
-                if (!entity) return null;
-                return (
-                  <EntityCard
-                    key={entity.id}
-                    entity={entity}
-                    useCase="mission"
-                    selected
-                    onClick={() => toggleEntity(entity.id)}
-                    onRemove={() => toggleEntity(entity.id)}
-                  />
-                );
-              })}
-              {!showEntityPicker && selectedEntities.length < teamMax && (
-                <button
-                  type="button"
-                  onClick={() => setShowEntityPicker(true)}
-                  className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
-                >
-                  <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
-                    <span className="text-[28px] text-white/20 font-light">＋</span>
-                  </div>
-                  <div className="px-2 py-2 bg-bg-card text-center">
-                    <span className="block text-[11px] font-extrabold text-text-primary uppercase tracking-wide">Add</span>
-                  </div>
-                </button>
-              )}
-            </div>
+            {/* Current team + empty slot — hidden while picker is open */}
+            {!showEntityPicker && (
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
+                {selectedEntities.map((entityId) => {
+                  const entity = entities.find((b: any) => b.id === entityId);
+                  if (!entity) return null;
+                  return (
+                    <EntityCard
+                      key={entity.id}
+                      entity={entity}
+                      useCase="mission"
+                      selected
+                      onClick={() => toggleEntity(entity.id)}
+                      onRemove={() => toggleEntity(entity.id)}
+                    />
+                  );
+                })}
+                {selectedEntities.length < teamMax && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEntityPicker(true)}
+                    className="rounded-xl border-2 border-dashed border-white/15 bg-bg-card hover:border-white/25 cursor-pointer overflow-hidden flex flex-col p-0 transition-colors"
+                  >
+                    <div className="aspect-square flex items-center justify-center bg-white/[0.03]">
+                      <span className="text-[28px] text-white/20 font-light">＋</span>
+                    </div>
+                    <div className="px-2 py-2 bg-bg-card text-center">
+                      <span className="block text-[11px] font-extrabold text-text-primary uppercase tracking-wide">Add</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Multi-select open picker */}
             {showEntityPicker && (
-              <div className="mt-1 flex flex-col gap-2 max-h-[320px] overflow-y-auto">
+              <div className="mt-1 flex flex-col gap-2">
+                {/* Search / filter / sort controls */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={pickerSearch}
+                      onChange={(e) => setPickerSearch(e.target.value)}
+                      className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[12px] outline-none [font-family:'Exo_2',system-ui,sans-serif] min-w-0 placeholder:text-[color:var(--text-secondary)]"
+                    />
+                  </div>
+                  <select
+                    value={pickerFilter}
+                    onChange={(e) => setPickerFilter(e.target.value as EntityFilter)}
+                    className="entity-list__select entity-list__select--collection"
+                    aria-label="Filter by collection"
+                  >
+                    {pickerCollectionOptions.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={pickerSort}
+                    onChange={(e) => setPickerSort(e.target.value as EntitySortBy)}
+                    className="entity-list__select entity-list__select--sort"
+                    aria-label="Sort by"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
                   Tap to toggle · {selectedEntities.length}/{teamMax} chosen
                 </div>
-                <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
-                  {sortedPickerEntities.map((entity: any) => {
+                <div className="grid gap-2 max-h-[320px] overflow-y-auto" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
+                  {pickerEntities.map((entity: any) => {
                     const isSelected = selectedEntities.includes(entity.id);
                     const isBusy = isEntityBusy(entity);
                     const atMax = selectedEntities.length >= teamMax;
                     const isClickable = isSelected || (!isBusy && !atMax);
                     return (
-                      <div
-                        key={entity.id}
-                        className="relative"
-                        style={{ opacity: isBusy ? 0.4 : 1 }}
-                      >
+                      <div key={entity.id} className="relative">
                         <EntityCard
                           entity={entity}
                           useCase="mission"
