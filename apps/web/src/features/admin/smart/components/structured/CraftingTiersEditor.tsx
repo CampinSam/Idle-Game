@@ -16,6 +16,7 @@ const TIER_META: Array<{ key: string; label: string; color: string; isSuccess: b
   { key: 'scare',     label: 'Scare',     color: '#4db0da', isSuccess: true  },
   { key: 'rare',      label: 'Rare',      color: '#a98aff', isSuccess: true  },
   { key: 'epic',      label: 'Epic',      color: '#ff6090', isSuccess: true  },
+  { key: 'mythic',    label: 'Mythic',    color: '#ffc040', isSuccess: true  },
   { key: 'legendary', label: 'Legendary', color: '#ffe040', isSuccess: true  },
 ];
 
@@ -37,12 +38,46 @@ export default function CraftingTiersEditor({ value, onChange }: CraftingTiersEd
   const tiers: CraftingTiersValue =
     value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 
+  const sigmaValue: number | undefined = typeof (tiers as any).sigma === 'number'
+    ? (tiers as any).sigma
+    : undefined;
+
   const setTier = (key: string, block: TierBlock) => {
     onChange({ ...tiers, [key]: block });
   };
 
+  const setSigma = (raw: string) => {
+    const parsed = raw === '' ? undefined : Number(raw);
+    const next = { ...tiers };
+    if (parsed === undefined) {
+      delete (next as any).sigma;
+    } else {
+      (next as any).sigma = parsed;
+    }
+    onChange(next);
+  };
+
   return (
     <div style={containerStyle}>
+      <div style={{ ...entryCardStyle, marginBottom: 4 }}>
+        <div style={entryHeaderStyle}>
+          <span style={{ ...labelStyle, fontWeight: 700, fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+            Quality Spread (sigma)
+          </span>
+          <div style={{ ...fieldRowStyle, marginLeft: 'auto' }}>
+            <span style={labelStyle}>Default 22 — lower = narrower, higher = wider</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              placeholder="22"
+              value={sigmaValue ?? ''}
+              style={numberInputStyle}
+              onChange={(e) => setSigma(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
       {TIER_META.map((meta) => {
         const block: TierBlock = tiers[meta.key] ?? { rewards: [] };
         const rewards = Array.isArray(block.rewards) ? block.rewards : [];
