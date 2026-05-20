@@ -185,7 +185,7 @@ export function ForgePickerArea({
             recipeCategories={recipeCategories}
             favorites={favorites}
             onToggleFavorite={onToggleFavorite}
-            onClose={onClose}
+            onClose={onClose ?? (() => {})}
             onSelect={onRecipeSelect}
             recipeIsLocked={recipeIsLocked}
             currencyBalances={currencyBalances}

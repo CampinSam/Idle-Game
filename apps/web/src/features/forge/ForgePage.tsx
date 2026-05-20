@@ -26,6 +26,7 @@ import { BuildingDetailHeader } from './components/BuildingDetailHeader';
 import { ForgeRecipeCard } from './components/ForgeRecipeCard';
 import { ForgeOutcomeCard } from './components/ForgeOutcomeCard';
 import { ForgePickerArea } from './components/ForgePickerArea';
+import { ForgeRecipePicker } from './components/ForgeRecipePicker';
 import { QUALITY_COLOURS } from './components/forgeUtils';
 
 type SlideDir = 'left' | 'right';
@@ -579,144 +580,175 @@ export default function ForgePage() {
             </section>
           )}
 
-          {/* ── Step 1: recipe picker (full-width, no recipe selected yet) ── */}
-          {!selectedRecipe && (
-            <ForgePickerArea
-              activePicker="recipe"
-              recipes={filteredRecipes}
-              selectedRecipeId={selectedRecipeId}
-              recipeSearch={recipeSearch}
-              setRecipeSearch={setRecipeSearch}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              availabilityFilter={availabilityFilter}
-              setAvailabilityFilter={setAvailabilityFilter}
-              recipeCategories={recipeCategories}
-              favorites={favorites}
-              onToggleFavorite={toggleFavorite}
-              onRecipeSelect={handleRecipeSelect}
-              recipeIsLocked={recipeIsLocked}
-              currencyBalances={currencyBalances}
-              syncItemsTable={syncItemsTable}
-              profile={profile}
-              idleEntities={idleEntities}
-              selectedEntityId={selectedEntityId}
-              entitySearch={entitySearch}
-              setEntitySearch={setEntitySearch}
-              entityFilter={entityFilter}
-              setEntityFilter={setEntityFilter}
-              entitySort={entitySort}
-              setEntitySort={setEntitySort}
-              onEntitySelect={handleEntitySelect}
-            />
-          )}
+          {/* ── Two-column row — always visible ── */}
+          <div className="grid grid-cols-2 gap-[10px] items-start">
 
-          {/* ── Step 2: two-column row + crafter (shown once recipe is selected) ── */}
-          {selectedRecipe && (
-            <>
-              {/* Two-column primary row */}
-              <div className="grid grid-cols-2 gap-[10px] items-stretch">
-                {/* Left — Recipe card; clicking clears selection → inline picker reappears */}
-                <ForgeRecipeCard
-                  recipe={selectedRecipe}
-                  isActive={false}
-                  multicraft={multicraft}
-                  quantity={quantity}
-                  onQuantityChange={setQuantity}
-                  onClick={() => { setSelectedRecipeId(null); setActivePicker(null); }}
-                  requirements={previewRequirements}
-                />
-
-                {/* Right — Outcome card */}
-                <ForgeOutcomeCard
-                  passRatePct={passRatePct}
-                  passRateColor={passRateColor}
-                  entityCl={craftPreview?.entityCl ?? undefined}
-                  recipeTiers={selectedRecipe?.tiers ?? null}
-                  centerOverrides={centerOverrides}
-                />
-              </div>
-
-              {/* ── Crafter row — selected-state card or placeholder ── */}
-              <div className="flex flex-col gap-1.5">
-                <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
-                  Crafter
+            {/* Left column: inline recipe picker (no recipe) or selected recipe card */}
+            {!selectedRecipe ? (
+              /* ForgeRecipePicker lives inline in the left column slot per spec */
+              <div className="flex flex-col rounded-[14px] border border-[rgba(139,92,246,0.3)] overflow-hidden">
+                {/* Compact filter header */}
+                <div className="bg-[rgba(20,16,56,0.95)] px-2 pt-2 pb-1.5 flex flex-col gap-1.5 border-b border-[rgba(139,92,246,0.18)]">
+                  <span className="text-[9px] font-extrabold tracking-[0.14em] uppercase text-[#c4b5fd]">
+                    Select Recipe
+                  </span>
+                  <div className="flex items-center gap-1 bg-black/30 border border-[rgba(139,92,246,0.2)] rounded-md px-2 h-7 focus-within:border-[rgba(139,92,246,0.5)]">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-text-secondary flex-shrink-0">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search…"
+                      value={recipeSearch}
+                      onChange={(e) => setRecipeSearch(e.target.value)}
+                      aria-label="Search recipes"
+                      className="flex-1 bg-transparent border-none text-text-primary text-[11px] outline-none placeholder:text-text-secondary"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1" role="tablist" aria-label="Availability">
+                    {(['available', 'all'] as const).map((key) => (
+                      <button
+                        key={key}
+                        role="tab"
+                        aria-selected={availabilityFilter === key}
+                        onClick={() => setAvailabilityFilter(key)}
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded border cursor-pointer transition-colors ${
+                          availabilityFilter === key
+                            ? 'bg-[rgba(139,92,246,0.3)] border-[rgba(139,92,246,0.6)] text-white'
+                            : 'bg-black/20 border-white/10 text-text-secondary'
+                        }`}
+                      >
+                        {key === 'available' ? '✓ Ready' : 'All'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {selectedEntityObj ? (
-                  <button
-                    onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                    aria-label={`Change crafter (${selectedEntityObj.name})`}
-                    className={`w-full flex items-center gap-3 p-3 rounded-[14px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
-                      activePicker === 'entity'
-                        ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
-                        : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
-                      ⚔️
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-extrabold text-white truncate">
-                        {selectedEntityObj.name}
-                      </div>
-                      {craftPreview?.entityCl != null && (
-                        <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
-                          CL {craftPreview.entityCl.toFixed(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                    aria-label="Pick a Derp"
-                    className={`w-full flex items-center justify-center gap-2 p-3 rounded-[14px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
-                      activePicker === 'entity'
-                        ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
-                        : 'border-dashed border-white/20 bg-white/[0.02]'
-                    }`}
-                  >
-                    <span className="text-[18px]">⚔️</span>
-                    <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
-                      Pick a Derp
-                    </span>
-                  </button>
-                )}
+                {/* Scrollable recipe list */}
+                <div className="overflow-y-auto max-h-[320px] bg-black/25 p-1.5">
+                  <ForgeRecipePicker
+                    recipes={filteredRecipes}
+                    selectedRecipeId={selectedRecipeId}
+                    recipeSearch={recipeSearch}
+                    setRecipeSearch={setRecipeSearch}
+                    categoryFilter={categoryFilter}
+                    setCategoryFilter={setCategoryFilter}
+                    availabilityFilter={availabilityFilter}
+                    setAvailabilityFilter={setAvailabilityFilter}
+                    recipeCategories={recipeCategories}
+                    favorites={favorites}
+                    onToggleFavorite={toggleFavorite}
+                    onClose={() => {}}
+                    onSelect={handleRecipeSelect}
+                    recipeIsLocked={recipeIsLocked}
+                    currencyBalances={currencyBalances}
+                    syncItemsTable={syncItemsTable}
+                    profile={profile}
+                    forecast={null}
+                    hideControls
+                  />
+                </div>
               </div>
-
-              {/* ── Entity picker area — collapses when no entity picker active ── */}
-              <ForgePickerArea
-                activePicker={activePicker === 'entity' ? 'entity' : null}
-                onClose={() => setActivePicker(null)}
-                recipes={filteredRecipes}
-                selectedRecipeId={selectedRecipeId}
-                recipeSearch={recipeSearch}
-                setRecipeSearch={setRecipeSearch}
-                categoryFilter={categoryFilter}
-                setCategoryFilter={setCategoryFilter}
-                availabilityFilter={availabilityFilter}
-                setAvailabilityFilter={setAvailabilityFilter}
-                recipeCategories={recipeCategories}
-                favorites={favorites}
-                onToggleFavorite={toggleFavorite}
-                onRecipeSelect={handleRecipeSelect}
-                recipeIsLocked={recipeIsLocked}
-                currencyBalances={currencyBalances}
-                syncItemsTable={syncItemsTable}
-                profile={profile}
-                idleEntities={idleEntities}
-                selectedEntityId={selectedEntityId}
-                entitySearch={entitySearch}
-                setEntitySearch={setEntitySearch}
-                entityFilter={entityFilter}
-                setEntityFilter={setEntityFilter}
-                entitySort={entitySort}
-                setEntitySort={setEntitySort}
-                onEntitySelect={handleEntitySelect}
+            ) : (
+              /* Recipe card: onClick opens recipe picker in full-width row below */
+              <ForgeRecipeCard
+                recipe={selectedRecipe}
+                isActive={activePicker === 'recipe'}
+                multicraft={multicraft}
+                quantity={quantity}
+                onQuantityChange={setQuantity}
+                onClick={() => setActivePicker((p) => p === 'recipe' ? null : 'recipe')}
+                requirements={previewRequirements}
               />
-            </>
-          )}
+            )}
+
+            {/* Right column: outcome card — always visible */}
+            <ForgeOutcomeCard
+              passRatePct={passRatePct}
+              passRateColor={passRateColor}
+              entityCl={craftPreview?.entityCl ?? undefined}
+              recipeTiers={selectedRecipe?.tiers ?? null}
+              centerOverrides={centerOverrides}
+            />
+          </div>
+
+          {/* ── Crafter row — selected-state card or placeholder ── */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
+              Crafter
+            </div>
+            {selectedEntityObj ? (
+              <button
+                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                aria-label={`Change crafter (${selectedEntityObj.name})`}
+                className={`w-full flex items-center gap-3 p-3 rounded-[14px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
+                  activePicker === 'entity'
+                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
+                    : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
+                  ⚔️
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-extrabold text-white truncate">
+                    {selectedEntityObj.name}
+                  </div>
+                  {craftPreview?.entityCl != null && (
+                    <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
+                      CL {craftPreview.entityCl.toFixed(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                aria-label="Pick a Derp"
+                className={`w-full flex items-center justify-center gap-2 p-3 rounded-[14px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
+                  activePicker === 'entity'
+                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
+                    : 'border-dashed border-white/20 bg-white/[0.02]'
+                }`}
+              >
+                <span className="text-[18px]">⚔️</span>
+                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
+                  Pick a Derp
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* ── Picker row — recipe change or entity, full-width, collapses when null ── */}
+          <ForgePickerArea
+            activePicker={activePicker === 'recipe' || activePicker === 'entity' ? activePicker : null}
+            onClose={() => setActivePicker(null)}
+            recipes={filteredRecipes}
+            selectedRecipeId={selectedRecipeId}
+            recipeSearch={recipeSearch}
+            setRecipeSearch={setRecipeSearch}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            availabilityFilter={availabilityFilter}
+            setAvailabilityFilter={setAvailabilityFilter}
+            recipeCategories={recipeCategories}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            onRecipeSelect={handleRecipeSelect}
+            recipeIsLocked={recipeIsLocked}
+            currencyBalances={currencyBalances}
+            syncItemsTable={syncItemsTable}
+            profile={profile}
+            idleEntities={idleEntities}
+            selectedEntityId={selectedEntityId}
+            entitySearch={entitySearch}
+            setEntitySearch={setEntitySearch}
+            entityFilter={entityFilter}
+            setEntityFilter={setEntityFilter}
+            entitySort={entitySort}
+            setEntitySort={setEntitySort}
+            onEntitySelect={handleEntitySelect}
+          />
 
           {/* Blocked reasons */}
           {selectedRecipeId && blockedReasons.length > 0 && (
