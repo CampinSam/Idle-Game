@@ -160,6 +160,9 @@ export default function LoginPage() {
           </>
         )}
 
+        <p className="auth-link" style={{ marginBottom: '0.35rem' }}>
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </p>
         <p className="auth-link">
           New Keeper? <Link to="/register">Create an account</Link>
         </p>

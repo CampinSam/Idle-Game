@@ -13,6 +13,8 @@ import { CheckInService } from '../checkin/checkin.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
 import { generateEntityData } from '../entity/entity-generator.util';
 
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -80,6 +82,10 @@ export class AuthService {
         data: locData,
       });
       await this.settlementService.recalculateLocationMeta(loc.id);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { primaryLocationId: loc.id },
+      });
     } catch (err) {
       this.logger.error(`Failed to create starter location for ${user.id}: ${err}`);
     }
@@ -327,7 +333,13 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.create({
-      data: { username: trimmedUsername, email: finalEmail, authProvider: 'wallet' },
+      data: {
+        username: trimmedUsername,
+        email: finalEmail,
+        authProvider: 'wallet',
+        walletAddress: normalizedAddress,
+        ecosystemId: chain,
+      },
     });
     await (this.prisma as any).linkedWallet.create({
       data: { userId: user.id, chain, address: normalizedAddress, isPrimary: true },
@@ -341,6 +353,10 @@ export class AuthService {
       const currentTick = await this.tickService.getCurrentTick();
       const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
       await this.settlementService.recalculateLocationMeta(loc.id);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { primaryLocationId: loc.id },
+      });
     } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
     try {
       await this.eventService.dispatch('evt_welcome_gift', { gift: { giftDefId: 'gift_welcome_gems' } }, {
@@ -446,12 +462,127 @@ export class AuthService {
     return false;
   }
 
+  /**
+   * Requests a password reset. Always returns 200 so callers can't probe
+   * whether an email address is registered. Sends a Resend email when
+   * RESEND_API_KEY is configured; otherwise logs the link for dev use.
+   */
+  async requestPasswordReset(email: string, appUrl?: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return; // silent — don't leak account existence
+
+    // Invalidate prior tokens for this user.
+    await (this.prisma as any).passwordReset.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await (this.prisma as any).passwordReset.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    });
+
+    const base = (appUrl || process.env.APP_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const resetUrl = `${base}/reset-password?token=${rawToken}`;
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || 'Derp Universe <noreply@derp.game>',
+            to: [email],
+            subject: 'Reset your Derp Universe password',
+            html: `<p>Hi ${user.username},</p>
+<p>Click the link below to reset your password. It expires in 1 hour.</p>
+<p><a href="${resetUrl}">${resetUrl}</a></p>
+<p>If you didn't request this, you can safely ignore this email.</p>`,
+          }),
+        });
+      } catch (err) {
+        this.logger.error(`Failed to send reset email to ${email}: ${err}`);
+      }
+    } else {
+      this.logger.warn(`[DEV] Password reset link for ${user.username}: ${resetUrl}`);
+    }
+  }
+
+  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const record = await (this.prisma as any).passwordReset.findUnique({ where: { tokenHash } });
+
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
+      throw new BadRequestException('Reset link is invalid or has expired');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash, authProvider: 'email' },
+      }),
+      (this.prisma as any).passwordReset.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+  }
+
+  /**
+   * Lets a wallet-only account set a password without going through email.
+   * The user must already be authenticated (JWT).
+   */
+  async setPassword(userId: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, authProvider: user.authProvider === 'wallet' ? 'wallet' : user.authProvider ?? 'email' },
+    });
+  }
+
+  /**
+   * Admin: generates a signed short-lived reset token for a given user ID
+   * without sending any email. Returns the full reset URL for copy/paste.
+   */
+  async adminGenerateResetLink(userId: string, appUrl?: string): Promise<{ url: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+
+    await (this.prisma as any).passwordReset.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    await (this.prisma as any).passwordReset.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    });
+
+    const base = (appUrl || process.env.APP_URL || 'http://localhost:5000').replace(/\/$/, '');
+    return { url: `${base}/reset-password?token=${rawToken}` };
+  }
+
   private toPlayerResponse(user: any) {
     return {
       id: user.id,
       username: user.username,
       email: user.email,
       walletAddress: user.walletAddress,
+      hasPassword: !!user.passwordHash,
       keeperLevel: user.keeperLevel,
       keeperXp: Number(user.keeperXp),
       prestigeTokens: user.prestigeTokens,

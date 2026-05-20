@@ -11,6 +11,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
 import { NftCollectionService } from '../nft/nft-collection.service';
 import { WalletService } from '../player/wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthService } from '../auth/auth.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 
 @Controller('admin')
@@ -28,6 +29,7 @@ export class AdminController {
     private nftCollectionService: NftCollectionService,
     private walletService: WalletService,
     private prisma: PrismaService,
+    private authService: AuthService,
   ) {}
 
   @Get('tables')
@@ -93,6 +95,14 @@ export class AdminController {
   @Post('players/:id/reset')
   resetPlayer(@Param('id') id: string) {
     return this.adminService.resetPlayer(id);
+  }
+
+  @Post('players/:id/generate-reset-link')
+  generateResetLink(
+    @Param('id') id: string,
+    @Body() body: { appUrl?: string },
+  ) {
+    return this.authService.adminGenerateResetLink(id, body?.appUrl);
   }
 
   @Post('notifications/send')

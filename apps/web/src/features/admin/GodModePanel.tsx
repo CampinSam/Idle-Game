@@ -89,6 +89,18 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
     } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
   };
 
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+
+  const generateResetLink = async () => {
+    setGeneratingLink(true); setMsg(null); setResetLink(null);
+    try {
+      const { url } = await adminApi.generateResetLink(player.id);
+      setResetLink(url);
+    } catch (e: any) { setMsg({ text: e.message, type: 'error' }); }
+    finally { setGeneratingLink(false); }
+  };
+
   const loadWallets = useCallback(async () => {
     setWalletsLoading(true);
     try {
@@ -154,13 +166,37 @@ function ProfileTab({ player, onReload }: { player: any; onReload: () => void })
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         <button onClick={savePlayer} className="btn-save" disabled={saving}>Save Profile</button>
+        <button onClick={generateResetLink} disabled={generatingLink} style={{
+          padding: '0.5rem 1rem', border: '1px solid #6c9eff', borderRadius: 6,
+          background: 'rgba(108,158,255,0.1)', color: '#93c5fd', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+        }}>{generatingLink ? 'Generating…' : '🔑 Reset Link'}</button>
         <button onClick={resetPlayer} style={{
           padding: '0.5rem 1rem', border: '1px solid #ff6b6b', borderRadius: 6,
           background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
         }}>Reset Account</button>
       </div>
+
+      {resetLink && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#0a1020', border: '1px solid #1e3a5f', borderRadius: 8 }}>
+          <div style={{ color: '#8888aa', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+            Password Reset Link (expires in 1 hour)
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              readOnly
+              value={resetLink}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.72rem', padding: '0.4rem', background: '#060c18', border: '1px solid #1e2a3e', borderRadius: 5, color: '#93c5fd', cursor: 'text' }}
+            />
+            <button
+              onClick={() => { navigator.clipboard.writeText(resetLink); setMsg({ text: 'Link copied!', type: 'success' }); }}
+              style={{ padding: '0.4rem 0.75rem', border: '1px solid #2a3a5e', borderRadius: 5, background: 'rgba(108,158,255,0.12)', color: '#93c5fd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+            >Copy</button>
+          </div>
+        </div>
+      )}
 
       <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', borderTop: '1px solid #2a2a4e', paddingTop: '1rem' }}>Currencies</h4>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: '1rem' }}>

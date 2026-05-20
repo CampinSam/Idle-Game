@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import { ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
@@ -65,6 +65,30 @@ class WalletCompleteOnboardingDto {
   email?: string;
 }
 
+class ForgotPasswordDto {
+  @IsEmail()
+  email: string;
+
+  @IsOptional()
+  @IsString()
+  appUrl?: string;
+}
+
+class ResetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+
+class SetPasswordDto {
+  @IsString()
+  @MinLength(6)
+  password: string;
+}
+
 // Whole controller goes through ThrottlerGuard. We `SkipThrottle` the
 // `commands` named scope so its 120/min budget doesn't apply here, leaving
 // only the stricter `auth` 10/min scope from `app.module.ts` in effect.
@@ -103,5 +127,24 @@ export class AuthController {
   @Post('wallet/complete')
   walletCompleteOnboarding(@Body() dto: WalletCompleteOnboardingDto) {
     return this.authService.completeWalletOnboarding(dto.walletToken, dto.username, dto.email);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(dto.email, dto.appUrl);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
+  }
+
+  @Post('set-password')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.NO_CONTENT)
+  setPassword(@Body() dto: SetPasswordDto, @Request() req: any) {
+    return this.authService.setPassword(req.user.id, dto.password);
   }
 }

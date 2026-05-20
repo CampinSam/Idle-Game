@@ -4,7 +4,7 @@ import { audioEngine, AudioBusName } from '../../services/AudioEngine';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
 
-type Tab = 'audio' | 'wallet';
+type Tab = 'audio' | 'wallet' | 'security';
 
 interface LinkedWallet {
   id: string;
@@ -96,9 +96,80 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 8)}...${address.slice(-6)}`;
 }
 
+function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirm) { setMsg({ text: 'Passwords do not match', type: 'error' }); return; }
+    setSaving(true); setMsg(null);
+    try {
+      await api.setPassword(newPassword);
+      setMsg({ text: hasPassword ? 'Password updated' : 'Password set — you can now sign in with email + password', type: 'success' });
+      setNewPassword(''); setConfirm('');
+    } catch (err: any) {
+      setMsg({ text: err?.message || 'Failed to update password', type: 'error' });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="pt-4">
+      <span className={SECTION_LABEL}>{hasPassword ? 'Change Password' : 'Set a Password'}</span>
+      {!hasPassword && (
+        <div className="mb-4 px-3.5 py-3 bg-[rgba(234,179,8,0.08)] border border-[rgba(234,179,8,0.25)] rounded-[10px] text-[13px] text-[#fde68a]">
+          Your account was created with a wallet and has no password. Set one here so you can also sign in with email + password.
+        </div>
+      )}
+      {msg && (
+        <div className={`mb-3 px-3.5 py-2.5 rounded-[10px] text-[13px] ${msg.type === 'success' ? 'bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-[#86efac]' : 'bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#f87171]'}`}>
+          {msg.text}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>{hasPassword ? 'New password' : 'Password'}</label>
+          <input
+            type="password"
+            className={INPUT_CLASS + ' w-full'}
+            value={newPassword}
+            onChange={(e) => { setNewPassword(e.target.value); setMsg(null); }}
+            placeholder="At least 6 characters"
+            minLength={6}
+            required
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>Confirm password</label>
+          <input
+            type="password"
+            className={INPUT_CLASS + ' w-full'}
+            value={confirm}
+            onChange={(e) => { setConfirm(e.target.value); setMsg(null); }}
+            placeholder="Repeat your password"
+            minLength={6}
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className={ACTION_BTN_PRIMARY}
+          style={{ alignSelf: 'flex-start', padding: '0.55rem 1.2rem', fontSize: '0.85rem' }}
+          disabled={saving || newPassword.length < 6}
+        >
+          {saving ? 'Saving...' : hasPassword ? 'Update password' : 'Set password'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('audio');
   const token = useAppSelector((s) => s.auth.token);
+  const player = useAppSelector((s) => s.auth.player);
 
   const [volumes, setVolumes] = useState<Record<AudioBusName, number>>(() => ({
     music: audioEngine.getVolume('music'),
@@ -234,6 +305,12 @@ export default function SettingsPage() {
             onClick={() => setTab('wallet')}
           >
             🔗 Wallet
+          </button>
+          <button
+            className={`${TAB_BASE} ${tab === 'security' ? 'text-[#c4b5fd] border-b-[var(--derp-purple)]' : 'text-text-secondary hover:text-[#c4b5fd] border-b-transparent'}`}
+            onClick={() => setTab('security')}
+          >
+            🔒 Security
           </button>
         </div>
 
@@ -387,6 +464,10 @@ export default function SettingsPage() {
                 </>
               )}
             </div>
+          )}
+
+          {tab === 'security' && (
+            <SecurityTab hasPassword={!!(player as any)?.hasPassword} />
           )}
 
         </div>

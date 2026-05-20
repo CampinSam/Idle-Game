@@ -24,6 +24,7 @@ export class PlayerService {
       username: user.username,
       email: user.email,
       walletAddress: user.walletAddress,
+      hasPassword: !!user.passwordHash,
       keeperLevel: user.keeperLevel,
       keeperXp: Number(user.keeperXp),
       xpToNextLevel: XP_PER_LEVEL(user.keeperLevel),

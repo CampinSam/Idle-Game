@@ -478,6 +478,28 @@ class ApiClient {
     });
   }
 
+  forgotPassword(email: string) {
+    return fetch(`${API_BASE}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, appUrl: window.location.origin }),
+    });
+  }
+
+  resetPassword(token: string, password: string) {
+    return this.request<void>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
+  setPassword(password: string) {
+    return this.request<void>('/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
   walletNonceAuthed(chain: string, address: string, _token: string) {
     return this.request<{ nonce: string; message: string }>('/auth/wallet/nonce', {
       method: 'POST',

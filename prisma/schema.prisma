@@ -57,10 +57,24 @@ model User {
   questInstances     QuestInstance[]
   linkedWallets      LinkedWallet[]
   activeEffects      ActiveEffect[]
+  passwordResets     PasswordReset[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
   @@map("users")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_resets")
 }
 
 model LinkedWallet {

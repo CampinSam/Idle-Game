@@ -72,6 +72,8 @@ export const adminApi = {
     adminRequest<any>(`/players/${id}/currency`, { method: 'PUT', body: JSON.stringify({ currencyId, balance }) }),
   resetPlayer: (id: string) =>
     adminRequest<any>(`/players/${id}/reset`, { method: 'POST' }),
+  generateResetLink: (id: string) =>
+    adminRequest<{ url: string }>(`/players/${id}/generate-reset-link`, { method: 'POST', body: JSON.stringify({}) }),
 
   sendNotification: (data: { userId: string; type: string; category: string; priority: string; title: string; body: string }) =>
     adminRequest<any>('/notifications/send', { method: 'POST', body: JSON.stringify(data) }),
