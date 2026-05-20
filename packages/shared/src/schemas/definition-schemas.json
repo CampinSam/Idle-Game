@@ -590,11 +590,17 @@
             },
             "idempotencyKey": {
               "type": "string",
-              "description": "Optional dedup key"
+              "description": "Optional dedup key. Supports ${jobId} interpolation."
             },
             "payload": {
               "type": "object",
-              "description": "Key-value payload for the event handler"
+              "description": "Payload forwarded to the event handler. For createGiftForPlayer events, must include gift — either { giftDefId } (reference to an existing GiftDef row) or a fully-inline InlineGiftDef ({ name, instant?, rewardSpec, ... }).",
+              "properties": {
+                "gift": {
+                  "$ref": "#/complexTypes/GiftSpec",
+                  "description": "Gift to issue to the player. Either { giftDefId } or an inline InlineGiftDef. Required for createGiftForPlayer handler events."
+                }
+              }
             }
           }
         }

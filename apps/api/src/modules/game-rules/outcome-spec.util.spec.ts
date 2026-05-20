@@ -76,6 +76,34 @@ describe('normalizeOutcomeSpec', () => {
     expect(changed).toBe(0);
   });
 
+  it('migrates bare giftDefId on emitEvent payload to gift: { giftDefId }', () => {
+    const { value, changed } = normalizeOutcomeSpec([
+      { type: 'emitEvent', defId: 'evt_welcome', payload: { giftDefId: 'gift_intro' } },
+    ]);
+    expect(value).toEqual([
+      { type: 'emitEvent', defId: 'evt_welcome', payload: { gift: { giftDefId: 'gift_intro' } } },
+    ]);
+    expect(changed).toBe(1);
+  });
+
+  it('leaves emitEvent payload unchanged when gift field is already present', () => {
+    const input = [
+      { type: 'emitEvent', defId: 'evt_welcome', payload: { gift: { giftDefId: 'gift_intro' } } },
+    ];
+    const { value, changed } = normalizeOutcomeSpec(input);
+    expect(value).toEqual(input);
+    expect(changed).toBe(0);
+  });
+
+  it('leaves emitEvent payload unchanged when it has no giftDefId', () => {
+    const input = [
+      { type: 'emitEvent', defId: 'evt_welcome', payload: {} },
+    ];
+    const { value, changed } = normalizeOutcomeSpec(input);
+    expect(value).toEqual(input);
+    expect(changed).toBe(0);
+  });
+
   it('returns the value unchanged for null / non-objects', () => {
     expect(normalizeOutcomeSpec(null).value).toBeNull();
     expect(normalizeOutcomeSpec('string').value).toBe('string');

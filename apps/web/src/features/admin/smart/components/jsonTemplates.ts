@@ -40,6 +40,8 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'keeper_xp', description: 'XP for the keeper', color: ORANGE, template: () => ({ type: 'keeper_xp', min: 10, max: 50 }) },
     { label: 'flag', description: 'Set a player flag', color: PINK, template: () => ({ type: 'flag', operation: 'set', key: '', value: true }) },
     { label: 'text', description: 'Narrative text output', color: PINK, template: () => ({ type: 'text', message: '' }) },
+    { label: 'emitEvent (gift ref)', description: 'Fire an event with a GiftDef reference', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { giftDefId: '' } } }) },
+    { label: 'emitEvent (inline gift)', description: 'Fire an event with an inline gift definition', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { name: '', instant: true, rewardSpec: [] } } }) },
   ],
   bundle: [
     { label: 'bundle', description: 'Nested probability bundle', color: PURPLE, template: () => ({ bundle: [], odds: 1 }) },
@@ -50,6 +52,8 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'keeper_xp', description: 'XP for the keeper', color: ORANGE, template: () => ({ type: 'keeper_xp', min: 10, max: 50 }) },
     { label: 'flag', description: 'Set a player flag', color: PINK, template: () => ({ type: 'flag', operation: 'set', key: '', value: true }) },
     { label: 'text', description: 'Narrative text output', color: PINK, template: () => ({ type: 'text', message: '' }) },
+    { label: 'emitEvent (gift ref)', description: 'Fire an event with a GiftDef reference', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { giftDefId: '' } } }) },
+    { label: 'emitEvent (inline gift)', description: 'Fire an event with an inline gift definition', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { name: '', instant: true, rewardSpec: [] } } }) },
   ],
   outcomePool: [
     { label: 'bundle', description: 'Probability bundle', color: PURPLE, template: () => ({ bundle: [], odds: 1 }) },
@@ -58,6 +62,8 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'item', description: 'Item drop', color: ORANGE, template: () => ({ type: 'item', key: '', min: 1, max: 1, odds: 0.5 }) },
     { label: 'entity_xp', description: 'Entity XP', color: ORANGE, template: () => ({ type: 'entity_xp', min: 10, max: 50 }) },
     { label: 'keeper_xp', description: 'Keeper XP', color: ORANGE, template: () => ({ type: 'keeper_xp', min: 10, max: 50 }) },
+    { label: 'emitEvent (gift ref)', description: 'Fire an event with a GiftDef reference', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { giftDefId: '' } } }) },
+    { label: 'emitEvent (inline gift)', description: 'Fire an event with an inline gift definition', color: SLATE, template: () => ({ type: 'emitEvent', defId: '', payload: { gift: { name: '', instant: true, rewardSpec: [] } } }) },
   ],
   cost: [
     { label: 'currency', description: 'Currency cost entry', color: EMERALD, template: () => ({ type: 'currency', id: '', amount: 1 }) },

@@ -16,6 +16,33 @@
 
 const SKIP_TYPES = new Set(['bundle', 'bundle_ref', 'flag', 'text', 'emitEvent']);
 
+/**
+ * Write-side migration for emitEvent entries that carry a bare `giftDefId`
+ * directly on the payload object instead of the canonical `gift` field.
+ *
+ * Before: { type: 'emitEvent', ..., payload: { giftDefId: 'xyz' } }
+ * After:  { type: 'emitEvent', ..., payload: { gift: { giftDefId: 'xyz' } } }
+ *
+ * Returns a new entry object when a migration was performed, the original
+ * reference otherwise.
+ */
+function normalizeEmitEventEntry(entry: any): { entry: any; changed: number } {
+  if (!entry || entry.type !== 'emitEvent') return { entry, changed: 0 };
+  const payload = entry.payload;
+  if (!payload || typeof payload !== 'object') return { entry, changed: 0 };
+  // Already canonical — gift field is present.
+  if (payload.gift !== undefined) return { entry, changed: 0 };
+  // Bare giftDefId on the payload — wrap it under gift.
+  if (typeof payload.giftDefId === 'string') {
+    const { giftDefId, ...rest } = payload;
+    return {
+      entry: { ...entry, payload: { ...rest, gift: { giftDefId } } },
+      changed: 1,
+    };
+  }
+  return { entry, changed: 0 };
+}
+
 export interface NormalizeResult {
   value: any;
   changed: number;
@@ -29,6 +56,13 @@ function walkEntry(item: any, counter: { n: number }): any {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
 
   let next: any = item;
+
+  // Normalize bare giftDefId on emitEvent payload to the canonical gift field.
+  const emitResult = normalizeEmitEventEntry(next);
+  if (emitResult.changed > 0) {
+    next = emitResult.entry;
+    counter.n += emitResult.changed;
+  }
 
   if (Array.isArray(item.bundle)) {
     next = { ...next, bundle: walkArray(item.bundle, counter) };
