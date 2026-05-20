@@ -42,8 +42,8 @@ function buildColorMap(recipeTiers: Record<string, any> | null | undefined): Rec
   return colorMap;
 }
 
-function gaussianY(x: number, center: number): number {
-  return Math.exp(-((x - center) ** 2) / (2 * SIGMA * SIGMA));
+function gaussianY(x: number, center: number, sigma: number): number {
+  return Math.exp(-((x - center) ** 2) / (2 * sigma * sigma));
 }
 
 function computeBellPoints(
@@ -52,12 +52,13 @@ function computeBellPoints(
   amplitude: number,
   centerOverrides: Partial<Record<string, number>>,
   colorMap: Record<string, string>,
+  sigma: number,
 ): Point[] {
   const pts: Point[] = [];
   for (let i = 0; i <= STEPS; i++) {
     const cl = (i / STEPS) * cap;
-    const y = gaussianY(cl, centerCl) * amplitude;
-    const probs = qualityProbabilities(cl, centerOverrides);
+    const y = gaussianY(cl, centerCl, sigma) * amplitude;
+    const probs = qualityProbabilities(cl, centerOverrides, sigma);
     const dominant = probs.reduce((a, b) => (a.probability >= b.probability ? a : b));
     const color = colorMap[dominant.key] ?? '#94a3b8';
     pts.push({ i, y, color });
@@ -91,6 +92,7 @@ export interface RarityCurveChartProps {
   entityCl?: number | null;
   centerOverrides?: Partial<Record<string, number>>;
   cap?: number;
+  sigma?: number;
   className?: string;
 }
 
@@ -99,6 +101,7 @@ export function RarityCurveChart({
   entityCl,
   centerOverrides = {},
   cap = DEFAULT_CAP,
+  sigma = SIGMA,
   className,
 }: RarityCurveChartProps) {
   const W = 240;
@@ -189,10 +192,10 @@ export function RarityCurveChart({
 
   const { pts, runs } = useMemo(
     () => {
-      const p = computeBellPoints(cap, displayedCl, displayedAmplitude, centerOverrides, colorMap);
+      const p = computeBellPoints(cap, displayedCl, displayedAmplitude, centerOverrides, colorMap, sigma);
       return { pts: p, runs: buildRuns(p) };
     },
-    [cap, displayedCl, displayedAmplitude, centerOverrides, colorMap],
+    [cap, displayedCl, displayedAmplitude, centerOverrides, colorMap, sigma],
   );
 
   const xOf = (i: number) => PAD_X + (i / STEPS) * (W - 2 * PAD_X);

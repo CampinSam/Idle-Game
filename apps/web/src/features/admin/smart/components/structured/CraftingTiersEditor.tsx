@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import OutcomeListEditor from './OutcomeListEditor';
+import { RarityCurveChart } from '../../../../forge/components/RarityCurveChart';
 import {
   containerStyle,
   entryCardStyle,
@@ -42,6 +44,18 @@ export default function CraftingTiersEditor({ value, onChange }: CraftingTiersEd
     ? (tiers as any).sigma
     : undefined;
 
+  const centerOverrides = useMemo(() => {
+    const overrides: Partial<Record<string, number>> = {};
+    for (const meta of TIER_META) {
+      if (!meta.isSuccess) continue;
+      const block = tiers[meta.key];
+      if (block && typeof block === 'object' && typeof block.clRequirement === 'number') {
+        overrides[meta.key] = block.clRequirement;
+      }
+    }
+    return overrides;
+  }, [tiers]);
+
   const setTier = (key: string, block: TierBlock) => {
     onChange({ ...tiers, [key]: block });
   };
@@ -68,8 +82,8 @@ export default function CraftingTiersEditor({ value, onChange }: CraftingTiersEd
             <span style={labelStyle}>Default 22 — lower = narrower, higher = wider</span>
             <input
               type="number"
-              min={1}
-              max={100}
+              min={5}
+              max={60}
               placeholder="22"
               value={sigmaValue ?? ''}
               style={numberInputStyle}
@@ -77,6 +91,18 @@ export default function CraftingTiersEditor({ value, onChange }: CraftingTiersEd
             />
           </div>
         </div>
+        <div style={{ marginTop: 10, borderRadius: 6, overflow: 'hidden', height: 72 }}>
+          <RarityCurveChart
+            recipeTiers={tiers}
+            entityCl={100}
+            centerOverrides={centerOverrides}
+            sigma={sigmaValue ?? 22}
+            cap={220}
+          />
+        </div>
+        <p style={{ ...labelStyle, marginTop: 6, opacity: 0.55, fontSize: 10 }}>
+          Preview at CL 100 — hairline shows where that entity falls on the curve
+        </p>
       </div>
       {TIER_META.map((meta) => {
         const block: TierBlock = tiers[meta.key] ?? { rewards: [] };
