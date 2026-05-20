@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { qualityProbabilities } from '@derp/math';
+import { qualityProbabilities, QUALITY_TIERS } from '@derp/math';
 import { QUALITY_COLOURS } from './forgeUtils';
 
-const CL_MAX = 170;
-const STEPS = 180;
+const DEFAULT_CAP = 170;
+const STEPS = 200;
 
 interface Point {
   i: number;
@@ -18,18 +18,43 @@ interface ColorRun {
   color: string;
 }
 
-function computePoints(centerOverrides: Partial<Record<string, number>>): Point[] {
+/**
+ * Build a color mapping for each quality tier key.
+ * Tiers with no rewards in the recipe inherit the color of the nearest preceding defined tier.
+ * If no preceding tier is defined, falls back to the tier's own default color.
+ */
+function buildColorMap(recipeTiers: Record<string, any> | null | undefined): Record<string, string> {
+  const colorMap: Record<string, string> = {};
+  let lastDefinedColor: string | null = null;
+
+  for (const t of QUALITY_TIERS) {
+    const tierDef = recipeTiers?.[t.key];
+    const hasDef =
+      tierDef != null &&
+      typeof tierDef === 'object' &&
+      Object.keys(tierDef).some((k) => k !== 'clRequirement');
+
+    if (hasDef) {
+      lastDefinedColor = QUALITY_COLOURS[t.key] ?? '#94a3b8';
+    }
+    colorMap[t.key] = lastDefinedColor ?? QUALITY_COLOURS[t.key] ?? '#94a3b8';
+  }
+
+  return colorMap;
+}
+
+function computePoints(
+  cap: number,
+  centerOverrides: Partial<Record<string, number>>,
+  colorMap: Record<string, string>,
+): Point[] {
   const pts: Point[] = [];
   for (let i = 0; i <= STEPS; i++) {
-    const cl = (i / STEPS) * CL_MAX;
+    const cl = (i / STEPS) * cap;
     const probs = qualityProbabilities(cl, centerOverrides);
-    const nonFail = probs.filter((p) => p.key !== 'failure');
-    const dominant =
-      nonFail.length > 0
-        ? nonFail.reduce((a, b) => (a.probability >= b.probability ? a : b))
-        : probs[0];
-    const color = QUALITY_COLOURS[dominant?.key ?? 'common'] ?? '#94a3b8';
-    pts.push({ i, y: dominant?.probability ?? 0, color });
+    const dominant = probs.reduce((a, b) => (a.probability >= b.probability ? a : b));
+    const color = colorMap[dominant.key] ?? '#94a3b8';
+    pts.push({ i, y: dominant.probability, color });
   }
   return pts;
 }
@@ -47,24 +72,38 @@ function buildRuns(pts: Point[]): ColorRun[] {
   return runs;
 }
 
-interface RarityCurveChartProps {
+export interface RarityCurveChartProps {
+  /** The recipe's tiers object (keys = quality keys, values = reward blocks). Used for color inheritance. */
+  recipeTiers?: Record<string, any> | null;
+  /** Entity's crafting luck (CL) — marks the current entity's position on the X axis. */
   entityCl?: number | null;
+  /** Per-recipe clRequirement overrides, keyed by quality tier key. */
   centerOverrides?: Partial<Record<string, number>>;
+  /** X-axis CL cap. Defaults to 170. */
+  cap?: number;
   className?: string;
 }
 
-export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: RarityCurveChartProps) {
+export function RarityCurveChart({
+  recipeTiers,
+  entityCl,
+  centerOverrides = {},
+  cap = DEFAULT_CAP,
+  className,
+}: RarityCurveChartProps) {
   const W = 240;
   const H = 80;
   const PAD_X = 1;
   const PAD_Y = 4;
 
+  const colorMap = useMemo(() => buildColorMap(recipeTiers), [recipeTiers]);
+
   const { maxY, runs } = useMemo(() => {
-    const pts = computePoints(centerOverrides);
+    const pts = computePoints(cap, centerOverrides, colorMap);
     let m = 0;
     for (const p of pts) if (p.y > m) m = p.y;
     return { maxY: Math.max(m, 0.01), runs: buildRuns(pts) };
-  }, [centerOverrides]);
+  }, [cap, centerOverrides, colorMap]);
 
   const xOf = (i: number) => PAD_X + (i / STEPS) * (W - 2 * PAD_X);
   const yOf = (v: number) => H - PAD_Y - (v / maxY) * (H - 2 * PAD_Y);
@@ -72,12 +111,11 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
   const paths = useMemo(() =>
     runs
       .map((run) => {
-        const pts = run.points;
-        if (pts.length < 1) return null;
+        if (run.points.length < 1) return null;
         const firstX = xOf(run.iStart);
         const lastX = xOf(run.iEnd);
         let d = `M ${firstX.toFixed(1)} ${H}`;
-        for (const pt of pts) {
+        for (const pt of run.points) {
           d += ` L ${xOf(pt.i).toFixed(1)} ${yOf(pt.y).toFixed(1)}`;
         }
         d += ` L ${lastX.toFixed(1)} ${H} Z`;
@@ -87,10 +125,16 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   [runs, maxY]);
 
-  const hairX =
-    entityCl != null
-      ? PAD_X + (Math.min(Math.max(entityCl, 0), CL_MAX) / CL_MAX) * (W - 2 * PAD_X)
-      : null;
+  const hairData = useMemo(() => {
+    if (entityCl == null) return null;
+    const clClamped = Math.min(Math.max(entityCl, 0), cap);
+    const x = PAD_X + (clClamped / cap) * (W - 2 * PAD_X);
+    const probs = qualityProbabilities(clClamped, centerOverrides);
+    const dominant = probs.reduce((a, b) => (a.probability >= b.probability ? a : b));
+    const y = yOf(dominant.probability);
+    return { x, y };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityCl, cap, centerOverrides, maxY]);
 
   return (
     <svg
@@ -103,19 +147,19 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
       {paths.map((p, i) => (
         <path key={i} d={p.d} fill={p.color} fillOpacity={0.75} />
       ))}
-      {hairX != null && (
+      {hairData && (
         <>
           <line
-            x1={hairX.toFixed(1)}
+            x1={hairData.x.toFixed(1)}
             y1={PAD_Y}
-            x2={hairX.toFixed(1)}
+            x2={hairData.x.toFixed(1)}
             y2={H - PAD_Y}
             stroke="white"
             strokeWidth={1.5}
-            strokeOpacity={0.85}
+            strokeOpacity={0.8}
             strokeDasharray="3 2"
           />
-          <circle cx={hairX.toFixed(1)} cy={PAD_Y + 4} r={2.5} fill="white" fillOpacity={0.9} />
+          <circle cx={hairData.x.toFixed(1)} cy={hairData.y.toFixed(1)} r={3} fill="white" fillOpacity={0.95} />
         </>
       )}
     </svg>

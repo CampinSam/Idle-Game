@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  useCallback, useEffect, useLayoutEffect, useMemo,
+  useRef, useState, useSyncExternalStore,
+} from 'react';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import {
   useSyncPlayer,
@@ -15,24 +18,53 @@ import { useJobPreview } from '../jobs/useJobPreview';
 import { workshopParallelSlots } from '@derp/math';
 import { audioEngine } from '../../services/AudioEngine';
 import { computeInventoryAmount } from '../../utils/locationProduction';
-import { EntityList } from '../entities/components';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
 import ItemQty from '../../components/ItemQty';
 import { SectionHeader } from '../../components/ui';
 import { ForgeJobRow } from './components/ForgeJobRow';
-import { ForgeRecipePicker } from './components/ForgeRecipePicker';
-import { RarityCurveChart } from './components/RarityCurveChart';
-import { QUALITY_COLOURS, fmtSeconds } from './components/forgeUtils';
+import { BuildingDetailHeader } from './components/BuildingDetailHeader';
+import { ForgeRecipeCard } from './components/ForgeRecipeCard';
+import { ForgeOutcomeCard } from './components/ForgeOutcomeCard';
+import { ForgePickerArea } from './components/ForgePickerArea';
+import { QUALITY_COLOURS } from './components/forgeUtils';
+
+type SlideDir = 'left' | 'right';
+type LocationState = { slideDir?: SlideDir };
 
 export default function ForgePage() {
   const { id: outpostId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const focusedJobId = searchParams.get('craftJob') || '';
   const focusedJobRef = useRef<HTMLDivElement | null>(null);
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
 
+  // ── Swipe gesture refs ──────────────────────────────────────────────────
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const navigatingRef = useRef(false);
+  const mountedRef = useRef(false);
+  const pointerRef = useRef<{
+    startX: number;
+    startY: number;
+    axisLocked: boolean;
+    pointerId: number;
+    cardEl: HTMLDivElement;
+  } | null>(null);
+
+  const prefersReducedMotion = useSyncExternalStore(
+    (cb) => {
+      if (typeof window === 'undefined') return () => {};
+      const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mql.addEventListener('change', cb);
+      return () => mql.removeEventListener('change', cb);
+    },
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false,
+  );
+
+  // ── Data hooks ──────────────────────────────────────────────────────────
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const syncItemsTable = useAppSelector((s) => s.sync.items);
@@ -47,41 +79,10 @@ export default function ForgePage() {
   const { craftingRecipes } = useAppSelector((s) => s.game);
   const allBuildings = useSyncBuildings();
 
+  // ── Workshop validation ─────────────────────────────────────────────────
   const [workshopInfo, setWorkshopInfo] = useState<any>(null);
   const [workshopChecked, setWorkshopChecked] = useState(false);
   const [workshopLevel, setWorkshopLevel] = useState(1);
-
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [activePicker, setActivePicker] = useState<'recipe' | 'entity' | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const [craftError, setCraftError] = useState('');
-  const [jobsExpanded, setJobsExpanded] = useState(false);
-
-  const [recipeSearch, setRecipeSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('available');
-  const [entitySearch, setEntitySearch] = useState('');
-  const [entityFilter, setEntityFilter] = useState<EntityFilter>('ALL');
-  const [entitySort, setEntitySort] = useState<EntitySortBy>('name');
-
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem('forge:favorites');
-      return new Set<string>(raw ? JSON.parse(raw) : []);
-    } catch { return new Set<string>(); }
-  });
-
-  const toggleFavorite = useCallback((recipeId: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(recipeId)) next.delete(recipeId);
-      else next.add(recipeId);
-      try { localStorage.setItem('forge:favorites', JSON.stringify(Array.from(next))); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
 
   useEffect(() => {
     if (!outpostId) { navigate('/locations', { replace: true }); return; }
@@ -111,6 +112,41 @@ export default function ForgePage() {
     return () => clearTimeout(t);
   }, [focusedJobId, allActiveCraftingJobs.length]);
 
+  // ── Selection state ─────────────────────────────────────────────────────
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [activePicker, setActivePicker] = useState<'recipe' | 'entity' | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [craftError, setCraftError] = useState('');
+  const [jobsExpanded, setJobsExpanded] = useState(false);
+
+  // ── Filter state ────────────────────────────────────────────────────────
+  const [recipeSearch, setRecipeSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('available');
+  const [entitySearch, setEntitySearch] = useState('');
+  const [entityFilter, setEntityFilter] = useState<EntityFilter>('ALL');
+  const [entitySort, setEntitySort] = useState<EntitySortBy>('name');
+
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('forge:favorites');
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set<string>(); }
+  });
+
+  const toggleFavorite = useCallback((recipeId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(recipeId)) next.delete(recipeId);
+      else next.add(recipeId);
+      try { localStorage.setItem('forge:favorites', JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  // ── Derived recipe / entity ─────────────────────────────────────────────
   const selectedRecipe = useMemo(
     () => (craftingRecipes as any[]).find((r: any) => r.id === selectedRecipeId) ?? null,
     [craftingRecipes, selectedRecipeId],
@@ -142,6 +178,7 @@ export default function ForgePage() {
     return overrides;
   }, [selectedRecipe]);
 
+  // ── Job preview (live outcome) ──────────────────────────────────────────
   const { preview } = useJobPreview({
     jobType: 'crafting',
     defId: selectedRecipeId ?? '',
@@ -157,6 +194,7 @@ export default function ForgePage() {
   const slotsUsed = craftPreview?.slotsUsed ?? activeCraftingJobs.length;
   const slotsOpen = craftPreview?.slotsOpen ?? Math.max(0, slotsTotal - slotsUsed);
 
+  // ── Recipe predicates ───────────────────────────────────────────────────
   const recipeIsLocked = useCallback((r: any): boolean => {
     if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return true;
     const recipeTierNum = Number(r.tier ?? 1);
@@ -205,6 +243,7 @@ export default function ForgePage() {
     [entities],
   );
 
+  // ── Blocked reasons ─────────────────────────────────────────────────────
   const blockedReasons = useMemo<string[]>(() => {
     if (!selectedRecipe) return [];
     const reasons: string[] = [];
@@ -234,6 +273,7 @@ export default function ForgePage() {
 
   const canStart = !!(selectedRecipeId && selectedEntityId && selectedEntityObj && blockedReasons.length === 0 && !busy);
 
+  // ── Handlers ────────────────────────────────────────────────────────────
   const handleRecipeSelect = useCallback((r: any) => {
     setSelectedRecipeId(r.id);
     setActivePicker(null);
@@ -276,6 +316,7 @@ export default function ForgePage() {
     }
   };
 
+  // ── Navigation items — outpost overview + each building ─────────────────
   const outpostBuildings = useMemo(
     () => (allBuildings as any[]).filter((b) => b.locationId === outpostId),
     [allBuildings, outpostId],
@@ -288,10 +329,13 @@ export default function ForgePage() {
     if (hasWorkshopBuilding) items.push({ path: `/locations/${outpostId}/workshop` });
     return items;
   }, [outpostId, hasWorkshopBuilding]);
-  const currentNavIdx = Math.max(0, navItems.findIndex((n) => n.path === `/locations/${outpostId}/workshop`));
+  const workshopPath = `/locations/${outpostId}/workshop`;
+  const currentNavIdx = Math.max(0, navItems.findIndex((n) => n.path === workshopPath));
   const prevPath = navItems[(currentNavIdx - 1 + navItems.length) % navItems.length]?.path ?? `/locations/${outpostId}`;
   const nextPath = navItems[(currentNavIdx + 1) % navItems.length]?.path ?? `/locations/${outpostId}`;
+  const hasNav = navItems.length > 1;
 
+  // ── Outcome display ─────────────────────────────────────────────────────
   const passRatePct = craftPreview?.passRate != null ? Math.round(craftPreview.passRate * 100) : null;
   const passRateColor =
     passRatePct == null ? '#94a3b8'
@@ -308,6 +352,132 @@ export default function ForgePage() {
   const workshopName = workshopInfo?.name || 'The Forge';
   const outpostName = workshopInfo?.locationName || '';
 
+  // ── Preview requirements from live data ─────────────────────────────────
+  const previewRequirements: Array<{ label: string; met: boolean }> =
+    (preview?.requirements ?? []) as Array<{ label: string; met: boolean }>;
+
+  // ── Swipe gesture ───────────────────────────────────────────────────────
+  function springBack(card: HTMLDivElement) {
+    card.style.transition = 'transform 0.2s ease-out';
+    card.style.transform = 'translateX(0)';
+    card.addEventListener('transitionend', function onEnd() {
+      card.style.transition = '';
+      card.style.transform = '';
+      card.removeEventListener('transitionend', onEnd);
+    }, { once: true });
+  }
+
+  function doNavigate(targetPath: string, dir: SlideDir) {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
+    if (prefersReducedMotion) {
+      navigate(targetPath, { state: { slideDir: dir } satisfies LocationState });
+      return;
+    }
+    const card = cardRef.current;
+    if (!card) {
+      navigate(targetPath, { state: { slideDir: dir } satisfies LocationState });
+      return;
+    }
+    const toX = dir === 'left' ? '-110%' : '110%';
+    card.style.transition = 'transform 0.18s ease-out';
+    card.style.transform = `translateX(${toX})`;
+    setTimeout(() => {
+      navigate(targetPath, { state: { slideDir: dir } satisfies LocationState });
+    }, 170);
+  }
+
+  // Slide-in animation on mount when arriving from an adjacent page
+  useLayoutEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    const state = location.state as LocationState | null;
+    const dir = state?.slideDir;
+    if (!dir || prefersReducedMotion) {
+      navigatingRef.current = false;
+      return;
+    }
+    const card = cardRef.current;
+    if (!card) { navigatingRef.current = false; return; }
+    const fromX = dir === 'left' ? '100%' : '-100%';
+    card.style.transition = 'none';
+    card.style.transform = `translateX(${fromX})`;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        card.style.transition = 'transform 0.22s ease-out';
+        card.style.transform = 'translateX(0)';
+        card.addEventListener('transitionend', function onEnd() {
+          card.style.transition = '';
+          card.style.transform = '';
+          navigatingRef.current = false;
+          card.removeEventListener('transitionend', onEnd);
+        }, { once: true });
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workshopPath]);
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (pointerRef.current) return;
+    if ((e.target as HTMLElement).closest('button, input, select')) return;
+    if (!hasNav || prefersReducedMotion) return;
+    pointerRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      axisLocked: false,
+      pointerId: e.pointerId,
+      cardEl: e.currentTarget,
+    };
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const p = pointerRef.current;
+    if (!p) return;
+    const dx = e.clientX - p.startX;
+    const dy = e.clientY - p.startY;
+    if (!p.axisLocked) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dy) > Math.abs(dx)) {
+        pointerRef.current = null;
+        return;
+      }
+      p.axisLocked = true;
+      p.cardEl.setPointerCapture(p.pointerId);
+    }
+    const card = cardRef.current;
+    if (!card) return;
+    const clamped = Math.max(-90, Math.min(90, dx));
+    card.style.transition = 'none';
+    card.style.transform = `translateX(${clamped}px)`;
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const p = pointerRef.current;
+    pointerRef.current = null;
+    if (!p?.axisLocked) return;
+    const dx = e.clientX - p.startX;
+    const card = cardRef.current;
+    if (!card) return;
+    if (Math.abs(dx) >= 50) {
+      const dir: SlideDir = dx < 0 ? 'left' : 'right';
+      const targetPath = dir === 'left' ? nextPath : prevPath;
+      doNavigate(targetPath, dir);
+    } else {
+      springBack(card);
+    }
+  }
+
+  function handlePointerCancel() {
+    const p = pointerRef.current;
+    pointerRef.current = null;
+    if (!p?.axisLocked) return;
+    const card = cardRef.current;
+    if (card) springBack(card);
+  }
+
+  // ── Loading skeleton ────────────────────────────────────────────────────
   if (!workshopChecked) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
@@ -315,7 +485,7 @@ export default function ForgePage() {
           <div className="flex items-center gap-2 px-3 py-2">
             <button
               onClick={() => navigate(`/locations/${outpostId ?? ''}`)}
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)]"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0"
             >
               ←
             </button>
@@ -328,72 +498,45 @@ export default function ForgePage() {
     );
   }
 
+  // ── Page ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-
-      {/* ── Sticky header — matches EntityDetailPage ── */}
-      <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10 flex-shrink-0">
-        <div className="flex items-center gap-2 px-3 py-2">
-
-          {/* Back */}
-          <button
-            onClick={() => navigate(`/locations/${outpostId}`)}
-            aria-label="Back to Outpost"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-          >
-            ←
-          </button>
-
-          {/* Title + subtitle */}
-          <div className="flex-1 min-w-0">
-            {outpostName && (
-              <p className="text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#fcd34d] leading-none truncate m-0 mb-0.5">
-                {outpostName}
-              </p>
-            )}
-            <h1 className="text-sm font-bold tracking-wide text-text-primary truncate m-0 leading-tight">
-              {workshopName.toUpperCase()}
-            </h1>
-            {/* Status badges in subtitle row */}
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd]">
-                T{workshopTier} Workshop
-              </span>
-              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border ${
-                slotsOpen > 0
-                  ? 'bg-[rgba(16,185,129,0.15)] border-[rgba(16,185,129,0.4)] text-[#6ee7b7]'
-                  : 'bg-[rgba(239,68,68,0.15)] border-[rgba(239,68,68,0.4)] text-[#fca5a5]'
-              }`}>
-                {slotsUsed}/{slotsTotal} Slots
-              </span>
-            </div>
-          </div>
-
-          {/* Carousel arrows */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => navigate(prevPath)}
-              aria-label="Previous"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-            >
-              ‹
-            </button>
-            <button
-              onClick={() => navigate(nextPath)}
-              aria-label="Next"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-            >
-              ›
-            </button>
-          </div>
-        </div>
-      </div>
+    <div
+      className="flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
+      ref={cardRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+    >
+      {/* ── Sticky header ── */}
+      <BuildingDetailHeader
+        outpostName={outpostName}
+        buildingName={workshopName}
+        onBack={() => navigate(`/locations/${outpostId}`)}
+        onPrev={() => doNavigate(prevPath, 'right')}
+        onNext={() => doNavigate(nextPath, 'left')}
+        hasNav={hasNav}
+        badges={
+          <>
+            <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd]">
+              T{workshopTier} Workshop
+            </span>
+            <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border ${
+              slotsOpen > 0
+                ? 'bg-[rgba(16,185,129,0.15)] border-[rgba(16,185,129,0.4)] text-[#6ee7b7]'
+                : 'bg-[rgba(239,68,68,0.15)] border-[rgba(239,68,68,0.4)] text-[#fca5a5]'
+            }`}>
+              {slotsUsed}/{slotsTotal} Slots
+            </span>
+          </>
+        }
+      />
 
       {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col gap-3 px-3 pt-3 pb-4">
 
-          {/* Active crafting jobs */}
+          {/* Active crafting jobs — collapsible strip */}
           {activeCraftingJobs.length > 0 && (
             <section>
               <button
@@ -429,140 +572,28 @@ export default function ForgePage() {
 
           {/* ── Two-column primary row ── */}
           <div className="grid grid-cols-2 gap-[10px] items-stretch">
-
-            {/* Left: Recipe card */}
-            <button
+            {/* Left — Recipe card */}
+            <ForgeRecipeCard
+              recipe={selectedRecipe}
+              isActive={activePicker === 'recipe'}
+              multicraft={multicraft}
+              quantity={quantity}
+              onQuantityChange={setQuantity}
               onClick={() => setActivePicker((p) => p === 'recipe' ? null : 'recipe')}
-              aria-label={selectedRecipe ? `Change recipe (${selectedRecipe.name})` : 'Choose recipe'}
-              className={`text-left rounded-[14px] border p-3 flex flex-col gap-2 transition-[border-color,filter] cursor-pointer hover:brightness-110 min-h-[148px] ${
-                activePicker === 'recipe'
-                  ? 'border-[rgba(167,139,250,0.75)] bg-[rgba(139,92,246,0.13)]'
-                  : selectedRecipe
-                    ? ''
-                    : 'border-dashed border-white/20 bg-white/[0.02]'
-              }`}
-              style={selectedRecipe ? {
-                background: selectedRecipe.displayDef?.cardBackground
-                  || 'linear-gradient(160deg,rgba(249,115,22,0.12) 0%,rgba(34,24,88,0.85) 100%)',
-                borderColor: activePicker === 'recipe'
-                  ? 'rgba(167,139,250,0.75)'
-                  : (selectedRecipe.displayDef?.borderColor || 'rgba(249,115,22,0.45)'),
-              } : undefined}
-            >
-              {selectedRecipe ? (
-                <>
-                  <div className="text-[9px] font-extrabold tracking-[0.12em] uppercase text-[#fcd34d]">
-                    Recipe
-                  </div>
-                  <div className="text-[13px] font-cinzel font-extrabold text-white leading-snug line-clamp-2">
-                    {selectedRecipe.name}
-                  </div>
-                  {selectedRecipe.description && (
-                    <div className="text-[10px] text-white/55 line-clamp-2 leading-relaxed">
-                      {selectedRecipe.description}
-                    </div>
-                  )}
-                  <div className="mt-auto flex items-center justify-between gap-1 flex-wrap">
-                    <span className="text-[11px] text-white/70 flex items-center gap-0.5">
-                      {(selectedRecipe.cost ?? []).length === 0
-                        ? <span className="text-[10px] text-white/50">Free</span>
-                        : (selectedRecipe.cost ?? []).map((c: any, i: number) => (
-                            <ItemQty key={i} src={c.id} amount={c.amount} size={12} />
-                          ))}
-                    </span>
-                    <span className="text-[10px] text-white/45 tabular-nums">
-                      {fmtSeconds(selectedRecipe.timer?.duration ?? 0)}
-                    </span>
-                  </div>
+              requirements={previewRequirements}
+            />
 
-                  {/* Quantity picker */}
-                  {multicraft && (
-                    <div
-                      className="flex items-center gap-1.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <span className="text-[9px] font-bold text-[#c4b5fd] uppercase tracking-wide">Qty</span>
-                      {multicraft.mode === 'tiers' && Array.isArray(multicraft.tiers) ? (
-                        <div className="flex gap-1">
-                          {(multicraft.tiers as number[]).map((qty: number) => (
-                            <button
-                              key={qty}
-                              onClick={(e) => { e.stopPropagation(); setQuantity(qty); }}
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
-                                quantity === qty
-                                  ? 'bg-[rgba(139,92,246,0.35)] border-[rgba(139,92,246,0.8)] text-white'
-                                  : 'bg-black/20 border-white/15 text-slate-400'
-                              }`}
-                            >
-                              {qty}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setQuantity(Math.max(1, quantity - 1)); }}
-                            className="w-5 h-5 rounded border border-white/15 bg-black/20 text-slate-300 text-[12px] flex items-center justify-center cursor-pointer"
-                          >−</button>
-                          <span className="w-5 text-center text-[10px] font-bold text-white tabular-nums">{quantity}</span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setQuantity(Math.min(multicraft.max ?? 99, quantity + 1)); }}
-                            className="w-5 h-5 rounded border border-white/15 bg-black/20 text-slate-300 text-[12px] flex items-center justify-center cursor-pointer"
-                          >+</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="text-[9px] text-white/35 italic">tap to change</div>
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 py-2">
-                  <span className="text-[28px]">📜</span>
-                  <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide text-center">
-                    Choose Recipe
-                  </span>
-                </div>
-              )}
-            </button>
-
-            {/* Right: Outcome card — pure display, no picker */}
-            <div
-              className="rounded-[14px] border border-[rgba(139,92,246,0.2)] p-3 flex flex-col gap-2 min-h-[148px]"
-              style={{ background: 'linear-gradient(160deg,#1a1640 0%,#1e1850 100%)' }}
-            >
-              <div className="text-[9px] font-extrabold tracking-[0.12em] uppercase text-[#93c5fd]">
-                Outcome
-              </div>
-
-              {/* Success chance headline */}
-              <div className="flex flex-col leading-none">
-                <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-text-secondary">
-                  Success
-                </div>
-                <div
-                  className="text-[32px] font-black tabular-nums leading-none"
-                  style={{ color: passRateColor }}
-                >
-                  {passRatePct != null ? `${passRatePct}%` : '—'}
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="h-px bg-white/10 w-full flex-shrink-0" />
-
-              {/* Bell curve chart */}
-              <div className="flex-1 min-h-0 flex flex-col justify-end">
-                <RarityCurveChart
-                  entityCl={craftPreview?.entityCl ?? undefined}
-                  centerOverrides={centerOverrides}
-                  className="rounded overflow-hidden"
-                />
-              </div>
-            </div>
+            {/* Right — Outcome card */}
+            <ForgeOutcomeCard
+              passRatePct={passRatePct}
+              passRateColor={passRateColor}
+              entityCl={craftPreview?.entityCl ?? undefined}
+              recipeTiers={selectedRecipe?.tiers ?? null}
+              centerOverrides={centerOverrides}
+            />
           </div>
 
-          {/* ── Entity roster row (below two columns) ── */}
+          {/* ── Entity roster row — Crafter ── */}
           <div className="flex flex-col gap-1.5">
             <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
               Crafter
@@ -610,62 +641,36 @@ export default function ForgePage() {
             )}
           </div>
 
-          {/* ── Picker area ── */}
-          {activePicker === 'recipe' && (
-            <ForgeRecipePicker
-              recipes={filteredRecipes}
-              selectedRecipeId={selectedRecipeId}
-              recipeSearch={recipeSearch}
-              setRecipeSearch={setRecipeSearch}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              availabilityFilter={availabilityFilter}
-              setAvailabilityFilter={setAvailabilityFilter}
-              recipeCategories={recipeCategories}
-              favorites={favorites}
-              onToggleFavorite={toggleFavorite}
-              onClose={() => setActivePicker(null)}
-              onSelect={handleRecipeSelect}
-              recipeIsLocked={recipeIsLocked}
-              currencyBalances={currencyBalances}
-              syncItemsTable={syncItemsTable}
-              profile={profile}
-              forecast={null}
-            />
-          )}
-
-          {activePicker === 'entity' && (
-            <div className="rounded-xl border border-[rgba(96,165,250,0.3)] bg-black/30 p-3 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#93c5fd] font-cinzel">
-                  Select a Derp
-                </h3>
-                <button
-                  onClick={() => setActivePicker(null)}
-                  aria-label="Close Derp picker"
-                  className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
-                >
-                  ×
-                </button>
-              </div>
-              <EntityList
-                entities={idleEntities}
-                mode="picker"
-                useCase="crafting"
-                showControls={true}
-                search={entitySearch}
-                onSearchChange={setEntitySearch}
-                activeFilter={entityFilter}
-                onFilterChange={setEntityFilter}
-                sortBy={entitySort}
-                onSortChange={setEntitySort}
-                selectedIds={selectedEntityId ? [selectedEntityId] : []}
-                onSelect={handleEntitySelect}
-                qualityColors={QUALITY_COLOURS}
-                emptyMessage="No idle Derps. Pull one back from a mission."
-              />
-            </div>
-          )}
+          {/* ── Picker area — sticky filter header, collapses when closed ── */}
+          <ForgePickerArea
+            activePicker={activePicker}
+            onClose={() => setActivePicker(null)}
+            recipes={filteredRecipes}
+            selectedRecipeId={selectedRecipeId}
+            recipeSearch={recipeSearch}
+            setRecipeSearch={setRecipeSearch}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            availabilityFilter={availabilityFilter}
+            setAvailabilityFilter={setAvailabilityFilter}
+            recipeCategories={recipeCategories}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            onRecipeSelect={handleRecipeSelect}
+            recipeIsLocked={recipeIsLocked}
+            currencyBalances={currencyBalances}
+            syncItemsTable={syncItemsTable}
+            profile={profile}
+            idleEntities={idleEntities}
+            selectedEntityId={selectedEntityId}
+            entitySearch={entitySearch}
+            setEntitySearch={setEntitySearch}
+            entityFilter={entityFilter}
+            setEntityFilter={setEntityFilter}
+            entitySort={entitySort}
+            setEntitySort={setEntitySort}
+            onEntitySelect={handleEntitySelect}
+          />
 
           {/* Blocked reasons */}
           {selectedRecipeId && blockedReasons.length > 0 && (
