@@ -1,6 +1,20 @@
 import type { RichSelection } from './rich-selection';
 
-export const TELEMETRY_EVENT_TYPES = ['MISSION_START', 'MISSION_SUCCESS', 'MISSION_FAIL'] as const;
+export const TELEMETRY_EVENT_TYPES = [
+  'MISSION_START',
+  'MISSION_SUCCESS',
+  'MISSION_FAIL',
+  'mission_complete',
+  'checkin_completed',
+  'crafting_completed',
+  'lootbox_opened',
+  'shop_purchase',
+  'gift_claimed',
+  'quest_claimed',
+  'achievement_claimed',
+  'location_xp_deposited',
+  'location_level_up',
+] as const;
 export type TelemetryEventType = typeof TELEMETRY_EVENT_TYPES[number];
 
 export interface TelemetrySubEventSpec {

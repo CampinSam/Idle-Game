@@ -42,7 +42,8 @@ function makeFakes(rewardSpec: any, status: 'completed' | 'active' | 'claimed' =
   const fakeSelectionResolver: any = { evaluate: jest.fn().mockReturnValue(true), evaluateAll: jest.fn().mockReturnValue(true) };
   const gameRules = new GameRulesService(prisma, fakeSelectionResolver);
 
-  const svc = new QuestService(prisma, notification, telemetry, currency, inventory, gameRules, fakeSelectionResolver);
+  const fakeContextBuilder: any = { buildContext: jest.fn().mockResolvedValue({ player: {}, entities: [], inventory: { currencies: {}, items: {} }, locations: [] }) };
+  const svc = new QuestService(prisma, notification, telemetry, fakeContextBuilder, currency, inventory, gameRules, fakeSelectionResolver);
   return { svc, credited, items, updates };
 }
 

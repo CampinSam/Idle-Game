@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestEx
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { TelemetryService, TelemetrySubscriber, TelemetryEvent } from '../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
@@ -68,6 +69,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     private prisma: PrismaService,
     private notificationService: NotificationService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
@@ -411,6 +413,27 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
         where: { id: existingNotif.id },
         data: { readAt: new Date() },
       });
+    }
+
+    try {
+      const eventType = isAchievement(def) ? 'achievement_claimed' : 'quest_claimed';
+      let selectionContext;
+      try {
+        selectionContext = await this.telemetryContextBuilder.buildContext(userId);
+      } catch (ctxErr) {
+        this.logger.warn(`Failed to build selection context for quest/achievement telemetry: ${ctxErr}`);
+      }
+      await this.telemetryService.record(
+        userId,
+        eventType,
+        def.id,
+        1,
+        {},
+        tx,
+        selectionContext,
+      );
+    } catch (err) {
+      this.logger.warn(`Failed to record quest/achievement claim telemetry: ${err}`);
     }
 
     return { grants, permanentEffectId, markedReadNotif };
