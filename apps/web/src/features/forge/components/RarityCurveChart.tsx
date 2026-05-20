@@ -2,6 +2,27 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { qualityProbabilities, QUALITY_TIERS } from '@derp/math';
 import { QUALITY_COLOURS } from './forgeUtils';
 
+function RarityCurveLegend() {
+  return (
+    <div className="flex flex-wrap gap-x-2 gap-y-0.5 justify-center mt-1">
+      {QUALITY_TIERS.map((t) => {
+        const color = QUALITY_COLOURS[t.key] ?? '#94a3b8';
+        return (
+          <span key={t.key} className="flex items-center gap-0.5">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: color }}
+            />
+            <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color }}>
+              {t.label}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 const DEFAULT_CAP = 220;
 const STEPS = 200;
 const SIGMA = 22;
@@ -220,62 +241,64 @@ export function RarityCurveChart({
   }, [displayedCl, displayedAmplitude, cap]);
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className={className}
-      aria-hidden="true"
-      style={{ display: 'block', width: '100%', height: '100%' }}
-      preserveAspectRatio="none"
-    >
-      <defs>
-        <clipPath id="forge-curve-mask">
-          <path d={clipPathD} />
-        </clipPath>
-      </defs>
+    <div className={`flex flex-col gap-1 ${className ?? ''}`}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        aria-hidden="true"
+        style={{ display: 'block', width: '100%', flex: '1 1 0' }}
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <clipPath id="forge-curve-mask">
+            <path d={clipPathD} />
+          </clipPath>
+        </defs>
 
-      {/* Background */}
-      <rect width={W} height={H} fill="rgba(0,0,0,0.25)" rx="4" />
+        {/* Background */}
+        <rect width={W} height={H} fill="rgba(0,0,0,0.25)" rx="4" />
 
-      {/* Colour bands — each run is a rect clipped to the bell curve silhouette */}
-      {runs.map((run, i) => {
-        const x1 = xOf(run.iStart);
-        const x2 = xOf(run.iEnd);
-        return (
-          <rect
-            key={i}
-            x={x1.toFixed(1)}
-            y={PAD_Y}
-            width={Math.max(1, x2 - x1).toFixed(1)}
-            height={H - PAD_Y}
-            fill={run.color}
-            fillOpacity={0.8}
-            clipPath="url(#forge-curve-mask)"
-          />
-        );
-      })}
+        {/* Colour bands — each run is a rect clipped to the bell curve silhouette */}
+        {runs.map((run, i) => {
+          const x1 = xOf(run.iStart);
+          const x2 = xOf(run.iEnd);
+          return (
+            <rect
+              key={i}
+              x={x1.toFixed(1)}
+              y={PAD_Y}
+              width={Math.max(1, x2 - x1).toFixed(1)}
+              height={H - PAD_Y}
+              fill={run.color}
+              fillOpacity={0.8}
+              clipPath="url(#forge-curve-mask)"
+            />
+          );
+        })}
 
-      {/* Hairline + dot at entity CL position (travels with the animated peak) */}
-      {hairData && (
-        <>
-          <line
-            x1={hairData.x.toFixed(1)}
-            y1={PAD_Y}
-            x2={hairData.x.toFixed(1)}
-            y2={H - PAD_Y}
-            stroke="white"
-            strokeWidth={1.5}
-            strokeOpacity={0.9}
-            strokeDasharray="3 2"
-          />
-          <circle
-            cx={hairData.x.toFixed(1)}
-            cy={hairData.y.toFixed(1)}
-            r={3}
-            fill="white"
-            fillOpacity={0.95}
-          />
-        </>
-      )}
-    </svg>
+        {/* Hairline + dot at entity CL position (travels with the animated peak) */}
+        {hairData && (
+          <>
+            <line
+              x1={hairData.x.toFixed(1)}
+              y1={PAD_Y}
+              x2={hairData.x.toFixed(1)}
+              y2={H - PAD_Y}
+              stroke="white"
+              strokeWidth={1.5}
+              strokeOpacity={0.9}
+              strokeDasharray="3 2"
+            />
+            <circle
+              cx={hairData.x.toFixed(1)}
+              cy={hairData.y.toFixed(1)}
+              r={3}
+              fill="white"
+              fillOpacity={0.95}
+            />
+          </>
+        )}
+      </svg>
+      <RarityCurveLegend />
+    </div>
   );
 }

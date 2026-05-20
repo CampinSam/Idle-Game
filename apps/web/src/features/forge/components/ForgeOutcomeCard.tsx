@@ -1,4 +1,11 @@
 import { RarityCurveChart } from './RarityCurveChart';
+import { QUALITY_COLOURS } from './forgeUtils';
+
+interface QualityProbEntry {
+  key: string;
+  label: string;
+  probability: number;
+}
 
 interface ForgeOutcomeCardProps {
   passRatePct: number | null;
@@ -6,6 +13,7 @@ interface ForgeOutcomeCardProps {
   entityCl?: number | null;
   recipeTiers?: Record<string, any> | null;
   centerOverrides?: Partial<Record<string, number>>;
+  qualityProbabilities?: QualityProbEntry[] | null;
 }
 
 export function ForgeOutcomeCard({
@@ -14,6 +22,7 @@ export function ForgeOutcomeCard({
   entityCl,
   recipeTiers,
   centerOverrides = {},
+  qualityProbabilities,
 }: ForgeOutcomeCardProps) {
   return (
     <div
@@ -45,6 +54,37 @@ export function ForgeOutcomeCard({
           className="rounded overflow-hidden w-full h-full"
         />
       </div>
+
+      {/* Quality probability pills */}
+      {qualityProbabilities && qualityProbabilities.length > 0 && (
+        <>
+          <div className="h-px bg-white/10 w-full flex-shrink-0" />
+          <div className="flex flex-col gap-0.5">
+            {qualityProbabilities.map((entry) => {
+              const color = QUALITY_COLOURS[entry.key] ?? '#94a3b8';
+              const pct = Math.round(entry.probability * 100);
+              if (pct === 0) return null;
+              return (
+                <div key={entry.key} className="flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: color }}
+                  />
+                  <span
+                    className="text-[9px] font-bold uppercase tracking-wide flex-1 truncate"
+                    style={{ color }}
+                  >
+                    {entry.label}
+                  </span>
+                  <span className="text-[9px] font-bold tabular-nums text-white/70">
+                    {pct}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

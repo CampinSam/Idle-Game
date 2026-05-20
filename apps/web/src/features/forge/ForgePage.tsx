@@ -632,6 +632,7 @@ export default function ForgePage() {
               entityCl={craftPreview?.entityCl ?? undefined}
               recipeTiers={selectedRecipe?.tiers ?? null}
               centerOverrides={centerOverrides}
+              qualityProbabilities={craftPreview?.qualityProbabilities ?? null}
             />
           </div>
 
