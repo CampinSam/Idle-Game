@@ -5,14 +5,13 @@ export const FORGE_FALLBACK = {
 };
 
 export const QUALITY_COLOURS: Record<string, string> = {
+  failure:   '#ef4444',
   common:    '#94a3b8',
   uncommon:  '#34d399',
   scare:     '#4db0da',
   rare:      '#a98aff',
   epic:      '#ff6090',
-  mythic:    '#ffc040',
   legendary: '#ffe040',
-  unique:    '#ffffff',
 };
 
 export function bgImageCss(bg?: string | null): string {
@@ -32,7 +31,7 @@ export function fmtSeconds(seconds: number): string {
 export interface QualityProb { key: string; label: string; probability: number }
 export interface ForecastResponse {
   cap: number;
-  tiers: Array<{ key: string; label: string; minCl: number }>;
+  tiers: Array<{ key: string; label: string; center: number }>;
   workshopTier: number;
   luckFloor: number;
   slotsTotal?: number;

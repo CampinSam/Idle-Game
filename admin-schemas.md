@@ -638,7 +638,8 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 | `requiredKeeperLevel` | Minimum Keeper level to start |
 | `keeperLevelMet` | Whether player's current level satisfies the requirement |
 | `effectiveDurationTicks` | Post-modifier duration in ticks (reflects player effects and workshop tier) |
-| `rewards` | Raw rewards JSON from the recipe definition (yield preview) |
+| `tiers` | Per-tier reward blocks from the recipe definition (see `RecipeDef.tiers`) |
+| `difficulty` | Pass/fail gate difficulty from the recipe (`passRate = effectiveCL / (effectiveCL + difficulty)`) |
 | `workshopTier` | Level of the workshop at `locationId` (0 if no `locationId` or no workshop found) |
 | `slotsTotal` | Parallel crucible slots available at this workshop |
 | `slotsUsed` | Active crafting jobs currently occupying slots at this location |

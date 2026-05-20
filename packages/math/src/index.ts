@@ -16,6 +16,8 @@ export {
 export { calculateSuccessChance } from './success-probability';
 export {
   calculateCraftingLuck,
+  effectiveCL,
+  rollPassFail,
   qualityProbabilities,
   rollQualityFromCl,
   workshopLuckFloor,

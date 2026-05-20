@@ -10,12 +10,12 @@ interface ForecastBarProps {
 
 export function ForecastBar({ cap, tiers, marker, qualityKey }: ForecastBarProps) {
   const segs = useMemo(() => {
-    const sorted = [...tiers].sort((a, b) => a.minCl - b.minCl);
+    const sorted = [...tiers].sort((a, b) => a.center - b.center);
     return sorted.map((t, i) => {
-      const start = t.minCl;
-      const end = i === sorted.length - 1 ? cap : sorted[i + 1].minCl;
-      const widthPct = ((end - start) / cap) * 100;
-      return { ...t, start, end, widthPct };
+      const prevMid = i === 0 ? 0 : (sorted[i - 1].center + t.center) / 2;
+      const nextMid = i === sorted.length - 1 ? cap : (t.center + sorted[i + 1].center) / 2;
+      const widthPct = ((nextMid - prevMid) / cap) * 100;
+      return { ...t, segStart: prevMid, segEnd: nextMid, widthPct };
     });
   }, [tiers, cap]);
 
@@ -29,7 +29,7 @@ export function ForecastBar({ cap, tiers, marker, qualityKey }: ForecastBarProps
             key={s.key}
             className={`flex items-center justify-center text-[10px] uppercase tracking-[0.08em] text-slate-900 font-extrabold transition-opacity duration-200 ${qualityKey === s.key ? 'opacity-100' : 'opacity-55'}`}
             style={{ width: `${s.widthPct}%`, background: QUALITY_COLOURS[s.key] || '#475569' }}
-            title={`${s.label} — CL ≥ ${s.minCl}`}
+            title={`${s.label} — CL center ${s.center}`}
           >
             <span>{s.label}</span>
           </div>
@@ -45,7 +45,7 @@ export function ForecastBar({ cap, tiers, marker, qualityKey }: ForecastBarProps
       <div className="relative flex text-[10px] text-slate-400">
         {segs.map((s) => (
           <span key={s.key} className="text-left pl-0.5" style={{ width: `${s.widthPct}%` }}>
-            <small>{s.minCl}</small>
+            <small>{s.center}</small>
           </span>
         ))}
         <span className="absolute right-0"><small>{cap}+</small></span>

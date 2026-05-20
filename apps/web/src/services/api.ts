@@ -215,7 +215,7 @@ class ApiClient {
     const qs = params.toString() ? `?${params.toString()}` : '';
     return this.request<{
       cap: number;
-      tiers: Array<{ key: string; label: string; minCl: number }>;
+      tiers: Array<{ key: string; label: string; center: number }>;
       workshopTier: number;
       luckFloor: number;
       slotsTotal: number;

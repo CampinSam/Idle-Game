@@ -5579,7 +5579,9 @@
             "type": "emitEvent",
             "defId": "evt_new_guest_arrived",
             "payload": {
-              "gift": { "giftDefId": "gift_perp_clone" }
+              "gift": {
+                "giftDefId": "gift_perp_clone"
+              }
             },
             "idempotencyKey": "clone-${jobId}"
           },
@@ -5964,15 +5966,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 1,
-      "rewards": [
-        {
-          "key": "potion_heal_small",
-          "max": 1,
-          "min": 1,
-          "odds": 100,
-          "type": "item"
-        }
-      ],
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -5980,7 +5973,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "key": "potion_heal_small",
+              "max": 1,
+              "min": 1,
+              "odds": 100,
+              "type": "item"
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "luck_potion",
@@ -6009,15 +6035,6 @@
         "skip_type": "scaling"
       },
       "requiredKeeperLevel": 10,
-      "rewards": [
-        {
-          "key": "consumable_lucky_charm",
-          "max": 1,
-          "min": 1,
-          "odds": 100,
-          "type": "item"
-        }
-      ],
       "requirements": {
         "op": "AND",
         "rules": [
@@ -6047,7 +6064,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "key": "consumable_lucky_charm",
+              "max": 1,
+              "min": 1,
+              "odds": 100,
+              "type": "item"
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "power_potion",
@@ -6070,21 +6120,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 15,
-      "rewards": [
-        {
-          "max": 50,
-          "min": 20,
-          "odds": 100,
-          "type": "entity_xp"
-        },
-        {
-          "key": "mat_feather_dust",
-          "max": 5,
-          "min": 2,
-          "odds": 100,
-          "type": "item"
-        }
-      ],
       "requirements": {
         "op": "AND",
         "rules": [
@@ -6114,7 +6149,46 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "max": 50,
+              "min": 20,
+              "odds": 100,
+              "type": "entity_xp"
+            },
+            {
+              "key": "mat_feather_dust",
+              "max": 5,
+              "min": 2,
+              "odds": 100,
+              "type": "item"
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "recipe_heal_potion",
@@ -6148,14 +6222,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 2,
-      "rewards": {
-        "items": [
-          {
-            "id": "potion_heal_medium",
-            "amount": 2
-          }
-        ]
-      },
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6163,7 +6229,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "potion_heal_medium",
+              "min": 2,
+              "max": 2,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "recipe_iron_sword",
@@ -6192,14 +6291,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 2,
-      "rewards": {
-        "items": [
-          {
-            "id": "gear_iron_sword",
-            "amount": 1
-          }
-        ]
-      },
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6207,7 +6298,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "gear_iron_sword",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "recipe_mana_ring",
@@ -6241,14 +6365,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 3,
-      "rewards": {
-        "items": [
-          {
-            "id": "gear_mana_ring",
-            "amount": 1
-          }
-        ]
-      },
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6256,7 +6372,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "gear_mana_ring",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "recipe_reverse_incubator",
@@ -6277,16 +6426,6 @@
         "boostable": true
       },
       "requiredKeeperLevel": 2,
-      "rewards": {
-        "type": "bundle",
-        "entries": [
-          {
-            "qty": 1,
-            "type": "item",
-            "itemDefId": "item_proto_egg"
-          }
-        ]
-      },
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6294,7 +6433,38 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "qty": 1,
+              "type": "item",
+              "itemDefId": "item_proto_egg"
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     },
     {
       "id": "speed_potion",
@@ -6323,15 +6493,6 @@
         "skip_type": "absolute"
       },
       "requiredKeeperLevel": 5,
-      "rewards": [
-        {
-          "key": "potion_speed_small",
-          "max": 1,
-          "min": 1,
-          "odds": 100,
-          "type": "item"
-        }
-      ],
       "requirements": {
         "op": "AND",
         "rules": [
@@ -6361,7 +6522,40 @@
       "activeModalDefId": null,
       "completedModalDefId": null,
       "failedModalDefId": null,
-      "readyModalDefId": null
+      "readyModalDefId": null,
+      "difficulty": 0,
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "key": "potion_speed_small",
+              "max": 1,
+              "min": 1,
+              "odds": 100,
+              "type": "item"
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      },
+      "multicraft": null
     }
   ],
   "giftDefs": [
@@ -6968,31 +7162,45 @@
       "rewards": [
         {
           "day": 0,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_sm"
+          }
         },
         {
           "day": 1,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_sm"
+          }
         },
         {
           "day": 2,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_sm"
+          }
         },
         {
           "day": 3,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_md"
+          }
         },
         {
           "day": 4,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_md"
+          }
         },
         {
           "day": 5,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_md"
+          }
         },
         {
           "day": 6,
-          "gift": { "giftDefId": "gift_checkin_daily_arcanium_lg" }
+          "gift": {
+            "giftDefId": "gift_checkin_daily_arcanium_lg"
+          }
         }
       ],
       "enabled": true
@@ -7010,31 +7218,45 @@
       "rewards": [
         {
           "day": 0,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_sm"
+          }
         },
         {
           "day": 1,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_sm"
+          }
         },
         {
           "day": 2,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_sm"
+          }
         },
         {
           "day": 3,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_md"
+          }
         },
         {
           "day": 4,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_md"
+          }
         },
         {
           "day": 5,
-          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_essence_md"
+          }
         },
         {
           "day": 6,
-          "gift": { "giftDefId": "gift_checkin_weekly_gems" }
+          "gift": {
+            "giftDefId": "gift_checkin_weekly_gems"
+          }
         }
       ],
       "enabled": true

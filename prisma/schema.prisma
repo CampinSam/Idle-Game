@@ -682,7 +682,9 @@ model RecipeDef {
   cost                     Json     @default("[]")
   timer                    Json     @default("{\"duration\":0,\"boostable\":true,\"skipable\":false,\"skip_cost\":[],\"skip_type\":\"absolute\"}")
   requiredKeeperLevel      Int      @default(1)
-  rewards                  Json     @default("{}")
+  difficulty               Float    @default(0)
+  tiers                    Json     @default("{}")
+  multicraft               Json?
   requirements             Json     @default("[]")
   effects                  Json     @default("[]")
   visibilityRequirements   Json     @default("[]")

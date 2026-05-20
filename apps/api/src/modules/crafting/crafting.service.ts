@@ -17,6 +17,10 @@ import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
 import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
 import {
   calculateCraftingLuck,
+  effectiveCL,
+  rollPassFail,
+  rollQualityFromCl,
+  qualityProbabilities,
   durationSecondsToTicks,
   workshopLuckFloor,
   workshopParallelSlots,
@@ -27,22 +31,29 @@ import {
 } from '@derp/math';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
 
-function qualityFromCl(cl: number): { key: string; label: string } {
-  for (let i = QUALITY_TIERS.length - 1; i >= 0; i--) {
-    if (cl >= QUALITY_TIERS[i].minCl) return { key: QUALITY_TIERS[i].key, label: QUALITY_TIERS[i].label };
-  }
-  return { key: QUALITY_TIERS[0].key, label: QUALITY_TIERS[0].label };
+const EMPTY_TIER_BLOCK = { rewards: [] };
+
+function getRecipeTiers(recipe: any): Record<string, { rewards: any[]; clRequirement?: number }> {
+  const tiers = (recipe?.tiers as any) || {};
+  return {
+    failure:   tiers.failure   ?? EMPTY_TIER_BLOCK,
+    common:    tiers.common    ?? EMPTY_TIER_BLOCK,
+    uncommon:  tiers.uncommon  ?? EMPTY_TIER_BLOCK,
+    scare:     tiers.scare     ?? EMPTY_TIER_BLOCK,
+    rare:      tiers.rare      ?? EMPTY_TIER_BLOCK,
+    epic:      tiers.epic      ?? EMPTY_TIER_BLOCK,
+    legendary: tiers.legendary ?? EMPTY_TIER_BLOCK,
+  };
 }
 
-// Per Task #111 spec: collectCrafting uses the deterministic CL-threshold roll
-// `qualityFromCl`. The forecast distribution must therefore exactly mirror that
-// outcome — 1.0 on the matched tier, 0.0 on the others — so the UI never
-// promises a probabilistic outcome that the collect path cannot deliver. If
-// product later switches to probabilistic rolls, both this helper and
-// collectCrafting must migrate together to stay in lockstep.
-function qualityDistributionFromCl(cl: number): { key: string; label: string; probability: number }[] {
-  const matched = qualityFromCl(cl).key;
-  return QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, probability: t.key === matched ? 1 : 0 }));
+function buildCenterOverrides(tiers: Record<string, { rewards: any[]; clRequirement?: number }>): Partial<Record<string, number>> {
+  const overrides: Partial<Record<string, number>> = {};
+  for (const [key, block] of Object.entries(tiers)) {
+    if (key !== 'failure' && typeof block.clRequirement === 'number') {
+      overrides[key] = block.clRequirement;
+    }
+  }
+  return overrides;
 }
 
 @Injectable()
@@ -85,17 +96,17 @@ export class CraftingService {
       include: { displayDef: true },
     });
 
-    if (!userId) return allDefs.map((d: any) => this.mapDefToLegacy(d));
+    if (!userId) return allDefs.map((d: any) => this.mapDefToRecipeResponse(d));
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) return allDefs.map((d: any) => this.mapDefToLegacy(d));
+    if (!user) return allDefs.map((d: any) => this.mapDefToRecipeResponse(d));
 
     return allDefs
       .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any))
-      .map((d: any) => this.mapDefToLegacy(d));
+      .map((d: any) => this.mapDefToRecipeResponse(d));
   }
 
-  private mapDefToLegacy(def: any) {
+  private mapDefToRecipeResponse(def: any) {
     const dd = def.displayDef;
     const display = dd ? {
       id: dd.id,
@@ -113,31 +124,22 @@ export class CraftingService {
       cost: def.cost,
       timer: def.timer,
       requiredKeeperLevel: def.requiredKeeperLevel,
-      rewards: def.rewards,
+      difficulty: def.difficulty ?? 0,
+      tiers: def.tiers ?? {},
+      multicraft: def.multicraft ?? null,
       requirements: def.requirements,
       visibilityRequirements: def.visibilityRequirements,
-      // Surface the resolved tier so the client can compute Codex availability
-      // and lock state without re-deriving the rule.
       tier: this.recipeTier(def),
       displayDef: display,
     };
   }
 
-  /**
-   * Returns the highest workshop tier (level) the player owns. Returns 0 if
-   * the player has no enabled workshop. Used to apply a CL "luck floor" so
-   * higher-tier workshops shore up bad-stat entities.
-   */
   async getMaxWorkshopTier(userId: string, locationId?: string): Promise<number> {
     const workshops = await this.getWorkshops(userId);
     const eligible = workshops.filter((w: any) => w.enabled && (locationId ? w.locationId === locationId : true));
     return eligible.reduce((m: number, w: any) => Math.max(m, Number(w.level || 0)), 0);
   }
 
-  /**
-   * Counts active CraftingJob rows scoped to a specific location (read from
-   * Job.data.locationId). Used for slot-cap enforcement.
-   */
   private async countActiveCraftingAtLocation(userId: string, locationId: string): Promise<number> {
     const jobs = await (this.prisma as any).job.findMany({
       where: { userId, type: 'CraftingJob', status: { in: ['active', 'ready_notified'] } },
@@ -146,12 +148,6 @@ export class CraftingService {
     return jobs.filter((j: any) => (j.data?.locationId ?? null) === locationId).length;
   }
 
-  /**
-   * Recipe "tier" is read from `recipeDef.data.tier` (1-3) and defaults to 1
-   * per Task #111 spec. Seeds opt T2/T3 recipes in by setting `data.tier`
-   * explicitly; the default keeps the rule predictable for new content
-   * authors and avoids surprise tier-cap blocks on legacy recipes.
-   */
   private recipeTier(def: any): number {
     const explicit = (def?.data as any)?.tier;
     if (typeof explicit === 'number' && explicit >= 1 && explicit <= 3) return explicit;
@@ -165,8 +161,8 @@ export class CraftingService {
       orderBy: [{ createdAt: 'asc' }],
     });
 
-    const tiers = QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, minCl: t.minCl }));
-    const cap = 150;
+    const tiers = QUALITY_TIERS.map((t) => ({ key: t.key, label: t.label, center: t.center }));
+    const cap = 200;
     const workshopTier = await this.getMaxWorkshopTier(userId, options.locationId);
     const luckFloor = workshopLuckFloor(workshopTier);
 
@@ -176,9 +172,9 @@ export class CraftingService {
       const status = state.status || 'idle';
       const progression = (entity.progression as any) || {};
       const rawCl = calculateCraftingLuck(stats);
-      const effectiveCl = Math.max(rawCl, luckFloor);
-      const expected = qualityFromCl(effectiveCl);
-      const probabilities = qualityDistributionFromCl(effectiveCl);
+      const cl = Math.max(rawCl, luckFloor);
+      const probs = qualityProbabilities(cl);
+      const topTier = probs.reduce((best, p) => p.probability > best.probability ? p : best, probs[0]);
       const display = (entity.display as any) || {};
       return {
         entityId: entity.id,
@@ -187,12 +183,12 @@ export class CraftingService {
         status,
         idle: status === 'idle',
         stats: { FOC: Number(stats.FOC ?? 0), LCK: Number(stats.LCK ?? 0) },
-        craftingLuck: Number(effectiveCl.toFixed(2)),
+        craftingLuck: Number(cl.toFixed(2)),
         rawCraftingLuck: Number(rawCl.toFixed(2)),
         luckFloor,
-        probabilities,
-        expectedQuality: expected.key,
-        expectedQualityLabel: expected.label,
+        probabilities: probs,
+        expectedQuality: topTier.key,
+        expectedQualityLabel: topTier.label,
       };
     });
 
@@ -217,11 +213,6 @@ export class CraftingService {
     };
   }
 
-  /**
-   * Returns the workshop-eligible buildings owned by the user. Used by the Home
-   * Forge hero card and Items "Craft with this" entry to know whether a player
-   * can actually open the Forge yet, and which outpost to deep-link to.
-   */
   async getWorkshops(userId: string) {
     const buildings = await (this.prisma as any).locationBuildingInstance.findMany({
       where: {
@@ -237,8 +228,6 @@ export class CraftingService {
       },
       orderBy: { createdAt: 'asc' },
     }).catch(async () => {
-      // tags JSON `array_contains` may not be supported on every Postgres setup;
-      // fall back to a category-only filter and let the seed data drive WORKSHOP.
       return (this.prisma as any).locationBuildingInstance.findMany({
         where: {
           location: { ownerUserId: userId },
@@ -259,9 +248,6 @@ export class CraftingService {
       level: b.level,
       enabled: b.enabled !== false,
       locationId: b.locationId,
-      // Surfaced so the /crafting redirect can show a meaningful outpost
-      // selector when the player owns more than one Forge. LocationDefinition
-      // has no `name` column today; the friendly label comes from the region.
       locationName: b.location?.definition?.region?.displayName
         || b.location?.definition?.id
         || b.locationId,
@@ -287,10 +273,6 @@ export class CraftingService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Backward-compat: pre-Forge jobs were stored without a locationId. Use
-    // the shared adoption helper so this fallback path stays in lockstep with
-    // `QueryService.bootstrap`. The fallback workshop lookup is lazy so we
-    // don't pay for `getWorkshops` when every job is already tagged.
     try {
       await adoptLegacyCraftingJobLocations(this.prisma, jobs as any[], async () => {
         const workshops = await this.getWorkshops(userId).catch(() => [] as any[]);
@@ -313,11 +295,6 @@ export class CraftingService {
     }));
   }
 
-  /**
-   * Used by the Forge page to verify that a given location actually hosts an
-   * enabled WORKSHOP building owned by this player. Returns the matching
-   * workshop entry, or throws so the UI can redirect.
-   */
   async assertWorkshopAtLocation(userId: string, locationId: string) {
     const workshops = await this.getWorkshops(userId);
     const match = workshops.find(
@@ -329,11 +306,14 @@ export class CraftingService {
     return match;
   }
 
-  async startCrafting(userId: string, recipeId: string, entityId: string, locationId?: string, outerTx?: any) {
-    // Crafting is a place: always resolve to a concrete enabled workshop so
-    // slot cap / tier-cap / timer mechanics apply uniformly. If the caller
-    // didn't pass a locationId, fall back to the player's first enabled
-    // workshop (legacy clients).
+  async startCrafting(
+    userId: string,
+    recipeId: string,
+    entityId: string,
+    locationId?: string,
+    outerTx?: any,
+    quantity = 1,
+  ) {
     let workshopMatch: any = null;
     let effectiveLocationId: string;
     if (locationId) {
@@ -350,9 +330,6 @@ export class CraftingService {
       effectiveLocationId = workshopMatch.locationId;
     }
 
-    // Place-scoped slot cap: workshop tier governs how many parallel crucibles
-    // a single Forge can run. Block before any spend so failed starts don't
-    // burn currencies/items.
     {
       const tier = Number(workshopMatch?.level || 0);
       const slotsTotal = workshopParallelSlots(tier);
@@ -380,7 +357,6 @@ export class CraftingService {
       );
     }
 
-    // Recipe tier vs workshop tier — Tier-2 recipes need a Tier-2 Workshop.
     {
       const tier = Number(workshopMatch?.level || 0);
       const recipeTier = this.recipeTier(recipe);
@@ -392,6 +368,10 @@ export class CraftingService {
       }
     }
 
+    // Validate multicraft quantity
+    const multicraft = (recipe.multicraft as any) ?? null;
+    const validatedQuantity = this.validateMulticraftQuantity(quantity, multicraft);
+
     const entity = await this.entityService.getEntity(entityId, userId);
     const entityStatus = (entity as any).state?.status || 'idle';
     if (entityStatus !== 'idle') {
@@ -400,11 +380,6 @@ export class CraftingService {
 
     const costEntries: Array<{ type: string; id: string; amount: number }> = recipe.cost ?? [];
 
-    // Compute timing OUTSIDE the transaction so we don't hold a Postgres
-    // tx open while reading effects/tick — but commit the spend, item
-    // removal, entity status flip and Job row in a single atomic write.
-    // Previously these were sequential top-level transactions, so a crash
-    // between them could spend currency without ever creating the job.
     const now = new Date();
     const currentTick = await this.tickService.getCurrentTick(now);
     const timer = recipe.timer as any;
@@ -426,8 +401,6 @@ export class CraftingService {
       durationTicks = Math.max(1, Math.floor(applyModifier(durationTicks, combinedTimer)));
     }
 
-    // Workshop tier shortens the timer (Tier 2 ×0.9, Tier 3 ×0.8). Applied
-    // after effect modifiers so high-tier Workshops compound with boosts.
     {
       const tier = Number(workshopMatch?.level || 0);
       const mult = workshopTimerMultiplier(tier);
@@ -436,9 +409,6 @@ export class CraftingService {
       }
     }
 
-    // Call synergy resolver before the atomic write so the snapshot can be
-    // persisted in Job.data.synergy and collectCrafting can apply CRAFTING_LUCK
-    // without re-querying rules.
     const craftingDescriptor = [{
       entityId: (entity as any).id as string,
       entityType: ((entity as any).role as string | undefined) ?? undefined,
@@ -466,6 +436,12 @@ export class CraftingService {
       }
     }
 
+    // Scale duration by quantity when timer mode is linear
+    const timerMode = multicraft?.timer ?? 'flat';
+    const totalDurationTicks = timerMode === 'linear'
+      ? Math.max(1, durationTicks * validatedQuantity)
+      : durationTicks;
+
     const doWrites = async (tx: any) => {
       for (const cost of costEntries) {
         if (cost.amount <= 0) continue;
@@ -483,10 +459,15 @@ export class CraftingService {
           type: 'CraftingJob',
           defId: recipe.id,
           status: 'active',
-          timer: { startTick: currentTick, durationTicks },
+          timer: { startTick: currentTick, durationTicks: totalDurationTicks },
           team: [entityId],
-          data: { seed: randomUUID(), locationId: effectiveLocationId, synergy: craftingSynergySnapshot },
-          readyAtTick: Math.floor(currentTick) + durationTicks,
+          data: {
+            seed: randomUUID(),
+            locationId: effectiveLocationId,
+            synergy: craftingSynergySnapshot,
+            quantity: validatedQuantity,
+          },
+          readyAtTick: Math.floor(currentTick) + totalDurationTicks,
         },
       });
     };
@@ -496,6 +477,27 @@ export class CraftingService {
       : await this.prisma.$transaction((tx) => doWrites(tx));
 
     return this.mapJobToCraftingResponse(job);
+  }
+
+  private validateMulticraftQuantity(requested: number, multicraft: any): number {
+    if (!multicraft) return 1;
+    const qty = Math.max(1, Math.floor(requested));
+    if (multicraft.mode === 'tiers' && Array.isArray(multicraft.tiers)) {
+      if (!multicraft.tiers.includes(qty)) {
+        throw new BadRequestException(
+          `Invalid quantity ${qty}. Allowed quantities: ${multicraft.tiers.join(', ')}`,
+        );
+      }
+      return qty;
+    }
+    if (multicraft.mode === 'free') {
+      const max = multicraft.max ?? Infinity;
+      if (qty > max) {
+        throw new BadRequestException(`Maximum quantity for this recipe is ${max}`);
+      }
+      return qty;
+    }
+    return 1;
   }
 
   async collectCrafting(userId: string, jobId: string, externalTx?: any) {
@@ -521,7 +523,6 @@ export class CraftingService {
     if (!entity) throw new NotFoundException('Entity not found');
 
     let rawCl = calculateCraftingLuck(entity.stats as any);
-    // Apply CRAFTING_LUCK percentAdd from the persisted synergy snapshot.
     const persistedCraftingSynergy = (job.data as any)?.synergy as
       | { ruleIds: string[]; totals: import('../synergy/synergy.types').SynergyTotals }
       | undefined;
@@ -529,16 +530,13 @@ export class CraftingService {
       const luckPctAdd = persistedCraftingSynergy.totals.statModifiers?.['CRAFTING_LUCK']?.percentAdd ?? 0;
       if (luckPctAdd !== 0) {
         rawCl = rawCl * (1 + luckPctAdd / 100);
-        this.logger.debug(`collectCrafting ${jobId}: synergy CRAFTING_LUCK +${luckPctAdd}% → rawCl=${rawCl}`);
       }
     }
     const jobLocationId = (job.data as { locationId?: string | null })?.locationId ?? undefined;
     const workshopTier = await this.getMaxWorkshopTier(userId, jobLocationId);
     const luckFloor = workshopLuckFloor(workshopTier);
     const cl = Math.max(rawCl, luckFloor);
-
-    const quality = qualityFromCl(cl).key;
-    const qualityProbabilities = qualityDistributionFromCl(cl);
+    const jobQuantity: number = (job.data as any)?.quantity ?? 1;
 
     const recipeId = job.defId;
     const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
@@ -567,15 +565,42 @@ export class CraftingService {
       }
       return { ...this.mapJobToCraftingResponse(updated), updatedNotification: null };
     }
-    const outcomeItems: any[] = Array.isArray(recipe?.rewards) ? recipe.rewards : [];
-    const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
+
+    const recipeTiers = getRecipeTiers(recipe);
+    const centerOverrides = buildCenterOverrides(recipeTiers);
+    const difficulty = recipe.difficulty ?? 0;
+    const effectiveCLValue = effectiveCL(cl);
 
     const seed = (job.data as { seed?: string })?.seed ?? jobId;
     const rng = new SeededRng(seed);
+
+    // Step 1 — pass/fail gate
+    const passed = rollPassFail(effectiveCLValue, difficulty, rng);
+
+    let quality: string;
+    let qualityLabel: string;
+    let qualityProbs: any[];
+    let outcomeItems: any[];
+
+    if (!passed) {
+      quality = 'failure';
+      qualityLabel = 'Failure';
+      qualityProbs = qualityProbabilities(effectiveCLValue, centerOverrides);
+      outcomeItems = Array.isArray(recipeTiers.failure?.rewards) ? recipeTiers.failure.rewards : [];
+    } else {
+      // Step 2 — quality roll across success tiers
+      const rolled = rollQualityFromCl(effectiveCLValue, rng, centerOverrides);
+      quality = rolled.key;
+      qualityLabel = rolled.label;
+      qualityProbs = rolled.probabilities;
+      const tierBlock = recipeTiers[quality] ?? EMPTY_TIER_BLOCK;
+      outcomeItems = Array.isArray(tierBlock.rewards) ? tierBlock.rewards : [];
+    }
+
+    const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
+
     const { resolved, texts: rolledTexts, flags: resolvedFlags } = await this.gameRules.resolveOutcomesAsync(outcomeItems, reqContext, rng);
 
-    // Resolve currency/item display names BEFORE the transaction so we don't
-    // hold the tx open on metadata reads.
     const nameCache: Record<string, string> = {};
     for (const { entry } of resolved) {
       if ((entry.type === 'currency' || entry.type === 'item') && entry.key && !nameCache[`${entry.type}:${entry.key}`]) {
@@ -587,43 +612,36 @@ export class CraftingService {
       }
     }
 
-    // Atomic write: spend the entire reward burst + entity status flip + job
-    // status update in ONE transaction so a crash mid-loop can never leave
-    // currency/items granted but job still 'active'. emitEvent stays outside
-    // because it goes through the Outbox and has its own idempotency.
-    //
-    // If the caller supplied externalTx (e.g. CollectCraftingHandler running
-    // inside the /v1/commands outer transaction), participate in that tx
-    // instead of opening a nested one — Prisma forbids interactive nesting
-    // and we'd silently break the command's atomicity guarantees.
     const doWrites = async (tx: any) => {
       for (const { entry, amount } of resolved) {
-        if (entry.type === 'emitEvent') continue; // handled after commit
-        if (!amount || amount <= 0) continue;
+        if (entry.type === 'emitEvent') continue;
+        // Scale reward amounts by quantity
+        const scaledAmount = typeof amount === 'number' ? amount * jobQuantity : amount;
+        if (!scaledAmount || scaledAmount <= 0) continue;
         switch (entry.type) {
           case 'entity_xp':
-            await this.entityService.addEntityXp(entity.id, userId, amount, tx);
-            grantedRewards.push({ type: 'entity_xp', amount });
+            await this.entityService.addEntityXp(entity.id, userId, scaledAmount, tx);
+            grantedRewards.push({ type: 'entity_xp', amount: scaledAmount });
             break;
           case 'keeper_xp':
-            await this.playerService.addKeeperXp(userId, amount, tx);
-            grantedRewards.push({ type: 'keeper_xp', amount });
+            await this.playerService.addKeeperXp(userId, scaledAmount, tx);
+            grantedRewards.push({ type: 'keeper_xp', amount: scaledAmount });
             break;
           case 'currency': {
             await this.currencyService.creditTx(tx as any, {
               userId,
               currencyId: entry.key,
-              amount,
+              amount: scaledAmount,
               reason: `Crafting: ${recipe?.name || recipeId}`,
               sourceType: 'crafting',
               sourceId: jobId,
             });
-            grantedRewards.push({ type: 'currency', key: entry.key, amount, name: nameCache[`currency:${entry.key}`] });
+            grantedRewards.push({ type: 'currency', key: entry.key, amount: scaledAmount, name: nameCache[`currency:${entry.key}`] });
             break;
           }
           case 'item': {
-            await this.inventoryService.addItemTx(tx as any, { userId, itemId: entry.key, quantity: amount, reason: `Crafting: ${recipe?.name || recipeId}`, sourceType: 'crafting', sourceId: jobId });
-            grantedRewards.push({ type: 'item', key: entry.key, amount, name: nameCache[`item:${entry.key}`] });
+            await this.inventoryService.addItemTx(tx as any, { userId, itemId: entry.key, quantity: scaledAmount, reason: `Crafting: ${recipe?.name || recipeId}`, sourceType: 'crafting', sourceId: jobId });
+            grantedRewards.push({ type: 'item', key: entry.key, amount: scaledAmount, name: nameCache[`item:${entry.key}`] });
             break;
           }
         }
@@ -641,11 +659,15 @@ export class CraftingService {
           status: 'collected',
           results: {
             quality,
+            qualityLabel,
+            passed,
             craftingLuck: cl,
             rawCraftingLuck: rawCl,
             luckFloor,
             workshopTier,
-            qualityProbabilities,
+            difficulty,
+            quantity: jobQuantity,
+            qualityProbabilities: qualityProbs,
             rewards: grantedRewards,
             ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
           },
@@ -657,9 +679,6 @@ export class CraftingService {
       ? await doWrites(externalTx)
       : await this.prisma.$transaction(doWrites, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
 
-    // Telemetry: emit a `crafting_completed` event so quest/achievement
-    // subscribers can tick progress. Run inside externalTx if present so
-    // it shares atomicity with the command path; otherwise fire-and-forget.
     try {
       let selectionContext;
       try {
@@ -674,7 +693,7 @@ export class CraftingService {
         'crafting_completed',
         recipeId,
         1,
-        { quality, jobId },
+        { quality, passed, jobId },
         externalTx,
         selectionContext,
       );
@@ -682,9 +701,6 @@ export class CraftingService {
       this.logger.warn(`Failed to record crafting telemetry: ${err}`);
     }
 
-    // Post-commit: dispatch emitEvent outcomes through the Outbox. These are
-    // already idempotent at the event-dispatch layer and must NOT block the
-    // economy transaction.
     for (const { entry } of resolved) {
       if (entry.type !== 'emitEvent') continue;
       try {
@@ -704,7 +720,9 @@ export class CraftingService {
     }
 
     const rewardSummary = grantedRewards.map(r => `${r.amount}x ${r.name || r.key || r.type}`).join(', ');
-    const notifBody = `${recipe?.name || recipeId} — ${quality} quality${rewardSummary ? ` (${rewardSummary})` : ''}`;
+    const notifBody = passed
+      ? `${recipe?.name || recipeId} — ${qualityLabel} quality${rewardSummary ? ` (${rewardSummary})` : ''}`
+      : `${recipe?.name || recipeId} — Craft failed`;
     const notifDeepLink = jobLocationId
       ? { screen: `/locations/${jobLocationId}/workshop`, craftJobId: jobId, locationId: jobLocationId }
       : { screen: '/crafting', craftJobId: jobId };
@@ -718,7 +736,7 @@ export class CraftingService {
         if (existing) {
           updatedNotification = await (externalTx as any).notification.update({
             where: { id: existing.id },
-            data: { type: 'craft_complete', title: 'Crafting Complete!', body: notifBody, readAt: new Date(), dismissedAt: null, deepLink: notifDeepLink },
+            data: { type: 'craft_complete', title: passed ? 'Crafting Complete!' : 'Crafting Failed', body: notifBody, readAt: new Date(), dismissedAt: null, deepLink: notifDeepLink },
           });
         }
       } catch (err) {
@@ -733,7 +751,7 @@ export class CraftingService {
           type: 'craft_complete',
           category: 'crafting',
           priority: 'normal',
-          title: 'Crafting Complete!',
+          title: passed ? 'Crafting Complete!' : 'Crafting Failed',
           body: notifBody,
           deepLink: notifDeepLink,
           markRead: true,

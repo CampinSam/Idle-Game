@@ -661,6 +661,75 @@
         }
       }
     },
+    "RecipeTierBlock": {
+      "description": "Reward block for a single crafting quality tier. Used as values in RecipeDef.tiers.",
+      "type": "object",
+      "properties": {
+        "rewards": {
+          "type": "array",
+          "description": "Outcome entries granted when this tier is rolled. Same shape as mission/lootbox rewards arrays.",
+          "items": { "type": "object" },
+          "default": []
+        },
+        "clRequirement": {
+          "type": "number",
+          "description": "Optional override for the Gaussian bell-curve center (CL sweet-spot) for this tier. When omitted the QUALITY_TIERS default center is used."
+        }
+      }
+    },
+    "RecipeDef": {
+      "description": "Crafting recipe definition. Drives the two-step probabilistic outcome system: Step 1 pass/fail gate (passRate = effectiveCL / (effectiveCL + difficulty)), Step 2 Gaussian quality roll across the 6 success tiers.",
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id":                   { "type": "string", "description": "Unique recipe identifier" },
+        "name":                 { "type": "string", "description": "Display name" },
+        "description":          { "type": "string", "description": "Flavor text" },
+        "category":             { "type": "string", "description": "Grouping category (e.g. potions, weapons)" },
+        "group":                { "type": "string", "description": "Sub-group within a category" },
+        "cost":                 { "type": "array",  "description": "Crafting cost entries [{type, id, amount}]", "default": [] },
+        "timer":                { "type": "object", "description": "Duration and skip settings {duration, skipable, boostable, skip_cost, skip_type}" },
+        "requiredKeeperLevel":  { "type": "number", "description": "Minimum player Keeper Level", "default": 1 },
+        "difficulty": {
+          "type": "number",
+          "description": "Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes (no gate). Higher values make failure more likely at low CL.",
+          "default": 0
+        },
+        "tiers": {
+          "type": "object",
+          "description": "Per-tier reward blocks keyed by quality tier. Valid keys: failure | common | uncommon | scare | rare | epic | legendary. Each value is a RecipeTierBlock. The 'failure' tier fires when the pass/fail gate fails. The 6 success tiers are weighted by a Gaussian bell curve centered around each tier's CL center value.",
+          "properties": {
+            "failure":   { "$ref": "#/definitions/RecipeTierBlock" },
+            "common":    { "$ref": "#/definitions/RecipeTierBlock" },
+            "uncommon":  { "$ref": "#/definitions/RecipeTierBlock" },
+            "scare":     { "$ref": "#/definitions/RecipeTierBlock" },
+            "rare":      { "$ref": "#/definitions/RecipeTierBlock" },
+            "epic":      { "$ref": "#/definitions/RecipeTierBlock" },
+            "legendary": { "$ref": "#/definitions/RecipeTierBlock" }
+          },
+          "default": {}
+        },
+        "multicraft": {
+          "type": ["object", "null"],
+          "description": "Multicraft config enabling batch crafting. null = single craft only.",
+          "properties": {
+            "mode":  { "type": "string", "enum": ["tiers", "free"], "description": "'tiers' = only specific quantities allowed; 'free' = any quantity up to max" },
+            "tiers": { "type": "array", "items": { "type": "number" }, "description": "Allowed quantities when mode='tiers' (e.g. [1, 5, 10])" },
+            "max":   { "type": "number", "description": "Maximum quantity when mode='free'" },
+            "timer": { "type": "string", "enum": ["flat", "linear"], "description": "'flat' = fixed duration regardless of quantity; 'linear' = duration × quantity. Default: flat" }
+          }
+        },
+        "requirements":           { "description": "RichSelection tree — conditions the player must satisfy to start crafting" },
+        "visibilityRequirements": { "description": "RichSelection tree — conditions that must be met for the recipe to appear in the UI" },
+        "effects":                { "type": "array", "description": "Effects applied to entities on completion", "default": [] },
+        "data":                   { "type": "object", "description": "Extra freeform data. { tier: 1|2|3 } sets the workshop tier requirement.", "default": {} },
+        "displayDefId":           { "type": "string", "description": "DisplayDef.id for visual styling" },
+        "activeModalDefId":       { "type": "string", "description": "ModalDef.id shown while crafting is in-progress" },
+        "readyModalDefId":        { "type": "string", "description": "ModalDef.id shown when crafting is ready to collect" },
+        "completedModalDefId":    { "type": "string", "description": "ModalDef.id shown on collection" },
+        "failedModalDefId":       { "type": "string", "description": "ModalDef.id shown on failure" }
+      }
+    },
     "TelemetryDef": {
       "description": "Data-driven aggregate event counter definition. Admins author these to track MISSION_START/SUCCESS/FAIL events with optional RichSelection filters.",
       "properties": {

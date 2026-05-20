@@ -343,6 +343,7 @@ export function ForgeTrack({
           <ForgeForecastPanel
             forecast={forecast}
             selectedEntityForecast={selectedEntityForecast}
+            difficulty={selectedRecipe?.difficulty ?? 0}
             busy={busy}
             blockedReasons={blockedReasons}
             error={error}

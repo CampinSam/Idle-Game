@@ -5,6 +5,7 @@ import type { EntityForecast } from '../../entities/types';
 interface ForgeForecastPanelProps {
   forecast: ForecastResponse;
   selectedEntityForecast: EntityForecast | null;
+  difficulty: number;
   busy: boolean;
   blockedReasons: string[];
   error: string;
@@ -14,11 +15,18 @@ interface ForgeForecastPanelProps {
 export function ForgeForecastPanel({
   forecast,
   selectedEntityForecast,
+  difficulty,
   busy,
   blockedReasons,
   error,
   onStart,
 }: ForgeForecastPanelProps) {
+  const cl = selectedEntityForecast?.craftingLuck ?? 0;
+  const passRate = difficulty > 0
+    ? cl / (cl + difficulty)
+    : 1;
+  const showPassRate = difficulty > 0;
+
   return (
     <div className="flex flex-col gap-3 p-3 border-t border-[rgba(139,92,246,0.18)]">
       <div className="rounded-xl border border-[rgba(139,92,246,0.2)] bg-black/20 p-3 flex flex-col gap-2.5">
@@ -30,6 +38,30 @@ export function ForgeForecastPanel({
             </span>
           )}
         </div>
+
+        {showPassRate && selectedEntityForecast && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Success chance</span>
+              <span
+                className="font-bold tabular-nums"
+                style={{ color: passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444' }}
+              >
+                {(passRate * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-[width] duration-300"
+                style={{
+                  width: `${passRate * 100}%`,
+                  background: passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         <ForecastBar
           cap={forecast.cap}
           tiers={forecast.tiers}
@@ -49,7 +81,10 @@ export function ForgeForecastPanel({
                 <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-[width] duration-300"
-                    style={{ width: `${p.probability * 100}%`, background: QUALITY_COLOURS[p.key] || '#475569' }}
+                    style={{
+                      width: `${p.probability * 100}%`,
+                      background: QUALITY_COLOURS[p.key] || '#475569',
+                    }}
                   />
                 </div>
                 <div className="text-[11px] font-bold text-text-primary text-right tabular-nums">
