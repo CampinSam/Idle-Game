@@ -166,14 +166,12 @@ export function ForgePickerArea({
             selectedRecipeId={selectedRecipeId}
             favorites={favorites}
             onToggleFavorite={onToggleFavorite}
-            onClose={onClose ?? (() => {})}
             onSelect={onRecipeSelect}
             recipeIsLocked={recipeIsLocked}
             currencyBalances={currencyBalances}
             syncItemsTable={syncItemsTable}
             profile={profile}
             forecast={null}
-            hideControls
           />
         </div>
       </div>

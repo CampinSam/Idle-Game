@@ -9,18 +9,12 @@ interface ForgeRecipePickerProps {
   selectedRecipeId: string | null;
   favorites: Set<string>;
   onToggleFavorite: (id: string) => void;
-  onClose: () => void;
   onSelect: (r: any) => void;
   recipeIsLocked: (r: any) => boolean;
   currencyBalances: Record<string, number>;
   syncItemsTable: any;
   profile: any;
   forecast: ForecastResponse | null;
-  /**
-   * When true, suppress the outer container, header, and filter controls.
-   * Only the recipe grid is rendered — useful when the caller provides its own sticky filter header.
-   */
-  hideControls?: boolean;
 }
 
 function RecipeGrid({
@@ -135,39 +129,25 @@ export function ForgeRecipePicker({
   selectedRecipeId,
   favorites,
   onToggleFavorite,
-  onClose,
   onSelect,
   recipeIsLocked,
   currencyBalances,
   syncItemsTable,
   profile,
   forecast,
-  hideControls = false,
 }: ForgeRecipePickerProps) {
-  const gridProps = {
-    recipes, selectedRecipeId, favorites, onToggleFavorite, onSelect,
-    recipeIsLocked, currencyBalances, syncItemsTable, profile, forecast,
-  };
-
-  if (hideControls) {
-    return <RecipeGrid {...gridProps} />;
-  }
-
   return (
-    <div className="rounded-xl border border-[rgba(139,92,246,0.3)] bg-black/30 p-3 flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd] font-cinzel">
-          Select a Recipe
-        </h3>
-        <button
-          onClick={onClose}
-          aria-label="Close recipe picker"
-          className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
-        >
-          ×
-        </button>
-      </div>
-      <RecipeGrid {...gridProps} />
-    </div>
+    <RecipeGrid
+      recipes={recipes}
+      selectedRecipeId={selectedRecipeId}
+      favorites={favorites}
+      onToggleFavorite={onToggleFavorite}
+      onSelect={onSelect}
+      recipeIsLocked={recipeIsLocked}
+      currencyBalances={currencyBalances}
+      syncItemsTable={syncItemsTable}
+      profile={profile}
+      forecast={forecast}
+    />
   );
 }
