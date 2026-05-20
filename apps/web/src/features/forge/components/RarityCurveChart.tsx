@@ -82,6 +82,10 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
 export interface RarityCurveChartProps {
   recipeTiers?: Record<string, any> | null;
   entityCl?: number | null;
@@ -157,8 +161,9 @@ export function RarityCurveChart({
     function tick(now: number) {
       const elapsed = now - animRef.current.startTime;
       const t = Math.min(elapsed / ANIM_MS, 1);
-      const cl = lerp(animRef.current.fromCl, animRef.current.toCl, t);
-      const amp = lerp(animRef.current.fromAmp, animRef.current.toAmp, t);
+      const et = easeInOutCubic(t);
+      const cl = lerp(animRef.current.fromCl, animRef.current.toCl, et);
+      const amp = lerp(animRef.current.fromAmp, animRef.current.toAmp, et);
       animRef.current.currentCl = cl;
       animRef.current.currentAmp = amp;
       setDisplayedCl(cl);
