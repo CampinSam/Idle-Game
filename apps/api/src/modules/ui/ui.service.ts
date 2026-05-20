@@ -767,22 +767,18 @@ export class UiService {
   }
 
   private buildSkipConfirmBody(costs: Array<{ type: string; id: string; amount: number }>): any[] {
-    const lines: any[] = [
-      { t: 'p', c: [{ t: 'text', v: 'Finish this early and skip the remaining time?' }] },
-    ];
+    const blocks: any[] = [];
     if (costs.length > 0) {
-      const costText = costs
-        .map((c) => `${c.amount} ${c.id}`)
-        .join(', ');
-      lines.push({
-        t: 'p',
-        c: [
-          { t: 'text', v: 'Cost: ' },
-          { t: 'strong', c: [{ t: 'text', v: costText }] },
-        ],
+      blocks.push({
+        type: 'rewardsPreview',
+        items: costs.map((c) => ({
+          assetKey: c.id,
+          name: c.id,
+          qty: c.amount,
+        })),
       });
     }
-    return lines;
+    return blocks;
   }
 
   private async buildJobContext(job: any, def: any): Promise<JobContext> {

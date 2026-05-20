@@ -15,9 +15,11 @@ export interface GameModalProps {
 export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAction }: GameModalProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingConfirmBtn, setPendingConfirmBtn] = useState<ModalButtonSpec | null>(null);
 
   useEffect(() => {
     setPageIndex(0);
+    setPendingConfirmBtn(null);
   }, [spec]);
 
   const totalPages = Array.isArray(spec.pages) ? spec.pages.length : 0;
@@ -26,16 +28,37 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
   useEffect(() => {
     if (!isOpen || !dismiss.escape) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onRequestClose();
+      if (e.key === 'Escape') {
+        if (pendingConfirmBtn) {
+          setPendingConfirmBtn(null);
+        } else {
+          onRequestClose();
+        }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, dismiss.escape, onRequestClose]);
+  }, [isOpen, dismiss.escape, onRequestClose, pendingConfirmBtn]);
 
   if (!isOpen) return null;
 
   const onBackdropClick = () => {
+    if (pendingConfirmBtn) {
+      setPendingConfirmBtn(null);
+      return;
+    }
     if (dismiss.backdrop) onRequestClose();
+  };
+
+  const fireAction = async (btn: ModalButtonSpec) => {
+    setActionLoading(btn.id);
+    try {
+      await onAction(btn.action);
+    } catch (err) {
+      console.error('[GameModal] action failed:', err);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleButtonClick = async (btn: ModalButtonSpec) => {
@@ -52,19 +75,21 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
     }
 
     if (btn.requiresConfirm) {
-      const confirmed = window.confirm(btn.requiresConfirm.title);
-      if (!confirmed) return;
+      setPendingConfirmBtn(btn);
+      return;
     }
 
-    setActionLoading(btn.id);
-    try {
-      await onAction(btn.action);
-    } catch (err) {
-      console.error('[GameModal] action failed:', err);
-    } finally {
-      setActionLoading(null);
-    }
+    await fireAction(btn);
   };
+
+  const handleConfirm = async () => {
+    if (!pendingConfirmBtn) return;
+    const btn = pendingConfirmBtn;
+    setPendingConfirmBtn(null);
+    await fireAction(btn);
+  };
+
+  const handleCancelConfirm = () => setPendingConfirmBtn(null);
 
   return (
     <div className="gm-overlay" onMouseDown={onBackdropClick} role="presentation">
@@ -113,6 +138,38 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
             </button>
           ))}
         </div>
+
+        {pendingConfirmBtn && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6"
+            style={{ background: 'linear-gradient(180deg, rgba(20,10,40,0.97) 0%, rgba(10,5,25,0.97) 100%)' }}
+          >
+            <p className="text-center font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+              {pendingConfirmBtn.requiresConfirm!.title}
+            </p>
+
+            {pendingConfirmBtn.requiresConfirm!.body && pendingConfirmBtn.requiresConfirm!.body.length > 0 && (
+              <div className="w-full">
+                {pendingConfirmBtn.requiresConfirm!.body.map((block, idx) => (
+                  <BlockRenderer key={idx} block={block} />
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 w-full mt-1">
+              <button className="gm-btn gm-btn-ghost flex-1" onClick={handleCancelConfirm}>
+                {pendingConfirmBtn.requiresConfirm!.cancelLabel ?? 'Cancel'}
+              </button>
+              <button
+                className="gm-btn gm-btn-primary flex-1"
+                disabled={actionLoading === pendingConfirmBtn.id}
+                onClick={handleConfirm}
+              >
+                {actionLoading === pendingConfirmBtn.id ? '...' : (pendingConfirmBtn.requiresConfirm!.confirmLabel ?? 'Confirm')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

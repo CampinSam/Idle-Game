@@ -46,7 +46,7 @@ export interface ModalButton {
   action: ModalAction;
   requiresConfirm?: {
     title: string;
-    body: RichTextDoc;
+    body?: ModalBlock[];
     confirmLabel?: string;
     cancelLabel?: string;
   };
@@ -227,6 +227,7 @@ export const MODAL_ACTION_TYPES = [
   'SHOP_PURCHASE',
   'DEPOSIT_LOCATION_XP',
   'PRESTIGE',
+  'SKIP',
 ] as const;
 
 export type ModalActionType = (typeof MODAL_ACTION_TYPES)[number];
