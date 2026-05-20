@@ -35,9 +35,14 @@ const EMPTY_TIER_BLOCK = { rewards: [] };
 
 function getRecipeTiers(recipe: any): Record<string, { rewards: any[]; clRequirement?: number }> {
   const tiers = (recipe?.tiers as any) || {};
+  // Legacy fallback: if tiers is empty and a top-level rewards array exists, treat it as common rewards
+  const legacyCommon =
+    Object.keys(tiers).length === 0 && Array.isArray(recipe?.rewards)
+      ? { rewards: recipe.rewards }
+      : EMPTY_TIER_BLOCK;
   return {
     failure:   tiers.failure   ?? EMPTY_TIER_BLOCK,
-    common:    tiers.common    ?? EMPTY_TIER_BLOCK,
+    common:    tiers.common    ?? legacyCommon,
     uncommon:  tiers.uncommon  ?? EMPTY_TIER_BLOCK,
     scare:     tiers.scare     ?? EMPTY_TIER_BLOCK,
     rare:      tiers.rare      ?? EMPTY_TIER_BLOCK,

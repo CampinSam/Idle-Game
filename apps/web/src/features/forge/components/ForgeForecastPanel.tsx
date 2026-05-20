@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { qualityProbabilities, QUALITY_TIERS } from '@derp/math';
 import { ForecastBar } from './ForecastBar';
 import { QUALITY_COLOURS, type ForecastResponse } from './forgeUtils';
 import type { EntityForecast } from '../../entities/types';
@@ -7,7 +8,7 @@ interface ForgeForecastPanelProps {
   forecast: ForecastResponse;
   selectedEntityForecast: EntityForecast | null;
   difficulty: number;
-  recipeTiers: Record<string, { rewards?: any[] }>;
+  recipeTiers: Record<string, { rewards?: any[]; clRequirement?: number }>;
   busy: boolean;
   blockedReasons: string[];
   error: string;
@@ -27,17 +28,41 @@ export function ForgeForecastPanel({
   const cl = selectedEntityForecast?.craftingLuck ?? 0;
   const passRate = difficulty > 0 ? cl / (cl + difficulty) : 1;
 
+  // Build per-recipe center overrides from clRequirement fields on each tier
+  const centerOverrides = useMemo((): Partial<Record<string, number>> => {
+    const overrides: Partial<Record<string, number>> = {};
+    for (const [key, block] of Object.entries(recipeTiers)) {
+      if (key !== 'failure' && block && typeof block.clRequirement === 'number') {
+        overrides[key] = block.clRequirement;
+      }
+    }
+    return overrides;
+  }, [recipeTiers]);
+
+  // Recompute probabilities client-side when recipe has tier center overrides
+  const adjustedProbabilities = useMemo(() => {
+    if (!selectedEntityForecast) return null;
+    if (Object.keys(centerOverrides).length === 0) return selectedEntityForecast.probabilities;
+    return qualityProbabilities(cl, centerOverrides);
+  }, [selectedEntityForecast, cl, centerOverrides]);
+
+  // Filter to only tiers that have at least one reward configured
   const visibleProbabilities = useMemo(() => {
-    if (!selectedEntityForecast) return [];
-    const probs = selectedEntityForecast.probabilities;
+    const probs = adjustedProbabilities ?? selectedEntityForecast?.probabilities ?? [];
     if (!recipeTiers || Object.keys(recipeTiers).length === 0) return probs;
     return probs.filter((p) => {
       const block = recipeTiers[p.key];
       if (!block) return false;
-      const rewards = block.rewards ?? [];
-      return Array.isArray(rewards) ? rewards.length > 0 : false;
+      return Array.isArray(block.rewards) && block.rewards.length > 0;
     });
-  }, [selectedEntityForecast, recipeTiers]);
+  }, [adjustedProbabilities, selectedEntityForecast, recipeTiers]);
+
+  // Find the best tier from adjusted probabilities for display
+  const topTier = useMemo(() => {
+    const probs = adjustedProbabilities ?? selectedEntityForecast?.probabilities;
+    if (!probs) return null;
+    return probs.reduce((best, p) => (p.probability > best.probability ? p : best), probs[0]);
+  }, [adjustedProbabilities, selectedEntityForecast]);
 
   const passRateColor = passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444';
 
@@ -46,13 +71,14 @@ export function ForgeForecastPanel({
       <div className="rounded-xl border border-[rgba(139,92,246,0.2)] bg-black/20 p-3 flex flex-col gap-2.5">
         <div className="flex items-center justify-between text-[12px] font-bold tracking-wide text-[#c4b5fd]">
           <span>Crafting Luck</span>
-          {selectedEntityForecast && (
-            <span style={{ color: QUALITY_COLOURS[selectedEntityForecast.expectedQuality] || '#94a3b8' }}>
-              CL {selectedEntityForecast.craftingLuck.toFixed(0)} → {selectedEntityForecast.expectedQualityLabel}
+          {selectedEntityForecast && topTier && (
+            <span style={{ color: QUALITY_COLOURS[topTier.key] || '#94a3b8' }}>
+              CL {selectedEntityForecast.craftingLuck.toFixed(0)} → {topTier.label}
             </span>
           )}
         </div>
 
+        {/* Step-1 pass/fail gate — always shown (100% when difficulty = 0) */}
         {selectedEntityForecast && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-[11px]">
@@ -76,18 +102,21 @@ export function ForgeForecastPanel({
           cap={forecast.cap}
           tiers={forecast.tiers}
           marker={selectedEntityForecast?.craftingLuck ?? null}
-          qualityKey={selectedEntityForecast?.expectedQuality ?? null}
+          qualityKey={topTier?.key ?? null}
         />
 
         {selectedEntityForecast ? (
           <div className="flex flex-col gap-1.5">
-            {(visibleProbabilities.length > 0 ? visibleProbabilities : selectedEntityForecast.probabilities).map((p) => (
+            {(visibleProbabilities.length > 0
+              ? visibleProbabilities
+              : (adjustedProbabilities ?? selectedEntityForecast.probabilities)
+            ).map((p) => (
               <div key={p.key} className="grid grid-cols-[80px_1fr_42px] items-center gap-2">
                 <div
                   className="text-[11px] font-bold tracking-wide"
                   style={{ color: QUALITY_COLOURS[p.key] || '#94a3b8' }}
                 >
-                  {p.label}
+                  {QUALITY_TIERS.find((t) => t.key === p.key)?.label ?? p.key}
                 </div>
                 <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
                   <div
