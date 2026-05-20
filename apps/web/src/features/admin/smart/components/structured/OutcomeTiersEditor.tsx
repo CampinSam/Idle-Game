@@ -27,17 +27,17 @@ interface TierBlock {
   clRequirement?: number;
 }
 
-interface CraftingTiersValue {
+interface OutcomeTiersValue {
   [key: string]: TierBlock;
 }
 
-interface CraftingTiersEditorProps {
+interface OutcomeTiersEditorProps {
   value: any;
   onChange: (v: any) => void;
 }
 
-export default function CraftingTiersEditor({ value, onChange }: CraftingTiersEditorProps) {
-  const tiers: CraftingTiersValue =
+export default function OutcomeTiersEditor({ value, onChange }: OutcomeTiersEditorProps) {
+  const tiers: OutcomeTiersValue =
     value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 
   const sigmaValue: number | undefined = typeof (tiers as any).sigma === 'number'
