@@ -19,6 +19,7 @@ import { workshopParallelSlots } from '@derp/math';
 import { audioEngine } from '../../services/AudioEngine';
 import { computeInventoryAmount } from '../../utils/locationProduction';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
+import type { RecipeSort } from './components/ForgePickerArea';
 import ItemQty from '../../components/ItemQty';
 import { SectionHeader, Card } from '../../components/ui';
 import { RosterCard } from '../entities/components';
@@ -126,6 +127,7 @@ export default function ForgePage() {
   const [recipeSearch, setRecipeSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [availabilityFilter, setAvailabilityFilter] = useState<'available' | 'locked' | 'favorites' | 'all'>('available');
+  const [recipeSort, setRecipeSort] = useState<RecipeSort>('name-asc');
   const [entitySearch, setEntitySearch] = useState('');
   const [entityFilter, setEntityFilter] = useState<EntityFilter>('ALL');
   const [entitySort, setEntitySort] = useState<EntitySortBy>('name');
@@ -233,7 +235,7 @@ export default function ForgePage() {
 
   const filteredRecipes = useMemo(() => {
     const search = recipeSearch.trim().toLowerCase();
-    return (craftingRecipes as any[]).filter((r: any) => {
+    const filtered = (craftingRecipes as any[]).filter((r: any) => {
       if (categoryFilter !== 'all') {
         if ((r.category || r.group || 'general') !== categoryFilter) return false;
       }
@@ -243,7 +245,15 @@ export default function ForgePage() {
       if (search && !`${r.name || ''} ${r.description || ''}`.toLowerCase().includes(search)) return false;
       return true;
     });
-  }, [craftingRecipes, categoryFilter, recipeSearch, availabilityFilter, favorites, recipeIsAvailable, recipeIsLocked]);
+    return filtered.slice().sort((a, b) => {
+      switch (recipeSort) {
+        case 'name-desc': return (b.name || '').localeCompare(a.name || '');
+        case 'tier-asc':  return Number(a.tier ?? 1) - Number(b.tier ?? 1);
+        case 'tier-desc': return Number(b.tier ?? 1) - Number(a.tier ?? 1);
+        default:          return (a.name || '').localeCompare(b.name || '');
+      }
+    });
+  }, [craftingRecipes, categoryFilter, recipeSearch, availabilityFilter, favorites, recipeIsAvailable, recipeIsLocked, recipeSort]);
 
   const idleEntities = useMemo(
     () => (entities as any[]).filter((e: any) => e.status === 'idle'),
@@ -641,6 +651,8 @@ export default function ForgePage() {
             setCategoryFilter={setCategoryFilter}
             availabilityFilter={availabilityFilter}
             setAvailabilityFilter={setAvailabilityFilter}
+            recipeSort={recipeSort}
+            setRecipeSort={setRecipeSort}
             recipeCategories={recipeCategories}
             favorites={favorites}
             onToggleFavorite={toggleFavorite}

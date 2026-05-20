@@ -3,7 +3,23 @@ import { buildCollectionOptions, SORT_OPTIONS } from '../../entities/entityListU
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import { ForgeRecipePicker } from './ForgeRecipePicker';
 import { QUALITY_COLOURS } from './forgeUtils';
-import { Chip, ListControls } from '../../../components/ui';
+import { ListControls } from '../../../components/ui';
+
+export type RecipeSort = 'name-asc' | 'name-desc' | 'tier-asc' | 'tier-desc';
+
+const AVAILABILITY_OPTIONS = [
+  { key: 'available', label: '✓ Available' },
+  { key: 'locked', label: '🔒 Locked' },
+  { key: 'favorites', label: '★ Favorites' },
+  { key: 'all', label: 'All' },
+];
+
+const RECIPE_SORT_OPTIONS = [
+  { key: 'name-asc', label: 'Name A→Z' },
+  { key: 'name-desc', label: 'Name Z→A' },
+  { key: 'tier-asc', label: 'Tier ↑' },
+  { key: 'tier-desc', label: 'Tier ↓' },
+];
 
 interface ForgePickerAreaProps {
   activePicker: 'recipe' | 'entity' | null;
@@ -19,6 +35,8 @@ interface ForgePickerAreaProps {
   setCategoryFilter: (v: string) => void;
   availabilityFilter: 'available' | 'locked' | 'favorites' | 'all';
   setAvailabilityFilter: (v: 'available' | 'locked' | 'favorites' | 'all') => void;
+  recipeSort: RecipeSort;
+  setRecipeSort: (v: RecipeSort) => void;
   recipeCategories: string[];
   favorites: Set<string>;
   onToggleFavorite: (id: string) => void;
@@ -60,6 +78,8 @@ export function ForgePickerArea({
   setCategoryFilter,
   availabilityFilter,
   setAvailabilityFilter,
+  recipeSort,
+  setRecipeSort,
   recipeCategories,
   favorites,
   onToggleFavorite,
@@ -83,6 +103,16 @@ export function ForgePickerArea({
   const STICKY_BG = 'bg-[rgba(20,16,56,0.97)]';
 
   if (activePicker === 'recipe') {
+    const categorySelects = recipeCategories.length > 1
+      ? [{
+          label: 'Category',
+          value: categoryFilter,
+          onChange: setCategoryFilter,
+          options: [{ key: 'all', label: 'All' }, ...recipeCategories.map((c) => ({ key: c, label: c }))],
+          width: 100,
+        }]
+      : [];
+
     return (
       <div className="rounded-xl border border-[rgba(139,92,246,0.3)]">
         {/* ── Sticky filter header — pins to scroll container top when recipe list scrolls ── */}
@@ -106,69 +136,27 @@ export function ForgePickerArea({
             )}
           </div>
 
-          {/* Search */}
-          <div className="flex items-center gap-[7px] bg-black/30 border border-[rgba(139,92,246,0.2)] rounded-lg px-2.5 h-9 focus-within:border-[rgba(139,92,246,0.5)]">
-            <svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              className="text-text-secondary flex-shrink-0"
-            >
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search recipes…"
-              value={recipeSearch}
-              onChange={(e) => setRecipeSearch(e.target.value)}
-              aria-label="Search recipes"
-              className="flex-1 bg-transparent border-none text-text-primary text-[12px] outline-none placeholder:text-text-secondary"
-            />
-          </div>
-
-          {/* Availability filter chips */}
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Availability filter">
-            {(['available', 'locked', 'favorites', 'all'] as const).map((key) => {
-              const isActive = availabilityFilter === key;
-              const label = key === 'available' ? '✓ Available'
-                : key === 'locked' ? '🔒 Locked'
-                : key === 'favorites' ? '★ Favorites'
-                : 'All';
-              return (
-                <button
-                  key={key}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setAvailabilityFilter(key)}
-                  className="cursor-pointer p-0 bg-transparent border-0"
-                >
-                  <Chip tone={isActive ? 'tier-2' : 'neutral'}>{label}</Chip>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Category chips */}
-          {recipeCategories.length > 1 && (
-            <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Category filter">
-              {['all', ...recipeCategories].map((cat) => {
-                const isActive = categoryFilter === cat;
-                return (
-                  <button
-                    key={cat}
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setCategoryFilter(cat)}
-                    className="cursor-pointer p-0 bg-transparent border-0"
-                  >
-                    <Chip tone={isActive ? 'tier-2' : 'neutral'}>
-                      {cat === 'all' ? 'All' : cat}
-                    </Chip>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Search + availability + category (conditional) + sort */}
+          <ListControls
+            search={{ value: recipeSearch, onChange: setRecipeSearch, placeholder: 'Search recipes…' }}
+            selects={[
+              {
+                label: 'Availability filter',
+                value: availabilityFilter,
+                onChange: (v) => setAvailabilityFilter(v as 'available' | 'locked' | 'favorites' | 'all'),
+                options: AVAILABILITY_OPTIONS,
+                width: 112,
+              },
+              ...categorySelects,
+              {
+                label: 'Sort recipes',
+                value: recipeSort,
+                onChange: (v) => setRecipeSort(v as RecipeSort),
+                options: RECIPE_SORT_OPTIONS,
+                width: 100,
+              },
+            ]}
+          />
         </div>
 
         {/* ── Recipe grid — scrolls under the sticky header ── */}
@@ -176,13 +164,6 @@ export function ForgePickerArea({
           <ForgeRecipePicker
             recipes={recipes}
             selectedRecipeId={selectedRecipeId}
-            recipeSearch={recipeSearch}
-            setRecipeSearch={setRecipeSearch}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            availabilityFilter={availabilityFilter}
-            setAvailabilityFilter={setAvailabilityFilter}
-            recipeCategories={recipeCategories}
             favorites={favorites}
             onToggleFavorite={onToggleFavorite}
             onClose={onClose ?? (() => {})}

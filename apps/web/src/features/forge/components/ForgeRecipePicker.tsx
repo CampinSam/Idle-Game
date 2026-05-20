@@ -1,19 +1,12 @@
 import { mergeDisplayStyles, textStyleToCss, type DisplayStyle } from '@derp/shared';
 import ItemQty from '../../../components/ItemQty';
-import { Chip, EmptyState } from '../../../components/ui';
+import { EmptyState } from '../../../components/ui';
 import { computeInventoryAmount } from '../../../utils/locationProduction';
 import { fmtSeconds, type ForecastResponse } from './forgeUtils';
 
 interface ForgeRecipePickerProps {
   recipes: any[];
   selectedRecipeId: string | null;
-  recipeSearch: string;
-  setRecipeSearch: (v: string) => void;
-  categoryFilter: string;
-  setCategoryFilter: (v: string) => void;
-  availabilityFilter: 'available' | 'locked' | 'favorites' | 'all';
-  setAvailabilityFilter: (v: 'available' | 'locked' | 'favorites' | 'all') => void;
-  recipeCategories: string[];
   favorites: Set<string>;
   onToggleFavorite: (id: string) => void;
   onClose: () => void;
@@ -24,7 +17,7 @@ interface ForgeRecipePickerProps {
   profile: any;
   forecast: ForecastResponse | null;
   /**
-   * When true, suppress the outer container, header, search, and filter controls.
+   * When true, suppress the outer container, header, and filter controls.
    * Only the recipe grid is rendered — useful when the caller provides its own sticky filter header.
    */
   hideControls?: boolean;
@@ -140,13 +133,6 @@ function RecipeGrid({
 export function ForgeRecipePicker({
   recipes,
   selectedRecipeId,
-  recipeSearch,
-  setRecipeSearch,
-  categoryFilter,
-  setCategoryFilter,
-  availabilityFilter,
-  setAvailabilityFilter,
-  recipeCategories,
   favorites,
   onToggleFavorite,
   onClose,
@@ -180,56 +166,6 @@ export function ForgeRecipePicker({
         >
           ×
         </button>
-      </div>
-      <div className="flex flex-col gap-2">
-        <input
-          type="text"
-          placeholder="Search recipes…"
-          value={recipeSearch}
-          onChange={(e) => setRecipeSearch(e.target.value)}
-          aria-label="Search recipes"
-          className="w-full px-3 py-2 rounded-lg border border-white/10 bg-black/30 text-text-primary text-[13px] placeholder:text-text-secondary focus:outline-none focus:border-[rgba(167,139,250,0.5)]"
-        />
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Availability filter">
-          {(['available', 'locked', 'favorites', 'all'] as const).map((key) => {
-            const isActive = availabilityFilter === key;
-            const label = key === 'all' ? 'All' : key === 'available' ? '✓ Available' : key === 'locked' ? '🔒 Locked' : '★ Favorites';
-            return (
-              <button
-                key={key}
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setAvailabilityFilter(key)}
-                className="cursor-pointer p-0 bg-transparent border-0"
-              >
-                <Chip tone={isActive ? 'tier-2' : 'neutral'}>{label}</Chip>
-              </button>
-            );
-          })}
-        </div>
-        {recipeCategories.length > 1 && (
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Category filter">
-            <button
-              role="tab"
-              aria-selected={categoryFilter === 'all'}
-              onClick={() => setCategoryFilter('all')}
-              className="cursor-pointer p-0 bg-transparent border-0"
-            >
-              <Chip tone={categoryFilter === 'all' ? 'tier-2' : 'neutral'}>All</Chip>
-            </button>
-            {recipeCategories.map((cat) => (
-              <button
-                key={cat}
-                role="tab"
-                aria-selected={categoryFilter === cat}
-                onClick={() => setCategoryFilter(cat)}
-                className="cursor-pointer p-0 bg-transparent border-0"
-              >
-                <Chip tone={categoryFilter === cat ? 'tier-2' : 'neutral'}>{cat}</Chip>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
       <RecipeGrid {...gridProps} />
     </div>
