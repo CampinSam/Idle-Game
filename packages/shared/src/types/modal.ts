@@ -70,7 +70,8 @@ export type ModalAction =
   | { type: 'UPGRADE_BUILDING'; locationId: string; buildingId: string }
   | { type: 'SHOP_PURCHASE'; shopItemDefId: string }
   | { type: 'DEPOSIT_LOCATION_XP'; locationId: string; costOption: { type: 'currency' | 'item'; id: string; amount: number }; charges?: number }
-  | { type: 'PRESTIGE' };
+  | { type: 'PRESTIGE' }
+  | { type: 'SKIP'; targetType: string; targetId: string };
 
 export type ModalBlock =
   | ModalBlockRichText

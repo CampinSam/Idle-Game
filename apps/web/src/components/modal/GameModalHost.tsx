@@ -203,18 +203,26 @@ export default function GameModalHost() {
           return;
         }
 
+        case 'SKIP': {
+          const { targetType, targetId } = action;
+          if (targetType === 'job') {
+            try {
+              await api.skipJob(targetId);
+              const replaced = await tryFetchFollowUp({ jobId: targetId });
+              if (!replaced) dismissModal();
+            } catch (err: any) {
+              audioEngine.play('ui.error');
+              console.warn('[GameModalHost] SKIP job failed:', err?.message);
+            }
+          } else {
+            console.warn(`[GameModalHost] SKIP: unhandled targetType "${targetType}"`);
+            dismissModal();
+          }
+          return;
+        }
+
         case 'API_CALL': {
           const { apiKey, payload } = action;
-
-          if (apiKey === 'jobs.skip' && payload?.jobId) {
-            const jobId = payload.jobId as string;
-            await api.skipJob(jobId);
-            const replaced = await tryFetchFollowUp({ jobId });
-            if (!replaced) {
-              dismissModal();
-            }
-            return;
-          }
 
           if (apiKey === 'jobs.cancel' && payload?.jobId) {
             const jobId = payload.jobId as string;

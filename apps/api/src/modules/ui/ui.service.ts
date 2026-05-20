@@ -420,11 +420,18 @@ export class UiService {
 
     const skipInfo = this.buildSkipInfo(job);
     if (!isReady && skipInfo) {
+      const computedCosts = this.computeSkipCosts(skipInfo, progress);
       buttons.push({
         id: 'skip',
         label: 'Skip',
         variant: 'secondary',
-        action: { type: 'API_CALL', apiKey: 'jobs.skip', payload: { jobId: job.id } },
+        action: { type: 'SKIP', targetType: 'job', targetId: job.id },
+        requiresConfirm: {
+          title: 'Skip early?',
+          body: this.buildSkipConfirmBody(computedCosts),
+          confirmLabel: 'Skip',
+          cancelLabel: 'Wait',
+        },
       });
     }
 
@@ -739,6 +746,43 @@ export class UiService {
       skipCost: data.skipCost,
       skipType: data.skipType || 'scaling',
     };
+  }
+
+  private computeSkipCosts(
+    skipInfo: { skipCost: Array<{ type: string; id: string; amount: number }>; skipType: string },
+    progress: { current: number; max: number },
+  ): Array<{ type: string; id: string; amount: number }> {
+    const { skipCost, skipType } = skipInfo;
+    let multiplier = 1;
+    if (skipType === 'scaling' && progress.max > 0) {
+      const remaining = Math.max(0, progress.max - progress.current);
+      multiplier = remaining / progress.max;
+    }
+    return skipCost.map((entry) => ({
+      ...entry,
+      amount: multiplier < 1
+        ? Math.max(1, Math.ceil(entry.amount * multiplier))
+        : entry.amount,
+    }));
+  }
+
+  private buildSkipConfirmBody(costs: Array<{ type: string; id: string; amount: number }>): any[] {
+    const lines: any[] = [
+      { t: 'p', c: [{ t: 'text', v: 'Finish this early and skip the remaining time?' }] },
+    ];
+    if (costs.length > 0) {
+      const costText = costs
+        .map((c) => `${c.amount} ${c.id}`)
+        .join(', ');
+      lines.push({
+        t: 'p',
+        c: [
+          { t: 'text', v: 'Cost: ' },
+          { t: 'strong', c: [{ t: 'text', v: costText }] },
+        ],
+      });
+    }
+    return lines;
   }
 
   private async buildJobContext(job: any, def: any): Promise<JobContext> {
