@@ -33,21 +33,35 @@ import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
 
 const EMPTY_TIER_BLOCK = { rewards: [] };
 
+function normaliseRewards(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  // Object wrapper shape: { rewards: [...], effects: [...] }
+  if (raw && typeof raw === 'object' && Array.isArray(raw.rewards)) return raw.rewards;
+  return [];
+}
+
 function getRecipeTiers(recipe: any): Record<string, { rewards: any[]; clRequirement?: number }> {
   const tiers = (recipe?.tiers as any) || {};
-  // Legacy fallback: if tiers is empty and a top-level rewards array exists, treat it as common rewards
+  // Legacy fallback: if tiers is empty and a top-level rewards value exists
+  const legacyRewards = normaliseRewards(recipe?.rewards);
   const legacyCommon =
-    Object.keys(tiers).length === 0 && Array.isArray(recipe?.rewards)
-      ? { rewards: recipe.rewards }
+    Object.keys(tiers).length === 0 && legacyRewards.length > 0
+      ? { rewards: legacyRewards }
       : EMPTY_TIER_BLOCK;
+
+  const build = (block: any): { rewards: any[]; clRequirement?: number } => {
+    if (!block) return EMPTY_TIER_BLOCK;
+    return { ...block, rewards: normaliseRewards(block.rewards) };
+  };
+
   return {
-    failure:   tiers.failure   ?? EMPTY_TIER_BLOCK,
-    common:    tiers.common    ?? legacyCommon,
-    uncommon:  tiers.uncommon  ?? EMPTY_TIER_BLOCK,
-    scare:     tiers.scare     ?? EMPTY_TIER_BLOCK,
-    rare:      tiers.rare      ?? EMPTY_TIER_BLOCK,
-    epic:      tiers.epic      ?? EMPTY_TIER_BLOCK,
-    legendary: tiers.legendary ?? EMPTY_TIER_BLOCK,
+    failure:   build(tiers.failure)   ?? EMPTY_TIER_BLOCK,
+    common:    build(tiers.common)    ?? legacyCommon,
+    uncommon:  build(tiers.uncommon)  ?? EMPTY_TIER_BLOCK,
+    scare:     build(tiers.scare)     ?? EMPTY_TIER_BLOCK,
+    rare:      build(tiers.rare)      ?? EMPTY_TIER_BLOCK,
+    epic:      build(tiers.epic)      ?? EMPTY_TIER_BLOCK,
+    legendary: build(tiers.legendary) ?? EMPTY_TIER_BLOCK,
   };
 }
 
@@ -486,7 +500,11 @@ export class CraftingService {
 
   private validateMulticraftQuantity(requested: number, multicraft: any): number {
     if (!multicraft) return 1;
-    const qty = Math.max(1, Math.floor(requested));
+    const raw = Number(requested);
+    if (!Number.isFinite(raw) || raw < 1) {
+      throw new BadRequestException('Quantity must be a positive integer');
+    }
+    const qty = Math.max(1, Math.floor(raw));
     if (multicraft.mode === 'tiers' && Array.isArray(multicraft.tiers)) {
       if (!multicraft.tiers.includes(qty)) {
         throw new BadRequestException(
@@ -496,8 +514,8 @@ export class CraftingService {
       return qty;
     }
     if (multicraft.mode === 'free') {
-      const max = multicraft.max ?? Infinity;
-      if (qty > max) {
+      const max = Number(multicraft.max);
+      if (Number.isFinite(max) && qty > max) {
         throw new BadRequestException(`Maximum quantity for this recipe is ${max}`);
       }
       return qty;
