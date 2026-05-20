@@ -13,6 +13,7 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveRewardSpec } from './reward-resolver.util';
 import { resolveRewardSpecContext } from './reward-spec-resolver.util';
+import type { GiftSpec } from '@derp/shared';
 
 @Injectable()
 export class GiftService {
@@ -37,9 +38,48 @@ export class GiftService {
     return (this.prisma as any).giftClaimTx;
   }
 
+  private async resolveGiftSpec(spec: GiftSpec): Promise<{
+    id: string | null;
+    version: number;
+    name: string;
+    presentation: any;
+    claimRules: any;
+    rewardSpec: any;
+    instant: boolean;
+    modalDefId: string | null;
+  }> {
+    if ('giftDefId' in spec) {
+      const def = await this.giftDef.findUnique({ where: { id: spec.giftDefId } });
+      if (!def) {
+        throw new NotFoundException(`GiftDef "${spec.giftDefId}" not found`);
+      }
+      return {
+        id: def.id,
+        version: def.version ?? 1,
+        name: def.name,
+        presentation: def.presentation ?? {},
+        claimRules: def.claimRules ?? {},
+        rewardSpec: def.rewardSpec ?? {},
+        instant: def.instant !== false,
+        modalDefId: def.modalDefId ?? null,
+      };
+    }
+
+    return {
+      id: null,
+      version: 1,
+      name: spec.name,
+      presentation: spec.presentation ?? {},
+      claimRules: spec.claimRules ?? {},
+      rewardSpec: spec.rewardSpec ?? {},
+      instant: spec.instant !== false,
+      modalDefId: spec.modalDefId ?? null,
+    };
+  }
+
   async createGiftForPlayer(
     userId: string,
-    giftDefId: string,
+    gift: GiftSpec,
     sourceType?: string,
     sourceId?: string,
     idempotencyKey?: string,
@@ -52,14 +92,12 @@ export class GiftService {
       if (existing) return existing;
     }
 
-    const def = await this.giftDef.findUnique({ where: { id: giftDefId } });
-    if (!def) {
-      throw new NotFoundException(`GiftDef "${giftDefId}" not found`);
-    }
+    const def = await this.resolveGiftSpec(gift);
 
-    const claimRules = (def.claimRules as any) || {};
+    const claimRules = def.claimRules || {};
+    const giftDefId = def.id;
 
-    if (claimRules.limitPerPlayer) {
+    if (claimRules.limitPerPlayer && giftDefId) {
       const count = await this.giftInstance.count({
         where: { userId, giftDefId },
       });
@@ -75,12 +113,12 @@ export class GiftService {
       expiresAt = new Date(Date.now() + claimRules.expiresInSeconds * 1000);
     }
 
-    const presentation = (def.presentation as any) || {};
+    const presentation = def.presentation || {};
 
-    const gift = await this.giftInstance.create({
+    const giftRecord = await this.giftInstance.create({
       data: {
         userId,
-        giftDefId,
+        giftDefId: giftDefId || null,
         giftDefVersion: def.version,
         status: 'UNCLAIMED',
         expiresAt,
@@ -90,7 +128,7 @@ export class GiftService {
         snapshot: {
           presentation: def.presentation,
           rewardSpec: def.rewardSpec,
-          instant: def.instant ?? true,
+          instant: def.instant,
           ...(contextData && Object.keys(contextData).length > 0 ? { contextData } : {}),
         },
       },
@@ -103,22 +141,15 @@ export class GiftService {
       priority: 'high',
       title: presentation.title || 'You received a gift!',
       body: presentation.body || 'Check your gifts to claim it.',
-      meta: { type: 'gift', giftId: gift.id },
+      meta: { type: 'gift', giftId: giftRecord.id },
       sourceType: 'Gift',
-      sourceId: gift.id,
+      sourceId: giftRecord.id,
     });
 
-    return gift;
+    return giftRecord;
   }
 
   async claimGift(userId: string, giftId: string, tx?: any) {
-    // When called from inside an existing transaction (e.g. via the
-    // ClaimGiftHandler under /v1/commands), we participate in that tx.
-    // When called via the standalone /gifts/:id/claim REST endpoint, we
-    // MUST start our own transaction — otherwise the item create, claimTx
-    // create, gift status update and notification become four separate
-    // writes and a crash mid-flow leaves the player in an inconsistent
-    // state (rewards granted but gift still UNCLAIMED, or vice versa).
     if (!tx) {
       return this.prisma.$transaction(
         (innerTx) => this._claimGiftWithTx(userId, giftId, innerTx),
@@ -133,29 +164,29 @@ export class GiftService {
     const giftModel = (db as any).giftInstance ?? this.giftInstance;
     const claimTxModel = (db as any).giftClaimTx ?? this.giftClaimTx;
 
-    const gift = await giftModel.findUnique({ where: { id: giftId } });
-    if (!gift) {
+    const giftRecord = await giftModel.findUnique({ where: { id: giftId } });
+    if (!giftRecord) {
       throw new NotFoundException('Gift not found');
     }
 
-    if (gift.userId !== userId) {
+    if (giftRecord.userId !== userId) {
       throw new ForbiddenException('This gift does not belong to you');
     }
 
-    if (gift.status === 'CLAIMED') {
+    if (giftRecord.status === 'CLAIMED') {
       const existingTx = await claimTxModel.findUnique({
         where: { giftId },
       });
-      return { gift, claimTx: existingTx };
+      return { gift: giftRecord, claimTx: existingTx };
     }
 
-    if (gift.status !== 'UNCLAIMED') {
+    if (giftRecord.status !== 'UNCLAIMED') {
       throw new BadRequestException(
-        `Gift cannot be claimed (status: ${gift.status})`,
+        `Gift cannot be claimed (status: ${giftRecord.status})`,
       );
     }
 
-    if (gift.expiresAt && gift.expiresAt < new Date()) {
+    if (giftRecord.expiresAt && giftRecord.expiresAt < new Date()) {
       await giftModel.update({
         where: { id: giftId },
         data: { status: 'EXPIRED' },
@@ -165,14 +196,14 @@ export class GiftService {
 
     const seed = crypto
       .createHash('sha256')
-      .update(giftId + userId + gift.createdAt.toISOString())
+      .update(giftId + userId + giftRecord.createdAt.toISOString())
       .digest('hex');
 
-    const snapshot = (gift.snapshot as any) || {};
+    const snapshot = (giftRecord.snapshot as any) || {};
     const rawRewardSpec = snapshot.rewardSpec || {};
     const rewardSpec = resolveRewardSpecContext(rawRewardSpec, snapshot.contextData);
     const instant: boolean = snapshot.instant !== false;
-    const giftDefId = gift.giftDefId;
+    const giftDefId = giftRecord.giftDefId;
 
     let grants: any[];
     let claimTx: any;

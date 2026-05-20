@@ -85,7 +85,7 @@ export class AuthService {
     }
 
     try {
-      await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
+      await this.eventService.dispatch('evt_welcome_gift', { gift: { giftDefId: 'gift_welcome_gems' } }, {
         userId: user.id,
         sourceType: 'registration',
         sourceId: user.id,
@@ -343,7 +343,7 @@ export class AuthService {
       await this.settlementService.recalculateLocationMeta(loc.id);
     } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
     try {
-      await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
+      await this.eventService.dispatch('evt_welcome_gift', { gift: { giftDefId: 'gift_welcome_gems' } }, {
         userId: user.id, sourceType: 'registration', sourceId: user.id,
         idempotencyKey: `welcome-gift-${user.id}`,
       });

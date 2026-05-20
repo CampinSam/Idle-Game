@@ -1,6 +1,7 @@
 import { Injectable, Inject, forwardRef, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
+import type { GiftSpec } from '@derp/shared';
 
 const JOB_SOURCE_TYPES = new Set(['MissionJob', 'CraftingJob', 'BuildingJob']);
 
@@ -86,9 +87,10 @@ export class EventService {
 
     switch (eventDef.handlerKey) {
       case 'createGiftForPlayer': {
-        if (!safePayload.giftDefId) {
+        const giftSpec: GiftSpec | undefined = safePayload.gift;
+        if (!giftSpec || typeof giftSpec !== 'object') {
           throw new BadRequestException(
-            `Event "${defId}" requires payload.giftDefId but it was not provided`,
+            `Event "${defId}" requires payload.gift (a GiftSpec) but it was not provided`,
           );
         }
         const contextData = await this.buildContextData(
@@ -98,7 +100,7 @@ export class EventService {
         );
         return this.giftService.createGiftForPlayer(
           context.userId,
-          safePayload.giftDefId,
+          giftSpec,
           context.sourceType,
           context.sourceId,
           context.idempotencyKey,

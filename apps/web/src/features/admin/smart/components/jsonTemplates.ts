@@ -104,7 +104,8 @@ export const ARRAY_TEMPLATES: Record<string, TemplateOption[]> = {
     { label: 'objective', description: 'Quest objective', color: SLATE, template: () => ({ eventType: '', target: 1, description: '' }) },
   ],
   days: [
-    { label: 'day', description: 'Daily check-in reward', color: SLATE, template: () => ({ day: 0, giftDefId: '' }) },
+    { label: 'day (ref)', description: 'Daily check-in reward via GiftDef reference', color: SLATE, template: () => ({ day: 0, gift: { giftDefId: '' } }) },
+    { label: 'day (inline)', description: 'Daily check-in reward with inline gift definition', color: SLATE, template: () => ({ day: 0, gift: { name: '', instant: true, rewardSpec: [] } }) },
   ],
 };
 

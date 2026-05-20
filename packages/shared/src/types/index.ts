@@ -11,3 +11,4 @@ export * from './displayStyle';
 export * from './location';
 export * from './rich-selection';
 export * from './telemetry';
+export * from './gift';

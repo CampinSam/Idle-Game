@@ -301,7 +301,7 @@ export class AdminService {
     }
 
     try {
-      await this.eventService.dispatch('evt_welcome_gift', { giftDefId: 'gift_welcome_gems' }, {
+      await this.eventService.dispatch('evt_welcome_gift', { gift: { giftDefId: 'gift_welcome_gems' } }, {
         userId: uid,
         sourceType: 'admin_reset',
         sourceId: uid,

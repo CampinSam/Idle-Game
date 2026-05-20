@@ -125,7 +125,7 @@ export class AdminController {
   ) {
     return this.giftService.createGiftForPlayer(
       body.userId,
-      body.giftDefId,
+      { giftDefId: body.giftDefId },
       'admin',
       undefined,
       undefined,

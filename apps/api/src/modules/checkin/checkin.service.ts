@@ -3,10 +3,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { GiftService } from '../gift/gift.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
-// Window math is shared with the QuestService daily/weekly cadence reset
-// logic so a player's daily check-in and daily quest both roll over at
-// exactly the same UTC moment. See `apps/api/src/common/util/cadence.ts`.
 import { windowsMissed } from '../../common/util/cadence';
+import type { GiftSpec } from '@derp/shared';
 
 @Injectable()
 export class CheckInService {
@@ -81,11 +79,13 @@ export class CheckInService {
 
     let giftId: string | null = null;
 
-    if (reward?.giftDefId) {
+    const giftSpec: GiftSpec | null = reward?.gift ?? null;
+
+    if (giftSpec) {
       try {
         const gift = await this.giftService.createGiftForPlayer(
           userId,
-          reward.giftDefId,
+          giftSpec,
           'checkin',
           def.id,
           `checkin-${def.id}-${userId}-${streak}`,

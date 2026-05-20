@@ -147,7 +147,7 @@ export function migrateGiftRewardSpec(value: any): NormalizeResult {
  *      reward outcome arrays. Other Json fields on def models are unrelated:
  *        - missionDef.rewardPreview → display string[]
  *        - modalDef.spec            → modal config
- *        - checkInDef.rewards       → checkInDays array (giftDefId pointers)
+ *        - checkInDef.rewards       → checkInDays array (gift: GiftSpec entries)
  */
 export const OUTCOME_SPEC_FIELDS_BY_MODEL: Record<string, string[]> = {
   missionDef: ['success', 'failure'],

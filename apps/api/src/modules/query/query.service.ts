@@ -83,8 +83,11 @@ function deriveIconFromRewardSpec(spec: any): string | null {
 
 /**
  * Mutates each `checkInDef.rewards[i]` entry to include `iconKey` and `name`
- * fields derived from the linked GiftDef so the daily-login tracker can show
+ * fields derived from the reward's GiftSpec so the daily-login tracker can show
  * the actual reward icon for each day instead of a generic bow.
+ *
+ * Supports both GiftDef reference specs (`{ giftDefId }`) and inline specs
+ * (`InlineGiftDef` shape with `name`, `presentation`, `rewardSpec`).
  *
  * Pure addition — never overwrites an explicit iconKey already on the entry
  * (lets admins manually override per-day).
@@ -95,30 +98,46 @@ async function enrichCheckInRewardIcons(prisma: any, instances: any[]): Promise<
     const rewards = inst?.checkInDef?.rewards;
     if (!Array.isArray(rewards)) continue;
     for (const r of rewards) {
-      if (r && typeof r.giftDefId === 'string') giftDefIds.add(r.giftDefId);
+      const spec = r?.gift;
+      if (spec && typeof spec.giftDefId === 'string') giftDefIds.add(spec.giftDefId);
     }
   }
-  if (giftDefIds.size === 0) return;
-  const giftDefs = await prisma.giftDef.findMany({
-    where: { id: { in: Array.from(giftDefIds) } },
-    select: { id: true, name: true, presentation: true, rewardSpec: true },
-  });
-  const byId = new Map<string, any>(giftDefs.map((g: any) => [g.id, g]));
+
+  const byId = new Map<string, any>();
+  if (giftDefIds.size > 0) {
+    const giftDefs = await prisma.giftDef.findMany({
+      where: { id: { in: Array.from(giftDefIds) } },
+      select: { id: true, name: true, presentation: true, rewardSpec: true },
+    });
+    for (const g of giftDefs) byId.set(g.id, g);
+  }
+
   for (const inst of instances) {
     const rewards = inst?.checkInDef?.rewards;
     if (!Array.isArray(rewards)) continue;
     for (const r of rewards) {
       if (!r || typeof r !== 'object') continue;
       if (r.iconKey) continue; // honor explicit override
-      const gift = r.giftDefId ? byId.get(r.giftDefId) : null;
-      if (!gift) continue;
-      const rawPresentationIcon = (gift.presentation as any)?.iconKey;
+
+      const spec = r.gift;
+      if (!spec || typeof spec !== 'object') continue;
+
+      let giftData: { name: string; presentation: any; rewardSpec: any } | null = null;
+      if (typeof spec.giftDefId === 'string') {
+        giftData = byId.get(spec.giftDefId) ?? null;
+      } else if (typeof spec.name === 'string') {
+        giftData = { name: spec.name, presentation: spec.presentation ?? {}, rewardSpec: spec.rewardSpec ?? {} };
+      }
+
+      if (!giftData) continue;
+
+      const rawPresentationIcon = (giftData.presentation as any)?.iconKey;
       const presentationIcon =
         typeof rawPresentationIcon === 'string' && rawPresentationIcon.trim()
           ? rawPresentationIcon.trim()
           : null;
-      r.iconKey = presentationIcon || deriveIconFromRewardSpec(gift.rewardSpec) || null;
-      if (!r.name) r.name = (gift.presentation as any)?.title || gift.name;
+      r.iconKey = presentationIcon || deriveIconFromRewardSpec(giftData.rewardSpec) || null;
+      if (!r.name) r.name = (giftData.presentation as any)?.title || giftData.name;
     }
   }
 }

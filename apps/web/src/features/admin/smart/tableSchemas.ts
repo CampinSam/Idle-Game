@@ -321,7 +321,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       description: { type: 'string', description: 'Flavor text' },
       cycleLength: { type: 'number', default: 7, description: 'Length of one check-in cycle in days' },
       frequency: { type: 'frequency', default: { type: 'daily' }, description: 'Check-in frequency config (e.g. {"type":"daily"})' },
-      rewards: { type: 'checkInDaysArray', default: [], description: 'Day reward definitions (array of { day, giftDefId })' },
+      rewards: { type: 'checkInDaysArray', default: [], description: 'Day reward definitions (array of { day, gift: GiftSpec }). gift is either { giftDefId } or an inline InlineGiftDef ({ name, presentation, claimRules, rewardSpec, instant, modalDefId }).' },
       requireStreak: { type: 'boolean', default: false, description: 'Reset streak on miss?' },
       allowReclaim: { type: 'boolean', default: false, description: 'Allow re-issuing day-0 after reset?' },
       enabled: { type: 'boolean', default: true, description: 'Active?' },

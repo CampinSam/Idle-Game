@@ -986,3 +986,85 @@ Reset all counters for a definition to zero (deletes all `TelemetryCount` rows f
 **Auth:** Admin
 
 **Response:** `{ "reset": <number of rows deleted> }`
+
+---
+
+## GiftSpec — Inline Gift Definitions
+
+Every place in the definition layer that previously required a bare `giftDefId` string now accepts a **`GiftSpec`** union. This lets content authors either reference an existing `GiftDef` row or author a one-off gift directly on the issuing definition (no separate DB row needed).
+
+### GiftSpec union
+
+```typescript
+type GiftSpec = { giftDefId: string } | InlineGiftDef;
+```
+
+| Variant | Discriminant | When to use |
+|---------|--------------|-------------|
+| `{ giftDefId }` | `giftDefId` key present | The gift is reused across multiple sources — keep it in a `GiftDef` row |
+| `InlineGiftDef` | `name` key present (no `giftDefId`) | One-off reward specific to this definition entry |
+
+### InlineGiftDef fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✓ | Admin-facing display name |
+| `presentation` | `GiftPresentation` | — | `{ iconKey, title, subtitle, animationKey, accentColor }` |
+| `claimRules` | `GiftClaimRules` | — | `{ limitPerPlayer, expiresInSeconds }` |
+| `rewardSpec` | `OutcomeEntry[]` | — | Same shape as mission/lootbox outcome arrays |
+| `instant` | boolean | — | `true` (default) = immediate delivery; `false` = GIFT_PACKAGE item |
+| `modalDefId` | string | — | Optional `ModalDef.id` to show when the gift is opened |
+
+### Where GiftSpec is used
+
+| Definition | Field |
+|-----------|-------|
+| `CheckInDef.rewards[]` | `gift: GiftSpec` (replaces `giftDefId: string`) |
+| `EventDefinition` handler payload | `gift: GiftSpec` (replaces `giftDefId: string`) for the `createGiftForPlayer` handler key |
+
+### Example — CheckInDef rewards with a ref
+
+```json
+{
+  "rewards": [
+    { "day": 0, "gift": { "giftDefId": "gift_daily_starter" } },
+    { "day": 6, "gift": { "giftDefId": "gift_weekly_bonus" } }
+  ]
+}
+```
+
+### Example — CheckInDef rewards with an inline gift
+
+```json
+{
+  "rewards": [
+    {
+      "day": 0,
+      "gift": {
+        "name": "Day 1 Bonus",
+        "presentation": { "title": "Welcome Back!", "iconKey": "gift_star" },
+        "rewardSpec": [{ "type": "currency", "key": "soft_coins", "min": 100, "max": 100 }],
+        "instant": true
+      }
+    }
+  ]
+}
+```
+
+### Example — EventDefinition payload with a ref
+
+```json
+{ "gift": { "giftDefId": "gift_welcome_gems" } }
+```
+
+### Example — EventDefinition payload with an inline gift
+
+```json
+{
+  "gift": {
+    "name": "Event Bonus",
+    "rewardSpec": [{ "type": "currency", "key": "event_tokens", "min": 50, "max": 50 }],
+    "instant": true
+  }
+}
+```

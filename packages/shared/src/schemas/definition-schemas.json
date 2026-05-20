@@ -2011,6 +2011,61 @@
         }
       }
     },
+    "InlineGiftDef": {
+      "type": "object",
+      "description": "An inline gift definition authored directly on a definition object. Use this when the gift is specific to one source and does not need its own GiftDef row.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Admin-facing display name for the inline gift"
+        },
+        "presentation": {
+          "$ref": "#/complexTypes/GiftPresentation",
+          "default": {},
+          "description": "Visual properties (iconKey, title, subtitle, animationKey, accentColor)"
+        },
+        "claimRules": {
+          "$ref": "#/complexTypes/GiftClaimRules",
+          "default": {},
+          "description": "Claiming behavior (limitPerPlayer, expiresInSeconds)"
+        },
+        "rewardSpec": {
+          "$ref": "#/complexTypes/GiftRewardSpec",
+          "default": [],
+          "description": "Reward entries granted on claim"
+        },
+        "instant": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, rewards are delivered immediately. If false, a GIFT_PACKAGE item is created."
+        },
+        "modalDefId": {
+          "type": "string",
+          "description": "Optional ModalDef ID to show when the gift is opened"
+        }
+      }
+    },
+    "GiftSpec": {
+      "description": "A union type for specifying a gift on a definition object. Either a reference to an existing GiftDef row, or a fully-inline gift definition.",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Reference to an existing GiftDef by ID",
+          "properties": {
+            "giftDefId": {
+              "type": "string",
+              "required": true,
+              "description": "ID of the GiftDef row to use"
+            }
+          }
+        },
+        {
+          "$ref": "#/complexTypes/InlineGiftDef",
+          "description": "Fully-inline gift definition — no GiftDef row required"
+        }
+      ]
+    },
     "CheckInDayReward": {
       "type": "object",
       "description": "A reward entry for a specific check-in day",
@@ -2019,9 +2074,9 @@
           "type": "integer",
           "description": "0-indexed day in cycle (or 1-indexed — match to streak % cycleLength)"
         },
-        "giftDefId": {
-          "type": "string",
-          "description": "GiftDef to issue when this day is claimed"
+        "gift": {
+          "$ref": "#/complexTypes/GiftSpec",
+          "description": "The gift to issue when this day is claimed. Either { giftDefId } or an inline InlineGiftDef."
         }
       }
     },
@@ -3023,7 +3078,7 @@
         "inputSchema": {
           "type": "json",
           "default": {},
-          "description": "Expected payload JSON schema. For the createGiftForPlayer handler, the payload must include giftDefId and may include an optional contextData object. Job source types (MissionJob, CraftingJob, BuildingJob) automatically attach job context via DB lookup."
+          "description": "Expected payload JSON schema. For the createGiftForPlayer handler, the payload must include gift (a GiftSpec: either { giftDefId } or an inline InlineGiftDef) and may include an optional contextData object. Job source types (MissionJob, CraftingJob, BuildingJob) automatically attach job context via DB lookup."
         },
         "enabled": {
           "type": "boolean",

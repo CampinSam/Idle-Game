@@ -5579,7 +5579,7 @@
             "type": "emitEvent",
             "defId": "evt_new_guest_arrived",
             "payload": {
-              "giftDefId": "gift_perp_clone"
+              "gift": { "giftDefId": "gift_perp_clone" }
             },
             "idempotencyKey": "clone-${jobId}"
           },
@@ -6968,31 +6968,31 @@
       "rewards": [
         {
           "day": 0,
-          "giftDefId": "gift_checkin_daily_arcanium_sm"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
         },
         {
           "day": 1,
-          "giftDefId": "gift_checkin_daily_arcanium_sm"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
         },
         {
           "day": 2,
-          "giftDefId": "gift_checkin_daily_arcanium_sm"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_sm" }
         },
         {
           "day": 3,
-          "giftDefId": "gift_checkin_daily_arcanium_md"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
         },
         {
           "day": 4,
-          "giftDefId": "gift_checkin_daily_arcanium_md"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
         },
         {
           "day": 5,
-          "giftDefId": "gift_checkin_daily_arcanium_md"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_md" }
         },
         {
           "day": 6,
-          "giftDefId": "gift_checkin_daily_arcanium_lg"
+          "gift": { "giftDefId": "gift_checkin_daily_arcanium_lg" }
         }
       ],
       "enabled": true
@@ -7010,31 +7010,31 @@
       "rewards": [
         {
           "day": 0,
-          "giftDefId": "gift_checkin_weekly_essence_sm"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
         },
         {
           "day": 1,
-          "giftDefId": "gift_checkin_weekly_essence_sm"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
         },
         {
           "day": 2,
-          "giftDefId": "gift_checkin_weekly_essence_sm"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_sm" }
         },
         {
           "day": 3,
-          "giftDefId": "gift_checkin_weekly_essence_md"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
         },
         {
           "day": 4,
-          "giftDefId": "gift_checkin_weekly_essence_md"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
         },
         {
           "day": 5,
-          "giftDefId": "gift_checkin_weekly_essence_md"
+          "gift": { "giftDefId": "gift_checkin_weekly_essence_md" }
         },
         {
           "day": 6,
-          "giftDefId": "gift_checkin_weekly_gems"
+          "gift": { "giftDefId": "gift_checkin_weekly_gems" }
         }
       ],
       "enabled": true
