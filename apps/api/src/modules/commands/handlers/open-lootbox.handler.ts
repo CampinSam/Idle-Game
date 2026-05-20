@@ -4,6 +4,7 @@ import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildPlayerPatch 
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
 import * as crypto from 'crypto';
 
@@ -13,6 +14,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
     private gameRules: GameRulesService,
   ) {}
 
@@ -110,6 +112,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     }
 
     try {
+      const telemetryContext = await this.telemetryContextBuilder.buildContext(ctx.userId);
       await this.telemetryService.record(
         ctx.userId,
         'lootbox_opened',
@@ -117,6 +120,7 @@ export class OpenLootBoxHandler implements CommandHandler {
         1,
         {},
         ctx.tx,
+        telemetryContext,
       );
     } catch (_) {}
 

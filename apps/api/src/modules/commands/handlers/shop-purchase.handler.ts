@@ -4,6 +4,7 @@ import { PatchBuilder, buildItemPatches, buildCurrencyPatches } from '../patch-b
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
+import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 
 @Injectable()
 export class ShopPurchaseHandler implements CommandHandler {
@@ -11,6 +12,7 @@ export class ShopPurchaseHandler implements CommandHandler {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private telemetryService: TelemetryService,
+    private telemetryContextBuilder: TelemetryContextBuilderService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -78,7 +80,8 @@ export class ShopPurchaseHandler implements CommandHandler {
     }
 
     try {
-      await this.telemetryService.record(ctx.userId, 'shop_purchase', shopItemDefId, 1, {}, ctx.tx);
+      const telemetryContext = await this.telemetryContextBuilder.buildContext(ctx.userId);
+      await this.telemetryService.record(ctx.userId, 'shop_purchase', shopItemDefId, 1, {}, ctx.tx, telemetryContext);
     } catch (_) {}
 
     const pb = new PatchBuilder();
