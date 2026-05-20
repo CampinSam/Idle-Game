@@ -35,8 +35,14 @@ const EMPTY_TIER_BLOCK = { rewards: [] };
 
 function normaliseRewards(raw: any): any[] {
   if (Array.isArray(raw)) return raw;
-  // Object wrapper shape: { rewards: [...], effects: [...] }
-  if (raw && typeof raw === 'object' && Array.isArray(raw.rewards)) return raw.rewards;
+  if (raw && typeof raw === 'object') {
+    // { rewards: [...] } wrapper shape
+    if (Array.isArray(raw.rewards)) return raw.rewards;
+    // { items: [...] } shape
+    if (Array.isArray(raw.items)) return raw.items;
+    // { type: 'bundle', entries: [...] } shape
+    if (raw.type === 'bundle' && Array.isArray(raw.entries)) return raw.entries;
+  }
   return [];
 }
 
