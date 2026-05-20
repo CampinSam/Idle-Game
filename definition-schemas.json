@@ -660,6 +660,98 @@
           "description": "Optional overrides merged on top of the EffectDef defaults at apply time."
         }
       }
+    },
+    "TelemetryDef": {
+      "description": "Data-driven aggregate event counter definition. Admins author these to track MISSION_START/SUCCESS/FAIL events with optional RichSelection filters.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Auto-generated UUID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the definition"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional notes"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Active flag"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Lower date bound (inclusive); null = no bound"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Upper date bound (inclusive); null = no bound"
+        },
+        "subEvents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TelemetrySubEventSpec"
+          },
+          "description": "Array of sub-event counter specs"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "TelemetrySubEventSpec": {
+      "description": "One counter within a TelemetryDef \u2014 bound to an event type and optional RichSelection filter.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Unique key within the TelemetryDef"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "MISSION_START",
+            "MISSION_SUCCESS",
+            "MISSION_FAIL"
+          ],
+          "description": "Event type to count"
+        },
+        "filter": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/RichSelection"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional RichSelection filter; null = match all events of eventType"
+        }
+      },
+      "required": [
+        "key",
+        "eventType"
+      ]
+    },
+    "TelemetryCountDto": {
+      "description": "Counter value for one sub-event within a TelemetryDef.",
+      "properties": {
+        "subEventKey": {
+          "type": "string"
+        },
+        "count": {
+          "type": "string",
+          "description": "BigInt serialized as string"
+        },
+        "lastIncrementedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
     }
   },
   "definitions_extra": {
@@ -679,7 +771,10 @@
     "QuestObjective": {
       "description": "A single objective entry inside QuestDef.objectives. Applies to both quests and achievements (category='achievement' in QuestDef).",
       "type": "object",
-      "required": ["eventType", "target"],
+      "required": [
+        "eventType",
+        "target"
+      ],
       "properties": {
         "eventType": {
           "type": "string",
@@ -687,7 +782,7 @@
         },
         "key": {
           "type": "string",
-          "description": "Optional — narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
+          "description": "Optional \u2014 narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
         },
         "target": {
           "type": "number",

@@ -1315,6 +1315,48 @@ model ActiveEffect {
 }
 
 // ═══════════════════════════════════════════════════
+// TELEMETRY DEFINITIONS
+// ═══════════════════════════════════════════════════
+//
+// Data-driven aggregate event counters. Admins author TelemetryDef records
+// — each with a name, optional date window, and a set of sub-event counters
+// (each bound to an event type and a RichSelection filter). When a hooked
+// game event fires, TelemetryDefService evaluates all active, in-window defs
+// and atomically increments whichever counters match.
+
+model TelemetryDef {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  enabled     Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  // Array of { key: string, eventType: string, filter: RichSelection }
+  subEvents   Json      @default("[]")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  counts      TelemetryCount[]
+
+  @@index([enabled])
+  @@map("telemetry_defs")
+}
+
+model TelemetryCount {
+  telemetryDefId    String
+  subEventKey       String
+  count             BigInt   @default(0)
+  lastIncrementedAt DateTime @default(now())
+
+  telemetryDef      TelemetryDef @relation(fields: [telemetryDefId], references: [id], onDelete: Cascade)
+
+  @@id([telemetryDefId, subEventKey])
+  @@index([telemetryDefId])
+  @@map("telemetry_counts")
+}
+
+// ═══════════════════════════════════════════════════
 // AUDIO SYSTEM
 // ═══════════════════════════════════════════════════
 

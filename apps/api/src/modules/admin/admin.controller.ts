@@ -60,6 +60,7 @@ export class AdminController {
       { key: 'systemIconDef', name: 'System Icon Definitions', table: 'system_icon_defs' },
       { key: 'synergyRule', name: 'Synergy Rules', table: 'synergy_rules' },
       { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
+      { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
     ];
   }
 

@@ -193,6 +193,12 @@ export const adminApi = {
   cancelGlobalPower: (id: string) =>
     adminRequest<any>(`/global-powers/${id}`, { method: 'DELETE' }),
   getEffectDefs: () => adminRequest<any[]>('/effect-defs'),
+  telemetryList: () => adminRequest<any[]>('/telemetry'),
+  telemetryGet: (id: string) => adminRequest<any>(`/telemetry/${id}`),
+  telemetryCreate: (body: any) => adminRequest<any>('/telemetry', { method: 'POST', body: JSON.stringify(body) }),
+  telemetryUpdate: (id: string, body: any) => adminRequest<any>(`/telemetry/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  telemetryDelete: (id: string) => adminRequest<any>(`/telemetry/${id}`, { method: 'DELETE' }),
+  telemetryResetCounts: (id: string) => adminRequest<any>(`/telemetry/${id}/reset`, { method: 'POST' }),
 
   listNftCollections: () =>
     nftAdminRequest<any[]>('/nft/collections'),

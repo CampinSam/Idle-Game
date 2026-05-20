@@ -409,6 +409,26 @@ export class MissionService {
     });
 
     const response = this.mapJobToMissionResponse(job);
+
+    // Fire MISSION_START telemetry for TelemetryDef matching.
+    // Best-effort: wrapped in try/catch so a subscriber failure never aborts the mission start.
+    try {
+      const missionDefData = (dbDef.data as any) ?? {};
+      const missionRegionId: string | undefined = missionDefData.regionId ?? undefined;
+      const missionType: string | undefined =
+        missionDefData.missionType ?? dbDef.missionCategoryDefId ?? undefined;
+      const startSelCtx = await this.telemetryContextBuilder.buildContext(userId, {
+        entityIds,
+        missionContext: {
+          activityType: 'mission',
+          missionType,
+          missionTags: Array.isArray(dbDef.tags) ? (dbDef.tags as string[]) : [],
+          regionId: missionRegionId,
+        },
+      });
+      await this.telemetryService.record(userId, 'MISSION_START', dbDef.id, 1, {}, externalTx, startSelCtx);
+    } catch (_) {}
+
     // Include synergy preview so the client can display which rules fired.
     return {
       ...response,
@@ -884,14 +904,25 @@ export class MissionService {
           },
         });
       } catch (ctxErr) {
-        this.logger.warn(`Failed to build selection context for mission_complete telemetry: ${ctxErr}`);
+        this.logger.warn(`Failed to build selection context for mission telemetry: ${ctxErr}`);
       }
+      // Keep 'mission_complete' for backwards compatibility with quest objective tracking.
       await this.telemetryService.record(
         userId,
         'mission_complete',
         missionDefId,
         1,
         { outcome: success ? 'success' : 'failure' },
+        externalTx,
+        selectionContext,
+      );
+      // Fire typed success/fail events for TelemetryDef matching.
+      await this.telemetryService.record(
+        userId,
+        success ? 'MISSION_SUCCESS' : 'MISSION_FAIL',
+        missionDefId,
+        1,
+        {},
         externalTx,
         selectionContext,
       );

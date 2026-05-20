@@ -24,6 +24,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SystemIconDef: 'systemIconDef',
   SynergyRule: 'synergyRule',
   SelectionRuleDef: 'selectionRuleDef',
+  TelemetryDef: 'telemetryDef',
 };
 
 export interface FieldDef {
@@ -543,6 +544,23 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       config: { type: 'homeBannerConfig', default: {}, description: 'Banner carousel config (autoAdvanceMs, tagline, deriveFromActiveSeason)' },
     },
   },
+
+  TelemetryDef: {
+    color: '#059669',
+    group: 'Telemetry',
+    sections: [
+      { id: 'general', label: 'General' },
+      { id: 'subevents', label: 'Sub-Event Counters' },
+    ],
+    fields: {
+      name: { type: 'string', required: true, description: 'Display name for this telemetry definition', section: 'general' },
+      description: { type: 'string', description: 'Optional notes or description', section: 'general' },
+      enabled: { type: 'boolean', default: true, description: 'Whether this definition is active and will accumulate counts', section: 'general' },
+      startDate: { type: 'string', description: 'ISO datetime — events before this date are ignored (blank = no lower bound)', section: 'general' },
+      endDate: { type: 'string', description: 'ISO datetime — events after this date are ignored (blank = no upper bound)', section: 'general' },
+      subEvents: { type: 'telemetrySubEventsArray', default: [], description: 'List of sub-event counters, each bound to an event type and a RichSelection filter', section: 'subevents' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -559,6 +577,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Synergy: ['SynergyRule'],
   Rules: ['SelectionRuleDef'],
   System: ['EventDefinition', 'SystemIconDef'],
+  Telemetry: ['TelemetryDef'],
 };
 
 export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];

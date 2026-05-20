@@ -880,3 +880,109 @@ Cancels an active or scheduled global power.
 Returns all enabled `EffectDef` rows. Used by the admin UI to populate the Effect Definition dropdown when creating Global Active Powers.
 
 **Response array items:** `id`, `name`, `category`, `valueMode`, `value`, `durationModel`, `targetType`, `description`.
+
+---
+
+## Telemetry Definitions — `/admin/telemetry` and `/telemetry`
+
+Admins author `TelemetryDef` records, each with a name, optional date window, and an array of sub-event counters. Each sub-event counter binds a unique key, an event type (`MISSION_START`, `MISSION_SUCCESS`, `MISSION_FAIL`), and an optional `RichSelection` filter. Counters are atomically incremented server-side whenever a matching event fires.
+
+### `GET /telemetry/:id` _(public, no auth)_
+
+Returns a `TelemetryDef` with all current counter values. Intended for frontend use (e.g. live event trackers).
+
+**Response:** `TelemetryDefWithCountsDto`
+
+```json
+{
+  "id": "uuid",
+  "name": "Season 1 Missions",
+  "description": "Track mission starts and outcomes",
+  "enabled": true,
+  "startDate": "2026-01-01T00:00:00.000Z",
+  "endDate": "2026-12-31T23:59:59.000Z",
+  "subEvents": [
+    { "key": "all_starts", "eventType": "MISSION_START", "filter": null },
+    { "key": "wins", "eventType": "MISSION_SUCCESS", "filter": { "op": "AND", "rules": [] } }
+  ],
+  "createdAt": "...",
+  "updatedAt": "...",
+  "counts": [
+    { "subEventKey": "all_starts", "count": "1042", "lastIncrementedAt": "..." },
+    { "subEventKey": "wins", "count": "831", "lastIncrementedAt": "..." }
+  ]
+}
+```
+
+---
+
+### `GET /admin/telemetry`
+
+List all telemetry definitions (without counts).
+
+**Auth:** Admin
+
+**Response:** `TelemetryDefDto[]`
+
+---
+
+### `GET /admin/telemetry/:id`
+
+Get a single definition with all counter values.
+
+**Auth:** Admin
+
+**Response:** `TelemetryDefWithCountsDto`
+
+---
+
+### `POST /admin/telemetry`
+
+Create a new telemetry definition.
+
+**Auth:** Admin
+
+**Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✓ | Display name |
+| `description` | string | — | Optional notes |
+| `enabled` | boolean | — | Active flag (default `true`) |
+| `startDate` | ISO string | — | Events before this are ignored |
+| `endDate` | ISO string | — | Events after this are ignored |
+| `subEvents` | `TelemetrySubEventSpec[]` | — | Counter definitions |
+
+Each `TelemetrySubEventSpec`:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `key` | string | ✓ | Unique key within the def |
+| `eventType` | `MISSION_START` \| `MISSION_SUCCESS` \| `MISSION_FAIL` | ✓ | Event to match |
+| `filter` | `RichSelection` \| `null` | — | Optional match filter; `null` = count all |
+
+---
+
+### `PUT /admin/telemetry/:id`
+
+Update an existing definition. Partial fields accepted.
+
+**Auth:** Admin
+
+---
+
+### `DELETE /admin/telemetry/:id`
+
+Delete a definition and all its counters.
+
+**Auth:** Admin
+
+---
+
+### `POST /admin/telemetry/:id/reset`
+
+Reset all counters for a definition to zero (deletes all `TelemetryCount` rows for this def).
+
+**Auth:** Admin
+
+**Response:** `{ "reset": <number of rows deleted> }`

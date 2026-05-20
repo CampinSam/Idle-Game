@@ -1293,6 +1293,10 @@ function Dashboard() {
           <Wrench size={16} />
           {!collapsed && <span>Rule Tester</span>}
         </a>
+        <a href="/admin/telemetry" className="sidebar-link" title="Telemetry Dashboard">
+          <BarChart3 size={16} />
+          {!collapsed && <span>Telemetry</span>}
+        </a>
         <button onClick={() => { setAdminKey(''); sessionStorage.removeItem('adminKey'); window.location.reload(); }} className="btn-logout" title="Logout">
           <LogOut size={16} />
           {!collapsed && <span>Logout</span>}
