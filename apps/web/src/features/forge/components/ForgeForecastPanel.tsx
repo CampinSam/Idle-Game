@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ForecastBar } from './ForecastBar';
 import { QUALITY_COLOURS, type ForecastResponse } from './forgeUtils';
 import type { EntityForecast } from '../../entities/types';
@@ -6,6 +7,7 @@ interface ForgeForecastPanelProps {
   forecast: ForecastResponse;
   selectedEntityForecast: EntityForecast | null;
   difficulty: number;
+  recipeTiers: Record<string, { rewards?: any[] }>;
   busy: boolean;
   blockedReasons: string[];
   error: string;
@@ -16,16 +18,28 @@ export function ForgeForecastPanel({
   forecast,
   selectedEntityForecast,
   difficulty,
+  recipeTiers,
   busy,
   blockedReasons,
   error,
   onStart,
 }: ForgeForecastPanelProps) {
   const cl = selectedEntityForecast?.craftingLuck ?? 0;
-  const passRate = difficulty > 0
-    ? cl / (cl + difficulty)
-    : 1;
-  const showPassRate = difficulty > 0;
+  const passRate = difficulty > 0 ? cl / (cl + difficulty) : 1;
+
+  const visibleProbabilities = useMemo(() => {
+    if (!selectedEntityForecast) return [];
+    const probs = selectedEntityForecast.probabilities;
+    if (!recipeTiers || Object.keys(recipeTiers).length === 0) return probs;
+    return probs.filter((p) => {
+      const block = recipeTiers[p.key];
+      if (!block) return false;
+      const rewards = block.rewards ?? [];
+      return Array.isArray(rewards) ? rewards.length > 0 : false;
+    });
+  }, [selectedEntityForecast, recipeTiers]);
+
+  const passRateColor = passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444';
 
   return (
     <div className="flex flex-col gap-3 p-3 border-t border-[rgba(139,92,246,0.18)]">
@@ -39,24 +53,20 @@ export function ForgeForecastPanel({
           )}
         </div>
 
-        {showPassRate && selectedEntityForecast && (
+        {selectedEntityForecast && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Success chance</span>
-              <span
-                className="font-bold tabular-nums"
-                style={{ color: passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444' }}
-              >
+              <span className="text-slate-400">
+                {difficulty > 0 ? `Success chance (difficulty ${difficulty})` : 'Success chance'}
+              </span>
+              <span className="font-bold tabular-nums" style={{ color: passRateColor }}>
                 {(passRate * 100).toFixed(1)}%
               </span>
             </div>
             <div className="h-1.5 rounded-full bg-black/40 overflow-hidden">
               <div
                 className="h-full rounded-full transition-[width] duration-300"
-                style={{
-                  width: `${passRate * 100}%`,
-                  background: passRate >= 0.75 ? '#34d399' : passRate >= 0.4 ? '#fcd34d' : '#ef4444',
-                }}
+                style={{ width: `${passRate * 100}%`, background: passRateColor }}
               />
             </div>
           </div>
@@ -68,9 +78,10 @@ export function ForgeForecastPanel({
           marker={selectedEntityForecast?.craftingLuck ?? null}
           qualityKey={selectedEntityForecast?.expectedQuality ?? null}
         />
+
         {selectedEntityForecast ? (
           <div className="flex flex-col gap-1.5">
-            {selectedEntityForecast.probabilities.map((p) => (
+            {(visibleProbabilities.length > 0 ? visibleProbabilities : selectedEntityForecast.probabilities).map((p) => (
               <div key={p.key} className="grid grid-cols-[80px_1fr_42px] items-center gap-2">
                 <div
                   className="text-[11px] font-bold tracking-wide"

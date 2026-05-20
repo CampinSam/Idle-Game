@@ -193,7 +193,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       timer: { type: 'timerSpec', description: 'Duration and skip settings' },
       requiredKeeperLevel: { type: 'number', default: 1, description: 'Min keeper level' },
       difficulty: { type: 'number', default: 0, description: 'Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes.' },
-      tiers: { type: 'json', default: {}, description: 'Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | legendary. Each: { rewards: OutcomeBlock[], clRequirement?: number }' },
+      tiers: { type: 'craftingTiers', default: {}, description: 'Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | legendary. Each: { rewards: OutcomeBlock[], clRequirement?: number (success tiers only) }' },
       multicraft: { type: 'json', default: null, description: 'Multicraft config. { mode: "tiers"|"free", tiers?: number[], max?: number, timer?: "flat"|"linear" }' },
       requirements:           { type: 'richSelection', default: null, description: 'Crafting conditions' },
       effects: { type: 'effectsArray', default: [], description: 'Effects applied to entities on completion (array of { effectDefId, targetType })' },

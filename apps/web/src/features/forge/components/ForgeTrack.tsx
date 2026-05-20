@@ -56,11 +56,17 @@ export function ForgeTrack({
   const [entitySort, setEntitySort] = useState<EntitySortBy>('name');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [quantity, setQuantity] = useState(1);
 
   const selectedRecipe = useMemo(
     () => craftingRecipes.find((r: any) => r.id === recipeId) ?? null,
     [craftingRecipes, recipeId],
   );
+
+  const multicraft = useMemo(() => selectedRecipe?.multicraft ?? null, [selectedRecipe]);
+
+  // Reset quantity to 1 when recipe changes
+  useEffect(() => { setQuantity(1); }, [recipeId]);
   const selectedEntityObj = useMemo(
     () => idleEntities.find((e: any) => e.id === entityId) ?? null,
     [idleEntities, entityId],
@@ -162,7 +168,7 @@ export function ForgeTrack({
     setBusy(true);
     setError('');
     try {
-      await execute('StartCrafting', { recipeId, entityId, locationId: outpostId });
+      await execute('StartCrafting', { recipeId, entityId, locationId: outpostId, quantity: multicraft ? quantity : 1 });
       audioEngine.play('sfx.craft.start');
       onCraftComplete(slotId);
     } catch (e: any) {
@@ -338,12 +344,51 @@ export function ForgeTrack({
         </div>
       )}
 
+      {recipeId && entityId && !recipePickerOpen && !entityPickerOpen && multicraft && (
+        <div className="flex items-center gap-3 px-3 pt-3">
+          <span className="text-[12px] font-bold text-[#c4b5fd]">Quantity</span>
+          {multicraft.mode === 'tiers' && Array.isArray(multicraft.tiers) ? (
+            <div className="flex gap-1.5">
+              {(multicraft.tiers as number[]).map((qty: number) => (
+                <button
+                  key={qty}
+                  onClick={() => setQuantity(qty)}
+                  className={`px-3 py-1 rounded-lg text-[12px] font-bold border transition-colors ${
+                    quantity === qty
+                      ? 'bg-[rgba(139,92,246,0.3)] border-[rgba(139,92,246,0.7)] text-white'
+                      : 'bg-black/20 border-white/15 text-slate-400 hover:border-white/30'
+                  }`}
+                >
+                  {qty}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-7 h-7 rounded-lg border border-white/15 bg-black/20 text-slate-300 hover:border-white/30 font-bold text-[14px] flex items-center justify-center"
+              >−</button>
+              <span className="w-8 text-center text-[13px] font-bold text-white tabular-nums">{quantity}</span>
+              <button
+                onClick={() => setQuantity(Math.min(multicraft.max ?? 99, quantity + 1))}
+                className="w-7 h-7 rounded-lg border border-white/15 bg-black/20 text-slate-300 hover:border-white/30 font-bold text-[14px] flex items-center justify-center"
+              >+</button>
+              {multicraft.max && (
+                <span className="text-[11px] text-slate-500">/ {multicraft.max}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {recipeId && entityId && !recipePickerOpen && !entityPickerOpen && (
         forecast ? (
           <ForgeForecastPanel
             forecast={forecast}
             selectedEntityForecast={selectedEntityForecast}
             difficulty={selectedRecipe?.difficulty ?? 0}
+            recipeTiers={selectedRecipe?.tiers ?? {}}
             busy={busy}
             blockedReasons={blockedReasons}
             error={error}

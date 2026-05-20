@@ -33,6 +33,7 @@ import LevelRulesEditor from './structured/LevelRulesEditor';
 import LocationLevelRulesEditor from './structured/LocationLevelRulesEditor';
 import ProductionProfileEditor from './structured/ProductionProfileEditor';
 import { TelemetrySubEventListEditor } from './structured/TelemetrySubEventListEditor';
+import CraftingTiersEditor from './structured/CraftingTiersEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -71,6 +72,7 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   locationLevelRules:      { Component: LocationLevelRulesEditor,       safe: 'passthrough' },
   productionProfile:       { Component: ProductionProfileEditor,        safe: 'passthrough' },
   telemetrySubEventsArray: { Component: TelemetrySubEventListEditor,    safe: 'array' },
+  craftingTiers:           { Component: CraftingTiersEditor,            safe: 'passthrough' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {
