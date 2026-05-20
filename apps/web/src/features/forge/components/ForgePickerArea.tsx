@@ -3,7 +3,7 @@ import { buildCollectionOptions, SORT_OPTIONS } from '../../entities/entityListU
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
 import { ForgeRecipePicker } from './ForgeRecipePicker';
 import { QUALITY_COLOURS } from './forgeUtils';
-import { Chip } from '../../../components/ui';
+import { Chip, ListControls } from '../../../components/ui';
 
 interface ForgePickerAreaProps {
   activePicker: 'recipe' | 'entity' | null;
@@ -225,45 +225,25 @@ export function ForgePickerArea({
         </div>
 
         {/* Search + collection filter + sort */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-[7px] bg-black/30 border border-[rgba(96,165,250,0.2)] rounded-lg px-2.5 h-9 focus-within:border-[rgba(96,165,250,0.5)]">
-            <svg
-              width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              className="text-text-secondary flex-shrink-0"
-            >
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search…"
-              value={entitySearch}
-              onChange={(e) => setEntitySearch(e.target.value)}
-              className="flex-1 bg-transparent border-none text-text-primary text-[12px] outline-none placeholder:text-text-secondary"
-            />
-          </div>
-          <select
-            className="entity-list__select entity-list__select--collection"
-            value={entityFilter}
-            onChange={(e) => setEntityFilter(e.target.value as EntityFilter)}
-            aria-label="Filter by collection"
-          >
-            {collectionOptions.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-          <select
-            className="entity-list__select entity-list__select--sort"
-            value={entitySort}
-            onChange={(e) => setEntitySort(e.target.value as EntitySortBy)}
-            aria-label="Sort by"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
+        <ListControls
+          search={{ value: entitySearch, onChange: setEntitySearch, placeholder: 'Search…' }}
+          selects={[
+            {
+              label: 'Filter by collection',
+              value: entityFilter,
+              onChange: (v) => setEntityFilter(v as EntityFilter),
+              options: collectionOptions,
+              width: 90,
+            },
+            {
+              label: 'Sort by',
+              value: entitySort,
+              onChange: (v) => setEntitySort(v as EntitySortBy),
+              options: SORT_OPTIONS,
+              width: 108,
+            },
+          ]}
+        />
 
         <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
           Tap to select · idle Derps only

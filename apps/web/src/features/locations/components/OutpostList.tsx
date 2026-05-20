@@ -2,6 +2,18 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getRegionDisplay, OUTPOST_REGIONS } from '@derp/shared';
 import { getLocationViews } from '../registry';
+import { ListControls } from '../../../components/ui';
+
+const STATUS_OPTIONS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'ACTIVE', label: 'Active' },
+  { key: 'INACTIVE', label: 'Inactive' },
+];
+
+const REGION_OPTIONS = [
+  { key: 'ALL', label: 'All Regions' },
+  ...OUTPOST_REGIONS.map((r) => ({ key: r, label: getRegionDisplay(r).displayName })),
+];
 
 type OutpostStatus = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
@@ -82,59 +94,26 @@ export function OutpostList({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="item-list__controls">
-        <div className="item-list__search-wrap">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ color: 'var(--text-secondary)', flexShrink: 0 }}
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search outposts..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="item-list__search-input"
-          />
-        </div>
-        <select
-          className="item-list__select"
-          style={{ width: 96 }}
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as OutpostStatus);
-            setInactiveExpanded(false);
-          }}
-          aria-label="Filter by status"
-        >
-          <option value="ALL">All</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
-        <select
-          className="item-list__select"
-          style={{ width: 108 }}
-          value={regionFilter}
-          onChange={(e) => setRegionFilter(e.target.value)}
-          aria-label="Filter by region"
-        >
-          <option value="ALL">All Regions</option>
-          {OUTPOST_REGIONS.map((r) => (
-            <option key={r} value={r}>
-              {getRegionDisplay(r).displayName}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ListControls
+        className="px-3.5 py-2.5 bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] shrink-0 sticky top-0 z-10"
+        search={{ value: search, onChange: setSearch, placeholder: 'Search outposts...' }}
+        selects={[
+          {
+            label: 'Filter by status',
+            value: status,
+            onChange: (v) => { setStatus(v as OutpostStatus); setInactiveExpanded(false); },
+            options: STATUS_OPTIONS,
+            width: 96,
+          },
+          {
+            label: 'Filter by region',
+            value: regionFilter,
+            onChange: setRegionFilter,
+            options: REGION_OPTIONS,
+            width: 108,
+          },
+        ]}
+      />
 
       {!hasContent && (
         <div className="text-center py-6 text-text-secondary text-sm">

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import EntityCard from './EntityCard';
 import EntityList from './EntityList';
 import { buildCollectionOptions, SORT_OPTIONS } from '../entityListUtils';
+import { ListControls } from '../../../components/ui';
 import type { EntityFilter, EntitySortBy, EntityUseCase } from '../types';
 
 export interface RosterCardProps {
@@ -114,41 +115,25 @@ export default function RosterCard({
               ▲ Close
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-secondary flex-shrink-0">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={pickerSearch}
-                onChange={(e) => setPickerSearch(e.target.value)}
-                className="flex-1 bg-transparent border-none text-text-primary text-[12px] outline-none min-w-0 placeholder:text-text-secondary [font-family:'Exo_2',system-ui,sans-serif]"
-              />
-            </div>
-            <select
-              className="entity-list__select entity-list__select--collection"
-              value={pickerFilter}
-              onChange={(e) => setPickerFilter(e.target.value as EntityFilter)}
-              aria-label="Filter by collection"
-            >
-              {collectionOptions.map((opt) => (
-                <option key={opt.key} value={opt.key}>{opt.label}</option>
-              ))}
-            </select>
-            <select
-              className="entity-list__select entity-list__select--sort"
-              value={pickerSort}
-              onChange={(e) => setPickerSort(e.target.value as EntitySortBy)}
-              aria-label="Sort by"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.key} value={opt.key}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
+          <ListControls
+            search={{ value: pickerSearch, onChange: setPickerSearch, placeholder: 'Search...' }}
+            selects={[
+              {
+                label: 'Filter by collection',
+                value: pickerFilter,
+                onChange: (v) => setPickerFilter(v as EntityFilter),
+                options: collectionOptions,
+                width: 90,
+              },
+              {
+                label: 'Sort by',
+                value: pickerSort,
+                onChange: (v) => setPickerSort(v as EntitySortBy),
+                options: SORT_OPTIONS,
+                width: 108,
+              },
+            ]}
+          />
           <EntityList
             entities={entities}
             mode="picker"

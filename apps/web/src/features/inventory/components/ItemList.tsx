@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { RARITY_TIERS, RARITY_DISPLAY_LABEL, type Rarity } from '@derp/shared';
 import ItemCard from './ItemCard';
+import { ListControls } from '../../../components/ui';
 import type { ItemListMode, ItemUseCase } from '../types';
 
 const RARITY_SORT_DESC: Record<string, number> = Object.fromEntries(
@@ -119,56 +120,33 @@ export default function ItemList({
   return (
     <div className={`item-list item-list--${useCase} ${className}`.trim()}>
       {showControls ? (
-        <div className="item-list__controls">
-          <div className="item-list__search-wrap">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search ?? ''}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              className="item-list__search-input"
-            />
-          </div>
-
-          {categoryTabs && categoryTabs.length > 0 && (
-            <select
-              className="item-list__select item-list__select--category"
-              value={activeCategory ?? 'ALL'}
-              onChange={(e) => onCategoryChange?.(e.target.value)}
-              aria-label="Filter by category"
-            >
-              {categoryTabs.map((tab) => (
-                <option key={tab.key} value={tab.key}>{tab.label}</option>
-              ))}
-            </select>
-          )}
-
-          <select
-            className="item-list__select item-list__select--rarity"
-            value={rarityFilter}
-            onChange={(e) => onRarityFilterChange?.(e.target.value as ItemRarityFilter)}
-            aria-label="Filter by rarity"
-          >
-            {ITEM_RARITY_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-
-          <select
-            className="item-list__select item-list__select--sort"
-            value={sortBy}
-            onChange={(e) => onSortChange?.(e.target.value as ItemSortBy)}
-            aria-label="Sort by"
-          >
-            {ITEM_SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
+        <ListControls
+          className="px-3.5 py-2.5 bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] shrink-0 sticky top-0 z-10"
+          search={{ value: search ?? '', onChange: (v) => onSearchChange?.(v), placeholder: 'Search...' }}
+          selects={[
+            ...(categoryTabs && categoryTabs.length > 0 ? [{
+              label: 'Filter by category',
+              value: activeCategory ?? 'ALL',
+              onChange: (v: string) => onCategoryChange?.(v),
+              options: categoryTabs.map((t) => ({ key: t.key, label: t.label })),
+              width: 90,
+            }] : []),
+            {
+              label: 'Filter by rarity',
+              value: rarityFilter,
+              onChange: (v: string) => onRarityFilterChange?.(v as ItemRarityFilter),
+              options: ITEM_RARITY_OPTIONS.map((o) => ({ key: o.key as string, label: o.label })),
+              width: 90,
+            },
+            {
+              label: 'Sort by',
+              value: sortBy,
+              onChange: (v: string) => onSortChange?.(v as ItemSortBy),
+              options: ITEM_SORT_OPTIONS.map((o) => ({ key: o.key as string, label: o.label })),
+              width: 108,
+            },
+          ]}
+        />
       ) : (
         categoryTabs && categoryTabs.length > 0 && (
           <div className="item-list__category-bar">

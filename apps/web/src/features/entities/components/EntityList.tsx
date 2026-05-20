@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityCard from './EntityCard';
 import { buildCollectionOptions, SORT_OPTIONS, passesFilter, getFilteredSortedEntities } from '../entityListUtils';
+import { ListControls } from '../../../components/ui';
 import { isEntityBusy } from '../../inventory/utils/statChangeHelpers';
 import type {
   EntityListLayout,
@@ -109,43 +110,26 @@ export default function EntityList({
 
       {/* Unified controls bar */}
       {showControls && (
-        <div className="flex items-center gap-2 px-3.5 py-2.5 bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] shrink-0 sticky top-0 z-10">
-          <div className="flex-1 flex items-center gap-[7px] bg-[rgba(0,0,0,0.25)] border border-[rgba(139,92,246,0.18)] rounded-lg px-2.5 h-[34px] min-w-0 focus-within:border-[rgba(139,92,246,0.5)]">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search ?? ''}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              className="flex-1 bg-transparent border-none text-[var(--text-primary)] text-[12px] outline-none [font-family:'Exo_2',system-ui,sans-serif] min-w-0 placeholder:text-[color:var(--text-secondary)]"
-            />
-          </div>
-
-          <select
-            className="entity-list__select entity-list__select--collection"
-            value={effectiveFilter}
-            onChange={(e) => onFilterChange?.(e.target.value as EntityFilter)}
-            aria-label="Filter by collection"
-          >
-            {collectionOptions.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-
-          <select
-            className="entity-list__select entity-list__select--sort"
-            value={sortBy}
-            onChange={(e) => onSortChange?.(e.target.value as EntitySortBy)}
-            aria-label="Sort by"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
+        <ListControls
+          className="px-3.5 py-2.5 bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] shrink-0 sticky top-0 z-10"
+          search={{ value: search ?? '', onChange: (v) => onSearchChange?.(v), placeholder: 'Search...' }}
+          selects={[
+            {
+              label: 'Filter by collection',
+              value: effectiveFilter,
+              onChange: (v) => onFilterChange?.(v as EntityFilter),
+              options: collectionOptions,
+              width: 90,
+            },
+            {
+              label: 'Sort by',
+              value: sortBy,
+              onChange: (v) => onSortChange?.(v as EntitySortBy),
+              options: SORT_OPTIONS,
+              width: 108,
+            },
+          ]}
+        />
       )}
 
       {/* Legacy tab strip */}
