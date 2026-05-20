@@ -1297,6 +1297,10 @@ function Dashboard() {
           <BarChart3 size={16} />
           {!collapsed && <span>Telemetry</span>}
         </a>
+        <a href="/admin/player-events" className="sidebar-link" title="Player Event History">
+          <Layers size={16} />
+          {!collapsed && <span>Player Events</span>}
+        </a>
         <button onClick={() => { setAdminKey(''); sessionStorage.removeItem('adminKey'); window.location.reload(); }} className="btn-logout" title="Logout">
           <LogOut size={16} />
           {!collapsed && <span>Logout</span>}

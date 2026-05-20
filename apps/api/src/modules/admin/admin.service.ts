@@ -715,6 +715,19 @@ export class AdminService {
     return serializeBigInts(events);
   }
 
+  async listPlayerEvents(opts: { userId?: string; eventType?: string; limit?: number }) {
+    const { userId, eventType, limit = 50 } = opts;
+    const where: any = {};
+    if (userId) where.userId = userId;
+    if (eventType) where.eventType = eventType;
+    const events = await (this.prisma as any).playerEvent.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+    });
+    return serializeBigInts(events);
+  }
+
   private safeBigInt(value: any): bigint | null {
     if (value === null || value === undefined || value === '') return null;
     try {

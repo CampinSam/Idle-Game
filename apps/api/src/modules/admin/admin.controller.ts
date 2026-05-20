@@ -454,6 +454,19 @@ export class AdminController {
     return this.adminService.getPlayerTelemetry(id, parseInt(limit || '30', 10) || 30);
   }
 
+  @Get('player-events')
+  listPlayerEvents(
+    @Query('userId') userId?: string,
+    @Query('eventType') eventType?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listPlayerEvents({
+      userId: userId || undefined,
+      eventType: eventType || undefined,
+      limit: parseInt(limit || '50', 10) || 50,
+    });
+  }
+
   @Post('seeds/nft-entities')
   seedNftEntities() {
     return this.nftCollectionService.seedNftEntities();

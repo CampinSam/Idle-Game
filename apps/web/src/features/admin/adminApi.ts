@@ -116,6 +116,14 @@ export const adminApi = {
   getPlayerTelemetry: (id: string, limit = 30) =>
     adminRequest<any[]>(`/players/${id}/telemetry?limit=${limit}`),
 
+  listPlayerEvents: (opts: { userId?: string; eventType?: string; limit?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.userId) params.set('userId', opts.userId);
+    if (opts.eventType) params.set('eventType', opts.eventType);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    return adminRequest<any[]>(`/player-events?${params.toString()}`);
+  },
+
   listIcons: () => adminRequest<any[]>('/media/icons'),
   listSystemIcons: () => adminRequest<any[]>('/media/system-icons'),
   createSystemIconDef: (data: { id: string; name: string }) =>
