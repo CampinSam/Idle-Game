@@ -21,6 +21,7 @@ import { computeInventoryAmount } from '../../utils/locationProduction';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
 import ItemQty from '../../components/ItemQty';
 import { SectionHeader, Card } from '../../components/ui';
+import { RosterCard } from '../entities/components';
 import { ForgeJobRow } from './components/ForgeJobRow';
 import { BuildingDetailHeader } from './components/BuildingDetailHeader';
 import { ForgeRecipeCard } from './components/ForgeRecipeCard';
@@ -653,55 +654,18 @@ export default function ForgePage() {
             onEntitySelect={handleEntitySelect}
           />
 
-          {/* ── Crafter row in Card ── */}
-          <Card className="overflow-visible">
-            <div className="p-3 flex flex-col gap-2">
-              <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
-                Crafter
-              </div>
-              {selectedEntityObj ? (
-                <button
-                  onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                  aria-label={`Change crafter (${selectedEntityObj.name})`}
-                  className={`w-full flex items-center gap-3 p-3 rounded-[12px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
-                    activePicker === 'entity'
-                      ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
-                      : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
-                    ⚔️
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-extrabold text-white truncate">
-                      {selectedEntityObj.name}
-                    </div>
-                    {craftPreview?.entityCl != null && (
-                      <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
-                        CL {craftPreview.entityCl.toFixed(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                  aria-label="Pick a Derp"
-                  className={`w-full flex items-center justify-center gap-2 p-3 rounded-[12px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
-                    activePicker === 'entity'
-                      ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
-                      : 'border-dashed border-white/20 bg-white/[0.02]'
-                  }`}
-                >
-                  <span className="text-[18px]">⚔️</span>
-                  <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
-                    Pick a Derp
-                  </span>
-                </button>
-              )}
-            </div>
-          </Card>
+          {/* ── Crafter row ── */}
+          <RosterCard
+            title="Crafter"
+            entities={idleEntities}
+            selectedIds={selectedEntityId ? [selectedEntityId] : []}
+            maxSlots={1}
+            useCase="forge"
+            onRemove={() => setSelectedEntityId(null)}
+            isPickerOpen={activePicker === 'entity'}
+            onPickerOpenChange={(open) => setActivePicker(open ? 'entity' : null)}
+            inlinePicker={false}
+          />
 
           {/* Blocked reasons */}
           {selectedRecipeId && blockedReasons.length > 0 && (
