@@ -20,10 +20,52 @@ import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
-import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks } from '@derp/math';
+import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
+
+// ── Mission tier helpers (mirrors crafting.service.ts pattern) ───────────────
+
+const EMPTY_MISSION_TIER = { rewards: [] as any[] };
+
+function normaliseMissionTierRewards(raw: any): any[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    if (Array.isArray(raw.rewards)) return raw.rewards;
+    if (Array.isArray(raw.items)) return raw.items;
+  }
+  return [];
+}
+
+function getMissionTiers(tiersRaw: Record<string, any>): Record<string, { rewards: any[]; clRequirement?: number }> {
+  const build = (block: any) => {
+    if (!block || typeof block !== 'object') return EMPTY_MISSION_TIER;
+    return { ...block, rewards: normaliseMissionTierRewards(block.rewards) };
+  };
+  return {
+    failure:   build(tiersRaw.failure),
+    common:    build(tiersRaw.common),
+    uncommon:  build(tiersRaw.uncommon),
+    scare:     build(tiersRaw.scare),
+    rare:      build(tiersRaw.rare),
+    epic:      build(tiersRaw.epic),
+    mythic:    build(tiersRaw.mythic),
+    legendary: build(tiersRaw.legendary),
+  };
+}
+
+function buildMissionCenterOverrides(tiers: Record<string, { rewards: any[]; clRequirement?: number }>): Partial<Record<string, number>> {
+  const overrides: Partial<Record<string, number>> = {};
+  for (const [key, block] of Object.entries(tiers)) {
+    if (key !== 'failure' && typeof block.clRequirement === 'number') {
+      overrides[key] = block.clRequirement;
+    }
+  }
+  return overrides;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class MissionService {
@@ -659,8 +701,56 @@ export class MissionService {
     const rng = new SeededRng(missionSeed);
     const success = rng.chance(successChance);
 
-    const outcome = success ? (def.success as any) : (def.failure as any);
-    const outcomeItems: any[] = Array.isArray(outcome?.rewards) ? outcome.rewards : [];
+    // ── Quality tier selection ──────────────────────────────────────────────
+    // When the mission definition carries a populated `tiers` JSON block, use
+    // a Gaussian quality roll (identical to the crafting pipeline) with the
+    // team's effective Mission Power as the CL axis. Falls back to the legacy
+    // binary success/failure block when `tiers` is absent or empty.
+    const missionTiersRaw: Record<string, any> =
+      def.tiers && typeof def.tiers === 'object' && !Array.isArray(def.tiers)
+        ? (def.tiers as Record<string, any>)
+        : {};
+    const hasMissionTiers = Object.keys(missionTiersRaw).some(
+      (k) =>
+        k !== 'sigma' &&
+        missionTiersRaw[k] &&
+        typeof missionTiersRaw[k] === 'object' &&
+        Array.isArray(missionTiersRaw[k].rewards) &&
+        missionTiersRaw[k].rewards.length > 0,
+    );
+
+    let quality: string;
+    let qualityLabel: string;
+    let outcomeItems: any[];
+
+    if (hasMissionTiers) {
+      const missionTiers = getMissionTiers(missionTiersRaw);
+      const centerOverrides = buildMissionCenterOverrides(missionTiers);
+      const missionSigma: number | undefined =
+        typeof missionTiersRaw.sigma === 'number' ? missionTiersRaw.sigma : undefined;
+
+      if (!success) {
+        quality = 'failure';
+        qualityLabel = 'Failure';
+        const tierRewards = missionTiers.failure.rewards;
+        outcomeItems = tierRewards.length > 0
+          ? tierRewards
+          : normaliseMissionTierRewards((def.failure as any)?.rewards);
+      } else {
+        const rolled = rollQualityFromCl(teamMP, rng, centerOverrides, missionSigma);
+        quality = rolled.key;
+        qualityLabel = rolled.label;
+        const tierRewards = (missionTiers[quality] ?? EMPTY_MISSION_TIER).rewards;
+        outcomeItems = tierRewards.length > 0
+          ? tierRewards
+          : normaliseMissionTierRewards((def.success as any)?.rewards);
+      }
+    } else {
+      quality = success ? 'success' : 'failure';
+      qualityLabel = success ? 'Success' : 'Failure';
+      const outcome = success ? (def.success as any) : (def.failure as any);
+      outcomeItems = normaliseMissionTierRewards(outcome?.rewards);
+    }
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
     const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
@@ -843,6 +933,8 @@ export class MissionService {
 
     const results = {
       success,
+      quality,
+      qualityLabel,
       rewards: grantedRewards,
       seed: mission.data.seed,
       ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
