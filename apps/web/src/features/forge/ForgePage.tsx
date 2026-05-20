@@ -18,7 +18,7 @@ import { computeInventoryAmount } from '../../utils/locationProduction';
 import { EntityList } from '../entities/components';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
 import ItemQty from '../../components/ItemQty';
-import { Chip, SectionHeader } from '../../components/ui';
+import { SectionHeader } from '../../components/ui';
 import { ForgeJobRow } from './components/ForgeJobRow';
 import { ForgeRecipePicker } from './components/ForgeRecipePicker';
 import { RarityCurveChart } from './components/RarityCurveChart';
@@ -53,7 +53,7 @@ export default function ForgePage() {
 
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const [activePicker, setActivePicker] = useState<'recipe' | 'entity' | null>('recipe');
+  const [activePicker, setActivePicker] = useState<'recipe' | 'entity' | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [busy, setBusy] = useState(false);
   const [craftError, setCraftError] = useState('');
@@ -236,7 +236,7 @@ export default function ForgePage() {
 
   const handleRecipeSelect = useCallback((r: any) => {
     setSelectedRecipeId(r.id);
-    setActivePicker('entity');
+    setActivePicker(null);
   }, []);
 
   const handleEntitySelect = useCallback((entity: any) => {
@@ -258,7 +258,7 @@ export default function ForgePage() {
       audioEngine.play('sfx.craft.start');
       setSelectedRecipeId(null);
       setSelectedEntityId(null);
-      setActivePicker('recipe');
+      setActivePicker(null);
     } catch (e: any) {
       audioEngine.play('ui.error');
       setCraftError(e?.message || 'Failed to start crafting');
@@ -306,20 +306,20 @@ export default function ForgePage() {
   }, [selectedRecipe, multicraft, quantity]);
 
   const workshopName = workshopInfo?.name || 'The Forge';
-  const locationLabel = workshopInfo?.locationName
-    ? workshopInfo.locationName.toUpperCase()
-    : 'WORKSHOP';
+  const outpostName = workshopInfo?.locationName || '';
 
   if (!workshopChecked) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="sticky top-0 z-30 h-11 flex items-center px-3 bg-bg-secondary/90 backdrop-blur-sm border-b border-border flex-shrink-0">
-          <button
-            onClick={() => navigate(`/locations/${outpostId ?? ''}`)}
-            className="text-[12px] font-bold text-white/70 hover:text-white cursor-pointer"
-          >
-            ← Back
-          </button>
+        <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <button
+              onClick={() => navigate(`/locations/${outpostId ?? ''}`)}
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)]"
+            >
+              ←
+            </button>
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center text-text-secondary text-[14px]">
           Validating workshop…
@@ -330,58 +330,68 @@ export default function ForgePage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* ── Sticky header ── */}
-      <header className="sticky top-0 z-30 flex-shrink-0 flex items-center gap-2 px-3 h-11 bg-bg-secondary/90 backdrop-blur-sm border-b border-border">
-        <button
-          onClick={() => navigate(`/locations/${outpostId}`)}
-          aria-label="Back to Outpost"
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/15 text-white text-[13px] hover:bg-white/10 cursor-pointer flex-shrink-0"
-        >
-          ←
-        </button>
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <div className="text-[9px] font-extrabold tracking-[0.13em] uppercase text-[#fcd34d] leading-none truncate">
-            ⚒ {locationLabel}
+
+      {/* ── Sticky header — matches EntityDetailPage ── */}
+      <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10 flex-shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2">
+
+          {/* Back */}
+          <button
+            onClick={() => navigate(`/locations/${outpostId}`)}
+            aria-label="Back to Outpost"
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+          >
+            ←
+          </button>
+
+          {/* Title + subtitle */}
+          <div className="flex-1 min-w-0">
+            {outpostName && (
+              <p className="text-[10px] font-extrabold tracking-[0.13em] uppercase text-[#fcd34d] leading-none truncate m-0 mb-0.5">
+                {outpostName}
+              </p>
+            )}
+            <h1 className="text-sm font-bold tracking-wide text-text-primary truncate m-0 leading-tight">
+              {workshopName.toUpperCase()}
+            </h1>
+            {/* Status badges in subtitle row */}
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd]">
+                T{workshopTier} Workshop
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border ${
+                slotsOpen > 0
+                  ? 'bg-[rgba(16,185,129,0.15)] border-[rgba(16,185,129,0.4)] text-[#6ee7b7]'
+                  : 'bg-[rgba(239,68,68,0.15)] border-[rgba(239,68,68,0.4)] text-[#fca5a5]'
+              }`}>
+                {slotsUsed}/{slotsTotal} Slots
+              </span>
+            </div>
           </div>
-          <div className="text-[14px] font-cinzel font-black text-white leading-tight truncate">
-            {workshopName}
+
+          {/* Carousel arrows */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => navigate(prevPath)}
+              aria-label="Previous"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => navigate(nextPath)}
+              aria-label="Next"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+            >
+              ›
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={() => navigate(prevPath)}
-            aria-label="Previous"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-[13px] hover:bg-white/10 cursor-pointer"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => navigate(nextPath)}
-            aria-label="Next"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-[13px] hover:bg-white/10 cursor-pointer"
-          >
-            ›
-          </button>
-        </div>
-      </header>
+      </div>
 
       {/* ── Scrollable body ── */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="flex flex-col gap-3 px-3 pt-3 pb-4">
-
-          {/* Workshop status chips */}
-          <div className="flex flex-wrap gap-1.5">
-            <Chip tone={`tier-${Math.min(3, Math.max(1, workshopTier))}` as 'tier-1' | 'tier-2' | 'tier-3'}>
-              T{workshopTier} Workshop
-            </Chip>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-              slotsOpen > 0
-                ? 'text-[#86efac] bg-[rgba(16,185,129,0.18)] border-[rgba(16,185,129,0.4)]'
-                : 'text-[#fca5a5] bg-[rgba(239,68,68,0.18)] border-[rgba(239,68,68,0.4)]'
-            }`}>
-              {slotsUsed} / {slotsTotal} slots
-            </span>
-          </div>
 
           {/* Active crafting jobs */}
           {activeCraftingJobs.length > 0 && (
@@ -418,25 +428,25 @@ export default function ForgePage() {
           )}
 
           {/* ── Two-column primary row ── */}
-          <div className="grid grid-cols-2 gap-[10px]">
+          <div className="grid grid-cols-2 gap-[10px] items-stretch">
 
             {/* Left: Recipe card */}
             <button
               onClick={() => setActivePicker((p) => p === 'recipe' ? null : 'recipe')}
               aria-label={selectedRecipe ? `Change recipe (${selectedRecipe.name})` : 'Choose recipe'}
-              className={`text-left rounded-2xl border-2 p-3 flex flex-col gap-2 transition-[border-color,filter] cursor-pointer hover:brightness-110 min-h-[132px] ${
+              className={`text-left rounded-[14px] border p-3 flex flex-col gap-2 transition-[border-color,filter] cursor-pointer hover:brightness-110 min-h-[148px] ${
                 activePicker === 'recipe'
                   ? 'border-[rgba(167,139,250,0.75)] bg-[rgba(139,92,246,0.13)]'
                   : selectedRecipe
-                    ? 'border-solid'
+                    ? ''
                     : 'border-dashed border-white/20 bg-white/[0.02]'
               }`}
               style={selectedRecipe ? {
                 background: selectedRecipe.displayDef?.cardBackground
-                  || 'linear-gradient(135deg,rgba(249,115,22,0.10),rgba(34,24,88,0.65))',
+                  || 'linear-gradient(160deg,rgba(249,115,22,0.12) 0%,rgba(34,24,88,0.85) 100%)',
                 borderColor: activePicker === 'recipe'
                   ? 'rgba(167,139,250,0.75)'
-                  : (selectedRecipe.displayDef?.borderColor || 'rgba(249,115,22,0.55)'),
+                  : (selectedRecipe.displayDef?.borderColor || 'rgba(249,115,22,0.45)'),
               } : undefined}
             >
               {selectedRecipe ? (
@@ -508,7 +518,7 @@ export default function ForgePage() {
                 </>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center gap-2 py-2">
-                  <span className="text-[26px]">📜</span>
+                  <span className="text-[28px]">📜</span>
                   <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide text-center">
                     Choose Recipe
                   </span>
@@ -516,69 +526,88 @@ export default function ForgePage() {
               )}
             </button>
 
-            {/* Right: Outcome card */}
-            <button
-              onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-              aria-label={selectedEntityObj ? `Change Derp (${selectedEntityObj.name})` : 'Choose Derp'}
-              className={`text-left rounded-2xl border-2 p-3 flex flex-col gap-2 transition-[border-color,filter] cursor-pointer hover:brightness-110 min-h-[132px] ${
-                activePicker === 'entity'
-                  ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
-                  : selectedEntityObj
-                    ? 'border-[rgba(96,165,250,0.45)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
-                    : 'border-dashed border-white/20 bg-white/[0.02]'
-              }`}
+            {/* Right: Outcome card — pure display, no picker */}
+            <div
+              className="rounded-[14px] border border-[rgba(139,92,246,0.2)] p-3 flex flex-col gap-2 min-h-[148px]"
+              style={{ background: 'linear-gradient(160deg,#1a1640 0%,#1e1850 100%)' }}
             >
-              {/* Pass rate row */}
-              <div className="flex items-start justify-between gap-1">
-                <div className="flex flex-col gap-0 leading-none">
-                  <div className="text-[9px] font-extrabold tracking-[0.12em] uppercase text-[#93c5fd]">
-                    Success
-                  </div>
-                  <div
-                    className="text-[28px] font-black tabular-nums leading-none"
-                    style={{ color: passRateColor }}
-                  >
-                    {passRatePct != null ? `${passRatePct}%` : '—'}
-                  </div>
+              <div className="text-[9px] font-extrabold tracking-[0.12em] uppercase text-[#93c5fd]">
+                Outcome
+              </div>
+
+              {/* Success chance headline */}
+              <div className="flex flex-col leading-none">
+                <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-text-secondary">
+                  Success
                 </div>
-                <div className="flex flex-col items-end gap-0.5 text-right">
-                  {selectedEntityObj ? (
-                    <>
-                      <div className="text-[9px] font-bold text-[#93c5fd] uppercase tracking-wide">Derp</div>
-                      <div className="text-[11px] font-extrabold text-white truncate max-w-[72px]">
-                        {selectedEntityObj.name}
-                      </div>
-                      {craftPreview?.entityCl != null && (
-                        <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
-                          CL {craftPreview.entityCl.toFixed(0)}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[20px]">⚔️</span>
-                      <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wide">
-                        Pick Derp
-                      </span>
-                    </>
-                  )}
+                <div
+                  className="text-[32px] font-black tabular-nums leading-none"
+                  style={{ color: passRateColor }}
+                >
+                  {passRatePct != null ? `${passRatePct}%` : '—'}
                 </div>
               </div>
 
               {/* Divider */}
               <div className="h-px bg-white/10 w-full flex-shrink-0" />
 
-              {/* Rarity curve */}
-              <div className="flex-1 min-h-0">
+              {/* Bell curve chart */}
+              <div className="flex-1 min-h-0 flex flex-col justify-end">
                 <RarityCurveChart
                   entityCl={craftPreview?.entityCl ?? undefined}
                   centerOverrides={centerOverrides}
-                  className="rounded overflow-hidden h-full"
+                  className="rounded overflow-hidden"
                 />
               </div>
+            </div>
+          </div>
 
-              <div className="text-[9px] text-white/35 italic">tap to change</div>
-            </button>
+          {/* ── Entity roster row (below two columns) ── */}
+          <div className="flex flex-col gap-1.5">
+            <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
+              Crafter
+            </div>
+            {selectedEntityObj ? (
+              <button
+                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                aria-label={`Change crafter (${selectedEntityObj.name})`}
+                className={`w-full flex items-center gap-3 p-3 rounded-[14px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
+                  activePicker === 'entity'
+                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
+                    : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
+                  ⚔️
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-extrabold text-white truncate">
+                    {selectedEntityObj.name}
+                  </div>
+                  {craftPreview?.entityCl != null && (
+                    <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
+                      CL {craftPreview.entityCl.toFixed(0)}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                aria-label="Pick a Derp"
+                className={`w-full flex items-center justify-center gap-2 p-3 rounded-[14px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
+                  activePicker === 'entity'
+                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
+                    : 'border-dashed border-white/20 bg-white/[0.02]'
+                }`}
+              >
+                <span className="text-[18px]">⚔️</span>
+                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
+                  Pick a Derp
+                </span>
+              </button>
+            )}
           </div>
 
           {/* ── Picker area ── */}
@@ -606,9 +635,9 @@ export default function ForgePage() {
           )}
 
           {activePicker === 'entity' && (
-            <div className="rounded-xl border border-[rgba(139,92,246,0.3)] bg-black/30 p-3 flex flex-col gap-3">
+            <div className="rounded-xl border border-[rgba(96,165,250,0.3)] bg-black/30 p-3 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd] font-cinzel">
+                <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#93c5fd] font-cinzel">
                   Select a Derp
                 </h3>
                 <button
@@ -656,7 +685,7 @@ export default function ForgePage() {
       </div>
 
       {/* ── Sticky footer ── */}
-      <footer className="flex-shrink-0 z-20 flex items-center gap-3 px-3 py-2.5 bg-bg-secondary/95 backdrop-blur-md border-t border-border">
+      <footer className="flex-shrink-0 z-20 flex items-center gap-3 px-3 py-2.5 bg-[rgba(26,22,64,0.97)] backdrop-blur-md border-t border-[rgba(139,92,246,0.12)]">
         <div className="flex-1 flex flex-wrap items-center gap-1.5 min-w-0">
           {footerCost.length > 0
             ? footerCost.map((c: any, i: number) => (

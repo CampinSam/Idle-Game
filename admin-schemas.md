@@ -558,6 +558,8 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
   "jobType": "mission" | "crafting" | "building",
   "defId": "string",
   "entityIds": ["entity_a"],
+  "entityId": "optional_single_entity_id",
+  "quantity": 1,
   "locationId": "optional_location_id"
 }
 ```
@@ -567,6 +569,8 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 | `jobType` | `"mission"` \| `"crafting"` \| `"building"` | Job type discriminator. |
 | `defId` | string | `MissionDef.id` for missions; `RecipeDef.id` for crafting; `BuildingDef.id` for building. |
 | `entityIds` | string[]? | Entity IDs for the mission team. Pass `[]` or omit for crafting/building. |
+| `entityId` | string? | Single crafter entity ID for crafting previews. Enables per-entity `passRate`, `entityCl`, and `qualityProbabilities` in the response. |
+| `quantity` | number? | Batch quantity for multicraft recipes. Scales `scaledCost` in the response. Defaults to 1. |
 | `locationId` | string? | Workshop/outpost `LocationInstance.id`. Required for full workshop context in crafting; enables upgrade preview in building. |
 
 ### Response — `jobType: "mission"`
@@ -623,7 +627,19 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
     "slotsOpen": 1,
     "recipeTierCap": 2,
     "timerMultiplier": 0.9,
-    "recipeTierMet": true
+    "recipeTierMet": true,
+    "entityCl": 42.5,
+    "passRate": 0.75,
+    "qualityProbabilities": [
+      { "key": "common",    "label": "Common",    "probability": 0.12 },
+      { "key": "uncommon",  "label": "Uncommon",  "probability": 0.54 },
+      { "key": "scare",     "label": "Scare",     "probability": 0.28 },
+      { "key": "rare",      "label": "Rare",      "probability": 0.05 },
+      { "key": "epic",      "label": "Epic",      "probability": 0.01 },
+      { "key": "legendary", "label": "Legendary", "probability": 0.00 }
+    ],
+    "scaledCost": [{ "type": "currency", "id": "gold", "amount": 150 }],
+    "difficulty": 50
   }
 }
 ```
@@ -647,6 +663,11 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 | `recipeTierCap` | Highest recipe tier supported by this workshop |
 | `timerMultiplier` | Timer speed factor applied by the workshop tier |
 | `recipeTierMet` | Whether the recipe tier is within the workshop's cap (`null` when no `locationId` given) |
+| `entityCl` | Computed crafting luck (CL) for the entity supplied via `entityId`. `null` when no entity given. |
+| `passRate` | Probability of passing the fail gate: `entityCl / (entityCl + difficulty)`. `null` when no entity given. |
+| `difficulty` | Recipe fail-gate difficulty value used for `passRate` computation. |
+| `qualityProbabilities` | Array of `{ key, label, probability }` for each quality tier at the entity's CL (with per-recipe `clRequirement` overrides applied). `null` when no entity given. |
+| `scaledCost` | Recipe base cost multiplied by `quantity`. Equals base cost when `quantity` is 1. |
 
 `allRequirementsMet` is `false` if any requirement rule fails **or** `keeperLevelMet` is `false`.
 

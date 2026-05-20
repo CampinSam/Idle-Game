@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { qualityProbabilities } from '@derp/math';
 import { QUALITY_COLOURS } from './forgeUtils';
 
-const CL_MAX = 150;
-const STEPS = 120;
+const CL_MAX = 170;
+const STEPS = 180;
 
 interface Point {
   i: number;
-  successP: number;
+  y: number;
   color: string;
 }
 
@@ -24,13 +24,12 @@ function computePoints(centerOverrides: Partial<Record<string, number>>): Point[
     const cl = (i / STEPS) * CL_MAX;
     const probs = qualityProbabilities(cl, centerOverrides);
     const nonFail = probs.filter((p) => p.key !== 'failure');
-    const successP = nonFail.reduce((s, p) => s + p.probability, 0);
     const dominant =
       nonFail.length > 0
         ? nonFail.reduce((a, b) => (a.probability >= b.probability ? a : b))
         : probs[0];
     const color = QUALITY_COLOURS[dominant?.key ?? 'common'] ?? '#94a3b8';
-    pts.push({ i, successP, color });
+    pts.push({ i, y: dominant?.probability ?? 0, color });
   }
   return pts;
 }
@@ -56,19 +55,19 @@ interface RarityCurveChartProps {
 
 export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: RarityCurveChartProps) {
   const W = 240;
-  const H = 68;
+  const H = 80;
   const PAD_X = 1;
-  const PAD_Y = 3;
+  const PAD_Y = 4;
 
-  const { maxP, runs } = useMemo(() => {
+  const { maxY, runs } = useMemo(() => {
     const pts = computePoints(centerOverrides);
     let m = 0;
-    for (const p of pts) if (p.successP > m) m = p.successP;
-    return { maxP: Math.max(m, 0.01), runs: buildRuns(pts) };
+    for (const p of pts) if (p.y > m) m = p.y;
+    return { maxY: Math.max(m, 0.01), runs: buildRuns(pts) };
   }, [centerOverrides]);
 
   const xOf = (i: number) => PAD_X + (i / STEPS) * (W - 2 * PAD_X);
-  const yOf = (p: number) => H - PAD_Y - (p / maxP) * (H - 2 * PAD_Y);
+  const yOf = (v: number) => H - PAD_Y - (v / maxY) * (H - 2 * PAD_Y);
 
   const paths = useMemo(() =>
     runs
@@ -79,13 +78,14 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
         const lastX = xOf(run.iEnd);
         let d = `M ${firstX.toFixed(1)} ${H}`;
         for (const pt of pts) {
-          d += ` L ${xOf(pt.i).toFixed(1)} ${yOf(pt.successP).toFixed(1)}`;
+          d += ` L ${xOf(pt.i).toFixed(1)} ${yOf(pt.y).toFixed(1)}`;
         }
         d += ` L ${lastX.toFixed(1)} ${H} Z`;
         return { d, color: run.color };
       })
       .filter(Boolean) as Array<{ d: string; color: string }>,
-  [runs, maxP]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [runs, maxY]);
 
   const hairX =
     entityCl != null
@@ -101,7 +101,7 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
     >
       <rect width={W} height={H} fill="rgba(0,0,0,0.25)" rx="4" />
       {paths.map((p, i) => (
-        <path key={i} d={p.d} fill={p.color} fillOpacity={0.72} />
+        <path key={i} d={p.d} fill={p.color} fillOpacity={0.75} />
       ))}
       {hairX != null && (
         <>
@@ -112,10 +112,10 @@ export function RarityCurveChart({ entityCl, centerOverrides = {}, className }: 
             y2={H - PAD_Y}
             stroke="white"
             strokeWidth={1.5}
-            strokeOpacity={0.9}
+            strokeOpacity={0.85}
             strokeDasharray="3 2"
           />
-          <circle cx={hairX.toFixed(1)} cy={PAD_Y + 5} r={3} fill="white" fillOpacity={0.9} />
+          <circle cx={hairX.toFixed(1)} cy={PAD_Y + 4} r={2.5} fill="white" fillOpacity={0.9} />
         </>
       )}
     </svg>
