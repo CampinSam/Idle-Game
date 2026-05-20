@@ -580,6 +580,83 @@ Quest and achievement objectives support an optional `selectionRule` field in ad
 
 An optional `sigma` key (number, default `22`) may be placed at the root of the `tiers` object to override the Gaussian bell-curve spread for this mission. Lower values produce sharper distributions (more predictable outcomes); higher values produce flatter distributions.
 
+### How the quality roll works
+
+When a mission **succeeds**, the server calls `rollQualityFromCl(teamMP, rng, centerOverrides, sigma)` from `packages/math/src/crafting-luck.ts` — the identical function used by the crafting pipeline (see [RecipeDef `tiers`](#player-jobs--post-apijobspreview) for the crafting counterpart).
+
+**Step 1 — compute a Gaussian weight for every tier**
+
+```
+weight_i = exp( -(center_i − teamMP)² / (2 × sigma²) ) + ε
+```
+
+where `center_i` is the tier's default CL value (or its `clRequirement` override), `sigma` defaults to `22`, and `ε = 0.005` is a small floor that keeps every tier reachable regardless of team power.
+
+**Step 2 — normalise to probabilities**
+
+```
+probability_i = weight_i / Σ weight_j
+```
+
+**Step 3 — pick a tier**
+
+A seeded random number in `[0, 1)` walks the cumulative probability distribution; the first tier whose running sum exceeds the roll is awarded.
+
+> **The CL axis for missions is team Mission Power (teamMP).** This is the combined stat of the whole team after equipment, active effects, synergy bonuses, and the anti-whale cap are applied — not any single entity's crafting luck.
+
+### Probability table (default sigma = 22)
+
+The table below shows each tier's probability (%) at seven reference team-MP values. All seven tiers are always reachable, but the floor is ≈ 0.3 % when far from the center.
+
+| Team MP | Common | Uncommon | Scare | Rare | Epic | Mythic | Legendary |
+|--------:|-------:|---------:|------:|-----:|-----:|-------:|----------:|
+| **15**  | 69.1 % |   27.5 % |  2.0 % | 0.4 % | 0.3 % | 0.3 % | 0.3 % |
+| **45**  | 21.6 % |   54.4 % | 21.6 % | 1.6 % | 0.3 % | 0.3 % | 0.3 % |
+| **75**  |  1.6 % |   21.3 % | 53.7 % | 21.3 % | 1.6 % | 0.3 % | 0.3 % |
+| **105** |  0.3 % |    1.6 % | 21.3 % | 53.6 % | 21.3 % | 1.6 % | 0.3 % |
+| **135** |  0.3 % |    0.3 % |  1.6 % | 21.3 % | 53.6 % | 21.3 % | 1.6 % |
+| **165** |  0.3 % |    0.3 % |  0.3 % |  1.6 % | 21.6 % | 54.3 % | 21.6 % |
+| **195** |  0.3 % |    0.3 % |  0.3 % |  0.4 % |  2.0 % | 27.5 % | 69.1 % |
+
+Each tier peaks when team MP equals its default center CL. Adjacent tiers share roughly 21 % of the probability mass, and the next-nearest tiers share ~1.6 %, so the curve is fairly tight: a team at MP 75 almost never sees legendary.
+
+### Worked example — effect of `sigma`
+
+Consider a mission where the design intent is **uncommon outcomes** at team MP 45.
+
+| sigma | Common | Uncommon | Scare | Rare | Epic | Mythic | Legendary |
+|------:|-------:|---------:|------:|-----:|-----:|-------:|----------:|
+| **10** (narrow) |  1.5 % | **95.1 %** |  1.5 % | 0.5 % | 0.5 % | 0.5 % | 0.5 % |
+| **22** (default) | 21.6 % | **54.4 %** | 21.6 % | 1.6 % | 0.3 % | 0.3 % | 0.3 % |
+| **40** (wide) | 25.7 % | **33.9 %** | 25.7 % | 11.1 % | 2.9 % | 0.5 % | 0.2 % |
+
+- **Low sigma** → outcomes concentrate tightly around the winning tier. Good for predictable, skill-gated missions where the team MP is well above or well below the threshold.
+- **High sigma** → outcomes spread across many tiers. Good for high-variance "lottery" missions or when the design wants adjacent tiers to feel equally likely.
+
+### Worked example — effect of `clRequirement`
+
+`clRequirement` on a tier block shifts **where that tier's Gaussian bell peaks** without affecting other tiers.
+
+Suppose you want the **rare** tier to be attainable at team MP 60 instead of the default 105. Set `"rare": { "clRequirement": 60, ... }`.
+
+At team MP 60, default sigma 22:
+
+| Rare center | Common | Uncommon | Scare | **Rare** | Epic | Mythic | Legendary |
+|-------------|-------:|---------:|------:|-------:|-----:|-------:|----------:|
+| 105 (default) | 6.9 % | 42.7 % | 42.7 % | **6.9 %** | 0.4 % | 0.3 % | 0.3 % |
+| 60 (override) | 4.7 % | 29.0 % | 29.0 % | **36.6 %** | 0.3 % | 0.2 % | 0.2 % |
+
+Without the override, a team at MP 60 sits exactly between the uncommon (45) and scare (75) centers, so those two tiers share ~85 % of the mass and rare barely shows up at 6.9 %. Shifting rare's center to 60 pushes rare to 36.6 % — now the most likely single outcome — while uncommon and scare each drop to ~29 %.
+
+Lowering `clRequirement` pulls the Gaussian peak left so the rare tier becomes the dominant outcome at lower team MP. Raising it beyond the default pushes the peak right, making rare harder to reach. You can shift individual tiers independently — the other tiers keep their default centers unless they also carry a `clRequirement`.
+
+> **Tip for balancing:** define `clRequirement` values in steps of 30 (matching the default inter-tier spacing) so the distribution stays symmetric. Irregular spacing will compress some tiers and expand others.
+
+### Fallback behaviour
+
+- If a tier block is defined in `tiers` but its `rewards` array is empty (or the block is missing), the server falls back to the flat `success.rewards` / `failure.rewards` block on the `MissionDef`. Design the flat rewards as a sensible default.
+- If `tiers` is absent or contains no non-empty reward blocks, the classic binary `success` / `failure` outcome is used instead — no quality roll takes place.
+
 ### Example
 
 ```json
@@ -605,6 +682,22 @@ An optional `sigma` key (number, default `22`) may be placed at the root of the 
   }
 }
 ```
+
+In this example:
+- `sigma: 20` narrows the bell slightly versus the default 22.
+- `failure` pays a small consolation currency reward.
+- `common` and `legendary` use their default Gaussian centers (15 and 195).
+- `rare` is shifted: its bell peaks at MP 120 instead of 105, making it a touch harder to reach.
+- `uncommon`, `scare`, `epic`, and `mythic` are not defined, so they fall back to the flat `success.rewards` block.
+
+### Cross-reference — crafting quality rolls
+
+The mission `tiers` mechanic is identical to the crafting pipeline. See the **`jobType: "crafting"` preview response** in [Player Jobs — POST /api/jobs/preview](#player-jobs--post-apijobspreview) for `qualityProbabilities` — the server returns the live probability breakdown so the UI can display it before the player commits to starting a mission or craft.
+
+The shared implementation lives in `packages/math/src/crafting-luck.ts`:
+- `QUALITY_TIERS` — canonical tier keys, labels, and default center CL values.
+- `qualityProbabilities(cl, centerOverrides, sigma)` — returns the full probability array for any CL input.
+- `rollQualityFromCl(cl, rng, centerOverrides, sigma)` — performs the seeded roll and returns the winning tier.
 
 ---
 
