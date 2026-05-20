@@ -56,6 +56,34 @@ export interface BuildingPreviewData {
   upgrade: BuildingUpgradePreview | null;
 }
 
+export interface QualityProbEntry {
+  key: string;
+  label: string;
+  probability: number;
+}
+
+export interface CraftingPreviewData {
+  recipeId: string;
+  recipeName: string;
+  recipeTier: number;
+  requiredKeeperLevel: number;
+  keeperLevelMet: boolean;
+  effectiveDurationTicks: number;
+  rewards: any;
+  workshopTier: number;
+  slotsTotal: number;
+  slotsUsed: number;
+  slotsOpen: number;
+  recipeTierCap: number;
+  timerMultiplier: number;
+  recipeTierMet: boolean | null;
+  difficulty: number;
+  entityCl: number | null;
+  passRate: number | null;
+  qualityProbabilities: QualityProbEntry[] | null;
+  scaledCost: CostEntry[];
+}
+
 export interface JobPreviewResult {
   jobType: string;
   requirements: JobPreviewRequirement[];
@@ -65,12 +93,15 @@ export interface JobPreviewResult {
   durationSeconds: number;
   mission?: MissionPreviewData;
   building?: BuildingPreviewData;
+  crafting?: CraftingPreviewData;
 }
 
 interface UseJobPreviewOptions {
   jobType: 'mission' | 'crafting' | 'building';
   defId: string;
   entityIds?: string[];
+  entityId?: string;
+  quantity?: number;
   locationId?: string;
   debounceMs?: number;
 }
@@ -85,6 +116,8 @@ export function useJobPreview({
   jobType,
   defId,
   entityIds,
+  entityId,
+  quantity,
   locationId,
   debounceMs = 250,
 }: UseJobPreviewOptions): UseJobPreviewReturn {
@@ -105,7 +138,7 @@ export function useJobPreview({
     const timer = setTimeout(async () => {
       try {
         const result = await api.jobPreview(
-          { jobType, defId, entityIds: entityIds ?? [], locationId },
+          { jobType, defId, entityIds: entityIds ?? [], entityId, quantity, locationId },
           controller.signal,
         );
         if (!controller.signal.aborted) {
@@ -124,7 +157,7 @@ export function useJobPreview({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [jobType, defId, entityKey, locationId, debounceMs]);
+  }, [jobType, defId, entityKey, entityId, quantity, locationId, debounceMs]);
 
   return { preview, loading, error };
 }

@@ -175,7 +175,7 @@ class ApiClient {
   }
 
   jobPreview(
-    dto: { jobType: string; defId: string; entityIds?: string[]; locationId?: string },
+    dto: { jobType: string; defId: string; entityIds?: string[]; entityId?: string; quantity?: number; locationId?: string },
     signal?: AbortSignal,
   ) {
     return this.request<any>('/jobs/preview', {

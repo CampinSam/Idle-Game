@@ -23,6 +23,9 @@ import {
   workshopTimerMultiplier,
   workshopParallelSlots,
   workshopRecipeTierCap,
+  calculateCraftingLuck,
+  workshopLuckFloor,
+  qualityProbabilities,
 } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import {
@@ -36,6 +39,8 @@ export interface JobPreviewDto {
   jobType: 'mission' | 'crafting' | 'building';
   defId: string;
   entityIds?: string[];
+  entityId?: string;
+  quantity?: number;
   locationId?: string;
 }
 
@@ -319,6 +324,36 @@ export class JobPreviewService {
 
     const allRequirementsMet = baseRequirementsMet && (recipeTierMet !== false);
 
+    const difficulty: number = recipe.difficulty ?? 0;
+    const quantity: number = dto.quantity ?? 1;
+    const scaledCost = costEntries.map((c) => ({ ...c, amount: c.amount * quantity }));
+
+    let entityCl: number | null = null;
+    let passRate: number | null = null;
+    let qualityProbs: Array<{ key: string; label: string; probability: number }> | null = null;
+
+    if (dto.entityId) {
+      const entity = await (this.prisma as any).entity.findUnique({
+        where: { id: dto.entityId },
+      });
+      if (entity && (entity as any).ownerUserId === userId) {
+        const rawCl = calculateCraftingLuck((entity as any).stats as any ?? {});
+        const lf = workshopLuckFloor(workshopTier);
+        entityCl = Number(Math.max(rawCl, lf).toFixed(2));
+        const recipeTiersMap: Record<string, any> = (recipe.tiers as any) ?? {};
+        const centerOverrides: Partial<Record<string, number>> = {};
+        for (const [key, block] of Object.entries(recipeTiersMap)) {
+          if (key !== 'failure' && block && typeof (block as any).clRequirement === 'number') {
+            centerOverrides[key] = (block as any).clRequirement;
+          }
+        }
+        qualityProbs = qualityProbabilities(entityCl, centerOverrides);
+        passRate = difficulty > 0
+          ? Number(Math.min(1, entityCl / (entityCl + difficulty)).toFixed(4))
+          : 1;
+      }
+    }
+
     return {
       jobType: 'crafting',
       requirements: requirementStatus,
@@ -341,6 +376,11 @@ export class JobPreviewService {
         recipeTierCap,
         timerMultiplier,
         recipeTierMet,
+        difficulty,
+        entityCl,
+        passRate,
+        qualityProbabilities: qualityProbs,
+        scaledCost,
       },
     };
   }
