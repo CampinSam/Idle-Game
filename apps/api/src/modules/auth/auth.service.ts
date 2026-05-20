@@ -6,8 +6,8 @@ import { ethers } from 'ethers';
 import { bech32 } from 'bech32';
 import verifyCardanoDataSignature from '@cardano-foundation/cardano-verify-datasignature';
 import { PrismaService } from '../../prisma/prisma.service';
-import { TickService } from '../tick/tick.service';
 import { EventService } from '../event/event.service';
+import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { CheckInService } from '../checkin/checkin.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
@@ -22,8 +22,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
-    private tickService: TickService,
     private eventService: EventService,
+    private locationService: LocationService,
     private settlementService: LocationSettlementService,
     private checkInService: CheckInService,
     private nftCollectionService: NftCollectionService,
@@ -76,16 +76,7 @@ export class AuthService {
     }
 
     try {
-      const currentTick = await this.tickService.getCurrentTick();
-      const locData = this.generateStarterLocation(user.id, currentTick);
-      const loc = await (this.prisma as any).locationInstance.create({
-        data: locData,
-      });
-      await this.settlementService.recalculateLocationMeta(loc.id);
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { primaryLocationId: loc.id },
-      });
+      await this.locationService.createStarterOutpost(user.id);
     } catch (err) {
       this.logger.error(`Failed to create starter location for ${user.id}: ${err}`);
     }
@@ -162,19 +153,6 @@ export class AuthService {
         this.logger.warn(`Failed to recalculate location ${loc.id}: ${err}`);
       }
     }
-  }
-
-  private generateStarterLocation(userId: string, currentTick: number) {
-    return {
-      ownerUserId: userId,
-      definitionId: 'derp_outpost',
-      name: 'Starter Outpost',
-      kind: 'outpost_fungible',
-      level: 1,
-      lastCollectionTick: BigInt(Math.floor(currentTick)),
-      storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
-      state: {},
-    };
   }
 
   async requestWalletNonce(chain: string, address: string): Promise<{ nonce: string; message: string }> {
@@ -350,13 +328,7 @@ export class AuthService {
       await (this.prisma as any).entity.create({ data: entityData });
     } catch (err) { this.logger.error(`Failed to create starter entity: ${err}`); }
     try {
-      const currentTick = await this.tickService.getCurrentTick();
-      const loc = await (this.prisma as any).locationInstance.create({ data: this.generateStarterLocation(user.id, currentTick) });
-      await this.settlementService.recalculateLocationMeta(loc.id);
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { primaryLocationId: loc.id },
-      });
+      await this.locationService.createStarterOutpost(user.id);
     } catch (err) { this.logger.error(`Failed to create starter location: ${err}`); }
     try {
       await this.eventService.dispatch('evt_welcome_gift', { gift: { giftDefId: 'gift_welcome_gems' } }, {

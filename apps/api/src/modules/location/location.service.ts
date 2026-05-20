@@ -69,6 +69,34 @@ export class LocationService {
     private telemetryService: TelemetryService,
   ) {}
 
+  /**
+   * Creates a starter outpost for `userId`, recalculates its storage/meta,
+   * and sets it as the user's primaryLocationId.  This is the single canonical
+   * path for all first-outpost creation (email registration, wallet onboarding,
+   * and admin player-reset).
+   */
+  async createStarterOutpost(userId: string): Promise<any> {
+    const currentTick = await this.tickService.getCurrentTick();
+    const loc = await (this.prisma as any).locationInstance.create({
+      data: {
+        ownerUserId: userId,
+        definitionId: 'derp_outpost',
+        name: 'Starter Outpost',
+        kind: 'outpost_fungible',
+        level: 1,
+        lastCollectionTick: BigInt(Math.floor(currentTick)),
+        storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
+        state: {},
+      },
+    });
+    await this.settlementService.recalculateLocationMeta(loc.id);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { primaryLocationId: loc.id },
+    });
+    return loc;
+  }
+
   resolveXpDepositCosts(rules: LevelRules | null | undefined): LocationXpCostOption[] {
     const raw = (rules as any)?.xpDepositCosts;
     if (Array.isArray(raw) && raw.length > 0) {

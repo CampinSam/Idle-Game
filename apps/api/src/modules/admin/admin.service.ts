@@ -8,7 +8,6 @@ import { InventoryService } from '../inventory/inventory.service';
 import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { CraftingService } from '../crafting/crafting.service';
-import { resolveLevelConfig, resolveStorageCapacity, LevelRules } from '../game-rules/level-config.util';
 import { generateEntityData } from '../entity/entity-generator.util';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
@@ -280,22 +279,7 @@ export class AdminService {
     }
 
     try {
-      const currentTick = await this.tickService.getCurrentTick();
-      const locData = this.generateStarterLocation(uid, currentTick);
-      const loc = await (this.prisma as any).locationInstance.create({
-        data: locData,
-        include: { definition: true },
-      });
-      const def = loc.definition;
-      if (def) {
-        const rules = (def.rules as LevelRules) || {};
-        const config = resolveLevelConfig(rules, loc.level);
-        const capacity = resolveStorageCapacity(config.storage, loc.level);
-        await (this.prisma as any).locationInstance.update({
-          where: { id: loc.id },
-          data: { storage: { capacity, stored: {}, lastSettledAt: new Date().toISOString() } },
-        });
-      }
+      await this.locationService.createStarterOutpost(uid);
     } catch (err) {
       this.logger.error(`Failed to create starter location for ${uid}: ${err}`);
     }
@@ -314,18 +298,6 @@ export class AdminService {
     await this.emitAdminDelta(uid, [], [{ type: 'full_reset' }]);
 
     return serializeBigInts(updated);
-  }
-
-  private generateStarterLocation(userId: string, currentTick: number) {
-    return {
-      ownerUserId: userId,
-      definitionId: 'derp_outpost',
-      kind: 'outpost_fungible',
-      level: 1,
-      lastCollectionTick: BigInt(Math.floor(currentTick)),
-      storage: { capacity: {}, stored: {}, lastSettledAt: new Date().toISOString() },
-      state: {},
-    };
   }
 
   async listTable(table: string) {
