@@ -65,8 +65,14 @@ export function ForgeTrack({
 
   const multicraft = useMemo(() => selectedRecipe?.multicraft ?? null, [selectedRecipe]);
 
-  // Reset quantity to 1 when recipe changes
-  useEffect(() => { setQuantity(1); }, [recipeId]);
+  // Reset quantity when recipe changes — default to first allowed tier in tier mode
+  useEffect(() => {
+    if (multicraft?.mode === 'tiers' && Array.isArray(multicraft.tiers) && multicraft.tiers.length > 0) {
+      setQuantity(multicraft.tiers[0]);
+    } else {
+      setQuantity(1);
+    }
+  }, [recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedEntityObj = useMemo(
     () => idleEntities.find((e: any) => e.id === entityId) ?? null,
     [idleEntities, entityId],

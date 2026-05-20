@@ -470,10 +470,11 @@ export class CraftingService {
     const doWrites = async (tx: any) => {
       for (const cost of costEntries) {
         if (cost.amount <= 0) continue;
+        const scaledAmount = cost.amount * validatedQuantity;
         if (cost.type === 'currency') {
-          await this.currencyService.spendTx(tx, { userId, currencyId: cost.id, amount: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+          await this.currencyService.spendTx(tx, { userId, currencyId: cost.id, amount: scaledAmount, reason: `Craft ×${validatedQuantity}: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
         } else {
-          await this.inventoryService.removeItemTx(tx, { userId, itemId: cost.id, quantity: cost.amount, reason: `Craft: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
+          await this.inventoryService.removeItemTx(tx, { userId, itemId: cost.id, quantity: scaledAmount, reason: `Craft ×${validatedQuantity}: ${recipe.name}`, sourceType: 'crafting', sourceId: recipe.id });
         }
       }
       await this.entityService.setEntityStatus(entityId, userId, 'working', tx);
