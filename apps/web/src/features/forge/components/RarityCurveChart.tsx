@@ -32,7 +32,12 @@ function buildColorMap(recipeTiers: Record<string, any> | null | undefined): Rec
     const hasDef =
       tierDef != null &&
       typeof tierDef === 'object' &&
-      Object.keys(tierDef).some((k) => k !== 'clRequirement');
+      (
+        // non-empty rewards array
+        (Array.isArray(tierDef.rewards) && tierDef.rewards.length > 0) ||
+        // OR any key besides clRequirement and rewards (legacy formats)
+        Object.keys(tierDef).some((k) => k !== 'clRequirement' && k !== 'rewards')
+      );
 
     if (hasDef) {
       lastDefinedColor = QUALITY_COLOURS[t.key] ?? '#94a3b8';

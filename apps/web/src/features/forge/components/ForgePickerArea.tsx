@@ -7,7 +7,8 @@ import { Chip } from '../../../components/ui';
 
 interface ForgePickerAreaProps {
   activePicker: 'recipe' | 'entity' | null;
-  onClose: () => void;
+  /** If undefined, no close button is rendered (e.g. when picker is mandatory). */
+  onClose?: () => void;
 
   // Recipe picker props (filter state lives in parent — controlled)
   recipes: any[];
@@ -94,13 +95,15 @@ export function ForgePickerArea({
             <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd] font-cinzel">
               Select a Recipe
             </h3>
-            <button
-              onClick={onClose}
-              aria-label="Close recipe picker"
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
-            >
-              ×
-            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                aria-label="Close recipe picker"
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           {/* Search */}
@@ -210,13 +213,15 @@ export function ForgePickerArea({
           <h3 className="m-0 text-[13px] font-extrabold tracking-[0.08em] uppercase text-[#93c5fd] font-cinzel">
             Select a Derp
           </h3>
-          <button
-            onClick={onClose}
-            aria-label="Close Derp picker"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
-          >
-            ×
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Close Derp picker"
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white text-lg leading-none hover:bg-white/10 cursor-pointer"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         {/* Search + collection filter + sort */}

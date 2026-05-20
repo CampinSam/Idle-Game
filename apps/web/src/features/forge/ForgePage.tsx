@@ -316,19 +316,28 @@ export default function ForgePage() {
     }
   };
 
-  // ── Navigation items — outpost overview + each building ─────────────────
+  // ── Navigation items — outpost overview + each building (in order) ───────
+  // Add a slug here when a new building detail page is implemented.
+  const BUILDING_ROUTE_SLUGS: Record<string, string> = { WORKSHOP: 'workshop' };
+
   const outpostBuildings = useMemo(
     () => (allBuildings as any[]).filter((b) => b.locationId === outpostId),
     [allBuildings, outpostId],
   );
-  const hasWorkshopBuilding = outpostBuildings.some(
-    (b) => (b.category ?? b.buildingDef?.category) === 'WORKSHOP',
-  );
   const navItems = useMemo(() => {
     const items: Array<{ path: string }> = [{ path: `/locations/${outpostId}` }];
-    if (hasWorkshopBuilding) items.push({ path: `/locations/${outpostId}/workshop` });
+    for (const b of outpostBuildings) {
+      const cat = (b.category ?? b.buildingDef?.category ?? '') as string;
+      const slug = BUILDING_ROUTE_SLUGS[cat];
+      if (slug) {
+        const p = `/locations/${outpostId}/${slug}`;
+        if (!items.some((n) => n.path === p)) items.push({ path: p });
+      }
+    }
     return items;
-  }, [outpostId, hasWorkshopBuilding]);
+  // BUILDING_ROUTE_SLUGS is a constant defined in render; stable reference not needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outpostId, outpostBuildings]);
   const workshopPath = `/locations/${outpostId}/workshop`;
   const currentNavIdx = Math.max(0, navItems.findIndex((n) => n.path === workshopPath));
   const prevPath = navItems[(currentNavIdx - 1 + navItems.length) % navItems.length]?.path ?? `/locations/${outpostId}`;
@@ -570,107 +579,144 @@ export default function ForgePage() {
             </section>
           )}
 
-          {/* ── Two-column primary row ── */}
-          <div className="grid grid-cols-2 gap-[10px] items-stretch">
-            {/* Left — Recipe card */}
-            <ForgeRecipeCard
-              recipe={selectedRecipe}
-              isActive={activePicker === 'recipe'}
-              multicraft={multicraft}
-              quantity={quantity}
-              onQuantityChange={setQuantity}
-              onClick={() => setActivePicker((p) => p === 'recipe' ? null : 'recipe')}
-              requirements={previewRequirements}
+          {/* ── Step 1: recipe picker (full-width, no recipe selected yet) ── */}
+          {!selectedRecipe && (
+            <ForgePickerArea
+              activePicker="recipe"
+              recipes={filteredRecipes}
+              selectedRecipeId={selectedRecipeId}
+              recipeSearch={recipeSearch}
+              setRecipeSearch={setRecipeSearch}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              availabilityFilter={availabilityFilter}
+              setAvailabilityFilter={setAvailabilityFilter}
+              recipeCategories={recipeCategories}
+              favorites={favorites}
+              onToggleFavorite={toggleFavorite}
+              onRecipeSelect={handleRecipeSelect}
+              recipeIsLocked={recipeIsLocked}
+              currencyBalances={currencyBalances}
+              syncItemsTable={syncItemsTable}
+              profile={profile}
+              idleEntities={idleEntities}
+              selectedEntityId={selectedEntityId}
+              entitySearch={entitySearch}
+              setEntitySearch={setEntitySearch}
+              entityFilter={entityFilter}
+              setEntityFilter={setEntityFilter}
+              entitySort={entitySort}
+              setEntitySort={setEntitySort}
+              onEntitySelect={handleEntitySelect}
             />
+          )}
 
-            {/* Right — Outcome card */}
-            <ForgeOutcomeCard
-              passRatePct={passRatePct}
-              passRateColor={passRateColor}
-              entityCl={craftPreview?.entityCl ?? undefined}
-              recipeTiers={selectedRecipe?.tiers ?? null}
-              centerOverrides={centerOverrides}
-            />
-          </div>
+          {/* ── Step 2: two-column row + crafter (shown once recipe is selected) ── */}
+          {selectedRecipe && (
+            <>
+              {/* Two-column primary row */}
+              <div className="grid grid-cols-2 gap-[10px] items-stretch">
+                {/* Left — Recipe card; clicking clears selection → inline picker reappears */}
+                <ForgeRecipeCard
+                  recipe={selectedRecipe}
+                  isActive={false}
+                  multicraft={multicraft}
+                  quantity={quantity}
+                  onQuantityChange={setQuantity}
+                  onClick={() => { setSelectedRecipeId(null); setActivePicker(null); }}
+                  requirements={previewRequirements}
+                />
 
-          {/* ── Entity roster row — Crafter ── */}
-          <div className="flex flex-col gap-1.5">
-            <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
-              Crafter
-            </div>
-            {selectedEntityObj ? (
-              <button
-                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                aria-label={`Change crafter (${selectedEntityObj.name})`}
-                className={`w-full flex items-center gap-3 p-3 rounded-[14px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
-                  activePicker === 'entity'
-                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
-                    : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
-                  ⚔️
+                {/* Right — Outcome card */}
+                <ForgeOutcomeCard
+                  passRatePct={passRatePct}
+                  passRateColor={passRateColor}
+                  entityCl={craftPreview?.entityCl ?? undefined}
+                  recipeTiers={selectedRecipe?.tiers ?? null}
+                  centerOverrides={centerOverrides}
+                />
+              </div>
+
+              {/* ── Crafter row — selected-state card or placeholder ── */}
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[10px] font-extrabold tracking-[0.12em] uppercase text-text-secondary">
+                  Crafter
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-extrabold text-white truncate">
-                    {selectedEntityObj.name}
-                  </div>
-                  {craftPreview?.entityCl != null && (
-                    <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
-                      CL {craftPreview.entityCl.toFixed(0)}
+                {selectedEntityObj ? (
+                  <button
+                    onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                    aria-label={`Change crafter (${selectedEntityObj.name})`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-[14px] border text-left cursor-pointer hover:brightness-110 transition-[border-color,filter] ${
+                      activePicker === 'entity'
+                        ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.13)]'
+                        : 'border-[rgba(96,165,250,0.35)] bg-gradient-to-br from-[rgba(96,165,250,0.07)] to-[rgba(34,24,88,0.65)]'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[16px] flex-shrink-0">
+                      ⚔️
                     </div>
-                  )}
-                </div>
-                <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
-              </button>
-            ) : (
-              <button
-                onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
-                aria-label="Pick a Derp"
-                className={`w-full flex items-center justify-center gap-2 p-3 rounded-[14px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
-                  activePicker === 'entity'
-                    ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
-                    : 'border-dashed border-white/20 bg-white/[0.02]'
-                }`}
-              >
-                <span className="text-[18px]">⚔️</span>
-                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
-                  Pick a Derp
-                </span>
-              </button>
-            )}
-          </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-extrabold text-white truncate">
+                        {selectedEntityObj.name}
+                      </div>
+                      {craftPreview?.entityCl != null && (
+                        <div className="text-[10px] tabular-nums" style={{ color: QUALITY_COLOURS['common'] }}>
+                          CL {craftPreview.entityCl.toFixed(0)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[9px] text-white/35 italic flex-shrink-0">tap to change</div>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActivePicker((p) => p === 'entity' ? null : 'entity')}
+                    aria-label="Pick a Derp"
+                    className={`w-full flex items-center justify-center gap-2 p-3 rounded-[14px] border-2 cursor-pointer hover:brightness-110 transition-[border-color,filter] min-h-[52px] ${
+                      activePicker === 'entity'
+                        ? 'border-[rgba(96,165,250,0.75)] bg-[rgba(59,130,246,0.10)]'
+                        : 'border-dashed border-white/20 bg-white/[0.02]'
+                    }`}
+                  >
+                    <span className="text-[18px]">⚔️</span>
+                    <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wide">
+                      Pick a Derp
+                    </span>
+                  </button>
+                )}
+              </div>
 
-          {/* ── Picker area — sticky filter header, collapses when closed ── */}
-          <ForgePickerArea
-            activePicker={activePicker}
-            onClose={() => setActivePicker(null)}
-            recipes={filteredRecipes}
-            selectedRecipeId={selectedRecipeId}
-            recipeSearch={recipeSearch}
-            setRecipeSearch={setRecipeSearch}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            availabilityFilter={availabilityFilter}
-            setAvailabilityFilter={setAvailabilityFilter}
-            recipeCategories={recipeCategories}
-            favorites={favorites}
-            onToggleFavorite={toggleFavorite}
-            onRecipeSelect={handleRecipeSelect}
-            recipeIsLocked={recipeIsLocked}
-            currencyBalances={currencyBalances}
-            syncItemsTable={syncItemsTable}
-            profile={profile}
-            idleEntities={idleEntities}
-            selectedEntityId={selectedEntityId}
-            entitySearch={entitySearch}
-            setEntitySearch={setEntitySearch}
-            entityFilter={entityFilter}
-            setEntityFilter={setEntityFilter}
-            entitySort={entitySort}
-            setEntitySort={setEntitySort}
-            onEntitySelect={handleEntitySelect}
-          />
+              {/* ── Entity picker area — collapses when no entity picker active ── */}
+              <ForgePickerArea
+                activePicker={activePicker === 'entity' ? 'entity' : null}
+                onClose={() => setActivePicker(null)}
+                recipes={filteredRecipes}
+                selectedRecipeId={selectedRecipeId}
+                recipeSearch={recipeSearch}
+                setRecipeSearch={setRecipeSearch}
+                categoryFilter={categoryFilter}
+                setCategoryFilter={setCategoryFilter}
+                availabilityFilter={availabilityFilter}
+                setAvailabilityFilter={setAvailabilityFilter}
+                recipeCategories={recipeCategories}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
+                onRecipeSelect={handleRecipeSelect}
+                recipeIsLocked={recipeIsLocked}
+                currencyBalances={currencyBalances}
+                syncItemsTable={syncItemsTable}
+                profile={profile}
+                idleEntities={idleEntities}
+                selectedEntityId={selectedEntityId}
+                entitySearch={entitySearch}
+                setEntitySearch={setEntitySearch}
+                entityFilter={entityFilter}
+                setEntityFilter={setEntityFilter}
+                entitySort={entitySort}
+                setEntitySort={setEntitySort}
+                onEntitySelect={handleEntitySelect}
+              />
+            </>
+          )}
 
           {/* Blocked reasons */}
           {selectedRecipeId && blockedReasons.length > 0 && (
@@ -709,7 +755,11 @@ export default function ForgePage() {
           }`}
           style={{ background: canStart ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(80,80,100,0.6)' }}
         >
-          {busy ? 'Starting…' : 'Begin Crafting'}
+          {busy
+            ? 'Starting…'
+            : !canStart && selectedRecipeId && blockedReasons.length > 0
+              ? blockedReasons[0]
+              : 'Begin Crafting'}
         </button>
       </footer>
     </div>
