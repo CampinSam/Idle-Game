@@ -74,6 +74,7 @@ export default function DefaultEntityCard({
   const power = useMemo(() => getEntityPower(entity), [entity]);
   const mp = useMemo(() => Math.round(getEntityMP(entity)), [entity]);
   const stars = useMemo(() => getStarRating(entity), [entity]);
+  const cl = useMemo(() => Math.round((entity as any).craftingLuck ?? entity.level), [entity]);
 
   const handleClick = () => {
     if (disabled) return;
@@ -138,7 +139,7 @@ export default function DefaultEntityCard({
     );
   }
 
-  if (useCase === 'mission') {
+  if (useCase === 'mission' || useCase === 'forge') {
     const botPadding = compact ? 'p-[4px_4px_6px]' : 'p-2';
     const idStyle = compact
       ? 'block text-[10px] font-extrabold text-text-primary mb-[2px] whitespace-nowrap overflow-hidden text-ellipsis'
@@ -146,7 +147,7 @@ export default function DefaultEntityCard({
 
     const cls = [
       BASE_CARD,
-      'entity-card--mission',
+      useCase === 'forge' ? 'entity-card--forge' : 'entity-card--mission',
       'w-full',
       'border-2 border-[var(--border)]',
       active && ['entity-card--active', ACTIVE_GLOW].join(' '),
@@ -182,7 +183,11 @@ export default function DefaultEntityCard({
             </div>
           )}
           {disabled && <BusyPill status={entity.status} />}
-          <span className="absolute top-[6px] right-[6px] z-[2] bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.2)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
+          {useCase === 'forge' ? (
+            <span className="absolute top-[6px] right-[6px] z-[2] bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.2)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">🍀{cl}</span>
+          ) : (
+            <span className="absolute top-[6px] right-[6px] z-[2] bg-[rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.2)] py-[2px] px-2 rounded-[10px] text-[11px] font-extrabold text-white">⚡{mp}</span>
+          )}
         </div>
         <div className={`${botPadding} bg-bg-card text-center`}>
           <span className={idStyle}>{entity.name}</span>

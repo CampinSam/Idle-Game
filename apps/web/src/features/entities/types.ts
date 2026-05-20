@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Entity } from '@derp/shared';
 
-export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'potion-picker';
+export type EntityUseCase = 'browse' | 'mission' | 'crafting' | 'outpost' | 'potion-picker' | 'forge';
 
 export type EntityFilter = string;
 

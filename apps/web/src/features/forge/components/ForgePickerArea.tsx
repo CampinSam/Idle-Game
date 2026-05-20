@@ -275,7 +275,7 @@ export function ForgePickerArea({
         <EntityList
           entities={idleEntities}
           mode="picker"
-          useCase="crafting"
+          useCase="forge"
           showControls={false}
           search={entitySearch}
           onSearchChange={setEntitySearch}

@@ -14,7 +14,6 @@ interface Point {
 interface ColorRun {
   iStart: number;
   iEnd: number;
-  points: Point[];
   color: string;
 }
 
@@ -33,9 +32,7 @@ function buildColorMap(recipeTiers: Record<string, any> | null | undefined): Rec
       tierDef != null &&
       typeof tierDef === 'object' &&
       (
-        // non-empty rewards array
         (Array.isArray(tierDef.rewards) && tierDef.rewards.length > 0) ||
-        // OR any key besides clRequirement and rewards (legacy formats)
         Object.keys(tierDef).some((k) => k !== 'clRequirement' && k !== 'rewards')
       );
 
@@ -71,20 +68,16 @@ function buildRuns(pts: Point[]): ColorRun[] {
     const color = pts[i].color;
     let j = i;
     while (j < pts.length && pts[j].color === color) j++;
-    runs.push({ iStart: i, iEnd: j - 1, points: pts.slice(i, j), color });
+    runs.push({ iStart: i, iEnd: j - 1, color });
     i = j;
   }
   return runs;
 }
 
 export interface RarityCurveChartProps {
-  /** The recipe's tiers object (keys = quality keys, values = reward blocks). Used for color inheritance. */
   recipeTiers?: Record<string, any> | null;
-  /** Entity's crafting luck (CL) — marks the current entity's position on the X axis. */
   entityCl?: number | null;
-  /** Per-recipe clRequirement overrides, keyed by quality tier key. */
   centerOverrides?: Partial<Record<string, number>>;
-  /** X-axis CL cap. Defaults to 170. */
   cap?: number;
   className?: string;
 }
@@ -97,38 +90,32 @@ export function RarityCurveChart({
   className,
 }: RarityCurveChartProps) {
   const W = 240;
-  const H = 80;
+  const H = 100;
   const PAD_X = 1;
-  const PAD_Y = 4;
+  const PAD_Y = 6;
 
   const colorMap = useMemo(() => buildColorMap(recipeTiers), [recipeTiers]);
 
-  const { maxY, runs } = useMemo(() => {
+  const { maxY, pts, runs } = useMemo(() => {
     const pts = computePoints(cap, centerOverrides, colorMap);
     let m = 0;
     for (const p of pts) if (p.y > m) m = p.y;
-    return { maxY: Math.max(m, 0.01), runs: buildRuns(pts) };
+    return { maxY: Math.max(m, 0.01), pts, runs: buildRuns(pts) };
   }, [cap, centerOverrides, colorMap]);
 
   const xOf = (i: number) => PAD_X + (i / STEPS) * (W - 2 * PAD_X);
   const yOf = (v: number) => H - PAD_Y - (v / maxY) * (H - 2 * PAD_Y);
 
-  const paths = useMemo(() =>
-    runs
-      .map((run) => {
-        if (run.points.length < 1) return null;
-        const firstX = xOf(run.iStart);
-        const lastX = xOf(run.iEnd);
-        let d = `M ${firstX.toFixed(1)} ${H}`;
-        for (const pt of run.points) {
-          d += ` L ${xOf(pt.i).toFixed(1)} ${yOf(pt.y).toFixed(1)}`;
-        }
-        d += ` L ${lastX.toFixed(1)} ${H} Z`;
-        return { d, color: run.color };
-      })
-      .filter(Boolean) as Array<{ d: string; color: string }>,
+  // Full curve polygon for the clipPath mask — bottom-left → up along curve → bottom-right → close
+  const clipPathD = useMemo(() => {
+    let d = `M ${PAD_X.toFixed(1)} ${H}`;
+    for (const pt of pts) {
+      d += ` L ${xOf(pt.i).toFixed(1)} ${yOf(pt.y).toFixed(1)}`;
+    }
+    d += ` L ${(W - PAD_X).toFixed(1)} ${H} Z`;
+    return d;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [runs, maxY]);
+  }, [pts, maxY]);
 
   const hairData = useMemo(() => {
     if (entityCl == null) return null;
@@ -146,12 +133,37 @@ export function RarityCurveChart({
       viewBox={`0 0 ${W} ${H}`}
       className={className}
       aria-hidden="true"
-      style={{ display: 'block', width: '100%' }}
+      style={{ display: 'block', width: '100%', height: '100%' }}
+      preserveAspectRatio="none"
     >
+      <defs>
+        <clipPath id="forge-curve-mask">
+          <path d={clipPathD} />
+        </clipPath>
+      </defs>
+
+      {/* Background */}
       <rect width={W} height={H} fill="rgba(0,0,0,0.25)" rx="4" />
-      {paths.map((p, i) => (
-        <path key={i} d={p.d} fill={p.color} fillOpacity={0.75} />
-      ))}
+
+      {/* Colour bands — each run is a rect clipped to the bell curve silhouette */}
+      {runs.map((run, i) => {
+        const x1 = xOf(run.iStart);
+        const x2 = xOf(run.iEnd);
+        return (
+          <rect
+            key={i}
+            x={x1.toFixed(1)}
+            y={PAD_Y}
+            width={Math.max(1, x2 - x1).toFixed(1)}
+            height={H - PAD_Y}
+            fill={run.color}
+            fillOpacity={0.8}
+            clipPath="url(#forge-curve-mask)"
+          />
+        );
+      })}
+
+      {/* Hairline + dot at entity CL position */}
       {hairData && (
         <>
           <line
@@ -161,10 +173,16 @@ export function RarityCurveChart({
             y2={H - PAD_Y}
             stroke="white"
             strokeWidth={1.5}
-            strokeOpacity={0.8}
+            strokeOpacity={0.9}
             strokeDasharray="3 2"
           />
-          <circle cx={hairData.x.toFixed(1)} cy={hairData.y.toFixed(1)} r={3} fill="white" fillOpacity={0.95} />
+          <circle
+            cx={hairData.x.toFixed(1)}
+            cy={hairData.y.toFixed(1)}
+            r={3}
+            fill="white"
+            fillOpacity={0.95}
+          />
         </>
       )}
     </svg>
