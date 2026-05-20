@@ -67,6 +67,7 @@ function getRecipeTiers(recipe: any): Record<string, { rewards: any[]; clRequire
     scare:     build(tiers.scare)     ?? EMPTY_TIER_BLOCK,
     rare:      build(tiers.rare)      ?? EMPTY_TIER_BLOCK,
     epic:      build(tiers.epic)      ?? EMPTY_TIER_BLOCK,
+    mythic:    build(tiers.mythic)    ?? EMPTY_TIER_BLOCK,
     legendary: build(tiers.legendary) ?? EMPTY_TIER_BLOCK,
   };
 }
@@ -148,7 +149,6 @@ export class CraftingService {
       group: def.group,
       cost: def.cost,
       timer: def.timer,
-      requiredKeeperLevel: def.requiredKeeperLevel,
       difficulty: def.difficulty ?? 0,
       tiers: def.tiers ?? {},
       multicraft: def.multicraft ?? null,
@@ -376,12 +376,6 @@ export class CraftingService {
       throw new BadRequestException('Recipe is not available');
     }
 
-    if (user.keeperLevel < recipe.requiredKeeperLevel) {
-      throw new BadRequestException(
-        `Requires Keeper Level ${recipe.requiredKeeperLevel}`,
-      );
-    }
-
     {
       const tier = Number(workshopMatch?.level || 0);
       const recipeTier = this.recipeTier(recipe);
@@ -598,6 +592,9 @@ export class CraftingService {
 
     const recipeTiers = getRecipeTiers(recipe);
     const centerOverrides = buildCenterOverrides(recipeTiers);
+    const recipeSigma: number | undefined = typeof (recipe.tiers as any)?.sigma === 'number'
+      ? (recipe.tiers as any).sigma
+      : undefined;
     const difficulty = recipe.difficulty ?? 0;
     const effectiveCLValue = effectiveCL(cl);
 
@@ -615,11 +612,11 @@ export class CraftingService {
     if (!passed) {
       quality = 'failure';
       qualityLabel = 'Failure';
-      qualityProbs = qualityProbabilities(effectiveCLValue, centerOverrides);
+      qualityProbs = qualityProbabilities(effectiveCLValue, centerOverrides, recipeSigma);
       outcomeItems = Array.isArray(recipeTiers.failure?.rewards) ? recipeTiers.failure.rewards : [];
     } else {
       // Step 2 — quality roll across success tiers
-      const rolled = rollQualityFromCl(effectiveCLValue, rng, centerOverrides);
+      const rolled = rollQualityFromCl(effectiveCLValue, rng, centerOverrides, recipeSigma);
       quality = rolled.key;
       qualityLabel = rolled.label;
       qualityProbs = rolled.probabilities;

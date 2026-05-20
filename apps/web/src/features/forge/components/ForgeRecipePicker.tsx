@@ -42,7 +42,6 @@ function RecipeGrid({
           c.type === 'currency'
             ? (currencyBalances[c.id] ?? 0) >= c.amount
             : computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances) >= c.amount);
-        const meetsLevel = !profile || profile.keeperLevel >= (r.requiredKeeperLevel || 1);
         const isLocked = recipeIsLocked(r);
         const recipeTierNum = Number(r.tier ?? 1);
         const tierCap = forecast?.recipeTierCap;
@@ -55,11 +54,9 @@ function RecipeGrid({
             <button
               onClick={() => onSelect(r)}
               title={
-                !meetsLevel
-                  ? `Requires Keeper Lvl ${r.requiredKeeperLevel}`
-                  : tierLocked
-                    ? `Requires Tier ${recipeTierNum} Workshop`
-                    : undefined
+                tierLocked
+                  ? `Requires Tier ${recipeTierNum} Workshop`
+                  : undefined
               }
               className={`w-full text-left p-3 rounded-xl border transition-[border-color,filter] hover:brightness-110 cursor-pointer flex flex-col gap-1.5 ${
                 selectedRecipeId === r.id ? 'ring-2 ring-[rgba(167,139,250,0.6)]' : ''
@@ -92,11 +89,6 @@ function RecipeGrid({
                 <span className="text-[11px] font-bold text-text-secondary tabular-nums">
                   {fmtSeconds(r.timer?.duration ?? 0)}
                 </span>
-                {!meetsLevel && (
-                  <span className="text-[10px] font-extrabold tracking-wide uppercase text-[#fbbf24] bg-[rgba(245,158,11,0.15)] px-2 py-0.5 rounded">
-                    Lvl {r.requiredKeeperLevel}
-                  </span>
-                )}
                 {tierLocked && (
                   <span className="text-[10px] font-extrabold tracking-wide uppercase text-[#f87171] bg-[rgba(239,68,68,0.15)] px-2 py-0.5 rounded">
                     Needs T{recipeTierNum} Workshop

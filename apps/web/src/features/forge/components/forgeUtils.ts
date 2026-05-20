@@ -11,6 +11,7 @@ export const QUALITY_COLOURS: Record<string, string> = {
   scare:     '#4db0da',
   rare:      '#a98aff',
   epic:      '#ff6090',
+  mythic:    '#ffc040',
   legendary: '#ffe040',
 };
 

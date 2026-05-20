@@ -6,7 +6,6 @@
  *   - Unknown jobType → BadRequestException
  *   - Crafting: 404 on missing recipe, 404 on missing user
  *   - Crafting: happy path returns correct shape (requirements, cost, duration, crafting block)
- *   - Crafting: keeperLevelMet flag reflects player level vs recipe requirement
  *   - Crafting: workshop slot/tier context when locationId provided
  *   - Building: 404 on missing def, 404 on missing user
  *   - Building: happy path returns correct shape (requirements, cost, duration, building block)
@@ -32,7 +31,6 @@ const makeUser = (overrides: Record<string, any> = {}) => ({
 const makeRecipeDef = (overrides: Record<string, any> = {}) => ({
   id: 'recipe_sword',
   name: 'Iron Sword',
-  requiredKeeperLevel: 3,
   cost: [{ type: 'currency', id: 'gold', amount: 50 }],
   timer: { duration: 120, boostable: true },
   requirements: null,
@@ -188,30 +186,7 @@ describe('JobPreviewService — crafting preview', () => {
     expect(result.crafting.recipeId).toBe('recipe_sword');
     expect(result.crafting.recipeName).toBe('Iron Sword');
     expect(result.crafting.recipeTier).toBe(1);
-    expect(result.crafting.requiredKeeperLevel).toBe(3);
     expect(result.crafting.rewards).toBeDefined();
-  });
-
-  it('sets keeperLevelMet to true when player meets the requirement', async () => {
-    const { service, mockPrisma } = buildService();
-    mockPrisma.recipeDef.findUnique.mockResolvedValue(makeRecipeDef({ requiredKeeperLevel: 3 }));
-    mockPrisma.user.findUnique.mockResolvedValue(makeUser({ keeperLevel: 5 }));
-
-    const result = await service.getPreview('user-1', { jobType: 'crafting', defId: 'recipe_sword' });
-
-    expect(result.crafting.keeperLevelMet).toBe(true);
-    expect(result.allRequirementsMet).toBe(true);
-  });
-
-  it('sets keeperLevelMet to false and allRequirementsMet to false when player is too low level', async () => {
-    const { service, mockPrisma } = buildService();
-    mockPrisma.recipeDef.findUnique.mockResolvedValue(makeRecipeDef({ requiredKeeperLevel: 10 }));
-    mockPrisma.user.findUnique.mockResolvedValue(makeUser({ keeperLevel: 1 }));
-
-    const result = await service.getPreview('user-1', { jobType: 'crafting', defId: 'recipe_sword' });
-
-    expect(result.crafting.keeperLevelMet).toBe(false);
-    expect(result.allRequirementsMet).toBe(false);
   });
 
   it('reflects canAfford: false when player cannot afford the cost', async () => {

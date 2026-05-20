@@ -66,8 +66,6 @@ export interface CraftingPreviewData {
   recipeId: string;
   recipeName: string;
   recipeTier: number;
-  requiredKeeperLevel: number;
-  keeperLevelMet: boolean;
   effectiveDurationTicks: number;
   rewards: any;
   workshopTier: number;

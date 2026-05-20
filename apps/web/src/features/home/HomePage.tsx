@@ -332,7 +332,7 @@ function ForgeHero({
 
   const recipeTierCap = wsTier;
   const passesVisibility = (r: any) =>
-    (r.requiredKeeperLevel || 1) <= keeperLevel && Number(r.tier ?? 1) <= recipeTierCap;
+    Number(r.tier ?? 1) <= recipeTierCap;
   const affordableCount = (craftingRecipes || []).filter((r: any) => {
     if (!passesVisibility(r)) return false;
     const cost: Array<{ type: string; id: string; amount: number }> = r.cost ?? [];

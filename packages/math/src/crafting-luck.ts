@@ -31,10 +31,11 @@ const EPSILON = 0.005;
 export const QUALITY_TIERS: Array<{ key: string; label: string; center: number }> = [
   { key: 'common',    label: 'Common',    center: 15  },
   { key: 'uncommon',  label: 'Uncommon',  center: 45  },
-  { key: 'scare',     label: 'Scare',     center: 68  },
-  { key: 'rare',      label: 'Rare',      center: 100 },
-  { key: 'epic',      label: 'Epic',      center: 138 },
-  { key: 'legendary', label: 'Legendary', center: 165 },
+  { key: 'scare',     label: 'Scare',     center: 75  },
+  { key: 'rare',      label: 'Rare',      center: 105 },
+  { key: 'epic',      label: 'Epic',      center: 135 },
+  { key: 'mythic',    label: 'Mythic',    center: 165 },
+  { key: 'legendary', label: 'Legendary', center: 195 },
 ];
 
 export interface QualityProbability {
@@ -52,10 +53,11 @@ export const rollPassFail = (power: number, difficulty: number, rng: SeededRng):
 export const qualityProbabilities = (
   cl: number,
   centerOverrides: Partial<Record<string, number>> = {},
+  sigma: number = SIGMA,
 ): QualityProbability[] => {
   const weights = QUALITY_TIERS.map((t) => {
     const center = centerOverrides[t.key] ?? t.center;
-    return Math.exp(-Math.pow(center - cl, 2) / (2 * SIGMA * SIGMA)) + EPSILON;
+    return Math.exp(-Math.pow(center - cl, 2) / (2 * sigma * sigma)) + EPSILON;
   });
   const sum = weights.reduce((a, b) => a + b, 0) || 1;
   return QUALITY_TIERS.map((t, i) => ({
@@ -69,8 +71,9 @@ export const rollQualityFromCl = (
   cl: number,
   rng: SeededRng,
   centerOverrides: Partial<Record<string, number>> = {},
+  sigma: number = SIGMA,
 ): { key: string; label: string; probabilities: QualityProbability[] } => {
-  const probs = qualityProbabilities(cl, centerOverrides);
+  const probs = qualityProbabilities(cl, centerOverrides, sigma);
   const r = rng.next();
   let acc = 0;
   for (const p of probs) {

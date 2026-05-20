@@ -205,12 +205,11 @@ export default function ForgePage() {
 
   // ── Recipe predicates ───────────────────────────────────────────────────
   const recipeIsLocked = useCallback((r: any): boolean => {
-    if (profile && (r.requiredKeeperLevel || 1) > profile.keeperLevel) return true;
     const recipeTierNum = Number(r.tier ?? 1);
     const tierCap = craftPreview?.recipeTierCap ?? workshopLevel;
     if (typeof tierCap === 'number' && recipeTierNum > tierCap) return true;
     return false;
-  }, [profile, craftPreview?.recipeTierCap, workshopLevel]);
+  }, [craftPreview?.recipeTierCap, workshopLevel]);
 
   const recipeIsAvailable = useCallback((r: any): boolean => {
     if (recipeIsLocked(r)) return false;
@@ -274,9 +273,6 @@ export default function ForgePage() {
         ? (currencyBalances[c.id] ?? 0)
         : computeInventoryAmount('ITEM', c.id, syncItemsTable, currencyBalances);
       if (have < c.amount) reasons.push(`Need ${c.amount - have} more ${label}`);
-    }
-    if (profile && (selectedRecipe.requiredKeeperLevel || 1) > profile.keeperLevel) {
-      reasons.push(`Requires Keeper Lvl ${selectedRecipe.requiredKeeperLevel}`);
     }
     const recipeTierNum = Number(selectedRecipe.tier ?? 1);
     if (typeof craftPreview?.recipeTierCap === 'number' && recipeTierNum > craftPreview.recipeTierCap) {

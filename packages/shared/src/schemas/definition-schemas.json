@@ -3098,7 +3098,7 @@
       ]
     },
     "RecipeDef": {
-      "description": "Crafting recipe definitions. Two-step probabilistic outcome: Step 1 pass/fail gate (passRate = effectiveCL / (effectiveCL + difficulty)), Step 2 Gaussian quality roll across 6 success tiers (failure tier excluded from quality pool).",
+      "description": "Crafting recipe definitions. Two-step probabilistic outcome: Step 1 pass/fail gate (passRate = effectiveCL / (effectiveCL + difficulty)), Step 2 Gaussian quality roll across 7 success tiers (failure tier excluded from quality pool).",
       "prismaModel": "RecipeDef",
       "tableName": "recipe_defs",
       "primaryKey": "id",
@@ -3140,11 +3140,6 @@
           "$ref": "#/complexTypes/Timer",
           "description": "Duration and skip settings"
         },
-        "requiredKeeperLevel": {
-          "type": "integer",
-          "default": 1,
-          "description": "Min keeper level"
-        },
         "difficulty": {
           "type": "number",
           "default": 0,
@@ -3153,7 +3148,7 @@
         "tiers": {
           "type": "object",
           "default": {},
-          "description": "Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | legendary. Each: { rewards: OutcomeBlock[], clRequirement?: number }. 'failure' fires when the pass/fail gate fails; success tiers are weighted by a Gaussian bell curve (sigma=22)."
+          "description": "Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. Each tier block: { rewards: OutcomeBlock[], clRequirement?: number }. Optional top-level sigma (number, default 22) overrides bell-curve spread for this recipe. 'failure' fires when the pass/fail gate fails; success tiers are weighted by a Gaussian bell curve. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
         },
         "multicraft": {
           "type": [

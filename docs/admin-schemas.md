@@ -629,7 +629,6 @@ Defines a crafting recipe that players can execute.
 | `group` | string | No | — | Sub-group within a category |
 | `cost` | JSON | No | `[]` | Array of cost entries to start crafting, each using `{type, id, amount}` format (see [Cost Objects](#cost-objects)) |
 | `timer` | JSON | No | (see [Timer](#timer)) | Duration, boost, and skip settings (see [Timer](#timer)) |
-| `requiredKeeperLevel` | number | No | 1 | Minimum keeper level to unlock this recipe |
 | `rewards` | JSON | No | `{}` | What the player receives on completion (see [Rewards](#rewards)). All effects (flag mutations, events, text) are included as entries in the rewards array, same as MissionDef outcome blocks. |
 | `requirements` | JSON | No | `[]` | Conditions to start crafting (see [Requirements](#requirements)) |
 | `visibilityRequirements` | JSON | No | `[]` | Conditions for the recipe to appear (see [Visibility Requirements](#visibility-requirements)) |

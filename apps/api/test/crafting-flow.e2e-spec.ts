@@ -4,7 +4,6 @@
  * Tests CraftingService business logic using mocked DB/service dependencies.
  * Verifies that:
  *   - startCrafting rejects unknown recipes
- *   - startCrafting rejects when keeper level requirement is not met
  *   - startCrafting rejects non-idle entities
  *   - collectCrafting rejects when the timer has not expired
  *   - collectCrafting rejects when job is not found
@@ -29,7 +28,6 @@ const makeRecipeDef = (overrides: Record<string, any> = {}) => ({
   id: 'potion_heal_small',
   name: 'Minor Healing Potion',
   enabled: true,
-  requiredKeeperLevel: 1,
   visibilityRequirements: [],
   cost: [],
   timer: { duration: 30, boostable: true },
@@ -142,14 +140,6 @@ describe('CraftingService — startCrafting', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
 
     await expect(service.startCrafting('user-1', 'potion_heal_small', 'entity-1')).rejects.toThrow(NotFoundException);
-  });
-
-  it('throws BadRequestException when keeper level is too low', async () => {
-    const { service, mockPrisma } = buildService();
-    mockPrisma.recipeDef.findUnique.mockResolvedValue(makeRecipeDef({ requiredKeeperLevel: 10 }));
-    mockPrisma.user.findUnique.mockResolvedValue(makeUser({ keeperLevel: 1 }));
-
-    await expect(service.startCrafting('user-1', 'potion_heal_small', 'entity-1')).rejects.toThrow(BadRequestException);
   });
 
   it('throws BadRequestException when entity is not idle', async () => {

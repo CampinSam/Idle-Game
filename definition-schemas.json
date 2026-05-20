@@ -689,7 +689,6 @@
         "group":                { "type": "string", "description": "Sub-group within a category" },
         "cost":                 { "type": "array",  "description": "Crafting cost entries [{type, id, amount}]", "default": [] },
         "timer":                { "type": "object", "description": "Duration and skip settings {duration, skipable, boostable, skip_cost, skip_type}" },
-        "requiredKeeperLevel":  { "type": "number", "description": "Minimum player Keeper Level", "default": 1 },
         "difficulty": {
           "type": "number",
           "description": "Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes (no gate). Higher values make failure more likely at low CL.",
@@ -697,7 +696,7 @@
         },
         "tiers": {
           "type": "object",
-          "description": "Per-tier reward blocks keyed by quality tier. Valid keys: failure | common | uncommon | scare | rare | epic | legendary. Each value is a RecipeTierBlock. The 'failure' tier fires when the pass/fail gate fails. The 6 success tiers are weighted by a Gaussian bell curve centered around each tier's CL center value.",
+          "description": "Per-tier reward blocks keyed by quality tier. Valid keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. Each value is a RecipeTierBlock. The 'failure' tier fires when the pass/fail gate fails. The 7 success tiers are weighted by a Gaussian bell curve centered at CL 15/45/75/105/135/165/195. Optional top-level 'sigma' (number, default 22) narrows or widens the bell curve for this recipe.",
           "properties": {
             "failure":   { "$ref": "#/definitions/RecipeTierBlock" },
             "common":    { "$ref": "#/definitions/RecipeTierBlock" },
@@ -705,7 +704,9 @@
             "scare":     { "$ref": "#/definitions/RecipeTierBlock" },
             "rare":      { "$ref": "#/definitions/RecipeTierBlock" },
             "epic":      { "$ref": "#/definitions/RecipeTierBlock" },
-            "legendary": { "$ref": "#/definitions/RecipeTierBlock" }
+            "mythic":    { "$ref": "#/definitions/RecipeTierBlock" },
+            "legendary": { "$ref": "#/definitions/RecipeTierBlock" },
+            "sigma":     { "type": "number", "description": "Optional Gaussian sigma override (default 22). Lower = narrower spread, higher = wider." }
           },
           "default": {}
         },

@@ -253,8 +253,7 @@ export class JobPreviewService {
 
     const reqContext = this.gameRules.buildRequirementContext(user as any);
     const requirementStatus = evaluateTopLevelRules(recipe.requirements, reqContext, this.gameRules);
-    const keeperLevelMet = user.keeperLevel >= recipe.requiredKeeperLevel;
-    const baseRequirementsMet = requirementStatus.every(r => r.met) && keeperLevelMet;
+    const baseRequirementsMet = requirementStatus.every(r => r.met);
 
     const costEntries: Array<{ type: string; id: string; amount: number }> =
       Array.isArray(recipe.cost) ? recipe.cost : [];
@@ -343,11 +342,14 @@ export class JobPreviewService {
         const recipeTiersMap: Record<string, any> = (recipe.tiers as any) ?? {};
         const centerOverrides: Partial<Record<string, number>> = {};
         for (const [key, block] of Object.entries(recipeTiersMap)) {
-          if (key !== 'failure' && block && typeof (block as any).clRequirement === 'number') {
+          if (key !== 'failure' && key !== 'sigma' && block && typeof (block as any) === 'object' && typeof (block as any).clRequirement === 'number') {
             centerOverrides[key] = (block as any).clRequirement;
           }
         }
-        qualityProbs = qualityProbabilities(entityCl, centerOverrides);
+        const recipeSigma: number | undefined = typeof recipeTiersMap.sigma === 'number'
+          ? recipeTiersMap.sigma
+          : undefined;
+        qualityProbs = qualityProbabilities(entityCl, centerOverrides, recipeSigma);
         passRate = difficulty > 0
           ? Number(Math.min(1, entityCl / (entityCl + difficulty)).toFixed(4))
           : 1;
@@ -365,8 +367,6 @@ export class JobPreviewService {
         recipeId: recipe.id,
         recipeName: recipe.name,
         recipeTier,
-        requiredKeeperLevel: recipe.requiredKeeperLevel,
-        keeperLevelMet,
         effectiveDurationTicks,
         rewards: recipe.rewards ?? null,
         workshopTier,

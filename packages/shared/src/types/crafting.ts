@@ -12,7 +12,6 @@ export interface CraftingRecipe {
   description: string;
   cost: CostEntry[];
   timer: import('./timer').Timer;
-  requiredKeeperLevel: number;
   rewards?: RewardOrBundle[];
   requirements?: Requirements;
   effects?: EffectOrBundle[];

@@ -617,8 +617,6 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
     "recipeId": "recipe_sword",
     "recipeName": "Iron Sword",
     "recipeTier": 1,
-    "requiredKeeperLevel": 3,
-    "keeperLevelMet": true,
     "effectiveDurationTicks": 108,
     "rewards": { ... },
     "workshopTier": 2,
@@ -636,6 +634,7 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
       { "key": "scare",     "label": "Scare",     "probability": 0.28 },
       { "key": "rare",      "label": "Rare",      "probability": 0.05 },
       { "key": "epic",      "label": "Epic",      "probability": 0.01 },
+      { "key": "mythic",    "label": "Mythic",    "probability": 0.00 },
       { "key": "legendary", "label": "Legendary", "probability": 0.00 }
     ],
     "scaledCost": [{ "type": "currency", "id": "gold", "amount": 150 }],
@@ -651,8 +650,6 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 | `recipeId` | The `RecipeDef.id` |
 | `recipeName` | Display name of the recipe |
 | `recipeTier` | Recipe tier (1–3) read from `recipeDef.data.tier` |
-| `requiredKeeperLevel` | Minimum Keeper level to start |
-| `keeperLevelMet` | Whether player's current level satisfies the requirement |
 | `effectiveDurationTicks` | Post-modifier duration in ticks (reflects player effects and workshop tier) |
 | `tiers` | Per-tier reward blocks from the recipe definition (see `RecipeDef.tiers`) |
 | `difficulty` | Pass/fail gate difficulty from the recipe (`passRate = effectiveCL / (effectiveCL + difficulty)`) |
@@ -669,7 +666,7 @@ Returns a real-time server-computed preview of a job context. Replaces any clien
 | `qualityProbabilities` | Array of `{ key, label, probability }` for each quality tier at the entity's CL (with per-recipe `clRequirement` overrides applied). `null` when no entity given. |
 | `scaledCost` | Recipe base cost multiplied by `quantity`. Equals base cost when `quantity` is 1. |
 
-`allRequirementsMet` is `false` if any requirement rule fails **or** `keeperLevelMet` is `false`.
+`allRequirementsMet` is `false` if any requirement rule fails.
 
 ### Response — `jobType: "building"`
 

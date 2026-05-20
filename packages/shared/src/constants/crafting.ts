@@ -8,7 +8,6 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     description: 'Heals your entity. Side effects may include temporary feather loss.',
     cost: [{ type: 'currency', id: 'soft_arcanium', amount: 20 }],
     timer: { ...DEFAULT_TIMER, duration: 600, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 15 }] },
-    requiredKeeperLevel: 1,
   },
   {
     id: 'speed_potion',
@@ -16,7 +15,6 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     description: 'Makes entities go ZOOM. They may forget how to stop.',
     cost: [{ type: 'currency', id: 'soft_arcanium', amount: 30 }],
     timer: { ...DEFAULT_TIMER, duration: 900, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 25 }] },
-    requiredKeeperLevel: 5,
   },
   {
     id: 'luck_potion',
@@ -24,7 +22,6 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     description: 'Statistically questionable, but entities love the taste.',
     cost: [{ type: 'currency', id: 'soft_arcanium', amount: 40 }],
     timer: { ...DEFAULT_TIMER, duration: 1200, skipable: true, skip_cost: [{ type: 'currency', id: 'soft_arcanium', amount: 35 }], skip_type: 'scaling' },
-    requiredKeeperLevel: 10,
   },
   {
     id: 'power_potion',
@@ -32,6 +29,5 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     description: 'Guaranteed to make your entity feel swole. Temporary gains only.',
     cost: [{ type: 'currency', id: 'soft_arcanium', amount: 50 }],
     timer: { ...DEFAULT_TIMER, duration: 1500 },
-    requiredKeeperLevel: 15,
   },
 ];

@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { qualityProbabilities, QUALITY_TIERS } from '@derp/math';
 import { QUALITY_COLOURS } from './forgeUtils';
 
-const DEFAULT_CAP = 170;
+const DEFAULT_CAP = 220;
 const STEPS = 200;
 const SIGMA = 22;
 const ANIM_MS = 800;
