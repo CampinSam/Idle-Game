@@ -168,6 +168,12 @@ export default function ForgePage() {
     [entities, selectedEntityId],
   );
 
+  useEffect(() => {
+    if (selectedEntityId && !selectedEntityObj) {
+      setSelectedEntityId(null);
+    }
+  }, [selectedEntityId, selectedEntityObj]);
+
   const centerOverrides = useMemo<Partial<Record<string, number>>>(() => {
     if (!selectedRecipe?.tiers) return {};
     const overrides: Partial<Record<string, number>> = {};
@@ -658,7 +664,7 @@ export default function ForgePage() {
           <RosterCard
             title="Crafter"
             entities={idleEntities}
-            selectedIds={selectedEntityId ? [selectedEntityId] : []}
+            selectedIds={selectedEntityObj ? [selectedEntityObj.id] : []}
             maxSlots={1}
             useCase="forge"
             onRemove={() => setSelectedEntityId(null)}
