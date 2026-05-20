@@ -545,6 +545,69 @@ Quest and achievement objectives support an optional `selectionRule` field in ad
 
 ---
 
+## MissionDef — `tiers` field
+
+`MissionDef` supports an optional `tiers` object that enables quality-tiered outcomes for missions, using the same Gaussian bell-curve mechanic as crafting recipes. When `tiers` is present, the server rolls a quality level for each successful mission based on the team's mission power (in place of, or in addition to, the flat `success`/`failure` outcome blocks).
+
+### Tier keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `failure` | `OutcomeTierBlock` | Fires when the mission **fails** (i.e. the success roll is below `minSuccessChance`). Equivalent to the flat `failure` outcome block. |
+| `common` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 15. |
+| `uncommon` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 45. |
+| `scare` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 75. |
+| `rare` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 105. |
+| `epic` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 135. |
+| `mythic` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 165. |
+| `legendary` | `OutcomeTierBlock` | Success quality tier. Gaussian center CL = 195. |
+
+### `OutcomeTierBlock` shape
+
+```json
+{
+  "rewards": [ /* OutcomeEntry array — same format as mission success/failure rewards */ ],
+  "clRequirement": 120
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `rewards` | `OutcomeEntry[]` | Reward entries for this tier (same shape as `success.rewards` / `failure.rewards`). |
+| `clRequirement` | number | Optional — overrides the default Gaussian center CL for this tier. Useful to shift the probability distribution for specific missions. |
+
+### Top-level `sigma`
+
+An optional `sigma` key (number, default `22`) may be placed at the root of the `tiers` object to override the Gaussian bell-curve spread for this mission. Lower values produce sharper distributions (more predictable outcomes); higher values produce flatter distributions.
+
+### Example
+
+```json
+{
+  "tiers": {
+    "sigma": 20,
+    "failure": {
+      "rewards": [{ "type": "currency", "key": "soft_coins", "min": 10, "max": 20 }]
+    },
+    "common": {
+      "rewards": [{ "type": "currency", "key": "soft_coins", "min": 50, "max": 100 }]
+    },
+    "rare": {
+      "clRequirement": 120,
+      "rewards": [
+        { "type": "currency", "key": "soft_coins", "min": 200, "max": 300 },
+        { "type": "item", "key": "mat_rare_ore", "min": 1, "max": 2, "odds": 40 }
+      ]
+    },
+    "legendary": {
+      "rewards": [{ "type": "item", "key": "mat_legendary_core", "min": 1, "max": 1 }]
+    }
+  }
+}
+```
+
+---
+
 ## Player Jobs — `POST /api/jobs/preview`
 
 Returns a real-time server-computed preview of a job context. Replaces any client-side math for power, success chance, synergy, cost affordability, and requirements evaluation. Supports `"mission"`, `"crafting"`, and `"building"` job types.

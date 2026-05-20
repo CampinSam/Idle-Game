@@ -713,6 +713,84 @@
         "rewards": []
       }
     },
+    "OutcomeTiers": {
+      "description": "Per-tier outcome blocks used on MissionDef and RecipeDef. Each key maps to a tier block containing a rewards array. The 'failure' tier fires when the mission fails or the crafting pass/fail gate fails. The seven success tiers (common through legendary) are selected via a Gaussian bell curve centred on the entity's effective CL (crafting luck) or mission power. Optional top-level 'sigma' (default 22) controls the spread of the bell curve.",
+      "type": "object",
+      "properties": {
+        "sigma": {
+          "type": "number",
+          "default": 22,
+          "description": "Optional Gaussian spread override. Default is 22."
+        },
+        "failure": {
+          "type": "object",
+          "description": "Tier block fired when the mission fails or the crafting pass/fail gate fails.",
+          "properties": {
+            "rewards": {
+              "type": "array",
+              "description": "Outcome entries (same shape as OutcomeBlock.rewards)"
+            }
+          }
+        },
+        "common": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 15.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "uncommon": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 45.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "scare": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 75.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "rare": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 105.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "epic": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 135.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "mythic": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 165.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        },
+        "legendary": {
+          "type": "object",
+          "description": "Success tier block. Gaussian center CL = 195.",
+          "properties": {
+            "rewards": { "type": "array" },
+            "clRequirement": { "type": "number", "description": "Override the Gaussian center CL for this tier." }
+          }
+        }
+      },
+      "defaults": {}
+    },
     "CostObject": {
       "description": "DEPRECATED \u2014 Legacy map format. All costs now use the CostEntry array format [{type, id, amount}]. Kept for reference only.",
       "type": "object",
@@ -2991,6 +3069,11 @@
           "$ref": "#/complexTypes/OutcomeBlock",
           "description": "Failure outcome"
         },
+        "tiers": {
+          "$ref": "#/complexTypes/OutcomeTiers",
+          "default": {},
+          "description": "Per-tier outcome blocks keyed by quality level: failure | common | uncommon | scare | rare | epic | mythic | legendary. When present, the 'failure' key fires on mission failure; the seven success keys are selected via a Gaussian bell curve weighted by the team's mission power. Each block: { rewards: OutcomeEntry[], clRequirement?: number }. Optional top-level 'sigma' (default 22) controls the bell-curve spread. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
+        },
         "requirements": {
           "$ref": "#/complexTypes/Requirements",
           "default": [],
@@ -3146,9 +3229,9 @@
           "description": "Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes (no gate)."
         },
         "tiers": {
-          "type": "object",
+          "$ref": "#/complexTypes/OutcomeTiers",
           "default": {},
-          "description": "Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. Each tier block: { rewards: OutcomeBlock[], clRequirement?: number }. Optional top-level sigma (number, default 22) overrides bell-curve spread for this recipe. 'failure' fires when the pass/fail gate fails; success tiers are weighted by a Gaussian bell curve. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
+          "description": "Per-tier reward blocks. Keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. 'failure' fires when the pass/fail gate fails; the seven success tiers are selected via a Gaussian bell curve. Each block: { rewards: OutcomeEntry[], clRequirement?: number }. Optional top-level 'sigma' (default 22) overrides the bell-curve spread. Tier centers (CL): common=15, uncommon=45, scare=75, rare=105, epic=135, mythic=165, legendary=195."
         },
         "multicraft": {
           "type": [
