@@ -36,22 +36,36 @@ export class PaymentService {
     private adaRateService: AdaRateService,
   ) {}
 
+  // Sentinel account ID used by the bootstrap seed — never a real Stripe account.
+  private static readonly DEMO_ACCOUNT_ID = 'acct_derp_demo';
+
   async listGemPacks(): Promise<GemPack[]> {
+    // DISTINCT ON deduplicates by packId and always prefers live Stripe rows
+    // (non-demo account) over the bootstrap-seeded demo rows. The outer query
+    // then re-sorts by unit_amount for consistent display order.
     const rows = await this.prisma.$queryRawUnsafe<any[]>(`
-      SELECT
-        p.id AS product_id,
-        p.name AS product_name,
-        p.description AS product_description,
-        p.metadata AS product_metadata,
-        pr.id AS price_id,
-        pr.unit_amount,
-        pr.currency
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-      WHERE p.active = true
-        AND p.metadata->>'game' = 'derp-universe'
-      ORDER BY pr.unit_amount ASC
-    `);
+      SELECT product_id, product_name, product_description, product_metadata,
+             price_id, unit_amount, currency
+      FROM (
+        SELECT DISTINCT ON (p.metadata->>'packId')
+          p.id               AS product_id,
+          p.name             AS product_name,
+          p.description      AS product_description,
+          p.metadata         AS product_metadata,
+          pr.id              AS price_id,
+          pr.unit_amount,
+          pr.currency
+        FROM stripe.products p
+        JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = true
+          AND p.metadata->>'game' = 'derp-universe'
+        ORDER BY
+          p.metadata->>'packId',
+          CASE WHEN p._account_id = $1 THEN 1 ELSE 0 END ASC,
+          pr.unit_amount ASC
+      ) deduped
+      ORDER BY unit_amount ASC
+    `, PaymentService.DEMO_ACCOUNT_ID);
 
     return rows.map((row, idx) => ({
       id: row.product_metadata?.packId ?? row.product_id,
