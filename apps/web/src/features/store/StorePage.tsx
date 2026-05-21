@@ -281,6 +281,71 @@ function ItemCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) =
   );
 }
 
+function DerpPassBanner({ onCta, loading }: { onCta: () => void; loading: boolean }) {
+  return (
+    <div
+      className="relative rounded-[16px] overflow-hidden px-4 py-4 flex flex-col gap-3"
+      style={{
+        background: 'linear-gradient(135deg, #1c1240 0%, #2d1a5e 50%, #1a1040 100%)',
+        border: '1px solid rgba(251,191,36,0.4)',
+        boxShadow: '0 0 24px rgba(251,191,36,0.08)',
+      }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.06) 0%, transparent 60%)' }}
+      />
+      <div className="absolute top-0 left-0 w-[60%] h-full pointer-events-none animate-[store-shimmer_4s_infinite_linear]"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)' }} />
+
+      <div className="relative flex items-start gap-3">
+        <div
+          className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-[10px]"
+          style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.3)' }}
+        >
+          <span className="text-[22px] leading-none">👑</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[15px] font-black text-[#fbbf24] tracking-[0.3px]">Derp Pass</span>
+            <span
+              className="text-[8px] font-black tracking-[1px] uppercase px-1.5 py-0.5 rounded-[4px]"
+              style={{ background: 'rgba(251,191,36,0.2)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.35)' }}
+            >
+              Subscription
+            </span>
+          </div>
+          <div className="text-[11px] text-[#e2d9f3] leading-[1.5]">
+            Get <span className="font-black text-[#fbbf24]">300 gems</span> instantly and{' '}
+            <span className="font-black text-[#fbbf24]">100 gems</span> every day!
+          </div>
+          <div className="text-[10px] text-text-secondary mt-0.5">Exclusive badge &amp; bonuses included.</div>
+        </div>
+      </div>
+
+      <div className="relative flex items-center gap-2.5">
+        <button
+          onClick={onCta}
+          disabled={loading}
+          className="flex-1 py-2.5 rounded-[10px] text-[12px] font-black tracking-[0.5px] uppercase cursor-pointer transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+          style={{
+            background: loading ? 'rgba(251,191,36,0.2)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
+            color: '#1c1004',
+            border: '1px solid rgba(251,191,36,0.5)',
+            boxShadow: loading ? 'none' : '0 2px 12px rgba(251,191,36,0.25)',
+          }}
+        >
+          {loading ? 'Loading…' : '7 Day Free Trial'}
+        </button>
+        <div className="text-right">
+          <div className="text-[11px] font-black text-white">$4.99</div>
+          <div className="text-[9px] text-text-secondary">/month</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatUsd(unitAmount: number): string {
   return `$${(unitAmount / 100).toFixed(2)}`;
 }
@@ -621,6 +686,8 @@ export default function StorePage() {
   const [chainSelectPack, setChainSelectPack] = useState<GemPack | null>(null);
   const [successGems, setSuccessGems] = useState<number | null>(null);
   const [comingSoonCard, setComingSoonCard] = useState(false);
+  const [comingSoonPass, setComingSoonPass] = useState(false);
+  const [passLoading, setPassLoading] = useState(false);
 
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
@@ -715,6 +782,29 @@ export default function StorePage() {
       alert(err?.message ?? 'Could not start crypto payment. Please try again.');
     } finally {
       setBuyingPackId(null);
+    }
+  }, []);
+
+  const handleDerpPassCta = useCallback(async () => {
+    setPassLoading(true);
+    try {
+      const resp = await fetch('/api/v1/subscriptions/derp-pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message ?? 'Request failed');
+      if (data?.comingSoon || data?.action?.type === 'coming_soon') {
+        setComingSoonPass(true);
+        return;
+      }
+      if (data?.action?.type === 'redirect' && data.action.url) {
+        window.location.href = data.action.url;
+      }
+    } catch (err: any) {
+      alert(err?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setPassLoading(false);
     }
   }, []);
 
@@ -837,6 +927,27 @@ export default function StorePage() {
         />
       )}
 
+      {comingSoonPass && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setComingSoonPass(false); }}
+        >
+          <div className="w-full max-w-xs mx-3 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(251,191,36,0.3)] rounded-t-[20px] sm:rounded-[20px] p-6 flex flex-col items-center gap-4 shadow-[0_0_40px_rgba(251,191,36,0.1)] text-center">
+            <span className="text-[40px]">👑</span>
+            <div className="text-[16px] font-black text-[#fbbf24]">Derp Pass Coming Soon</div>
+            <div className="text-[12px] text-text-secondary leading-relaxed">
+              Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!
+            </div>
+            <button
+              onClick={() => setComingSoonPass(false)}
+              className="w-full py-2.5 rounded-[10px] text-[13px] font-bold bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.35)] text-[#fbbf24] hover:bg-[rgba(251,191,36,0.25)] cursor-pointer transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
       {comingSoonCard && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
@@ -940,6 +1051,8 @@ export default function StorePage() {
                     />
                   ))}
                 </div>
+
+                <DerpPassBanner onCta={handleDerpPassCta} loading={passLoading} />
 
                 <div className="grid grid-cols-3 gap-2 pt-1">
                   {([

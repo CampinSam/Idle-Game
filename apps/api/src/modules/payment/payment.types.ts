@@ -36,3 +36,8 @@ export interface PurchaseStatusResult {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface SubscriptionResult {
+  action: { type: 'redirect'; url: string } | { type: 'coming_soon' };
+  comingSoon?: boolean;
+}

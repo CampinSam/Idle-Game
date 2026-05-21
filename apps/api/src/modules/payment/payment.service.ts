@@ -5,7 +5,7 @@ import { PurchaseEventBus } from './purchase-event.bus';
 import { AdaRateService } from './ada-rate.service';
 import { getUncachableStripeClient } from '../../stripe/stripe-client';
 import { PurchaseStatus, PurchasePaymentMethod } from '@prisma/client';
-import type { CreatePurchaseResult, GemPack, PurchaseStatusResult } from './payment.types';
+import type { CreatePurchaseResult, GemPack, PurchaseStatusResult, SubscriptionResult } from './payment.types';
 
 // EVM crypto price map: USDC has 6 decimals ($0.99 = 990_000).
 const CRYPTO_EVM_PRICES: Record<string, { usdcAmount: bigint }> = {
@@ -378,6 +378,59 @@ export class PaymentService {
       createdAt: purchase.createdAt.toISOString(),
       updatedAt: purchase.updatedAt.toISOString(),
     };
+  }
+
+  async createDerpPassSubscription(
+    userId: string,
+    successUrl: string,
+    cancelUrl: string,
+  ): Promise<SubscriptionResult> {
+    const priceId = process.env.STRIPE_PASS_PRICE_ID;
+
+    let stripe: any;
+    try {
+      stripe = await getUncachableStripeClient();
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      const isNotConfigured =
+        msg.includes('Missing Replit environment variables') ||
+        msg.includes('Stripe integration not connected or missing secret key');
+      if (!isNotConfigured) throw err;
+      return { action: { type: 'coming_soon' }, comingSoon: true };
+    }
+
+    if (!priceId) {
+      return { action: { type: 'coming_soon' }, comingSoon: true };
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    let stripeCustomerId = user.stripeCustomerId ?? undefined;
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId },
+      });
+      stripeCustomerId = customer.id;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { stripeCustomerId },
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: 'subscription',
+      subscription_data: { trial_period_days: 7 },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { userId, product: 'derp_pass' },
+    });
+
+    return { action: { type: 'redirect', url: session.url! } };
   }
 
   private async getWebhookSecret(): Promise<string | undefined> {

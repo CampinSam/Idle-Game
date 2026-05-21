@@ -48,6 +48,22 @@ export class PaymentController {
     return this.paymentService.getPurchaseStatus(id, req.user.id);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('subscriptions/derp-pass')
+  async createDerpPassSubscription(@Request() req: any) {
+    const userId: string = req.user.id;
+    const origin = req.headers.origin || req.headers.referer || '';
+    const baseUrl = origin
+      ? origin.replace(/\/$/, '')
+      : `${req.protocol}://${req.get('host')}`;
+
+    return this.paymentService.createDerpPassSubscription(
+      userId,
+      `${baseUrl}/store?tab=gems&pass=success`,
+      `${baseUrl}/store?tab=gems`,
+    );
+  }
+
   @Post('purchases/stripe/webhook')
   async stripeWebhook(
     @Req() req: RawBodyRequest<Request>,
