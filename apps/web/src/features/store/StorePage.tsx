@@ -70,6 +70,15 @@ interface CryptoModalState {
 
 const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
 
+const PACK_ART: Record<string, string> = {
+  gems_100:  '/gem-packs/handful.png',
+  gems_500:  '/gem-packs/satchel.png',
+  gems_1200: '/gem-packs/chest.png',
+  gems_2000: '/gem-packs/mountain.png',
+  gems_2500: '/gem-packs/vault.png',
+  gems_5000: '/gem-packs/trove.png',
+};
+
 const BADGE_CLASS =
   'inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-black tracking-[1px] text-white uppercase';
 
@@ -595,14 +604,26 @@ function GemPackCard({
       </div>
 
       <div
-        className="relative mx-2 mt-1.5 mb-0 rounded-[8px] flex items-center justify-center py-2.5"
+        className="relative mx-2 mt-1.5 mb-0 rounded-[8px] overflow-hidden flex items-center justify-center"
         style={{
           background: `radial-gradient(ellipse at 50% 60%, ${pack.borderColor} 0%, transparent 70%)`,
+          height: '72px',
         }}
       >
-        <GameIcon src="premium_gems" size={pack.iconSize} />
+        {PACK_ART[pack.id] ? (
+          <img
+            src={PACK_ART[pack.id]}
+            alt={pack.displayName}
+            className="h-full w-full object-cover object-center"
+            draggable={false}
+          />
+        ) : (
+          <div className="py-2.5">
+            <GameIcon src="premium_gems" size={pack.iconSize} />
+          </div>
+        )}
         {pack.badgeType === 'extra' && pack.badgeLabel && (
-          <span className="absolute bottom-0.5 left-1 px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-[0.5px] text-white uppercase leading-none bg-[#16a34a]">
+          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-[0.5px] text-white uppercase leading-none bg-[#16a34a] z-10">
             {pack.badgeLabel}
           </span>
         )}
