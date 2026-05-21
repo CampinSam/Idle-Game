@@ -25,6 +25,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SynergyRule: 'synergyRule',
   SelectionRuleDef: 'selectionRuleDef',
   TelemetryDef: 'telemetryDef',
+  GemPackDef: 'gemPacks',
 };
 
 export interface FieldDef {
@@ -563,6 +564,21 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       subEvents: { type: 'telemetrySubEventsArray', default: [], description: 'List of sub-event counters, each bound to an event type and a RichSelection filter', section: 'subevents' },
     },
   },
+
+  GemPackDef: {
+    color: '#6366f1',
+    group: 'Store',
+    fields: {
+      id: { type: 'string', description: 'Pack ID (e.g. gems_100). Read-only — set by Stripe product metadata.' },
+      displayName: { type: 'string', required: true, description: 'Label shown on the pack card (e.g. HANDFUL, SATCHEL, CHEST)' },
+      accentColor: { type: 'color', description: 'Text color for the display name label (CSS color)' },
+      borderColor: { type: 'color', description: 'Card border color (CSS color or rgba)' },
+      glowColor: { type: 'color', description: 'Card glow/shadow color (CSS color, use "transparent" for none)' },
+      badgeType: { type: 'options', options: ['', 'best_value', 'extra'], description: 'Badge style: blank = none, best_value = "BEST VALUE" ribbon, extra = custom label badge' },
+      badgeLabel: { type: 'string', description: 'Text shown in the extra badge (e.g. "10% EXTRA"). Only used when badgeType is extra.' },
+      iconSize: { type: 'number', default: 40, description: 'Gem icon size in pixels (32–50)' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -572,7 +588,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Locations: ['BuildingDef', 'RoomDef', 'LocationDefinition', 'RegionDefinition'],
   Economy: ['Currency', 'ItemDef'],
   Rewards: ['GiftDef', 'LootboxDef', 'CheckInDef', 'QuestDef'],
-  Store: ['ShopItemDef'],
+  Store: ['ShopItemDef', 'GemPackDef'],
   NFT: ['NftCollectionDef'],
   Entities: ['EntityDefinition'],
   Effects: ['EffectDef'],

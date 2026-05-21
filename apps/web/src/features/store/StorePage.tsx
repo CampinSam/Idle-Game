@@ -15,6 +15,13 @@ interface GemPack {
   unitAmount: number;
   currency: string;
   displayOrder: number;
+  displayName: string;
+  accentColor: string;
+  borderColor: string;
+  glowColor: string;
+  badgeType: 'best_value' | 'extra' | null;
+  badgeLabel: string | null;
+  iconSize: number;
 }
 
 interface CostEntry {
@@ -65,23 +72,6 @@ const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
 
 const BADGE_CLASS =
   'inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-black tracking-[1px] text-white uppercase';
-
-const PACK_META: Record<string, {
-  label: string;
-  nameColor: string;
-  borderColor: string;
-  glowColor: string;
-  badgeType: null | 'best_value' | 'extra';
-  badgeLabel?: string;
-  iconSize: number;
-}> = {
-  gems_100:  { label: 'HANDFUL',  nameColor: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)',  glowColor: 'transparent',                  badgeType: null,           iconSize: 32 },
-  gems_500:  { label: 'SATCHEL',  nameColor: '#fb923c', borderColor: 'rgba(251,146,60,0.35)',  glowColor: 'transparent',                  badgeType: null,           iconSize: 36 },
-  gems_1200: { label: 'CHEST',    nameColor: '#c4b5fd', borderColor: 'rgba(139,92,246,0.55)',  glowColor: 'rgba(139,92,246,0.18)',         badgeType: 'best_value',   iconSize: 42 },
-  gems_2000: { label: 'MOUNTAIN', nameColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)',  glowColor: 'transparent',                  badgeType: 'extra',        badgeLabel: '10% EXTRA', iconSize: 44 },
-  gems_2500: { label: 'VAULT',    nameColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)',  glowColor: 'transparent',                  badgeType: 'extra',        badgeLabel: '20% EXTRA', iconSize: 44 },
-  gems_5000: { label: 'TROVE',    nameColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)',   glowColor: 'rgba(251,191,36,0.12)',         badgeType: 'extra',        badgeLabel: '35% EXTRA', iconSize: 50 },
-};
 
 const CONTENT_CHIP_CLASS =
   'inline-flex items-center gap-1 bg-black/25 border border-[rgba(139,92,246,0.15)] ' +
@@ -577,25 +567,16 @@ function GemPackCard({
   buying: boolean;
   hasWallet: boolean;
 }) {
-  const meta = PACK_META[pack.id] ?? {
-    label: pack.name.toUpperCase(),
-    nameColor: '#c4b5fd',
-    borderColor: 'rgba(139,92,246,0.35)',
-    glowColor: 'transparent',
-    badgeType: null,
-    iconSize: 40,
-  };
-
   return (
     <div
       className="relative flex flex-col rounded-[14px] overflow-hidden motion-safe:animate-[card-enter_0.2s_ease-out_both]"
       style={{
         background: 'linear-gradient(160deg,#151230 0%,#1e1848 100%)',
-        border: `1px solid ${meta.borderColor}`,
-        boxShadow: meta.glowColor !== 'transparent' ? `0 0 14px ${meta.glowColor}` : undefined,
+        border: `1px solid ${pack.borderColor}`,
+        boxShadow: pack.glowColor !== 'transparent' ? `0 0 14px ${pack.glowColor}` : undefined,
       }}
     >
-      {meta.badgeType === 'best_value' && (
+      {pack.badgeType === 'best_value' && (
         <span
           className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-[5px] text-[7px] font-black tracking-[0.8px] text-white uppercase whitespace-nowrap leading-none"
           style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
@@ -605,16 +586,16 @@ function GemPackCard({
       )}
 
       <div className="px-2 pt-2.5 pb-0 text-center">
-        <div className="text-[9px] font-black tracking-[1.2px] uppercase leading-none" style={{ color: meta.nameColor }}>
-          {meta.label}
+        <div className="text-[9px] font-black tracking-[1.2px] uppercase leading-none" style={{ color: pack.accentColor }}>
+          {pack.displayName}
         </div>
       </div>
 
       <div className="relative flex items-center justify-center py-2">
-        <GameIcon src="premium_gems" size={meta.iconSize} />
-        {meta.badgeType === 'extra' && meta.badgeLabel && (
+        <GameIcon src="premium_gems" size={pack.iconSize} />
+        {pack.badgeType === 'extra' && pack.badgeLabel && (
           <span className="absolute bottom-0.5 left-1 px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-[0.5px] text-white uppercase leading-none bg-[#16a34a]">
-            {meta.badgeLabel}
+            {pack.badgeLabel}
           </span>
         )}
       </div>

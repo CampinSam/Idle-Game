@@ -1322,6 +1322,86 @@ Get purchase status. Players can only fetch their own purchases.
 
 ---
 
+---
+
+## Gem Pack Display — `/api/admin/gemPacks`
+
+These endpoints let content editors update the visual presentation of gem packs (labels, colors, badges) without a code change or redeploy. The display metadata is stored in Stripe product metadata and read by the public `/v1/payments/packs` endpoint.
+
+### `GET /api/admin/gemPacks`
+
+List all gem packs with their current display settings.
+
+**Auth:** Admin
+
+**Response:** `GemPackDef[]`
+
+```json
+[
+  {
+    "id": "gems_100",
+    "productId": "prod_gems_100",
+    "name": "100 Gems",
+    "gemAmount": 100,
+    "unitAmount": 99,
+    "currency": "usd",
+    "displayOrder": 0,
+    "displayName": "HANDFUL",
+    "accentColor": "#f59e0b",
+    "borderColor": "rgba(245,158,11,0.35)",
+    "glowColor": "transparent",
+    "badgeType": null,
+    "badgeLabel": null,
+    "iconSize": 32
+  }
+]
+```
+
+---
+
+### `GET /api/admin/gemPacks/:packId`
+
+Get a single gem pack by pack ID (e.g. `gems_100`).
+
+**Auth:** Admin
+
+---
+
+### `PUT /api/admin/gemPacks/:packId`
+
+Update the display metadata for a gem pack. Only the supplied fields are changed; others are preserved.
+
+**Auth:** Admin
+
+**Body:**
+```json
+{
+  "displayName": "HANDFUL",
+  "accentColor": "#f59e0b",
+  "borderColor": "rgba(245,158,11,0.35)",
+  "glowColor": "transparent",
+  "badgeType": "best_value",
+  "badgeLabel": "BEST VALUE",
+  "iconSize": 32
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `displayName` | `string` | Label shown on the pack card (e.g. HANDFUL, SATCHEL, CHEST) |
+| `accentColor` | `string` | CSS color for the display name text |
+| `borderColor` | `string` | CSS color/rgba for the card border |
+| `glowColor` | `string` | CSS color for the card glow shadow (`"transparent"` for none) |
+| `badgeType` | `"best_value" \| "extra" \| null` | Badge style: `null` = none, `"best_value"` = purple BEST VALUE ribbon, `"extra"` = green custom label |
+| `badgeLabel` | `string \| null` | Text in the extra badge (e.g. `"10% EXTRA"`). Only shown when `badgeType === "extra"`. |
+| `iconSize` | `number` | Gem icon size in pixels (32–50) |
+
+**Notes:**
+- Changes take effect immediately — the public `/v1/payments/packs` endpoint reads metadata on every request.
+- For live Stripe products (non-demo), this updates the metadata in the Stripe connector DB. Re-syncing from Stripe will overwrite admin changes; apply matching updates in the Stripe dashboard for persistence beyond a sync.
+
+---
+
 ## Crypto Payment Environment Variables
 
 | Variable               | Required for        | Description                                      |

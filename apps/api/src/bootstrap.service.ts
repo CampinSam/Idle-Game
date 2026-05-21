@@ -265,12 +265,30 @@ export class BootstrapService implements OnModuleInit {
     }));
 
     const packs = [
-      { id: 'prod_gems_100',  name: '100 Gems',   packId: 'gems_100',  gemAmount: 100,  unitAmount: 99,    priceId: 'price_gems_100'  },
-      { id: 'prod_gems_500',  name: '500 Gems',   packId: 'gems_500',  gemAmount: 500,  unitAmount: 499,   priceId: 'price_gems_500'  },
-      { id: 'prod_gems_1200', name: '1,200 Gems', packId: 'gems_1200', gemAmount: 1200, unitAmount: 999,   priceId: 'price_gems_1200' },
-      { id: 'prod_gems_2000', name: '2,000 Gems', packId: 'gems_2000', gemAmount: 2000, unitAmount: 1499,  priceId: 'price_gems_2000' },
-      { id: 'prod_gems_2500', name: '2,500 Gems', packId: 'gems_2500', gemAmount: 2500, unitAmount: 1999,  priceId: 'price_gems_2500' },
-      { id: 'prod_gems_5000', name: '5,000 Gems', packId: 'gems_5000', gemAmount: 5000, unitAmount: 2999,  priceId: 'price_gems_5000' },
+      {
+        id: 'prod_gems_100',  name: '100 Gems',   packId: 'gems_100',  gemAmount: 100,  unitAmount: 99,    priceId: 'price_gems_100',
+        displayName: 'HANDFUL', accentColor: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)', glowColor: 'transparent', badgeType: null, badgeLabel: null, iconSize: 32,
+      },
+      {
+        id: 'prod_gems_500',  name: '500 Gems',   packId: 'gems_500',  gemAmount: 500,  unitAmount: 499,   priceId: 'price_gems_500',
+        displayName: 'SATCHEL', accentColor: '#fb923c', borderColor: 'rgba(251,146,60,0.35)', glowColor: 'transparent', badgeType: null, badgeLabel: null, iconSize: 36,
+      },
+      {
+        id: 'prod_gems_1200', name: '1,200 Gems', packId: 'gems_1200', gemAmount: 1200, unitAmount: 999,   priceId: 'price_gems_1200',
+        displayName: 'CHEST', accentColor: '#c4b5fd', borderColor: 'rgba(139,92,246,0.55)', glowColor: 'rgba(139,92,246,0.18)', badgeType: 'best_value', badgeLabel: null, iconSize: 42,
+      },
+      {
+        id: 'prod_gems_2000', name: '2,000 Gems', packId: 'gems_2000', gemAmount: 2000, unitAmount: 1499,  priceId: 'price_gems_2000',
+        displayName: 'MOUNTAIN', accentColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: '10% EXTRA', iconSize: 44,
+      },
+      {
+        id: 'prod_gems_2500', name: '2,500 Gems', packId: 'gems_2500', gemAmount: 2500, unitAmount: 1999,  priceId: 'price_gems_2500',
+        displayName: 'VAULT', accentColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: '20% EXTRA', iconSize: 44,
+      },
+      {
+        id: 'prod_gems_5000', name: '5,000 Gems', packId: 'gems_5000', gemAmount: 5000, unitAmount: 2999,  priceId: 'price_gems_5000',
+        displayName: 'TROVE', accentColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)', glowColor: 'rgba(251,191,36,0.12)', badgeType: 'extra', badgeLabel: '35% EXTRA', iconSize: 50,
+      },
     ];
 
     let seeded = 0;
@@ -278,7 +296,13 @@ export class BootstrapService implements OnModuleInit {
       const productRaw = JSON.stringify({
         id: p.id, object: 'product', active: true, name: p.name,
         description: `${p.name.replace(',', '')} of premium in-game currency.`,
-        metadata: { game: 'derp-universe', packId: p.packId, gemAmount: String(p.gemAmount) },
+        metadata: {
+          game: 'derp-universe', packId: p.packId, gemAmount: String(p.gemAmount),
+          displayName: p.displayName, accentColor: p.accentColor,
+          borderColor: p.borderColor, glowColor: p.glowColor,
+          badgeType: p.badgeType ?? '', badgeLabel: p.badgeLabel ?? '',
+          iconSize: String(p.iconSize),
+        },
         images: [], marketing_features: [], created: now, updated: now, livemode: false,
       });
       const priceRaw = JSON.stringify({
@@ -291,7 +315,8 @@ export class BootstrapService implements OnModuleInit {
       const productRes = await this.prisma.$executeRawUnsafe(`
         INSERT INTO stripe.products (_account_id, _raw_data)
         VALUES ($1, $2::jsonb)
-        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (id) DO UPDATE SET _raw_data = EXCLUDED._raw_data
+        WHERE stripe.products._account_id = $1
       `, DEMO_ACCOUNT_ID, productRaw);
 
       await this.prisma.$executeRawUnsafe(`

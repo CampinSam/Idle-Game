@@ -71,16 +71,26 @@ export class PaymentService {
       ORDER BY unit_amount ASC
     `, PaymentService.DEMO_ACCOUNT_ID);
 
-    return rows.map((row, idx) => ({
-      id: row.product_metadata?.packId ?? row.product_id,
-      name: row.product_name,
-      description: row.product_description ?? '',
-      gemAmount: Number(row.product_metadata?.gemAmount ?? 0),
-      priceId: row.price_id,
-      unitAmount: Number(row.unit_amount),
-      currency: row.currency ?? 'usd',
-      displayOrder: idx,
-    }));
+    return rows.map((row, idx) => {
+      const meta = row.product_metadata ?? {};
+      return {
+        id: meta.packId ?? row.product_id,
+        name: row.product_name,
+        description: row.product_description ?? '',
+        gemAmount: Number(meta.gemAmount ?? 0),
+        priceId: row.price_id,
+        unitAmount: Number(row.unit_amount),
+        currency: row.currency ?? 'usd',
+        displayOrder: idx,
+        displayName: meta.displayName ?? row.product_name,
+        accentColor: meta.accentColor ?? '#c4b5fd',
+        borderColor: meta.borderColor ?? 'rgba(139,92,246,0.35)',
+        glowColor: meta.glowColor ?? 'transparent',
+        badgeType: (meta.badgeType as 'best_value' | 'extra' | null) ?? null,
+        badgeLabel: meta.badgeLabel ?? null,
+        iconSize: meta.iconSize ? Number(meta.iconSize) : 40,
+      };
+    });
   }
 
   async createPurchase(

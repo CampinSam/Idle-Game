@@ -1200,4 +1200,116 @@ export class AdminService {
 
     return { passed, resolvedContext: selCtx, trace };
   }
+
+  // ─── Gem Pack Display Admin ───────────────────────────────────────────────
+
+  // Matches PaymentService.DEMO_ACCOUNT_ID — identifies the bootstrap-seeded
+  // sentinel account so live (real Stripe) rows are always preferred over demo rows.
+  private static readonly GEM_PACK_DEMO_ACCOUNT_ID = 'acct_derp_demo';
+
+  async listAdminGemPacks(): Promise<any[]> {
+    // Mirror the exact deduplication/preference logic from PaymentService.listGemPacks():
+    // DISTINCT ON packId, prefer live rows (non-demo) over demo rows, then by price asc.
+    // This guarantees admins always see and edit the same row the storefront reads.
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(`
+      SELECT product_id, product_name, product_description, product_metadata,
+             price_id, unit_amount, currency
+      FROM (
+        SELECT DISTINCT ON (p.metadata->>'packId')
+          p.id               AS product_id,
+          p.name             AS product_name,
+          p.description      AS product_description,
+          p.metadata         AS product_metadata,
+          pr.id              AS price_id,
+          pr.unit_amount,
+          pr.currency
+        FROM stripe.products p
+        JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = true
+          AND p.metadata->>'game' = 'derp-universe'
+        ORDER BY
+          p.metadata->>'packId',
+          CASE WHEN p._account_id = $1 THEN 1 ELSE 0 END ASC,
+          pr.unit_amount ASC
+      ) deduped
+      ORDER BY unit_amount ASC
+    `, AdminService.GEM_PACK_DEMO_ACCOUNT_ID);
+
+    return rows.map((row, idx) => {
+      const meta = row.product_metadata ?? {};
+      return {
+        id: meta.packId ?? row.product_id,
+        productId: row.product_id,
+        name: row.product_name,
+        description: row.product_description ?? '',
+        gemAmount: Number(meta.gemAmount ?? 0),
+        priceId: row.price_id,
+        unitAmount: Number(row.unit_amount),
+        currency: row.currency ?? 'usd',
+        displayOrder: idx,
+        displayName: meta.displayName ?? row.product_name,
+        accentColor: meta.accentColor ?? '#c4b5fd',
+        borderColor: meta.borderColor ?? 'rgba(139,92,246,0.35)',
+        glowColor: meta.glowColor ?? 'transparent',
+        badgeType: meta.badgeType || null,
+        badgeLabel: meta.badgeLabel || null,
+        iconSize: meta.iconSize ? Number(meta.iconSize) : 40,
+      };
+    });
+  }
+
+  async getAdminGemPack(packId: string): Promise<any> {
+    const packs = await this.listAdminGemPacks();
+    const pack = packs.find(p => p.id === packId);
+    if (!pack) throw new NotFoundException(`Gem pack "${packId}" not found`);
+    return pack;
+  }
+
+  async updateAdminGemPack(
+    packId: string,
+    data: {
+      displayName?: string;
+      accentColor?: string;
+      borderColor?: string;
+      glowColor?: string;
+      badgeType?: string | null;
+      badgeLabel?: string | null;
+      iconSize?: number;
+    },
+  ): Promise<any> {
+    // Use the same account-preference ordering as listAdminGemPacks() / PaymentService so
+    // the update always targets the exact row the storefront will read for this packId.
+    const rows = await this.prisma.$queryRawUnsafe<any[]>(`
+      SELECT p.id AS product_id, p.metadata AS product_metadata
+      FROM stripe.products p
+      WHERE p.active = true
+        AND p.metadata->>'game' = 'derp-universe'
+        AND p.metadata->>'packId' = $1
+      ORDER BY CASE WHEN p._account_id = $2 THEN 1 ELSE 0 END ASC
+      LIMIT 1
+    `, packId, AdminService.GEM_PACK_DEMO_ACCOUNT_ID);
+
+    if (!rows.length) throw new NotFoundException(`Gem pack "${packId}" not found`);
+    const row = rows[0];
+    const currentMeta = row.product_metadata ?? {};
+
+    const updatedMeta = {
+      ...currentMeta,
+      ...(data.displayName !== undefined  && { displayName: data.displayName }),
+      ...(data.accentColor !== undefined  && { accentColor: data.accentColor }),
+      ...(data.borderColor !== undefined  && { borderColor: data.borderColor }),
+      ...(data.glowColor !== undefined    && { glowColor: data.glowColor }),
+      ...(data.badgeType !== undefined    && { badgeType: data.badgeType ?? '' }),
+      ...(data.badgeLabel !== undefined   && { badgeLabel: data.badgeLabel ?? '' }),
+      ...(data.iconSize !== undefined     && { iconSize: String(data.iconSize) }),
+    };
+
+    await this.prisma.$executeRawUnsafe(`
+      UPDATE stripe.products
+      SET _raw_data = jsonb_set(_raw_data, '{metadata}', $1::jsonb)
+      WHERE id = $2
+    `, JSON.stringify(updatedMeta), row.product_id);
+
+    return this.getAdminGemPack(packId);
+  }
 }

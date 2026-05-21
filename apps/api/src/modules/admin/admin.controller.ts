@@ -63,6 +63,7 @@ export class AdminController {
       { key: 'synergyRule', name: 'Synergy Rules', table: 'synergy_rules' },
       { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
       { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
+      { key: 'gemPacks', name: 'Gem Pack Display', table: 'stripe.products' },
     ];
   }
 
@@ -647,6 +648,34 @@ export class AdminController {
     },
   ) {
     return this.adminService.evaluateSelection(body);
+  }
+
+  // ─── Gem Pack Display ─────────────────────────────────────────────────────
+
+  @Get('gemPacks')
+  listGemPacks() {
+    return this.adminService.listAdminGemPacks();
+  }
+
+  @Get('gemPacks/:packId')
+  getGemPack(@Param('packId') packId: string) {
+    return this.adminService.getAdminGemPack(packId);
+  }
+
+  @Put('gemPacks/:packId')
+  updateGemPack(
+    @Param('packId') packId: string,
+    @Body() body: {
+      displayName?: string;
+      accentColor?: string;
+      borderColor?: string;
+      glowColor?: string;
+      badgeType?: string | null;
+      badgeLabel?: string | null;
+      iconSize?: number;
+    },
+  ) {
+    return this.adminService.updateAdminGemPack(packId, body);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

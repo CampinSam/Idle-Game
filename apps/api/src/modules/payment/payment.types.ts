@@ -7,6 +7,23 @@ export interface GemPack {
   unitAmount: number;
   currency: string;
   displayOrder: number;
+  displayName: string;
+  accentColor: string;
+  borderColor: string;
+  glowColor: string;
+  badgeType: 'best_value' | 'extra' | null;
+  badgeLabel: string | null;
+  iconSize: number;
+}
+
+export interface GemPackDisplayUpdate {
+  displayName?: string;
+  accentColor?: string;
+  borderColor?: string;
+  glowColor?: string;
+  badgeType?: 'best_value' | 'extra' | null;
+  badgeLabel?: string | null;
+  iconSize?: number;
 }
 
 export type PurchaseAction =
