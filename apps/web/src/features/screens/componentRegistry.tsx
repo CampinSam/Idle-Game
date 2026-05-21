@@ -6,7 +6,6 @@ import {
   useSyncLocations,
   useSyncCurrencyBalances,
   useAllActiveJobs,
-  useGlobalPowers,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector } from '../../store';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
@@ -375,7 +374,7 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
       </div>
       <button
         className="mt-3 w-full bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-[#1a1640] rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(245,158,11,0.4)]"
-        onClick={() => navigate('/locations')}
+        onClick={() => navigate('/crafting')}
       >
         GO TO WORKSHOPS
       </button>
