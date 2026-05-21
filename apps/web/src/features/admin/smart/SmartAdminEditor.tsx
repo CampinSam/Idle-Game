@@ -4,6 +4,7 @@ import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS, TableSchema } from './tabl
 import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
+import { migrateMissionOutcomes } from './migrateMissionOutcomes';
 
 interface TableEntry {
   key: string;
@@ -242,7 +243,12 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setSelectedId(rec.id);
     setIsNew(false);
     setDeleteConfirm(false);
-    dispatch({ type: 'LOAD', record: rec });
+    if (activeTable === TABLE_API_KEYS.MissionDef) {
+      const { record: migrated, migrated: wasMigrated } = migrateMissionOutcomes(rec);
+      dispatch({ type: wasMigrated ? 'LOAD_DIRTY' : 'LOAD', record: migrated });
+    } else {
+      dispatch({ type: 'LOAD', record: rec });
+    }
   };
 
   const handleNewRecord = () => {
@@ -262,10 +268,14 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       if (!confirm('You have unsaved changes. Duplicate your current edits as a new record?')) return;
     }
     const { id, createdAt, updatedAt, ...rest } = editorState.record;
+    const duplicated =
+      activeTable === TABLE_API_KEYS.MissionDef
+        ? migrateMissionOutcomes(rest).record
+        : rest;
     setSelectedId(null);
     setIsNew(true);
     setDeleteConfirm(false);
-    dispatch({ type: 'LOAD_DIRTY', record: rest });
+    dispatch({ type: 'LOAD_DIRTY', record: duplicated });
   };
 
   const getSchemaName = () => {
