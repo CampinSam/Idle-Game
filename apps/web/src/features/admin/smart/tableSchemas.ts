@@ -26,7 +26,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SelectionRuleDef: 'selectionRuleDef',
   TelemetryDef: 'telemetryDef',
   GemPackDef: 'gemPacks',
-  GameDefinition: 'gameDefinition',
+  GameDefinition: 'game-definitions',
 };
 
 export interface FieldDef {

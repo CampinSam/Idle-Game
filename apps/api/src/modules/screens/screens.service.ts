@@ -3,10 +3,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type {
   ScreenCompositionDefinition,
   ScreenResolutionContext,
-  ScreenSectionDefinition,
   VisibilityRuleGroup,
   VisibilityRule,
   PlatformKey,
+  AudienceRule,
 } from '@derp/shared';
 
 export interface ResolvedScreenDefinition {
@@ -28,7 +28,7 @@ export class ScreensService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // ─── Public resolution (with full pipeline) ───────────────────────────────
+  // ─── Public resolution (full pipeline) ────────────────────────────────────
 
   async resolveScreen(
     screenKey: string,
@@ -51,7 +51,7 @@ export class ScreensService {
       );
     }
 
-    // 1. Row-level time window check
+    // 1. Row-level time window
     if (row.startsAt && new Date(row.startsAt) > now) {
       throw new NotFoundException(`Screen "${screenKey}" is not yet available`);
     }
@@ -61,7 +61,7 @@ export class ScreensService {
 
     const def = row.data as ScreenCompositionDefinition;
 
-    // 2. Definition-level availability
+    // 2. Definition-level availability (startsAt/endsAt + seasonIds)
     if (def.availability) {
       const avail = def.availability;
       if (avail.startsAt && new Date(avail.startsAt) > now) {
@@ -69,6 +69,22 @@ export class ScreensService {
       }
       if (avail.endsAt && new Date(avail.endsAt) <= now) {
         throw new NotFoundException(`Screen "${screenKey}" is no longer available`);
+      }
+      if (avail.seasonIds?.length) {
+        const activeSeason = await (this.prisma as any).season.findFirst({
+          where: {
+            status: 'active',
+            startsAt: { lte: now },
+            endsAt: { gt: now },
+          },
+          select: { id: true },
+          orderBy: { endsAt: 'asc' },
+        });
+        if (!activeSeason || !avail.seasonIds.includes(activeSeason.id)) {
+          throw new NotFoundException(
+            `Screen "${screenKey}" is not available in the current season`,
+          );
+        }
       }
     }
 
@@ -87,24 +103,9 @@ export class ScreensService {
       }
     }
 
-    // 4. Audience checks (when user context is available)
-    if (def.audience && context.user) {
-      const aud = def.audience;
-      const user = context.user;
-      if (aud.minKeeperLevel !== undefined && user.keeperLevel < aud.minKeeperLevel) {
-        throw new NotFoundException(
-          `Screen "${screenKey}" requires Keeper Level ${aud.minKeeperLevel}`,
-        );
-      }
-      if (aud.maxKeeperLevel !== null && aud.maxKeeperLevel !== undefined && user.keeperLevel > aud.maxKeeperLevel) {
-        throw new NotFoundException(`Screen "${screenKey}" is not available at your Keeper Level`);
-      }
-      if (aud.walletStatus === 'connected' && user.walletCount === 0) {
-        throw new NotFoundException(`Screen "${screenKey}" requires a connected wallet`);
-      }
-      if (aud.walletStatus === 'not_connected' && user.walletCount > 0) {
-        throw new NotFoundException(`Screen "${screenKey}" is not available with a connected wallet`);
-      }
+    // 4. Audience checks (fail-safe for anonymous callers)
+    if (def.audience) {
+      this.evaluateAudience(screenKey, def.audience, context);
     }
 
     // 5. Filter sections by visibility and sort by priority
@@ -119,18 +120,14 @@ export class ScreensService {
     });
   }
 
-  // ─── Admin preview (no visibility filtering, raw data) ────────────────────
+  // ─── Admin preview (no filtering, raw data) ───────────────────────────────
 
   async resolvePreview(
     screenKey: string,
     version: number,
   ): Promise<ResolvedScreenDefinition> {
     const row = await (this.prisma as any).gameDefinition.findFirst({
-      where: {
-        type: 'screen_composition',
-        key: screenKey,
-        version,
-      },
+      where: { type: 'screen_composition', key: screenKey, version },
     });
 
     if (!row) {
@@ -251,9 +248,7 @@ export class ScreensService {
       }),
     ]);
 
-    this.logger.log(
-      `Published screen composition key="${screenKey}" version=${version}`,
-    );
+    this.logger.log(`Published screen composition key="${screenKey}" version=${version}`);
 
     return this.serialize(updated);
   }
@@ -262,19 +257,68 @@ export class ScreensService {
     return this.publish(screenKey, version);
   }
 
+  // ─── Audience evaluation ─────────────────────────────────────────────────
+
+  private evaluateAudience(
+    screenKey: string,
+    aud: AudienceRule,
+    context: ScreenResolutionContext,
+  ): void {
+    if (!context.user) {
+      // Fail-safe: deny anonymous callers if any auth-required constraint is present
+      const requiresAuth =
+        (aud.minKeeperLevel !== undefined && aud.minKeeperLevel > 0) ||
+        (aud.walletStatus !== undefined && aud.walletStatus !== 'any') ||
+        (aud.nftStatus !== undefined && aud.nftStatus !== 'any') ||
+        (aud.requiredFlags !== undefined && aud.requiredFlags.length > 0) ||
+        (aud.includeUserSegments !== undefined &&
+          aud.includeUserSegments.length > 0 &&
+          !aud.includeUserSegments.includes('all')) ||
+        (aud.excludeUserSegments !== undefined &&
+          aud.excludeUserSegments.includes('all'));
+
+      if (requiresAuth) {
+        throw new NotFoundException(
+          `Screen "${screenKey}" requires authentication`,
+        );
+      }
+      return;
+    }
+
+    const user = context.user;
+
+    if (aud.minKeeperLevel !== undefined && user.keeperLevel < aud.minKeeperLevel) {
+      throw new NotFoundException(
+        `Screen "${screenKey}" requires Keeper Level ${aud.minKeeperLevel}`,
+      );
+    }
+    if (
+      aud.maxKeeperLevel !== null &&
+      aud.maxKeeperLevel !== undefined &&
+      user.keeperLevel > aud.maxKeeperLevel
+    ) {
+      throw new NotFoundException(
+        `Screen "${screenKey}" is not available at your Keeper Level`,
+      );
+    }
+    if (aud.walletStatus === 'connected' && user.walletCount === 0) {
+      throw new NotFoundException(`Screen "${screenKey}" requires a connected wallet`);
+    }
+    if (aud.walletStatus === 'not_connected' && user.walletCount > 0) {
+      throw new NotFoundException(
+        `Screen "${screenKey}" is not available with a connected wallet`,
+      );
+    }
+  }
+
   // ─── Visibility evaluator ─────────────────────────────────────────────────
 
   private buildVisibilityContext(ctx: ScreenResolutionContext): Record<string, unknown> {
     return {
       user: ctx.user
-        ? {
-            keeperLevel: ctx.user.keeperLevel,
-            id: ctx.user.id,
-          }
+        ? { keeperLevel: ctx.user.keeperLevel, id: ctx.user.id }
         : {},
-      wallet: {
-        isConnected: (ctx.user?.walletCount ?? 0) > 0,
-      },
+      wallet: { isConnected: (ctx.user?.walletCount ?? 0) > 0 },
       flags: {},
       platform: ctx.platform ?? 'web',
       local: {},
@@ -304,32 +348,19 @@ export class ScreensService {
     const { operator, value } = rule;
 
     switch (operator) {
-      case 'equals':
-        return val === value;
-      case 'not_equals':
-        return val !== value;
-      case 'greater_than':
-        return typeof val === 'number' && val > (value as number);
-      case 'greater_than_or_equal':
-        return typeof val === 'number' && val >= (value as number);
-      case 'less_than':
-        return typeof val === 'number' && val < (value as number);
-      case 'less_than_or_equal':
-        return typeof val === 'number' && val <= (value as number);
-      case 'includes':
-        return Array.isArray(val) && val.includes(value);
-      case 'not_includes':
-        return Array.isArray(val) && !val.includes(value);
-      case 'exists':
-        return val !== undefined && val !== null;
-      case 'not_exists':
-        return val === undefined || val === null;
-      case 'in':
-        return Array.isArray(value) && (value as unknown[]).includes(val);
-      case 'not_in':
-        return Array.isArray(value) && !(value as unknown[]).includes(val);
-      default:
-        return true;
+      case 'equals': return val === value;
+      case 'not_equals': return val !== value;
+      case 'greater_than': return typeof val === 'number' && val > (value as number);
+      case 'greater_than_or_equal': return typeof val === 'number' && val >= (value as number);
+      case 'less_than': return typeof val === 'number' && val < (value as number);
+      case 'less_than_or_equal': return typeof val === 'number' && val <= (value as number);
+      case 'includes': return Array.isArray(val) && val.includes(value);
+      case 'not_includes': return Array.isArray(val) && !val.includes(value);
+      case 'exists': return val !== undefined && val !== null;
+      case 'not_exists': return val === undefined || val === null;
+      case 'in': return Array.isArray(value) && (value as unknown[]).includes(val);
+      case 'not_in': return Array.isArray(value) && !(value as unknown[]).includes(val);
+      default: return true;
     }
   }
 
