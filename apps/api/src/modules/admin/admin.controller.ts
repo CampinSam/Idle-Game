@@ -70,11 +70,49 @@ export class AdminController {
     ];
   }
 
-  // ─── Game Definition: publish / rollback ─────────────────────────────────
+  // ─── Game Definitions: dedicated CRUD ────────────────────────────────────
 
   @Get('game-definitions')
   listGameDefinitions(@Query('key') key?: string) {
     return this.screensService.listByKey(key);
+  }
+
+  @Get('game-definitions/:id')
+  getGameDefinition(@Param('id') id: string) {
+    return this.screensService.getById(id);
+  }
+
+  @Post('game-definitions')
+  createGameDefinition(
+    @Body() body: {
+      type: string;
+      key: string;
+      version: number;
+      isActive?: boolean;
+      startsAt?: string | null;
+      endsAt?: string | null;
+      data: Record<string, any>;
+    },
+  ) {
+    return this.screensService.create(body);
+  }
+
+  @Put('game-definitions/:id')
+  updateGameDefinition(
+    @Param('id') id: string,
+    @Body() body: {
+      isActive?: boolean;
+      startsAt?: string | null;
+      endsAt?: string | null;
+      data?: Record<string, any>;
+    },
+  ) {
+    return this.screensService.update(id, body);
+  }
+
+  @Delete('game-definitions/:id')
+  archiveGameDefinition(@Param('id') id: string) {
+    return this.screensService.archive(id);
   }
 
   @Post('game-definitions/:key/:version/publish')

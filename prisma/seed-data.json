@@ -23,21 +23,21 @@
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "\ud83d\udc8e",
+      "symbol": "💎",
       "iconKey": "arcanium",
       "type": "SOFT"
     },
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "\ud83d\udca0",
+      "symbol": "💠",
       "iconKey": "essence",
       "type": "HARD"
     },
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "\ud83d\udca0",
+      "symbol": "💠",
       "iconKey": "gems",
       "type": "PREMIUM"
     }
@@ -2024,10 +2024,10 @@
         }
       ],
       "rewardPreview": [
-        "\u26a1 40-80 XP",
-        "\ud83d\udee1\ufe0f 20-40 KXP",
-        "\ud83d\udc8e 20-50 soft_arcanium",
-        "\ud83c\udf81 1-3 iron_ore (10%)"
+        "⚡ 40-80 XP",
+        "🛡️ 20-40 KXP",
+        "💎 20-50 soft_arcanium",
+        "🎁 1-3 iron_ore (10%)"
       ],
       "visibilityRequirements": [
         {
@@ -2591,69 +2591,92 @@
           "name": "Home Screen",
           "description": "Main dashboard shown after login. Draft — not yet active.",
           "owner": "design",
-          "tags": ["home", "live_ops", "mobile"]
+          "tags": [
+            "home",
+            "live_ops",
+            "mobile"
+          ]
         },
         "layout": {
-          "style": "scroll",
-          "paddingBottom": 80
+          "layoutType": "vertical_feed",
+          "safeArea": true,
+          "padding": "standard",
+          "gap": "standard",
+          "scroll": true,
+          "refreshBehavior": "pull_to_refresh"
         },
         "navigation": {
+          "showTopBar": true,
           "showBottomNav": true,
-          "bottomNavActiveKey": "home",
-          "headerStyle": "default"
+          "selectedTab": "home",
+          "title": "Home",
+          "backBehavior": "none"
         },
         "dataSources": [
           {
             "id": "banners",
-            "type": "server",
+            "sourceType": "api",
             "endpoint": "/api/ui/home-banners",
-            "cacheSeconds": 60
+            "cacheTtlSeconds": 60,
+            "required": false
           },
           {
             "id": "daily_checkin",
-            "type": "server",
+            "sourceType": "api",
             "endpoint": "/api/checkin/status",
-            "cacheSeconds": 30
+            "cacheTtlSeconds": 30,
+            "required": false
+          },
+          {
+            "id": "player_summary",
+            "sourceType": "api",
+            "endpoint": "/api/player/summary",
+            "cacheTtlSeconds": 30,
+            "required": true
           }
         ],
         "sections": [
           {
             "id": "banner_carousel",
-            "label": "Banner Carousel",
-            "order": 0,
-            "components": [
-              {
-                "id": "home_banners",
-                "componentKey": "BannerCarousel",
-                "dataSourceId": "banners",
-                "order": 0
-              }
-            ]
+            "component": "BannerCarousel",
+            "priority": 10,
+            "slot": "main",
+            "props": {
+              "dataSourceId": "banners"
+            }
           },
           {
-            "id": "daily_actions",
-            "label": "Daily Actions",
-            "order": 1,
-            "components": [
-              {
-                "id": "daily_checkin_card",
-                "componentKey": "DailyCheckInCard",
-                "dataSourceId": "daily_checkin",
-                "order": 0
-              }
-            ]
+            "id": "daily_checkin_card",
+            "component": "DailyCheckInCard",
+            "priority": 20,
+            "slot": "main",
+            "props": {
+              "dataSourceId": "daily_checkin"
+            }
+          },
+          {
+            "id": "quick_status",
+            "component": "QuickStatusCards",
+            "priority": 30,
+            "slot": "main",
+            "props": {
+              "dataSourceId": "player_summary"
+            }
+          },
+          {
+            "id": "daily_quests",
+            "component": "DailyQuestPanel",
+            "priority": 40,
+            "slot": "main",
+            "props": {
+              "dataSourceId": "player_summary"
+            }
           },
           {
             "id": "active_missions",
-            "label": "Active Missions",
-            "order": 2,
-            "components": [
-              {
-                "id": "mission_list",
-                "componentKey": "ActiveMissionList",
-                "order": 0
-              }
-            ]
+            "component": "MissionFeaturedCard",
+            "priority": 50,
+            "slot": "main"
           }
         ],
         "fallback": {
@@ -2678,42 +2701,45 @@
           "name": "Store Screen",
           "description": "Main store screen. Draft — not yet active.",
           "owner": "design",
-          "tags": ["store", "economy", "mobile"]
+          "tags": [
+            "store",
+            "economy",
+            "mobile"
+          ]
         },
         "layout": {
-          "style": "scroll",
-          "paddingBottom": 80
+          "layoutType": "vertical_feed",
+          "safeArea": true,
+          "padding": "standard",
+          "gap": "standard",
+          "scroll": true,
+          "refreshBehavior": "pull_to_refresh"
         },
         "navigation": {
-          "title": "Store",
+          "showTopBar": true,
           "showBottomNav": true,
-          "bottomNavActiveKey": "store",
-          "headerStyle": "default"
+          "selectedTab": "store",
+          "title": "Store",
+          "backBehavior": "none"
         },
         "sections": [
           {
             "id": "featured_offers",
-            "label": "Featured",
-            "order": 0,
-            "components": [
-              {
-                "id": "featured_shop_items",
-                "componentKey": "FeaturedShopRail",
-                "order": 0
-              }
-            ]
+            "component": "StoreOfferCarousel",
+            "priority": 10,
+            "slot": "main"
+          },
+          {
+            "id": "store_item_grid",
+            "component": "StoreItemGrid",
+            "priority": 20,
+            "slot": "main"
           },
           {
             "id": "gem_packs",
-            "label": "Gem Packs",
-            "order": 1,
-            "components": [
-              {
-                "id": "gem_pack_grid",
-                "componentKey": "GemPackGrid",
-                "order": 0
-              }
-            ]
+            "component": "GemPackGrid",
+            "priority": 30,
+            "slot": "main"
           }
         ],
         "fallback": {
