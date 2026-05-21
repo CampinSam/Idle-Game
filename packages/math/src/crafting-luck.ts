@@ -67,6 +67,44 @@ export const qualityProbabilities = (
   }));
 };
 
+/**
+ * Collapses raw quality probabilities so that tiers with no rewards fold their
+ * probability into the nearest preceding tier that does have rewards.
+ * If no prior tier has rewards yet, the probability is deferred and folded into
+ * the first tier that does. Tiers with no rewards are omitted from the result.
+ */
+export const collapseQualityProbabilities = (
+  probs: QualityProbability[],
+  tierHasRewards: (key: string) => boolean,
+): QualityProbability[] => {
+  const accumulated: Record<string, number> = {};
+  let lastDefinedKey: string | null = null;
+  let deferred = 0;
+
+  for (const prob of probs) {
+    if (tierHasRewards(prob.key)) {
+      accumulated[prob.key] = (accumulated[prob.key] ?? 0) + prob.probability + deferred;
+      deferred = 0;
+      lastDefinedKey = prob.key;
+    } else if (lastDefinedKey !== null) {
+      accumulated[lastDefinedKey] = (accumulated[lastDefinedKey] ?? 0) + prob.probability;
+    } else {
+      deferred += prob.probability;
+    }
+  }
+
+  if (deferred > 0) {
+    const firstWithRewards = probs.find((p) => tierHasRewards(p.key));
+    if (firstWithRewards) {
+      accumulated[firstWithRewards.key] = (accumulated[firstWithRewards.key] ?? 0) + deferred;
+    }
+  }
+
+  return probs
+    .filter((p) => tierHasRewards(p.key))
+    .map((p) => ({ ...p, probability: accumulated[p.key] ?? 0 }));
+};
+
 export const rollQualityFromCl = (
   cl: number,
   rng: SeededRng,

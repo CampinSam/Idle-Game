@@ -21,6 +21,7 @@ import {
   rollPassFail,
   rollQualityFromCl,
   qualityProbabilities,
+  collapseQualityProbabilities,
   durationSecondsToTicks,
   workshopLuckFloor,
   workshopParallelSlots,
@@ -612,14 +613,20 @@ export class CraftingService {
     if (!passed) {
       quality = 'failure';
       qualityLabel = 'Failure';
-      qualityProbs = qualityProbabilities(effectiveCLValue, centerOverrides, recipeSigma);
+      qualityProbs = collapseQualityProbabilities(
+        qualityProbabilities(effectiveCLValue, centerOverrides, recipeSigma),
+        (key) => Array.isArray(recipeTiers[key]?.rewards) && recipeTiers[key].rewards.length > 0,
+      );
       outcomeItems = Array.isArray(recipeTiers.failure?.rewards) ? recipeTiers.failure.rewards : [];
     } else {
       // Step 2 — quality roll across success tiers
       const rolled = rollQualityFromCl(effectiveCLValue, rng, centerOverrides, recipeSigma);
       quality = rolled.key;
       qualityLabel = rolled.label;
-      qualityProbs = rolled.probabilities;
+      qualityProbs = collapseQualityProbabilities(
+        rolled.probabilities,
+        (key) => Array.isArray(recipeTiers[key]?.rewards) && recipeTiers[key].rewards.length > 0,
+      );
       const tierBlock = recipeTiers[quality] ?? EMPTY_TIER_BLOCK;
       outcomeItems = Array.isArray(tierBlock.rewards) ? tierBlock.rewards : [];
     }

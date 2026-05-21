@@ -26,6 +26,7 @@ import {
   calculateCraftingLuck,
   workshopLuckFloor,
   qualityProbabilities,
+  collapseQualityProbabilities,
 } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import {
@@ -349,7 +350,11 @@ export class JobPreviewService {
         const recipeSigma: number | undefined = typeof recipeTiersMap.sigma === 'number'
           ? recipeTiersMap.sigma
           : undefined;
-        qualityProbs = qualityProbabilities(entityCl, centerOverrides, recipeSigma);
+        const rawProbs = qualityProbabilities(entityCl, centerOverrides, recipeSigma);
+        qualityProbs = collapseQualityProbabilities(rawProbs, (key) => {
+          const block = recipeTiersMap[key];
+          return block != null && typeof block === 'object' && Array.isArray((block as any).rewards) && (block as any).rewards.length > 0;
+        });
         passRate = difficulty > 0
           ? Number(Math.min(1, entityCl / (entityCl + difficulty)).toFixed(4))
           : 1;

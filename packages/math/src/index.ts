@@ -19,6 +19,7 @@ export {
   effectiveCL,
   rollPassFail,
   qualityProbabilities,
+  collapseQualityProbabilities,
   rollQualityFromCl,
   workshopLuckFloor,
   workshopParallelSlots,
