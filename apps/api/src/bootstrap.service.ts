@@ -230,6 +230,26 @@ export class BootstrapService implements OnModuleInit {
   }
 
   private async seedGemPacks() {
+    // Stripe schema is created by initStripe() which runs after the Nest app starts
+    // listening. On fresh environments or first boot, the schema may not exist yet.
+    // We catch that specific Postgres error and skip gracefully — the seed will
+    // succeed on the next restart once the schema is in place.
+    try {
+      await this._seedGemPacksInner();
+    } catch (err: any) {
+      const isRelationMissing =
+        err?.code === '42P01' || /relation.*does not exist/i.test(err?.message ?? '');
+      if (isRelationMissing) {
+        this.logger.warn(
+          'seedGemPacks skipped — Stripe schema not yet available (will seed on next startup)',
+        );
+        return;
+      }
+      throw err;
+    }
+  }
+
+  private async _seedGemPacksInner() {
     const DEMO_ACCOUNT_ID = 'acct_derp_demo';
     const now = Math.floor(Date.now() / 1000);
 

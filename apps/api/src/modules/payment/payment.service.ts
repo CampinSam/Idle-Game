@@ -168,7 +168,15 @@ export class PaymentService {
     let stripe: any;
     try {
       stripe = await getUncachableStripeClient();
-    } catch {
+    } catch (err: any) {
+      // Only treat known "integration not configured" errors as coming-soon.
+      // Re-throw transient network failures or other unexpected errors so they
+      // surface normally and don't silently degrade a live Stripe environment.
+      const msg: string = err?.message ?? '';
+      const isNotConfigured =
+        msg.includes('Missing Replit environment variables') ||
+        msg.includes('Stripe integration not connected or missing secret key');
+      if (!isNotConfigured) throw err;
       return { purchaseId: 'demo', action: { type: 'coming_soon' }, comingSoon: true };
     }
 
