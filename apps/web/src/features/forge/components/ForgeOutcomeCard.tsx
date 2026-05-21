@@ -45,15 +45,13 @@ export function ForgeOutcomeCard({
       {/* Divider */}
       <div className="h-px bg-white/10 w-full flex-shrink-0" />
 
-      {/* Bell curve chart — fills remaining height */}
-      <div className="flex-1 min-h-0">
-        <RarityCurveChart
-          recipeTiers={recipeTiers}
-          entityCl={entityCl}
-          centerOverrides={centerOverrides}
-          className="rounded overflow-hidden w-full h-full"
-        />
-      </div>
+      {/* Bell curve chart */}
+      <RarityCurveChart
+        recipeTiers={recipeTiers}
+        entityCl={entityCl}
+        centerOverrides={centerOverrides}
+        className="rounded overflow-hidden w-full"
+      />
 
       {/* Quality probability pills */}
       {qualityProbabilities && qualityProbabilities.length > 0 && (

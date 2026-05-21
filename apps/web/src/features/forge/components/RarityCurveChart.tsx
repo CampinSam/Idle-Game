@@ -2,27 +2,6 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { qualityProbabilities, QUALITY_TIERS } from '@derp/math';
 import { QUALITY_COLOURS } from './forgeUtils';
 
-function RarityCurveLegend() {
-  return (
-    <div className="flex flex-wrap gap-x-2 gap-y-0.5 justify-center mt-1">
-      {QUALITY_TIERS.map((t) => {
-        const color = QUALITY_COLOURS[t.key] ?? '#94a3b8';
-        return (
-          <span key={t.key} className="flex items-center gap-0.5">
-            <span
-              className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: color }}
-            />
-            <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color }}>
-              {t.label}
-            </span>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
 const DEFAULT_CAP = 220;
 const STEPS = 200;
 const SIGMA = 22;
@@ -241,11 +220,11 @@ export function RarityCurveChart({
   }, [displayedCl, displayedAmplitude, cap]);
 
   return (
-    <div className={`flex flex-col gap-1 ${className ?? ''}`}>
+    <div className={className}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         aria-hidden="true"
-        style={{ display: 'block', width: '100%', flex: '1 1 0' }}
+        style={{ display: 'block', width: '100%' }}
         preserveAspectRatio="none"
       >
         <defs>
@@ -298,7 +277,6 @@ export function RarityCurveChart({
           </>
         )}
       </svg>
-      <RarityCurveLegend />
     </div>
   );
 }
