@@ -5,6 +5,9 @@ import { PurchaseStatus, PurchasePaymentMethod } from '@prisma/client';
 
 const POLL_INTERVAL_MS = 15_000;
 const BLOCKFROST_BASE = 'https://cardano-mainnet.blockfrost.io/api/v0';
+// Approximate seconds per block for each chain (used to estimate fromBlock).
+const ETH_BLOCK_TIME_S = 12;
+const BLOCK_SCAN_BUFFER = 20; // extra blocks of safety margin
 
 @Injectable()
 export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
@@ -52,67 +55,87 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
 
         if (!purchase.destinationAddress || purchase.amountExpected == null) continue;
 
+        // Fetch the player's linked wallets to validate the payer address.
+        const linkedWallets: Array<{ chain: string; address: string }> =
+          await (this.prisma as any).linkedWallet.findMany({
+            where: { userId: purchase.userId },
+            select: { chain: true, address: true },
+          });
+
+        if (linkedWallets.length === 0) continue;
+
         let txHash: string | null = null;
+
         if (purchase.paymentMethod === PurchasePaymentMethod.CRYPTO_CARDANO) {
+          const cardanoAddresses = linkedWallets
+            .filter((w) => w.chain === 'CARDANO')
+            .map((w) => w.address);
+          if (cardanoAddresses.length === 0) continue;
+
           txHash = await this.checkCardanoPayment(
             purchase.destinationAddress,
             purchase.amountExpected,
+            purchase.createdAt,
+            cardanoAddresses,
           );
         } else if (purchase.paymentMethod === PurchasePaymentMethod.CRYPTO_EVM) {
+          const evmAddresses = linkedWallets
+            .filter((w) => w.chain !== 'CARDANO')
+            .map((w) => w.address.toLowerCase());
+          if (evmAddresses.length === 0) continue;
+
           txHash = await this.checkEvmPayment(
             purchase.destinationAddress,
             purchase.amountExpected,
             purchase.chain ?? 'ETH',
+            purchase.createdAt,
+            evmAddresses,
           );
         }
 
         if (!txHash) continue;
 
-        const duplicate = await this.prisma.purchase.findFirst({
-          where: {
-            txHash,
-            status: PurchaseStatus.CONFIRMED,
-            id: { not: purchase.id },
-          },
-        });
-        if (duplicate) {
-          this.logger.warn(`txHash ${txHash} already used in purchase ${duplicate.id} — rejecting ${purchase.id}`);
-          await this.prisma.purchase.updateMany({
-            where: { id: purchase.id, status: PurchaseStatus.PENDING },
-            data: { status: PurchaseStatus.FAILED },
-          });
-          continue;
-        }
-
-        await this.prisma.purchase.updateMany({
-          where: { id: purchase.id, status: PurchaseStatus.PENDING },
-          data: { txHash },
-        });
-
-        await this.paymentService.fulfillPurchase(purchase.id);
+        // fulfillPurchase atomically sets txHash + status=CONFIRMED inside a
+        // single SQL UPDATE. The DB @unique constraint on txHash rejects any
+        // second attempt to credit the same on-chain transaction.
+        await this.paymentService.fulfillPurchase(purchase.id, txHash);
         this.logger.log(`Fulfilled crypto purchase ${purchase.id} via txHash ${txHash}`);
-      } catch (err) {
-        this.logger.error(`Error processing purchase ${purchase.id}: ${err}`);
+      } catch (err: any) {
+        // A unique constraint violation means the txHash was already credited;
+        // treat it as a safe duplicate and log a warning rather than an error.
+        if (err?.code === 'P2002' || (typeof err?.message === 'string' && err.message.includes('unique constraint'))) {
+          this.logger.warn(`txHash already credited — purchase ${purchase.id} skipped (safe duplicate)`);
+        } else {
+          this.logger.error(`Error processing purchase ${purchase.id}: ${err}`);
+        }
       }
     }
   }
 
   private async checkCardanoPayment(
-    address: string,
+    destinationAddress: string,
     amountExpected: bigint,
+    createdAt: Date,
+    allowedSenderAddresses: string[],
   ): Promise<string | null> {
     const apiKey = process.env.BLOCKFROST_API_KEY;
     if (!apiKey) return null;
 
+    const createdAtSec = Math.floor(createdAt.getTime() / 1000);
+
     try {
       const resp = await fetch(
-        `${BLOCKFROST_BASE}/addresses/${address}/transactions?order=desc&count=10`,
+        `${BLOCKFROST_BASE}/addresses/${destinationAddress}/transactions?order=desc&count=20`,
         { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
       );
       if (!resp.ok) return null;
 
-      const txList = (await resp.json()) as Array<{ tx_hash: string }>;
-      for (const { tx_hash } of txList) {
+      const txList = (await resp.json()) as Array<{ tx_hash: string; block_time: number }>;
+
+      for (const { tx_hash, block_time } of txList) {
+        // Skip transactions that existed before the purchase was created.
+        if (block_time < createdAtSec) continue;
+
         const utxoResp = await fetch(
           `${BLOCKFROST_BASE}/txs/${tx_hash}/utxos`,
           { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
@@ -120,11 +143,19 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
         if (!utxoResp.ok) continue;
 
         const utxos = (await utxoResp.json()) as {
+          inputs: Array<{ address: string }>;
           outputs: Array<{ address: string; amount: Array<{ unit: string; quantity: string }> }>;
         };
 
+        // Verify at least one input comes from one of the player's linked Cardano addresses.
+        const senderMatch = (utxos.inputs ?? []).some((inp) =>
+          allowedSenderAddresses.includes(inp.address),
+        );
+        if (!senderMatch) continue;
+
+        // Verify at least one output sends sufficient ADA to our treasury.
         for (const output of utxos.outputs ?? []) {
-          if (output.address !== address) continue;
+          if (output.address !== destinationAddress) continue;
           const lovelace = output.amount?.find((a) => a.unit === 'lovelace');
           if (lovelace && BigInt(lovelace.quantity) >= amountExpected) {
             return tx_hash;
@@ -132,16 +163,18 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } catch (err) {
-      this.logger.warn(`Blockfrost check failed for ${address}: ${err}`);
+      this.logger.warn(`Blockfrost check failed for ${destinationAddress}: ${err}`);
     }
 
     return null;
   }
 
   private async checkEvmPayment(
-    address: string,
+    destinationAddress: string,
     amountExpected: bigint,
     chain: string,
+    createdAt: Date,
+    allowedSenderAddresses: string[],
   ): Promise<string | null> {
     const rpcUrl = this.getEvmRpc(chain);
     if (!rpcUrl) return null;
@@ -149,9 +182,8 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
     const usdcAddress = this.getUsdcAddress(chain);
     if (!usdcAddress) return null;
 
-    const addressLower = address.toLowerCase();
+    const paddedTo = `0x000000000000000000000000${destinationAddress.toLowerCase().replace('0x', '')}`;
     const transferTopic = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-    const paddedTo = `0x000000000000000000000000${addressLower.replace('0x', '')}`;
 
     try {
       const blockResp = await fetch(rpcUrl, {
@@ -164,7 +196,11 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
 
       const blockData = (await blockResp.json()) as any;
       const latestBlock = Number(blockData.result);
-      const fromBlock = '0x' + Math.max(0, latestBlock - 300).toString(16);
+
+      // Estimate the block number at purchase creation to bound the scan range.
+      const ageSeconds = Math.max(0, (Date.now() - createdAt.getTime()) / 1000);
+      const blocksAgo = Math.ceil(ageSeconds / ETH_BLOCK_TIME_S) + BLOCK_SCAN_BUFFER;
+      const fromBlock = '0x' + Math.max(0, latestBlock - blocksAgo).toString(16);
 
       const logsResp = await fetch(rpcUrl, {
         method: 'POST',
@@ -185,16 +221,24 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
       if (!logsResp.ok) return null;
 
       const logsData = (await logsResp.json()) as any;
-      const logs: Array<{ transactionHash: string; data: string }> = logsData.result ?? [];
+      const logs: Array<{ transactionHash: string; topics: string[]; data: string }> =
+        logsData.result ?? [];
 
       for (const log of logs) {
+        // Decode `from` address from topics[1] (ABI-encoded, 32 bytes, address in last 20).
+        const fromPadded = log.topics[1] ?? '';
+        const fromAddress = '0x' + fromPadded.slice(-40).toLowerCase();
+
+        // Verify the sender is one of the player's linked EVM wallets.
+        if (!allowedSenderAddresses.includes(fromAddress)) continue;
+
         const amount = BigInt(log.data);
         if (amount >= amountExpected) {
           return log.transactionHash;
         }
       }
     } catch (err) {
-      this.logger.warn(`EVM RPC check failed for ${address} on ${chain}: ${err}`);
+      this.logger.warn(`EVM RPC check failed for ${destinationAddress} on ${chain}: ${err}`);
     }
 
     return null;
@@ -203,7 +247,6 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
   private getEvmRpc(chain: string): string | null {
     const custom = process.env.EVM_RPC_URL;
     if (custom) return custom;
-
     switch (chain.toUpperCase()) {
       case 'ETH':
       case 'ETHEREUM':
@@ -219,7 +262,6 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
   private getUsdcAddress(chain: string): string | null {
     const custom = process.env.EVM_USDC_ADDRESS;
     if (custom) return custom;
-
     switch (chain.toUpperCase()) {
       case 'ETH':
       case 'ETHEREUM':

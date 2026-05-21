@@ -287,6 +287,28 @@ function CryptoPayModal({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeft = useExpiryCountdown(state.expiresAt);
 
+  // SSE listener for instant confirmation without waiting for the next poll cycle.
+  useEffect(() => {
+    const token = localStorage.getItem('derp_token') || '';
+    if (!token) return;
+    const rawApiUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
+    const sseBase = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '/api';
+    const es = new EventSource(`${sseBase}/v1/stream?token=${encodeURIComponent(token)}`);
+
+    es.addEventListener('purchase.confirmed', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.purchaseId === state.purchaseId) {
+          setConfirmedGems(data.gemAmount ?? 0);
+          setStatus('confirmed');
+        }
+      } catch { }
+    });
+
+    return () => es.close();
+  }, [state.purchaseId]);
+
+  // 5-second polling fallback (handles cases where SSE is not connected).
   useEffect(() => {
     if (status !== 'pending') return;
 

@@ -1294,7 +1294,7 @@ model Purchase {
   chain               String?
   destinationAddress  String?
   amountExpected      BigInt?
-  txHash              String?
+  txHash              String?   @unique
 
   expiresAt       DateTime?
   createdAt       DateTime              @default(now())

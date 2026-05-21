@@ -201,20 +201,31 @@ export class PaymentService {
     };
   }
 
-  async fulfillPurchase(purchaseId: string): Promise<void> {
-    let confirmedPurchase: { id: string; userId: string; gemAmount: number; packId: string; paymentMethod: string } | null = null;
+  async fulfillPurchase(purchaseId: string, txHash?: string): Promise<void> {
+    let confirmedPurchase: { purchaseId: string; userId: string; gemAmount: number; packId: string; paymentMethod: string } | null = null;
 
     await this.prisma.$transaction(async (tx) => {
       // Atomically claim the purchase: only one concurrent caller will observe
       // count=1 from the conditional UPDATE. Any subsequent caller sees count=0
       // and returns early — this is the idempotency guard that prevents
       // double-crediting even when duplicate webhook events arrive concurrently.
-      const result = await tx.$executeRaw`
-        UPDATE "purchases"
-        SET    status = 'CONFIRMED'
-        WHERE  id     = ${purchaseId}
-        AND    status = 'PENDING'
-      `;
+      // For crypto purchases txHash is set here inside the transaction so the
+      // DB @unique constraint prevents the same on-chain tx from crediting twice
+      // even across concurrent workers.
+      const result = txHash
+        ? await tx.$executeRaw`
+            UPDATE "purchases"
+            SET    status  = 'CONFIRMED',
+                   "txHash" = ${txHash}
+            WHERE  id       = ${purchaseId}
+            AND    status   = 'PENDING'
+          `
+        : await tx.$executeRaw`
+            UPDATE "purchases"
+            SET    status = 'CONFIRMED'
+            WHERE  id     = ${purchaseId}
+            AND    status = 'PENDING'
+          `;
 
       if (result === 0) {
         // Either already fulfilled (CONFIRMED/FAILED/EXPIRED) or does not exist.
@@ -241,7 +252,7 @@ export class PaymentService {
       });
 
       confirmedPurchase = {
-        id: purchase.id,
+        purchaseId: purchase.id,
         userId: purchase.userId,
         gemAmount: purchase.gemAmount,
         packId: purchase.packId,
