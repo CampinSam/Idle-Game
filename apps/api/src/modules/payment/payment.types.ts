@@ -15,6 +15,7 @@ export type PurchaseAction =
       type: 'payment_address';
       address: string;
       amountExpected: string;
+      amountDisplay: string;
       chain: string;
       expiresAt: string;
     };

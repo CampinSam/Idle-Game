@@ -12,6 +12,7 @@ import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PubSubService, PubSubMessage, BroadcastMessage } from '../infrastructure/pubsub.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PurchaseEventBus } from '../payment/purchase-event.bus';
 
 const HEARTBEAT_INTERVAL = 15000;
 const MAX_REPLAY = 100;
@@ -24,6 +25,7 @@ export class StreamController {
     private pubsub: PubSubService,
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private purchaseEventBus: PurchaseEventBus,
   ) {}
 
   @Get('stream')
@@ -79,10 +81,22 @@ export class StreamController {
       },
     );
 
+    const unsubscribePurchase = this.purchaseEventBus.subscribe((event) => {
+      if (event.userId === userId) {
+        this.sendEvent(res, 'purchase.confirmed', {
+          purchaseId: event.purchaseId,
+          gemAmount: event.gemAmount,
+          packId: event.packId,
+          paymentMethod: event.paymentMethod,
+        });
+      }
+    });
+
     const cleanup = () => {
       clearInterval(heartbeat);
       unsubscribe();
       unsubscribeBroadcast();
+      unsubscribePurchase();
     };
 
     req.on('close', cleanup);

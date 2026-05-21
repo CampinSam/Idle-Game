@@ -1,9 +1,25 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { PurchaseEventBus } from './purchase-event.bus';
 import { getUncachableStripeClient } from '../../stripe/stripe-client';
 import { PurchaseStatus, PurchasePaymentMethod } from '@prisma/client';
 import type { CreatePurchaseResult, GemPack, PurchaseStatusResult } from './payment.types';
+
+// Static crypto price map: pack USD price expressed as on-chain token units.
+// EVM: USDC has 6 decimals ($0.99 = 990_000). Cardano: lovelaces (1 ADA = 1_000_000).
+// ADA amounts are priced assuming 1 ADA ≈ $0.50; adjust via LOVELACE_PER_USD env var.
+const CRYPTO_PACK_PRICES: Record<string, { usdcAmount: bigint; lovelaceAmount: bigint }> = {
+  gems_100:  { usdcAmount: 990_000n,    lovelaceAmount: 2_000_000n    },
+  gems_500:  { usdcAmount: 4_990_000n,  lovelaceAmount: 10_000_000n   },
+  gems_1200: { usdcAmount: 9_990_000n,  lovelaceAmount: 20_000_000n   },
+  gems_2500: { usdcAmount: 19_990_000n, lovelaceAmount: 40_000_000n   },
+};
+
+// Gem amounts by pack (duplicates Stripe metadata — avoids a Stripe round-trip for crypto path).
+const PACK_GEM_AMOUNTS: Record<string, number> = {
+  gems_100: 100, gems_500: 500, gems_1200: 1200, gems_2500: 2500,
+};
 
 @Injectable()
 export class PaymentService {
@@ -12,6 +28,7 @@ export class PaymentService {
   constructor(
     private prisma: PrismaService,
     private currencyService: CurrencyService,
+    private purchaseEventBus: PurchaseEventBus,
   ) {}
 
   async listGemPacks(): Promise<GemPack[]> {
@@ -53,7 +70,71 @@ export class PaymentService {
     if (paymentMethod === 'stripe') {
       return this.createStripePurchase(userId, packId, successUrl, cancelUrl);
     }
+    if (paymentMethod === 'crypto_evm') {
+      return this.createCryptoPurchase(userId, packId, 'CRYPTO_EVM');
+    }
+    if (paymentMethod === 'crypto_cardano') {
+      return this.createCryptoPurchase(userId, packId, 'CRYPTO_CARDANO');
+    }
     throw new BadRequestException(`Payment method "${paymentMethod}" is not yet supported`);
+  }
+
+  private async createCryptoPurchase(
+    userId: string,
+    packId: string,
+    method: 'CRYPTO_EVM' | 'CRYPTO_CARDANO',
+  ): Promise<CreatePurchaseResult> {
+    const isEvm = method === 'CRYPTO_EVM';
+    const envKey = isEvm ? 'PAYMENT_ADDRESS_EVM' : 'PAYMENT_ADDRESS_CARDANO';
+    const destinationAddress = process.env[envKey];
+    if (!destinationAddress) {
+      throw new BadRequestException(
+        `Crypto payment not configured — set the ${envKey} environment variable.`,
+      );
+    }
+
+    const prices = CRYPTO_PACK_PRICES[packId];
+    if (!prices) {
+      throw new NotFoundException(`No crypto pricing found for pack "${packId}"`);
+    }
+    const gemAmount = PACK_GEM_AMOUNTS[packId];
+    if (!gemAmount) {
+      throw new NotFoundException(`Unknown pack "${packId}"`);
+    }
+
+    const amountExpected = isEvm ? prices.usdcAmount : prices.lovelaceAmount;
+    const chain = isEvm ? 'ETH' : 'CARDANO';
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        userId,
+        packId,
+        gemAmount,
+        paymentMethod: method,
+        status: PurchaseStatus.PENDING,
+        chain,
+        destinationAddress,
+        amountExpected,
+        expiresAt,
+      },
+    });
+
+    const amountDisplay = isEvm
+      ? `${(Number(amountExpected) / 1_000_000).toFixed(6)} USDC`
+      : `${(Number(amountExpected) / 1_000_000).toFixed(6)} ADA`;
+
+    return {
+      purchaseId: purchase.id,
+      action: {
+        type: 'payment_address',
+        address: destinationAddress,
+        amountExpected: amountExpected.toString(),
+        amountDisplay,
+        chain,
+        expiresAt: expiresAt.toISOString(),
+      } as any,
+    };
   }
 
   private async createStripePurchase(
@@ -121,13 +202,15 @@ export class PaymentService {
   }
 
   async fulfillPurchase(purchaseId: string): Promise<void> {
+    let confirmedPurchase: { id: string; userId: string; gemAmount: number; packId: string; paymentMethod: string } | null = null;
+
     await this.prisma.$transaction(async (tx) => {
       // Atomically claim the purchase: only one concurrent caller will observe
       // count=1 from the conditional UPDATE. Any subsequent caller sees count=0
       // and returns early — this is the idempotency guard that prevents
       // double-crediting even when duplicate webhook events arrive concurrently.
       const result = await tx.$executeRaw`
-        UPDATE "Purchase"
+        UPDATE "purchases"
         SET    status = 'CONFIRMED'
         WHERE  id     = ${purchaseId}
         AND    status = 'PENDING'
@@ -156,7 +239,20 @@ export class PaymentService {
         sourceType: 'purchase',
         sourceId: purchaseId,
       });
+
+      confirmedPurchase = {
+        id: purchase.id,
+        userId: purchase.userId,
+        gemAmount: purchase.gemAmount,
+        packId: purchase.packId,
+        paymentMethod: purchase.paymentMethod,
+      };
     });
+
+    // Emit after transaction commits — ensures SSE fires only on durable state.
+    if (confirmedPurchase) {
+      this.purchaseEventBus.emit(confirmedPurchase);
+    }
   }
 
   async handleStripeWebhook(payload: Buffer, signature: string): Promise<void> {

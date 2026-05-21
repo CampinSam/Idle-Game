@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
 import { useModal } from '../../context/ModalContext';
@@ -44,6 +44,22 @@ interface ShopItem {
   limitedUntil?: string;
 }
 
+interface LinkedWallet {
+  id: string;
+  chain: string;
+  address: string;
+  isPrimary: boolean;
+}
+
+interface CryptoModalState {
+  purchaseId: string;
+  address: string;
+  amountDisplay: string;
+  chain: string;
+  expiresAt: string;
+  paymentMethod: 'crypto_evm' | 'crypto_cardano';
+}
+
 const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
 
 const BADGE_CLASS =
@@ -52,6 +68,12 @@ const BADGE_CLASS =
 const CONTENT_CHIP_CLASS =
   'inline-flex items-center gap-1 bg-black/25 border border-[rgba(139,92,246,0.15)] ' +
   'rounded-[6px] px-[7px] py-[3px] text-[12px] font-bold text-[#d8b4fe]';
+
+function authHeaders() {
+  return {
+    Authorization: `Bearer ${localStorage.getItem('derp_token') || ''}`,
+  };
+}
 
 function useCountdown(limitedUntil?: string) {
   const [label, setLabel] = useState('');
@@ -71,6 +93,23 @@ function useCountdown(limitedUntil?: string) {
     const id = setInterval(update, 60000);
     return () => clearInterval(id);
   }, [limitedUntil]);
+  return label;
+}
+
+function useExpiryCountdown(expiresAt: string) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) { setLabel('Expired'); return; }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLabel(`${m}:${String(s).padStart(2, '0')}`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
   return label;
 }
 
@@ -228,7 +267,198 @@ function formatUsd(unitAmount: number): string {
   return `$${(unitAmount / 100).toFixed(2)}`;
 }
 
-function GemPackCard({ pack, onBuy, buying }: { pack: GemPack; onBuy: (pack: GemPack) => void; buying: boolean }) {
+function ChainLabel({ chain }: { chain: string }) {
+  if (chain === 'CARDANO') return <>🔵 ADA</>;
+  return <>🔷 USDC</>;
+}
+
+function CryptoPayModal({
+  state,
+  onClose,
+  onConfirmed,
+}: {
+  state: CryptoModalState;
+  onClose: () => void;
+  onConfirmed: (gemAmount: number) => void;
+}) {
+  const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired' | 'failed'>('pending');
+  const [copied, setCopied] = useState(false);
+  const [confirmedGems, setConfirmedGems] = useState(0);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeLeft = useExpiryCountdown(state.expiresAt);
+
+  useEffect(() => {
+    if (status !== 'pending') return;
+
+    const poll = async () => {
+      try {
+        const resp = await fetch(`/api/v1/purchases/${state.purchaseId}`, {
+          headers: authHeaders(),
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.status === 'CONFIRMED') {
+          setConfirmedGems(data.gemAmount ?? 0);
+          setStatus('confirmed');
+        } else if (data.status === 'EXPIRED' || data.status === 'FAILED') {
+          setStatus(data.status === 'EXPIRED' ? 'expired' : 'failed');
+        }
+      } catch { }
+    };
+
+    poll();
+    pollRef.current = setInterval(poll, 5000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [state.purchaseId, status]);
+
+  useEffect(() => {
+    if (status === 'confirmed') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      const t = setTimeout(() => onConfirmed(confirmedGems), 1800);
+      return () => clearTimeout(t);
+    }
+  }, [status, confirmedGems, onConfirmed]);
+
+  useEffect(() => {
+    if (timeLeft === 'Expired' && status === 'pending') {
+      setStatus('expired');
+    }
+  }, [timeLeft, status]);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(state.address).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [state.address]);
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(state.address)}&bgcolor=1a1640&color=c4b5fd&margin=6`;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-sm mx-2 mb-0 sm:mb-0 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(139,92,246,0.3)] rounded-t-[20px] sm:rounded-[20px] overflow-hidden shadow-[0_0_40px_rgba(139,92,246,0.2)]">
+
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-[rgba(139,92,246,0.15)]">
+          <div className="flex items-center gap-2">
+            <span className="text-[18px]">💳</span>
+            <span className="text-[15px] font-black text-white">Pay with Wallet</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-text-secondary hover:text-white cursor-pointer transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        {status === 'confirmed' ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-10 px-5">
+            <div className="text-[48px] animate-[card-enter_0.3s_ease-out_both]">✅</div>
+            <div className="text-[18px] font-black text-white">Payment Confirmed!</div>
+            <div className="text-[13px] text-[#a3e635] font-bold">
+              +{confirmedGems.toLocaleString()} Gems added to your account
+            </div>
+          </div>
+        ) : status === 'expired' ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-10 px-5">
+            <div className="text-[48px]">⏰</div>
+            <div className="text-[16px] font-black text-white">Payment Window Expired</div>
+            <div className="text-[13px] text-text-secondary text-center">This payment request has expired. Please start a new purchase.</div>
+            <button
+              onClick={onClose}
+              className="mt-2 px-5 py-2 rounded-[8px] text-[13px] font-bold bg-[rgba(139,92,246,0.2)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] cursor-pointer hover:bg-[rgba(139,92,246,0.3)] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        ) : status === 'failed' ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-10 px-5">
+            <div className="text-[48px]">❌</div>
+            <div className="text-[16px] font-black text-white">Payment Failed</div>
+            <div className="text-[13px] text-text-secondary text-center">Something went wrong. Please contact support if gems were deducted.</div>
+            <button
+              onClick={onClose}
+              className="mt-2 px-5 py-2 rounded-[8px] text-[13px] font-bold bg-[rgba(139,92,246,0.2)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] cursor-pointer hover:bg-[rgba(139,92,246,0.3)] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 p-4">
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="text-text-secondary">Chain</span>
+              <span className="font-bold text-[#c4b5fd]"><ChainLabel chain={state.chain} /></span>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="border-2 border-[rgba(139,92,246,0.4)] rounded-[12px] p-1.5 bg-[#0e0c2a]">
+                <img
+                  src={qrUrl}
+                  alt="Payment QR code"
+                  width={160}
+                  height={160}
+                  className="rounded-[8px]"
+                />
+              </div>
+              <div className="text-[11px] text-text-secondary">Scan or copy the address below</div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[11px] text-text-secondary uppercase tracking-wide font-semibold">Send to address</div>
+              <div className="flex items-center gap-2 bg-black/30 border border-[rgba(139,92,246,0.2)] rounded-[8px] px-3 py-2">
+                <div className="flex-1 text-[11px] text-[#c4b5fd] font-mono break-all leading-snug">{state.address}</div>
+                <button
+                  onClick={handleCopy}
+                  className="flex-shrink-0 px-2 py-1 text-[11px] font-bold rounded-[5px] border cursor-pointer transition-colors duration-150 border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.15)]"
+                >
+                  {copied ? '✓' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between bg-black/20 border border-[rgba(139,92,246,0.15)] rounded-[8px] px-3 py-2.5">
+              <span className="text-[12px] text-text-secondary">Exact amount</span>
+              <span className="text-[14px] font-black text-white">{state.amountDisplay}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-[12px]">
+              <span className="flex items-center gap-1.5 text-text-secondary">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                Waiting for payment…
+              </span>
+              <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
+                {timeLeft}
+              </span>
+            </div>
+
+            <div className="text-[10px] text-text-secondary text-center leading-snug px-2">
+              Send the exact amount shown. Payments are detected automatically and gems are credited instantly.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GemPackCard({
+  pack,
+  onBuyCard,
+  onBuyWallet,
+  buying,
+  hasWallet,
+}: {
+  pack: GemPack;
+  onBuyCard: (pack: GemPack) => void;
+  onBuyWallet: (pack: GemPack) => void;
+  buying: boolean;
+  hasWallet: boolean;
+}) {
   const isBestValue = pack.gemAmount === 2500;
   return (
     <div
@@ -256,7 +486,7 @@ function GemPackCard({ pack, onBuy, buying }: { pack: GemPack; onBuy: (pack: Gem
       ) : null}
       <button
         disabled={buying}
-        onClick={() => onBuy(pack)}
+        onClick={() => onBuyCard(pack)}
         data-sfx="ui.button_primary"
         className={
           `w-full mt-1 py-2 rounded-[8px] text-[13px] font-bold tracking-[0.3px] border cursor-pointer ` +
@@ -268,6 +498,22 @@ function GemPackCard({ pack, onBuy, buying }: { pack: GemPack; onBuy: (pack: Gem
       >
         {buying ? 'Redirecting…' : `${formatUsd(pack.unitAmount)} · Buy with Card`}
       </button>
+      {hasWallet && (
+        <button
+          disabled={buying}
+          onClick={() => onBuyWallet(pack)}
+          data-sfx="ui.button_primary"
+          className={
+            `w-full py-2 rounded-[8px] text-[12px] font-bold tracking-[0.3px] border cursor-pointer ` +
+            `transition-colors duration-150 ` +
+            (buying
+              ? 'opacity-50 cursor-not-allowed bg-transparent border-[rgba(139,92,246,0.15)] text-text-secondary'
+              : 'bg-transparent border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
+          }
+        >
+          💳 Pay with Wallet
+        </button>
+      )}
     </div>
   );
 }
@@ -291,24 +537,35 @@ export default function StorePage() {
   const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
   const [gemPacksError, setGemPacksError] = useState<string | null>(null);
 
+  const [wallets, setWallets] = useState<LinkedWallet[]>([]);
+  const [cryptoModal, setCryptoModal] = useState<CryptoModalState | null>(null);
+  const [chainSelectPack, setChainSelectPack] = useState<GemPack | null>(null);
+  const [successGems, setSuccessGems] = useState<number | null>(null);
+
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
   const { pushModal } = useModal();
 
+  const hasEvmWallet = wallets.some((w) => w.chain !== 'CARDANO');
+  const hasCardanoWallet = wallets.some((w) => w.chain === 'CARDANO');
+  const hasAnyWallet = hasEvmWallet || hasCardanoWallet;
+  const hasBothChains = hasEvmWallet && hasCardanoWallet;
+
   useEffect(() => {
-    fetch('/api/shop/items', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('derp_token') || ''}`,
-      },
-    })
+    fetch('/api/shop/items', { headers: authHeaders() })
       .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setItems(data);
-      })
+      .then((data) => { if (Array.isArray(data)) setItems(data); })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/player/wallets', { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setWallets(data); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -330,10 +587,7 @@ export default function StorePage() {
     try {
       const resp = await fetch('/api/v1/purchases', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('derp_token') || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ packId: pack.id, paymentMethod: 'stripe' }),
       });
       const data = await resp.json();
@@ -345,6 +599,52 @@ export default function StorePage() {
       setBuyingPackId(null);
       alert(err?.message ?? 'Something went wrong. Please try again.');
     }
+  }, []);
+
+  const initiateCryptoPurchase = useCallback(async (
+    pack: GemPack,
+    paymentMethod: 'crypto_evm' | 'crypto_cardano',
+  ) => {
+    setBuyingPackId(pack.id);
+    setChainSelectPack(null);
+    try {
+      const resp = await fetch('/api/v1/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ packId: pack.id, paymentMethod }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
+      if (data?.action?.type === 'payment_address') {
+        setCryptoModal({
+          purchaseId: data.purchaseId,
+          address: data.action.address,
+          amountDisplay: data.action.amountDisplay ?? data.action.amountExpected,
+          chain: data.action.chain,
+          expiresAt: data.action.expiresAt,
+          paymentMethod,
+        });
+      }
+    } catch (err: any) {
+      alert(err?.message ?? 'Could not start crypto payment. Please try again.');
+    } finally {
+      setBuyingPackId(null);
+    }
+  }, []);
+
+  const handleBuyWithWallet = useCallback((pack: GemPack) => {
+    if (hasBothChains) {
+      setChainSelectPack(pack);
+    } else {
+      const method = hasCardanoWallet ? 'crypto_cardano' : 'crypto_evm';
+      initiateCryptoPurchase(pack, method);
+    }
+  }, [hasBothChains, hasCardanoWallet, initiateCryptoPurchase]);
+
+  const handleCryptoConfirmed = useCallback((gemAmount: number) => {
+    setCryptoModal(null);
+    setSuccessGems(gemAmount);
+    setTimeout(() => setSuccessGems(null), 4000);
   }, []);
 
   const tabItems = items.filter((i) => i.tab === activeTab);
@@ -405,6 +705,52 @@ export default function StorePage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      {successGems !== null && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-[#14532d] border border-[#22c55e] text-[#bbf7d0] rounded-[10px] px-4 py-2.5 text-[13px] font-bold shadow-lg animate-[card-enter_0.3s_ease-out_both]">
+          ✅ +{successGems.toLocaleString()} Gems received!
+        </div>
+      )}
+
+      {chainSelectPack && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setChainSelectPack(null); }}
+        >
+          <div className="w-full max-w-xs mx-3 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(139,92,246,0.3)] rounded-t-[20px] sm:rounded-[20px] p-5 flex flex-col gap-4 shadow-[0_0_40px_rgba(139,92,246,0.2)]">
+            <div className="text-[15px] font-black text-white">Select Chain</div>
+            <div className="text-[12px] text-text-secondary">Which blockchain would you like to pay with?</div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => initiateCryptoPurchase(chainSelectPack, 'crypto_evm')}
+                className="w-full py-3 rounded-[10px] text-[13px] font-bold bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)] cursor-pointer transition-colors"
+              >
+                🔷 Ethereum / USDC
+              </button>
+              <button
+                onClick={() => initiateCryptoPurchase(chainSelectPack, 'crypto_cardano')}
+                className="w-full py-3 rounded-[10px] text-[13px] font-bold bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)] cursor-pointer transition-colors"
+              >
+                🔵 Cardano / ADA
+              </button>
+            </div>
+            <button
+              onClick={() => setChainSelectPack(null)}
+              className="text-[12px] text-text-secondary hover:text-white cursor-pointer transition-colors bg-transparent border-0"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cryptoModal && (
+        <CryptoPayModal
+          state={cryptoModal}
+          onClose={() => setCryptoModal(null)}
+          onConfirmed={handleCryptoConfirmed}
+        />
+      )}
+
       <div className="overflow-hidden flex flex-col flex-1 min-h-0">
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
@@ -460,13 +806,15 @@ export default function StorePage() {
                     <GemPackCard
                       key={pack.id}
                       pack={pack}
-                      onBuy={handleBuyGemPack}
+                      onBuyCard={handleBuyGemPack}
+                      onBuyWallet={handleBuyWithWallet}
                       buying={buyingPackId === pack.id}
+                      hasWallet={hasAnyWallet}
                     />
                   ))}
                 </div>
                 <div className="text-[10px] text-text-secondary text-center px-4 mt-1">
-                  Payments processed securely by Stripe. Gems are delivered instantly after payment.
+                  Payments processed securely. Gems are delivered instantly after payment confirmation.
                 </div>
               </div>
             )

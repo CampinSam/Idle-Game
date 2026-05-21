@@ -1243,3 +1243,95 @@ type GiftSpec = { giftDefId: string } | InlineGiftDef;
   }
 }
 ```
+
+---
+
+## Purchases — `/v1/purchases`
+
+Unified purchase API supporting Stripe and crypto (USDC/ADA) payment rails.
+
+### `POST /v1/purchases`
+
+Create a new gem pack purchase.
+
+**Auth:** Player JWT
+
+**Body:**
+```json
+{
+  "packId": "gems_100",
+  "paymentMethod": "stripe | crypto_evm | crypto_cardano"
+}
+```
+
+**Response (Stripe):**
+```json
+{
+  "purchaseId": "<uuid>",
+  "action": { "type": "redirect", "url": "https://checkout.stripe.com/..." }
+}
+```
+
+**Response (crypto_evm / crypto_cardano):**
+```json
+{
+  "purchaseId": "<uuid>",
+  "action": {
+    "type": "payment_address",
+    "address": "0xABC...",
+    "amountExpected": "990000",
+    "amountDisplay": "0.990000 USDC",
+    "chain": "ETH",
+    "expiresAt": "2026-05-21T03:20:00.000Z"
+  }
+}
+```
+
+`amountExpected` is in the smallest token unit (USDC: 6 decimals, ADA: lovelaces).
+Payment window is 30 minutes. On expiry the purchase row status becomes EXPIRED.
+
+**Static crypto pack prices:**
+
+| packId     | USDC (micro) | ADA (lovelaces) |
+|------------|-------------|-----------------|
+| gems_100   | 990,000     | 2,000,000       |
+| gems_500   | 4,990,000   | 10,000,000      |
+| gems_1200  | 9,990,000   | 20,000,000      |
+| gems_2500  | 19,990,000  | 40,000,000      |
+
+---
+
+### `GET /v1/purchases/:id`
+
+Get purchase status. Players can only fetch their own purchases.
+
+**Auth:** Player JWT
+
+**Response:**
+```json
+{
+  "id": "<uuid>",
+  "packId": "gems_100",
+  "gemAmount": 100,
+  "paymentMethod": "CRYPTO_EVM",
+  "status": "PENDING | CONFIRMED | FAILED | EXPIRED",
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+---
+
+## Crypto Payment Environment Variables
+
+| Variable               | Required for        | Description                                      |
+|------------------------|---------------------|--------------------------------------------------|
+| `PAYMENT_ADDRESS_EVM`  | crypto_evm rail     | Treasury EVM address to receive USDC payments    |
+| `PAYMENT_ADDRESS_CARDANO` | crypto_cardano rail | Treasury Cardano address to receive ADA       |
+| `EVM_RPC_URL`          | Optional            | Custom EVM JSON-RPC endpoint (default: Cloudflare Ethereum) |
+| `EVM_USDC_ADDRESS`     | Optional            | Custom USDC contract address (default: mainnet)  |
+| `BLOCKFROST_API_KEY`   | crypto_cardano rail | Blockfrost API key for Cardano on-chain checks   |
+
+The on-chain confirmation worker polls every 15 seconds. For EVM it checks USDC Transfer events via `eth_getLogs`; for Cardano it queries address transactions via Blockfrost. Confirmed transactions are deduplicated by `txHash` to prevent double-crediting.
+
+After confirmation, gems are credited via the shared `fulfillPurchase()` path and an SSE `purchase.confirmed` event is pushed to the player's stream.
