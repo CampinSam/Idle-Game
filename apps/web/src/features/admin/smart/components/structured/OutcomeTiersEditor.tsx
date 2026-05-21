@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import OutcomeListEditor from './OutcomeListEditor';
 import { RarityCurveChart } from '../../../../forge/components/RarityCurveChart';
+import { qualityProbabilities, collapseQualityProbabilities } from '@derp/math';
 import {
   containerStyle,
   entryCardStyle,
@@ -55,6 +56,17 @@ export default function OutcomeTiersEditor({ value, onChange }: OutcomeTiersEdit
     }
     return overrides;
   }, [tiers]);
+
+  const collapsedProbs = useMemo(() => {
+    const rawProbs = qualityProbabilities(100, centerOverrides, sigmaValue ?? 22);
+    const collapsed = collapseQualityProbabilities(rawProbs, (key) => {
+      const block = tiers[key];
+      return block != null && typeof block === 'object' && Array.isArray(block.rewards) && block.rewards.length > 0;
+    });
+    const map: Record<string, number> = {};
+    for (const p of collapsed) map[p.key] = p.probability;
+    return map;
+  }, [tiers, centerOverrides, sigmaValue]);
 
   const setTier = (key: string, block: TierBlock) => {
     onChange({ ...tiers, [key]: block });
@@ -120,9 +132,29 @@ export default function OutcomeTiersEditor({ value, onChange }: OutcomeTiersEdit
                   fontSize: 12,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                 }}
               >
                 {meta.label}
+                {meta.isSuccess && collapsedProbs[meta.key] != null && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: meta.color,
+                      background: `${meta.color}22`,
+                      border: `1px solid ${meta.color}55`,
+                      borderRadius: 4,
+                      padding: '1px 5px',
+                      letterSpacing: '0.04em',
+                    }}
+                    title="Collapsed probability at CL 100"
+                  >
+                    {Math.round(collapsedProbs[meta.key] * 100)}%
+                  </span>
+                )}
               </span>
               {meta.isSuccess && (
                 <div style={{ ...fieldRowStyle, marginLeft: 'auto' }}>

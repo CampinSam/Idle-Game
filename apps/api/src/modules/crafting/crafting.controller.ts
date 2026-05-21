@@ -27,10 +27,12 @@ export class CraftingController {
     @CurrentUser() user: { id: string },
     @Query('includeAll') includeAll?: string,
     @Query('locationId') locationId?: string,
+    @Query('recipeId') recipeId?: string,
   ) {
     return this.craftingService.getLuckForecast(user.id, {
       includeAll: includeAll === '1' || includeAll === 'true',
       locationId: locationId || undefined,
+      recipeId: recipeId || undefined,
     });
   }
 

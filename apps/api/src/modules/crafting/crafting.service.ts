@@ -180,7 +180,7 @@ export class CraftingService {
     return 1;
   }
 
-  async getLuckForecast(userId: string, options: { includeAll?: boolean; locationId?: string } = {}) {
+  async getLuckForecast(userId: string, options: { includeAll?: boolean; locationId?: string; recipeId?: string } = {}) {
     const includeAll = options.includeAll === true;
     const entities = await (this.prisma as any).entity.findMany({
       where: { ownerUserId: userId },
@@ -192,6 +192,22 @@ export class CraftingService {
     const workshopTier = await this.getMaxWorkshopTier(userId, options.locationId);
     const luckFloor = workshopLuckFloor(workshopTier);
 
+    let recipeTiersMap: Record<string, any> | null = null;
+    let recipeCenterOverrides: Partial<Record<string, number>> = {};
+    let recipeSigma: number | undefined;
+    if (options.recipeId) {
+      const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: options.recipeId } });
+      if (recipe) {
+        recipeTiersMap = (recipe.tiers as any) ?? {};
+        for (const [key, block] of Object.entries(recipeTiersMap!)) {
+          if (key !== 'failure' && key !== 'sigma' && block && typeof block === 'object' && typeof (block as any).clRequirement === 'number') {
+            recipeCenterOverrides[key] = (block as any).clRequirement;
+          }
+        }
+        recipeSigma = typeof recipeTiersMap!.sigma === 'number' ? recipeTiersMap!.sigma : undefined;
+      }
+    }
+
     const forecasts = entities.map((entity: any) => {
       const stats = (entity.stats as any) || {};
       const state = (entity.state as any) || {};
@@ -199,8 +215,17 @@ export class CraftingService {
       const progression = (entity.progression as any) || {};
       const rawCl = calculateCraftingLuck(stats);
       const cl = Math.max(rawCl, luckFloor);
-      const probs = qualityProbabilities(cl);
-      const topTier = probs.reduce((best, p) => p.probability > best.probability ? p : best, probs[0]);
+      const rawProbs = qualityProbabilities(cl, recipeCenterOverrides, recipeSigma);
+      let probs = rawProbs;
+      if (recipeTiersMap !== null) {
+        probs = collapseQualityProbabilities(rawProbs, (key) => {
+          const block = recipeTiersMap![key];
+          return block != null && typeof block === 'object' && Array.isArray((block as any).rewards) && (block as any).rewards.length > 0;
+        });
+      }
+      const topTier = probs.length > 0
+        ? probs.reduce((best, p) => p.probability > best.probability ? p : best, probs[0])
+        : rawProbs.reduce((best, p) => p.probability > best.probability ? p : best, rawProbs[0]);
       const display = (entity.display as any) || {};
       return {
         entityId: entity.id,
