@@ -405,6 +405,21 @@ class ApiClient {
     return this.request<any>(`/ui/modal?${q.toString()}`);
   }
 
+  get<T>(path: string): Promise<T> {
+    return this.request<T>(path);
+  }
+
+  rawRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  getScreenComposition(screenKey: string): Promise<import('@derp/shared').GameDefinitionRow> {
+    return this.request<import('@derp/shared').GameDefinitionRow>(`/screens/${screenKey}`);
+  }
+
   bootstrap() {
     return this.requestV1<BootstrapResponse>('/v1/bootstrap');
   }
