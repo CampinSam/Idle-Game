@@ -99,7 +99,7 @@ export class PaymentService {
       payment_method_types: ['card'],
       line_items: [{ price: pack.priceId, quantity: 1 }],
       mode: 'payment',
-      success_url: `${successUrl}?purchaseId=${purchase.id}`,
+      success_url: `${successUrl}${successUrl.includes('?') ? '&' : '?'}purchaseId=${purchase.id}`,
       cancel_url: cancelUrl,
       metadata: {
         purchaseId: purchase.id,
@@ -122,13 +122,31 @@ export class PaymentService {
 
   async fulfillPurchase(purchaseId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const purchase = await tx.purchase.findUnique({ where: { id: purchaseId } });
-      if (!purchase) throw new NotFoundException(`Purchase "${purchaseId}" not found`);
+      // Atomically claim the purchase: only one concurrent caller will observe
+      // count=1 from the conditional UPDATE. Any subsequent caller sees count=0
+      // and returns early — this is the idempotency guard that prevents
+      // double-crediting even when duplicate webhook events arrive concurrently.
+      const result = await tx.$executeRaw`
+        UPDATE "Purchase"
+        SET    status = 'CONFIRMED'
+        WHERE  id     = ${purchaseId}
+        AND    status = 'PENDING'
+      `;
 
-      if (purchase.status !== PurchaseStatus.PENDING) {
-        this.logger.log(`Purchase ${purchaseId} already in status ${purchase.status} — skipping (idempotent)`);
+      if (result === 0) {
+        // Either already fulfilled (CONFIRMED/FAILED/EXPIRED) or does not exist.
+        // Both cases are safe to skip — log at INFO so ops can audit.
+        const existing = await tx.purchase.findUnique({ where: { id: purchaseId } });
+        if (!existing) {
+          this.logger.warn(`fulfillPurchase: purchase "${purchaseId}" not found — skipping`);
+        } else {
+          this.logger.log(`fulfillPurchase: purchase "${purchaseId}" already ${existing.status} — skipping (idempotent)`);
+        }
         return;
       }
+
+      // We won the race — read the row to get userId/gemAmount for crediting.
+      const purchase = await tx.purchase.findUniqueOrThrow({ where: { id: purchaseId } });
 
       await this.currencyService.creditTx(tx as any, {
         userId: purchase.userId,
@@ -138,18 +156,14 @@ export class PaymentService {
         sourceType: 'purchase',
         sourceId: purchaseId,
       });
-
-      await tx.purchase.update({
-        where: { id: purchaseId },
-        data: { status: PurchaseStatus.CONFIRMED },
-      });
     });
   }
 
   async handleStripeWebhook(payload: Buffer, signature: string): Promise<void> {
     const stripe = await getUncachableStripeClient();
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    let event: any;
+    // Forward payload to stripe-replit-sync for table hydration (non-fatal).
     try {
       const { getStripeSync } = await import('../../stripe/stripe-client');
       const sync = await getStripeSync();
@@ -158,16 +172,28 @@ export class PaymentService {
       this.logger.warn(`stripe-replit-sync processWebhook error (non-fatal): ${err}`);
     }
 
-    try {
-      const webhookSecret = await this.getWebhookSecret();
-      if (webhookSecret) {
+    // Verify signature and construct the event.
+    // In production we ALWAYS require a webhook secret; without it we reject
+    // the request to prevent forged events from crediting gems.
+    // In development (NODE_ENV !== 'production') we allow unsigned events so
+    // the Stripe CLI `stripe listen --forward-to ...` flow works without secrets.
+    const webhookSecret = await this.getWebhookSecret();
+    let event: any;
+
+    if (webhookSecret) {
+      try {
         event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-      } else {
-        event = JSON.parse(payload.toString());
-        this.logger.warn('No webhook secret configured — skipping signature verification (dev only)');
+      } catch (err: any) {
+        throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
       }
-    } catch (err: any) {
-      throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
+    } else if (!isProduction) {
+      event = JSON.parse(payload.toString());
+      this.logger.warn('No webhook secret — skipping signature verification (dev only, never in production)');
+    } else {
+      // Production with no secret: reject. This prevents credit-without-auth.
+      throw new BadRequestException(
+        'Webhook secret not configured. Connect the Stripe integration and ensure webhook_secret is set.',
+      );
     }
 
     if (event.type === 'checkout.session.completed') {

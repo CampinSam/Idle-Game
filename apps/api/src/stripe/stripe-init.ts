@@ -22,7 +22,13 @@ export async function initStripe(): Promise<void> {
     const domain = process.env.REPLIT_DOMAINS?.split(',')[0];
     if (domain) {
       const webhookBaseUrl = `https://${domain}`;
-      const webhookPath = '/v1/purchases/stripe/webhook';
+      // In production the global `/api` prefix is applied (see main.ts setGlobalPrefix).
+      // The webhook controller is mounted at /v1/purchases/stripe/webhook, which becomes
+      // /api/v1/purchases/stripe/webhook in production. Stripe must call the prefixed URL.
+      const isProduction = process.env.NODE_ENV === 'production';
+      const webhookPath = isProduction
+        ? '/api/v1/purchases/stripe/webhook'
+        : '/v1/purchases/stripe/webhook';
       try {
         await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}${webhookPath}`);
         logger.log(`Stripe webhook configured at ${webhookBaseUrl}${webhookPath}`);
