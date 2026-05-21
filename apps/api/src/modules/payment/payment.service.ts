@@ -12,17 +12,21 @@ const CRYPTO_EVM_PRICES: Record<string, { usdcAmount: bigint }> = {
   gems_100:  { usdcAmount: 990_000n    },
   gems_500:  { usdcAmount: 4_990_000n  },
   gems_1200: { usdcAmount: 9_990_000n  },
+  gems_2000: { usdcAmount: 14_990_000n },
   gems_2500: { usdcAmount: 19_990_000n },
+  gems_5000: { usdcAmount: 29_990_000n },
 };
 
 // USD prices per pack — used to derive live ADA amounts at purchase time.
 const PACK_USD_PRICES: Record<string, number> = {
-  gems_100: 0.99, gems_500: 4.99, gems_1200: 9.99, gems_2500: 19.99,
+  gems_100: 0.99, gems_500: 4.99, gems_1200: 9.99,
+  gems_2000: 14.99, gems_2500: 19.99, gems_5000: 29.99,
 };
 
 // Gem amounts by pack (duplicates Stripe metadata — avoids a Stripe round-trip for crypto path).
 const PACK_GEM_AMOUNTS: Record<string, number> = {
-  gems_100: 100, gems_500: 500, gems_1200: 1200, gems_2500: 2500,
+  gems_100: 100, gems_500: 500, gems_1200: 1200,
+  gems_2000: 2000, gems_2500: 2500, gems_5000: 5000,
 };
 
 @Injectable()

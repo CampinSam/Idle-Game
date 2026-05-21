@@ -66,6 +66,23 @@ const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
 const BADGE_CLASS =
   'inline-block px-2 py-0.5 rounded-[4px] text-[10px] font-black tracking-[1px] text-white uppercase';
 
+const PACK_META: Record<string, {
+  label: string;
+  nameColor: string;
+  borderColor: string;
+  glowColor: string;
+  badgeType: null | 'best_value' | 'extra';
+  badgeLabel?: string;
+  iconSize: number;
+}> = {
+  gems_100:  { label: 'HANDFUL',  nameColor: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)',  glowColor: 'transparent',                  badgeType: null,           iconSize: 32 },
+  gems_500:  { label: 'SATCHEL',  nameColor: '#fb923c', borderColor: 'rgba(251,146,60,0.35)',  glowColor: 'transparent',                  badgeType: null,           iconSize: 36 },
+  gems_1200: { label: 'CHEST',    nameColor: '#c4b5fd', borderColor: 'rgba(139,92,246,0.55)',  glowColor: 'rgba(139,92,246,0.18)',         badgeType: 'best_value',   iconSize: 42 },
+  gems_2000: { label: 'MOUNTAIN', nameColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)',  glowColor: 'transparent',                  badgeType: 'extra',        badgeLabel: '10% EXTRA', iconSize: 44 },
+  gems_2500: { label: 'VAULT',    nameColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)',  glowColor: 'transparent',                  badgeType: 'extra',        badgeLabel: '20% EXTRA', iconSize: 44 },
+  gems_5000: { label: 'TROVE',    nameColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)',   glowColor: 'rgba(251,191,36,0.12)',         badgeType: 'extra',        badgeLabel: '35% EXTRA', iconSize: 50 },
+};
+
 const CONTENT_CHIP_CLASS =
   'inline-flex items-center gap-1 bg-black/25 border border-[rgba(139,92,246,0.15)] ' +
   'rounded-[6px] px-[7px] py-[3px] text-[12px] font-bold text-[#d8b4fe]';
@@ -495,61 +512,87 @@ function GemPackCard({
   buying: boolean;
   hasWallet: boolean;
 }) {
-  const isBestValue = pack.gemAmount === 2500;
+  const meta = PACK_META[pack.id] ?? {
+    label: pack.name.toUpperCase(),
+    nameColor: '#c4b5fd',
+    borderColor: 'rgba(139,92,246,0.35)',
+    glowColor: 'transparent',
+    badgeType: null,
+    iconSize: 40,
+  };
+
   return (
     <div
-      className={
-        `relative [background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)] border rounded-[14px] ` +
-        `px-3 py-4 flex flex-col items-center gap-2 text-center ` +
-        `motion-safe:animate-[card-enter_0.2s_ease-out_both] ` +
-        (isBestValue
-          ? 'border-[rgba(139,92,246,0.5)] shadow-[0_0_12px_rgba(139,92,246,0.15)]'
-          : 'border-[rgba(139,92,246,0.2)]')
-      }
+      className="relative flex flex-col rounded-[14px] overflow-hidden motion-safe:animate-[card-enter_0.2s_ease-out_both]"
+      style={{
+        background: 'linear-gradient(160deg,#151230 0%,#1e1848 100%)',
+        border: `1px solid ${meta.borderColor}`,
+        boxShadow: meta.glowColor !== 'transparent' ? `0 0 14px ${meta.glowColor}` : undefined,
+      }}
     >
-      {isBestValue && (
-        <span className="absolute -top-px left-1/2 -translate-x-1/2 inline-block px-2 py-0.5 rounded-[4px] text-[8px] font-black tracking-[1px] text-white uppercase whitespace-nowrap bg-[#8b5cf6]">
+      {meta.badgeType === 'best_value' && (
+        <span
+          className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-[5px] text-[7px] font-black tracking-[0.8px] text-white uppercase whitespace-nowrap leading-none"
+          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+        >
           BEST VALUE
         </span>
       )}
-      <div className="flex flex-col items-center gap-1 mt-1">
-        <GameIcon src="premium_gems" size={40} />
-        <div className="text-[20px] font-black text-white leading-none">{pack.gemAmount.toLocaleString()}</div>
-        <div className="text-[10px] text-text-secondary font-semibold uppercase tracking-wide">Gems</div>
+
+      <div className="px-2 pt-2.5 pb-0 text-center">
+        <div className="text-[9px] font-black tracking-[1.2px] uppercase leading-none" style={{ color: meta.nameColor }}>
+          {meta.label}
+        </div>
       </div>
-      {pack.description ? (
-        <div className="text-[11px] text-text-secondary leading-snug">{pack.description}</div>
-      ) : null}
-      <button
-        disabled={buying}
-        onClick={() => onBuyCard(pack)}
-        data-sfx="ui.button_primary"
-        className={
-          `w-full mt-1 py-2 rounded-[8px] text-[13px] font-bold tracking-[0.3px] border cursor-pointer ` +
-          `transition-colors duration-150 ` +
-          (buying
-            ? 'opacity-50 cursor-not-allowed bg-[rgba(139,92,246,0.1)] border-[rgba(139,92,246,0.2)] text-text-secondary'
-            : 'bg-[rgba(139,92,246,0.15)] border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)]')
-        }
-      >
-        {buying ? 'Redirecting…' : `${formatUsd(pack.unitAmount)} · Buy with Card`}
-      </button>
-      {hasWallet && (
+
+      <div className="relative flex items-center justify-center py-2">
+        <GameIcon src="premium_gems" size={meta.iconSize} />
+        {meta.badgeType === 'extra' && meta.badgeLabel && (
+          <span className="absolute bottom-0.5 left-1 px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-[0.5px] text-white uppercase leading-none bg-[#16a34a]">
+            {meta.badgeLabel}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col items-center gap-0 px-1 pb-0.5">
+        <div className="text-[15px] font-black text-white leading-none">
+          {pack.gemAmount.toLocaleString()}
+        </div>
+        <div className="text-[8px] text-text-secondary font-semibold uppercase tracking-wide">Gems</div>
+      </div>
+
+      <div className="px-2 pb-2 pt-1.5 flex flex-col gap-1 mt-auto">
         <button
           disabled={buying}
-          onClick={() => onBuyWallet(pack)}
+          onClick={() => onBuyCard(pack)}
           data-sfx="ui.button_primary"
           className={
-            `w-full py-2 rounded-[8px] text-[12px] font-bold tracking-[0.3px] border cursor-pointer ` +
+            `w-full py-1.5 rounded-[7px] text-[11px] font-black tracking-[0.3px] border-0 cursor-pointer ` +
             `transition-colors duration-150 ` +
             (buying
-              ? 'opacity-50 cursor-not-allowed bg-transparent border-[rgba(139,92,246,0.15)] text-text-secondary'
-              : 'bg-transparent border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
+              ? 'opacity-50 cursor-not-allowed bg-[#15803d] text-white/60'
+              : 'bg-[#16a34a] hover:bg-[#15803d] text-white')
           }
         >
-          💳 Pay with Wallet
+          {buying ? '…' : formatUsd(pack.unitAmount)}
         </button>
-      )}
+        {hasWallet && (
+          <button
+            disabled={buying}
+            onClick={() => onBuyWallet(pack)}
+            data-sfx="ui.button_primary"
+            className={
+              `w-full py-1 rounded-[6px] text-[9px] font-bold tracking-[0.2px] border cursor-pointer ` +
+              `transition-colors duration-150 bg-transparent ` +
+              (buying
+                ? 'opacity-40 cursor-not-allowed border-[rgba(139,92,246,0.15)] text-text-secondary'
+                : 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
+            }
+          >
+            💳 Wallet
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -846,11 +889,15 @@ export default function StorePage() {
         <div className="flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-3.5">
           {activeTab === 'gems' ? (
             gemPacksLoading ? (
-              <div className="grid grid-cols-2 gap-2.5">
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-4 gap-2">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="h-14 rounded-[10px] bg-[rgba(139,92,246,0.08)] animate-pulse" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[0,1,2,3,4,5].map(i => <SkeletonCard key={i} />)}
+                </div>
               </div>
             ) : gemPacksError ? (
               <div className="text-center py-10 px-5 text-text-secondary text-[14px]">{gemPacksError}</div>
@@ -862,10 +909,26 @@ export default function StorePage() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <div className="text-[11px] text-text-secondary text-center px-2">
-                  Gems are used to speed up timers, unlock premium content, and more.
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    { icon: '⏱️', title: 'SPEED UP',    desc: 'Reduce timers\n& queues'     },
+                    { icon: '👕', title: 'COSMETICS',   desc: 'Unique skins\n& outfits'     },
+                    { icon: '📦', title: 'EXTRA SLOTS', desc: 'Expand your\ncapacity'       },
+                    { icon: '⚡', title: 'RECHARGE',    desc: 'More energy\nfor missions'   },
+                  ] as const).map(({ icon, title, desc }) => (
+                    <div
+                      key={title}
+                      className="flex flex-col items-center gap-1 rounded-[10px] px-1 py-2 text-center"
+                      style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.15)' }}
+                    >
+                      <span className="text-[18px] leading-none">{icon}</span>
+                      <div className="text-[7px] font-black tracking-[0.8px] text-[#c4b5fd] uppercase leading-none">{title}</div>
+                      <div className="text-[7px] text-text-secondary leading-snug whitespace-pre-line">{desc}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+
+                <div className="grid grid-cols-3 gap-2">
                   {gemPacks.map((pack) => (
                     <GemPackCard
                       key={pack.id}
@@ -877,8 +940,27 @@ export default function StorePage() {
                     />
                   ))}
                 </div>
-                <div className="text-[10px] text-text-secondary text-center px-4 mt-1">
-                  Payments processed securely. Gems are delivered instantly after payment confirmation.
+
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {([
+                    { icon: '🔒', title: 'Safe & Secure',      desc: 'Purchases are secure.\nWe never store\npayment info.'      },
+                    { icon: '⚖️', title: 'Fair & Balanced',    desc: 'Cosmetics only.\nNever\nPay-to-Win.'                       },
+                    { icon: '🎁', title: 'Supports the Game',  desc: 'Purchases fund\nnew content\n& improvements.'              },
+                  ] as const).map(({ icon, title, desc }) => (
+                    <div
+                      key={title}
+                      className="flex flex-col items-center gap-1 rounded-[10px] px-1.5 py-2.5 text-center"
+                      style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.12)' }}
+                    >
+                      <span className="text-[16px] leading-none">{icon}</span>
+                      <div className="text-[7px] font-black text-text-primary uppercase tracking-wide leading-tight">{title}</div>
+                      <div className="text-[7px] text-text-secondary leading-snug whitespace-pre-line">{desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-[9px] text-text-secondary text-center px-4 pb-1">
+                  Payments processed securely. Gems delivered instantly after confirmation.
                 </div>
               </div>
             )
