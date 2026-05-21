@@ -324,9 +324,17 @@ export function ScreenCompositionRenderer({
     [navigate, pushModal, dismissModal],
   );
 
+  const walletState = useMemo(
+    () => ({
+      isConnected: !!(player?.walletAddress),
+      count: player?.walletAddress ? 1 : 0,
+    }),
+    [player?.walletAddress],
+  );
+
   const visibilityCtx = useMemo(
-    () => buildVisibilityContext(player),
-    [player],
+    () => buildVisibilityContext(player, walletState),
+    [player, walletState],
   );
 
   const dataCtxValue = useDataSources(dataSources);

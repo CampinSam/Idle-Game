@@ -108,7 +108,10 @@ export function evaluateVisibilityGroup(
   return true;
 }
 
-export function buildVisibilityContext(player: any): ClientVisibilityContext {
+export function buildVisibilityContext(
+  player: any,
+  walletState?: { isConnected: boolean; count: number },
+): ClientVisibilityContext {
   return {
     user: player
       ? {
@@ -118,7 +121,7 @@ export function buildVisibilityContext(player: any): ClientVisibilityContext {
           prestigeTokens: player.prestigeTokens ?? 0,
         }
       : null,
-    wallet: {
+    wallet: walletState ?? {
       isConnected: false,
       count: 0,
     },
