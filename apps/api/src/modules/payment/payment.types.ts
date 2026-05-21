@@ -11,6 +11,7 @@ export interface GemPack {
 
 export type PurchaseAction =
   | { type: 'redirect'; url: string }
+  | { type: 'coming_soon' }
   | {
       type: 'payment_address';
       address: string;
@@ -23,6 +24,7 @@ export type PurchaseAction =
 export interface CreatePurchaseResult {
   purchaseId: string;
   action: PurchaseAction;
+  comingSoon?: boolean;
 }
 
 export interface PurchaseStatusResult {

@@ -64,6 +64,10 @@ export class BootstrapService implements OnModuleInit {
     // earlier failure (which is far more likely to be schema-related)
     // surfaces before we get into UI catalog territory.
     await this.runStep('seedTags', () => seedTags(this.prisma));
+    // Idempotent: ensures the four gem packs exist in stripe.products / stripe.prices
+    // so GET /v1/payments/packs returns data even before Stripe is connected.
+    // ON CONFLICT DO NOTHING means real Stripe-synced rows are never overwritten.
+    await this.runStep('seedGemPacks', () => this.seedGemPacks());
     // Idempotent: rewrite any historical `consumableData` rows that still
     // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
     // targetType enum values, or a redundant top-level `targetType`. After
@@ -222,6 +226,63 @@ export class BootstrapService implements OnModuleInit {
       this.logger.log(
         `GlobalActivePower backfill: set default selection on ${legacyNoSelection.length} row(s) that had no selection.`,
       );
+    }
+  }
+
+  private async seedGemPacks() {
+    const DEMO_ACCOUNT_ID = 'acct_derp_demo';
+    const now = Math.floor(Date.now() / 1000);
+
+    // Ensure a demo Stripe account exists to satisfy the FK on products/prices.
+    await this.prisma.$executeRawUnsafe(`
+      INSERT INTO stripe.accounts (_raw_data)
+      VALUES ($1::jsonb)
+      ON CONFLICT (id) DO NOTHING
+    `, JSON.stringify({
+      id: DEMO_ACCOUNT_ID, object: 'account', type: 'standard',
+      email: 'demo@derp-universe.game', charges_enabled: false,
+      payouts_enabled: false, details_submitted: false, created: now,
+    }));
+
+    const packs = [
+      { id: 'prod_gems_100',  name: '100 Gems',   packId: 'gems_100',  gemAmount: 100,  unitAmount: 99,    priceId: 'price_gems_100'  },
+      { id: 'prod_gems_500',  name: '500 Gems',   packId: 'gems_500',  gemAmount: 500,  unitAmount: 499,   priceId: 'price_gems_500'  },
+      { id: 'prod_gems_1200', name: '1,200 Gems', packId: 'gems_1200', gemAmount: 1200, unitAmount: 999,   priceId: 'price_gems_1200' },
+      { id: 'prod_gems_2500', name: '2,500 Gems', packId: 'gems_2500', gemAmount: 2500, unitAmount: 1999,  priceId: 'price_gems_2500' },
+    ];
+
+    let seeded = 0;
+    for (const p of packs) {
+      const productRaw = JSON.stringify({
+        id: p.id, object: 'product', active: true, name: p.name,
+        description: `${p.name.replace(',', '')} of premium in-game currency.`,
+        metadata: { game: 'derp-universe', packId: p.packId, gemAmount: String(p.gemAmount) },
+        images: [], marketing_features: [], created: now, updated: now, livemode: false,
+      });
+      const priceRaw = JSON.stringify({
+        id: p.priceId, object: 'price', active: true, currency: 'usd',
+        unit_amount: p.unitAmount, unit_amount_decimal: String(p.unitAmount),
+        type: 'one_time', billing_scheme: 'per_unit', product: p.id,
+        metadata: {}, created: now, livemode: false,
+      });
+
+      const productRes = await this.prisma.$executeRawUnsafe(`
+        INSERT INTO stripe.products (_account_id, _raw_data)
+        VALUES ($1, $2::jsonb)
+        ON CONFLICT (id) DO NOTHING
+      `, DEMO_ACCOUNT_ID, productRaw);
+
+      await this.prisma.$executeRawUnsafe(`
+        INSERT INTO stripe.prices (_account_id, _raw_data)
+        VALUES ($1, $2::jsonb)
+        ON CONFLICT (id) DO NOTHING
+      `, DEMO_ACCOUNT_ID, priceRaw);
+
+      if (productRes > 0) seeded++;
+    }
+
+    if (seeded > 0) {
+      this.logger.log(`Seeded ${seeded} demo gem pack(s) into stripe.products/prices`);
     }
   }
 

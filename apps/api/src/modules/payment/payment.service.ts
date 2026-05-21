@@ -91,12 +91,14 @@ export class PaymentService {
   ): Promise<CreatePurchaseResult> {
     const isEvm = method === 'CRYPTO_EVM';
     const envKey = isEvm ? 'PAYMENT_ADDRESS_EVM' : 'PAYMENT_ADDRESS_CARDANO';
-    const destinationAddress = process.env[envKey];
-    if (!destinationAddress) {
-      throw new BadRequestException(
-        `Crypto payment not configured — set the ${envKey} environment variable.`,
-      );
-    }
+    const configuredAddress = process.env[envKey];
+    // Demo placeholder addresses used when treasury is not yet configured.
+    // The frontend renders a "Coming Soon" banner so no funds are lost.
+    const DEMO_EVM_ADDRESS = '0xdEAD000000000000000042069420694206942069';
+    const DEMO_ADA_ADDRESS =
+      'addr1qxy6nqz5kzqkxwkdqze3e0fq0ztq0xxjhx5z3t0pqzq5fkqzx0zqtq0qderpuniverse00000000000000000000000000000s67zjs';
+    const destinationAddress = configuredAddress ?? (isEvm ? DEMO_EVM_ADDRESS : DEMO_ADA_ADDRESS);
+    const comingSoon = !configuredAddress;
 
     const evmPrices = CRYPTO_EVM_PRICES[packId];
     if (!evmPrices) {
@@ -141,6 +143,7 @@ export class PaymentService {
 
     return {
       purchaseId: purchase.id,
+      comingSoon: comingSoon || undefined,
       action: {
         type: 'payment_address',
         address: destinationAddress,
@@ -162,7 +165,12 @@ export class PaymentService {
     const pack = packs.find((p) => p.id === packId);
     if (!pack) throw new NotFoundException(`Gem pack "${packId}" not found`);
 
-    const stripe = await getUncachableStripeClient();
+    let stripe: any;
+    try {
+      stripe = await getUncachableStripeClient();
+    } catch {
+      return { purchaseId: 'demo', action: { type: 'coming_soon' }, comingSoon: true };
+    }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');

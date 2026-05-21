@@ -58,6 +58,7 @@ interface CryptoModalState {
   chain: string;
   expiresAt: string;
   paymentMethod: 'crypto_evm' | 'crypto_cardano';
+  comingSoon?: boolean;
 }
 
 const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
@@ -287,8 +288,9 @@ function CryptoPayModal({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeft = useExpiryCountdown(state.expiresAt);
 
-  // SSE listener for instant confirmation without waiting for the next poll cycle.
+  // SSE listener — skipped in coming-soon demo mode (no on-chain confirmation expected).
   useEffect(() => {
+    if (state.comingSoon) return;
     const token = localStorage.getItem('derp_token') || '';
     if (!token) return;
     const rawApiUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
@@ -306,10 +308,11 @@ function CryptoPayModal({
     });
 
     return () => es.close();
-  }, [state.purchaseId]);
+  }, [state.purchaseId, state.comingSoon]);
 
-  // 5-second polling fallback (handles cases where SSE is not connected).
+  // 5-second polling fallback — skipped in coming-soon demo mode.
   useEffect(() => {
+    if (state.comingSoon) return;
     if (status !== 'pending') return;
 
     const poll = async () => {
@@ -333,7 +336,7 @@ function CryptoPayModal({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [state.purchaseId, status]);
+  }, [state.purchaseId, state.comingSoon, status]);
 
   useEffect(() => {
     if (status === 'confirmed') {
@@ -448,19 +451,30 @@ function CryptoPayModal({
               <span className="text-[14px] font-black text-white">{state.amountDisplay}</span>
             </div>
 
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="flex items-center gap-1.5 text-text-secondary">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
-                Waiting for payment…
-              </span>
-              <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
-                {timeLeft}
-              </span>
-            </div>
-
-            <div className="text-[10px] text-text-secondary text-center leading-snug px-2">
-              Send the exact amount shown. Payments are detected automatically and gems are credited instantly.
-            </div>
+            {state.comingSoon ? (
+              <div className="flex flex-col items-center gap-2 bg-[rgba(251,191,36,0.06)] border border-[rgba(251,191,36,0.2)] rounded-[10px] px-4 py-3 text-center">
+                <span className="text-[16px]">🚧</span>
+                <div className="text-[12px] font-black text-[#fbbf24] uppercase tracking-wide">Coming Soon</div>
+                <div className="text-[11px] text-text-secondary leading-snug">
+                  On-chain payments are not yet live. This preview shows what the payment flow will look like.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                    Waiting for payment…
+                  </span>
+                  <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
+                    {timeLeft}
+                  </span>
+                </div>
+                <div className="text-[10px] text-text-secondary text-center leading-snug px-2">
+                  Send the exact amount shown. Payments are detected automatically and gems are credited instantly.
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -563,6 +577,7 @@ export default function StorePage() {
   const [cryptoModal, setCryptoModal] = useState<CryptoModalState | null>(null);
   const [chainSelectPack, setChainSelectPack] = useState<GemPack | null>(null);
   const [successGems, setSuccessGems] = useState<number | null>(null);
+  const [comingSoonCard, setComingSoonCard] = useState(false);
 
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
@@ -614,12 +629,17 @@ export default function StorePage() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
+      if (data?.comingSoon || data?.action?.type === 'coming_soon') {
+        setComingSoonCard(true);
+        return;
+      }
       if (data?.action?.type === 'redirect' && data.action.url) {
         window.location.href = data.action.url;
       }
     } catch (err: any) {
-      setBuyingPackId(null);
       alert(err?.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setBuyingPackId(null);
     }
   }, []);
 
@@ -645,6 +665,7 @@ export default function StorePage() {
           chain: data.action.chain,
           expiresAt: data.action.expiresAt,
           paymentMethod,
+          comingSoon: data.comingSoon ?? false,
         });
       }
     } catch (err: any) {
@@ -771,6 +792,27 @@ export default function StorePage() {
           onClose={() => setCryptoModal(null)}
           onConfirmed={handleCryptoConfirmed}
         />
+      )}
+
+      {comingSoonCard && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setComingSoonCard(false); }}
+        >
+          <div className="w-full max-w-xs mx-3 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(139,92,246,0.3)] rounded-t-[20px] sm:rounded-[20px] p-6 flex flex-col items-center gap-4 shadow-[0_0_40px_rgba(139,92,246,0.2)] text-center">
+            <span className="text-[40px]">🚧</span>
+            <div className="text-[16px] font-black text-white">Card Payments Coming Soon</div>
+            <div className="text-[12px] text-text-secondary leading-relaxed">
+              Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.
+            </div>
+            <button
+              onClick={() => setComingSoonCard(false)}
+              className="w-full py-2.5 rounded-[10px] text-[13px] font-bold bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)] cursor-pointer transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="overflow-hidden flex flex-col flex-1 min-h-0">
