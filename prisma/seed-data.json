@@ -23,21 +23,21 @@
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "💎",
+      "symbol": "\ud83d\udc8e",
       "iconKey": "arcanium",
       "type": "SOFT"
     },
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "essence",
       "type": "HARD"
     },
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "gems",
       "type": "PREMIUM"
     }
@@ -1074,18 +1074,38 @@
         "uniques": {
           "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503030333130": {
             "powers": [
-              { "powerType": "keeper_xp_boost", "value": 50, "durationMinutes": 90, "dailyLimit": 1 },
-              { "powerType": "mission_duration_reduction", "value": 25, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "keeper_xp_boost",
+                "value": 50,
+                "durationMinutes": 90,
+                "dailyLimit": 1
+              },
+              {
+                "powerType": "mission_duration_reduction",
+                "value": 25,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039313833": {
             "powers": [
-              { "powerType": "tick_speed_boost", "value": 50, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "tick_speed_boost",
+                "value": 50,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:e74862a09d17a9cb03174a6bd5fa305b8684475c4c36021591c606e0:44503039393130": {
             "powers": [
-              { "powerType": "entity_xp_boost", "value": 75, "durationMinutes": 120, "dailyLimit": 2 }
+              {
+                "powerType": "entity_xp_boost",
+                "value": 75,
+                "durationMinutes": 120,
+                "dailyLimit": 2
+              }
             ]
           }
         }
@@ -1153,117 +1173,232 @@
         "uniques": {
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030323732": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 30, "durationMinutes": 60, "dailyLimit": 2 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 30,
+                "durationMinutes": 60,
+                "dailyLimit": 2
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030363431": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030373236": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393033": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543030393338": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031313533": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031363537": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031383030": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543031393538": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032323938": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032343138": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543032393636": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543033333937": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034333439": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034343130": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543034383734": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333033": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035333232": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543035343234": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036343234": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543036363930": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037333633": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           },
           "CARDANO:a2e719d70b9d71636aa825e71c11ca508ecf98eec87182b0e526d7c5:000de1404f5554504f53543037363232": {
             "powers": [
-              { "powerType": "mission_power_boost", "value": 10, "durationMinutes": 60, "dailyLimit": 1 }
+              {
+                "powerType": "mission_power_boost",
+                "value": 10,
+                "durationMinutes": 60,
+                "dailyLimit": 1
+              }
             ]
           }
         }
@@ -1889,10 +2024,10 @@
         }
       ],
       "rewardPreview": [
-        "⚡ 40-80 XP",
-        "🛡️ 20-40 KXP",
-        "💎 20-50 soft_arcanium",
-        "🎁 1-3 iron_ore (10%)"
+        "\u26a1 40-80 XP",
+        "\ud83d\udee1\ufe0f 20-40 KXP",
+        "\ud83d\udc8e 20-50 soft_arcanium",
+        "\ud83c\udf81 1-3 iron_ore (10%)"
       ],
       "visibilityRequirements": [
         {
@@ -1928,17 +2063,38 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 2,
-      "rewards": [
-        {
-          "type": "item",
-          "key": "gear_iron_sword",
-          "min": 1,
-          "max": 1,
-          "odds": 100
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "gear_iron_sword",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
         }
-      ],
-      "data": {}
+      }
     },
     {
       "id": "recipe_mana_ring",
@@ -1969,17 +2125,38 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 3,
-      "rewards": [
-        {
-          "type": "item",
-          "key": "gear_mana_ring",
-          "min": 1,
-          "max": 1,
-          "odds": 100
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "gear_mana_ring",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
         }
-      ],
-      "data": {}
+      }
     },
     {
       "id": "recipe_heal_potion",
@@ -2010,17 +2187,38 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 2,
-      "rewards": [
-        {
-          "type": "item",
-          "key": "potion_heal_medium",
-          "min": 2,
-          "max": 2,
-          "odds": 100
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "potion_heal_medium",
+              "min": 2,
+              "max": 2,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
         }
-      ],
-      "data": {}
+      }
     },
     {
       "id": "health_potion",
@@ -2033,7 +2231,6 @@
           "amount": 20
         }
       ],
-      "requiredKeeperLevel": 1,
       "timer": {
         "duration": 600,
         "boostable": true,
@@ -2047,18 +2244,40 @@
         ],
         "skip_type": "absolute"
       },
-      "rewards": [
-        {
-          "type": "item",
-          "key": "potion_heal_small",
-          "min": 1,
-          "max": 1,
-          "odds": 100
-        }
-      ],
       "requirements": [],
       "visibilityRequirements": [],
-      "data": {}
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "potion_heal_small",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      }
     },
     {
       "id": "speed_potion",
@@ -2071,7 +2290,6 @@
           "amount": 30
         }
       ],
-      "requiredKeeperLevel": 5,
       "timer": {
         "duration": 900,
         "boostable": true,
@@ -2085,15 +2303,6 @@
         ],
         "skip_type": "absolute"
       },
-      "rewards": [
-        {
-          "type": "item",
-          "key": "potion_speed_small",
-          "min": 1,
-          "max": 1,
-          "odds": 100
-        }
-      ],
       "requirements": [
         {
           "type": "keeper_level",
@@ -2106,7 +2315,38 @@
           "value": 3
         }
       ],
-      "data": {}
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "potion_speed_small",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      }
     },
     {
       "id": "luck_potion",
@@ -2119,7 +2359,6 @@
           "amount": 40
         }
       ],
-      "requiredKeeperLevel": 10,
       "timer": {
         "duration": 1200,
         "boostable": true,
@@ -2133,15 +2372,6 @@
         ],
         "skip_type": "scaling"
       },
-      "rewards": [
-        {
-          "type": "item",
-          "key": "consumable_lucky_charm",
-          "min": 1,
-          "max": 1,
-          "odds": 100
-        }
-      ],
       "requirements": [
         {
           "type": "keeper_level",
@@ -2154,7 +2384,38 @@
           "value": 7
         }
       ],
-      "data": {}
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "item",
+              "key": "consumable_lucky_charm",
+              "min": 1,
+              "max": 1,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      }
     },
     {
       "id": "power_potion",
@@ -2167,7 +2428,6 @@
           "amount": 50
         }
       ],
-      "requiredKeeperLevel": 15,
       "timer": {
         "duration": 1500,
         "boostable": true,
@@ -2175,21 +2435,6 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "rewards": [
-        {
-          "type": "entity_xp",
-          "min": 20,
-          "max": 50,
-          "odds": 100
-        },
-        {
-          "type": "item",
-          "key": "mat_feather_dust",
-          "min": 2,
-          "max": 5,
-          "odds": 100
-        }
-      ],
       "requirements": [
         {
           "type": "keeper_level",
@@ -2202,7 +2447,44 @@
           "value": 10
         }
       ],
-      "data": {}
+      "data": {},
+      "tiers": {
+        "failure": {
+          "rewards": []
+        },
+        "common": {
+          "rewards": [
+            {
+              "type": "entity_xp",
+              "min": 20,
+              "max": 50,
+              "odds": 100
+            },
+            {
+              "type": "item",
+              "key": "mat_feather_dust",
+              "min": 2,
+              "max": 5,
+              "odds": 100
+            }
+          ]
+        },
+        "uncommon": {
+          "rewards": []
+        },
+        "scare": {
+          "rewards": []
+        },
+        "rare": {
+          "rewards": []
+        },
+        "epic": {
+          "rewards": []
+        },
+        "legendary": {
+          "rewards": []
+        }
+      }
     }
   ],
   "EventDefinition": [
