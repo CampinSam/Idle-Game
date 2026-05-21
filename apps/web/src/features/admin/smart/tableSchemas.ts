@@ -26,6 +26,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   SelectionRuleDef: 'selectionRuleDef',
   TelemetryDef: 'telemetryDef',
   GemPackDef: 'gemPacks',
+  GameDefinition: 'gameDefinition',
 };
 
 export interface FieldDef {
@@ -577,6 +578,26 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       iconSize: { type: 'number', default: 40, description: 'Gem icon size in pixels (32–50)' },
     },
   },
+
+  GameDefinition: {
+    color: '#10B981',
+    group: 'Screens',
+    sections: [
+      { id: 'identity',  label: 'Identity',     description: 'Type, key, version and lifecycle fields' },
+      { id: 'schedule',  label: 'Schedule',      description: 'Optional time-window availability' },
+      { id: 'data',      label: 'Definition',    description: 'Full ScreenCompositionDefinition JSON payload' },
+    ],
+    fields: {
+      id:       { type: 'string',  required: true,  description: 'Unique identifier (auto-generated)',                                   section: 'identity' },
+      type:     { type: 'options', options: ['screen_composition'], default: 'screen_composition', description: 'Definition type',        section: 'identity' },
+      key:      { type: 'string',  required: true,  description: 'Stable screen key (e.g. home_screen, store_screen)',                   section: 'identity' },
+      version:  { type: 'number',  default: 1,      description: 'Numeric version — increment to create a new draft without overwriting', section: 'identity' },
+      isActive: { type: 'boolean', default: false,  description: 'Only one version per (type, key) pair should be active at once. Use the publish endpoint to activate safely.', section: 'identity' },
+      startsAt: { type: 'string',  description: 'ISO datetime — definition is suppressed before this time (blank = no lower bound)',     section: 'schedule' },
+      endsAt:   { type: 'string',  description: 'ISO datetime — definition is suppressed after this time (blank = no expiry)',           section: 'schedule' },
+      data:     { type: 'json',    default: {},     description: 'ScreenCompositionDefinition JSON: { screenKey, status, layout, sections, ... }', section: 'data' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -594,6 +615,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Rules: ['SelectionRuleDef'],
   System: ['EventDefinition', 'SystemIconDef'],
   Telemetry: ['TelemetryDef'],
+  Screens: ['GameDefinition'],
 };
 
 export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];

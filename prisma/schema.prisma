@@ -1606,3 +1606,26 @@ model GlobalActivePower {
   @@index([status, endTime])
   @@map("global_active_powers")
 }
+
+// ═══════════════════════════════════════════════════
+// GAME DEFINITIONS (screen compositions, etc.)
+// ═══════════════════════════════════════════════════
+
+model GameDefinition {
+  id        String    @id @default(cuid())
+  type      String                              // e.g. screen_composition
+  key       String                              // stable identifier, e.g. home_screen
+  version   Int       @default(1)               // increments per draft; only one version active at a time
+  data      Json                                // ScreenCompositionDefinition or other typed JSON
+  isActive  Boolean   @default(false)           // exactly one version per (type, key) should be true in production
+
+  startsAt  DateTime?                           // suppress before this time (null = no lower bound)
+  endsAt    DateTime?                           // suppress after this time (null = no expiry)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([type, key, version])
+  @@index([type, key, isActive])
+  @@map("game_definitions")
+}

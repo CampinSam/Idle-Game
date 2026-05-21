@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Derp Universe \u2014 Game Definition Schemas",
+  "title": "Derp Universe — Game Definition Schemas",
   "description": "JSON schema documentation for all game definition data files loaded by the definitions seed.",
   "definitions": {
     "RuleRefNode": {
@@ -14,7 +14,7 @@
         "type": {
           "type": "string",
           "const": "rule_ref",
-          "description": "Discriminator \u2014 must be exactly \"rule_ref\"."
+          "description": "Discriminator — must be exactly \"rule_ref\"."
         },
         "id": {
           "type": "string",
@@ -114,7 +114,7 @@
       }
     },
     "RichSelectionChild": {
-      "description": "A single child node inside a RichSelection group \u2014 either a sub-group, a leaf rule, or a rule_ref.",
+      "description": "A single child node inside a RichSelection group — either a sub-group, a leaf rule, or a rule_ref.",
       "oneOf": [
         {
           "$ref": "#/definitions/RichSelection"
@@ -149,7 +149,7 @@
           "items": {
             "$ref": "#/definitions/RichSelectionChild"
           },
-          "description": "Child nodes \u2014 each is a sub-group, a leaf rule, or a rule_ref."
+          "description": "Child nodes — each is a sub-group, a leaf rule, or a rule_ref."
         },
         "label": {
           "type": "string"
@@ -481,12 +481,12 @@
         "startsAt": {
           "type": "string",
           "format": "date-time",
-          "description": "ISO datetime \u2014 rule only fires after this time."
+          "description": "ISO datetime — rule only fires after this time."
         },
         "endsAt": {
           "type": "string",
           "format": "date-time",
-          "description": "ISO datetime \u2014 rule stops firing after this time."
+          "description": "ISO datetime — rule stops firing after this time."
         }
       }
     },
@@ -668,7 +668,9 @@
         "rewards": {
           "type": "array",
           "description": "Outcome entries granted when this tier is rolled. Same shape as mission/lootbox rewards arrays.",
-          "items": { "type": "object" },
+          "items": {
+            "type": "object"
+          },
           "default": []
         },
         "clRequirement": {
@@ -680,15 +682,40 @@
     "RecipeDef": {
       "description": "Crafting recipe definition. Drives the two-step probabilistic outcome system: Step 1 pass/fail gate (passRate = effectiveCL / (effectiveCL + difficulty)), Step 2 Gaussian quality roll across the 6 success tiers.",
       "type": "object",
-      "required": ["id", "name"],
+      "required": [
+        "id",
+        "name"
+      ],
       "properties": {
-        "id":                   { "type": "string", "description": "Unique recipe identifier" },
-        "name":                 { "type": "string", "description": "Display name" },
-        "description":          { "type": "string", "description": "Flavor text" },
-        "category":             { "type": "string", "description": "Grouping category (e.g. potions, weapons)" },
-        "group":                { "type": "string", "description": "Sub-group within a category" },
-        "cost":                 { "type": "array",  "description": "Crafting cost entries [{type, id, amount}]", "default": [] },
-        "timer":                { "type": "object", "description": "Duration and skip settings {duration, skipable, boostable, skip_cost, skip_type}" },
+        "id": {
+          "type": "string",
+          "description": "Unique recipe identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Flavor text"
+        },
+        "category": {
+          "type": "string",
+          "description": "Grouping category (e.g. potions, weapons)"
+        },
+        "group": {
+          "type": "string",
+          "description": "Sub-group within a category"
+        },
+        "cost": {
+          "type": "array",
+          "description": "Crafting cost entries [{type, id, amount}]",
+          "default": []
+        },
+        "timer": {
+          "type": "object",
+          "description": "Duration and skip settings {duration, skipable, boostable, skip_cost, skip_type}"
+        },
         "difficulty": {
           "type": "number",
           "description": "Pass/fail gate difficulty. passRate = effectiveCL / (effectiveCL + difficulty). 0 = always passes (no gate). Higher values make failure more likely at low CL.",
@@ -698,37 +725,109 @@
           "type": "object",
           "description": "Per-tier reward blocks keyed by quality tier. Valid keys: failure | common | uncommon | scare | rare | epic | mythic | legendary. Each value is a RecipeTierBlock. The 'failure' tier fires when the pass/fail gate fails. The 7 success tiers are weighted by a Gaussian bell curve centered at CL 15/45/75/105/135/165/195. Optional top-level 'sigma' (number, default 22) narrows or widens the bell curve for this recipe.",
           "properties": {
-            "failure":   { "$ref": "#/definitions/RecipeTierBlock" },
-            "common":    { "$ref": "#/definitions/RecipeTierBlock" },
-            "uncommon":  { "$ref": "#/definitions/RecipeTierBlock" },
-            "scare":     { "$ref": "#/definitions/RecipeTierBlock" },
-            "rare":      { "$ref": "#/definitions/RecipeTierBlock" },
-            "epic":      { "$ref": "#/definitions/RecipeTierBlock" },
-            "mythic":    { "$ref": "#/definitions/RecipeTierBlock" },
-            "legendary": { "$ref": "#/definitions/RecipeTierBlock" },
-            "sigma":     { "type": "number", "description": "Optional Gaussian sigma override (default 22). Lower = narrower spread, higher = wider." }
+            "failure": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "common": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "uncommon": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "scare": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "rare": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "epic": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "mythic": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "legendary": {
+              "$ref": "#/definitions/RecipeTierBlock"
+            },
+            "sigma": {
+              "type": "number",
+              "description": "Optional Gaussian sigma override (default 22). Lower = narrower spread, higher = wider."
+            }
           },
           "default": {}
         },
         "multicraft": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "description": "Multicraft config enabling batch crafting. null = single craft only.",
           "properties": {
-            "mode":  { "type": "string", "enum": ["tiers", "free"], "description": "'tiers' = only specific quantities allowed; 'free' = any quantity up to max" },
-            "tiers": { "type": "array", "items": { "type": "number" }, "description": "Allowed quantities when mode='tiers' (e.g. [1, 5, 10])" },
-            "max":   { "type": "number", "description": "Maximum quantity when mode='free'" },
-            "timer": { "type": "string", "enum": ["flat", "linear"], "description": "'flat' = fixed duration regardless of quantity; 'linear' = duration × quantity. Default: flat" }
+            "mode": {
+              "type": "string",
+              "enum": [
+                "tiers",
+                "free"
+              ],
+              "description": "'tiers' = only specific quantities allowed; 'free' = any quantity up to max"
+            },
+            "tiers": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Allowed quantities when mode='tiers' (e.g. [1, 5, 10])"
+            },
+            "max": {
+              "type": "number",
+              "description": "Maximum quantity when mode='free'"
+            },
+            "timer": {
+              "type": "string",
+              "enum": [
+                "flat",
+                "linear"
+              ],
+              "description": "'flat' = fixed duration regardless of quantity; 'linear' = duration × quantity. Default: flat"
+            }
           }
         },
-        "requirements":           { "description": "RichSelection tree — conditions the player must satisfy to start crafting" },
-        "visibilityRequirements": { "description": "RichSelection tree — conditions that must be met for the recipe to appear in the UI" },
-        "effects":                { "type": "array", "description": "Effects applied to entities on completion", "default": [] },
-        "data":                   { "type": "object", "description": "Extra freeform data. { tier: 1|2|3 } sets the workshop tier requirement.", "default": {} },
-        "displayDefId":           { "type": "string", "description": "DisplayDef.id for visual styling" },
-        "activeModalDefId":       { "type": "string", "description": "ModalDef.id shown while crafting is in-progress" },
-        "readyModalDefId":        { "type": "string", "description": "ModalDef.id shown when crafting is ready to collect" },
-        "completedModalDefId":    { "type": "string", "description": "ModalDef.id shown on collection" },
-        "failedModalDefId":       { "type": "string", "description": "ModalDef.id shown on failure" }
+        "requirements": {
+          "description": "RichSelection tree — conditions the player must satisfy to start crafting"
+        },
+        "visibilityRequirements": {
+          "description": "RichSelection tree — conditions that must be met for the recipe to appear in the UI"
+        },
+        "effects": {
+          "type": "array",
+          "description": "Effects applied to entities on completion",
+          "default": []
+        },
+        "data": {
+          "type": "object",
+          "description": "Extra freeform data. { tier: 1|2|3 } sets the workshop tier requirement.",
+          "default": {}
+        },
+        "displayDefId": {
+          "type": "string",
+          "description": "DisplayDef.id for visual styling"
+        },
+        "activeModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown while crafting is in-progress"
+        },
+        "readyModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown when crafting is ready to collect"
+        },
+        "completedModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown on collection"
+        },
+        "failedModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown on failure"
+        }
       }
     },
     "TelemetryDef": {
@@ -775,7 +874,7 @@
       ]
     },
     "TelemetrySubEventSpec": {
-      "description": "One counter within a TelemetryDef \u2014 bound to an event type and optional RichSelection filter.",
+      "description": "One counter within a TelemetryDef — bound to an event type and optional RichSelection filter.",
       "properties": {
         "key": {
           "type": "string",
@@ -822,6 +921,283 @@
           "format": "date-time"
         }
       }
+    },
+    "ScreenCompositionDefinition": {
+      "type": "object",
+      "description": "A versioned screen composition definition. Stored in the GameDefinition table with type=screen_composition.",
+      "required": [
+        "id",
+        "type",
+        "screenKey",
+        "version",
+        "status",
+        "layout",
+        "sections"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique definition ID."
+        },
+        "type": {
+          "type": "string",
+          "const": "screen_composition"
+        },
+        "screenKey": {
+          "type": "string",
+          "description": "Stable screen identifier used by the app router, e.g. home_screen."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "archived"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Human-facing notes, owner, tags, changelog.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "platform": {
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ios",
+                  "android",
+                  "web",
+                  "desktop"
+                ]
+              }
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "minAppVersion": {
+              "type": "string"
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "properties": {
+            "startsAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "endsAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "seasonId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "alwaysOn": {
+              "type": "boolean"
+            }
+          }
+        },
+        "navigation": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "showBackButton": {
+              "type": "boolean"
+            },
+            "showBottomNav": {
+              "type": "boolean"
+            },
+            "bottomNavActiveKey": {
+              "type": "string"
+            },
+            "headerStyle": {
+              "type": "string",
+              "enum": [
+                "default",
+                "transparent",
+                "hidden"
+              ]
+            }
+          }
+        },
+        "layout": {
+          "type": "object",
+          "required": [
+            "style"
+          ],
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "scroll",
+                "fixed",
+                "tabs",
+                "pager"
+              ]
+            },
+            "backgroundColor": {
+              "type": "string"
+            },
+            "paddingTop": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "paddingBottom": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "gap": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "maxWidth": {
+              "type": [
+                "number",
+                "string"
+              ]
+            }
+          }
+        },
+        "dataSources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "server",
+                  "definition",
+                  "local",
+                  "computed"
+                ]
+              },
+              "endpoint": {
+                "type": "string"
+              },
+              "cacheSeconds": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "components"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "order": {
+                "type": "number"
+              },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "componentKey"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "componentKey": {
+                      "type": "string",
+                      "description": "Must match a registered client component key."
+                    },
+                    "props": {
+                      "type": "object"
+                    },
+                    "actions": {
+                      "type": "object"
+                    },
+                    "dataSourceId": {
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "fallback": {
+          "type": "object",
+          "properties": {
+            "screenKey": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
     }
   },
   "definitions_extra": {
@@ -852,7 +1228,7 @@
         },
         "key": {
           "type": "string",
-          "description": "Optional \u2014 narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
+          "description": "Optional — narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
         },
         "target": {
           "type": "number",
@@ -882,6 +1258,15 @@
         "type": "array",
         "items": {
           "$ref": "#/definitions/SynergyRule"
+        }
+      }
+    },
+    "GameDefinition (seed-data.json)": {
+      "description": "Seed records for GameDefinition table. type=screen_composition rows define UI composition for named screens. All seed records have isActive=false (draft) and must be published via the admin publish endpoint.",
+      "schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/ScreenCompositionDefinition"
         }
       }
     }

@@ -2573,5 +2573,154 @@
       },
       "enabled": true
     }
+  ],
+  "GameDefinition": [
+    {
+      "id": "gamedef_home_screen_v1",
+      "type": "screen_composition",
+      "key": "home_screen",
+      "version": 1,
+      "isActive": false,
+      "data": {
+        "id": "gamedef_home_screen_v1",
+        "type": "screen_composition",
+        "screenKey": "home_screen",
+        "version": 1,
+        "status": "draft",
+        "metadata": {
+          "name": "Home Screen",
+          "description": "Main dashboard shown after login. Draft — not yet active.",
+          "owner": "design",
+          "tags": ["home", "live_ops", "mobile"]
+        },
+        "layout": {
+          "style": "scroll",
+          "paddingBottom": 80
+        },
+        "navigation": {
+          "showBottomNav": true,
+          "bottomNavActiveKey": "home",
+          "headerStyle": "default"
+        },
+        "dataSources": [
+          {
+            "id": "banners",
+            "type": "server",
+            "endpoint": "/api/ui/home-banners",
+            "cacheSeconds": 60
+          },
+          {
+            "id": "daily_checkin",
+            "type": "server",
+            "endpoint": "/api/checkin/status",
+            "cacheSeconds": 30
+          }
+        ],
+        "sections": [
+          {
+            "id": "banner_carousel",
+            "label": "Banner Carousel",
+            "order": 0,
+            "components": [
+              {
+                "id": "home_banners",
+                "componentKey": "BannerCarousel",
+                "dataSourceId": "banners",
+                "order": 0
+              }
+            ]
+          },
+          {
+            "id": "daily_actions",
+            "label": "Daily Actions",
+            "order": 1,
+            "components": [
+              {
+                "id": "daily_checkin_card",
+                "componentKey": "DailyCheckInCard",
+                "dataSourceId": "daily_checkin",
+                "order": 0
+              }
+            ]
+          },
+          {
+            "id": "active_missions",
+            "label": "Active Missions",
+            "order": 2,
+            "components": [
+              {
+                "id": "mission_list",
+                "componentKey": "ActiveMissionList",
+                "order": 0
+              }
+            ]
+          }
+        ],
+        "fallback": {
+          "screenKey": "home_screen_legacy",
+          "message": "Falling back to legacy home screen."
+        }
+      }
+    },
+    {
+      "id": "gamedef_store_screen_v1",
+      "type": "screen_composition",
+      "key": "store_screen",
+      "version": 1,
+      "isActive": false,
+      "data": {
+        "id": "gamedef_store_screen_v1",
+        "type": "screen_composition",
+        "screenKey": "store_screen",
+        "version": 1,
+        "status": "draft",
+        "metadata": {
+          "name": "Store Screen",
+          "description": "Main store screen. Draft — not yet active.",
+          "owner": "design",
+          "tags": ["store", "economy", "mobile"]
+        },
+        "layout": {
+          "style": "scroll",
+          "paddingBottom": 80
+        },
+        "navigation": {
+          "title": "Store",
+          "showBottomNav": true,
+          "bottomNavActiveKey": "store",
+          "headerStyle": "default"
+        },
+        "sections": [
+          {
+            "id": "featured_offers",
+            "label": "Featured",
+            "order": 0,
+            "components": [
+              {
+                "id": "featured_shop_items",
+                "componentKey": "FeaturedShopRail",
+                "order": 0
+              }
+            ]
+          },
+          {
+            "id": "gem_packs",
+            "label": "Gem Packs",
+            "order": 1,
+            "components": [
+              {
+                "id": "gem_pack_grid",
+                "componentKey": "GemPackGrid",
+                "order": 0
+              }
+            ]
+          }
+        ],
+        "fallback": {
+          "screenKey": "store_screen_legacy",
+          "message": "Falling back to legacy store screen."
+        }
+      }
+    }
   ]
 }

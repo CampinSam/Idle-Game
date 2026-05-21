@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
+import { ScreensService } from '../screens/screens.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
@@ -21,6 +22,7 @@ export class AdminController {
 
   constructor(
     private adminService: AdminService,
+    private screensService: ScreensService,
     private globalPowerService: GlobalPowerService,
     private notificationService: NotificationService,
     private eventService: EventService,
@@ -64,7 +66,31 @@ export class AdminController {
       { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
       { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
       { key: 'gemPacks', name: 'Gem Pack Display', table: 'stripe.products' },
+      { key: 'gameDefinition', name: 'Game Definitions', table: 'game_definitions' },
     ];
+  }
+
+  // ─── Game Definition: publish / rollback ─────────────────────────────────
+
+  @Get('game-definitions')
+  listGameDefinitions(@Query('key') key?: string) {
+    return this.screensService.listByKey(key);
+  }
+
+  @Post('game-definitions/:key/:version/publish')
+  publishGameDefinition(
+    @Param('key') key: string,
+    @Param('version', ParseIntPipe) version: number,
+  ) {
+    return this.screensService.publish(key, version);
+  }
+
+  @Post('game-definitions/:key/:version/rollback')
+  rollbackGameDefinition(
+    @Param('key') key: string,
+    @Param('version', ParseIntPipe) version: number,
+  ) {
+    return this.screensService.rollback(key, version);
   }
 
   @Get('players/search')

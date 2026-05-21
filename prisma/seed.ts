@@ -18,6 +18,7 @@ const TABLE_TO_MODEL: Record<string, string> = {
   RecipeDef: 'recipeDef',
   EventDefinition: 'eventDefinition',
   GiftDef: 'giftDef',
+  GameDefinition: 'gameDefinition',
 };
 
 const SEED_ORDER = [
@@ -34,6 +35,7 @@ const SEED_ORDER = [
   'RecipeDef',
   'EventDefinition',
   'GiftDef',
+  'GameDefinition',
 ];
 
 async function seedDefinitions() {

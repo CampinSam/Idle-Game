@@ -1113,6 +1113,7 @@ export class AdminService {
       selectionRuleDef: (this.prisma as any).selectionRuleDef,
       synergyRule: (this.prisma as any).synergyRule,
       telemetryDef: (this.prisma as any).telemetryDef,
+      gameDefinition: (this.prisma as any).gameDefinition,
     };
 
     if (!models[table]) {

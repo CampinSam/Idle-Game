@@ -1415,3 +1415,97 @@ Update the display metadata for a gem pack. Only the supplied fields are changed
 The on-chain confirmation worker polls every 15 seconds. For EVM it checks USDC Transfer events via `eth_getLogs`; for Cardano it queries address transactions via Blockfrost. Confirmed transactions are deduplicated by `txHash` to prevent double-crediting.
 
 After confirmation, gems are credited via the shared `fulfillPurchase()` path and an SSE `purchase.confirmed` event is pushed to the player's stream.
+
+---
+
+## Screen Compositions — `/api/screens`
+
+### `GET /api/screens/:screenKey`
+Resolve the active `screen_composition` definition for a given screen key.
+
+**Auth:** None required (public endpoint)
+
+**Response:**
+```json
+{
+  "id": "gamedef_home_screen_v1",
+  "type": "screen_composition",
+  "key": "home_screen",
+  "version": 1,
+  "isActive": true,
+  "data": { "...ScreenCompositionDefinition..." },
+  "startsAt": null,
+  "endsAt": null,
+  "createdAt": "2026-05-21T00:00:00.000Z",
+  "updatedAt": "2026-05-21T00:00:00.000Z"
+}
+```
+
+Returns `404` when no active definition exists for the key (frontend should fall back to legacy renderer).
+
+---
+
+### `GET /api/screens/:screenKey/preview?version=N`
+Preview any version of a definition regardless of `isActive` status.
+
+**Auth:** Admin (`X-Admin-Secret` header)
+
+**Query params:** `version` (integer, default `1`)
+
+---
+
+## Game Definitions — `/api/admin/game-definitions`
+
+All admin game-definition endpoints require the `X-Admin-Secret` header.
+
+### `GET /api/admin/game-definitions?key=<screenKey>`
+List all `screen_composition` game definitions. Filter by `key` to list all versions of a single screen.
+
+**Auth:** Admin
+
+**Response:** `ResolvedScreenDefinition[]`
+
+---
+
+### `POST /api/admin/game-definitions/:key/:version/publish`
+Atomically deactivate all current active versions for `(screen_composition, key)` and activate the specified version.
+
+**Auth:** Admin
+
+**Response:** The newly published `ResolvedScreenDefinition`.
+
+---
+
+### `POST /api/admin/game-definitions/:key/:version/rollback`
+Roll back to a previous version — same semantics as publish (deactivates all, activates the target version).
+
+**Auth:** Admin
+
+**Response:** The rolled-back `ResolvedScreenDefinition`.
+
+---
+
+### CRUD via Generic Admin Table Endpoints
+
+`GameDefinition` rows are also available through the standard admin table CRUD:
+
+| Operation | Endpoint |
+|---|---|
+| List all | `GET /api/admin/gameDefinition` |
+| Get by ID | `GET /api/admin/gameDefinition/:id` |
+| Create | `POST /api/admin/gameDefinition` |
+| Update | `PUT /api/admin/gameDefinition/:id` |
+| Delete | `DELETE /api/admin/gameDefinition/:id` |
+
+**Key fields for `GameDefinition`:**
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `"screen_composition"` | Definition type (extend for other uses later) |
+| `key` | `string` | Stable screen key, e.g. `home_screen` |
+| `version` | `number` | Increment to create a new draft without overwriting the live version |
+| `isActive` | `boolean` | Use the publish endpoint — direct mutation risks two active versions |
+| `startsAt` / `endsAt` | `string?` | ISO datetime availability window |
+| `data` | `ScreenCompositionDefinition` | Full screen layout JSON |
+
+**Unique constraint:** `(type, key, version)` — duplicate version creates a DB error.
