@@ -1,11 +1,20 @@
-import React, { Component, useMemo } from 'react';
+import React, { Component, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../../context/ModalContext';
 import { useSyncPlayer } from '../../hooks/useSyncSelectors';
-import type { GameDefinitionRow, ScreenCompositionDefinition, ScreenSectionDefinition } from '@derp/shared';
+import type {
+  GameDefinitionRow,
+  ScreenCompositionDefinition,
+  ScreenSectionDefinition,
+  ScreenLayoutConfig,
+} from '@derp/shared';
 import { COMPONENT_REGISTRY } from './componentRegistry';
 import { ScreenDataContext, useDataSources } from './ScreenDataContext';
-import { evaluateVisibilityGroup, buildVisibilityContext } from './visibilityEvaluator';
+import {
+  evaluateVisibilityGroup,
+  buildVisibilityContext,
+  type ClientVisibilityContext,
+} from './visibilityEvaluator';
 import { executeAction, type ActionHandlerContext } from './actionHandlers';
 
 class SectionErrorBoundary extends Component<
@@ -23,16 +32,14 @@ class SectionErrorBoundary extends Component<
 
   componentDidCatch(err: Error, info: React.ErrorInfo) {
     console.error(
-      `[ScreenCompositionRenderer] Section "${this.props.sectionId}" render failed:`,
+      `[ScreenCompositionRenderer] Section "${this.props.sectionId}" failed:`,
       err.message,
       info.componentStack,
     );
   }
 
   render() {
-    if (this.state.hasError) {
-      return this.props.fallback ?? null;
-    }
+    if (this.state.hasError) return this.props.fallback ?? null;
     return this.props.children;
   }
 }
@@ -44,7 +51,7 @@ function SectionRenderer({
 }: {
   section: ScreenSectionDefinition;
   actionCtx: ActionHandlerContext;
-  visibilityCtx: ReturnType<typeof buildVisibilityContext>;
+  visibilityCtx: ClientVisibilityContext;
 }) {
   if (!evaluateVisibilityGroup(section.visibility, visibilityCtx)) return null;
 
@@ -53,11 +60,11 @@ function SectionRenderer({
   const handleAction = (key: string) => {
     const action = section.actions?.[key];
     if (!action) {
-      console.warn('[ScreenCompositionRenderer] No action found for key:', key, 'in section:', section.id);
+      console.warn('[ScreenCompositionRenderer] No action for key:', key, 'in section:', section.id);
       return;
     }
     executeAction(action, actionCtx).catch((err) =>
-      console.error('[ScreenCompositionRenderer] Action execution failed:', err),
+      console.error('[ScreenCompositionRenderer] Action failed:', err),
     );
   };
 
@@ -84,13 +91,198 @@ function SectionRenderer({
   );
 }
 
+function VerticalFeedLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      {sections.map((section) => (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TabbedFeedLayout({
+  layout,
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  layout: ScreenLayoutConfig;
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  const tabs = layout.tabs ?? [];
+  const visibleTabs = tabs.filter((t) =>
+    evaluateVisibilityGroup(t.visibility, visibilityCtx),
+  );
+  const defaultTabId =
+    visibleTabs.find((t) => t.default)?.id ?? visibleTabs[0]?.id ?? '';
+  const [activeTabId, setActiveTabId] = useState(defaultTabId);
+
+  const sectionsBySlot = useMemo(() => {
+    const map: Record<string, ScreenSectionDefinition[]> = {};
+    sections.forEach((s) => {
+      const slot = s.slot ?? visibleTabs[0]?.id ?? 'default';
+      if (!map[slot]) map[slot] = [];
+      map[slot].push(s);
+    });
+    return map;
+  }, [sections, visibleTabs]);
+
+  const activeTab = activeTabId || defaultTabId;
+  const activeSections = sectionsBySlot[activeTab] ?? [];
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {visibleTabs.length > 0 && (
+        <div className="flex bg-bg-card border-b border-white/10 flex-shrink-0">
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`flex-1 py-3 px-2 text-xs font-bold tracking-wider transition-colors ${
+                activeTab === tab.id
+                  ? 'text-text-primary border-b-2 border-derp-purple'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {tab.icon ? `${tab.icon} ` : ''}{tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+        {activeSections.map((section) => (
+          <SectionRenderer
+            key={section.id}
+            section={section}
+            actionCtx={actionCtx}
+            visibilityCtx={visibilityCtx}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const FIXED_NAMED_SLOTS = ['header', 'main', 'footer'];
+
+function FixedStructureLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  const bySlot = useMemo(() => {
+    const map: Record<string, ScreenSectionDefinition[]> = {};
+    sections.forEach((s) => {
+      const slot = s.slot ?? 'main';
+      if (!map[slot]) map[slot] = [];
+      map[slot].push(s);
+    });
+    return map;
+  }, [sections]);
+
+  const renderSlot = (slotId: string) =>
+    (bySlot[slotId] ?? []).map((s) => (
+      <SectionRenderer
+        key={s.id}
+        section={s}
+        actionCtx={actionCtx}
+        visibilityCtx={visibilityCtx}
+      />
+    ));
+
+  const extraSlots = Object.keys(bySlot).filter(
+    (k) => !FIXED_NAMED_SLOTS.includes(k),
+  );
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      {renderSlot('header')}
+      <div className="flex-1">{renderSlot('main')}</div>
+      {extraSlots.map((slot) => (
+        <React.Fragment key={slot}>{renderSlot(slot)}</React.Fragment>
+      ))}
+      {renderSlot('footer')}
+    </div>
+  );
+}
+
+function LayoutWrapper({
+  layout,
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  layout: ScreenLayoutConfig;
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  const sorted = useMemo(
+    () => [...sections].sort((a, b) => a.priority - b.priority),
+    [sections],
+  );
+
+  switch (layout.layoutType) {
+    case 'tabbed_feed':
+      return (
+        <TabbedFeedLayout
+          layout={layout}
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+    case 'fixed_structure':
+      return (
+        <FixedStructureLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+    case 'modal_stack':
+    case 'vertical_feed':
+    case 'grid':
+    case 'split_panel':
+    case 'wizard':
+    default:
+      return (
+        <VerticalFeedLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+  }
+}
+
 export function ScreenCompositionRenderer({
   definition,
 }: {
   definition: GameDefinitionRow;
 }) {
   const composition = definition.data as ScreenCompositionDefinition;
-  const { sections, dataSources } = composition;
+  const { sections, dataSources, layout } = composition;
 
   const navigate = useNavigate();
   const { pushModal, dismissModal } = useModal();
@@ -106,25 +298,16 @@ export function ScreenCompositionRenderer({
     [player],
   );
 
-  const sortedSections = useMemo(
-    () => [...sections].sort((a, b) => a.priority - b.priority),
-    [sections],
-  );
-
   const dataCtxValue = useDataSources(dataSources);
 
   return (
     <ScreenDataContext.Provider value={dataCtxValue}>
-      <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
-        {sortedSections.map((section) => (
-          <SectionRenderer
-            key={section.id}
-            section={section}
-            actionCtx={actionCtx}
-            visibilityCtx={visibilityCtx}
-          />
-        ))}
-      </div>
+      <LayoutWrapper
+        layout={layout}
+        sections={sections}
+        actionCtx={actionCtx}
+        visibilityCtx={visibilityCtx}
+      />
     </ScreenDataContext.Provider>
   );
 }

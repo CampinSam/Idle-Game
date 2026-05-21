@@ -8,6 +8,17 @@ export interface ActionHandlerContext {
   dismissModal: () => void;
 }
 
+const SAFE_PROTOCOLS = new Set(['https:', 'http:']);
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return SAFE_PROTOCOLS.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export async function executeAction(
   action: ActionDefinition,
   ctx: ActionHandlerContext,
@@ -22,10 +33,25 @@ export async function executeAction(
       break;
     }
     case 'open_modal': {
-      console.warn(
-        '[actionHandlers] open_modal: modalKey routing not yet supported via screen composition —',
-        action.modalKey,
-      );
+      try {
+        const params: Parameters<typeof api.getModalSpec>[0] = {};
+        const p = action.params ?? {};
+        if (p.jobId) params.jobId = String(p.jobId);
+        if (p.notificationId) params.notificationId = String(p.notificationId);
+        if (p.giftId) params.giftId = String(p.giftId);
+        if (p.buildingDefId) params.buildingDefId = String(p.buildingDefId);
+        if (p.locationId) params.locationId = String(p.locationId);
+        if (p.buildingId) params.buildingId = String(p.buildingId);
+        if (p.depositXp) params.depositXp = true;
+        if (p.levelUp) params.levelUp = true;
+        if (action.modalKey) params.modalKey = action.modalKey as any;
+        const spec = await api.getModalSpec(params);
+        if (spec?.version === 1) {
+          ctx.pushModal(spec);
+        }
+      } catch (err: unknown) {
+        console.warn('[actionHandlers] open_modal failed for key', action.modalKey, err);
+      }
       break;
     }
     case 'api': {
@@ -53,7 +79,12 @@ export async function executeAction(
       break;
     }
     case 'open_external_link': {
-      window.open(action.url, '_blank', 'noopener,noreferrer');
+      const { url } = action;
+      if (!isSafeUrl(url)) {
+        console.warn('[actionHandlers] Blocked external link with unsafe URL:', url);
+        break;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
       break;
     }
     case 'noop': {

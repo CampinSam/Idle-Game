@@ -392,7 +392,7 @@ class ApiClient {
     return this.request<Record<string, any>>('/meta/rules');
   }
 
-  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string; buildingDefId?: string; locationId?: string; buildingId?: string; depositXp?: boolean; levelUp?: boolean }) {
+  getModalSpec(params: { jobId?: string; notificationId?: string; giftId?: string; buildingDefId?: string; locationId?: string; buildingId?: string; depositXp?: boolean; levelUp?: boolean; modalKey?: string }) {
     const q = new URLSearchParams();
     if (params.jobId) q.set('jobId', params.jobId);
     if (params.notificationId) q.set('notificationId', params.notificationId);
@@ -402,6 +402,7 @@ class ApiClient {
     if (params.buildingId) q.set('buildingId', params.buildingId);
     if (params.depositXp) q.set('depositXp', 'true');
     if (params.levelUp) q.set('levelUp', 'true');
+    if (params.modalKey) q.set('modalKey', params.modalKey);
     return this.request<any>(`/ui/modal?${q.toString()}`);
   }
 
