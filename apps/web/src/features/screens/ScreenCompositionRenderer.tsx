@@ -179,6 +179,30 @@ function TabbedFeedLayout({
   );
 }
 
+function ModalStackLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-start flex-1 min-h-0 overflow-y-auto p-4 gap-3 bg-black/40 backdrop-blur-sm [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      {sections.map((section) => (
+        <div key={section.id} className="w-full max-w-md">
+          <SectionRenderer
+            section={section}
+            actionCtx={actionCtx}
+            visibilityCtx={visibilityCtx}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const FIXED_NAMED_SLOTS = ['header', 'main', 'footer'];
 
 function FixedStructureLayout({
@@ -261,6 +285,13 @@ function LayoutWrapper({
         />
       );
     case 'modal_stack':
+      return (
+        <ModalStackLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
     case 'vertical_feed':
     case 'grid':
     case 'split_panel':

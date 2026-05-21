@@ -7,6 +7,7 @@ vi.mock('../../services/api', () => ({
     getCraftingWorkshops: vi.fn().mockResolvedValue([]),
     getCraftingRecipes: vi.fn().mockResolvedValue([]),
     getModalSpec: vi.fn().mockResolvedValue(null),
+    getScreenComposition: vi.fn().mockResolvedValue(null),
     setToken: vi.fn(),
   },
 }));
@@ -46,6 +47,7 @@ const baseSyncState = {
   currencyBalances: {},
   activeSeason: null,
   homeBanners: [],
+  globalPowers: [],
   tickBroadcast: null,
   lastError: null,
 };

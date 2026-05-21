@@ -4,7 +4,7 @@ import { ScreenCompositionRenderer } from '../screens/ScreenCompositionRenderer'
 import HomePageV2 from './HomePageV2';
 
 export default function HomePage() {
-  const { definition } = useScreenComposition('home_screen');
+  const { definition } = useScreenComposition('home');
 
   if (!definition) return <HomePageV2 />;
 
