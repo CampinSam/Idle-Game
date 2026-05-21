@@ -6,6 +6,17 @@ import GameIcon from '../../components/GameIcon';
 import ItemQty from '../../components/ItemQty';
 import { resolveName } from '../../utils/iconResolver';
 
+interface GemPack {
+  id: string;
+  name: string;
+  description: string;
+  gemAmount: number;
+  priceId: string;
+  unitAmount: number;
+  currency: string;
+  displayOrder: number;
+}
+
 interface CostEntry {
   type: 'currency' | 'item';
   id: string;
@@ -213,9 +224,58 @@ function ItemCard({ item, onOpen }: { item: ShopItem; onOpen: (item: ShopItem) =
   );
 }
 
-const TABS = ['featured', 'currency', 'bundle', 'items'] as const;
+function formatUsd(unitAmount: number): string {
+  return `$${(unitAmount / 100).toFixed(2)}`;
+}
+
+function GemPackCard({ pack, onBuy, buying }: { pack: GemPack; onBuy: (pack: GemPack) => void; buying: boolean }) {
+  const isBestValue = pack.gemAmount === 2500;
+  return (
+    <div
+      className={
+        `relative [background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)] border rounded-[14px] ` +
+        `px-3 py-4 flex flex-col items-center gap-2 text-center ` +
+        `motion-safe:animate-[card-enter_0.2s_ease-out_both] ` +
+        (isBestValue
+          ? 'border-[rgba(139,92,246,0.5)] shadow-[0_0_12px_rgba(139,92,246,0.15)]'
+          : 'border-[rgba(139,92,246,0.2)]')
+      }
+    >
+      {isBestValue && (
+        <span className="absolute -top-px left-1/2 -translate-x-1/2 inline-block px-2 py-0.5 rounded-[4px] text-[8px] font-black tracking-[1px] text-white uppercase whitespace-nowrap bg-[#8b5cf6]">
+          BEST VALUE
+        </span>
+      )}
+      <div className="flex flex-col items-center gap-1 mt-1">
+        <GameIcon src="premium_gems" size={40} />
+        <div className="text-[20px] font-black text-white leading-none">{pack.gemAmount.toLocaleString()}</div>
+        <div className="text-[10px] text-text-secondary font-semibold uppercase tracking-wide">Gems</div>
+      </div>
+      {pack.description ? (
+        <div className="text-[11px] text-text-secondary leading-snug">{pack.description}</div>
+      ) : null}
+      <button
+        disabled={buying}
+        onClick={() => onBuy(pack)}
+        data-sfx="ui.button_primary"
+        className={
+          `w-full mt-1 py-2 rounded-[8px] text-[13px] font-bold tracking-[0.3px] border cursor-pointer ` +
+          `transition-colors duration-150 ` +
+          (buying
+            ? 'opacity-50 cursor-not-allowed bg-[rgba(139,92,246,0.1)] border-[rgba(139,92,246,0.2)] text-text-secondary'
+            : 'bg-[rgba(139,92,246,0.15)] border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)]')
+        }
+      >
+        {buying ? 'Redirecting…' : `${formatUsd(pack.unitAmount)} · Buy with Card`}
+      </button>
+    </div>
+  );
+}
+
+const TABS = ['featured', 'gems', 'currency', 'bundle', 'items'] as const;
 const TAB_LABELS: Record<string, string> = {
   featured: 'Featured',
+  gems: '💎 Gems',
   currency: 'Currencies',
   bundle: 'Bundles',
   items: 'Items',
@@ -225,6 +285,11 @@ export default function StorePage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('featured');
+
+  const [gemPacks, setGemPacks] = useState<GemPack[]>([]);
+  const [gemPacksLoading, setGemPacksLoading] = useState(false);
+  const [buyingPackId, setBuyingPackId] = useState<string | null>(null);
+  const [gemPacksError, setGemPacksError] = useState<string | null>(null);
 
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
@@ -244,6 +309,42 @@ export default function StorePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'gems') return;
+    setGemPacksLoading(true);
+    setGemPacksError(null);
+    fetch('/api/v1/payments/packs')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setGemPacks(data);
+        else setGemPacksError('Could not load gem packs.');
+      })
+      .catch(() => setGemPacksError('Could not load gem packs.'))
+      .finally(() => setGemPacksLoading(false));
+  }, [activeTab]);
+
+  const handleBuyGemPack = useCallback(async (pack: GemPack) => {
+    setBuyingPackId(pack.id);
+    try {
+      const resp = await fetch('/api/v1/purchases', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('derp_token') || ''}`,
+        },
+        body: JSON.stringify({ packId: pack.id, paymentMethod: 'stripe' }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
+      if (data?.action?.type === 'redirect' && data.action.url) {
+        window.location.href = data.action.url;
+      }
+    } catch (err: any) {
+      setBuyingPackId(null);
+      alert(err?.message ?? 'Something went wrong. Please try again.');
+    }
   }, []);
 
   const tabItems = items.filter((i) => i.tab === activeTab);
@@ -333,7 +434,43 @@ export default function StorePage() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-3.5">
-          {loading ? (
+          {activeTab === 'gems' ? (
+            gemPacksLoading ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : gemPacksError ? (
+              <div className="text-center py-10 px-5 text-text-secondary text-[14px]">{gemPacksError}</div>
+            ) : gemPacks.length === 0 ? (
+              <div className="text-center py-10 px-5 text-text-secondary text-[14px]">
+                <div className="text-[28px] mb-2">💎</div>
+                <div className="font-semibold text-text-primary mb-1">Gem packs coming soon</div>
+                <div className="text-[12px]">Connect Stripe in the Integrations tab to enable purchases.</div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="text-[11px] text-text-secondary text-center px-2">
+                  Gems are used to speed up timers, unlock premium content, and more.
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {gemPacks.map((pack) => (
+                    <GemPackCard
+                      key={pack.id}
+                      pack={pack}
+                      onBuy={handleBuyGemPack}
+                      buying={buyingPackId === pack.id}
+                    />
+                  ))}
+                </div>
+                <div className="text-[10px] text-text-secondary text-center px-4 mt-1">
+                  Payments processed securely by Stripe. Gems are delivered instantly after payment.
+                </div>
+              </div>
+            )
+          ) : loading ? (
             <div className="flex flex-col gap-2.5">
               {activeTab === 'featured' ? (
                 <>

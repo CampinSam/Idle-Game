@@ -36,6 +36,7 @@ import { CheckInModule } from './modules/checkin/checkin.module';
 import { QuestModule } from './modules/quest/quest.module';
 import { NftModule } from './modules/nft/nft.module';
 import { ShopModule } from './modules/shop/shop.module';
+import { PaymentModule } from './modules/payment/payment.module';
 import { EffectModule } from './modules/effect/effect.module';
 import { AudioModule } from './modules/audio/audio.module';
 import { ClientErrorsModule } from './modules/client-errors/client-errors.module';
@@ -154,6 +155,7 @@ const imports: any[] = [
   QuestModule,
   NftModule,
   ShopModule,
+  PaymentModule,
   EffectModule,
   AudioModule,
   ClientErrorsModule,

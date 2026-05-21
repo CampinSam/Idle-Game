@@ -14,6 +14,19 @@ enum StackMode {
   unique
 }
 
+enum PurchasePaymentMethod {
+  STRIPE
+  CRYPTO_EVM
+  CRYPTO_CARDANO
+}
+
+enum PurchaseStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
 enum CurrencyType {
   SOFT
   HARD
@@ -42,6 +55,8 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  stripeCustomerId   String?
+
   entities           Entity[]
   locationInstances  LocationInstance[]
   jobs               Job[]
@@ -58,6 +73,7 @@ model User {
   linkedWallets      LinkedWallet[]
   activeEffects      ActiveEffect[]
   passwordResets     PasswordReset[]
+  purchases          Purchase[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
@@ -1259,6 +1275,37 @@ model ShopItemDef {
   createdAt    DateTime  @default(now())
 
   @@map("shop_item_defs")
+}
+
+// ═══════════════════════════════════════════════════
+// PURCHASES
+// ═══════════════════════════════════════════════════
+
+model Purchase {
+  id              String                @id @default(uuid())
+  userId          String
+  packId          String
+  gemAmount       Int
+  paymentMethod   PurchasePaymentMethod
+  status          PurchaseStatus        @default(PENDING)
+
+  stripeSessionId String?               @unique
+
+  chain               String?
+  destinationAddress  String?
+  amountExpected      BigInt?
+  txHash              String?
+
+  expiresAt       DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status, paymentMethod])
+  @@index([stripeSessionId])
+  @@map("purchases")
 }
 
 // ═══════════════════════════════════════════════════

@@ -5965,7 +5965,6 @@
         ],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 1,
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6034,7 +6033,6 @@
         ],
         "skip_type": "scaling"
       },
-      "requiredKeeperLevel": 10,
       "requirements": {
         "op": "AND",
         "rules": [
@@ -6119,7 +6117,6 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 15,
       "requirements": {
         "op": "AND",
         "rules": [
@@ -6221,7 +6218,6 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 2,
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6290,7 +6286,6 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 2,
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6364,7 +6359,6 @@
         "skip_cost": [],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 3,
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6425,7 +6419,6 @@
         "duration": 300,
         "boostable": true
       },
-      "requiredKeeperLevel": 2,
       "requirements": null,
       "effects": [],
       "visibilityRequirements": null,
@@ -6492,7 +6485,6 @@
         ],
         "skip_type": "absolute"
       },
-      "requiredKeeperLevel": 5,
       "requirements": {
         "op": "AND",
         "rules": [

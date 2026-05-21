@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
+import { initStripe } from './stripe/stripe-init';
 
 function parseCorsOrigin(raw: string | undefined, isProduction: boolean): boolean | string | string[] {
   if (!raw) return isProduction ? false : '*';
@@ -71,6 +72,23 @@ async function bootstrap() {
   // and the dev preview is iframed via Replit's proxy — a strict CSP needs
   // its own design pass before turning on.
   app.use(helmet({ contentSecurityPolicy: false }));
+
+  // Preserve raw body for the Stripe webhook route so signature verification
+  // can run against the original Buffer. All other routes get parsed JSON as
+  // normal. Must be registered before the json() middleware below.
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.includes('/stripe/webhook')) {
+      // Collect raw bytes; do NOT call next until done.
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('end', () => {
+        req.rawBody = Buffer.concat(chunks);
+        next();
+      });
+    } else {
+      next();
+    }
+  });
 
   // Bound request bodies. Defaults are generous (~100kb for JSON in modern
   // express) but we want an explicit, low cap so a single malicious POST
@@ -142,13 +160,14 @@ async function bootstrap() {
   new NestLogger('Bootstrap').log(`Derp Universe API running on port ${port}`);
 }
 
-bootstrap().catch((err) => {
-  // Last-ditch surface for any error thrown before `app.listen` resolves —
-  // including OnModuleInit failures from BootstrapService or the tick pipeline.
-  // console.error writes synchronously to stderr so this line is guaranteed to
-  // appear in deployment logs even before any logger is wired up.
-  // eslint-disable-next-line no-console
-  console.error('[bootstrap] fatal error during startup:', err?.stack ?? err);
-  process.exitCode = 1;
-  process.exit(1);
-});
+// Stripe init runs after the server is listening so a missing integration
+// never blocks the process from starting. Errors are logged, not thrown.
+bootstrap()
+  .then(() => initStripe())
+  .catch((err) => {
+    // Last-ditch surface for any error thrown before `app.listen` resolves.
+    // eslint-disable-next-line no-console
+    console.error('[bootstrap] fatal error during startup:', err?.stack ?? err);
+    process.exitCode = 1;
+    process.exit(1);
+  });
