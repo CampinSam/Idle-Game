@@ -66,7 +66,7 @@ export class AdminController {
       { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
       { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
       { key: 'gemPacks', name: 'Gem Pack Display', table: 'stripe.products' },
-      { key: 'gameDefinition', name: 'Game Definitions', table: 'game_definitions' },
+      { key: 'game-definitions', name: 'Game Definitions', table: 'game_definitions' },
     ];
   }
 

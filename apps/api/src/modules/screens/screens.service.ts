@@ -385,9 +385,12 @@ export class ScreensService {
         select: { id: true, keeperLevel: true },
       });
       if (!user) return undefined;
-      const walletCount = await (this.prisma as any).wallet.count({ where: { userId } });
+      const walletCount = await (this.prisma as any).linkedWallet.count({ where: { userId } });
       return { id: user.id, keeperLevel: user.keeperLevel ?? 0, walletCount };
-    } catch {
+    } catch (err) {
+      this.logger.warn(
+        `loadUserContext failed for userId=${userId}: ${(err as Error)?.message ?? err}`,
+      );
       return undefined;
     }
   }
