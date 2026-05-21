@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ScreenSectionDefinition } from '@derp/shared';
 import {
@@ -6,10 +6,13 @@ import {
   useSyncLocations,
   useSyncCurrencyBalances,
   useAllActiveJobs,
+  useGlobalPowers,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector } from '../../store';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
 import { BannerCarousel } from '../home/BannerCarousel';
+import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
+import { api } from '../../services/api';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -344,6 +347,42 @@ function WalletPromptCardComp({ section, onAction }: ScreenComponentProps) {
   );
 }
 
+function GlobalBuffsSectionComp(_: ScreenComponentProps) {
+  return <GlobalBuffsSection />;
+}
+
+function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
+  const navigate = useNavigate();
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getCraftingWorkshops()
+      .then((list) => { if (!cancelled) setCount(list.length); })
+      .catch(() => { if (!cancelled) setCount(0); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (count === 0) return null;
+
+  return (
+    <Card className="mb-4 p-4 border-orange-500/20">
+      <SectionHeader title="⚒️ THE FORGE" />
+      <div className="mt-2 flex items-center gap-2">
+        {count != null && (
+          <StatPill icon="🏭" value={`${count} workshop${count === 1 ? '' : 's'}`} />
+        )}
+      </div>
+      <button
+        className="mt-3 w-full bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-[#1a1640] rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(245,158,11,0.4)]"
+        onClick={() => navigate('/locations')}
+      >
+        GO TO WORKSHOPS
+      </button>
+    </Card>
+  );
+}
+
 function GenericStubComp({ section }: ScreenComponentProps) {
   if (import.meta.env.PROD) return null;
   return (
@@ -368,6 +407,8 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
   ResourceSummaryBar: ResourceSummaryBarComp,
+  GlobalBuffsSection: GlobalBuffsSectionComp,
+  CraftingWorkshopsCard: CraftingWorkshopsCardComp,
   QuickStatusCards: QuickStatusCardsComp,
   DailyQuestPanel: DailyQuestPanelComp,
   MissionFeaturedCard: MissionFeaturedCardComp,

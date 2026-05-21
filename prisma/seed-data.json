@@ -2576,20 +2576,20 @@
   ],
   "GameDefinition": [
     {
-      "id": "gamedef_home_screen_v1",
+      "id": "gamedef_home_v1",
       "type": "screen_composition",
-      "key": "home_screen",
+      "key": "home",
       "version": 1,
-      "isActive": false,
+      "isActive": true,
       "data": {
-        "id": "gamedef_home_screen_v1",
+        "id": "gamedef_home_v1",
         "type": "screen_composition",
-        "screenKey": "home_screen",
+        "screenKey": "home",
         "version": 1,
-        "status": "draft",
+        "status": "active",
         "metadata": {
           "name": "Home Screen",
-          "description": "Main dashboard shown after login. Draft — not yet active.",
+          "description": "Main dashboard shown after login.",
           "owner": "design",
           "tags": [
             "home",
@@ -2619,20 +2619,6 @@
             "endpoint": "/api/ui/home-banners",
             "cacheTtlSeconds": 60,
             "required": false
-          },
-          {
-            "id": "daily_checkin",
-            "sourceType": "api",
-            "endpoint": "/api/checkin/status",
-            "cacheTtlSeconds": 30,
-            "required": false
-          },
-          {
-            "id": "player_summary",
-            "sourceType": "api",
-            "endpoint": "/api/player/summary",
-            "cacheTtlSeconds": 30,
-            "required": true
           }
         ],
         "sections": [
@@ -2640,49 +2626,59 @@
             "id": "banner_carousel",
             "component": "BannerCarousel",
             "priority": 10,
-            "slot": "main",
-            "props": {
-              "dataSourceId": "banners"
-            }
+            "slot": "main"
           },
           {
-            "id": "daily_checkin_card",
-            "component": "DailyCheckInCard",
+            "id": "global_buffs",
+            "component": "GlobalBuffsSection",
+            "priority": 15,
+            "slot": "main"
+          },
+          {
+            "id": "resource_summary",
+            "component": "ResourceSummaryBar",
             "priority": 20,
             "slot": "main",
             "props": {
-              "dataSourceId": "daily_checkin"
+              "maxItems": 6
             }
           },
           {
             "id": "quick_status",
             "component": "QuickStatusCards",
             "priority": 30,
-            "slot": "main",
-            "props": {
-              "dataSourceId": "player_summary"
-            }
+            "slot": "main"
           },
           {
-            "id": "daily_quests",
-            "component": "DailyQuestPanel",
-            "priority": 40,
+            "id": "daily_checkin_card",
+            "component": "DailyCheckInCard",
+            "priority": 35,
             "slot": "main",
             "props": {
-              "dataSourceId": "player_summary"
+              "subtitle": "Come back each day for rewards!",
+              "actionKey": "open_checkin",
+              "actionLabel": "CLAIM"
             }
           },
           {
             "id": "active_missions",
             "component": "MissionFeaturedCard",
+            "priority": 40,
+            "slot": "main"
+          },
+          {
+            "id": "crafting_workshops",
+            "component": "CraftingWorkshopsCard",
             "priority": 50,
             "slot": "main"
+          },
+          {
+            "id": "daily_quests",
+            "component": "DailyQuestPanel",
+            "priority": 60,
+            "slot": "main"
           }
-        ],
-        "fallback": {
-          "screenKey": "home_screen_legacy",
-          "message": "Falling back to legacy home screen."
-        }
+        ]
       }
     },
     {
