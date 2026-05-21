@@ -2,18 +2,22 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException,
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PurchaseEventBus } from './purchase-event.bus';
+import { AdaRateService } from './ada-rate.service';
 import { getUncachableStripeClient } from '../../stripe/stripe-client';
 import { PurchaseStatus, PurchasePaymentMethod } from '@prisma/client';
 import type { CreatePurchaseResult, GemPack, PurchaseStatusResult } from './payment.types';
 
-// Static crypto price map: pack USD price expressed as on-chain token units.
-// EVM: USDC has 6 decimals ($0.99 = 990_000). Cardano: lovelaces (1 ADA = 1_000_000).
-// ADA amounts are priced assuming 1 ADA ≈ $0.50; adjust via LOVELACE_PER_USD env var.
-const CRYPTO_PACK_PRICES: Record<string, { usdcAmount: bigint; lovelaceAmount: bigint }> = {
-  gems_100:  { usdcAmount: 990_000n,    lovelaceAmount: 2_000_000n    },
-  gems_500:  { usdcAmount: 4_990_000n,  lovelaceAmount: 10_000_000n   },
-  gems_1200: { usdcAmount: 9_990_000n,  lovelaceAmount: 20_000_000n   },
-  gems_2500: { usdcAmount: 19_990_000n, lovelaceAmount: 40_000_000n   },
+// EVM crypto price map: USDC has 6 decimals ($0.99 = 990_000).
+const CRYPTO_EVM_PRICES: Record<string, { usdcAmount: bigint }> = {
+  gems_100:  { usdcAmount: 990_000n    },
+  gems_500:  { usdcAmount: 4_990_000n  },
+  gems_1200: { usdcAmount: 9_990_000n  },
+  gems_2500: { usdcAmount: 19_990_000n },
+};
+
+// USD prices per pack — used to derive live ADA amounts at purchase time.
+const PACK_USD_PRICES: Record<string, number> = {
+  gems_100: 0.99, gems_500: 4.99, gems_1200: 9.99, gems_2500: 19.99,
 };
 
 // Gem amounts by pack (duplicates Stripe metadata — avoids a Stripe round-trip for crypto path).
@@ -29,6 +33,7 @@ export class PaymentService {
     private prisma: PrismaService,
     private currencyService: CurrencyService,
     private purchaseEventBus: PurchaseEventBus,
+    private adaRateService: AdaRateService,
   ) {}
 
   async listGemPacks(): Promise<GemPack[]> {
@@ -93,16 +98,26 @@ export class PaymentService {
       );
     }
 
-    const prices = CRYPTO_PACK_PRICES[packId];
-    if (!prices) {
+    const evmPrices = CRYPTO_EVM_PRICES[packId];
+    if (!evmPrices) {
       throw new NotFoundException(`No crypto pricing found for pack "${packId}"`);
+    }
+    const usdPrice = PACK_USD_PRICES[packId];
+    if (usdPrice === undefined) {
+      throw new NotFoundException(`No USD price defined for pack "${packId}"`);
     }
     const gemAmount = PACK_GEM_AMOUNTS[packId];
     if (!gemAmount) {
       throw new NotFoundException(`Unknown pack "${packId}"`);
     }
 
-    const amountExpected = isEvm ? prices.usdcAmount : prices.lovelaceAmount;
+    let amountExpected: bigint;
+    if (isEvm) {
+      amountExpected = evmPrices.usdcAmount;
+    } else {
+      const lovelacePerUsd = await this.adaRateService.getLovelacePerUsd();
+      amountExpected = BigInt(Math.ceil(usdPrice * lovelacePerUsd));
+    }
     const chain = isEvm ? 'ETH' : 'CARDANO';
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
