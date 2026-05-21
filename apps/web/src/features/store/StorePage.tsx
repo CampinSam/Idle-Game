@@ -131,12 +131,12 @@ function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) 
   );
 }
 
-function SkeletonCard({ wide }: { wide?: boolean }) {
+function SkeletonCard({ wide, tall }: { wide?: boolean; tall?: boolean }) {
   return (
     <div
       className={
         `rounded-[14px] ${CARD_BG} bg-[length:200%_100%] animate-[skeleton-shimmer_1.5s_infinite] ` +
-        (wide ? 'h-[130px]' : 'h-[90px]')
+        (wide ? 'h-[130px]' : tall ? 'h-[170px]' : 'h-[90px]')
       }
     />
   );
@@ -571,27 +571,35 @@ function GemPackCard({
     <div
       className="relative flex flex-col rounded-[14px] overflow-hidden motion-safe:animate-[card-enter_0.2s_ease-out_both]"
       style={{
-        background: 'linear-gradient(160deg,#151230 0%,#1e1848 100%)',
-        border: `1px solid ${pack.borderColor}`,
-        boxShadow: pack.glowColor !== 'transparent' ? `0 0 14px ${pack.glowColor}` : undefined,
+        background: 'linear-gradient(160deg,#131028 0%,#1c1640 100%)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderTop: `3px solid ${pack.accentColor}`,
+        boxShadow: pack.glowColor !== 'transparent'
+          ? `0 0 18px ${pack.glowColor}, inset 0 1px 0 rgba(255,255,255,0.05)`
+          : 'inset 0 1px 0 rgba(255,255,255,0.05)',
       }}
     >
       {pack.badgeType === 'best_value' && (
         <span
           className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-[5px] text-[7px] font-black tracking-[0.8px] text-white uppercase whitespace-nowrap leading-none"
-          style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}
+          style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}
         >
           BEST VALUE
         </span>
       )}
 
-      <div className="px-2 pt-2.5 pb-0 text-center">
-        <div className="text-[9px] font-black tracking-[1.2px] uppercase leading-none" style={{ color: pack.accentColor }}>
+      <div className="px-2 pt-2 pb-0 text-center">
+        <div className="text-[9px] font-black tracking-[1.4px] uppercase leading-none" style={{ color: pack.accentColor }}>
           {pack.displayName}
         </div>
       </div>
 
-      <div className="relative flex items-center justify-center py-2">
+      <div
+        className="relative mx-2 mt-1.5 mb-0 rounded-[8px] flex items-center justify-center py-2.5"
+        style={{
+          background: `radial-gradient(ellipse at 50% 60%, ${pack.borderColor} 0%, transparent 70%)`,
+        }}
+      >
         <GameIcon src="premium_gems" size={pack.iconSize} />
         {pack.badgeType === 'extra' && pack.badgeLabel && (
           <span className="absolute bottom-0.5 left-1 px-1.5 py-0.5 rounded-[4px] text-[7px] font-black tracking-[0.5px] text-white uppercase leading-none bg-[#16a34a]">
@@ -600,7 +608,7 @@ function GemPackCard({
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-0 px-1 pb-0.5">
+      <div className="flex flex-col items-center gap-0 px-1 pb-0.5 mt-1">
         <div className="text-[15px] font-black text-white leading-none">
           {pack.gemAmount.toLocaleString()}
         </div>
@@ -635,7 +643,7 @@ function GemPackCard({
                 : 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
             }
           >
-            💳 Wallet
+            💳 Pay with Wallet
           </button>
         )}
       </div>
@@ -988,7 +996,7 @@ export default function StorePage() {
                   ))}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {[0,1,2,3,4,5].map(i => <SkeletonCard key={i} />)}
+                  {[0,1,2,3,4,5].map(i => <SkeletonCard key={i} tall />)}
                 </div>
               </div>
             ) : gemPacksError ? (

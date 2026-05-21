@@ -1,5 +1,62 @@
 [
   {
+    "id": "banner_welcome",
+    "name": "Welcome Banner",
+    "title": "DERP UNIVERSE",
+    "subtitle": "Your realm grows stronger every hour",
+    "description": null,
+    "backgroundImage": "/media/images/background.png",
+    "ctaLabel": "START A MISSION",
+    "ctaRoute": "/missions",
+    "priority": 10,
+    "startsAt": null,
+    "endsAt": null,
+    "status": "active",
+    "seasonId": null,
+    "config": {
+      "tagline": "The idle strategy RPG where every decision counts.",
+      "autoAdvanceMs": 7000
+    }
+  },
+  {
+    "id": "banner_missions",
+    "name": "Missions Banner",
+    "title": "ADVENTURE AWAITS",
+    "subtitle": "Your crew is ready to deploy",
+    "description": null,
+    "backgroundImage": "/media/images/regions/derpshire-valley.png",
+    "ctaLabel": "VIEW MISSIONS",
+    "ctaRoute": "/missions",
+    "priority": 20,
+    "startsAt": null,
+    "endsAt": null,
+    "status": "active",
+    "seasonId": null,
+    "config": {
+      "tagline": "Send your entities on missions to earn resources and XP.",
+      "autoAdvanceMs": 7000
+    }
+  },
+  {
+    "id": "banner_gems",
+    "name": "Gems Store Banner",
+    "title": "POWER UP",
+    "subtitle": "Fuel your ascent with premium gems",
+    "description": null,
+    "backgroundImage": "/media/images/season-banner.png",
+    "ctaLabel": "GET GEMS",
+    "ctaRoute": "/store",
+    "priority": 30,
+    "startsAt": null,
+    "endsAt": null,
+    "status": "active",
+    "seasonId": null,
+    "config": {
+      "tagline": "Speed up progress, unlock cosmetics, and recharge your energy.",
+      "autoAdvanceMs": 7000
+    }
+  },
+  {
     "id": "banner_active_season",
     "name": "Active Season Banner",
     "title": "ACTIVE SEASON",
