@@ -100,6 +100,20 @@ async function appliedMigrations(client) {
   return new Set(r.rows.map((row) => row.migration_name));
 }
 
+async function failedMigrations(client) {
+  const r = await client.query(
+    "SELECT migration_name FROM _prisma_migrations WHERE started_at IS NOT NULL AND finished_at IS NULL AND rolled_back_at IS NULL",
+  );
+  return r.rows.map((row) => row.migration_name);
+}
+
+function resolveAsRolledBack(name) {
+  console.log(`[prisma-deploy] Resetting failed migration ${name} so it can be re-applied`);
+  execSync(`npx prisma migrate resolve --rolled-back ${name} --schema=${SCHEMA_PATH}`, {
+    stdio: 'inherit',
+  });
+}
+
 async function typeExists(client, name) {
   const r = await client.query('SELECT 1 FROM pg_type WHERE typname = $1 LIMIT 1', [name]);
   return r.rowCount > 0;
@@ -197,6 +211,13 @@ async function main() {
         );
       }
     } else {
+      // Reset any migrations that started but never finished (failed mid-apply).
+      // Marking them as rolled-back lets migrate deploy re-attempt them on this run.
+      const failed = await failedMigrations(client);
+      for (const name of failed) {
+        resolveAsRolledBack(name);
+      }
+
       const applied = await appliedMigrations(client);
       const all = listMigrations();
       const unapplied = all.filter((m) => !applied.has(m));

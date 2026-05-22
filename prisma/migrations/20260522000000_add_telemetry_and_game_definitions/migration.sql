@@ -1,9 +1,8 @@
 -- Migration: Add telemetry_defs, telemetry_counts, and game_definitions tables
--- These were previously created via `prisma db push` in development but never
--- had a formal migration. This migration creates them in production.
+-- Uses IF NOT EXISTS throughout — idempotent whether or not these tables were
+-- previously created via `prisma db push` in any environment.
 
--- TelemetryDef: named metric definitions with sub-event counters
-CREATE TABLE "telemetry_defs" (
+CREATE TABLE IF NOT EXISTS "telemetry_defs" (
     "id"          TEXT NOT NULL,
     "name"        TEXT NOT NULL,
     "description" TEXT,
@@ -17,10 +16,9 @@ CREATE TABLE "telemetry_defs" (
     CONSTRAINT "telemetry_defs_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "telemetry_defs_enabled_idx" ON "telemetry_defs"("enabled");
+CREATE INDEX IF NOT EXISTS "telemetry_defs_enabled_idx" ON "telemetry_defs"("enabled");
 
--- TelemetryCount: running BigInt counter per (def, subEventKey)
-CREATE TABLE "telemetry_counts" (
+CREATE TABLE IF NOT EXISTS "telemetry_counts" (
     "telemetryDefId"    TEXT NOT NULL,
     "subEventKey"       TEXT NOT NULL,
     "count"             BIGINT NOT NULL DEFAULT 0,
@@ -29,17 +27,23 @@ CREATE TABLE "telemetry_counts" (
     CONSTRAINT "telemetry_counts_pkey" PRIMARY KEY ("telemetryDefId", "subEventKey")
 );
 
-CREATE INDEX "telemetry_counts_telemetryDefId_idx" ON "telemetry_counts"("telemetryDefId");
+CREATE INDEX IF NOT EXISTS "telemetry_counts_telemetryDefId_idx" ON "telemetry_counts"("telemetryDefId");
 
-ALTER TABLE "telemetry_counts" ADD CONSTRAINT "telemetry_counts_telemetryDefId_fkey"
-    FOREIGN KEY ("telemetryDefId")
-    REFERENCES "telemetry_defs"("id")
-    ON DELETE CASCADE
-    ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_schema = 'public'
+      AND constraint_name   = 'telemetry_counts_telemetryDefId_fkey'
+  ) THEN
+    ALTER TABLE "telemetry_counts"
+      ADD CONSTRAINT "telemetry_counts_telemetryDefId_fkey"
+      FOREIGN KEY ("telemetryDefId")
+      REFERENCES "telemetry_defs"("id")
+      ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
--- GameDefinition: versioned JSON blobs for screen compositions and other
--- server-driven UI definitions (type + key + version uniquely identify a draft)
-CREATE TABLE "game_definitions" (
+CREATE TABLE IF NOT EXISTS "game_definitions" (
     "id"        TEXT NOT NULL,
     "type"      TEXT NOT NULL,
     "key"       TEXT NOT NULL,
@@ -54,8 +58,8 @@ CREATE TABLE "game_definitions" (
     CONSTRAINT "game_definitions_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "game_definitions_type_key_version_key"
+CREATE UNIQUE INDEX IF NOT EXISTS "game_definitions_type_key_version_key"
     ON "game_definitions"("type", "key", "version");
 
-CREATE INDEX "game_definitions_type_key_isActive_idx"
+CREATE INDEX IF NOT EXISTS "game_definitions_type_key_isActive_idx"
     ON "game_definitions"("type", "key", "isActive");
