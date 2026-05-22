@@ -101,7 +101,8 @@ function SectionedFormBody({
   sections.forEach(s => {
     let n = 0;
     fieldsBySection[s.id].forEach(([fname, fdef]) => {
-      n += structuredFieldErrorCount(fdef.type, record[fname]);
+      const effectiveType = fdef.typeResolver ? fdef.typeResolver(record) : fdef.type;
+      n += structuredFieldErrorCount(effectiveType, record[fname]);
       if (fdef.required) {
         const v = record[fname];
         if (v === undefined || v === null || v === '') n++;
@@ -168,16 +169,21 @@ function SectionedFormBody({
               {activeSection.description}
             </div>
           )}
-          {activeFields.map(([fieldName, fieldDef]) => (
-            <SmartField
-              key={fieldName}
-              fieldName={fieldName}
-              fieldDef={fieldDef}
-              value={record[fieldName]}
-              onChange={val => onSetField(fieldName, val)}
-              enumOptions={enumOptions}
-            />
-          ))}
+          {activeFields.map(([fieldName, fieldDef]) => {
+            const resolvedDef = fieldDef.typeResolver
+              ? { ...fieldDef, type: fieldDef.typeResolver(record) }
+              : fieldDef;
+            return (
+              <SmartField
+                key={fieldName}
+                fieldName={fieldName}
+                fieldDef={resolvedDef}
+                value={record[fieldName]}
+                onChange={val => onSetField(fieldName, val)}
+                enumOptions={enumOptions}
+              />
+            );
+          })}
           {activeFields.length === 0 && (
             <div style={{ color: '#555', fontSize: 12 }}>No fields in this section.</div>
           )}
@@ -299,7 +305,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     if (!schema || !editorState.record) return [] as string[];
     const msgs: string[] = [];
     Object.entries(schema.fields).forEach(([fname, fdef]) => {
-      msgs.push(...structuredFieldMessages(fdef.type, fname, editorState.record![fname]));
+      const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
+      msgs.push(...structuredFieldMessages(effectiveType, fname, editorState.record![fname]));
     });
     return msgs;
   }, [schema, editorState.record]);
@@ -308,7 +315,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     if (!schema || !editorState.record) return 0;
     let n = 0;
     Object.entries(schema.fields).forEach(([fname, fdef]) => {
-      n += structuredFieldErrorCount(fdef.type, editorState.record![fname]);
+      const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
+      n += structuredFieldErrorCount(effectiveType, editorState.record![fname]);
     });
     return n;
   }, [schema, editorState.record]);

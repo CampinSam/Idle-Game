@@ -1533,7 +1533,7 @@ Fetch a single active content document by its stable key. Returns the ordered bl
     { "type": "divider" },
     { "type": "reward_list" }
   ],
-  "defaultContext": {
+  "context": {
     "missionMode": "planning",
     "teamMode": "editable",
     "rewardMode": "preview"

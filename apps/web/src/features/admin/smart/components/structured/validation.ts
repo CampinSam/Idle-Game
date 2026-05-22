@@ -402,6 +402,22 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return locationLevelRulesErrorCount(value);
     case 'productionProfile':
       return productionProfileErrorCount(value);
+    case 'contentDocumentData': {
+      if (!value || typeof value !== 'object') return 1;
+      const blocks = value.blocks;
+      if (!Array.isArray(blocks)) return 1;
+      const validTypes = [
+        'mission_hero', 'mission_stats', 'mission_requirements', 'mission_synergy',
+        'team_section', 'reward_list', 'entity_roster', 'mission_timer',
+        'outcome_banner', 'narrative_text', 'rich_text', 'image', 'divider', 'key_value_row',
+      ];
+      let n = 0;
+      blocks.forEach((b: any) => {
+        if (!b || typeof b !== 'object' || !b.type || !validTypes.includes(b.type)) n++;
+        if (b?.type === 'key_value_row' && (!b.label || !b.value)) n++;
+      });
+      return n;
+    }
     default:
       return 0;
   }
@@ -537,6 +553,10 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
       return locationLevelRulesErrorMessages(value, fieldName);
     case 'productionProfile':
       return productionProfileErrorMessages(value, fieldName);
+    case 'contentDocumentData': {
+      const n = structuredFieldErrorCount('contentDocumentData', value);
+      return n > 0 ? [`${fieldName}: ${n} block issue(s) — check types and required fields`] : [];
+    }
     default: {
       const n = structuredFieldErrorCount(type, value);
       return n > 0 ? [`${fieldName}: ${n} issue(s)`] : [];

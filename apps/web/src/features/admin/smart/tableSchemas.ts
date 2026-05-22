@@ -41,6 +41,13 @@ export interface FieldDef {
    *  parent TableSchema declares `sections`. Fields without a section land
    *  in the first section. */
   section?: string;
+  /**
+   * Optional resolver that returns the effective field type based on the
+   * current record. When present, overrides `type` at render time.
+   * Useful when a single field schema needs different editors depending
+   * on a sibling field value (e.g. GameDefinition.data changes by .type).
+   */
+  typeResolver?: (record: Record<string, any>) => string;
 }
 
 export interface SectionDef {
@@ -596,7 +603,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       isActive: { type: 'boolean', default: false,  description: 'Only one version per (type, key) pair should be active at once. Use the publish endpoint to activate safely.', section: 'identity' },
       startsAt: { type: 'string',  description: 'ISO datetime — definition is suppressed before this time (blank = no lower bound)',     section: 'schedule' },
       endsAt:   { type: 'string',  description: 'ISO datetime — definition is suppressed after this time (blank = no expiry)',           section: 'schedule' },
-      data:     { type: 'json',    default: {},     description: 'Payload JSON. For screen_composition: { screenKey, status, layout, sections, ... }. For content_document: { id, version, blocks: [...], defaultContext?: { missionMode, teamMode, rewardMode } }', section: 'data' },
+      data:     { type: 'json',    default: {},     description: 'Payload JSON. For screen_composition: { screenKey, status, layout, sections, ... }. For content_document: { id, version, blocks: [...], context?: { missionMode, teamMode, rewardMode } }', section: 'data', typeResolver: (record) => record.type === 'content_document' ? 'contentDocumentData' : 'json' },
     },
   },
 };

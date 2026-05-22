@@ -815,7 +815,7 @@ export class BootstrapService implements OnModuleInit {
     const documents = [
       {
         key: 'mission_planning_document',
-        defaultContext: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
+        context: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
         blocks: [
           { type: 'mission_hero' },
           { type: 'mission_stats' },
@@ -829,7 +829,7 @@ export class BootstrapService implements OnModuleInit {
       },
       {
         key: 'mission_active_document',
-        defaultContext: { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' },
+        context: { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' },
         blocks: [
           { type: 'mission_hero' },
           { type: 'mission_timer' },
@@ -841,7 +841,7 @@ export class BootstrapService implements OnModuleInit {
       },
       {
         key: 'mission_outcome_document',
-        defaultContext: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
+        context: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
         blocks: [
           { type: 'outcome_banner' },
           { type: 'mission_stats' },
@@ -854,6 +854,12 @@ export class BootstrapService implements OnModuleInit {
     ];
 
     for (const doc of documents) {
+      const docData = {
+        id: doc.key,
+        version: 1,
+        blocks: doc.blocks,
+        context: (doc as any).context ?? null,
+      };
       await (this.prisma as any).gameDefinition.upsert({
         where: { type_key_version: { type: 'content_document', key: doc.key, version: 1 } },
         create: {
@@ -861,14 +867,9 @@ export class BootstrapService implements OnModuleInit {
           key: doc.key,
           version: 1,
           isActive: true,
-          data: {
-            id: doc.key,
-            version: 1,
-            blocks: doc.blocks,
-            defaultContext: doc.defaultContext,
-          },
+          data: docData,
         },
-        update: {},
+        update: { data: docData },
       });
 
       this.logger.log(`Content document "${doc.key}" ensured`);

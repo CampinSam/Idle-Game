@@ -1317,7 +1317,7 @@
             "additionalProperties": true
           }
         },
-        "defaultContext": {
+        "context": {
           "type": "object",
           "description": "Optional default rendering context hints. Surfaces may override at render time.",
           "properties": {

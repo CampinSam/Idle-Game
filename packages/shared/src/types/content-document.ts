@@ -80,7 +80,7 @@ export interface ContentBlockNarrativeText {
   text?: string;
 }
 
-// Generic passthrough block types (delegate to existing BlockRenderer)
+// Generic passthrough block types
 
 export interface ContentBlockRichText {
   type: 'rich_text';
@@ -161,5 +161,5 @@ export interface ContentDocumentDefinition {
    * Optional default context hints for this document.
    * Surfaces may override these at render time.
    */
-  defaultContext?: ContentDocumentContext;
+  context?: ContentDocumentContext;
 }
