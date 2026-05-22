@@ -351,6 +351,10 @@ class ApiClient {
     return this.request<any>(`/jobs/${jobId}`);
   }
 
+  getContentDocument(id: string) {
+    return this.request<any>(`/content-documents/${id}`);
+  }
+
   skipJob(jobId: string, idempotencyKey?: string) {
     return this.request<{ skipped: boolean; costs: Record<string, number> }>(`/jobs/${jobId}/skip`, {
       method: 'POST',
