@@ -382,6 +382,422 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
   );
 }
 
+function SeasonProgressCardComp(_: ScreenComponentProps) {
+  const activeSeason = useAppSelector((s: any) => s.sync.activeSeason);
+  const serverTime = useAppSelector((s: any) => s.sync.serverTime);
+
+  if (!activeSeason) return null;
+
+  const now = serverTime ?? Date.now();
+  const start = activeSeason.startsAt ? new Date(activeSeason.startsAt).getTime() : now;
+  const end = activeSeason.endsAt ? new Date(activeSeason.endsAt).getTime() : now + 1;
+  const total = end - start;
+  const elapsed = now - start;
+  const progress = total > 0 ? Math.max(0, Math.min(100, (elapsed / total) * 100)) : 0;
+  const daysRemaining = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+
+  const badgeClass =
+    daysRemaining < 2
+      ? 'bg-red-500/20 text-red-400'
+      : daysRemaining < 7
+      ? 'bg-amber-500/20 text-amber-400'
+      : 'bg-green-500/20 text-green-400';
+
+  return (
+    <Card className="mb-4 p-4 border-amber-500/30">
+      <div className="flex items-center justify-between mb-3">
+        <SectionHeader title={`🌟 ${(activeSeason.name ?? 'SEASON').toUpperCase()}`} className="mb-0" />
+        <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 flex-shrink-0 ml-2 ${badgeClass}`}>
+          {daysRemaining}d left
+        </span>
+      </div>
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-700"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-1.5 text-[10px] text-text-secondary">
+        <span>Start</span>
+        <span>{progress.toFixed(0)}% complete</span>
+        <span>End</span>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <div className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2.5 py-1.5 border border-white/10">
+          <span className="text-xs">🎁</span>
+          <span className="text-[10px] text-text-secondary">Tier 1</span>
+        </div>
+        <div className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2.5 py-1.5 border border-white/10">
+          <span className="text-xs">👑</span>
+          <span className="text-[10px] text-text-secondary">Tier 2</span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function TimeUnit({
+  value,
+  label,
+  urgent,
+  warning,
+}: {
+  value: string;
+  label: string;
+  urgent: boolean;
+  warning: boolean;
+}) {
+  const textClass = urgent ? 'text-red-400' : warning ? 'text-amber-400' : 'text-text-primary';
+  return (
+    <div className="flex flex-col items-center min-w-[2.5rem]">
+      <span className={`text-2xl font-black tabular-nums leading-none ${textClass}`}>{value}</span>
+      <span className="text-[9px] text-text-secondary tracking-widest mt-1 uppercase">{label}</span>
+    </div>
+  );
+}
+
+function EventCountdownCardComp({ section, onAction }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const endsAt = props.endsAt as string | undefined;
+  const title = String(props.title ?? '⏰ EVENT');
+  const actionKey = props.actionKey as string | undefined;
+  const actionLabel = String(props.actionLabel ?? 'JOIN');
+
+  const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
+  const [expired, setExpired] = useState(false);
+
+  useEffect(() => {
+    if (!endsAt) {
+      setExpired(true);
+      return;
+    }
+    const compute = () => {
+      const diff = new Date(endsAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setExpired(true);
+        return;
+      }
+      setTimeLeft({
+        d: Math.floor(diff / 86400000),
+        h: Math.floor((diff % 86400000) / 3600000),
+        m: Math.floor((diff % 3600000) / 60000),
+        s: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    compute();
+    const id = setInterval(compute, 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  if (expired) return null;
+
+  const msLeft = endsAt ? new Date(endsAt).getTime() - Date.now() : Infinity;
+  const isUrgent = msLeft < 3600000;
+  const isWarning = msLeft < 86400000;
+
+  const borderClass = isUrgent
+    ? 'border-red-500/40'
+    : isWarning
+    ? 'border-amber-500/40'
+    : 'border-derp-purple/30';
+  const bgClass = isUrgent ? 'bg-red-500/5' : isWarning ? 'bg-amber-500/5' : '';
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    <Card className={`mb-4 p-4 ${borderClass} ${bgClass}`}>
+      <SectionHeader title={title} />
+      {timeLeft && (
+        <div className="mt-3 flex justify-center gap-4">
+          {timeLeft.d > 0 && (
+            <TimeUnit value={pad(timeLeft.d)} label="Days" urgent={isUrgent} warning={isWarning} />
+          )}
+          <TimeUnit value={pad(timeLeft.h)} label="Hrs" urgent={isUrgent} warning={isWarning} />
+          <TimeUnit value={pad(timeLeft.m)} label="Min" urgent={isUrgent} warning={isWarning} />
+          <TimeUnit value={pad(timeLeft.s)} label="Sec" urgent={isUrgent} warning={isWarning} />
+        </div>
+      )}
+      {actionKey && (
+        <button
+          className="mt-4 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
+          onClick={() => onAction(actionKey)}
+        >
+          {actionLabel}
+        </button>
+      )}
+    </Card>
+  );
+}
+
+interface TelemetryEntryConfig {
+  key: string;
+  label: string;
+  icon?: string;
+  color?: string;
+}
+
+interface TelemetryCount {
+  subEventKey: string;
+  count: string;
+  lastIncrementedAt: string | null;
+}
+
+interface TelemetryData {
+  id: string;
+  name: string;
+  counts: TelemetryCount[];
+}
+
+function parseTelemetryCount(count: string): number {
+  try {
+    const n = Number(count);
+    return isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const _telemetryApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '/api';
+
+function TelemetryCardComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const defId = props.telemetryDefId as string | undefined;
+  const displayType = (props.displayType as string) ?? 'number';
+  const title = props.title as string | undefined;
+  const pollSeconds = Math.max(5, Number(props.pollIntervalSeconds ?? 30));
+  const metricKey = props.metricKey as string | undefined;
+  const target = props.target != null ? Number(props.target) : undefined;
+  const entries = Array.isArray(props.entries) ? (props.entries as TelemetryEntryConfig[]) : [];
+
+  const [data, setData] = useState<TelemetryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!defId) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`${_telemetryApiBase}/telemetry/${defId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json: TelemetryData = await res.json();
+        if (!cancelled) {
+          setData(json);
+          setLoading(false);
+          setError(null);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e?.message ?? 'Failed to load');
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+    const id = setInterval(poll, pollSeconds * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [defId, pollSeconds]);
+
+  if (!defId) return null;
+
+  const cardTitle = title ?? data?.name ?? '📊 METRICS';
+
+  if (loading) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title="📊 LOADING..." />
+        <div className="mt-3 space-y-2">
+          <div className="h-4 bg-white/10 rounded animate-pulse w-3/4" />
+          <div className="h-8 bg-white/10 rounded animate-pulse" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="mb-4 p-4 border-red-500/20">
+        <SectionHeader title="📊 METRICS" />
+        <div className="mt-2 text-[11px] text-red-400/70 text-center py-1">Unable to load — retrying</div>
+      </Card>
+    );
+  }
+
+  const getEntry = (key: string): TelemetryEntryConfig =>
+    entries.find((e) => e.key === key) ?? { key, label: key };
+
+  const getCount = (key: string): number => {
+    const c = data.counts.find((c) => c.subEventKey === key);
+    return c ? parseTelemetryCount(c.count) : 0;
+  };
+
+  if (displayType === 'number') {
+    const targetKey = metricKey ?? data.counts[0]?.subEventKey;
+    const count = targetKey ? getCount(targetKey) : 0;
+    const entry = targetKey ? getEntry(targetKey) : null;
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={cardTitle} />
+        <div className="mt-3 text-center py-2">
+          {entry?.icon && <div className="text-3xl mb-2">{entry.icon}</div>}
+          <div className="text-4xl font-black text-text-primary tabular-nums">
+            {count.toLocaleString()}
+          </div>
+          {entry && (
+            <div className="mt-1.5 text-[11px] text-text-secondary uppercase tracking-wider">
+              {entry.label}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (displayType === 'progress_bar') {
+    const targetKey = metricKey ?? data.counts[0]?.subEventKey;
+    const count = targetKey ? getCount(targetKey) : 0;
+    const entry = targetKey ? getEntry(targetKey) : null;
+    const color = entry?.color ?? '#8b5cf6';
+    const pct = target && target > 0 ? Math.min(100, (count / target) * 100) : 0;
+
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={cardTitle} />
+        {entry && (
+          <div className="mt-2 flex items-center gap-2 text-[12px] text-text-secondary">
+            {entry.icon && <span>{entry.icon}</span>}
+            <span>{entry.label}</span>
+          </div>
+        )}
+        <div className="mt-3 h-3 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${pct}%`, backgroundColor: color }}
+          />
+        </div>
+        <div className="mt-1.5 flex justify-between text-[11px] text-text-secondary">
+          <span>
+            {count.toLocaleString()}
+            {target ? ` / ${target.toLocaleString()}` : ''}
+          </span>
+          {target != null && (
+            <span className="font-bold" style={{ color }}>
+              {pct.toFixed(1)}%
+            </span>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (displayType === 'comparison') {
+    const leftCfg =
+      entries[0] ?? { key: data.counts[0]?.subEventKey ?? 'a', label: data.counts[0]?.subEventKey ?? 'A' };
+    const rightCfg =
+      entries[1] ?? { key: data.counts[1]?.subEventKey ?? 'b', label: data.counts[1]?.subEventKey ?? 'B' };
+    const leftCount = getCount(leftCfg.key);
+    const rightCount = getCount(rightCfg.key);
+    const total = leftCount + rightCount;
+    const leftPct = total > 0 ? (leftCount / total) * 100 : 50;
+    const rightPct = total > 0 ? (rightCount / total) * 100 : 50;
+    const leftColor = leftCfg.color ?? '#8b5cf6';
+    const rightColor = rightCfg.color ?? '#f59e0b';
+    const tied = total === 0 || leftCount === rightCount;
+
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={cardTitle} />
+        <div className="mt-3 flex justify-between items-center text-[11px] mb-2">
+          <div className="flex items-center gap-1">
+            {leftCfg.icon && <span>{leftCfg.icon}</span>}
+            <span className="font-bold" style={{ color: leftColor }}>
+              {leftCfg.label}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-bold" style={{ color: rightColor }}>
+              {rightCfg.label}
+            </span>
+            {rightCfg.icon && <span>{rightCfg.icon}</span>}
+          </div>
+        </div>
+        <div className="flex h-4 rounded-full overflow-hidden">
+          {tied ? (
+            <>
+              <div className="flex-1" style={{ backgroundColor: leftColor + '50' }} />
+              <div className="w-px bg-white/50 flex-shrink-0" />
+              <div className="flex-1" style={{ backgroundColor: rightColor + '50' }} />
+            </>
+          ) : (
+            <>
+              <div
+                className="transition-all duration-700"
+                style={{ width: `${leftPct}%`, backgroundColor: leftColor }}
+              />
+              <div
+                className="transition-all duration-700"
+                style={{ width: `${rightPct}%`, backgroundColor: rightColor }}
+              />
+            </>
+          )}
+        </div>
+        <div className="mt-2 flex justify-between items-center text-[13px] font-black tabular-nums">
+          <span style={{ color: leftColor }}>{leftCount.toLocaleString()}</span>
+          {tied && (
+            <span className="text-[10px] text-text-secondary font-normal uppercase tracking-widest">
+              TIED
+            </span>
+          )}
+          <span style={{ color: rightColor }}>{rightCount.toLocaleString()}</span>
+        </div>
+      </Card>
+    );
+  }
+
+  const ranked = [...data.counts]
+    .map((c) => ({ ...c, parsed: parseTelemetryCount(c.count), entry: getEntry(c.subEventKey) }))
+    .sort((a, b) => b.parsed - a.parsed);
+  const medals = ['🥇', '🥈', '🥉'];
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={cardTitle} />
+      <div className="mt-3 space-y-1">
+        {ranked.length === 0 && (
+          <div className="text-[11px] text-text-secondary text-center py-2">No data yet</div>
+        )}
+        {ranked.map(({ subEventKey, parsed, entry }, i) => (
+          <div
+            key={subEventKey}
+            className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${
+              i === 0 ? 'bg-white/5 border border-white/10' : ''
+            }`}
+          >
+            <span className="text-base flex-shrink-0 w-6 text-center leading-none">
+              {medals[i] ?? `#${i + 1}`}
+            </span>
+            {entry.icon && <span className="text-sm flex-shrink-0">{entry.icon}</span>}
+            <span
+              className="flex-1 text-[12px] font-bold text-text-primary truncate"
+              style={entry.color ? { color: entry.color } : undefined}
+            >
+              {entry.label}
+            </span>
+            <span className="text-[13px] font-black tabular-nums text-text-primary">
+              {parsed.toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function GenericStubComp({ section }: ScreenComponentProps) {
   if (import.meta.env.PROD) return null;
   return (
@@ -419,6 +835,9 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   DailyCheckInCard: DailyCheckInCardComp,
   PatchNotesCard: PatchNotesCardComp,
   WalletPromptCard: WalletPromptCardComp,
+  SeasonProgressCard: SeasonProgressCardComp,
+  EventCountdownCard: EventCountdownCardComp,
+  TelemetryCard: TelemetryCardComp,
   StoreOfferCard: makeStub('StoreOfferCard'),
   StoreOfferCarousel: makeStub('StoreOfferCarousel'),
   StoreItemGrid: makeStub('StoreItemGrid'),

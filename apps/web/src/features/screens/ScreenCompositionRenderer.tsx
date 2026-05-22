@@ -250,6 +250,123 @@ function FixedStructureLayout({
   );
 }
 
+function HeroStackLayout({
+  layout,
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  layout: ScreenLayoutConfig;
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  const heroSections = sections.filter((s) => s.slot === 'hero');
+  const mainSections = sections.filter((s) => s.slot !== 'hero');
+  const bgImage = (layout as any).backgroundImage as string | undefined;
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div
+        className="relative min-h-[40vh] overflow-hidden flex-shrink-0"
+        style={bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      >
+        {heroSections.map((section) => (
+          <SectionRenderer
+            key={section.id}
+            section={section}
+            actionCtx={actionCtx}
+            visibilityCtx={visibilityCtx}
+          />
+        ))}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0f0d1a] to-transparent pointer-events-none" />
+      </div>
+      {mainSections.map((section) => (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      ))}
+    </div>
+  );
+}
+
+function GridFeedLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  const headerSections = sections.filter((s) => s.slot === 'header');
+  const footerSections = sections.filter((s) => s.slot === 'footer');
+  const gridSections = sections.filter((s) => s.slot !== 'header' && s.slot !== 'footer');
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      {headerSections.map((s) => (
+        <SectionRenderer key={s.id} section={s} actionCtx={actionCtx} visibilityCtx={visibilityCtx} />
+      ))}
+      <div className="grid grid-cols-2 gap-3">
+        {gridSections.map((s) => (
+          <div
+            key={s.id}
+            className={(s.props?.span === 2 || s.slot === 'full') ? 'col-span-2' : ''}
+          >
+            <SectionRenderer section={s} actionCtx={actionCtx} visibilityCtx={visibilityCtx} />
+          </div>
+        ))}
+      </div>
+      {footerSections.map((s) => (
+        <SectionRenderer key={s.id} section={s} actionCtx={actionCtx} visibilityCtx={visibilityCtx} />
+      ))}
+    </div>
+  );
+}
+
+function CarouselFeedLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      {sections.map((section) => {
+        if (!evaluateVisibilityGroup(section.visibility, visibilityCtx)) return null;
+        return (
+          <div key={section.id}>
+            <div className="overflow-x-auto flex gap-3 pb-2 [-webkit-overflow-scrolling:touch]">
+              <SectionRenderer
+                section={section}
+                actionCtx={actionCtx}
+                visibilityCtx={visibilityCtx}
+              />
+            </div>
+            {!!section.props?.pageIndicator && (
+              <div className="flex justify-center gap-1.5 pb-2">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-white/60' : 'bg-white/20'}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LayoutWrapper({
   layout,
   sections,
@@ -267,6 +384,31 @@ function LayoutWrapper({
   );
 
   switch (layout.layoutType) {
+    case 'hero_stack':
+      return (
+        <HeroStackLayout
+          layout={layout}
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+    case 'grid_feed':
+      return (
+        <GridFeedLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+    case 'carousel_feed':
+      return (
+        <CarouselFeedLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
     case 'tabbed_feed':
       return (
         <TabbedFeedLayout

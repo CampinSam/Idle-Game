@@ -208,7 +208,10 @@ export type ScreenLayoutType =
   | 'split_panel'
   | 'modal_stack'
   | 'wizard'
-  | 'fixed_structure';
+  | 'fixed_structure'
+  | 'hero_stack'
+  | 'grid_feed'
+  | 'carousel_feed';
 
 export type SpacingToken = 'none' | 'tight' | 'standard' | 'loose';
 
