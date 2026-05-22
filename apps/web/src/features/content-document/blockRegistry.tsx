@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
-import type { ContentBlock } from '@derp/shared';
+import type { ContentBlock, RewardItem } from '@derp/shared';
 import { MissionHeroPanel } from '../missions/components/panels/MissionHeroPanel';
 import { MissionStatsPanel } from '../missions/components/panels/MissionStatsPanel';
 import { MissionSynergyPanel } from '../missions/components/panels/MissionSynergyPanel';
 import { MissionRosterPanel } from '../missions/components/panels/MissionRosterPanel';
+import { MissionRequirementsBlock } from '../missions/components/panels/MissionRequirementsBlock';
 import { RosterCard } from '../entities/components';
-import AssetImage from '../../components/modal/AssetImage';
+import BlockRenderer from '../../components/modal/blocks/BlockRenderer';
+import RewardsListBlock from '../../components/modal/blocks/RewardsListBlock';
 import { useSurfaceContext } from './SurfaceContext';
+import type { ModalBlock } from '@derp/shared';
 
 export interface BlockComponentProps {
   block: ContentBlock;
@@ -51,40 +54,10 @@ function MissionStatsBlock(_: BlockComponentProps) {
   );
 }
 
-// ─── mission_requirements ─────────────────────────────────────────────────────
+// ─── mission_requirements — standalone component from missions/panels ─────────
 
-function MissionRequirementsBlock(_: BlockComponentProps) {
-  const { data } = useSurfaceContext();
-  const requirements: Array<{ label?: string; met: boolean }> = data.previewRequirements ?? [];
-  const loading: boolean = data.previewLoading ?? false;
-
-  return (
-    <div className={PANEL_CLASS}>
-      <div className={PANEL_TITLE_CLASS}>Requirements</div>
-      {loading && requirements.length === 0 ? (
-        <div className="flex flex-col gap-1.5">
-          <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-4/5" />
-          <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-3/5" />
-        </div>
-      ) : requirements.length === 0 ? (
-        <span className="text-[12px] text-text-secondary italic">No requirements</span>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          {requirements.map((r, i) => (
-            <div key={i} className="flex items-center gap-2 text-[12px]">
-              <span className="text-base leading-none flex-shrink-0">{r.met ? '✅' : '❌'}</span>
-              <span
-                className="flex-1 font-medium truncate"
-                style={{ color: r.met ? '#10b981' : '#ef4444' }}
-              >
-                {r.label ?? 'Requirement'}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function MissionRequirementsWrapper(_: BlockComponentProps) {
+  return <MissionRequirementsBlock />;
 }
 
 // ─── mission_synergy ──────────────────────────────────────────────────────────
@@ -287,50 +260,30 @@ function OutcomeBannerBlock(_: BlockComponentProps) {
   );
 }
 
-// ─── reward_list ──────────────────────────────────────────────────────────────
+// ─── reward_list — delegates to existing RewardsListBlock ─────────────────────
+// Adapts mission reward shape { type, name, amount } → RewardItem { name, qty }
+// Sources: data.results?.rewards (outcome) then data.rewards (planning preview)
+
+function toRewardItems(raw: any[]): RewardItem[] {
+  return raw
+    .filter((r) => r.type !== 'emitEvent')
+    .map((r) => ({
+      name: r.name ?? r.label ?? r.key ?? r.type,
+      qty: r.amount,
+      assetKey: r.assetKey,
+      rarity: r.rarity,
+      note: r.note,
+    }));
+}
 
 function RewardListBlock(_: BlockComponentProps) {
   const { context, data } = useSurfaceContext();
-  const rewards: any[] = data.rewards ?? [];
-  const isActual = context.rewardMode === 'actual';
+  const rawRewards: any[] = data.results?.rewards ?? data.rewards ?? [];
+  const items = toRewardItems(rawRewards);
+  if (items.length === 0) return null;
 
-  if (rewards.length === 0) return null;
-
-  const title = isActual ? 'Rewards' : 'Estimated Rewards';
-
-  return (
-    <div className={PANEL_CLASS}>
-      <div className={PANEL_TITLE_CLASS}>{title}</div>
-      <div className="flex flex-col gap-1.5">
-        {rewards
-          .filter((r: any) => r.type !== 'emitEvent')
-          .map((r: any, i: number) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]"
-            >
-              <span className="text-[14px] leading-none flex-shrink-0">
-                {r.type === 'currency'
-                  ? '💰'
-                  : r.type === 'item'
-                  ? '📦'
-                  : r.type === 'entity_xp'
-                  ? '✨'
-                  : '🎁'}
-              </span>
-              <span className="flex-1 text-[13px] font-bold text-text-primary truncate">
-                {r.name ?? r.label ?? r.key ?? r.type}
-              </span>
-              {r.amount != null && (
-                <span className="text-[12px] font-extrabold text-[#10b981] tabular-nums flex-shrink-0">
-                  {isActual ? '+' : '~'}{r.amount}
-                </span>
-              )}
-            </div>
-          ))}
-      </div>
-    </div>
-  );
+  const title = context.rewardMode === 'actual' ? 'Rewards' : 'Estimated Rewards';
+  return <RewardsListBlock items={items} title={title} />;
 }
 
 // ─── narrative_text ───────────────────────────────────────────────────────────
@@ -369,41 +322,41 @@ function NarrativeTextBlock({ block }: BlockComponentProps) {
   );
 }
 
-// ─── Generic passthrough blocks ───────────────────────────────────────────────
+// ─── Generic passthrough — delegate to existing BlockRenderer ─────────────────
 
 function RichTextBlock({ block }: BlockComponentProps) {
   const b = block as { type: 'rich_text'; content?: string };
   if (!b.content) return null;
-  return <p className="m-0 text-[13px] leading-relaxed text-text-secondary">{b.content}</p>;
+  const asModal: ModalBlock = {
+    type: 'richText',
+    doc: [{ t: 'p', c: [{ t: 'text', v: b.content }] }],
+  };
+  return <BlockRenderer block={asModal} />;
 }
 
 function ImageBlock({ block }: BlockComponentProps) {
   const b = block as { type: 'image'; assetKey?: string; caption?: string };
   if (!b.assetKey) return null;
-  return (
-    <div className="flex flex-col gap-1">
-      <AssetImage asset={{ assetKey: b.assetKey }} style={{ width: '100%', borderRadius: 12 }} />
-      {b.caption && (
-        <div className="text-[11px] text-text-secondary text-center">{b.caption}</div>
-      )}
-    </div>
-  );
+  const asModal: ModalBlock = {
+    type: 'image',
+    image: { assetKey: b.assetKey },
+    caption: b.caption,
+  };
+  return <BlockRenderer block={asModal} />;
 }
 
 function DividerBlock(_: BlockComponentProps) {
-  return <hr className="border-0 border-t border-white/10 my-1" />;
+  const asModal: ModalBlock = { type: 'divider' };
+  return <BlockRenderer block={asModal} />;
 }
 
 function KeyValueRowBlock({ block }: BlockComponentProps) {
   const b = block as { type: 'key_value_row'; label: string; value: string };
-  return (
-    <div className="flex items-center justify-between gap-2 py-1">
-      <span className="text-[11px] font-bold tracking-wide text-text-secondary uppercase">
-        {b.label}
-      </span>
-      <span className="text-[13px] font-bold text-text-primary">{b.value}</span>
-    </div>
-  );
+  const asModal: ModalBlock = {
+    type: 'metaRows',
+    rows: [{ label: b.label, value: b.value }],
+  };
+  return <BlockRenderer block={asModal} />;
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -415,7 +368,7 @@ export type BlockRegistry = {
 export const BLOCK_REGISTRY: BlockRegistry = {
   mission_hero: MissionHeroBlock,
   mission_stats: MissionStatsBlock,
-  mission_requirements: MissionRequirementsBlock,
+  mission_requirements: MissionRequirementsWrapper,
   mission_synergy: MissionSynergyBlock,
   team_section: TeamSectionBlock,
   entity_roster: EntityRosterBlock,
