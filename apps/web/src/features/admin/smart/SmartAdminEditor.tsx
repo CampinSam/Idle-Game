@@ -5,6 +5,7 @@ import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
 import { migrateMissionOutcomes } from './migrateMissionOutcomes';
+import TelemetryCardPreviewPanel from '../telemetry/TelemetryCardPreviewPanel';
 
 interface TableEntry {
   key: string;
@@ -73,6 +74,7 @@ function SectionedFormBody({
   onSetField,
   activeSectionId,
   setActiveSectionId,
+  customSectionContent,
 }: {
   schema: TableSchema;
   record: Record<string, any>;
@@ -80,6 +82,7 @@ function SectionedFormBody({
   onSetField: (field: string, value: any) => void;
   activeSectionId: string | null;
   setActiveSectionId: (id: string) => void;
+  customSectionContent?: Record<string, React.ReactNode>;
 }) {
   const sections = schema.sections!;
   const firstId = sections[0].id;
@@ -156,26 +159,30 @@ function SectionedFormBody({
           );
         })}
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {activeSection.description && (
-          <div style={{ fontSize: 11, color: '#666', letterSpacing: '0.02em' }}>
-            {activeSection.description}
-          </div>
-        )}
-        {activeFields.map(([fieldName, fieldDef]) => (
-          <SmartField
-            key={fieldName}
-            fieldName={fieldName}
-            fieldDef={fieldDef}
-            value={record[fieldName]}
-            onChange={val => onSetField(fieldName, val)}
-            enumOptions={enumOptions}
-          />
-        ))}
-        {activeFields.length === 0 && (
-          <div style={{ color: '#555', fontSize: 12 }}>No fields in this section.</div>
-        )}
-      </div>
+      {customSectionContent && customSectionContent[activeId] != null ? (
+        customSectionContent[activeId]
+      ) : (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {activeSection.description && (
+            <div style={{ fontSize: 11, color: '#666', letterSpacing: '0.02em' }}>
+              {activeSection.description}
+            </div>
+          )}
+          {activeFields.map(([fieldName, fieldDef]) => (
+            <SmartField
+              key={fieldName}
+              fieldName={fieldName}
+              fieldDef={fieldDef}
+              value={record[fieldName]}
+              onChange={val => onSetField(fieldName, val)}
+              enumOptions={enumOptions}
+            />
+          ))}
+          {activeFields.length === 0 && (
+            <div style={{ color: '#555', fontSize: 12 }}>No fields in this section.</div>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -771,6 +778,11 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   onSetField={(field, value) => dispatch({ type: 'SET_FIELD', field, value })}
                   activeSectionId={activeSectionId}
                   setActiveSectionId={setActiveSectionId}
+                  customSectionContent={
+                    getSchemaName() === 'TelemetryDef'
+                      ? { preview: <TelemetryCardPreviewPanel record={editorState.record!} /> }
+                      : undefined
+                  }
                 />
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>

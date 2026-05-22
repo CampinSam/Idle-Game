@@ -553,6 +553,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     sections: [
       { id: 'general', label: 'General' },
       { id: 'subevents', label: 'Sub-Event Counters' },
+      { id: 'preview', label: '▶ Preview', description: 'Live card preview using current counts. Configure display settings and see how the TelemetryCard will look on screen.' },
     ],
     fields: {
       name: { type: 'string', required: true, description: 'Display name for this telemetry definition', section: 'general' },

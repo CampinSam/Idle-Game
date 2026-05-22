@@ -559,7 +559,7 @@ function parseTelemetryCount(count: string): number {
 
 const _telemetryApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '/api';
 
-function TelemetryCardComp({ section }: ScreenComponentProps) {
+export function TelemetryCardComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
   const defId = props.telemetryDefId as string | undefined;
   const displayType = (props.displayType as string) ?? 'number';
