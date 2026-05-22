@@ -275,9 +275,9 @@ export function MissionPanel(props: MissionPanelProps) {
     isReady,
     rosterEntities: jobStats?.entities ?? [],
     isSuccess: results?.success ?? false,
-    results,
-    narrativeTexts: results?.texts ?? [],
-    rewards: results?.rewards ?? [],
+    results: localMode !== 'planning' ? results : null,
+    narrativeTexts: localMode !== 'planning' ? (results?.texts ?? []) : [],
+    rewards: localMode !== 'planning' ? (results?.rewards ?? []) : (preview?.rewards ?? []),
   };
 
   // ── Loading guard (planning mode only) ──
@@ -345,21 +345,31 @@ export function MissionPanel(props: MissionPanelProps) {
               </button>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {isSkipable && (
-                  <button
-                    onClick={handleSkip}
-                    disabled={skipLoading}
-                    className="px-3 py-2.5 rounded-xl text-white border border-[rgba(251,191,36,0.45)] bg-gradient-to-br from-[#d97706] to-[#b45309] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-                  >
-                    {skipLoading ? '...' : 'SKIP ⚡'}
-                  </button>
-                )}
                 <button
                   onClick={onClose ?? onBack}
                   className={`px-3 py-2.5 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] cursor-pointer text-[13px] font-extrabold tracking-wide uppercase ${isSkipable ? '' : 'col-span-2'}`}
                 >
                   Close
                 </button>
+                {isSkipable && (() => {
+                  const skipCost: Array<{ type: string; id: string; amount: number }> = rawActiveDef?.timer?.skip_cost ?? [];
+                  return (
+                    <button
+                      onClick={handleSkip}
+                      disabled={skipLoading}
+                      className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(251,191,36,0.45)] bg-gradient-to-br from-[#d97706] to-[#b45309] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
+                        {skipLoading ? '...' : 'SKIP ⚡'}
+                      </span>
+                      {!skipLoading && skipCost.length > 0 && (
+                        <span className="text-[9px] font-bold opacity-80 normal-case tracking-normal leading-tight mt-0.5">
+                          {skipCost.map((c) => `${c.amount} ${c.id}`).join(' + ')}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -393,9 +403,16 @@ export function MissionPanel(props: MissionPanelProps) {
                     <button
                       disabled={!canStart}
                       onClick={handleStart}
-                      className="px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+                      className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      START MISSION ⚡
+                      <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
+                        START MISSION ⚡
+                      </span>
+                      {missionCost.length > 0 && (
+                        <span className={`text-[9px] font-bold normal-case tracking-normal leading-tight mt-0.5 ${canAffordMission ? 'opacity-75' : 'text-red-300 opacity-90'}`}>
+                          {missionCost.map((c) => `${c.amount} ${c.id}`).join(' + ')}
+                        </span>
+                      )}
                     </button>
                   )}
                 </>

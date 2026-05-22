@@ -50,6 +50,10 @@ export interface ContentBlockMissionRequirements {
   type: 'mission_requirements';
 }
 
+export interface ContentBlockMissionStatsRequirements {
+  type: 'mission_stats_requirements';
+}
+
 export interface ContentBlockMissionSynergy {
   type: 'mission_synergy';
 }
@@ -109,6 +113,7 @@ export type ContentBlock =
   | ContentBlockMissionHero
   | ContentBlockMissionStats
   | ContentBlockMissionRequirements
+  | ContentBlockMissionStatsRequirements
   | ContentBlockMissionSynergy
   | ContentBlockTeamSection
   | ContentBlockRewardList
@@ -127,6 +132,7 @@ export const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
   'mission_hero',
   'mission_stats',
   'mission_requirements',
+  'mission_stats_requirements',
   'mission_synergy',
   'team_section',
   'reward_list',

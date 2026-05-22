@@ -21,7 +21,7 @@ import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
-import { calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl } from '@derp/math';
+import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
@@ -612,9 +612,12 @@ export class MissionService {
       synergy: synergyDisplay,
       entities: entities.map((e: any) => ({
         id: e.id,
-        name: e.name,
+        name: (e.display as any)?.name || e.name,
         level: e.level ?? 1,
+        imageUrl: (e.display as any)?.imageUrl ?? null,
+        missionPowerContrib: Number(calculateMP((e.stats as any) ?? {}).toFixed(2)),
       })),
+      skipCost: Array.isArray((def.timer as any)?.skip_cost) ? (def.timer as any).skip_cost : [],
       def: {
         id: def.id,
         name: def.name,

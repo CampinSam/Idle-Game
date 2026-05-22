@@ -21,7 +21,14 @@ export interface MissionJobStats {
     missionPowerBonus: number;
     synergyScore: number;
   } | null;
-  entities: { id: string; name: string; level: number }[];
+  entities: {
+    id: string;
+    name: string;
+    level: number;
+    imageUrl?: string;
+    missionPowerContrib?: number;
+  }[];
+  skipCost: Array<{ type: string; id: string; amount: number }>;
   def: {
     id: string;
     name: string;

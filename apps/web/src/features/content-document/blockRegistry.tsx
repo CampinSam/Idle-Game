@@ -62,6 +62,27 @@ function MissionRequirementsWrapper(_: BlockComponentProps) {
   return <MissionRequirementsBlock />;
 }
 
+// ─── mission_stats_requirements — side-by-side compound block (planning) ──────
+
+function MissionStatsRequirementsBlock(_: BlockComponentProps) {
+  const { data } = useSurfaceContext();
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <MissionRequirementsBlock />
+      <MissionStatsPanel
+        missionPower={data.missionPower ?? 0}
+        difficulty={data.difficulty ?? 0}
+        successChance={data.successChance ?? 0}
+        injuryChance={data.injuryChance ?? 0}
+        injuryRate={data.injuryRate ?? 0}
+        powerRatio={data.powerRatio ?? 0}
+        hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
+        loading={data.statsLoading ?? false}
+      />
+    </div>
+  );
+}
+
 // ─── mission_synergy ──────────────────────────────────────────────────────────
 
 function MissionSynergyBlock(_: BlockComponentProps) {
@@ -103,12 +124,51 @@ function TeamSectionBlock(_: BlockComponentProps) {
   );
 }
 
-// ─── entity_roster — locked read-only team (in_progress / outcome) ────────────
+// ─── entity_roster — read-only team (in_progress) or outcome entity results ───
 
 function EntityRosterBlock(_: BlockComponentProps) {
   const { context, data } = useSurfaceContext();
   if (context.teamMode === 'editable') return null;
-  const entities: Array<{ id: string; name: string; level: number }> = data.rosterEntities ?? [];
+
+  if (context.missionMode === 'outcome') {
+    const entityResults: any[] = data.results?.entityResults ?? [];
+    if (entityResults.length === 0) return null;
+    const rewardCount = (data.results?.rewards ?? []).filter((r: any) => r.type !== 'emitEvent').length;
+    return (
+      <div className={PANEL_CLASS}>
+        <div className={PANEL_TITLE_CLASS}>Team Outcomes</div>
+        <div className="flex flex-col gap-1.5">
+          {entityResults.map((er: any, i: number) => (
+            <div
+              key={er.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
+              style={{ animationDelay: `${rewardCount * 0.08 + 0.12 + i * 0.08}s` }}
+            >
+              <span className="text-[14px] leading-none flex-shrink-0">
+                {er.injured ? '🩹' : er.leveledUp ? '⬆️' : '⚔️'}
+              </span>
+              <span className="flex-1 text-[13px] font-bold text-text-primary truncate">{er.name}</span>
+              <span className="flex flex-col items-end gap-0.5">
+                {er.leveledUp && (
+                  <span className="text-[11px] font-extrabold text-[#fbbf24]">
+                    Lv {er.oldLevel} → {er.newLevel} ⬆️
+                  </span>
+                )}
+                {er.injured && (
+                  <span className="text-[11px] font-extrabold text-[#ef4444]">Injured 🩹</span>
+                )}
+                {er.xpGained > 0 && (
+                  <span className="text-[10px] text-text-secondary">+{er.xpGained} XP</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const entities = data.rosterEntities ?? [];
   return <MissionRosterPanel entities={entities} />;
 }
 
@@ -153,7 +213,7 @@ function MissionTimerBlock(_: BlockComponentProps) {
   );
 }
 
-// ─── outcome_banner ───────────────────────────────────────────────────────────
+// ─── outcome_banner — win/fail header only; rewards + entity results are separate blocks ──
 
 function OutcomeBannerBlock(_: BlockComponentProps) {
   const { context, data } = useSurfaceContext();
@@ -161,110 +221,32 @@ function OutcomeBannerBlock(_: BlockComponentProps) {
 
   const isSuccess: boolean = data.isSuccess ?? false;
   const results: any = data.results ?? null;
-  const rewards: any[] = results?.rewards ?? data.rewards ?? [];
-  const entityResults: any[] = results?.entityResults ?? data.entityResults ?? [];
-  const filteredRewards = rewards.filter((r: any) => r.type !== 'emitEvent');
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="rounded-xl px-4 py-3 text-center border motion-safe:animate-[outcome-banner-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
+      style={
+        isSuccess
+          ? { background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }
+          : { background: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.3)' }
+      }
+    >
+      <div className="text-[28px] leading-none mb-1">{isSuccess ? '🏆' : '💀'}</div>
       <div
-        className="rounded-xl px-4 py-3 text-center border motion-safe:animate-[outcome-banner-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
-        style={
-          isSuccess
-            ? { background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }
-            : { background: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.3)' }
-        }
+        className="font-cinzel text-[17px] font-black tracking-wider uppercase"
+        style={{ color: isSuccess ? '#10b981' : '#ef4444' }}
       >
-        <div className="text-[28px] leading-none mb-1">{isSuccess ? '🏆' : '💀'}</div>
-        <div
-          className="font-cinzel text-[17px] font-black tracking-wider uppercase"
-          style={{ color: isSuccess ? '#10b981' : '#ef4444' }}
-        >
-          {isSuccess ? 'Mission Complete' : 'Mission Failed'}
-        </div>
-        {results?.qualityLabel && (
-          <div className="text-[12px] text-text-secondary mt-0.5">{results.qualityLabel}</div>
-        )}
+        {isSuccess ? 'Mission Complete' : 'Mission Failed'}
       </div>
-
-      {filteredRewards.length > 0 && (
-        <div className={PANEL_CLASS}>
-          <div className={PANEL_TITLE_CLASS}>Rewards</div>
-          <div className="flex flex-col gap-1.5">
-            {filteredRewards.map((r: any, i: number) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
-                style={{ animationDelay: `${0.3 + i * 0.08}s` }}
-              >
-                <span className="text-[14px] leading-none flex-shrink-0">
-                  {r.type === 'currency'
-                    ? '💰'
-                    : r.type === 'item'
-                    ? '📦'
-                    : r.type === 'entity_xp'
-                    ? '✨'
-                    : r.type === 'keeper_xp'
-                    ? '⭐'
-                    : '🎁'}
-                </span>
-                <span className="flex-1 text-[13px] font-bold text-text-primary truncate">
-                  {r.name ?? r.key ?? r.type}
-                </span>
-                {r.amount != null && (
-                  <span className="text-[12px] font-extrabold text-[#10b981] tabular-nums flex-shrink-0">
-                    +{r.amount}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {entityResults.length > 0 && (
-        <div className={PANEL_CLASS}>
-          <div className={PANEL_TITLE_CLASS}>Team Outcomes</div>
-          <div className="flex flex-col gap-1.5">
-            {entityResults.map((er: any, i: number) => (
-              <div
-                key={er.id}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
-                style={{
-                  animationDelay: `${0.3 + filteredRewards.length * 0.08 + 0.12 + i * 0.08}s`,
-                }}
-              >
-                <span className="text-[14px] leading-none flex-shrink-0">
-                  {er.injured ? '🩹' : er.leveledUp ? '⬆️' : '⚔️'}
-                </span>
-                <span className="flex-1 text-[13px] font-bold text-text-primary truncate">
-                  {er.name}
-                </span>
-                <span className="flex flex-col items-end gap-0.5">
-                  {er.leveledUp && (
-                    <span className="text-[11px] font-extrabold text-[#fbbf24]">
-                      Lv {er.oldLevel} → {er.newLevel} ⬆️
-                    </span>
-                  )}
-                  {er.injured && (
-                    <span className="text-[11px] font-extrabold text-[#ef4444]">Injured 🩹</span>
-                  )}
-                  {er.xpGained > 0 && (
-                    <span className="text-[10px] text-text-secondary">+{er.xpGained} XP</span>
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {results?.qualityLabel && (
+        <div className="text-[12px] text-text-secondary mt-0.5">{results.qualityLabel}</div>
       )}
     </div>
   );
 }
 
 // ─── reward_list — delegates to existing RewardsListBlock ─────────────────────
-// Adapts mission reward shape { type, name, amount } → RewardItem { name, qty }
-// Sources: data.results?.rewards (outcome) then data.rewards (planning preview)
+// Sources: data.rewards (set by MissionPanel per-mode; planning = preview, outcome = actual)
 
 function toRewardItems(raw: any[]): RewardItem[] {
   return raw
@@ -280,7 +262,7 @@ function toRewardItems(raw: any[]): RewardItem[] {
 
 function RewardListBlock(_: BlockComponentProps) {
   const { context, data } = useSurfaceContext();
-  const rawRewards: any[] = data.results?.rewards ?? data.rewards ?? [];
+  const rawRewards: any[] = data.rewards ?? [];
   const items = toRewardItems(rawRewards);
   if (items.length === 0) return null;
 
@@ -371,6 +353,7 @@ export const BLOCK_REGISTRY: BlockRegistry = {
   mission_hero: MissionHeroBlock,
   mission_stats: MissionStatsBlock,
   mission_requirements: MissionRequirementsWrapper,
+  mission_stats_requirements: MissionStatsRequirementsBlock,
   mission_synergy: MissionSynergyBlock,
   team_section: TeamSectionBlock,
   entity_roster: EntityRosterBlock,
