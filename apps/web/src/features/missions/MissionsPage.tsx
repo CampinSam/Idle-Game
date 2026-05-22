@@ -4,15 +4,13 @@ import { fetchMissionDefs, fetchMissionCategoryDefs } from '../../store/gameSlic
 import { useCommand } from '../../hooks/useCommand';
 import { audioEngine } from '../../services/AudioEngine';
 import {
-  useSyncPlayer,
   useSyncEntities,
   useSyncActiveMissions,
   useSyncMissionHistory,
   useSyncStatus,
+  useSyncPlayer,
 } from '../../hooks/useSyncSelectors';
-import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
-import { api } from '../../services/api';
 import {
   meetsNonTeamRequirements,
   resolveCategoryDisplay,
@@ -22,24 +20,14 @@ import { MissionsPageSkeleton } from './components/MissionsPageSkeleton';
 import { MissionShell } from './components/MissionShell';
 import { CategoriesGrid } from './components/CategoriesGrid';
 import { MissionsList } from './components/MissionsList';
-import { MissionDetail } from './components/MissionDetail';
+import { MissionPanel } from './components/MissionPanel';
 import { useMissionsNavigation } from './hooks/useMissionsNavigation';
 
 export default function MissionsPage() {
   const dispatch = useAppDispatch();
   const { execute } = useCommand();
-  const { pushModal } = useModal();
   const { collectJob } = useCollectJob();
   const syncStatus = useSyncStatus();
-
-  const openModalSpec = useCallback(async (params: { jobId?: string }) => {
-    try {
-      const spec = await api.getModalSpec(params);
-      if (spec?.version === 1) pushModal(spec);
-    } catch (err) {
-      console.error('[MissionsPage] Failed to fetch modal spec:', err);
-    }
-  }, [pushModal]);
 
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
@@ -48,6 +36,10 @@ export default function MissionsPage() {
   const profile = useSyncPlayer();
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
+
+  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchMissionDefs());
@@ -86,9 +78,6 @@ export default function MissionsPage() {
     backToCategories,
   } = nav;
 
-  const [error, setError] = useState('');
-  const [completingId, setCompletingId] = useState<string | null>(null);
-
   const selectedDef = missionDefs.find((d: any) => d.id === selectedMission);
   const currentCategoryId = categoryStack[categoryStack.length - 1] ?? null;
 
@@ -101,6 +90,12 @@ export default function MissionsPage() {
   const currentCatHasChildren = currentCategoryId
     ? allCategories.some(c => c.parentId === currentCategoryId)
     : false;
+
+  const categoryMissions = currentCategoryId
+    ? missionDefs
+        .filter((d: any) => d.missionCategoryDefId === currentCategoryId)
+        .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    : [];
 
   const getInlineMissions = (catId: string) =>
     missionDefs
@@ -150,30 +145,39 @@ export default function MissionsPage() {
     }
   };
 
-  const categoryMissions = currentCategoryId
-    ? missionDefs
-        .filter((d: any) => d.missionCategoryDefId === currentCategoryId)
-        .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    : [];
+  const handleViewJob = useCallback((jobId: string) => {
+    setViewingJobId(jobId);
+  }, []);
 
+  // ── Viewing an active or history mission ──
+  if (viewingJobId) {
+    return (
+      <MissionPanel
+        mode="in_progress"
+        jobId={viewingJobId}
+        missionCategoryDefs={missionCategoryDefs}
+        onClose={() => setViewingJobId(null)}
+        onBack={() => setViewingJobId(null)}
+      />
+    );
+  }
+
+  // ── Planning a new mission ──
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     return (
-      <MissionDetail
+      <MissionPanel
+        mode="planning"
         selectedDef={selectedDef}
         currentCat={currentCat}
         missionCategoryDefs={missionCategoryDefs}
         entities={entities}
         idleEntities={idleEntities}
-        selectedEntities={selectedEntities}
-        setSelectedEntities={setSelectedEntities}
-        showEntityPicker={showEntityPicker}
-        setShowEntityPicker={setShowEntityPicker}
+        initialSelectedEntities={selectedEntities}
         currencyBalances={currencyBalances}
         inventoryItems={inventoryItems}
         error={error}
         onBack={handleBackFromMissionDetail}
-        onStart={handleStart}
-        entityPickerRef={entityPickerRef}
+        onMissionStarted={backToCategories}
       />
     );
   }
@@ -185,7 +189,7 @@ export default function MissionsPage() {
     profile,
     activityCollapsed,
     onToggleActivity: () => setActivityCollapsed(c => !c),
-    onOpenJob: (jobId: string) => openModalSpec({ jobId }),
+    onOpenJob: handleViewJob,
     onCollect: handleComplete,
     completingId,
   };

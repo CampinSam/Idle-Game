@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { mergeDisplayStyles, type DisplayStyle } from '@derp/shared';
@@ -544,6 +545,95 @@ export class MissionService {
     );
 
     return this.buildSynergyPreviewPayload(result.matchedRules, result.totals);
+  }
+
+  async getMissionJobStats(userId: string, jobId: string): Promise<any> {
+    const job = await (this.prisma as any).job.findUnique({ where: { id: jobId } });
+    if (!job) throw new NotFoundException('Mission not found');
+    if (job.userId !== userId) throw new ForbiddenException();
+    if (job.type !== 'MissionJob') throw new BadRequestException('Not a mission job');
+
+    const def = await (this.prisma as any).missionDef.findUnique({
+      where: { id: job.defId },
+      include: { displayDef: true, missionCategoryDef: { include: { displayDef: true } } },
+    });
+    if (!def) throw new NotFoundException('Mission definition not found');
+
+    const entityIds = (job.team as string[]) || [];
+    const entities = await (this.prisma as any).entity.findMany({
+      where: { id: { in: entityIds } },
+    });
+
+    const teamForMP: EntityForMP[] = entities.map((e: any) => ({
+      stats: (e.stats as any) ?? {},
+      traits: (e.traits as any) ?? {},
+    }));
+    let rawTeamMP = calculateTeamMP(teamForMP);
+
+    const persistedSynergy = (job.data as any)?.synergy as
+      | { ruleIds: string[]; totals: { synergyScore: number; statModifiers?: Record<string, any>; durationModifiers?: Record<string, any> } }
+      | undefined;
+    if (persistedSynergy?.totals) {
+      const syn = persistedSynergy.totals;
+      if (syn.synergyScore !== 0) rawTeamMP += syn.synergyScore;
+      const mpPercentBonus = syn.statModifiers?.['MISSION_POWER']?.percentAdd ?? 0;
+      if (mpPercentBonus !== 0) rawTeamMP *= 1 + mpPercentBonus / 100;
+    }
+
+    const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
+    const teamMP = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
+
+    const difficulty = (job.data as any)?.difficulty ?? def.difficulty;
+    const successChance = Math.round(
+      calculateSuccessChance(teamMP, difficulty, def.minSuccessChance ?? 0, def.maxSuccessChance ?? 100) * 100,
+    );
+    const injuryRate = (def as any).injuryRate ?? 0;
+    const injuryChance = injuryRate > 0
+      ? Math.round(calculateInjuryChance(difficulty, teamMP, injuryRate) * 100)
+      : 0;
+    const powerRatio = teamMP > 0 ? Math.min(1, teamMP / (teamMP + difficulty)) : 0;
+
+    let synergyDisplay: any = null;
+    if (entityIds.length > 0) {
+      try {
+        synergyDisplay = await this.getMissionSynergyPreview(userId, job.defId, entityIds);
+      } catch (_) {}
+    }
+
+    const resolvedDisplay = this.mapDefToLegacy(def).display;
+
+    return {
+      missionPower: Number(teamMP.toFixed(2)),
+      difficulty: Number(difficulty.toFixed(2)),
+      successChance,
+      injuryChance,
+      injuryRate,
+      powerRatio: Number(powerRatio.toFixed(4)),
+      synergy: synergyDisplay,
+      entities: entities.map((e: any) => ({
+        id: e.id,
+        name: e.name,
+        level: e.level ?? 1,
+      })),
+      def: {
+        id: def.id,
+        name: def.name,
+        difficulty: def.difficulty,
+        timer: def.timer,
+        display: resolvedDisplay,
+        injuryRate,
+        tags: (def as any).tags ?? [],
+        missionCategoryDefId: def.missionCategoryDefId,
+      },
+      job: {
+        id: job.id,
+        status: job.status,
+        startTick: (job.timer as any)?.startTick,
+        durationTicks: (job.timer as any)?.durationTicks,
+        defId: job.defId,
+        results: (job.results as any) ?? null,
+      },
+    };
   }
 
   async completeMission(userId: string, missionId: string, externalTx?: any): Promise<any> {

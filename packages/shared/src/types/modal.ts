@@ -11,6 +11,12 @@ export interface ModalSpecV1 {
 }
 
 export interface ModalPageSpec {
+  type?: 'missionPanel';
+  missionPanel?: {
+    mode: 'planning' | 'in_progress' | 'outcome';
+    defId?: string;
+    jobId?: string;
+  };
   body: ModalBlock[];
   header?: Partial<ModalHeader>;
   buttons?: ModalButton[];

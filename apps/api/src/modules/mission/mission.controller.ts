@@ -95,4 +95,12 @@ export class MissionController {
     return this.missionService.getMissionSynergyPreview(user.id, dto.defId, dto.entityIds);
   }
 
+  @Get(':jobId/stats')
+  getMissionJobStats(
+    @CurrentUser() user: { id: string },
+    @Param('jobId') jobId: string,
+  ) {
+    return this.missionService.getMissionJobStats(user.id, jobId);
+  }
+
 }

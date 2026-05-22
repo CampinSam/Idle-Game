@@ -174,6 +174,10 @@ class ApiClient {
     });
   }
 
+  getMissionJobStats(jobId: string) {
+    return this.request<any>(`/missions/${jobId}/stats`);
+  }
+
   jobPreview(
     dto: { jobType: string; defId: string; entityIds?: string[]; entityId?: string; quantity?: number; locationId?: string },
     signal?: AbortSignal,
