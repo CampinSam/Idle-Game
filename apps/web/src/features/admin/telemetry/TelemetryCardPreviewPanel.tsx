@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ScreenSectionDefinition } from '@derp/shared';
 import { TelemetryCardComp } from '../../screens/componentRegistry';
 
@@ -172,6 +172,27 @@ export default function TelemetryCardPreviewPanel({ record }: Props) {
     target: '',
     entries: subEventKeys.slice(0, 4).map((k) => ({ key: k, label: k, icon: '', color: '' })),
   });
+
+  const prevSubEventKeysRef = useRef<string[]>(subEventKeys);
+
+  useEffect(() => {
+    const prev = prevSubEventKeysRef.current;
+    const added = subEventKeys.filter((k) => !prev.includes(k));
+    const removed = new Set(prev.filter((k) => !subEventKeys.includes(k)));
+
+    if (added.length === 0 && removed.size === 0) return;
+
+    prevSubEventKeysRef.current = subEventKeys;
+
+    setState((s) => {
+      const kept = s.entries.filter((e) => !removed.has(e.key));
+      const existingKeys = new Set(kept.map((e) => e.key));
+      const appended = added
+        .filter((k) => !existingKeys.has(k))
+        .map((k) => ({ key: k, label: k, icon: '', color: '' }));
+      return { ...s, entries: [...kept, ...appended] };
+    });
+  }, [subEventKeys.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setField = <K extends keyof PreviewState>(key: K, value: PreviewState[K]) =>
     setState((s) => ({ ...s, [key]: value }));
