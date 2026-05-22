@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAppSelector } from '../../../store';
-import {
-  useSyncEntities,
-} from '../../../hooks/useSyncSelectors';
+import { useSyncEntities } from '../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../hooks/useCommand';
 import { useJobPreview } from '../../jobs/useJobPreview';
 import { createCountdownTimer, useCurrentTick } from '../../../tick';
@@ -10,16 +8,9 @@ import { useTickRemainingMs } from '../../../tick/useTickValue';
 import { audioEngine } from '../../../services/AudioEngine';
 import { api } from '../../../services/api';
 import { useMissionJobStats } from '../hooks/useMissionJobStats';
-import { RosterCard } from '../../entities/components';
-import {
-  extractRuleValue,
-  extractTeamSizeBounds,
-  extractTraitRequirements,
-} from './missionUtils';
-import { MissionHeroPanel } from './panels/MissionHeroPanel';
-import { MissionStatsPanel } from './panels/MissionStatsPanel';
-import { MissionSynergyPanel } from './panels/MissionSynergyPanel';
-import { MissionRosterPanel } from './panels/MissionRosterPanel';
+import { extractTeamSizeBounds } from './missionUtils';
+import { ContentDocumentRenderer } from '../../content-document/ContentDocumentRenderer';
+import type { ContentDocumentContext, SurfaceContextOverrideRule } from '@derp/shared';
 
 export interface MissionPanelProps {
   mode: 'planning' | 'in_progress' | 'outcome';
@@ -76,11 +67,9 @@ export function MissionPanel(props: MissionPanelProps) {
 
   // ── Planning state ──
   const [selectedEntities, setSelectedEntities] = useState<string[]>(props.initialSelectedEntities ?? []);
-  const [showEntityPicker, setShowEntityPicker] = useState(false);
   const [planningError, setPlanningError] = useState(props.error ?? '');
   const [collectLoading, setCollectLoading] = useState(false);
   const [skipLoading, setSkipLoading] = useState(false);
-  const entityPickerRef = useRef<HTMLDivElement>(null);
 
   // ── Data sources ──
   const entities = props.entities ?? storeEntities;
@@ -162,17 +151,15 @@ export function MissionPanel(props: MissionPanelProps) {
   );
 
   const previewRequirements = preview?.requirements ?? [];
-  const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
-  const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
-
   const isSkipable = rawActiveDef?.timer?.skipable ?? false;
+
+  // ── Shared header back handler ──
+  const handleBack = onBack ?? onClose;
 
   // ── Handlers ──
   const handleAutoAssign = () => {
     const auto = idleEntities.slice(0, teamMax).map((e: any) => e.id);
-    setSelectedEntities(() => auto);
-    setShowEntityPicker(false);
-    setTimeout(() => entityPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+    setSelectedEntities(auto);
   };
 
   const toggleEntity = (entityId: string) => {
@@ -222,129 +209,111 @@ export function MissionPanel(props: MissionPanelProps) {
 
   const handleRetry = () => {
     setSelectedEntities([]);
-    setShowEntityPicker(false);
     setPlanningError('');
     setLocalMode('planning');
   };
 
-  // ── Shared header back handler ──
-  const handleBack = onBack ?? onClose;
+  // ── Document ID per mode ──
+  const documentId =
+    localMode === 'planning'
+      ? 'mission_planning_document'
+      : localMode === 'in_progress'
+      ? 'mission_active_document'
+      : 'mission_outcome_document';
 
-  // ──────────────────────────────────────────────────────────────
-  // MODE: OUTCOME
-  // ──────────────────────────────────────────────────────────────
-  if (localMode === 'outcome') {
-    const outcomeSyncJob = syncJob ?? (props.jobId ? syncJobs[props.jobId] : null);
-    const results = outcomeSyncJob?.results ?? jobStats?.job?.results ?? null;
-    const isSuccess = results?.success ?? false;
-    const rewards: any[] = results?.rewards ?? [];
-    const entityResults: any[] = results?.entityResults ?? [];
+  // ── Base context per mode ──
+  const baseContext: ContentDocumentContext =
+    localMode === 'planning'
+      ? { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }
+      : localMode === 'in_progress'
+      ? { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' }
+      : { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' };
 
+  // ── Override rules (SSE-driven context transition for in_progress) ──
+  const overrideRules: SurfaceContextOverrideRule[] = useMemo(() => {
+    if (localMode !== 'in_progress' || !props.jobId) return [];
+    return [
+      {
+        on: 'job.completed',
+        jobId: props.jobId,
+        apply: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
+      },
+      {
+        on: 'job.failed',
+        jobId: props.jobId,
+        apply: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
+      },
+    ];
+  }, [localMode, props.jobId]);
+
+  // ── Outcome data ──
+  const outcomeSyncJob = syncJob ?? (props.jobId ? syncJobs[props.jobId] : null);
+  const results = outcomeSyncJob?.results ?? jobStats?.job?.results ?? null;
+
+  // ── Data bag for block registry ──
+  const blockData: Record<string, any> = {
+    def: rawActiveDef,
+    currentCat,
+    missionCategoryDefs,
+    onBack: handleBack,
+    missionPower,
+    difficulty,
+    successChance,
+    injuryChance,
+    injuryRate,
+    powerRatio,
+    synergy: liveSynergy,
+    statsLoading: localMode === 'planning' ? (previewLoading && !preview) : statsLoading,
+    previewRequirements,
+    previewLoading,
+    entities,
+    selectedEntities,
+    teamMax,
+    onToggle: toggleEntity,
+    remainingMs,
+    progressPct,
+    isReady,
+    rosterEntities: jobStats?.entities ?? [],
+    isSuccess: results?.success ?? false,
+    results,
+    narrativeTexts: results?.texts ?? [],
+    rewards: results?.rewards ?? [],
+  };
+
+  // ── Loading guard (planning mode only) ──
+  if (localMode === 'planning' && (!rawActiveDef || !currentCat)) {
     return (
-      <div className="flex flex-col flex-1 min-h-0 motion-safe:animate-[detail-enter_0.28s_ease-out_both]">
-        <div
-          className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
-          style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
-        >
-          {rawActiveDef && currentCat && (
-            <MissionHeroPanel
-              def={rawActiveDef}
-              currentCat={currentCat}
-              missionCategoryDefs={missionCategoryDefs}
-              onBack={handleBack}
-            />
-          )}
+      <div className="flex flex-col flex-1 min-h-0 items-center justify-center">
+        <p className="text-text-secondary text-[13px]">Loading mission…</p>
+      </div>
+    );
+  }
 
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-4 flex flex-col gap-3">
-            {/* Result banner — scales + fades in first */}
-            <div
-              className="rounded-xl px-4 py-3 text-center border motion-safe:animate-[outcome-banner-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
-              style={isSuccess
-                ? { background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }
-                : { background: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.3)' }}
-            >
-              <div className="text-[28px] leading-none mb-1">{isSuccess ? '🏆' : '💀'}</div>
-              <div
-                className="font-cinzel text-[17px] font-black tracking-wider uppercase"
-                style={{ color: isSuccess ? '#10b981' : '#ef4444' }}
-              >
-                {isSuccess ? 'Mission Complete' : 'Mission Failed'}
-              </div>
-              {results?.qualityLabel && (
-                <div className="text-[12px] text-text-secondary mt-0.5">{results.qualityLabel}</div>
-              )}
-            </div>
+  const outerClass =
+    localMode === 'outcome'
+      ? 'flex flex-col flex-1 min-h-0 motion-safe:animate-[detail-enter_0.28s_ease-out_both]'
+      : 'flex flex-col flex-1 min-h-0 pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]';
 
-            {/* Rewards — stagger in one by one after banner */}
-            {rewards.filter((r: any) => r.type !== 'emitEvent').length > 0 && (
-              <div className={panelClass}>
-                <div className={panelTitleClass}>Rewards</div>
-                <div className="flex flex-col gap-1.5">
-                  {rewards.filter((r: any) => r.type !== 'emitEvent').map((r: any, i: number) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
-                      style={{ animationDelay: `${0.3 + i * 0.08}s` }}
-                    >
-                      <span className="text-[14px] leading-none flex-shrink-0">
-                        {r.type === 'currency' ? '💰' : r.type === 'item' ? '📦' : r.type === 'entity_xp' ? '✨' : r.type === 'keeper_xp' ? '⭐' : '🎁'}
-                      </span>
-                      <span className="flex-1 text-[13px] font-bold text-text-primary truncate">{r.name ?? r.key ?? r.type}</span>
-                      {r.amount != null && (
-                        <span className="text-[12px] font-extrabold text-[#10b981] tabular-nums flex-shrink-0">+{r.amount}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+  return (
+    <div className={outerClass}>
+      <div
+        key={localMode === 'planning' ? rawActiveDef?.id : localMode}
+        className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
+        style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
+      >
+        {/* ── Content — rendered via block registry ── */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ContentDocumentRenderer
+            documentId={documentId}
+            baseContext={baseContext}
+            overrideRules={overrideRules}
+            data={blockData}
+            className="flex flex-col gap-3 px-4 pt-3 pb-4"
+          />
+        </div>
 
-            {/* Entity outcomes — stagger in after rewards */}
-            {entityResults.length > 0 && (
-              <div className={panelClass}>
-                <div className={panelTitleClass}>Team Outcomes</div>
-                <div className="flex flex-col gap-1.5">
-                  {entityResults.map((er: any, i: number) => (
-                    <div
-                      key={er.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
-                      style={{ animationDelay: `${0.3 + rewards.filter((r: any) => r.type !== 'emitEvent').length * 0.08 + 0.12 + i * 0.08}s` }}
-                    >
-                      <span className="text-[14px] leading-none flex-shrink-0">
-                        {er.injured ? '🩹' : er.leveledUp ? '⬆️' : '⚔️'}
-                      </span>
-                      <span className="flex-1 text-[13px] font-bold text-text-primary truncate">{er.name}</span>
-                      <span className="flex flex-col items-end gap-0.5">
-                        {er.leveledUp && (
-                          <span className="text-[11px] font-extrabold text-[#fbbf24]">Lv {er.oldLevel} → {er.newLevel} ⬆️</span>
-                        )}
-                        {er.injured && (
-                          <span className="text-[11px] font-extrabold text-[#ef4444]">Injured 🩹</span>
-                        )}
-                        {er.xpGained > 0 && (
-                          <span className="text-[10px] text-text-secondary">+{er.xpGained} XP</span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Narrative texts */}
-            {results?.texts && results.texts.length > 0 && (
-              <div className={panelClass}>
-                <div className={panelTitleClass}>Report</div>
-                <div className="flex flex-col gap-1.5">
-                  {results.texts.map((t: string, i: number) => (
-                    <p key={i} className="m-0 text-[12px] leading-relaxed text-text-secondary italic">{t}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Retry + Close */}
+        {/* ── Footer: OUTCOME — surface concern ── */}
+        {localMode === 'outcome' && (
           <div className="grid grid-cols-2 gap-2 p-3 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
             <button
               onClick={onClose ?? onBack}
@@ -361,88 +330,11 @@ export function MissionPanel(props: MissionPanelProps) {
               </button>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  // ──────────────────────────────────────────────────────────────
-  // MODE: IN_PROGRESS
-  // ──────────────────────────────────────────────────────────────
-  if (localMode === 'in_progress') {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]">
-        <div
-          className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
-          style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
-        >
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {rawActiveDef && currentCat && (
-              <MissionHeroPanel
-                def={rawActiveDef}
-                currentCat={currentCat}
-                missionCategoryDefs={missionCategoryDefs}
-                onBack={handleBack}
-              />
-            )}
-
-            {rawActiveDef?.description && (
-              <p className="m-0 px-4 pt-3 text-[13px] leading-relaxed text-text-secondary">{rawActiveDef.description}</p>
-            )}
-
-            <div
-              className="sticky top-0 z-10 px-4 pt-3 pb-2 flex flex-col gap-3"
-              style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)', boxShadow: '0 4px 16px rgba(0,0,0,0.45)' }}
-            >
-              <MissionStatsPanel
-                missionPower={missionPower}
-                difficulty={difficulty}
-                successChance={successChance}
-                injuryChance={injuryChance}
-                injuryRate={injuryRate}
-                powerRatio={powerRatio}
-                hasSynergyBonus={!!(liveSynergy && liveSynergy.missionPowerBonus > 0)}
-                loading={statsLoading}
-              />
-              {liveSynergy && <MissionSynergyPanel matchedRules={liveSynergy.matchedRules} />}
-            </div>
-
-            <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
-              {/* Timer progress */}
-              <div className={panelClass}>
-                <div className={panelTitleClass}>Mission Progress</div>
-                <div className="flex flex-col gap-2">
-                  {isReady ? (
-                    <div className="text-[13px] font-extrabold text-[#10b981] text-center py-1">✅ Ready to Collect!</div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-text-secondary uppercase font-bold tracking-wide">Remaining</span>
-                        <span className="text-[14px] font-extrabold tabular-nums text-[#F59E0B]">
-                          ⏱ {Math.floor(remainingMs / 60000)}m {Math.floor((remainingMs % 60000) / 1000)}s
-                        </span>
-                      </div>
-                      <div className="flex h-2.5 rounded-full overflow-hidden bg-black/40">
-                        <div
-                          className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-300"
-                          style={{ width: `${progressPct}%` }}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {jobStats?.entities && jobStats.entities.length > 0 && (
-                <MissionRosterPanel entities={jobStats.entities} />
-              )}
-            </div>
-          </div>
-
-          {/* Skip + Close + Collect */}
-          <div
-            className="p-3 border-t border-[rgba(139,92,246,0.18)] bg-black/20 flex flex-col gap-2"
-          >
+        {/* ── Footer: IN_PROGRESS — surface concern ── */}
+        {localMode === 'in_progress' && (
+          <div className="p-3 border-t border-[rgba(139,92,246,0.18)] bg-black/20 flex flex-col gap-2">
             {isReady ? (
               <button
                 onClick={handleCollect}
@@ -471,135 +363,46 @@ export function MissionPanel(props: MissionPanelProps) {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  // ──────────────────────────────────────────────────────────────
-  // MODE: PLANNING
-  // ──────────────────────────────────────────────────────────────
-  if (!rawActiveDef || !currentCat) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 items-center justify-center">
-        <p className="text-text-secondary text-[13px]">Loading mission…</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col flex-1 min-h-0 pt-2">
-      <div
-        key={rawActiveDef.id}
-        className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0 motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
-        style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
-      >
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <MissionHeroPanel
-            def={rawActiveDef}
-            currentCat={currentCat}
-            missionCategoryDefs={missionCategoryDefs}
-            onBack={handleBack}
-          />
-
-          {rawActiveDef.description && (
-            <p className="m-0 px-4 pt-3 text-[13px] leading-relaxed text-text-secondary">{rawActiveDef.description}</p>
-          )}
-
-          <div
-            className="sticky top-0 z-10 px-4 pt-3 pb-2 flex flex-col gap-3"
-            style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)', boxShadow: '0 4px 16px rgba(0,0,0,0.45)' }}
-          >
-            {/* Requirements | Stats — 2-col grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Left: Requirements */}
-              <div className={panelClass}>
-                <div className={panelTitleClass}>Requirements</div>
-                {previewLoading && previewRequirements.length === 0 ? (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-4/5" />
-                    <div className="h-3.5 rounded bg-white/[0.06] animate-pulse w-3/5" />
-                  </div>
-                ) : previewRequirements.length === 0 ? (
-                  <span className="text-[12px] text-text-secondary italic">No requirements</span>
-                ) : (
-                  <div className="flex flex-col gap-1.5">
-                    {previewRequirements.map((r, i) => (
-                      <div key={i} className="flex items-center gap-2 text-[12px]">
-                        <span className="text-base leading-none flex-shrink-0">{r.met ? '✅' : '❌'}</span>
-                        <span className="flex-1 font-medium truncate" style={{ color: r.met ? '#10b981' : '#ef4444' }}>
-                          {r.label ?? 'Requirement'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Stats */}
-              <MissionStatsPanel
-                missionPower={missionPower}
-                difficulty={difficulty}
-                successChance={successChance}
-                injuryChance={injuryChance}
-                injuryRate={injuryRate}
-                powerRatio={powerRatio}
-                hasSynergyBonus={!!(liveSynergy && liveSynergy.missionPowerBonus > 0)}
-                loading={previewLoading && !preview}
-              />
-            </div>
-
-            {liveSynergy && <MissionSynergyPanel matchedRules={liveSynergy.matchedRules} />}
-          </div>
-
-          <div className="px-4 pt-3 pb-4 flex flex-col gap-3">
-            <RosterCard
-              title="Your Team"
-              entities={entities}
-              selectedIds={selectedEntities}
-              maxSlots={teamMax}
-              useCase="mission"
-              onRemove={(entityId) => toggleEntity(entityId)}
-              onAdd={(entityId) => toggleEntity(entityId)}
-              busyDisabledTooltip="Busy"
-              panelRef={entityPickerRef}
-              isPickerOpen={showEntityPicker}
-              onPickerOpenChange={setShowEntityPicker}
-              inlinePicker
-            />
-
+        {/* ── Footer: PLANNING — surface concern ── */}
+        {localMode === 'planning' && (
+          <div className="flex flex-col">
             {planningError && (
-              <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
-                {planningError}
+              <div className="px-3 pt-2 mx-3">
+                <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
+                  {planningError}
+                </div>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
-          {idleEntities.length === 0 && selectedEntities.length === 0 ? (
-            <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">No entities available</div>
-          ) : (
-            <>
-              <button
-                onClick={handleAutoAssign}
-                disabled={idleEntities.length === 0}
-                className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-              >
-                AUTO BUILD TEAM
-              </button>
-              {selectedEntities.length > 0 && (
-                <button
-                  disabled={!canStart}
-                  onClick={handleStart}
-                  className="px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-                >
-                  START MISSION ⚡
-                </button>
+            <div className="grid grid-cols-2 gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
+              {idleEntities.length === 0 && selectedEntities.length === 0 ? (
+                <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
+                  No entities available
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAutoAssign}
+                    disabled={idleEntities.length === 0}
+                    className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+                  >
+                    AUTO BUILD TEAM
+                  </button>
+                  {selectedEntities.length > 0 && (
+                    <button
+                      disabled={!canStart}
+                      onClick={handleStart}
+                      className="px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+                    >
+                      START MISSION ⚡
+                    </button>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

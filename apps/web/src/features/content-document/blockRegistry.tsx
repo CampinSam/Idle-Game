@@ -27,12 +27,14 @@ function MissionHeroBlock(_: BlockComponentProps) {
   const { def, currentCat, missionCategoryDefs = [], onBack } = data;
   if (!def || !currentCat) return null;
   return (
-    <MissionHeroPanel
-      def={def}
-      currentCat={currentCat}
-      missionCategoryDefs={missionCategoryDefs}
-      onBack={onBack}
-    />
+    <div className="-mx-4 -mt-3">
+      <MissionHeroPanel
+        def={def}
+        currentCat={currentCat}
+        missionCategoryDefs={missionCategoryDefs}
+        onBack={onBack}
+      />
+    </div>
   );
 }
 
