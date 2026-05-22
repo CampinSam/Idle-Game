@@ -201,6 +201,18 @@ input:focus {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Mission outcome — banner pops in with scale + fade */
+@keyframes outcome-banner-in {
+  from { opacity: 0; transform: scale(0.82); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Mission outcome — reward/entity rows slide up and fade in */
+@keyframes outcome-row-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-transition-wrapper { animation: none !important; }
 }

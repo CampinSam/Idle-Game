@@ -256,9 +256,9 @@ export function MissionPanel(props: MissionPanelProps) {
           )}
 
           <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-4 flex flex-col gap-3">
-            {/* Result banner */}
+            {/* Result banner — scales + fades in first */}
             <div
-              className="rounded-xl px-4 py-3 text-center border"
+              className="rounded-xl px-4 py-3 text-center border motion-safe:animate-[outcome-banner-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
               style={isSuccess
                 ? { background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }
                 : { background: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.3)' }}
@@ -275,13 +275,17 @@ export function MissionPanel(props: MissionPanelProps) {
               )}
             </div>
 
-            {/* Rewards */}
+            {/* Rewards — stagger in one by one after banner */}
             {rewards.filter((r: any) => r.type !== 'emitEvent').length > 0 && (
               <div className={panelClass}>
                 <div className={panelTitleClass}>Rewards</div>
                 <div className="flex flex-col gap-1.5">
                   {rewards.filter((r: any) => r.type !== 'emitEvent').map((r: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
+                      style={{ animationDelay: `${0.3 + i * 0.08}s` }}
+                    >
                       <span className="text-[14px] leading-none flex-shrink-0">
                         {r.type === 'currency' ? '💰' : r.type === 'item' ? '📦' : r.type === 'entity_xp' ? '✨' : r.type === 'keeper_xp' ? '⭐' : '🎁'}
                       </span>
@@ -295,13 +299,17 @@ export function MissionPanel(props: MissionPanelProps) {
               </div>
             )}
 
-            {/* Entity outcomes */}
+            {/* Entity outcomes — stagger in after rewards */}
             {entityResults.length > 0 && (
               <div className={panelClass}>
                 <div className={panelTitleClass}>Team Outcomes</div>
                 <div className="flex flex-col gap-1.5">
-                  {entityResults.map((er: any) => (
-                    <div key={er.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                  {entityResults.map((er: any, i: number) => (
+                    <div
+                      key={er.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
+                      style={{ animationDelay: `${0.3 + rewards.filter((r: any) => r.type !== 'emitEvent').length * 0.08 + 0.12 + i * 0.08}s` }}
+                    >
                       <span className="text-[14px] leading-none flex-shrink-0">
                         {er.injured ? '🩹' : er.leveledUp ? '⬆️' : '⚔️'}
                       </span>
