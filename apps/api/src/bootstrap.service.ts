@@ -64,6 +64,7 @@ export class BootstrapService implements OnModuleInit {
     // earlier failure (which is far more likely to be schema-related)
     // surfaces before we get into UI catalog territory.
     await this.runStep('seedTags', () => seedTags(this.prisma));
+    await this.runStep('seedContentDocuments', () => this.seedContentDocuments());
     // Idempotent: ensures the four gem packs exist in stripe.products / stripe.prices
     // so GET /v1/payments/packs returns data even before Stripe is connected.
     // ON CONFLICT DO NOTHING means real Stripe-synced rows are never overwritten.
@@ -805,6 +806,72 @@ export class BootstrapService implements OnModuleInit {
       this.logger.log(
         `ConsumableData backfill: normalized ${rewritten} item definition(s) to canonical shape`,
       );
+    }
+  }
+
+  // ─── Content Document Seeds ─────────────────────────────────────────────────
+
+  private async seedContentDocuments(): Promise<void> {
+    const documents = [
+      {
+        key: 'mission_planning_document',
+        defaultContext: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
+        blocks: [
+          { type: 'mission_hero' },
+          { type: 'mission_stats' },
+          { type: 'mission_requirements' },
+          { type: 'divider' },
+          { type: 'team_section' },
+          { type: 'mission_synergy' },
+          { type: 'divider' },
+          { type: 'reward_list' },
+        ],
+      },
+      {
+        key: 'mission_active_document',
+        defaultContext: { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' },
+        blocks: [
+          { type: 'mission_hero' },
+          { type: 'mission_timer' },
+          { type: 'divider' },
+          { type: 'entity_roster' },
+          { type: 'divider' },
+          { type: 'reward_list' },
+        ],
+      },
+      {
+        key: 'mission_outcome_document',
+        defaultContext: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
+        blocks: [
+          { type: 'outcome_banner' },
+          { type: 'mission_stats' },
+          { type: 'divider' },
+          { type: 'entity_roster' },
+          { type: 'divider' },
+          { type: 'reward_list' },
+        ],
+      },
+    ];
+
+    for (const doc of documents) {
+      await (this.prisma as any).gameDefinition.upsert({
+        where: { type_key_version: { type: 'content_document', key: doc.key, version: 1 } },
+        create: {
+          type: 'content_document',
+          key: doc.key,
+          version: 1,
+          isActive: true,
+          data: {
+            id: doc.key,
+            version: 1,
+            blocks: doc.blocks,
+            defaultContext: doc.defaultContext,
+          },
+        },
+        update: {},
+      });
+
+      this.logger.log(`Content document "${doc.key}" ensured`);
     }
   }
 }

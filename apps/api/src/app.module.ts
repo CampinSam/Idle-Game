@@ -43,6 +43,7 @@ import { ClientErrorsModule } from './modules/client-errors/client-errors.module
 import { SynergyModule } from './modules/synergy/synergy.module';
 import { SelectionModule } from './modules/selection/selection.module';
 import { ScreensModule } from './modules/screens/screens.module';
+import { ContentDocumentModule } from './modules/content-document/content-document.module';
 
 const isProductionLog = process.env.NODE_ENV === 'production';
 
@@ -163,6 +164,7 @@ const imports: any[] = [
   SynergyModule,
   SelectionModule,
   ScreensModule,
+  ContentDocumentModule,
 ];
 
 if (process.env.NODE_ENV === 'production') {

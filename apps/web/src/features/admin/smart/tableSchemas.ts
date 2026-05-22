@@ -590,13 +590,13 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
     ],
     fields: {
       id:       { type: 'string',  required: true,  description: 'Unique identifier (auto-generated)',                                   section: 'identity' },
-      type:     { type: 'options', options: ['screen_composition'], default: 'screen_composition', description: 'Definition type',        section: 'identity' },
+      type:     { type: 'options', options: ['screen_composition', 'content_document'], default: 'screen_composition', description: 'Definition type',        section: 'identity' },
       key:      { type: 'string',  required: true,  description: 'Stable screen key (e.g. home_screen, store_screen)',                   section: 'identity' },
       version:  { type: 'number',  default: 1,      description: 'Numeric version — increment to create a new draft without overwriting', section: 'identity' },
       isActive: { type: 'boolean', default: false,  description: 'Only one version per (type, key) pair should be active at once. Use the publish endpoint to activate safely.', section: 'identity' },
       startsAt: { type: 'string',  description: 'ISO datetime — definition is suppressed before this time (blank = no lower bound)',     section: 'schedule' },
       endsAt:   { type: 'string',  description: 'ISO datetime — definition is suppressed after this time (blank = no expiry)',           section: 'schedule' },
-      data:     { type: 'json',    default: {},     description: 'ScreenCompositionDefinition JSON: { screenKey, status, layout, sections, ... }', section: 'data' },
+      data:     { type: 'json',    default: {},     description: 'Payload JSON. For screen_composition: { screenKey, status, layout, sections, ... }. For content_document: { id, version, blocks: [...], defaultContext?: { missionMode, teamMode, rewardMode } }', section: 'data' },
     },
   },
 };

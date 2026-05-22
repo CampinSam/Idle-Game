@@ -1262,13 +1262,82 @@
       }
     },
     "GameDefinition (seed-data.json)": {
-      "description": "Seed records for GameDefinition table. type=screen_composition rows define UI composition for named screens. All seed records have isActive=false (draft) and must be published via the admin publish endpoint.",
+      "description": "Seed records for GameDefinition table. type=screen_composition rows define UI composition for named screens. type=content_document rows define reusable ordered block lists for use by surfaces (screens, modals). All seed records have isActive=false (draft) and must be published via the admin publish endpoint.",
       "schema": {
         "type": "array",
         "items": {
-          "$ref": "#/definitions/ScreenCompositionDefinition"
+          "oneOf": [
+            { "$ref": "#/definitions/ScreenCompositionDefinition" },
+            { "$ref": "#/definitions/ContentDocumentDefinition" }
+          ]
         }
       }
+    },
+    "ContentDocumentDefinition": {
+      "description": "A reusable, surface-agnostic block list stored in the GameDefinition table with type='content_document'. Blocks are ordered and rendered top-to-bottom by the surface that owns the document. The surface supplies runtime context (missionMode, teamMode, rewardMode); the document only declares structure.",
+      "type": "object",
+      "required": ["id", "version", "blocks"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable key matching the GameDefinition.key column (e.g. mission_planning_document)."
+        },
+        "version": {
+          "type": "number",
+          "description": "Schema version for forward-compatibility. Increment when breaking changes are needed."
+        },
+        "blocks": {
+          "type": "array",
+          "description": "Ordered list of content blocks to render.",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "mission_hero",
+                  "mission_stats",
+                  "mission_requirements",
+                  "mission_synergy",
+                  "team_section",
+                  "reward_list",
+                  "entity_roster",
+                  "mission_timer",
+                  "outcome_banner",
+                  "narrative_text",
+                  "rich_text",
+                  "image",
+                  "divider",
+                  "key_value_row"
+                ],
+                "description": "Discriminator for the block renderer."
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "defaultContext": {
+          "type": "object",
+          "description": "Optional default rendering context hints. Surfaces may override at render time.",
+          "properties": {
+            "missionMode": {
+              "type": "string",
+              "enum": ["planning", "in_progress", "outcome"]
+            },
+            "teamMode": {
+              "type": "string",
+              "enum": ["editable", "locked"]
+            },
+            "rewardMode": {
+              "type": "string",
+              "enum": ["preview", "actual"]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

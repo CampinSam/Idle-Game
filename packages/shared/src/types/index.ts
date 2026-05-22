@@ -13,3 +13,4 @@ export * from './rich-selection';
 export * from './telemetry';
 export * from './gift';
 export * from './screen-composition';
+export * from './content-document';

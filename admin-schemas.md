@@ -1501,11 +1501,98 @@ Roll back to a previous version — same semantics as publish (deactivates all, 
 
 | Field | Type | Description |
 |---|---|---|
-| `type` | `"screen_composition"` | Definition type (extend for other uses later) |
-| `key` | `string` | Stable screen key, e.g. `home_screen` |
+| `type` | `"screen_composition" \| "content_document"` | Definition type |
+| `key` | `string` | Stable key, e.g. `home_screen` or `mission_planning_document` |
 | `version` | `number` | Increment to create a new draft without overwriting the live version |
 | `isActive` | `boolean` | Use the publish endpoint — direct mutation risks two active versions |
 | `startsAt` / `endsAt` | `string?` | ISO datetime availability window |
-| `data` | `ScreenCompositionDefinition` | Full screen layout JSON |
+| `data` | `ScreenCompositionDefinition \| ContentDocumentDefinition` | Payload JSON matching the type |
 
 **Unique constraint:** `(type, key, version)` — duplicate version creates a DB error.
+
+---
+
+## Content Documents — `GET /api/content-documents/:id`
+
+Fetch a single active content document by its stable key. Returns the ordered block list and default context. Used by surface renderers (screens, modals) to resolve what to display.
+
+**Auth:** JWT (player token required)
+
+**Response:**
+```json
+{
+  "id": "mission_planning_document",
+  "version": 1,
+  "blocks": [
+    { "type": "mission_hero" },
+    { "type": "mission_stats" },
+    { "type": "mission_requirements" },
+    { "type": "divider" },
+    { "type": "team_section" },
+    { "type": "mission_synergy" },
+    { "type": "divider" },
+    { "type": "reward_list" }
+  ],
+  "defaultContext": {
+    "missionMode": "planning",
+    "teamMode": "editable",
+    "rewardMode": "preview"
+  }
+}
+```
+
+### Seeded content documents
+
+| Key | Description |
+|---|---|
+| `mission_planning_document` | Mission panel pre-launch — team selection, requirements, reward preview |
+| `mission_active_document` | Mission panel while running — timer, locked roster, reward preview |
+| `mission_outcome_document` | Mission panel post-completion — outcome banner, stats, actual rewards |
+
+### `ContentDocumentContext` fields
+
+| Field | Values | Description |
+|---|---|---|
+| `missionMode` | `planning \| in_progress \| outcome` | Active phase of the mission lifecycle |
+| `teamMode` | `editable \| locked` | Whether entity slots can be swapped |
+| `rewardMode` | `preview \| actual` | Whether rewards are estimated or collected |
+
+### `SurfaceContextOverrideRule`
+
+Declared in the surface (screen/modal) config — not in the document itself. Overrides a slice of the document context when a live SSE event fires.
+
+```json
+{
+  "on": "job.completed",
+  "jobId": "optional-job-id",
+  "apply": { "missionMode": "outcome", "teamMode": "locked", "rewardMode": "actual" }
+}
+```
+
+Supported triggers: `job.completed`, `job.failed`, `job.ready`
+
+### Supported `ContentBlock` types
+
+**Mission-pilot game blocks:**
+
+| Type | Description |
+|---|---|
+| `mission_hero` | Mission banner / title card |
+| `mission_stats` | Duration, difficulty, AP cost, etc. |
+| `mission_requirements` | Entity / item requirements list |
+| `mission_synergy` | Team synergy display |
+| `team_section` | Entity slot grid (editable or locked) |
+| `reward_list` | Expected / actual rewards |
+| `entity_roster` | Read-only entity summary |
+| `mission_timer` | Countdown to completion |
+| `outcome_banner` | Success / failure hero banner |
+| `narrative_text` | Optional flavour text |
+
+**Generic blocks:**
+
+| Type | Fields | Description |
+|---|---|---|
+| `rich_text` | `content?` | Freeform text content |
+| `image` | `assetKey?`, `caption?` | Full-width image |
+| `divider` | — | Horizontal rule |
+| `key_value_row` | `label`, `value` | Single label/value pair |
