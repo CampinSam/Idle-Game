@@ -119,16 +119,18 @@ export class AdminController {
   publishGameDefinition(
     @Param('key') key: string,
     @Param('version', ParseIntPipe) version: number,
+    @Query('type') type?: string,
   ) {
-    return this.screensService.publish(key, version);
+    return this.screensService.publish(key, version, type);
   }
 
   @Post('game-definitions/:key/:version/rollback')
   rollbackGameDefinition(
     @Param('key') key: string,
     @Param('version', ParseIntPipe) version: number,
+    @Query('type') type?: string,
   ) {
-    return this.screensService.rollback(key, version);
+    return this.screensService.rollback(key, version, type);
   }
 
   @Get('players/search')

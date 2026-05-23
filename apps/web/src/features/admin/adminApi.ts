@@ -239,10 +239,10 @@ export const adminApi = {
     adminRequest<any>(`/gameDefinition/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteGameDefinition: (id: string) =>
     adminRequest<any>(`/gameDefinition/${id}`, { method: 'DELETE' }),
-  publishGameDefinition: (key: string, version: number) =>
-    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/publish`, { method: 'POST' }),
-  rollbackGameDefinition: (key: string, version: number) =>
-    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/rollback`, { method: 'POST' }),
+  publishGameDefinition: (key: string, version: number, type?: string) =>
+    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/publish${type ? `?type=${encodeURIComponent(type)}` : ''}`, { method: 'POST' }),
+  rollbackGameDefinition: (key: string, version: number, type?: string) =>
+    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/rollback${type ? `?type=${encodeURIComponent(type)}` : ''}`, { method: 'POST' }),
 
   listSoundMappings: () => adminRequest<any[]>('/audio/mappings'),
   createSoundMapping: (data: { actionKey: string; soundDefId: string; weight?: number }) =>

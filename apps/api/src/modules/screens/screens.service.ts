@@ -223,14 +223,14 @@ export class ScreensService {
 
   // ─── Publish / rollback (atomic) ──────────────────────────────────────────
 
-  async publish(screenKey: string, version: number): Promise<ResolvedScreenDefinition> {
+  async publish(screenKey: string, version: number, type?: string): Promise<ResolvedScreenDefinition> {
     const target = await (this.prisma as any).gameDefinition.findFirst({
-      where: { key: screenKey, version },
+      where: { key: screenKey, version, ...(type ? { type } : {}) },
     });
 
     if (!target) {
       throw new NotFoundException(
-        `No game definition found for key "${screenKey}" version ${version}`,
+        `No game definition found for key "${screenKey}" version ${version}${type ? ` type "${type}"` : ''}`,
       );
     }
 
@@ -253,8 +253,8 @@ export class ScreensService {
     return this.serialize(updated);
   }
 
-  async rollback(screenKey: string, version: number): Promise<ResolvedScreenDefinition> {
-    return this.publish(screenKey, version);
+  async rollback(screenKey: string, version: number, type?: string): Promise<ResolvedScreenDefinition> {
+    return this.publish(screenKey, version, type);
   }
 
   // ─── Audience evaluation ─────────────────────────────────────────────────

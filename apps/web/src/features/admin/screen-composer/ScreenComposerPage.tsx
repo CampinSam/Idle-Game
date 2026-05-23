@@ -354,7 +354,7 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
 
   // Rule that is deterministically false: keeper level is always >= 1, never < 0.
   // When user is null, the path resolves to undefined and less_than returns false.
-  const ADMIN_HIDDEN_VISIBILITY = { any: [{ path: 'user.keeperLevel', operator: 'less_than', value: 0 }] };
+  const ADMIN_HIDDEN_VISIBILITY = { any: [{ path: 'user.keeperLevel', operator: 'less_than', value: -1 }] };
 
   const isHidden = (section: any) => {
     const v = section.visibility;
@@ -881,7 +881,7 @@ function ScreenComposer() {
     setActionLoading(def.id);
     setGlobalMsg(null);
     try {
-      await adminApi.publishGameDefinition(def.key, def.version);
+      await adminApi.publishGameDefinition(def.key, def.version, def.type);
       await load();
       setGlobalMsg({ text: `v${def.version} of "${def.key}" is now live`, type: 'success' });
     } catch (e: any) {
@@ -894,7 +894,7 @@ function ScreenComposer() {
     setActionLoading(def.id);
     setGlobalMsg(null);
     try {
-      await adminApi.rollbackGameDefinition(def.key, def.version);
+      await adminApi.rollbackGameDefinition(def.key, def.version, def.type);
       await load();
       setGlobalMsg({ text: `Rolled back to v${def.version} of "${def.key}"`, type: 'success' });
     } catch (e: any) {
