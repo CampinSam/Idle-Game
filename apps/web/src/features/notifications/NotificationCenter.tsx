@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNow } from '../../hooks/useNow';
-import { serverNow } from '../../services/clockSync';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
 import { useModal } from '../../context/ModalContext';
@@ -15,9 +14,9 @@ import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } fr
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
-function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
+function timeSection(dateStr: string, nowMs: number): 'New' | 'Today' | 'Earlier' {
   const d = new Date(dateStr);
-  const now = new Date(serverNow());
+  const now = new Date(nowMs);
   const diffMs = now.getTime() - d.getTime();
 
   if (diffMs < 60 * 60 * 1000) return 'New';
@@ -28,8 +27,8 @@ function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
   return 'Earlier';
 }
 
-function timeAgo(dateStr: string): string {
-  const diffMs = serverNow() - new Date(dateStr).getTime();
+function timeAgo(dateStr: string, nowMs: number): string {
+  const diffMs = nowMs - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -67,6 +66,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const { collectJob } = useCollectJob();
   const globalPowers = useGlobalPowers();
   const [filter, setFilter] = useState<string>('All');
+  const nowMs = useNow(60_000);
 
   const filtered = useMemo(() => {
     if (filter === 'All') return notifications;
@@ -77,11 +77,11 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const grouped = useMemo(() => {
     const sections: Record<string, AppNotification[]> = { New: [], Today: [], Earlier: [] };
     for (const n of filtered) {
-      const section = timeSection(n.createdAt);
+      const section = timeSection(n.createdAt, nowMs);
       sections[section].push(n);
     }
     return sections;
-  }, [filtered]);
+  }, [filtered, nowMs]);
 
   const READY_TYPES = ['job_ready', 'mission_ready'];
   const COMPLETE_TYPES = ['mission_complete', 'craft_complete', 'building_complete'];
@@ -207,7 +207,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                       <div className="nc-item-content">
                         <span className="nc-item-title">{n.title}</span>
                         <span className="nc-item-body">{n.body}</span>
-                        <span className="nc-item-time">{timeAgo(n.createdAt)}</span>
+                        <span className="nc-item-time">{timeAgo(n.createdAt, nowMs)}</span>
                       </div>
                       {isGift && !n.readAt ? (
                         <span className="nc-collect-btn" onClick={(e) => handleGiftClaim(e, n)}>Claim</span>
