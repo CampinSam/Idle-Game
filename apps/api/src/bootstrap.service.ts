@@ -831,6 +831,7 @@ export class BootstrapService implements OnModuleInit {
         context: { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' },
         blocks: [
           { type: 'mission_hero' },
+          { type: 'narrative_text' },
           { type: 'mission_timer' },
           { type: 'divider' },
           { type: 'entity_roster' },

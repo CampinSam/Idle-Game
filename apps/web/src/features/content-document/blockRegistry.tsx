@@ -25,7 +25,7 @@ const PANEL_TITLE_CLASS = 'text-[11px] font-extrabold tracking-[0.08em] uppercas
 function MissionHeroBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const { def, currentCat, missionCategoryDefs = [], onBack } = data;
-  if (!def || !currentCat) return null;
+  if (!def) return null;
   return (
     <div className="-mx-4 -mt-3">
       <MissionHeroPanel
@@ -202,7 +202,7 @@ function MissionTimerBlock(_: BlockComponentProps) {
             </div>
             <div className="flex h-2.5 rounded-full overflow-hidden bg-black/40">
               <div
-                className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-300"
+                className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
                 style={{ width: `${progressPct}%` }}
               />
             </div>

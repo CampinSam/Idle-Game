@@ -10,7 +10,6 @@ import {
   useSyncStatus,
   useSyncPlayer,
 } from '../../hooks/useSyncSelectors';
-import { useCollectJob } from '../../hooks/useCollectJob';
 import {
   meetsNonTeamRequirements,
   resolveCategoryDisplay,
@@ -25,8 +24,6 @@ import { useMissionsNavigation } from './hooks/useMissionsNavigation';
 
 export default function MissionsPage() {
   const dispatch = useAppDispatch();
-  const { execute } = useCommand();
-  const { collectJob } = useCollectJob();
   const syncStatus = useSyncStatus();
 
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
@@ -39,7 +36,6 @@ export default function MissionsPage() {
 
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [completingId, setCompletingId] = useState<string | null>(null);
 
   useEffect(() => {
     dispatch(fetchMissionDefs());
@@ -133,18 +129,6 @@ export default function MissionsPage() {
     }
   };
 
-  const handleComplete = async (missionId: string) => {
-    setError('');
-    setCompletingId(missionId);
-    try {
-      await collectJob(missionId);
-    } catch (e: any) {
-      setError(e.message || 'Failed to complete mission');
-    } finally {
-      setCompletingId(null);
-    }
-  };
-
   const handleViewJob = useCallback((jobId: string) => {
     setViewingJobId(jobId);
   }, []);
@@ -190,8 +174,6 @@ export default function MissionsPage() {
     activityCollapsed,
     onToggleActivity: () => setActivityCollapsed(c => !c),
     onOpenJob: handleViewJob,
-    onCollect: handleComplete,
-    completingId,
   };
 
   const catBorder = currentCat?.display?.borderColor;

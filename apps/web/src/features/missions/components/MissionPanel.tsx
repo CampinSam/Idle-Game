@@ -9,7 +9,7 @@ import { useTickRemainingMs } from '../../../tick/useTickValue';
 import { audioEngine } from '../../../services/AudioEngine';
 import { api } from '../../../services/api';
 import { useMissionJobStats } from '../hooks/useMissionJobStats';
-import { extractTeamSizeBounds } from './missionUtils';
+import { extractTeamSizeBounds, formatDuration } from './missionUtils';
 import { ContentDocumentRenderer } from '../../content-document/ContentDocumentRenderer';
 import type { ContentDocumentContext, SurfaceContextOverrideRule } from '@derp/shared';
 
@@ -44,9 +44,13 @@ export function MissionPanel(props: MissionPanelProps) {
   const storeInventoryItems = useAppSelector((s) => s.sync.items);
   const syncJobs: Record<string, any> = useAppSelector((s) => s.sync.jobs);
 
+  // ── Internal job ID — allows retry to switch to the newly started job ──
+  const [internalJobId, setInternalJobId] = useState<string | null>(null);
+  const effectiveJobId = internalJobId ?? props.jobId ?? null;
+
   // ── Resolve the mission def (always from store for correct displayDef shape) ──
   const propsDefId = props.defId ?? props.selectedDef?.id;
-  const syncJob = props.jobId ? syncJobs[props.jobId] : null;
+  const syncJob = effectiveJobId ? syncJobs[effectiveJobId] : null;
   const activeDefId = propsDefId ?? syncJob?.defId;
   const rawActiveDef = activeDefId ? storeMissionDefs.find((d: any) => d.id === activeDefId) : props.selectedDef ?? null;
 
@@ -92,7 +96,7 @@ export function MissionPanel(props: MissionPanelProps) {
 
   // ── Job stats (in_progress / outcome) ──
   const { stats: jobStats, loading: statsLoading } = useMissionJobStats(
-    localMode !== 'planning' ? props.jobId : undefined,
+    localMode !== 'planning' ? effectiveJobId ?? undefined : undefined,
   );
 
   // ── Timer ──
@@ -154,6 +158,15 @@ export function MissionPanel(props: MissionPanelProps) {
   const previewRequirements = preview?.requirements ?? [];
   const isSkipable = rawActiveDef?.timer?.skipable ?? false;
 
+  // ── Roster enriched with store imageUrl ──
+  const rosterEntities = useMemo(() => {
+    const raw = jobStats?.entities ?? [];
+    return raw.map((re: any) => {
+      const storeEntity = storeEntities.find((e: any) => e.id === re.id);
+      return { ...re, imageUrl: re.imageUrl ?? storeEntity?.imageUrl };
+    });
+  }, [jobStats?.entities, storeEntities]);
+
   // ── Shared header back handler ──
   const handleBack = onBack ?? onClose;
 
@@ -175,8 +188,20 @@ export function MissionPanel(props: MissionPanelProps) {
     if (!rawActiveDef) return;
     setPlanningError('');
     try {
-      await execute('StartMission', { defId: rawActiveDef.id, entityIds: selectedEntities });
+      const res = await execute('StartMission', { defId: rawActiveDef.id, entityIds: selectedEntities });
       audioEngine.play('sfx.mission.start');
+      // In retry mode (had a prior jobId), find the new job and transition to in_progress
+      const isRetryMode = !!(props.jobId ?? internalJobId);
+      if (isRetryMode) {
+        const newJobPatch = (res?.patches ?? []).find(
+          (p: any) => p.op === 'upsert' && p.entity === 'job' && p.data?.defId === rawActiveDef.id,
+        );
+        if (newJobPatch) {
+          setInternalJobId(newJobPatch.id);
+          setLocalMode('in_progress');
+          return;
+        }
+      }
       onMissionStarted?.();
     } catch (e: any) {
       audioEngine.play('ui.error');
@@ -185,10 +210,10 @@ export function MissionPanel(props: MissionPanelProps) {
   };
 
   const handleCollect = async () => {
-    if (!props.jobId || collectLoading) return;
+    if (!effectiveJobId || collectLoading) return;
     setCollectLoading(true);
     try {
-      await execute('CompleteMission', { jobId: props.jobId });
+      await execute('CompleteMission', { jobId: effectiveJobId });
     } catch (e: any) {
       console.error('[MissionPanel] Collect error:', e);
     } finally {
@@ -197,10 +222,11 @@ export function MissionPanel(props: MissionPanelProps) {
   };
 
   const handleSkip = async () => {
-    if (!props.jobId || skipLoading) return;
+    if (!effectiveJobId || skipLoading) return;
     setSkipLoading(true);
     try {
-      await api.skipJob(props.jobId);
+      await api.skipJob(effectiveJobId);
+      await execute('CompleteMission', { jobId: effectiveJobId });
     } catch (e: any) {
       console.error('[MissionPanel] Skip error:', e);
     } finally {
@@ -209,7 +235,8 @@ export function MissionPanel(props: MissionPanelProps) {
   };
 
   const handleRetry = () => {
-    setSelectedEntities([]);
+    const priorEntityIds = jobStats?.entities?.map((e: any) => e.id) ?? syncJob?.entityIds ?? [];
+    setSelectedEntities(priorEntityIds);
     setPlanningError('');
     setLocalMode('planning');
   };
@@ -232,23 +259,23 @@ export function MissionPanel(props: MissionPanelProps) {
 
   // ── Override rules (SSE-driven context transition for in_progress) ──
   const overrideRules: SurfaceContextOverrideRule[] = useMemo(() => {
-    if (localMode !== 'in_progress' || !props.jobId) return [];
+    if (localMode !== 'in_progress' || !effectiveJobId) return [];
     return [
       {
         on: 'job.completed',
-        jobId: props.jobId,
+        jobId: effectiveJobId,
         apply: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
       },
       {
         on: 'job.failed',
-        jobId: props.jobId,
+        jobId: effectiveJobId,
         apply: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
       },
     ];
-  }, [localMode, props.jobId]);
+  }, [localMode, effectiveJobId]);
 
   // ── Outcome data ──
-  const outcomeSyncJob = syncJob ?? (props.jobId ? syncJobs[props.jobId] : null);
+  const outcomeSyncJob = syncJob ?? (effectiveJobId ? syncJobs[effectiveJobId] : null);
   const results = outcomeSyncJob?.results ?? jobStats?.job?.results ?? null;
 
   // ── Data bag for block registry ──
@@ -274,10 +301,15 @@ export function MissionPanel(props: MissionPanelProps) {
     remainingMs,
     progressPct,
     isReady,
-    rosterEntities: jobStats?.entities ?? [],
+    rosterEntities,
     isSuccess: results?.success ?? false,
     results: localMode !== 'planning' ? results : null,
-    narrativeTexts: localMode !== 'planning' ? (results?.texts ?? []) : [],
+    narrativeTexts:
+      localMode === 'outcome'
+        ? (results?.texts ?? [])
+        : localMode === 'in_progress'
+        ? ([rawActiveDef?.description ?? rawActiveDef?.lore ?? ''].filter(Boolean))
+        : [],
     rewards: localMode !== 'planning' ? (results?.rewards ?? []) : (preview?.rewards ?? []),
   };
 
@@ -294,6 +326,8 @@ export function MissionPanel(props: MissionPanelProps) {
     localMode === 'outcome'
       ? 'flex flex-col flex-1 min-h-0 motion-safe:animate-[detail-enter_0.28s_ease-out_both]'
       : 'flex flex-col flex-1 min-h-0 pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]';
+
+  const missionDuration = rawActiveDef?.timer?.duration ?? 0;
 
   return (
     <div className={outerClass}>
@@ -411,13 +445,18 @@ export function MissionPanel(props: MissionPanelProps) {
                       <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
                         START MISSION ⚡
                       </span>
-                      {missionCost.length > 0 && (
-                        <span className={`flex items-center gap-1 mt-0.5 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}>
-                          {missionCost.map((c, i) => (
-                            <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
-                          ))}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1.5 mt-0.5">
+                        {missionDuration > 0 && (
+                          <span className="text-[10px] font-semibold opacity-60">⏱ {formatDuration(missionDuration)}</span>
+                        )}
+                        {missionCost.length > 0 && (
+                          <span className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}>
+                            {missionCost.map((c, i) => (
+                              <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                            ))}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   )}
                 </>

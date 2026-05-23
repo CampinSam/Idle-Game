@@ -10,7 +10,7 @@ import { getDifficultyDisplay } from '@derp/shared';
 
 interface MissionHeroPanelProps {
   def: any;
-  currentCat: any;
+  currentCat?: any;
   missionCategoryDefs: any[];
   onBack?: () => void;
 }
@@ -21,7 +21,7 @@ export function MissionHeroPanel({ def, currentCat, missionCategoryDefs, onBack 
   const missionTags = def.tags || [];
   const duration = def.timer?.duration ?? 0;
   const heroCss = displayCssVars(display, { hero: true });
-  const catIcon = getCategoryIcon(currentCat?.name ?? '');
+  const catIcon = currentCat ? getCategoryIcon(currentCat.name ?? '') : '';
 
   return (
     <div

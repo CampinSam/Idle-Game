@@ -44,8 +44,11 @@ export function useMissionsNavigation(opts: {
   const entityPickerRef = useRef<HTMLDivElement>(null);
 
   const [activityCollapsed, setActivityCollapsed] = useState<boolean>(() => {
-    try { return sessionStorage.getItem('missions_activity_collapsed') === '1'; }
-    catch { return false; }
+    try {
+      const stored = sessionStorage.getItem('missions_activity_collapsed');
+      return stored === null ? true : stored === '1';
+    }
+    catch { return true; }
   });
 
   useEffect(() => {

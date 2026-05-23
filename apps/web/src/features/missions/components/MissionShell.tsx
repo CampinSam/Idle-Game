@@ -14,8 +14,6 @@ interface MissionShellProps {
   activityCollapsed: boolean;
   onToggleActivity: () => void;
   onOpenJob: (jobId: string) => void;
-  onCollect: (id: string) => void;
-  completingId: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -29,14 +27,10 @@ function MissionActiveRow({
   m,
   missionDefs,
   onOpenJob,
-  onCollect,
-  completingId,
 }: {
   m: any;
   missionDefs: any[];
   onOpenJob: (id: string) => void;
-  onCollect: (id: string) => void;
-  completingId: string | null;
 }) {
   const currentTick = useCurrentTick();
   const timer = (m.startTick != null && m.durationTicks != null)
@@ -59,20 +53,12 @@ function MissionActiveRow({
         {missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}
       </span>
       <span className={`text-[11px] font-bold tracking-wide whitespace-nowrap ${isReady ? STATUS_COLORS.ready : STATUS_COLORS['in-progress']}`}>
-        {isReady ? '✅ READY' : `⏱ ${formatTimeShort(remaining)}`}
+        {isReady ? '✅ Ready' : `⏱ ${formatTimeShort(remaining)}`}
       </span>
-      {isReady ? (
-        <button
-          onClick={(e) => { e.stopPropagation(); onCollect(m.id); }}
-          disabled={completingId === m.id}
-          className="px-3 py-1 rounded-md text-[11px] font-extrabold tracking-wide text-white bg-gradient-to-br from-[#10b981] to-[#059669] hover:brightness-110 disabled:opacity-60"
-        >
-          {completingId === m.id ? '...' : 'COLLECT'}
-        </button>
-      ) : (
+      {!isReady && (
         <div className="w-24 h-1.5 rounded-full bg-black/40 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-300"
+            className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -90,8 +76,6 @@ export function MissionShell({
   activityCollapsed,
   onToggleActivity,
   onOpenJob,
-  onCollect,
-  completingId,
 }: MissionShellProps) {
   const hasHistory = missionHistory.length > 0;
   const collapsed = activityCollapsed && hasHistory;
@@ -110,8 +94,6 @@ export function MissionShell({
               m={m}
               missionDefs={missionDefs}
               onOpenJob={onOpenJob}
-              onCollect={onCollect}
-              completingId={completingId}
             />
           ))}
           {Array.from({ length: emptyCount }).map((_, i) => (
@@ -167,7 +149,7 @@ export function MissionShell({
                         {histName}
                       </span>
                       <span className={`text-[11px] font-bold tracking-wide whitespace-nowrap ${isCompleted ? STATUS_COLORS.completed : STATUS_COLORS.failed}`}>
-                        {isCompleted ? '✅ READY' : '❌ FAILED'}
+                        {isCompleted ? '✅ Success' : '❌ Failed'}
                       </span>
                     </div>
                   );
