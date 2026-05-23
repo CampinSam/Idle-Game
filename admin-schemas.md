@@ -1546,8 +1546,6 @@ Fetch a single active content document by its stable key. Returns the ordered bl
 | Key | Description |
 |---|---|
 | `mission_planning_document` | Mission panel pre-launch — team selection, requirements, reward preview |
-| `mission_active_document` | Mission panel while running — timer, locked roster, reward preview |
-| `mission_outcome_document` | Mission panel post-completion — outcome banner, stats, actual rewards |
 
 ### `ContentDocumentContext` fields
 
