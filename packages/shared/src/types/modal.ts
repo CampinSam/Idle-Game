@@ -130,6 +130,8 @@ export interface ModalBlockProgress {
   label?: string;
   current: number;
   max: number;
+  startsAt?: string;
+  endsAt?: string;
   from?: string;
 }
 

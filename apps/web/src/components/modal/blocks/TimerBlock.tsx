@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useNow } from '../../../hooks/useNow';
 
 export default function TimerBlock({
   endsAt,
@@ -10,13 +11,12 @@ export default function TimerBlock({
   onExpire?: () => void;
 }) {
   const endMs = useMemo(() => Date.parse(endsAt), [endsAt]);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow(1000);
   const firedRef = useRef(false);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+    firedRef.current = false;
+  }, [endsAt]);
 
   const remaining = Math.max(0, endMs - now);
 

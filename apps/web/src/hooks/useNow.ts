@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { serverNow } from '../services/clockSync';
 
 export function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    const id = setInterval(() => setNow(serverNow()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
 

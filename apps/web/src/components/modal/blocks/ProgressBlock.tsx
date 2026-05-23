@@ -1,5 +1,30 @@
-export default function ProgressBlock({ current, max, label }: { current: number; max: number; label?: string }) {
-  const pct = max > 0 ? Math.min(100, (current / max) * 100) : 0;
+import { useNow } from '../../../hooks/useNow';
+
+export default function ProgressBlock({
+  current,
+  max,
+  label,
+  startsAt,
+  endsAt,
+}: {
+  current: number;
+  max: number;
+  label?: string;
+  startsAt?: string;
+  endsAt?: string;
+}) {
+  const now = useNow(1000);
+
+  let pct: number;
+  if (startsAt && endsAt) {
+    const startMs = Date.parse(startsAt);
+    const endMs = Date.parse(endsAt);
+    const duration = endMs - startMs;
+    pct = duration > 0 ? Math.min(100, Math.max(0, ((now - startMs) / duration) * 100)) : 0;
+  } else {
+    pct = max > 0 ? Math.min(100, (current / max) * 100) : 0;
+  }
+
   const isComplete = pct >= 100;
 
   return (

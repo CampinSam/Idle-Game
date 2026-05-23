@@ -463,8 +463,10 @@ export class UiService {
     }
 
     if (!isReady && endsAt) {
+      const durationMs = tickRate > 0 ? (timer.durationTicks / tickRate) * 1000 : 0;
+      const startsAt = new Date(Date.parse(endsAt) - durationMs).toISOString();
       body.push({ type: 'timer', endsAt, label: 'Time Remaining' });
-      body.push({ type: 'progress', current: progress.current, max: progress.max });
+      body.push({ type: 'progress', current: progress.current, max: progress.max, startsAt, endsAt });
     }
 
     const buttons: any[] = [];

@@ -3,6 +3,7 @@ import { api } from './api';
 import type { DeltaResponse } from './api';
 import { setStatus, setSnapshot, applyPatches, setError, resetSync, setTickSync, setHomeBanners, setGlobalPowers } from '../store/syncSlice';
 import { setSystemIconRegistry } from '../utils/iconResolver';
+import { applyServerTime } from './clockSync';
 import type { RootState } from '../store';
 
 export type GlobalPowerChangeHandler = (
@@ -64,6 +65,7 @@ export class SyncEngine {
       const response = await api.bootstrap();
       if (this.destroyed) return;
 
+      applyServerTime(response.serverTime);
       this.store.dispatch(setSnapshot(response));
       const systemIconDefs: Array<{ id: string }> = (response.snapshot.state as any)?.systemIconDefs ?? [];
       setSystemIconRegistry(systemIconDefs.map((d) => d.id));
@@ -122,6 +124,7 @@ export class SyncEngine {
     es.addEventListener('tick.sync', (e: MessageEvent) => {
       try {
         const msg = JSON.parse(e.data);
+        applyServerTime(Date.parse(msg.serverTime));
         this.store.dispatch(setTickSync({
           currentTick: msg.currentTick,
           tickRate: msg.tickRate,
