@@ -31,6 +31,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - `prisma/schema.prisma`: Database schema definition.
 - `admin-schemas.md`: Admin API documentation.
 - `definition-schemas.json`: Game definition schemas.
+- `render-blocks.md`: Complete reference for all render blocks (Modal Blocks, Screen Composition Blocks, Content Document Blocks) — the authoritative guide for building new UI with the block/render pipeline.
 - `apps/web/src/core/theme/`: UI theme files.
 - `apps/web/src/components/ui/`: Shared Tailwind UI kit (Card, SectionHeader, Badge, StatPill, Chip, EmptyState, Divider, Row, IconLabel, KeyValue, CostEntry, RewardChip).
 - `apps/web/tailwind.config.js`, `apps/web/postcss.config.js`: Tailwind + PostCSS configuration.
