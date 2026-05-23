@@ -41,6 +41,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - **Server-Authoritative Game Logic:** All core game mechanics, calculations, and state mutations reside on the server.
 - **Definition/Instance Architecture:** Core game entities (Entities, Locations, Items) are managed through a definition/instance pattern.
 - **Unified Command/Delta/SSE Pipeline:** Backend provides a scalable pipeline for commands, full state snapshots, incremental updates, and real-time push notifications.
+- **Unified Block/Render Pipeline:** All UI — both screens and modals — is built from server-emitted blocks rendered by a shared block vocabulary. New UI needs are met by adding blocks, never by creating parallel systems or special-cased page types. See principle #17 in `.agents/skills/derp-dev-principles/SKILL.md`.
 
 ## Product
 - Season-based idle strategy RPG with a persistent world.

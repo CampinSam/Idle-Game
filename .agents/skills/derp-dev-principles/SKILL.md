@@ -211,6 +211,37 @@ an existing notification irrelevant?* If yes, mark it read and emit the patch.
 
 ---
 
+## 17. Unified Block/Render Pipeline
+
+All UI in this project is built from **blocks** — simple, single-responsibility data descriptors that the server emits and the client renders. Blocks are the only sanctioned way to introduce new visual content. This applies to both surfaces:
+
+- **Screens** — full pages rendered by `ContentDocumentRenderer` using the block registry (`apps/web/src/features/content-document/blockRegistry.tsx`).
+- **Modals** — pop-ups rendered by `GameModal` → `BlockRenderer` (`apps/web/src/components/modal/blocks/`).
+
+Both surfaces draw from the same block vocabulary. A block component written for a modal can appear in a screen and vice versa.
+
+### Rules
+
+1. **New UI need = new block, not a new system.** Before writing a bespoke component, page type, or parallel rendering context, ask whether a new block (or a small combination of existing blocks) covers the need. If a block is becoming complex, split it into smaller blocks — complexity is a signal to decompose, not to escape the pipeline.
+
+2. **The `editable` flag, not a new block type.** When a block needs to support both interactive and read-only modes (e.g. a team roster that allows removing members during planning but is locked once a mission starts), add an `editable: boolean` field to the block's data shape. `editable: true` renders interactive affordances (remove buttons, pickers, drag handles). `editable: false` renders the same visual without any controls. A different interactivity mode **never** warrants a separate block type.
+
+3. **The narrow exception — genuinely interactive screen components.** A bespoke React component is acceptable only when the UI is a true data-entry or composition tool: it accepts complex user input, maintains local transient state, and cannot reasonably be decomposed into stateless blocks. The mission planning builder (team selection, synergy preview, start confirmation) is the canonical example. These components live on screens, never inside modals.
+
+4. **No parallel modal/overlay systems.** When a job, notification, or game event needs a pop-up, use the existing pipeline: `api.getModalSpec(...)` → `pushModal(spec)` → `GameModalHost` → `GameModal` → `BlockRenderer`. Do not introduce a new context, bottom-sheet, or overlay component for this purpose.
+
+5. **Backend owns the block spec.** The server constructs the full block array and returns it as part of the modal or screen spec. The frontend renders what it receives — it does not assemble block arrays from raw game state on the client.
+
+### Adding a new block
+
+1. Add the block's TypeScript type to the `ModalBlock` union in `packages/shared/src/types/modal.ts`.
+2. Create the React component in `apps/web/src/components/modal/blocks/` (for modal-first blocks) or the content-document registry (for screen-first blocks). Prefer the modal-blocks location when the block will appear in both surfaces.
+3. Register it in `BlockRenderer.tsx` and/or `blockRegistry.tsx` as appropriate.
+4. Add a builder helper in `apps/api/src/modules/ui/ui.service.ts` (or a dedicated builder file) so the server can emit the block in any modal or screen spec.
+5. Rebuild `@derp/shared` before testing (`pnpm --filter @derp/shared build`).
+
+---
+
 ## 16. Icon-First Cost & Reward Display
 
 When showing a currency or item quantity anywhere in the UI (costs, rewards, balances, production rates), always render an **icon + amount** pair — never a plain text string like `"100 gold"`.
