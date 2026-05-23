@@ -826,31 +826,6 @@ export class BootstrapService implements OnModuleInit {
           { type: 'reward_list' },
         ],
       },
-      {
-        key: 'mission_active_document',
-        context: { missionMode: 'in_progress', teamMode: 'locked', rewardMode: 'preview' },
-        blocks: [
-          { type: 'mission_hero' },
-          { type: 'narrative_text' },
-          { type: 'mission_timer' },
-          { type: 'divider' },
-          { type: 'entity_roster' },
-          { type: 'divider' },
-          { type: 'reward_list' },
-        ],
-      },
-      {
-        key: 'mission_outcome_document',
-        context: { missionMode: 'outcome', teamMode: 'locked', rewardMode: 'actual' },
-        blocks: [
-          { type: 'outcome_banner' },
-          { type: 'mission_stats' },
-          { type: 'divider' },
-          { type: 'entity_roster' },
-          { type: 'divider' },
-          { type: 'reward_list' },
-        ],
-      },
     ];
 
     for (const doc of documents) {

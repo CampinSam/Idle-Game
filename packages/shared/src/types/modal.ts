@@ -11,12 +11,6 @@ export interface ModalSpecV1 {
 }
 
 export interface ModalPageSpec {
-  type?: 'missionPanel';
-  missionPanel?: {
-    mode: 'planning' | 'in_progress' | 'outcome';
-    defId?: string;
-    jobId?: string;
-  };
   body: ModalBlock[];
   header?: Partial<ModalHeader>;
   buttons?: ModalButton[];
@@ -93,7 +87,8 @@ export type ModalBlock =
   | ModalBlockList
   | ModalBlockClickReveal
   | ModalBlockError
-  | ModalBlockCharacterEvents;
+  | ModalBlockCharacterEvents
+  | ModalBlockEntityRoster;
 
 export interface ModalBlockRichText {
   type: 'richText';
@@ -197,6 +192,27 @@ export interface ModalBlockCharacterEvents {
   from?: string;
 }
 
+export interface ModalBlockEntityRosterEntity {
+  id: string;
+  name: string;
+  level: number;
+  portraitKey?: string;
+  powerContribution?: number;
+  outcome?: {
+    injured: boolean;
+    xpGained: number;
+    levelBefore: number;
+    levelAfter: number;
+  };
+}
+
+export interface ModalBlockEntityRoster {
+  type: 'entityRoster';
+  editable: boolean;
+  entities: ModalBlockEntityRosterEntity[];
+  from?: string;
+}
+
 export interface RewardItem {
   assetKey?: string;
   name: string;
@@ -253,6 +269,7 @@ export const MODAL_BLOCK_TYPES = [
   'clickReveal',
   'error',
   'characterEvents',
+  'entityRoster',
 ] as const;
 
 /**

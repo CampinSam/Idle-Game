@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs } from '../../store/gameSlice';
-import { useMissionJob } from '../../context/MissionJobContext';
+import { useModal } from '../../context/ModalContext';
+import { api } from '../../services/api';
 import {
   useSyncEntities,
   useSyncActiveMissions,
@@ -18,13 +19,13 @@ import { MissionsPageSkeleton } from './components/MissionsPageSkeleton';
 import { MissionShell } from './components/MissionShell';
 import { CategoriesGrid } from './components/CategoriesGrid';
 import { MissionsList } from './components/MissionsList';
-import { MissionPanel } from './components/MissionPanel';
+import { MissionBuilder } from './components/MissionBuilder';
 import { useMissionsNavigation } from './hooks/useMissionsNavigation';
 
 export default function MissionsPage() {
   const dispatch = useAppDispatch();
   const syncStatus = useSyncStatus();
-  const { openMissionJob } = useMissionJob();
+  const { pushModal } = useModal();
 
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
@@ -115,15 +116,19 @@ export default function MissionsPage() {
     }
   };
 
-  const handleViewJob = useCallback((jobId: string) => {
-    openMissionJob(jobId);
-  }, [openMissionJob]);
+  const handleViewJob = useCallback(async (jobId: string) => {
+    try {
+      const spec = await api.getModalSpec({ jobId });
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err) {
+      console.error('[MissionsPage] Failed to fetch modal spec:', err);
+    }
+  }, [pushModal]);
 
   // ── Planning a new mission ──
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     return (
-      <MissionPanel
-        mode="planning"
+      <MissionBuilder
         selectedDef={selectedDef}
         currentCat={currentCat}
         missionCategoryDefs={missionCategoryDefs}

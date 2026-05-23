@@ -80,11 +80,11 @@ export class UiService {
 
     switch (job.status) {
       case 'active':
-        generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        generated = await this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
         modalDefId = def?.activeModalDefId ?? null;
         break;
       case 'ready_notified':
-        generated = this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        generated = await this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
         modalDefId = def?.readyModalDefId ?? def?.activeModalDefId ?? null;
         break;
       case 'completed':
@@ -308,6 +308,41 @@ export class UiService {
       });
     }
 
+    if (job.type === 'MissionJob') {
+      const entityResults: any[] = (results?.entityResults as any[]) || [];
+      if (entityResults.length > 0) {
+        const entityIds = entityResults.map((er: any) => er.id);
+        const imageUrlMap = new Map<string, string | null>();
+        try {
+          const entityRecords = await (this.prisma as any).entity.findMany({
+            where: { id: { in: entityIds } },
+            select: { id: true, imageUrl: true },
+          });
+          for (const e of entityRecords) {
+            imageUrlMap.set(e.id, e.imageUrl ?? null);
+          }
+        } catch {}
+        const rosterBlock = {
+          type: 'entityRoster',
+          editable: false,
+          entities: entityResults.map((er: any) => ({
+            id: er.id,
+            name: er.name ?? 'Entity',
+            level: er.newLevel ?? er.level ?? 1,
+            portraitKey: imageUrlMap.get(er.id) ?? undefined,
+            outcome: {
+              injured: er.injured ?? false,
+              xpGained: er.xpGained ?? 0,
+              levelBefore: er.oldLevel ?? er.level ?? 1,
+              levelAfter: er.newLevel ?? er.level ?? 1,
+            },
+          })),
+        };
+        const insertIdx = texts.length > 0 ? 1 : 0;
+        body.splice(insertIdx, 0, rosterBlock);
+      }
+    }
+
     if (rewards.length > 0) {
       body.push({
         type: 'rewardsList',
@@ -382,7 +417,7 @@ export class UiService {
     };
   }
 
-  private buildActiveJobModal(job: any, defName: string, typeLabel: string, tickInfo: any): any {
+  private async buildActiveJobModal(job: any, defName: string, typeLabel: string, tickInfo: any): Promise<any> {
     const timer = job.timer as any;
     const tickRate = tickInfo.currentRate ?? 1;
 
@@ -401,6 +436,31 @@ export class UiService {
     const isReady = progress.current >= progress.max;
 
     const body: any[] = [];
+
+    if (job.type === 'MissionJob') {
+      const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
+      if (teamIds.length > 0) {
+        try {
+          const entityRecords = await (this.prisma as any).entity.findMany({
+            where: { id: { in: teamIds }, ownerUserId: job.userId },
+            select: { id: true, display: true, speciesId: true, imageUrl: true, progression: true },
+          });
+          const entityMap = new Map<string, any>(entityRecords.map((e: any) => [e.id, e]));
+          const entities = teamIds
+            .map((id) => entityMap.get(id))
+            .filter(Boolean)
+            .map((e: any) => ({
+              id: e.id,
+              name: (e.display as any)?.name || e.speciesId || 'Entity',
+              level: (e.progression as any)?.level ?? 1,
+              portraitKey: e.imageUrl ?? undefined,
+            }));
+          if (entities.length > 0) {
+            body.push({ type: 'entityRoster', editable: false, entities });
+          }
+        } catch {}
+      }
+    }
 
     if (!isReady && endsAt) {
       body.push({ type: 'timer', endsAt, label: 'Time Remaining' });

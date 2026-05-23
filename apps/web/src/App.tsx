@@ -7,8 +7,6 @@ import { useSyncEngine } from './hooks/useSyncEngine';
 import { useGlobalPowerToasts } from './hooks/useGlobalPowerToasts';
 import { NotificationProvider } from './context/NotificationContext';
 import { ModalProvider } from './context/ModalContext';
-import { MissionJobProvider } from './context/MissionJobContext';
-import { MissionJobModal } from './features/missions/components/MissionJobModal';
 import { BodyCardVariantProvider } from './context/BodyCardVariantContext';
 import GameModalHost from './components/modal/GameModalHost';
 import { TickEngineProvider } from './tick';
@@ -177,7 +175,6 @@ export default function App() {
       <TickEngineProvider>
       <NotificationProvider>
       <ModalProvider>
-      <MissionJobProvider>
       <BodyCardVariantProvider>
       <Routes>
         <Route path="/login" element={<Navigate to="/" replace />} />
@@ -200,9 +197,7 @@ export default function App() {
         </Route>
       </Routes>
       <GameModalHost />
-      <MissionJobModal />
       </BodyCardVariantProvider>
-      </MissionJobProvider>
       </ModalProvider>
       </NotificationProvider>
       </TickEngineProvider>

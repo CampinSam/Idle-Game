@@ -66,18 +66,6 @@ export interface ContentBlockRewardList {
   type: 'reward_list';
 }
 
-export interface ContentBlockEntityRoster {
-  type: 'entity_roster';
-}
-
-export interface ContentBlockMissionTimer {
-  type: 'mission_timer';
-}
-
-export interface ContentBlockOutcomeBanner {
-  type: 'outcome_banner';
-}
-
 export interface ContentBlockNarrativeText {
   type: 'narrative_text';
   /** Static fallback text shown when no dynamic narrative is available. */
@@ -117,9 +105,6 @@ export type ContentBlock =
   | ContentBlockMissionSynergy
   | ContentBlockTeamSection
   | ContentBlockRewardList
-  | ContentBlockEntityRoster
-  | ContentBlockMissionTimer
-  | ContentBlockOutcomeBanner
   | ContentBlockNarrativeText
   | ContentBlockRichText
   | ContentBlockImage
@@ -136,9 +121,6 @@ export const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
   'mission_synergy',
   'team_section',
   'reward_list',
-  'entity_roster',
-  'mission_timer',
-  'outcome_banner',
   'narrative_text',
   'rich_text',
   'image',

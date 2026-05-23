@@ -3,7 +3,6 @@ import type { ContentBlock, RewardItem } from '@derp/shared';
 import { MissionHeroPanel } from '../missions/components/panels/MissionHeroPanel';
 import { MissionStatsPanel } from '../missions/components/panels/MissionStatsPanel';
 import { MissionSynergyPanel } from '../missions/components/panels/MissionSynergyPanel';
-import { MissionRosterPanel } from '../missions/components/panels/MissionRosterPanel';
 import { MissionRequirementsBlock } from '../missions/components/panels/MissionRequirementsBlock';
 import { RosterCard } from '../entities/components';
 import BlockRenderer from '../../components/modal/blocks/BlockRenderer';
@@ -124,129 +123,8 @@ function TeamSectionBlock(_: BlockComponentProps) {
   );
 }
 
-// ─── entity_roster — read-only team (in_progress) or outcome entity results ───
-
-function EntityRosterBlock(_: BlockComponentProps) {
-  const { context, data } = useSurfaceContext();
-  if (context.teamMode === 'editable') return null;
-
-  if (context.missionMode === 'outcome') {
-    const entityResults: any[] = data.results?.entityResults ?? [];
-    if (entityResults.length === 0) return null;
-    const rewardCount = (data.results?.rewards ?? []).filter((r: any) => r.type !== 'emitEvent').length;
-    return (
-      <div className={PANEL_CLASS}>
-        <div className={PANEL_TITLE_CLASS}>Team Outcomes</div>
-        <div className="flex flex-col gap-1.5">
-          {entityResults.map((er: any, i: number) => (
-            <div
-              key={er.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06] motion-safe:animate-[outcome-row-in_0.3s_ease-out_both]"
-              style={{ animationDelay: `${rewardCount * 0.08 + 0.12 + i * 0.08}s` }}
-            >
-              <span className="text-[14px] leading-none flex-shrink-0">
-                {er.injured ? '🩹' : er.leveledUp ? '⬆️' : '⚔️'}
-              </span>
-              <span className="flex-1 text-[13px] font-bold text-text-primary truncate">{er.name}</span>
-              <span className="flex flex-col items-end gap-0.5">
-                {er.leveledUp && (
-                  <span className="text-[11px] font-extrabold text-[#fbbf24]">
-                    Lv {er.oldLevel} → {er.newLevel} ⬆️
-                  </span>
-                )}
-                {er.injured && (
-                  <span className="text-[11px] font-extrabold text-[#ef4444]">Injured 🩹</span>
-                )}
-                {er.xpGained > 0 && (
-                  <span className="text-[10px] text-text-secondary">+{er.xpGained} XP</span>
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const entities = data.rosterEntities ?? [];
-  return <MissionRosterPanel entities={entities} />;
-}
-
-// ─── mission_timer ────────────────────────────────────────────────────────────
-
-function MissionTimerBlock(_: BlockComponentProps) {
-  const { context, data } = useSurfaceContext();
-  if (context.missionMode !== 'in_progress') return null;
-
-  const remainingMs: number = data.remainingMs ?? 0;
-  const progressPct: number = data.progressPct ?? 2;
-  const isReady: boolean = data.isReady ?? false;
-
-  return (
-    <div className={PANEL_CLASS}>
-      <div className={PANEL_TITLE_CLASS}>Mission Progress</div>
-      <div className="flex flex-col gap-2">
-        {isReady ? (
-          <div className="text-[13px] font-extrabold text-[#10b981] text-center py-1">
-            ✅ Ready to Collect!
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-text-secondary uppercase font-bold tracking-wide">
-                Remaining
-              </span>
-              <span className="text-[14px] font-extrabold tabular-nums text-[#F59E0B]">
-                ⏱ {Math.floor(remainingMs / 60000)}m {Math.floor((remainingMs % 60000) / 1000)}s
-              </span>
-            </div>
-            <div className="flex h-2.5 rounded-full overflow-hidden bg-black/40">
-              <div
-                className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── outcome_banner — win/fail header only; rewards + entity results are separate blocks ──
-
-function OutcomeBannerBlock(_: BlockComponentProps) {
-  const { context, data } = useSurfaceContext();
-  if (context.missionMode !== 'outcome') return null;
-
-  const isSuccess: boolean = data.isSuccess ?? false;
-  const results: any = data.results ?? null;
-
-  return (
-    <div
-      className="rounded-xl px-4 py-3 text-center border motion-safe:animate-[outcome-banner-in_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
-      style={
-        isSuccess
-          ? { background: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.35)' }
-          : { background: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.3)' }
-      }
-    >
-      <div className="text-[28px] leading-none mb-1">{isSuccess ? '🏆' : '💀'}</div>
-      <div
-        className="font-cinzel text-[17px] font-black tracking-wider uppercase"
-        style={{ color: isSuccess ? '#10b981' : '#ef4444' }}
-      >
-        {isSuccess ? 'Mission Complete' : 'Mission Failed'}
-      </div>
-      {results?.qualityLabel && (
-        <div className="text-[12px] text-text-secondary mt-0.5">{results.qualityLabel}</div>
-      )}
-    </div>
-  );
-}
-
 // ─── reward_list — delegates to existing RewardsListBlock ─────────────────────
-// Sources: data.rewards (set by MissionPanel per-mode; planning = preview, outcome = actual)
+// Sources: data.rewards (set by MissionBuilder for planning; preview = preview rewards)
 
 function toRewardItems(raw: any[]): RewardItem[] {
   return raw
@@ -356,9 +234,6 @@ export const BLOCK_REGISTRY: BlockRegistry = {
   mission_stats_requirements: MissionStatsRequirementsBlock,
   mission_synergy: MissionSynergyBlock,
   team_section: TeamSectionBlock,
-  entity_roster: EntityRosterBlock,
-  mission_timer: MissionTimerBlock,
-  outcome_banner: OutcomeBannerBlock,
   reward_list: RewardListBlock,
   narrative_text: NarrativeTextBlock,
   rich_text: RichTextBlock,

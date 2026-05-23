@@ -2,18 +2,14 @@ import { useRef, useState, TouchEvent, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../context/NotificationContext';
 import { useModal } from '../context/ModalContext';
-import { useMissionJob } from '../context/MissionJobContext';
 import { useCollectJob } from '../hooks/useCollectJob';
 import { api } from '../services/api';
 import { NOTIFICATION_CATEGORY_DISPLAY, NOTIFICATION_PRIORITY_COLORS } from '@derp/shared';
-
-const MISSION_NOTIFICATION_TYPES = new Set(['mission_ready', 'mission_complete']);
 
 function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNotification; onDismiss: () => void; onHide: () => void }) {
   const navigate = useNavigate();
   const { markRead } = useNotifications();
   const { pushModal } = useModal();
-  const { openMissionJob } = useMissionJob();
   const { collectJob } = useCollectJob();
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
@@ -60,30 +56,18 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
   const isCompleteType = COMPLETE_TYPES.includes(notification.type) && !!resolveJobId;
   const isGiftType = notification.type === 'gift' && !!notification.meta?.giftId;
 
-  const isMissionNotification =
-    MISSION_NOTIFICATION_TYPES.has(notification.type) ||
-    (notification.type === 'job_ready' && notification.category === 'mission');
-
   const handleJobView = useCallback(async () => {
     if (!resolveJobId) { onHide(); return; }
     onHide();
-    if (isMissionNotification) {
-      openMissionJob(resolveJobId);
-    } else {
-      await openModalSpec({ jobId: resolveJobId });
-    }
-  }, [resolveJobId, onHide, isMissionNotification, openMissionJob, openModalSpec]);
+    await openModalSpec({ jobId: resolveJobId });
+  }, [resolveJobId, onHide, openModalSpec]);
 
   const handleJobComplete = useCallback(async (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
     if (!resolveJobId) { onHide(); return; }
     onHide();
-    if (isMissionNotification) {
-      openMissionJob(resolveJobId);
-    } else {
-      await collectJob(resolveJobId);
-    }
-  }, [resolveJobId, onHide, isMissionNotification, openMissionJob, collectJob]);
+    await collectJob(resolveJobId);
+  }, [resolveJobId, onHide, collectJob]);
 
   const handleGiftView = useCallback(async () => {
     const giftId = notification.meta?.giftId;

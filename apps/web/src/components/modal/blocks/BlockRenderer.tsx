@@ -8,6 +8,7 @@ import InventoryDeltaBlock from './InventoryDeltaBlock';
 import GiftRevealBlock from './GiftRevealBlock';
 import ClickRevealBlock from './ClickRevealBlock';
 import CharacterEventsBlock from './CharacterEventsBlock';
+import EntityRosterBlock from './EntityRosterBlock';
 import AssetImage from '../AssetImage';
 
 export default function BlockRenderer({ block }: { block: ModalBlock }) {
@@ -70,6 +71,9 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
 
     case 'characterEvents':
       return <CharacterEventsBlock items={block.items} />;
+
+    case 'entityRoster':
+      return <EntityRosterBlock block={block} />;
 
     case 'error':
       return <div className="gm-error-block">{block.message}</div>;
