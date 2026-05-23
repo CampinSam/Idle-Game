@@ -834,6 +834,7 @@ function DefinitionEditor({
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(true);
 
   // Debounced draft for the live preview (400 ms)
   const [debouncedData, setDebouncedData] = useState(data);
@@ -921,6 +922,20 @@ function DefinitionEditor({
           )}
         </h2>
         <div style={{ display: 'flex', gap: 6 }}>
+          {!jsonMode && (
+            <button
+              onClick={() => setPreviewVisible(v => !v)}
+              title={previewVisible ? 'Hide preview panel' : 'Show preview panel'}
+              style={{
+                padding: '0.35rem 0.75rem', border: '1px solid #2a2a4e', borderRadius: 5,
+                background: previewVisible ? 'rgba(167,139,250,0.10)' : 'transparent',
+                color: previewVisible ? '#a78bfa' : '#555',
+                cursor: 'pointer', fontSize: '0.8rem',
+              }}
+            >
+              {previewVisible ? '⊟ Preview' : '⊞ Preview'}
+            </button>
+          )}
           <button
             onClick={() => jsonMode ? switchToVisual() : switchToJson()}
             style={{ padding: '0.35rem 0.75rem', border: '1px solid #555', borderRadius: 5, background: jsonMode ? 'rgba(167,139,250,0.12)' : 'transparent', color: jsonMode ? '#a78bfa' : '#aaa', cursor: 'pointer', fontSize: '0.8rem' }}
@@ -985,7 +1000,7 @@ function DefinitionEditor({
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 16, flex: 1, overflow: 'hidden' }}>
-          <div style={{ flex: '0 0 55%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ flex: previewVisible ? '0 0 55%' : '1 1 0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             {isScreenComp && (
               <div style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem' }}>
                 <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Layout</div>
@@ -1003,11 +1018,13 @@ function DefinitionEditor({
               )}
             </div>
           </div>
-          <div style={{ flex: '0 0 42%', overflowY: 'auto' }}>
-            <div style={{ background: '#12122a', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem', height: '100%' }}>
-              <PreviewPanel draftRow={draftRow} type={form.type} data={data} />
+          {previewVisible && (
+            <div style={{ flex: '0 0 42%', overflowY: 'auto', minWidth: 0 }}>
+              <div style={{ background: '#12122a', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem', height: '100%' }}>
+                <PreviewPanel draftRow={draftRow} type={form.type} data={data} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
