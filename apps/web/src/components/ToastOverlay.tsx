@@ -60,7 +60,9 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
   const isCompleteType = COMPLETE_TYPES.includes(notification.type) && !!resolveJobId;
   const isGiftType = notification.type === 'gift' && !!notification.meta?.giftId;
 
-  const isMissionNotification = MISSION_NOTIFICATION_TYPES.has(notification.type);
+  const isMissionNotification =
+    MISSION_NOTIFICATION_TYPES.has(notification.type) ||
+    (notification.type === 'job_ready' && notification.category === 'mission');
 
   const handleJobView = useCallback(async () => {
     if (!resolveJobId) { onHide(); return; }

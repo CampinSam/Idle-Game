@@ -125,9 +125,11 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     }
 
     const jobId = resolveJobId(n);
+    const isMission = MISSION_NOTIFICATION_TYPES.has(n.type) ||
+      (n.type === 'job_ready' && n.category === 'mission');
     if (jobId && (READY_TYPES.includes(n.type) || COMPLETE_TYPES.includes(n.type))) {
       onClose();
-      if (MISSION_NOTIFICATION_TYPES.has(n.type)) {
+      if (isMission) {
         openMissionJob(jobId);
       } else {
         await openModalSpec({ jobId });
@@ -146,7 +148,9 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     const jobId = resolveJobId(n);
     if (!jobId) return;
     onClose();
-    if (MISSION_NOTIFICATION_TYPES.has(n.type)) {
+    const isMission = MISSION_NOTIFICATION_TYPES.has(n.type) ||
+      (n.type === 'job_ready' && n.category === 'mission');
+    if (isMission) {
       openMissionJob(jobId);
     } else {
       await collectJob(jobId);
