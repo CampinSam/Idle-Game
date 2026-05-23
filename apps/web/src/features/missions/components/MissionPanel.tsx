@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ItemQty from '../../../components/ItemQty';
 import { useAppSelector } from '../../../store';
 import { useSyncEntities } from '../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../hooks/useCommand';
+import { useMissionJob } from '../../../context/MissionJobContext';
 import { useJobPreview } from '../../jobs/useJobPreview';
 import { createCountdownTimer, useCurrentTick } from '../../../tick';
 import { useTickRemainingMs } from '../../../tick/useTickValue';
@@ -35,6 +37,8 @@ export function MissionPanel(props: MissionPanelProps) {
   const { onBack, onMissionStarted, onClose } = props;
 
   const { execute } = useCommand();
+  const navigate = useNavigate();
+  const { openMissionJob, closeMissionJob } = useMissionJob();
 
   // ── Store slices ──
   const storeEntities = useSyncEntities();
@@ -44,9 +48,7 @@ export function MissionPanel(props: MissionPanelProps) {
   const storeInventoryItems = useAppSelector((s) => s.sync.items);
   const syncJobs: Record<string, any> = useAppSelector((s) => s.sync.jobs);
 
-  // ── Internal job ID — allows retry to switch to the newly started job ──
-  const [internalJobId, setInternalJobId] = useState<string | null>(null);
-  const effectiveJobId = internalJobId ?? props.jobId ?? null;
+  const effectiveJobId = props.jobId ?? null;
 
   // ── Resolve the mission def (always from store for correct displayDef shape) ──
   const propsDefId = props.defId ?? props.selectedDef?.id;
@@ -190,17 +192,11 @@ export function MissionPanel(props: MissionPanelProps) {
     try {
       const res = await execute('StartMission', { defId: rawActiveDef.id, entityIds: selectedEntities });
       audioEngine.play('sfx.mission.start');
-      // In retry mode (had a prior jobId), find the new job and transition to in_progress
-      const isRetryMode = !!(props.jobId ?? internalJobId);
-      if (isRetryMode) {
-        const newJobPatch = (res?.patches ?? []).find(
-          (p: any) => p.op === 'upsert' && p.entity === 'job' && p.data?.defId === rawActiveDef.id,
-        );
-        if (newJobPatch) {
-          setInternalJobId(newJobPatch.id);
-          setLocalMode('in_progress');
-          return;
-        }
+      const newJobPatch = (res?.patches ?? []).find(
+        (p: any) => p.op === 'upsert' && p.entity === 'job' && p.data?.defId === rawActiveDef.id,
+      );
+      if (newJobPatch) {
+        openMissionJob(newJobPatch.id);
       }
       onMissionStarted?.();
     } catch (e: any) {
@@ -235,10 +231,10 @@ export function MissionPanel(props: MissionPanelProps) {
   };
 
   const handleRetry = () => {
-    const priorEntityIds = jobStats?.entities?.map((e: any) => e.id) ?? syncJob?.entityIds ?? [];
-    setSelectedEntities(priorEntityIds);
-    setPlanningError('');
-    setLocalMode('planning');
+    closeMissionJob();
+    if (rawActiveDef?.id) {
+      navigate(`/missions?repeat=${rawActiveDef.id}`);
+    }
   };
 
   // ── Document ID per mode ──

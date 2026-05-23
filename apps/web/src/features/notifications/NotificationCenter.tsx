@@ -2,12 +2,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
 import { useModal } from '../../context/ModalContext';
+import { useMissionJob } from '../../context/MissionJobContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
+
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
 import { useGlobalPowers } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
 import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
+
+const MISSION_NOTIFICATION_TYPES = new Set(['mission_ready', 'mission_complete']);
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
 
@@ -65,6 +69,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const navigate = useNavigate();
   const { notifications, markRead, markAllRead, clearRead, dismissNotification, unreadCount } = useNotifications();
   const { pushModal } = useModal();
+  const { openMissionJob } = useMissionJob();
   const { collectJob } = useCollectJob();
   const globalPowers = useGlobalPowers();
   const [filter, setFilter] = useState<string>('All');
@@ -122,7 +127,11 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     const jobId = resolveJobId(n);
     if (jobId && (READY_TYPES.includes(n.type) || COMPLETE_TYPES.includes(n.type))) {
       onClose();
-      await openModalSpec({ jobId });
+      if (MISSION_NOTIFICATION_TYPES.has(n.type)) {
+        openMissionJob(jobId);
+      } else {
+        await openModalSpec({ jobId });
+      }
       return;
     }
 
@@ -137,7 +146,11 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     const jobId = resolveJobId(n);
     if (!jobId) return;
     onClose();
-    await collectJob(jobId);
+    if (MISSION_NOTIFICATION_TYPES.has(n.type)) {
+      openMissionJob(jobId);
+    } else {
+      await collectJob(jobId);
+    }
   };
 
   const handleGiftClaim = async (e: React.MouseEvent, n: AppNotification) => {

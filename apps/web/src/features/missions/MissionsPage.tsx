@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs } from '../../store/gameSlice';
-import { useCommand } from '../../hooks/useCommand';
-import { audioEngine } from '../../services/AudioEngine';
+import { useMissionJob } from '../../context/MissionJobContext';
 import {
   useSyncEntities,
   useSyncActiveMissions,
@@ -25,6 +24,7 @@ import { useMissionsNavigation } from './hooks/useMissionsNavigation';
 export default function MissionsPage() {
   const dispatch = useAppDispatch();
   const syncStatus = useSyncStatus();
+  const { openMissionJob } = useMissionJob();
 
   const { missionDefs, missionCategoryDefs } = useAppSelector((s) => s.game);
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
@@ -34,7 +34,6 @@ export default function MissionsPage() {
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
 
-  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -116,35 +115,9 @@ export default function MissionsPage() {
     }
   };
 
-  const handleStart = async () => {
-    if (!selectedMission) return;
-    setError('');
-    try {
-      await execute('StartMission', { defId: selectedMission, entityIds: selectedEntities });
-      audioEngine.play('sfx.mission.start');
-      backToCategories();
-    } catch (e: any) {
-      audioEngine.play('ui.error');
-      setError(e.message || 'Failed to start mission');
-    }
-  };
-
   const handleViewJob = useCallback((jobId: string) => {
-    setViewingJobId(jobId);
-  }, []);
-
-  // ── Viewing an active or history mission ──
-  if (viewingJobId) {
-    return (
-      <MissionPanel
-        mode="in_progress"
-        jobId={viewingJobId}
-        missionCategoryDefs={missionCategoryDefs}
-        onClose={() => setViewingJobId(null)}
-        onBack={() => setViewingJobId(null)}
-      />
-    );
-  }
+    openMissionJob(jobId);
+  }, [openMissionJob]);
 
   // ── Planning a new mission ──
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
