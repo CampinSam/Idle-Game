@@ -228,6 +228,22 @@ export const adminApi = {
   listLocationDefs: () => adminRequest<any[]>('/locationDefinition'),
   listSeasons: () => adminRequest<any[]>('/season'),
 
+  listGameDefinitions: (key?: string) => {
+    const qs = key ? `?key=${encodeURIComponent(key)}` : '';
+    return adminRequest<any[]>(`/game-definitions${qs}`);
+  },
+  getGameDefinition: (id: string) => adminRequest<any>(`/gameDefinition/${id}`),
+  createGameDefinition: (data: any) =>
+    adminRequest<any>('/gameDefinition', { method: 'POST', body: JSON.stringify(data) }),
+  updateGameDefinition: (id: string, data: any) =>
+    adminRequest<any>(`/gameDefinition/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteGameDefinition: (id: string) =>
+    adminRequest<any>(`/gameDefinition/${id}`, { method: 'DELETE' }),
+  publishGameDefinition: (key: string, version: number) =>
+    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/publish`, { method: 'POST' }),
+  rollbackGameDefinition: (key: string, version: number) =>
+    adminRequest<any>(`/game-definitions/${encodeURIComponent(key)}/${version}/rollback`, { method: 'POST' }),
+
   listSoundMappings: () => adminRequest<any[]>('/audio/mappings'),
   createSoundMapping: (data: { actionKey: string; soundDefId: string; weight?: number }) =>
     adminRequest<any>('/audio/mappings', { method: 'POST', body: JSON.stringify(data) }),

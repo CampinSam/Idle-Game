@@ -30,6 +30,7 @@ const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
 const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
 const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
 const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
+const ScreenComposerPage = lazy(() => import('./features/admin/screen-composer/ScreenComposerPage'));
 const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPage'));
 const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
 const BalancePage = lazy(() => import('./features/admin/balance/BalancePage'));
@@ -99,6 +100,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
+  if (location.pathname.startsWith('/admin/screen-composer')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <ScreenComposerPage />
+      </Suspense>
+    );
+  }
   if (location.pathname.startsWith('/admin/modal-editor')) {
     return (
       <Suspense fallback={<PageLoader />}>

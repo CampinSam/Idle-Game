@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers } from 'lucide-react';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import './admin.css';
@@ -1269,6 +1269,10 @@ function Dashboard() {
             );
           })}
         </nav>
+        <a href="/admin/screen-composer" className="sidebar-link" title="Screen Composer">
+          <Layout size={16} />
+          {!collapsed && <span>Screen Composer</span>}
+        </a>
         <a href="/admin/def" className="sidebar-link" title="Definition Editor">
           <Database size={16} />
           {!collapsed && <span>Definition Editor</span>}
