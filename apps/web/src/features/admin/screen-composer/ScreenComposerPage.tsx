@@ -29,7 +29,7 @@ const SCREEN_COMPONENT_KEYS = [
   'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
   'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
   'InventoryCategoryGrid', 'WalletPromptCard', 'NFTCapacityInfoCard',
-  'PatchNotesCard',
+  'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
 ];
 
 const LAYOUT_TYPES = [
@@ -42,10 +42,34 @@ type DefType = typeof DEF_TYPES[number];
 
 // ─── Prop schema hints (from render-blocks.md) ────────────────────────────────
 
-interface PropHint { type: 'string' | 'number' | 'boolean' | 'array' | 'object'; description?: string; required?: boolean; }
+interface PropHint {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum';
+  description?: string;
+  required?: boolean;
+  options?: string[];
+}
+
+// Components that have no configurable props — all data from sync store or none needed
+const NO_PROPS_COMPONENTS = new Set([
+  'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
+  'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
+  'SeasonProgressCard',
+]);
+
+// Stub-only components — render a placeholder in dev, nothing in production
+const STUB_COMPONENTS = new Set([
+  'FeaturedBirdCard', 'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid',
+  'StoreItemRail', 'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress',
+  'BattlePassTierList', 'EventCarousel', 'EventCardList', 'SeasonBossPanel',
+  'NewsCard', 'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
+  'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
+  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
+]);
 
 const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
-  ResourceSummaryBar: { maxItems: { type: 'number', description: 'Max currencies shown (default: 4)' } },
+  ResourceSummaryBar: {
+    maxItems: { type: 'number', description: 'Max currencies shown (default: 4)' },
+  },
   EmptyStateCard: {
     message: { type: 'string', description: 'Text shown in the empty state', required: true },
     actionKey: { type: 'string', description: 'Action key emitted when button tapped (omit to hide button)' },
@@ -63,16 +87,44 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
       required: true,
     },
   },
-  SkeletonCard: {},
-  DailyCheckInCard: {},
-  StoreOfferCard: {},
-  StoreOfferCarousel: {},
-  StoreItemGrid: {},
-  StoreItemRail: {},
-  FeaturedShopRail: {},
-  GemPackGrid: {},
-  BattlePassProgress: {},
-  BattlePassTierList: {},
+  SkeletonCard: {
+    rows: { type: 'number', description: 'Number of shimmer lines to render (default: 3)' },
+  },
+  DailyCheckInCard: {
+    subtitle: { type: 'string', description: 'Secondary text below the title (default: "Come back each day for rewards!")' },
+    actionKey: { type: 'string', description: 'Action key emitted on tap. Card is non-interactive if omitted.' },
+    actionLabel: { type: 'string', description: 'Label for the action button (default: "CLAIM")' },
+  },
+  PatchNotesCard: {
+    version: { type: 'string', description: 'Version string displayed below the title (e.g. "1.4.2")' },
+    notes: { type: 'string', description: 'Free-form patch notes text rendered with whitespace preserved' },
+  },
+  WalletPromptCard: {
+    message: { type: 'string', description: 'Body text (default: "Link your wallet to unlock NFT features.")' },
+    actionKey: { type: 'string', description: 'Action key emitted on button tap (default: "connect_wallet")' },
+  },
+  EventCountdownCard: {
+    endsAt: { type: 'string', description: 'UTC ISO 8601 timestamp when the event ends (e.g. "2026-12-31T23:59:59Z")', required: true },
+    title: { type: 'string', description: 'Card header text (default: "⏰ EVENT")' },
+    actionKey: { type: 'string', description: 'Action key for CTA button. Button hidden if omitted.' },
+    actionLabel: { type: 'string', description: 'CTA button label (default: "JOIN")' },
+  },
+  TelemetryCard: {
+    telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
+    displayType: {
+      type: 'enum',
+      options: ['number', 'progress_bar', 'comparison', 'leaderboard'],
+      description: 'How the metric data is visualised (default: "number")',
+    },
+    title: { type: 'string', description: 'Card title. Falls back to definition name then "📊 METRICS".' },
+    metricKey: { type: 'string', description: 'Which sub-event key to display (for number and progress_bar modes)' },
+    target: { type: 'number', description: 'Goal value for progress_bar mode' },
+    pollIntervalSeconds: { type: 'number', description: 'How often to re-fetch in seconds (default: 30, min: 5)' },
+    entries: {
+      type: 'array',
+      description: 'Display overrides per sub-event key: [{ key, label, icon?, color? }]',
+    },
+  },
 };
 
 // ─── Small shared UI ──────────────────────────────────────────────────────────
@@ -129,16 +181,24 @@ function detectPropType(val: unknown): PropType {
   return 'string';
 }
 
-function PropsEditor({
+const tabBtnStyle = (active: boolean): React.CSSProperties => ({
+  padding: '2px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+  textTransform: 'uppercase', border: '1px solid',
+  borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit',
+  background: active ? 'rgba(139,92,246,0.18)' : 'transparent',
+  color: active ? '#a78bfa' : '#555',
+  borderColor: active ? 'rgba(139,92,246,0.4)' : '#2a2a4e',
+});
+
+function StructuredFieldsEditor({
   props,
+  hints,
   onChange,
-  componentKey,
 }: {
   props: Record<string, unknown>;
+  hints: Record<string, PropHint>;
   onChange: (p: Record<string, unknown>) => void;
-  componentKey: string;
 }) {
-  const hints = COMPONENT_PROP_HINTS[componentKey] ?? {};
   const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
   const [jsonTexts, setJsonTexts] = useState<Record<string, string>>({});
   const [newKey, setNewKey] = useState('');
@@ -146,7 +206,6 @@ function PropsEditor({
   const [showAdd, setShowAdd] = useState(false);
 
   const entries = Object.entries(props);
-  const hasHints = Object.keys(hints).length > 0;
   const suggestedKeys = Object.keys(hints).filter(k => !(k in props));
 
   const updateProp = (key: string, val: unknown) => onChange({ ...props, [key]: val });
@@ -182,37 +241,41 @@ function PropsEditor({
 
   const addHintedProp = (key: string, hint: PropHint) => {
     const defaultVal = hint.type === 'number' ? 0 : hint.type === 'boolean' ? false
-      : hint.type === 'array' ? [] : hint.type === 'object' ? {} : '';
+      : hint.type === 'array' ? [] : hint.type === 'object' ? {} : hint.type === 'enum' ? (hint.options?.[0] ?? '') : '';
     onChange({ ...props, [key]: defaultVal });
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {hasHints && (
-        <div style={{ fontSize: 11, color: '#888', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 5, padding: '6px 10px' }}>
-          <span style={{ color: '#a78bfa', fontWeight: 700 }}>Props for {componentKey}:</span>
-          {Object.entries(hints).map(([k, h]) => (
-            <span key={k} style={{ display: 'inline-block', marginLeft: 8 }}>
-              <code style={{ color: h.required ? '#f87171' : '#e0e0ff', fontSize: 11 }}>{k}</code>
-              <span style={{ color: '#666' }}>: {h.type}{h.required ? '*' : ''}</span>
-              {h.description && <span style={{ color: '#555', marginLeft: 4 }}>— {h.description}</span>}
-            </span>
-          ))}
-        </div>
-      )}
-
       {entries.length === 0 && (
-        <div style={{ color: '#555', fontSize: 12, fontStyle: 'italic' }}>No props set — add one below.</div>
+        <div style={{ color: '#555', fontSize: 12, fontStyle: 'italic' }}>No props set — add one below or use the suggested fields.</div>
       )}
 
       {entries.map(([key, val]) => {
-        const ptype = detectPropType(val);
         const hint = hints[key];
+        const ptype = hint?.type === 'enum' ? 'enum'
+          : hint?.type === 'array' || hint?.type === 'object' ? 'json'
+          : detectPropType(val);
         return (
           <div key={key} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-            <span style={{ ...labelStyle, paddingTop: 6, minWidth: 100, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }} title={key}>{key}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 110, maxWidth: 140, flexShrink: 0 }}>
+              <span style={{ ...labelStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }} title={key}>
+                {key}{hint?.required ? <span style={{ color: '#f87171' }}> *</span> : null}
+              </span>
+              {hint?.description && (
+                <span style={{ fontSize: 9, color: '#555', lineHeight: 1.3, marginTop: 1 }}>{hint.description}</span>
+              )}
+            </div>
             <div style={{ flex: 1 }}>
-              {ptype === 'boolean' ? (
+              {ptype === 'enum' ? (
+                <select
+                  value={String(val ?? '')}
+                  onChange={e => updateProp(key, e.target.value)}
+                  style={{ ...selectStyle, width: '100%' }}
+                >
+                  {hint.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              ) : ptype === 'boolean' ? (
                 <select
                   value={String(val)}
                   onChange={e => updateProp(key, e.target.value === 'true')}
@@ -230,9 +293,6 @@ function PropsEditor({
                 />
               ) : ptype === 'json' ? (
                 <div>
-                  {hint?.description && (
-                    <div style={{ fontSize: 10, color: '#666', marginBottom: 3 }}>{hint.description}</div>
-                  )}
                   <textarea
                     value={getJsonText(key, val)}
                     onChange={e => handleJsonChange(key, e.target.value)}
@@ -266,18 +326,24 @@ function PropsEditor({
 
       {suggestedKeys.length > 0 && (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const, marginTop: 2 }}>
-          {suggestedKeys.map(k => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => addHintedProp(k, hints[k])}
-              style={{
-                padding: '2px 8px', border: '1px dashed #4b5563', borderRadius: 4,
-                background: 'transparent', color: '#6b7280', cursor: 'pointer', fontSize: 10,
-                fontFamily: 'inherit',
-              }}
-            >+ {k}</button>
-          ))}
+          <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>add:</span>
+          {suggestedKeys.map(k => {
+            const h = hints[k];
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => addHintedProp(k, h)}
+                title={h?.description}
+                style={{
+                  padding: '2px 8px', border: `1px dashed ${h?.required ? '#7f2424' : '#4b5563'}`,
+                  borderRadius: 4, background: 'transparent',
+                  color: h?.required ? '#f87171' : '#6b7280',
+                  cursor: 'pointer', fontSize: 10, fontFamily: 'inherit',
+                }}
+              >+ {k}{h?.required ? '*' : ''}</button>
+            );
+          })}
         </div>
       )}
 
@@ -305,6 +371,150 @@ function PropsEditor({
         <button type="button" style={{ ...addButtonStyle, alignSelf: 'flex-start' }} onClick={() => setShowAdd(true)}>
           + Add prop
         </button>
+      )}
+    </div>
+  );
+}
+
+function PropsEditor({
+  props,
+  onChange,
+  componentKey,
+}: {
+  props: Record<string, unknown>;
+  onChange: (p: Record<string, unknown>) => void;
+  componentKey: string;
+}) {
+  const isKnown = SCREEN_COMPONENT_KEYS.includes(componentKey);
+  const isNoProps = NO_PROPS_COMPONENTS.has(componentKey);
+  const isStub = STUB_COMPONENTS.has(componentKey);
+  const hints = COMPONENT_PROP_HINTS[componentKey] ?? {};
+  const hasHints = Object.keys(hints).length > 0;
+
+  const [tab, setTab] = useState<'structured' | 'raw'>('structured');
+  const [rawText, setRawText] = useState(() => JSON.stringify(props, null, 2));
+  const [rawError, setRawError] = useState('');
+  const prevKey = useRef(componentKey);
+
+  useEffect(() => {
+    if (prevKey.current !== componentKey) {
+      prevKey.current = componentKey;
+      setTab('structured');
+      setRawText(JSON.stringify(props, null, 2));
+      setRawError('');
+    }
+  }, [componentKey, props]);
+
+  const handleTabChange = (next: 'structured' | 'raw') => {
+    if (next === 'raw') {
+      setRawText(JSON.stringify(props, null, 2));
+      setRawError('');
+    }
+    setTab(next);
+  };
+
+  const handleRawChange = (text: string) => {
+    setRawText(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        setRawError('Must be a JSON object {}');
+        return;
+      }
+      setRawError('');
+      onChange(parsed as Record<string, unknown>);
+    } catch {
+      setRawError('Invalid JSON');
+    }
+  };
+
+  const rawJsonPanel = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <textarea
+        value={rawText}
+        onChange={e => handleRawChange(e.target.value)}
+        rows={8}
+        style={{
+          ...inputStyle, width: '100%', resize: 'vertical' as const,
+          fontFamily: 'monospace', fontSize: 11, boxSizing: 'border-box' as const,
+          color: rawError ? '#ff6b6b' : '#a0e0a0',
+        }}
+      />
+      {rawError && <span style={{ color: '#ff6b6b', fontSize: 10 }}>{rawError}</span>}
+    </div>
+  );
+
+  // Unknown / custom component key — raw JSON only (no structured tab)
+  if (!isKnown) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{
+          fontSize: 10, color: '#6b7280', background: 'rgba(100,100,140,0.06)',
+          border: '1px solid rgba(100,100,140,0.2)', borderRadius: 4, padding: '5px 10px',
+        }}>
+          Custom component key — no schema available. Edit props as raw JSON.
+        </div>
+        {rawJsonPanel}
+      </div>
+    );
+  }
+
+  // No configurable props — notice in structured view; raw JSON tab still accessible
+  const noPropsNotice = isNoProps ? (
+    <div style={{
+      fontSize: 11, color: '#6b7280', background: 'rgba(100,100,140,0.06)',
+      border: '1px solid rgba(100,100,140,0.2)', borderRadius: 5, padding: '7px 12px',
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ fontSize: 13 }}>🔒</span>
+      <span>No configurable props — this component reads all data from the sync store.</span>
+    </div>
+  ) : isStub ? (
+    <div style={{
+      fontSize: 11, color: '#78716c', background: 'rgba(120,113,108,0.06)',
+      border: '1px dashed rgba(120,113,108,0.3)', borderRadius: 5, padding: '7px 12px',
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ fontSize: 13 }}>🚧</span>
+      <span>Stub component — renders a dev-mode placeholder; no props in production.</span>
+    </div>
+  ) : null;
+
+  // Known component — structured editor + raw JSON tab (notice replaces fields for no-props/stub)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Schema reference banner (structured tab only, components with hints) */}
+      {hasHints && tab === 'structured' && (
+        <div style={{
+          fontSize: 10, color: '#888', background: 'rgba(139,92,246,0.06)',
+          border: '1px solid rgba(139,92,246,0.15)', borderRadius: 5, padding: '5px 10px',
+          lineHeight: 1.6,
+        }}>
+          <span style={{ color: '#a78bfa', fontWeight: 700 }}>{componentKey} props:</span>
+          {Object.entries(hints).map(([k, h]) => (
+            <span key={k} style={{ marginLeft: 8 }}>
+              <code style={{ color: h.required ? '#f87171' : '#c4b5fd', fontSize: 10 }}>{k}</code>
+              <span style={{ color: '#555' }}>:{h.type}{h.required ? '*' : ''}</span>
+              {h.type === 'enum' && h.options && (
+                <span style={{ color: '#4b5563' }}> ({h.options.join('|')})</span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button type="button" style={tabBtnStyle(tab === 'structured')} onClick={() => handleTabChange('structured')}>
+          Structured
+        </button>
+        <button type="button" style={tabBtnStyle(tab === 'raw')} onClick={() => handleTabChange('raw')}>
+          Raw JSON
+        </button>
+      </div>
+
+      {tab === 'raw' ? rawJsonPanel : (
+        noPropsNotice ?? <StructuredFieldsEditor props={props} hints={hints} onChange={onChange} />
       )}
     </div>
   );
