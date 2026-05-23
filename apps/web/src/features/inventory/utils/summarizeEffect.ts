@@ -1,5 +1,6 @@
 // Human-readable summaries for consumable / active effects.
 // Used by the Use-Potion confirmation and result modals so wording stays consistent.
+import { serverNow } from '../../../services/clockSync';
 
 export interface EffectDefLite {
   id: string;
@@ -148,7 +149,7 @@ export function summarizeActiveEffect(
 
   // Prefer expiresAt from the active record for accurate countdown.
   if (active?.expiresAt) {
-    const ms = new Date(active.expiresAt).getTime() - Date.now();
+    const ms = new Date(active.expiresAt).getTime() - serverNow();
     const remainingSec = Math.max(0, Math.round(ms / 1000));
     merged.durationSec = remainingSec;
   }
