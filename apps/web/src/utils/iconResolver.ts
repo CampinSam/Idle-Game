@@ -124,8 +124,5 @@ export function resolveName(
     if (def?.name) return def.name;
   }
 
-  return outputRefId
-    .replace(/^(soft_|premium_|mat_|consumable_|potion_|quest_)/, '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return outputRefId;
 }

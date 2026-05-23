@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import ItemQty from '../../../components/ItemQty';
 import { useAppSelector } from '../../../store';
 import { useSyncEntities } from '../../../hooks/useSyncSelectors';
 import { useCommand } from '../../../hooks/useCommand';
@@ -363,8 +364,10 @@ export function MissionPanel(props: MissionPanelProps) {
                         {skipLoading ? '...' : 'SKIP ⚡'}
                       </span>
                       {!skipLoading && skipCost.length > 0 && (
-                        <span className="text-[9px] font-bold opacity-80 normal-case tracking-normal leading-tight mt-0.5">
-                          {skipCost.map((c) => `${c.amount} ${c.id}`).join(' + ')}
+                        <span className="flex items-center gap-1 mt-0.5 opacity-80">
+                          {skipCost.map((c, i) => (
+                            <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                          ))}
                         </span>
                       )}
                     </button>
@@ -409,8 +412,10 @@ export function MissionPanel(props: MissionPanelProps) {
                         START MISSION ⚡
                       </span>
                       {missionCost.length > 0 && (
-                        <span className={`text-[9px] font-bold normal-case tracking-normal leading-tight mt-0.5 ${canAffordMission ? 'opacity-75' : 'text-red-300 opacity-90'}`}>
-                          {missionCost.map((c) => `${c.amount} ${c.id}`).join(' + ')}
+                        <span className={`flex items-center gap-1 mt-0.5 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}>
+                          {missionCost.map((c, i) => (
+                            <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                          ))}
                         </span>
                       )}
                     </button>

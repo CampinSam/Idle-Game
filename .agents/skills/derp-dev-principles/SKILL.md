@@ -208,3 +208,39 @@ The command handler responsible for that transition **must** do both:
 without a corresponding `pb.upsertNotification()` or `pb.delete('notification', id)`
 call. When adding a new command handler, explicitly ask: *does this action make
 an existing notification irrelevant?* If yes, mark it read and emit the patch.
+
+---
+
+## 16. Icon-First Cost & Reward Display
+
+When showing a currency or item quantity anywhere in the UI (costs, rewards, balances, production rates), always render an **icon + amount** pair — never a plain text string like `"100 gold"`.
+
+### Rules
+
+- **Use `ItemQty`** (`apps/web/src/components/ItemQty.tsx`) for any quantity display. Pass the currency/item `id` (or resolved `iconKey`) as `src` and the numeric amount as `amount`.
+- **Use `CostEntry`** (`apps/web/src/components/ui/CostEntry.tsx`) for cost rows — it is a thin semantic wrapper around `ItemQty`.
+- **Resolve icons via `resolveIcon`** (`apps/web/src/utils/iconResolver.ts`) when you have access to `currencyDefs`/`itemDefs` and the `iconKey` may differ from the `id`. Pass the result as `src` to `GameIcon` or `ItemQty`.
+- **Display names must come from the definition's `name` field.** Use `resolveName` (which reads `def.name`) or look up the def directly. Do not derive, fabricate, or transform a human-readable name from a raw ID (no prefix-stripping, no underscore-to-space, no `toUpperCase` transforms). If no definition is found, show the raw `id` unchanged.
+- **Never render `${amount} ${id}` as a plain string.** This applies in button annotations, tooltips, panels, footers, and anywhere else a cost or reward quantity appears.
+
+### Canonical patterns
+
+```tsx
+// Correct — icon + amount
+<ItemQty src={entry.id} amount={entry.amount} size={13} />
+
+// Correct — when iconKey may differ from id
+<ItemQty src={resolveIcon('CURRENCY', entry.id, currencyDefs, [])} amount={entry.amount} size={13} />
+
+// Correct — semantic cost row
+<CostEntry id={entry.id} amount={entry.amount} />
+
+// Wrong — plain text
+{`${entry.amount} ${entry.id}`}
+```
+
+### Reference implementations
+
+- `apps/web/src/features/missions/components/MissionDetailFooter.tsx` — cost rows inside mission planning footer
+- `apps/web/src/features/missions/components/MissionsList.tsx` — cost chips in the mission list
+- `apps/web/src/features/locations/types/derpOutpost/components/BuildingCard.tsx` — production cost/output rows
