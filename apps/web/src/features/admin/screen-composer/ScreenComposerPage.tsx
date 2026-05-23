@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Component, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRenderer';
 import ContentDocumentDataEditor from '../smart/components/structured/ContentDocumentDataEditor';
 import {
   inputStyle,
@@ -351,10 +352,19 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
     onChange([...sections, newSection(idx)]);
   };
 
-  const isHidden = (section: any) =>
-    section.visibility && typeof section.visibility === 'object' &&
-    Array.isArray(section.visibility.none) && section.visibility.none.length === 0 &&
-    !section.visibility.all?.length && !section.visibility.any?.length;
+  // Rule that is deterministically false: keeper level is always >= 1, never < 0.
+  // When user is null, the path resolves to undefined and less_than returns false.
+  const ADMIN_HIDDEN_VISIBILITY = { any: [{ path: 'user.keeperLevel', operator: 'less_than', value: 0 }] };
+
+  const isHidden = (section: any) => {
+    const v = section.visibility;
+    return (
+      v?.any?.length === 1 &&
+      v.any[0].path === 'user.keeperLevel' &&
+      v.any[0].operator === 'less_than' &&
+      v.any[0].value < 0
+    );
+  };
 
   const toggleVisibility = (idx: number, section: any) => {
     if (isHidden(section)) {
@@ -362,7 +372,7 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
       delete next.visibility;
       onChange(sections.map((s, i) => i === idx ? next : s));
     } else {
-      update(idx, { visibility: { none: [], any: [], all: [] } });
+      update(idx, { visibility: ADMIN_HIDDEN_VISIBILITY });
     }
   };
 
@@ -466,9 +476,37 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
   );
 }
 
+// ─── Renderer error boundary ──────────────────────────────────────────────────
+
+class RendererErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean; msg: string }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, msg: '' };
+  }
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, msg: err.message };
+  }
+  componentDidCatch(err: Error, info: React.ErrorInfo) {
+    console.error('[ScreenComposer preview]', err.message, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 12, color: '#f87171', fontSize: 12, fontFamily: 'monospace', background: '#0a0a1a', borderRadius: 6 }}>
+          Preview error: {this.state.msg}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Preview panel ────────────────────────────────────────────────────────────
 
-function PreviewPanel({ data, type }: { data: any; type: string }) {
+function PreviewPanel({ draftRow, type, data }: { draftRow: any; type: string; data: any }) {
   if (type !== 'screen_composition') {
     const blocks = data?.blocks ?? [];
     return (
@@ -488,62 +526,23 @@ function PreviewPanel({ data, type }: { data: any; type: string }) {
     );
   }
 
-  const sections: any[] = data?.sections ?? [];
-  const layout = data?.layout ?? {};
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
       <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-        Composition Preview
-      </div>
-      <div style={{ fontSize: 10, color: '#555', marginBottom: 2 }}>
-        layout: <span style={{ color: '#888' }}>{layout.layoutType ?? '—'}</span>
-        {layout.scroll !== false && <span style={{ color: '#555', marginLeft: 8 }}>scrollable</span>}
-        {layout.maxWidth && <span style={{ color: '#555', marginLeft: 8 }}>maxWidth: {layout.maxWidth}</span>}
+        Live Preview <span style={{ fontSize: 9, color: '#555', fontWeight: 400, textTransform: 'none' as const }}>(debounced · admin-mode)</span>
       </div>
       <div style={{
-        background: '#0a0a1a',
+        background: '#080818',
         border: '1px solid #2a2a4e',
-        borderRadius: 8,
-        padding: 8,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        maxHeight: 440,
+        borderRadius: 10,
         overflowY: 'auto',
+        flex: 1,
+        minHeight: 200,
+        padding: '0 0 8px',
       }}>
-        {sections.length === 0 && (
-          <div style={{ color: '#333', fontSize: 11, textAlign: 'center', padding: '1rem', fontStyle: 'italic' }}>
-            No sections
-          </div>
-        )}
-        {[...sections]
-          .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
-          .map((section: any, i: number) => {
-            const isHidden = section.visibility && typeof section.visibility === 'object';
-            const propCount = Object.keys(section.props ?? {}).length;
-            return (
-              <div key={i} style={{
-                background: isHidden ? '#111128' : '#16213e',
-                border: isHidden ? '1px dashed #2a2a4e' : '1px solid #2a2a5e',
-                borderRadius: 5,
-                padding: '5px 8px',
-                opacity: isHidden ? 0.5 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-                <span style={{ fontSize: 10, color: '#666', width: 20 }}>#{section.priority ?? 0}</span>
-                <span style={{ fontSize: 11, color: '#a78bfa', fontWeight: 600, flex: 1 }}>{section.component}</span>
-                {propCount > 0 && (
-                  <span style={{ fontSize: 9, color: '#555', background: '#0d0d20', padding: '1px 4px', borderRadius: 3 }}>
-                    {propCount} prop{propCount !== 1 ? 's' : ''}
-                  </span>
-                )}
-                {isHidden && <span style={{ fontSize: 9, color: '#555' }}>hidden</span>}
-              </div>
-            );
-          })}
+        <RendererErrorBoundary key={draftRow.key + '/' + draftRow.version}>
+          <ScreenCompositionRenderer definition={draftRow} />
+        </RendererErrorBoundary>
       </div>
     </div>
   );
@@ -625,6 +624,26 @@ function DefinitionEditor({
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  // Debounced draft for the live preview (400 ms)
+  const [debouncedData, setDebouncedData] = useState(data);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedData(data), 400);
+    return () => clearTimeout(debounceTimer.current);
+  }, [data]);
+
+  const draftRow = useMemo(() => ({
+    id: def?.id || 'preview-draft',
+    type: form.type,
+    key: form.key || 'preview',
+    version: Number(form.version) || 0,
+    isActive: false,
+    data: debouncedData,
+    startsAt: null,
+    endsAt: null,
+  }), [def?.id, form.type, form.key, form.version, debouncedData]);
 
   const switchToJson = () => { setRawJson(JSON.stringify(data, null, 2)); setJsonError(''); setJsonMode(true); };
   const switchToVisual = () => {
@@ -776,7 +795,7 @@ function DefinitionEditor({
           </div>
           <div style={{ flex: '0 0 42%', overflowY: 'auto' }}>
             <div style={{ background: '#12122a', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem', height: '100%' }}>
-              <PreviewPanel data={data} type={form.type} />
+              <PreviewPanel draftRow={draftRow} type={form.type} data={data} />
             </div>
           </div>
         </div>
