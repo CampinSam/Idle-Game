@@ -225,18 +225,18 @@ export class ScreensService {
 
   async publish(screenKey: string, version: number): Promise<ResolvedScreenDefinition> {
     const target = await (this.prisma as any).gameDefinition.findFirst({
-      where: { type: 'screen_composition', key: screenKey, version },
+      where: { key: screenKey, version },
     });
 
     if (!target) {
       throw new NotFoundException(
-        `No screen composition found for key "${screenKey}" version ${version}`,
+        `No game definition found for key "${screenKey}" version ${version}`,
       );
     }
 
     const [, updated] = await (this.prisma as any).$transaction([
       (this.prisma as any).gameDefinition.updateMany({
-        where: { type: 'screen_composition', key: screenKey, isActive: true },
+        where: { type: target.type, key: screenKey, isActive: true },
         data: { isActive: false },
       }),
       (this.prisma as any).gameDefinition.update({
@@ -248,7 +248,7 @@ export class ScreensService {
       }),
     ]);
 
-    this.logger.log(`Published screen composition key="${screenKey}" version=${version}`);
+    this.logger.log(`Published game definition type="${target.type}" key="${screenKey}" version=${version}`);
 
     return this.serialize(updated);
   }
