@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ModalAction } from '@derp/shared';
 import { useModal } from '../../context/ModalContext';
+import ModalRefreshContext from '../../context/ModalRefreshContext';
 import { api } from '../../services/api';
 import { useCommand } from '../../hooks/useCommand';
 import { useAppSelector } from '../../store';
@@ -34,6 +35,26 @@ export default function GameModalHost() {
     },
     [replaceModal],
   );
+
+  const currentJobId = currentModal?.telemetry?.jobId;
+  const currentJobStatus = currentJobId ? (jobs[currentJobId] as any)?.status : undefined;
+  const sseRefreshingRef = useRef(false);
+
+  useEffect(() => {
+    if (!currentJobId || !currentModal || sseRefreshingRef.current) return;
+    if (currentJobStatus !== 'ready_notified') return;
+    const hasTimerBlock = currentModal.pages?.some((p) => p.body?.some((b) => b.type === 'timer'));
+    if (!hasTimerBlock) return;
+    sseRefreshingRef.current = true;
+    tryFetchFollowUp({ jobId: currentJobId }).finally(() => {
+      sseRefreshingRef.current = false;
+    });
+  }, [currentJobStatus, currentJobId, currentModal, tryFetchFollowUp]);
+
+  const handleTimerExpire = useCallback(() => {
+    if (!currentJobId) return;
+    tryFetchFollowUp({ jobId: currentJobId });
+  }, [currentJobId, tryFetchFollowUp]);
 
   const handleAction = useCallback(
     async (action: ModalAction) => {
@@ -254,12 +275,14 @@ export default function GameModalHost() {
   if (!currentModal) return null;
 
   return (
-    <GameModal
-      spec={currentModal}
-      isOpen={true}
-      onRequestClose={dismissModal}
-      navigate={handleNavigate}
-      onAction={handleAction}
-    />
+    <ModalRefreshContext.Provider value={handleTimerExpire}>
+      <GameModal
+        spec={currentModal}
+        isOpen={true}
+        onRequestClose={dismissModal}
+        navigate={handleNavigate}
+        onAction={handleAction}
+      />
+    </ModalRefreshContext.Provider>
   );
 }

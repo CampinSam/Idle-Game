@@ -1,4 +1,5 @@
 import type { ModalBlock } from '@derp/shared';
+import { useModalRefresh } from '../../../context/ModalRefreshContext';
 import RichText from './RichText';
 import TimerBlock from './TimerBlock';
 import ProgressBlock from './ProgressBlock';
@@ -12,6 +13,8 @@ import EntityRosterBlock from './EntityRosterBlock';
 import AssetImage from '../AssetImage';
 
 export default function BlockRenderer({ block }: { block: ModalBlock }) {
+  const onTimerExpire = useModalRefresh();
+
   switch (block.type) {
     case 'richText':
       return <RichText doc={block.doc} />;
@@ -31,7 +34,7 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
       return <MetaRowsBlock rows={block.rows} />;
 
     case 'timer':
-      return <TimerBlock endsAt={block.endsAt} label={block.label} />;
+      return <TimerBlock endsAt={block.endsAt} label={block.label} onExpire={onTimerExpire ?? undefined} />;
 
     case 'progress':
       return <ProgressBlock current={block.current} max={block.max} label={block.label} />;
