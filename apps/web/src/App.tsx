@@ -100,7 +100,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
-  if (location.pathname.startsWith('/admin/screen-composer')) {
+  if (location.pathname.startsWith('/admin/screens')) {
     return (
       <Suspense fallback={<PageLoader />}>
         <ScreenComposerPage />

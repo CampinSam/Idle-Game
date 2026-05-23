@@ -1269,7 +1269,7 @@ function Dashboard() {
             );
           })}
         </nav>
-        <a href="/admin/screen-composer" className="sidebar-link" title="Screen Composer">
+        <a href="/admin/screens" className="sidebar-link" title="Screen Composer">
           <Layout size={16} />
           {!collapsed && <span>Screen Composer</span>}
         </a>
