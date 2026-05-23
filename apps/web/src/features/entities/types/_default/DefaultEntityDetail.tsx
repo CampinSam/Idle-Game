@@ -1,4 +1,6 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNow } from '../../../../hooks/useNow';
+import { serverNow } from '../../../../services/clockSync';
 import { useNavigate } from 'react-router-dom';
 import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
@@ -51,7 +53,7 @@ type EntityEvent = {
 type CollapsedGroup = { event: EntityEvent; count: number };
 
 function timeAgo(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffMs = serverNow() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -573,8 +575,9 @@ function EntityUniquePowerPanel({
   const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
   const storedUsages = useAppSelector((s) => s.sync.entityPowerUsages[entityId] ?? {});
-  const [countdown, setCountdown] = useState(0);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const now = useNow(1000);
+  const countdown = getSecondsUntilUtcMidnight(now);
 
   const today = getUtcDay();
   const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
@@ -587,13 +590,6 @@ function EntityUniquePowerPanel({
     }
     return result;
   }, [storedUsages, powers, today]);
-
-  useEffect(() => {
-    const update = () => setCountdown(getSecondsUntilUtcMidnight());
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleTrigger = useCallback(
     async (powerType: string) => {

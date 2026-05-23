@@ -1,12 +1,14 @@
+import { serverNow } from '../../services/clockSync';
+
 export function getUtcDay(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date(serverNow()).toISOString().slice(0, 10);
 }
 
-export function getSecondsUntilUtcMidnight(): number {
-  const now = new Date();
-  const midnight = new Date(now);
+export function getSecondsUntilUtcMidnight(nowMs?: number): number {
+  const ms = nowMs ?? serverNow();
+  const midnight = new Date(ms);
   midnight.setUTCHours(24, 0, 0, 0);
-  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+  return Math.floor((midnight.getTime() - ms) / 1000);
 }
 
 export function formatCountdown(seconds: number): string {

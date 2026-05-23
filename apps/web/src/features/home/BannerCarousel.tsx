@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import { useHomeBanners } from '../../hooks/useSyncSelectors';
 import { formatSeasonRemaining } from '../../utils/formatSeasonRemaining';
@@ -28,12 +29,7 @@ const INTERACTION_PAUSE_MS = 10000;
  */
 export function BannerCarousel() {
   const navigate = useNavigate();
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-
+  const nowMs = useNow(60_000);
   const banners = useHomeBanners(nowMs);
   const [page, setPage] = useState(0);
   const [paused, setPaused] = useState(false);

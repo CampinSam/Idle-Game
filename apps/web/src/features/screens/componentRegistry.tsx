@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import type { ScreenSectionDefinition } from '@derp/shared';
 import {
@@ -384,11 +385,9 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
 
 function SeasonProgressCardComp(_: ScreenComponentProps) {
   const activeSeason = useAppSelector((s: any) => s.sync.activeSeason);
-  const serverTime = useAppSelector((s: any) => s.sync.serverTime);
+  const now = useNow(60_000);
 
   if (!activeSeason) return null;
-
-  const now = serverTime ?? Date.now();
   const start = activeSeason.startsAt ? new Date(activeSeason.startsAt).getTime() : now;
   const end = activeSeason.endsAt ? new Date(activeSeason.endsAt).getTime() : now + 1;
   const total = end - start;
@@ -463,35 +462,20 @@ function EventCountdownCardComp({ section, onAction }: ScreenComponentProps) {
   const actionKey = props.actionKey as string | undefined;
   const actionLabel = String(props.actionLabel ?? 'JOIN');
 
-  const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
-  const [expired, setExpired] = useState(false);
+  const now = useNow(1000);
 
-  useEffect(() => {
-    if (!endsAt) {
-      setExpired(true);
-      return;
-    }
-    const compute = () => {
-      const diff = new Date(endsAt).getTime() - Date.now();
-      if (diff <= 0) {
-        setExpired(true);
-        return;
-      }
-      setTimeLeft({
-        d: Math.floor(diff / 86400000),
-        h: Math.floor((diff % 86400000) / 3600000),
-        m: Math.floor((diff % 3600000) / 60000),
-        s: Math.floor((diff % 60000) / 1000),
-      });
-    };
-    compute();
-    const id = setInterval(compute, 1000);
-    return () => clearInterval(id);
-  }, [endsAt]);
+  if (!endsAt) return null;
+  const diff = new Date(endsAt).getTime() - now;
+  if (diff <= 0) return null;
 
-  if (expired) return null;
+  const timeLeft = {
+    d: Math.floor(diff / 86400000),
+    h: Math.floor((diff % 86400000) / 3600000),
+    m: Math.floor((diff % 3600000) / 60000),
+    s: Math.floor((diff % 60000) / 1000),
+  };
 
-  const msLeft = endsAt ? new Date(endsAt).getTime() - Date.now() : Infinity;
+  const msLeft = diff;
   const isUrgent = msLeft < 3600000;
   const isWarning = msLeft < 86400000;
 

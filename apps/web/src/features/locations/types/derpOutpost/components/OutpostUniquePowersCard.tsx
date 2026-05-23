@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useNow } from '../../../../../hooks/useNow';
 import { useAppSelector } from '../../../../../store';
 import { useCommand } from '../../../../../hooks/useCommand';
 import { useNotifications } from '../../../../../context/NotificationContext';
@@ -93,8 +94,9 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
   const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
   const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[outpost.id] ?? {});
-  const [countdown, setCountdown] = useState(0);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const now = useNow(1000);
+  const countdown = getSecondsUntilUtcMidnight(now);
 
   const uniqueEntry = getUniqueEntry(
     { nftAssetId: outpost.nftAssetId },
@@ -115,12 +117,6 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
     return result;
   }, [storedUsages, powers, today]);
 
-  useEffect(() => {
-    const update = () => setCountdown(getSecondsUntilUtcMidnight());
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleTrigger = useCallback(
     async (powerType: string) => {

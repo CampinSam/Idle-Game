@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useNow } from '../../hooks/useNow';
 import { useGlobalPowers } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
 import { Card, SectionHeader } from '../../components/ui';
@@ -10,16 +10,11 @@ import {
 } from '../../utils/globalPowerUtils';
 
 function BuffRow({ power }: { power: GlobalPowerSnapshot }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
+  const now = useNow(1000);
   const icon = getPowerIcon(power);
   const typeLabel = getPowerTypeLabel(power);
   const valueLabel = formatPowerValue(power.value, power.valueMode);
-  const countdown = formatCountdown(power.endTime);
+  const countdown = formatCountdown(power.endTime, now);
 
   return (
     <div className="flex items-center gap-2.5 py-2 border-b border-white/5 last:border-b-0">

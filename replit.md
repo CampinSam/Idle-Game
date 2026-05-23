@@ -42,6 +42,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - **Definition/Instance Architecture:** Core game entities (Entities, Locations, Items) are managed through a definition/instance pattern.
 - **Unified Command/Delta/SSE Pipeline:** Backend provides a scalable pipeline for commands, full state snapshots, incremental updates, and real-time push notifications.
 - **Unified Block/Render Pipeline:** All UI — both screens and modals — is built from server-emitted blocks rendered by a shared block vocabulary. New UI needs are met by adding blocks, never by creating parallel systems or special-cased page types. See principle #17 in `.agents/skills/derp-dev-principles/SKILL.md`.
+- **Global Server-Synced Clock:** All time-based UI uses a single clock source. `apps/web/src/services/clockSync.ts` exposes `serverNow()` (returns `Date.now() + _offset`) and `applyServerTime(ms)` (smooths the offset). `SyncEngine.ts` calls `applyServerTime` on bootstrap and on every `tick.sync` SSE event. Components must use the `useNow(intervalMs)` hook from `apps/web/src/hooks/useNow.ts` instead of their own `setInterval + Date.now()`. Pure utility functions that compute time-relative values (e.g. `formatCountdown`, `getSecondsUntilUtcMidnight`) import `serverNow()` directly. The only permitted `Date.now()` uses are non-game-time concerns: API idempotency keys, command IDs, and cache TTLs.
 
 ## Product
 - Season-based idle strategy RPG with a persistent world.

@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNow } from '../../hooks/useNow';
+import { serverNow } from '../../services/clockSync';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
 import { useModal } from '../../context/ModalContext';
@@ -15,7 +17,7 @@ const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] 
 
 function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
   const d = new Date(dateStr);
-  const now = new Date();
+  const now = new Date(serverNow());
   const diffMs = now.getTime() - d.getTime();
 
   if (diffMs < 60 * 60 * 1000) return 'New';
@@ -27,7 +29,7 @@ function timeSection(dateStr: string): 'New' | 'Today' | 'Earlier' {
 }
 
 function timeAgo(dateStr: string): string {
-  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const diffMs = serverNow() - new Date(dateStr).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
@@ -38,16 +40,11 @@ function timeAgo(dateStr: string): string {
 }
 
 function GlobalPowerRow({ power }: { power: GlobalPowerSnapshot }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-
+  const now = useNow(1000);
   const icon = getPowerIcon(power);
   const typeLabel = getPowerTypeLabel(power);
   const valueLabel = formatPowerValue(power.value, power.valueMode);
-  const countdown = formatCountdown(power.endTime);
+  const countdown = formatCountdown(power.endTime, now);
 
   return (
     <div className="nc-boost-pinned">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNow } from '../../hooks/useNow';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
 import { useModal } from '../../context/ModalContext';
@@ -93,41 +94,25 @@ function authHeaders() {
 }
 
 function useCountdown(limitedUntil?: string) {
-  const [label, setLabel] = useState('');
-  useEffect(() => {
-    if (!limitedUntil) return;
-    const update = () => {
-      const diff = new Date(limitedUntil).getTime() - Date.now();
-      if (diff <= 0) { setLabel('Expired'); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      if (d > 0) setLabel(`${d}d ${h}h left`);
-      else if (h > 0) setLabel(`${h}h ${m}m left`);
-      else setLabel(`${m}m left`);
-    };
-    update();
-    const id = setInterval(update, 60000);
-    return () => clearInterval(id);
-  }, [limitedUntil]);
-  return label;
+  const now = useNow(60_000);
+  if (!limitedUntil) return '';
+  const diff = new Date(limitedUntil).getTime() - now;
+  if (diff <= 0) return 'Expired';
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (d > 0) return `${d}d ${h}h left`;
+  if (h > 0) return `${h}h ${m}m left`;
+  return `${m}m left`;
 }
 
 function useExpiryCountdown(expiresAt: string) {
-  const [label, setLabel] = useState('');
-  useEffect(() => {
-    const update = () => {
-      const diff = new Date(expiresAt).getTime() - Date.now();
-      if (diff <= 0) { setLabel('Expired'); return; }
-      const m = Math.floor(diff / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setLabel(`${m}:${String(s).padStart(2, '0')}`);
-    };
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [expiresAt]);
-  return label;
+  const now = useNow(1000);
+  const diff = new Date(expiresAt).getTime() - now;
+  if (diff <= 0) return 'Expired';
+  const m = Math.floor(diff / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) {

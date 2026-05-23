@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAppSelector } from '../store';
+import { serverNow } from '../services/clockSync';
 
 export function useSyncPlayer() {
   return useAppSelector((s) => s.sync.player);
@@ -170,7 +171,7 @@ export function useGlobalPowers() {
 export function useHomeBanners(nowMs?: number) {
   const banners = useAppSelector((s) => s.sync.homeBanners);
   return useMemo(() => {
-    const now = nowMs ?? Date.now();
+    const now = nowMs ?? serverNow();
     return banners.filter((b: any) => {
       if (b.startsAt && new Date(b.startsAt).getTime() > now) return false;
       if (b.endsAt && new Date(b.endsAt).getTime() <= now) return false;

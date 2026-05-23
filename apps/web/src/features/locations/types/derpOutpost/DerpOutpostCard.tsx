@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useNow } from '../../../../hooks/useNow';
 import { useAppSelector } from '../../../../store';
 import { useLocationTimers } from '../../../../hooks/useLocationTimers';
 import { GameImage } from '../../../../components/GameImage';
@@ -56,8 +57,9 @@ function UniquePowerPanel({
   const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
   const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[locationId] ?? {});
-  const [countdown, setCountdown] = useState(0);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const now = useNow(1000);
+  const countdown = getSecondsUntilUtcMidnight(now);
 
   const getPKey = (p: typeof powers[number]) => p.powerType ?? p.effectDefId ?? 'unknown';
 
@@ -73,13 +75,6 @@ function UniquePowerPanel({
     }
     return result;
   }, [storedUsages, powers, today]);
-
-  useEffect(() => {
-    const update = () => setCountdown(getSecondsUntilUtcMidnight());
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleTrigger = useCallback(
     async (e: React.MouseEvent, powerType: string) => {

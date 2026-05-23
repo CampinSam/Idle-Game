@@ -1,4 +1,5 @@
 import type { GlobalPowerSnapshot } from '../store/syncSlice';
+import { serverNow } from '../services/clockSync';
 
 /** Returns a human-readable label for the type of boost a power provides. */
 export function getPowerTypeLabel(power: GlobalPowerSnapshot): string {
@@ -36,8 +37,8 @@ export function formatPowerValue(value: number, valueMode: string): string {
   return value > 0 ? `+${value}%` : `${value}%`;
 }
 
-export function formatCountdown(endTime: string): string {
-  const remaining = new Date(endTime).getTime() - Date.now();
+export function formatCountdown(endTime: string, nowMs?: number): string {
+  const remaining = new Date(endTime).getTime() - (nowMs ?? serverNow());
   if (remaining <= 0) return 'Expired';
   const totalSecs = Math.ceil(remaining / 1000);
   if (totalSecs < 60) return `${totalSecs}s`;
