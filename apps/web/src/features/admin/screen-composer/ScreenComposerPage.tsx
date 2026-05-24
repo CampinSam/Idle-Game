@@ -761,7 +761,17 @@ class RendererErrorBoundary extends Component<
 
 // ─── Preview panel ────────────────────────────────────────────────────────────
 
+type PreviewMode = 'phone' | 'tablet' | 'full';
+
+const PREVIEW_MODES: { mode: PreviewMode; label: string; icon: string; maxWidth: number | null }[] = [
+  { mode: 'phone',  label: 'Phone',  icon: '📱', maxWidth: 390  },
+  { mode: 'tablet', label: 'Tablet', icon: '🗒️', maxWidth: 768  },
+  { mode: 'full',   label: 'Full',   icon: '🖥️', maxWidth: null },
+];
+
 function PreviewPanel({ draftRow, type, data }: { draftRow: any; type: string; data: any }) {
+  const [previewMode, setPreviewMode] = useState<PreviewMode>('phone');
+
   if (type !== 'screen_composition') {
     const blocks = data?.blocks ?? [];
     return (
@@ -781,23 +791,107 @@ function PreviewPanel({ draftRow, type, data }: { draftRow: any; type: string; d
     );
   }
 
+  const activeDef = PREVIEW_MODES.find(m => m.mode === previewMode)!;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%' }}>
-      <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-        Live Preview <span style={{ fontSize: 9, color: '#555', fontWeight: 400, textTransform: 'none' as const }}>(debounced · admin-mode)</span>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, flex: 1 }}>
+          Live Preview <span style={{ fontSize: 9, color: '#555', fontWeight: 400, textTransform: 'none' as const }}>(debounced · admin-mode)</span>
+        </div>
+        {/* Mode toggle */}
+        <div style={{ display: 'flex', gap: 3 }}>
+          {PREVIEW_MODES.map(({ mode, label, icon, maxWidth }) => (
+            <button
+              key={mode}
+              type="button"
+              title={`${label}${maxWidth ? ` (${maxWidth}px)` : ''}`}
+              onClick={() => setPreviewMode(mode)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '2px 8px',
+                fontSize: 10,
+                fontWeight: 600,
+                borderRadius: 5,
+                border: previewMode === mode ? '1px solid #a78bfa' : '1px solid #2a2a4e',
+                background: previewMode === mode ? 'rgba(167,139,250,0.15)' : 'transparent',
+                color: previewMode === mode ? '#a78bfa' : '#555',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <span style={{ fontSize: 11 }}>{icon}</span>
+              {label}
+              {maxWidth && <span style={{ fontSize: 9, opacity: 0.7 }}>{maxWidth}</span>}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Scroll container */}
       <div style={{
-        background: '#080818',
-        border: '1px solid #2a2a4e',
-        borderRadius: 10,
-        overflowY: 'auto',
         flex: 1,
         minHeight: 200,
-        padding: '0 0 8px',
+        overflowY: 'auto',
+        background: '#060614',
+        borderRadius: 10,
+        border: '1px solid #1a1a3e',
+        display: 'flex',
+        justifyContent: previewMode === 'full' ? 'stretch' : 'center',
+        padding: previewMode === 'full' ? 0 : '12px 8px',
       }}>
-        <RendererErrorBoundary key={draftRow.key + '/' + draftRow.version}>
-          <ScreenCompositionRenderer definition={draftRow} />
-        </RendererErrorBoundary>
+        {/* Device frame */}
+        <div style={{
+          width: '100%',
+          maxWidth: activeDef.maxWidth ?? undefined,
+          flex: previewMode === 'full' ? 1 : undefined,
+          background: '#080818',
+          borderRadius: previewMode === 'phone' ? 20 : previewMode === 'tablet' ? 14 : 10,
+          border: previewMode === 'full'
+            ? '1px solid #2a2a4e'
+            : previewMode === 'phone'
+              ? '3px solid #2e2e52'
+              : '2px solid #2a2a4e',
+          boxShadow: previewMode !== 'full' ? '0 0 0 1px #13132b, 0 8px 32px rgba(0,0,0,0.5)' : undefined,
+          overflow: 'hidden',
+          position: 'relative' as const,
+        }}>
+          {/* Phone top notch bar */}
+          {previewMode === 'phone' && (
+            <div style={{
+              height: 20,
+              background: '#111128',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottom: '1px solid #1e1e3a',
+              flexShrink: 0,
+            }}>
+              <div style={{ width: 48, height: 6, borderRadius: 3, background: '#1e1e3a' }} />
+            </div>
+          )}
+          <div style={{ padding: '0 0 8px' }}>
+            <RendererErrorBoundary key={draftRow.key + '/' + draftRow.version}>
+              <ScreenCompositionRenderer definition={draftRow} />
+            </RendererErrorBoundary>
+          </div>
+          {/* Phone bottom home bar */}
+          {previewMode === 'phone' && (
+            <div style={{
+              height: 16,
+              background: '#111128',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderTop: '1px solid #1e1e3a',
+            }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#2a2a4e' }} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
