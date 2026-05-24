@@ -33,9 +33,17 @@ const SCREEN_COMPONENT_KEYS = [
   'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
 ];
 
-const LAYOUT_TYPES = [
-  'vertical_feed', 'tabbed_feed', 'grid', 'split_panel', 'modal_stack',
-  'wizard', 'fixed_structure', 'hero_stack', 'grid_feed', 'carousel_feed',
+const LAYOUT_TYPES: { value: string; label: string }[] = [
+  { value: 'vertical_feed',   label: 'vertical_feed' },
+  { value: 'tabbed_feed',     label: 'tabbed_feed' },
+  { value: 'hero_stack',      label: 'hero_stack' },
+  { value: 'grid_feed',       label: 'grid_feed' },
+  { value: 'carousel_feed',   label: 'carousel_feed' },
+  { value: 'fixed_structure', label: 'fixed_structure' },
+  { value: 'modal_stack',     label: 'modal_stack' },
+  { value: 'grid',            label: '* grid (stub → vertical_feed)' },
+  { value: 'split_panel',     label: '* split_panel (stub → vertical_feed)' },
+  { value: 'wizard',          label: '* wizard (stub → vertical_feed)' },
 ];
 
 const DEF_TYPES = ['screen_composition', 'content_document'] as const;
@@ -771,6 +779,16 @@ function SectionEditor({
                     <span style={labelStyle}>priority</span>
                     <input type="number" value={section.priority ?? 0} onChange={e => update(idx, { priority: Number(e.target.value) })} style={{ ...inputStyle, width: '100%' }} />
                   </div>
+                  <div style={{ ...fieldGroupStyle, flex: '1 1 120px' }}>
+                    <span style={labelStyle} title="Used by tabbed_feed (tab id), hero_stack (hero), grid_feed (header/footer/full), fixed_structure (header/main/footer)">slot</span>
+                    <input
+                      type="text"
+                      value={section.slot ?? ''}
+                      onChange={e => update(idx, { slot: e.target.value || undefined })}
+                      style={{ ...inputStyle, width: '100%' }}
+                      placeholder="— none —"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -966,7 +984,7 @@ function LayoutEditor({ layout, onChange }: { layout: any; onChange: (l: any) =>
       <div style={fieldGroupStyle}>
         <span style={labelStyle}>layoutType</span>
         <select value={layout?.layoutType ?? 'vertical_feed'} onChange={e => onChange({ ...(layout ?? {}), layoutType: e.target.value })} style={selectStyle}>
-          {LAYOUT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          {LAYOUT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
       <div style={fieldGroupStyle}>
