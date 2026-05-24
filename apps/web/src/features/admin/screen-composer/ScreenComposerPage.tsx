@@ -3,6 +3,7 @@ import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
 import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRenderer';
 import ContentDocumentDataEditor from '../smart/components/structured/ContentDocumentDataEditor';
 import { getMissingBlockProps } from '../smart/components/structured/blockPropHints';
+import SectionPicker from './SectionPicker';
 import {
   inputStyle,
   selectStyle,
@@ -627,10 +628,16 @@ function SectionEditor({
     onChange(sections.filter((_, i) => i !== idx));
   };
 
-  const add = () => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const add = () => setPickerOpen(true);
+
+  const handlePick = (key: string) => {
     const idx = sections.length;
+    const s = { ...newSection(idx), component: key };
     setExpanded(prev => new Set([...prev, idx]));
-    onChange([...sections, newSection(idx)]);
+    onChange([...sections, s]);
+    setPickerOpen(false);
   };
 
   // Rule that is deterministically false: keeper level is always >= 1, never < 0.
@@ -806,6 +813,11 @@ function SectionEditor({
         );
       })}
       <button type="button" style={addButtonStyle} onClick={add}>+ Add Section</button>
+      <SectionPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={handlePick}
+      />
     </div>
   );
 }
