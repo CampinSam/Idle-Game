@@ -7,12 +7,15 @@ import {
   useSyncLocations,
   useSyncCurrencyBalances,
   useAllActiveJobs,
+  useSyncStatus,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector } from '../../store';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
 import { BannerCarousel } from '../home/BannerCarousel';
 import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
 import { api } from '../../services/api';
+import { EntityList } from '../entities/components';
+import EntityDetailContent from '../entities/EntityDetailContent';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -791,6 +794,35 @@ function GenericStubComp({ section }: ScreenComponentProps) {
   );
 }
 
+function EntityRosterComp(_: ScreenComponentProps) {
+  const entities = useSyncEntities();
+  const syncStatus = useSyncStatus();
+
+  if (syncStatus === 'disconnected') {
+    return (
+      <div className="entity-list__grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', padding: '0 12px' }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: 180, borderRadius: 12 }} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <EntityList
+      entities={entities}
+      mode="display"
+      useCase="browse"
+      showControls
+      emptyMessage="No entities found."
+    />
+  );
+}
+
+function EntityDetailViewComp(_: ScreenComponentProps) {
+  return <EntityDetailContent />;
+}
+
 function makeStub(key: string): ScreenComponentType {
   return function StubComp({ section }: ScreenComponentProps) {
     if (import.meta.env.PROD) return null;
@@ -843,4 +875,6 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   FeaturedBirdCard: makeStub('FeaturedBirdCard'),
   FeaturedShopRail: makeStub('FeaturedShopRail'),
   GemPackGrid: makeStub('GemPackGrid'),
+  EntityRoster: EntityRosterComp,
+  EntityDetailView: EntityDetailViewComp,
 };

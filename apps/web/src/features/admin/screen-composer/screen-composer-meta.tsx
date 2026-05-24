@@ -8,11 +8,12 @@ export type ComponentGroup =
   | 'Store'
   | 'Progress'
   | 'News'
+  | 'Entities'
   | 'Utility';
 
 export const COMPONENT_GROUP_ORDER: ComponentGroup[] = [
   'Core HUD', 'Daily / Events', 'Missions', 'Crafting',
-  'Store', 'Progress', 'News', 'Utility',
+  'Store', 'Progress', 'News', 'Entities', 'Utility',
 ];
 
 export interface ComponentMeta {
@@ -749,6 +750,48 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
       </>
     ),
   },
+
+  EntityRoster: {
+    friendlyName: 'Entity Roster',
+    description: 'Full entity browsing list with search, filter, and sort controls. Reads all entity data from the sync store. Use with vertical_feed layout on the /entities screen.',
+    group: 'Entities',
+    color: '#10b981',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 2 }}>
+          <div style={{ flex: 1, height: 20, borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 60, height: 20, borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+          {['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'].map((c, i) => (
+            <div key={i} style={{ height: 38, borderRadius: 6, background: `${c}22`, border: `1px solid ${c}44` }} />
+          ))}
+        </div>
+      </>
+    ),
+  },
+
+  EntityDetailView: {
+    friendlyName: 'Entity Detail View',
+    description: 'Full entity detail page including header, navigation arrows, rename menu, and tabbed stats panel. Reads entity from the URL :id param. Use with pass_through layout on the /entities/:id screen.',
+    group: 'Entities',
+    color: '#10b981',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+          <div style={{ width: 24, height: 24, borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(139,92,246,0.3)' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 7, borderRadius: 3, background: '#10b98155', width: '70%' }} />
+            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', width: '40%', marginTop: 3 }} />
+          </div>
+          <div style={{ width: 18, height: 18, borderRadius: 4, background: 'rgba(255,255,255,0.07)' }} />
+        </div>
+        {P.shimmer()}
+        {P.shimmer()}
+        {P.bar('80%')}
+      </>
+    ),
+  },
 };
 
 // ─── Component classification sets ────────────────────────────────────────────
@@ -757,7 +800,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard',
+  'SeasonProgressCard', 'EntityRoster', 'EntityDetailView',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */

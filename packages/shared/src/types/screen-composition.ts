@@ -197,6 +197,8 @@ export type ScreenComponentKey =
   | 'ActiveMissionList'
   | 'FeaturedShopRail'
   | 'GemPackGrid'
+  | 'EntityRoster'
+  | 'EntityDetailView'
   | (string & Record<never, never>);
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -211,7 +213,8 @@ export type ScreenLayoutType =
   | 'fixed_structure'
   | 'hero_stack'
   | 'grid_feed'
-  | 'carousel_feed';
+  | 'carousel_feed'
+  | 'pass_through';
 
 export type SpacingToken = 'none' | 'tight' | 'standard' | 'loose';
 

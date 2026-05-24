@@ -3,6 +3,8 @@ import { useSyncEntities, useSyncStatus } from "../../hooks/useSyncSelectors";
 import { EntityList } from "./components";
 import { normalizeFilter } from "./entityListUtils";
 import type { EntityFilter, EntitySortBy } from "./types";
+import { useScreenComposition } from "../screens/useScreenComposition";
+import { ScreenCompositionRenderer } from "../screens/ScreenCompositionRenderer";
 
 function EntitiesPageSkeleton() {
   return (
@@ -80,6 +82,7 @@ function readSearch(): string {
 }
 
 export default function EntitiesPage() {
+  const { definition } = useScreenComposition("entities");
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
   const [activeFilter, setActiveFilter] = useState<EntityFilter>(readFilter);
@@ -90,6 +93,10 @@ export default function EntitiesPage() {
     () => normalizeFilter(activeFilter, entities),
     [activeFilter, entities],
   );
+
+  if (definition) return <ScreenCompositionRenderer definition={definition} />;
+
+  if (syncStatus === "disconnected") return <EntitiesPageSkeleton />;
 
   function handleFilterChange(filter: EntityFilter) {
     safeLocalStorageSet(STORAGE_KEY_FILTER, filter);
@@ -105,8 +112,6 @@ export default function EntitiesPage() {
     safeLocalStorageSet(STORAGE_KEY_SEARCH, q);
     setSearchQuery(q);
   }
-
-  if (syncStatus === "disconnected") return <EntitiesPageSkeleton />;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

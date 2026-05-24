@@ -33,6 +33,7 @@ const SCREEN_COMPONENT_KEYS = [
   'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
   'InventoryCategoryGrid', 'WalletPromptCard', 'NFTCapacityInfoCard',
   'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
+  'EntityRoster', 'EntityDetailView',
 ];
 
 const LAYOUT_TYPES: { value: string; label: string }[] = [
@@ -43,6 +44,7 @@ const LAYOUT_TYPES: { value: string; label: string }[] = [
   { value: 'carousel_feed',   label: 'carousel_feed' },
   { value: 'fixed_structure', label: 'fixed_structure' },
   { value: 'modal_stack',     label: 'modal_stack' },
+  { value: 'pass_through',    label: 'pass_through (component manages own scroll)' },
   { value: 'grid',            label: '* grid (stub → vertical_feed)' },
   { value: 'split_panel',     label: '* split_panel (stub → vertical_feed)' },
   { value: 'wizard',          label: '* wizard (stub → vertical_feed)' },

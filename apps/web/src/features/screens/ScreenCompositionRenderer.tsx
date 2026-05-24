@@ -367,6 +367,29 @@ function CarouselFeedLayout({
   );
 }
 
+function PassThroughLayout({
+  sections,
+  actionCtx,
+  visibilityCtx,
+}: {
+  sections: ScreenSectionDefinition[];
+  actionCtx: ActionHandlerContext;
+  visibilityCtx: ClientVisibilityContext;
+}) {
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      {sections.map((section) => (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      ))}
+    </div>
+  );
+}
+
 function LayoutWrapper({
   layout,
   sections,
@@ -429,6 +452,14 @@ function LayoutWrapper({
     case 'modal_stack':
       return (
         <ModalStackLayout
+          sections={sorted}
+          actionCtx={actionCtx}
+          visibilityCtx={visibilityCtx}
+        />
+      );
+    case 'pass_through':
+      return (
+        <PassThroughLayout
           sections={sorted}
           actionCtx={actionCtx}
           visibilityCtx={visibilityCtx}
