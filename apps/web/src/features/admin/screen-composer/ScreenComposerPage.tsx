@@ -127,6 +127,22 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
 };
 
+// ─── Prop validation helpers ──────────────────────────────────────────────────
+
+function getMissingRequiredProps(componentKey: string, props: Record<string, unknown>): string[] {
+  const hints = COMPONENT_PROP_HINTS[componentKey] ?? {};
+  return Object.entries(hints)
+    .filter(([key, hint]) => {
+      if (!hint.required) return false;
+      if (!(key in props)) return true;
+      const val = props[key];
+      if (val === null || val === undefined || val === '') return true;
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    })
+    .map(([key]) => key);
+}
+
 // ─── Small shared UI ──────────────────────────────────────────────────────────
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -526,7 +542,15 @@ function newSection(idx: number) {
   return { id: `section_${idx + 1}`, component: 'HelpTipCard', priority: (idx + 1) * 10, props: {} };
 }
 
-function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: any[]) => void }) {
+function SectionEditor({
+  sections,
+  onChange,
+  sectionErrors = new Map(),
+}: {
+  sections: any[];
+  onChange: (s: any[]) => void;
+  sectionErrors?: Map<number, string[]>;
+}) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   const toggle = (i: number) => setExpanded(prev => {
@@ -598,12 +622,17 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
         const isOpen = expanded.has(idx);
         const isCustom = !SCREEN_COMPONENT_KEYS.includes(section.component) && section.component;
         const hidden = isHidden(section);
+        const missingProps = sectionErrors.get(idx) ?? [];
+        const hasError = missingProps.length > 0;
 
         return (
           <div key={idx} style={{
             ...entryCardStyle,
             opacity: hidden ? 0.55 : 1,
-            border: hidden ? '1px dashed #3a3a5e' : '1px solid #2a2a4e',
+            border: hasError
+              ? '1px solid rgba(248,113,113,0.6)'
+              : hidden ? '1px dashed #3a3a5e' : '1px solid #2a2a4e',
+            boxShadow: hasError ? '0 0 0 1px rgba(248,113,113,0.15)' : undefined,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
               <button
@@ -618,6 +647,22 @@ function SectionEditor({ sections, onChange }: { sections: any[]; onChange: (s: 
               </span>
               <span style={{ fontSize: 10, color: '#555', fontFamily: 'monospace' }}>{section.id}</span>
               <span style={{ fontSize: 10, color: '#444' }}>p:{section.priority}</span>
+              {hasError && (
+                <span
+                  title={`Missing required props: ${missingProps.join(', ')}`}
+                  style={{
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                    padding: '1px 5px', borderRadius: 3,
+                    background: 'rgba(248,113,113,0.15)',
+                    color: '#f87171',
+                    border: '1px solid rgba(248,113,113,0.3)',
+                    cursor: 'default',
+                    flexShrink: 0,
+                  }}
+                >
+                  missing: {missingProps.join(', ')}
+                </span>
+              )}
               <button
                 type="button"
                 title={hidden ? 'Section hidden — click to show' : 'Click to hide section'}
@@ -882,6 +927,15 @@ function DefinitionEditor({
   const validate = () => {
     if (!form.key.trim()) return 'Key is required';
     if (!form.version || isNaN(Number(form.version))) return 'Version must be a number';
+    if (form.type === 'screen_composition') {
+      const allSections: any[] = Array.isArray(data?.sections) ? data.sections : [];
+      for (const section of allSections) {
+        const missing = getMissingRequiredProps(section.component, section.props ?? {});
+        if (missing.length > 0) {
+          return `Section "${section.id || section.component}" is missing required props: ${missing.join(', ')}`;
+        }
+      }
+    }
     if (!isNew) return null;
     const clash = allDefs.find(d => d.type === form.type && d.key === form.key.trim() && d.version === Number(form.version));
     if (clash) return `Version ${form.version} already exists for key "${form.key}"`;
@@ -907,6 +961,18 @@ function DefinitionEditor({
   const isScreenComp = form.type === 'screen_composition';
   const sections: any[] = Array.isArray(data?.sections) ? data.sections : [];
   const layout = data?.layout ?? { layoutType: 'vertical_feed', scroll: true };
+
+  const sectionValidationErrors = useMemo(() => {
+    const map = new Map<number, string[]>();
+    if (!isScreenComp) return map;
+    sections.forEach((section, idx) => {
+      const missing = getMissingRequiredProps(section.component, section.props ?? {});
+      if (missing.length > 0) map.set(idx, missing);
+    });
+    return map;
+  }, [sections, isScreenComp]);
+
+  const hasSectionErrors = sectionValidationErrors.size > 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
@@ -942,8 +1008,14 @@ function DefinitionEditor({
           >
             {jsonMode ? '← Visual' : 'JSON ↓'}
           </button>
-          <button onClick={save} disabled={saving} className="btn-save" style={{ padding: '0.35rem 1rem', fontSize: '0.85rem' }}>
-            {saving ? 'Saving…' : 'Save'}
+          <button
+            onClick={save}
+            disabled={saving || hasSectionErrors}
+            title={hasSectionErrors ? `Fix ${sectionValidationErrors.size} section(s) with missing required props before saving` : undefined}
+            className="btn-save"
+            style={{ padding: '0.35rem 1rem', fontSize: '0.85rem', opacity: hasSectionErrors ? 0.5 : 1, cursor: hasSectionErrors ? 'not-allowed' : 'pointer' }}
+          >
+            {saving ? 'Saving…' : hasSectionErrors ? `Save (${sectionValidationErrors.size} error${sectionValidationErrors.size > 1 ? 's' : ''})` : 'Save'}
           </button>
         </div>
       </div>
@@ -1009,7 +1081,11 @@ function DefinitionEditor({
             )}
             <div style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.75rem' }}>
               {isScreenComp ? (
-                <SectionEditor sections={sections} onChange={s => setData((d: any) => ({ ...d, sections: s }))} />
+                <SectionEditor
+                  sections={sections}
+                  onChange={s => setData((d: any) => ({ ...d, sections: s }))}
+                  sectionErrors={sectionValidationErrors}
+                />
               ) : (
                 <>
                   <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 10 }}>Content Blocks</div>
