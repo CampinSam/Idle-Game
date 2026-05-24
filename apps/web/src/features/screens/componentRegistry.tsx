@@ -794,9 +794,36 @@ function GenericStubComp({ section }: ScreenComponentProps) {
   );
 }
 
+const ENTITY_STORAGE_KEY_FILTER = 'entities_activeFilter';
+const ENTITY_STORAGE_KEY_SORT = 'entities_sortBy';
+const ENTITY_STORAGE_KEY_SEARCH = 'entities_searchQuery';
+
+function safeLocalGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function safeLocalSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
+function readEntityFilter(): string {
+  return safeLocalGet(ENTITY_STORAGE_KEY_FILTER) ?? 'ALL';
+}
+
+function readEntitySort(): string {
+  const v = safeLocalGet(ENTITY_STORAGE_KEY_SORT);
+  if (v === 'name' || v === 'level' || v === 'power' || v === 'collection') return v;
+  return 'name';
+}
+
 function EntityRosterComp(_: ScreenComponentProps) {
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
+  const [activeFilter, setActiveFilter] = useState<string>(readEntityFilter);
+  const [sortBy, setSortBy] = useState<string>(readEntitySort);
+  const [searchQuery, setSearchQuery] = useState<string>(
+    () => safeLocalGet(ENTITY_STORAGE_KEY_SEARCH) ?? '',
+  );
 
   if (syncStatus === 'disconnected') {
     return (
@@ -808,12 +835,33 @@ function EntityRosterComp(_: ScreenComponentProps) {
     );
   }
 
+  function handleFilterChange(filter: string) {
+    safeLocalSet(ENTITY_STORAGE_KEY_FILTER, filter);
+    setActiveFilter(filter);
+  }
+
+  function handleSortChange(sort: string) {
+    safeLocalSet(ENTITY_STORAGE_KEY_SORT, sort);
+    setSortBy(sort);
+  }
+
+  function handleSearchChange(q: string) {
+    safeLocalSet(ENTITY_STORAGE_KEY_SEARCH, q);
+    setSearchQuery(q);
+  }
+
   return (
     <EntityList
       entities={entities}
       mode="display"
       useCase="browse"
       showControls
+      activeFilter={activeFilter as any}
+      onFilterChange={handleFilterChange as any}
+      sortBy={sortBy as any}
+      onSortChange={handleSortChange as any}
+      search={searchQuery}
+      onSearchChange={handleSearchChange}
       emptyMessage="No entities found."
     />
   );
