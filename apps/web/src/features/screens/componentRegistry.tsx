@@ -16,6 +16,8 @@ import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
 import { api } from '../../services/api';
 import { EntityList } from '../entities/components';
 import EntityDetailContent from '../entities/EntityDetailContent';
+import { normalizeFilter } from '../entities/entityListUtils';
+import type { EntityFilter, EntitySortBy } from '../entities/types';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -806,11 +808,11 @@ function safeLocalSet(key: string, value: string): void {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-function readEntityFilter(): string {
-  return safeLocalGet(ENTITY_STORAGE_KEY_FILTER) ?? 'ALL';
+function readEntityFilter(): EntityFilter {
+  return (safeLocalGet(ENTITY_STORAGE_KEY_FILTER) ?? 'ALL') as EntityFilter;
 }
 
-function readEntitySort(): string {
+function readEntitySort(): EntitySortBy {
   const v = safeLocalGet(ENTITY_STORAGE_KEY_SORT);
   if (v === 'name' || v === 'level' || v === 'power' || v === 'collection') return v;
   return 'name';
@@ -819,28 +821,37 @@ function readEntitySort(): string {
 function EntityRosterComp(_: ScreenComponentProps) {
   const entities = useSyncEntities();
   const syncStatus = useSyncStatus();
-  const [activeFilter, setActiveFilter] = useState<string>(readEntityFilter);
-  const [sortBy, setSortBy] = useState<string>(readEntitySort);
+  const [activeFilter, setActiveFilter] = useState<EntityFilter>(readEntityFilter);
+  const [sortBy, setSortBy] = useState<EntitySortBy>(readEntitySort);
   const [searchQuery, setSearchQuery] = useState<string>(
     () => safeLocalGet(ENTITY_STORAGE_KEY_SEARCH) ?? '',
   );
 
+  const validFilter = normalizeFilter(activeFilter, entities);
+
   if (syncStatus === 'disconnected') {
     return (
-      <div className="entity-list__grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', padding: '0 12px' }}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="skeleton" style={{ height: 180, borderRadius: 12 }} />
-        ))}
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="entity-list__controls">
+          <div className="skeleton" style={{ flex: 1, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 90, height: 34, borderRadius: 8 }} />
+          <div className="skeleton" style={{ width: 108, height: 34, borderRadius: 8 }} />
+        </div>
+        <div className="entity-list__grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 180, borderRadius: 12 }} />
+          ))}
+        </div>
       </div>
     );
   }
 
-  function handleFilterChange(filter: string) {
+  function handleFilterChange(filter: EntityFilter) {
     safeLocalSet(ENTITY_STORAGE_KEY_FILTER, filter);
     setActiveFilter(filter);
   }
 
-  function handleSortChange(sort: string) {
+  function handleSortChange(sort: EntitySortBy) {
     safeLocalSet(ENTITY_STORAGE_KEY_SORT, sort);
     setSortBy(sort);
   }
@@ -856,10 +867,10 @@ function EntityRosterComp(_: ScreenComponentProps) {
       mode="display"
       useCase="browse"
       showControls
-      activeFilter={activeFilter as any}
-      onFilterChange={handleFilterChange as any}
-      sortBy={sortBy as any}
-      onSortChange={handleSortChange as any}
+      activeFilter={validFilter}
+      onFilterChange={handleFilterChange}
+      sortBy={sortBy}
+      onSortChange={handleSortChange}
       search={searchQuery}
       onSearchChange={handleSearchChange}
       emptyMessage="No entities found."
