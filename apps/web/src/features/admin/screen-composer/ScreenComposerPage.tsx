@@ -4,6 +4,7 @@ import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRender
 import ContentDocumentDataEditor from '../smart/components/structured/ContentDocumentDataEditor';
 import { getMissingBlockProps } from '../smart/components/structured/blockPropHints';
 import SectionPicker from './SectionPicker';
+import { NO_PROPS_COMPONENTS, STUB_COMPONENTS } from './screen-composer-meta';
 import {
   inputStyle,
   selectStyle,
@@ -58,23 +59,6 @@ interface PropHint {
   required?: boolean;
   options?: string[];
 }
-
-// Components that have no configurable props — all data from sync store or none needed
-const NO_PROPS_COMPONENTS = new Set([
-  'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
-  'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard',
-]);
-
-// Stub-only components — render a placeholder in dev, nothing in production
-const STUB_COMPONENTS = new Set([
-  'FeaturedBirdCard', 'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid',
-  'StoreItemRail', 'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress',
-  'BattlePassTierList', 'EventCarousel', 'EventCardList', 'SeasonBossPanel',
-  'NewsCard', 'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
-  'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
-  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
-]);
 
 const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   ResourceSummaryBar: {

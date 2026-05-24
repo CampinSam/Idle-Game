@@ -1,20 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { COMPONENT_META, COMPONENT_GROUP_ORDER } from './screen-composer-meta';
-
-const NO_PROPS_COMPONENTS = new Set([
-  'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
-  'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard',
-]);
-
-const STUB_COMPONENTS = new Set([
-  'FeaturedBirdCard', 'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid',
-  'StoreItemRail', 'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress',
-  'BattlePassTierList', 'EventCarousel', 'EventCardList', 'SeasonBossPanel',
-  'NewsCard', 'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
-  'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
-  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
-]);
+import { COMPONENT_META, COMPONENT_GROUP_ORDER, NO_PROPS_COMPONENTS, STUB_COMPONENTS } from './screen-composer-meta';
 
 interface Props {
   open: boolean;

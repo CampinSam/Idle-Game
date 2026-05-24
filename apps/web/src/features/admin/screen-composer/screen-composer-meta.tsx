@@ -750,3 +750,22 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 };
+
+// ─── Component classification sets ────────────────────────────────────────────
+
+/** Components that have no configurable props — all data from sync store or none needed. */
+export const NO_PROPS_COMPONENTS = new Set([
+  'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
+  'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
+  'SeasonProgressCard',
+]);
+
+/** Stub-only components — render a placeholder in dev, nothing in production. */
+export const STUB_COMPONENTS = new Set([
+  'FeaturedBirdCard', 'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid',
+  'StoreItemRail', 'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress',
+  'BattlePassTierList', 'EventCarousel', 'EventCardList', 'SeasonBossPanel',
+  'NewsCard', 'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
+  'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
+  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
+]);
