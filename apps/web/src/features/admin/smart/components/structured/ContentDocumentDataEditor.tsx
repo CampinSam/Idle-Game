@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import {
   containerStyle,
   entryCardStyle,
@@ -15,12 +16,10 @@ const BLOCK_TYPES = [
   'mission_hero',
   'mission_stats',
   'mission_requirements',
+  'mission_stats_requirements',
   'mission_synergy',
   'team_section',
   'reward_list',
-  'entity_roster',
-  'mission_timer',
-  'outcome_banner',
   'narrative_text',
   'rich_text',
   'image',
@@ -30,23 +29,24 @@ const BLOCK_TYPES = [
 
 type BlockType = typeof BLOCK_TYPES[number];
 
+/** Mission-specific blocks have no configurable props — they read from SurfaceContext. */
+const MISSION_CONTEXT_BLOCKS = new Set<BlockType>([
+  'mission_hero', 'mission_stats', 'mission_requirements',
+  'mission_stats_requirements', 'mission_synergy', 'team_section', 'reward_list',
+]);
+
+/** Content-document blocks that have a structured editor. */
+const CONTENT_STRUCTURED_BLOCKS = new Set<BlockType>([
+  'narrative_text', 'rich_text', 'image', 'divider', 'key_value_row',
+]);
+
 const MISSION_MODES = ['planning', 'in_progress', 'outcome'] as const;
 const TEAM_MODES = ['editable', 'locked'] as const;
 const REWARD_MODES = ['preview', 'actual'] as const;
 
-/** Fields that are optional on certain block types. */
-interface BlockExtra {
-  text?: string;
-  content?: string;
-  assetKey?: string;
-  caption?: string;
-  label?: string;
-  value?: string;
-}
-
-interface Block extends BlockExtra {
-  type: BlockType;
-  [k: string]: any;
+interface Block {
+  type: BlockType | string;
+  [k: string]: unknown;
 }
 
 interface Context {
@@ -62,7 +62,7 @@ interface DocumentData {
   context?: Context;
 }
 
-function defaultBlock(type: BlockType): Block {
+function defaultBlock(type: string): Block {
   switch (type) {
     case 'narrative_text': return { type, text: '' };
     case 'rich_text': return { type, content: '' };
@@ -71,6 +71,121 @@ function defaultBlock(type: BlockType): Block {
     default: return { type };
   }
 }
+
+// ─── Tab bar shared style ─────────────────────────────────────────────────────
+
+const tabBtnStyle = (active: boolean): React.CSSProperties => ({
+  padding: '2px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+  textTransform: 'uppercase', border: '1px solid',
+  borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit',
+  background: active ? 'rgba(139,92,246,0.18)' : 'transparent',
+  color: active ? '#a78bfa' : '#555',
+  borderColor: active ? 'rgba(139,92,246,0.4)' : '#2a2a4e',
+});
+
+// ─── Structured field editors per block type ──────────────────────────────────
+
+function NarrativeTextFields({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+  return (
+    <div style={fieldGroupStyle}>
+      <span style={labelStyle}>text</span>
+      <input
+        type="text"
+        value={String(block.text ?? '')}
+        onChange={e => onChange({ ...block, text: e.target.value })}
+        placeholder="Static fallback text (shown when surface provides no dynamic narrative)"
+        style={{ ...inputStyle, width: '100%' }}
+      />
+      <span style={{ fontSize: 10, color: '#555', lineHeight: 1.4 }}>
+        Sources text from <code style={{ color: '#a78bfa' }}>SurfaceContext.narrativeTexts</code> first; this field is the static fallback.
+      </span>
+    </div>
+  );
+}
+
+function RichTextFields({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+  return (
+    <div style={fieldGroupStyle}>
+      <span style={labelStyle}>content <span style={{ color: '#f87171' }}>*</span></span>
+      <textarea
+        value={String(block.content ?? '')}
+        onChange={e => onChange({ ...block, content: e.target.value })}
+        placeholder="Plain text to display as a paragraph"
+        rows={3}
+        style={{ ...inputStyle, width: '100%', resize: 'vertical' as const, fontFamily: 'inherit' }}
+      />
+    </div>
+  );
+}
+
+function ImageFields({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ ...fieldGroupStyle, flex: 2 }}>
+        <span style={labelStyle}>assetKey <span style={{ color: '#f87171' }}>*</span></span>
+        <input
+          type="text"
+          value={String(block.assetKey ?? '')}
+          onChange={e => onChange({ ...block, assetKey: e.target.value })}
+          placeholder="banner_mission_ruins"
+          style={{ ...inputStyle, width: '100%' }}
+        />
+      </div>
+      <div style={{ ...fieldGroupStyle, flex: 1 }}>
+        <span style={labelStyle}>caption</span>
+        <input
+          type="text"
+          value={String(block.caption ?? '')}
+          onChange={e => onChange({ ...block, caption: e.target.value })}
+          placeholder="Optional caption"
+          style={{ ...inputStyle, width: '100%' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DividerFields() {
+  return (
+    <div style={{
+      fontSize: 11, color: '#6b7280', background: 'rgba(100,100,140,0.06)',
+      border: '1px solid rgba(100,100,140,0.2)', borderRadius: 5, padding: '7px 12px',
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      <span style={{ fontSize: 13 }}>🔲</span>
+      <span>No props — renders a horizontal separator line.</span>
+    </div>
+  );
+}
+
+function KeyValueRowFields({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ ...fieldGroupStyle, flex: 1 }}>
+        <span style={labelStyle}>label <span style={{ color: '#f87171' }}>*</span></span>
+        <input
+          type="text"
+          value={String(block.label ?? '')}
+          onChange={e => onChange({ ...block, label: e.target.value })}
+          placeholder="Difficulty"
+          style={{ ...inputStyle, width: '100%' }}
+        />
+      </div>
+      <div style={{ ...fieldGroupStyle, flex: 1 }}>
+        <span style={labelStyle}>value <span style={{ color: '#f87171' }}>*</span></span>
+        <input
+          type="text"
+          value={String(block.value ?? '')}
+          onChange={e => onChange({ ...block, value: e.target.value })}
+          placeholder="Hard"
+          style={{ ...inputStyle, width: '100%' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Block entry ──────────────────────────────────────────────────────────────
 
 function BlockEntry({
   block, onChange, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
@@ -83,10 +198,89 @@ function BlockEntry({
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
-  const hasText = block.type === 'narrative_text';
-  const hasContent = block.type === 'rich_text';
-  const hasAsset = block.type === 'image';
-  const hasKV = block.type === 'key_value_row';
+  const blockType = block.type as BlockType;
+  const isKnownType = (BLOCK_TYPES as readonly string[]).includes(block.type as string);
+  const isMissionContext = MISSION_CONTEXT_BLOCKS.has(blockType);
+  const isContentStructured = CONTENT_STRUCTURED_BLOCKS.has(blockType);
+
+  const [tab, setTab] = useState<'structured' | 'raw'>('structured');
+  const [rawText, setRawText] = useState(() => JSON.stringify(block, null, 2));
+  const [rawError, setRawError] = useState('');
+  const prevType = useRef(block.type);
+
+  useEffect(() => {
+    if (prevType.current !== block.type) {
+      prevType.current = block.type;
+      setTab('structured');
+      setRawText(JSON.stringify(block, null, 2));
+      setRawError('');
+    }
+  }, [block]);
+
+  const handleTabChange = (next: 'structured' | 'raw') => {
+    if (next === 'raw') {
+      setRawText(JSON.stringify(block, null, 2));
+      setRawError('');
+    }
+    setTab(next);
+  };
+
+  const handleRawChange = (text: string) => {
+    setRawText(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        setRawError('Must be a JSON object {}');
+        return;
+      }
+      setRawError('');
+      onChange(parsed as Block);
+    } catch {
+      setRawError('Invalid JSON');
+    }
+  };
+
+  const rawJsonPanel = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <textarea
+        value={rawText}
+        onChange={e => handleRawChange(e.target.value)}
+        rows={5}
+        style={{
+          ...inputStyle, width: '100%', resize: 'vertical' as const,
+          fontFamily: 'monospace', fontSize: 11, boxSizing: 'border-box' as const,
+          color: rawError ? '#ff6b6b' : '#a0e0a0',
+        }}
+      />
+      {rawError && <span style={{ color: '#ff6b6b', fontSize: 10 }}>{rawError}</span>}
+    </div>
+  );
+
+  const renderStructuredBody = () => {
+    if (!isKnownType) return null;
+    if (isMissionContext) {
+      return (
+        <div style={{
+          fontSize: 11, color: '#6b7280', background: 'rgba(100,100,140,0.06)',
+          border: '1px solid rgba(100,100,140,0.2)', borderRadius: 5, padding: '7px 12px',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{ fontSize: 13 }}>🔒</span>
+          <span>No configurable props — reads all data from <code style={{ color: '#a78bfa' }}>SurfaceContext</code>.</span>
+        </div>
+      );
+    }
+    switch (blockType) {
+      case 'narrative_text': return <NarrativeTextFields block={block} onChange={onChange} />;
+      case 'rich_text': return <RichTextFields block={block} onChange={onChange} />;
+      case 'image': return <ImageFields block={block} onChange={onChange} />;
+      case 'divider': return <DividerFields />;
+      case 'key_value_row': return <KeyValueRowFields block={block} onChange={onChange} />;
+      default: return null;
+    }
+  };
+
+  const showTabs = isKnownType;
 
   return (
     <div style={entryCardStyle}>
@@ -94,13 +288,19 @@ function BlockEntry({
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 180 }}>
           <span style={labelStyle}>type</span>
           <select
-            value={block.type}
-            onChange={e => onChange(defaultBlock(e.target.value as BlockType))}
+            value={block.type as string}
+            onChange={e => {
+              const next = defaultBlock(e.target.value);
+              onChange(next);
+            }}
             style={{ ...selectStyle, width: '100%' }}
           >
             {BLOCK_TYPES.map(t => (
               <option key={t} value={t}>{t}</option>
             ))}
+            {!isKnownType && (
+              <option value={block.type as string}>{block.type as string} (unknown)</option>
+            )}
           </select>
         </div>
         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', paddingBottom: 1 }}>
@@ -110,84 +310,37 @@ function BlockEntry({
         </div>
       </div>
 
-      {hasText && (
-        <div style={fieldGroupStyle}>
-          <span style={labelStyle}>text</span>
-          <input
-            type="text"
-            value={block.text ?? ''}
-            onChange={e => onChange({ ...block, text: e.target.value })}
-            placeholder="Narrative fallback text"
-            style={{ ...inputStyle, width: '100%' }}
-          />
+      {/* Tab bar — shown for all known types; unknown types go straight to raw JSON */}
+      {showTabs ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button type="button" style={tabBtnStyle(tab === 'structured')} onClick={() => handleTabChange('structured')}>
+              Structured
+            </button>
+            {(isContentStructured || isMissionContext) && (
+              <button type="button" style={tabBtnStyle(tab === 'raw')} onClick={() => handleTabChange('raw')}>
+                Raw JSON
+              </button>
+            )}
+          </div>
+          {tab === 'raw' ? rawJsonPanel : renderStructuredBody()}
         </div>
-      )}
-
-      {hasContent && (
-        <div style={fieldGroupStyle}>
-          <span style={labelStyle}>content</span>
-          <input
-            type="text"
-            value={block.content ?? ''}
-            onChange={e => onChange({ ...block, content: e.target.value })}
-            placeholder="Plain text content"
-            style={{ ...inputStyle, width: '100%' }}
-          />
-        </div>
-      )}
-
-      {hasAsset && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ ...fieldGroupStyle, flex: 2 }}>
-            <span style={labelStyle}>assetKey</span>
-            <input
-              type="text"
-              value={block.assetKey ?? ''}
-              onChange={e => onChange({ ...block, assetKey: e.target.value })}
-              placeholder="media/image.png"
-              style={{ ...inputStyle, width: '100%' }}
-            />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{
+            fontSize: 10, color: '#6b7280', background: 'rgba(100,100,140,0.06)',
+            border: '1px solid rgba(100,100,140,0.2)', borderRadius: 4, padding: '5px 10px',
+          }}>
+            Unknown block type — no schema available. Select a known type or edit as raw JSON.
           </div>
-          <div style={{ ...fieldGroupStyle, flex: 1 }}>
-            <span style={labelStyle}>caption</span>
-            <input
-              type="text"
-              value={block.caption ?? ''}
-              onChange={e => onChange({ ...block, caption: e.target.value })}
-              placeholder="Optional caption"
-              style={{ ...inputStyle, width: '100%' }}
-            />
-          </div>
-        </div>
-      )}
-
-      {hasKV && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ ...fieldGroupStyle, flex: 1 }}>
-            <span style={labelStyle}>label</span>
-            <input
-              type="text"
-              value={block.label ?? ''}
-              onChange={e => onChange({ ...block, label: e.target.value })}
-              placeholder="Label"
-              style={{ ...inputStyle, width: '100%' }}
-            />
-          </div>
-          <div style={{ ...fieldGroupStyle, flex: 1 }}>
-            <span style={labelStyle}>value</span>
-            <input
-              type="text"
-              value={block.value ?? ''}
-              onChange={e => onChange({ ...block, value: e.target.value })}
-              placeholder="Value"
-              style={{ ...inputStyle, width: '100%' }}
-            />
-          </div>
+          {rawJsonPanel}
         </div>
       )}
     </div>
   );
 }
+
+// ─── Main editor ──────────────────────────────────────────────────────────────
 
 interface Props {
   value: DocumentData | null | undefined;
@@ -218,7 +371,7 @@ export default function ContentDocumentDataEditor({ value, onChange }: Props) {
     setBlocks(arr);
   };
 
-  const addBlock = () => setBlocks([...blocks, { type: 'mission_hero' }]);
+  const addBlock = () => setBlocks([...blocks, defaultBlock('rich_text')]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -292,14 +445,16 @@ export function contentDocumentDataErrorCount(value: any): number {
   const blocks = value.blocks;
   if (!Array.isArray(blocks)) return 1;
   const VALID_TYPES = [
-    'mission_hero', 'mission_stats', 'mission_requirements', 'mission_synergy',
-    'team_section', 'reward_list', 'entity_roster', 'mission_timer',
-    'outcome_banner', 'narrative_text', 'rich_text', 'image', 'divider', 'key_value_row',
+    'mission_hero', 'mission_stats', 'mission_requirements', 'mission_stats_requirements',
+    'mission_synergy', 'team_section', 'reward_list',
+    'narrative_text', 'rich_text', 'image', 'divider', 'key_value_row',
   ];
   let n = 0;
   blocks.forEach((b: any) => {
     if (!b || typeof b !== 'object' || !b.type || !VALID_TYPES.includes(b.type)) n++;
     if (b?.type === 'key_value_row' && (!b.label || !b.value)) n++;
+    if (b?.type === 'rich_text' && !b.content) n++;
+    if (b?.type === 'image' && !b.assetKey) n++;
   });
   return n;
 }
