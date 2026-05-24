@@ -97,7 +97,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
   PatchNotesCard: {
     version: { type: 'string', description: 'Version string displayed below the title (e.g. "1.4.2")' },
-    notes: { type: 'string', description: 'Free-form patch notes text rendered with whitespace preserved' },
+    notes: { type: 'string', description: 'Free-form patch notes text rendered with whitespace preserved', required: true },
   },
   WalletPromptCard: {
     message: { type: 'string', description: 'Body text (default: "Link your wallet to unlock NFT features.")' },
