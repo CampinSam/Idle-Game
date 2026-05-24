@@ -188,7 +188,7 @@ function KeyValueRowFields({ block, onChange }: { block: Block; onChange: (b: Bl
 // ─── Block entry ──────────────────────────────────────────────────────────────
 
 function BlockEntry({
-  block, onChange, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
+  block, onChange, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, missingProps,
 }: {
   block: Block;
   onChange: (b: Block) => void;
@@ -197,6 +197,7 @@ function BlockEntry({
   onMoveDown: () => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  missingProps?: string[];
 }) {
   const blockType = block.type as BlockType;
   const isKnownType = (BLOCK_TYPES as readonly string[]).includes(block.type as string);
@@ -282,8 +283,28 @@ function BlockEntry({
 
   const showTabs = isKnownType;
 
+  const hasErrors = missingProps && missingProps.length > 0;
+
   return (
-    <div style={entryCardStyle}>
+    <div style={{
+      ...entryCardStyle,
+      ...(hasErrors ? {
+        borderColor: 'rgba(248,113,113,0.5)',
+        boxShadow: '0 0 0 1px rgba(248,113,113,0.25)',
+      } : {}),
+    }}>
+      {hasErrors && (
+        <div style={{
+          fontSize: 10, color: '#f87171',
+          background: 'rgba(248,113,113,0.08)',
+          border: '1px solid rgba(248,113,113,0.25)',
+          borderRadius: 4, padding: '4px 8px', marginBottom: 6,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          <span>⚠</span>
+          <span>Missing required {missingProps.length === 1 ? 'field' : 'fields'}: <strong>{missingProps.join(', ')}</strong></span>
+        </div>
+      )}
       <div style={entryHeaderStyle}>
         <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 180 }}>
           <span style={labelStyle}>type</span>
@@ -345,9 +366,10 @@ function BlockEntry({
 interface Props {
   value: DocumentData | null | undefined;
   onChange: (v: DocumentData) => void;
+  blockErrors?: Map<number, string[]>;
 }
 
-export default function ContentDocumentDataEditor({ value, onChange }: Props) {
+export default function ContentDocumentDataEditor({ value, onChange, blockErrors }: Props) {
   const doc: DocumentData = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
   const blocks: Block[] = Array.isArray(doc.blocks) ? doc.blocks as Block[] : [];
   const ctx: Context = (doc.context && typeof doc.context === 'object') ? doc.context as Context : {};
@@ -389,6 +411,7 @@ export default function ContentDocumentDataEditor({ value, onChange }: Props) {
             onMoveDown={() => moveBlock(idx, idx + 1)}
             canMoveUp={idx > 0}
             canMoveDown={idx < blocks.length - 1}
+            missingProps={blockErrors?.get(idx)}
           />
         ))}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

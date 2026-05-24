@@ -127,6 +127,26 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
 };
 
+// ─── Content-document block prop hints ───────────────────────────────────────
+
+const BLOCK_PROP_HINTS: Record<string, Record<string, PropHint>> = {
+  rich_text: {
+    content: { type: 'string', description: 'Plain text paragraph content', required: true },
+  },
+  image: {
+    assetKey: { type: 'string', description: 'Asset key to resolve the image (e.g. banner_season_3)', required: true },
+    caption: { type: 'string', description: 'Optional caption text below the image' },
+  },
+  key_value_row: {
+    label: { type: 'string', description: 'Left-side label text', required: true },
+    value: { type: 'string', description: 'Right-side value text', required: true },
+  },
+  narrative_text: {
+    text: { type: 'string', description: 'Static fallback text shown when SurfaceContext provides no dynamic narrative' },
+  },
+  divider: {},
+};
+
 // ─── Prop validation helpers ──────────────────────────────────────────────────
 
 function getMissingRequiredProps(componentKey: string, props: Record<string, unknown>): string[] {
@@ -136,6 +156,19 @@ function getMissingRequiredProps(componentKey: string, props: Record<string, unk
       if (!hint.required) return false;
       if (!(key in props)) return true;
       const val = props[key];
+      if (val === null || val === undefined || val === '') return true;
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    })
+    .map(([key]) => key);
+}
+
+function getMissingBlockProps(blockType: string, block: Record<string, unknown>): string[] {
+  const hints = BLOCK_PROP_HINTS[blockType] ?? {};
+  return Object.entries(hints)
+    .filter(([key, hint]) => {
+      if (!hint.required) return false;
+      const val = block[key];
       if (val === null || val === undefined || val === '') return true;
       if (Array.isArray(val) && val.length === 0) return true;
       return false;
@@ -1090,6 +1123,17 @@ function DefinitionEditor({
         }
       }
     }
+    if (form.type === 'content_document') {
+      const allBlocks: any[] = Array.isArray(data?.blocks) ? data.blocks : [];
+      for (let i = 0; i < allBlocks.length; i++) {
+        const block = allBlocks[i];
+        if (!block || typeof block !== 'object') continue;
+        const missing = getMissingBlockProps(block.type ?? '', block as Record<string, unknown>);
+        if (missing.length > 0) {
+          return `Block ${i + 1} (${block.type}) is missing required fields: ${missing.join(', ')}`;
+        }
+      }
+    }
     if (!isNew) return null;
     const clash = allDefs.find(d => d.type === form.type && d.key === form.key.trim() && d.version === Number(form.version));
     if (clash) return `Version ${form.version} already exists for key "${form.key}"`;
@@ -1128,6 +1172,20 @@ function DefinitionEditor({
 
   const hasSectionErrors = sectionValidationErrors.size > 0;
 
+  const blockValidationErrors = useMemo(() => {
+    const map = new Map<number, string[]>();
+    if (isScreenComp) return map;
+    const blocks: any[] = Array.isArray(data?.blocks) ? data.blocks : [];
+    blocks.forEach((block: any, idx: number) => {
+      if (!block || typeof block !== 'object') return;
+      const missing = getMissingBlockProps(block.type ?? '', block as Record<string, unknown>);
+      if (missing.length > 0) map.set(idx, missing);
+    });
+    return map;
+  }, [data?.blocks, isScreenComp]);
+
+  const hasBlockErrors = blockValidationErrors.size > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' as const }}>
@@ -1164,12 +1222,28 @@ function DefinitionEditor({
           </button>
           <button
             onClick={save}
-            disabled={saving || hasSectionErrors}
-            title={hasSectionErrors ? `Fix ${sectionValidationErrors.size} section(s) with missing required props before saving` : undefined}
+            disabled={saving || hasSectionErrors || hasBlockErrors}
+            title={
+              hasSectionErrors
+                ? `Fix ${sectionValidationErrors.size} section(s) with missing required props before saving`
+                : hasBlockErrors
+                ? `Fix ${blockValidationErrors.size} block(s) with missing required fields before saving`
+                : undefined
+            }
             className="btn-save"
-            style={{ padding: '0.35rem 1rem', fontSize: '0.85rem', opacity: hasSectionErrors ? 0.5 : 1, cursor: hasSectionErrors ? 'not-allowed' : 'pointer' }}
+            style={{
+              padding: '0.35rem 1rem', fontSize: '0.85rem',
+              opacity: (hasSectionErrors || hasBlockErrors) ? 0.5 : 1,
+              cursor: (hasSectionErrors || hasBlockErrors) ? 'not-allowed' : 'pointer',
+            }}
           >
-            {saving ? 'Saving…' : hasSectionErrors ? `Save (${sectionValidationErrors.size} error${sectionValidationErrors.size > 1 ? 's' : ''})` : 'Save'}
+            {saving
+              ? 'Saving…'
+              : hasSectionErrors
+              ? `Save (${sectionValidationErrors.size} error${sectionValidationErrors.size > 1 ? 's' : ''})`
+              : hasBlockErrors
+              ? `Save (${blockValidationErrors.size} error${blockValidationErrors.size > 1 ? 's' : ''})`
+              : 'Save'}
           </button>
         </div>
       </div>
@@ -1243,7 +1317,7 @@ function DefinitionEditor({
               ) : (
                 <>
                   <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 10 }}>Content Blocks</div>
-                  <ContentDocumentDataEditor value={data} onChange={setData} />
+                  <ContentDocumentDataEditor value={data} onChange={setData} blockErrors={blockValidationErrors} />
                 </>
               )}
             </div>
