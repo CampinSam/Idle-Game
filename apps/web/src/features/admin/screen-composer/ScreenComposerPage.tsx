@@ -210,10 +210,12 @@ function StructuredFieldsEditor({
   props,
   hints,
   onChange,
+  highlightKeys = [],
 }: {
   props: Record<string, unknown>;
   hints: Record<string, PropHint>;
   onChange: (p: Record<string, unknown>) => void;
+  highlightKeys?: string[];
 }) {
   const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
   const [jsonTexts, setJsonTexts] = useState<Record<string, string>>({});
@@ -272,8 +274,9 @@ function StructuredFieldsEditor({
         const ptype = hint?.type === 'enum' ? 'enum'
           : hint?.type === 'array' || hint?.type === 'object' ? 'json'
           : detectPropType(val);
+        const isMissing = highlightKeys.includes(key);
         return (
-          <div key={key} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <div key={key} className={isMissing ? 'prop-missing-highlight' : undefined} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 110, maxWidth: 140, flexShrink: 0 }}>
               <span style={{ ...labelStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }} title={key}>
                 {key}{hint?.required ? <span style={{ color: '#f87171' }}> *</span> : null}
@@ -396,10 +399,12 @@ function PropsEditor({
   props,
   onChange,
   componentKey,
+  highlightKeys = [],
 }: {
   props: Record<string, unknown>;
   onChange: (p: Record<string, unknown>) => void;
   componentKey: string;
+  highlightKeys?: string[];
 }) {
   const isKnown = SCREEN_COMPONENT_KEYS.includes(componentKey);
   const isNoProps = NO_PROPS_COMPONENTS.has(componentKey);
@@ -530,7 +535,7 @@ function PropsEditor({
       </div>
 
       {tab === 'raw' ? rawJsonPanel : (
-        noPropsNotice ?? <StructuredFieldsEditor props={props} hints={hints} onChange={onChange} />
+        noPropsNotice ?? <StructuredFieldsEditor props={props} hints={hints} onChange={onChange} highlightKeys={highlightKeys} />
       )}
     </div>
   );
@@ -559,8 +564,41 @@ function SectionEditor({
     return s;
   });
 
+  const expand = (i: number) => setExpanded(prev => new Set([...prev, i]));
+
   const update = (idx: number, patch: any) => {
     onChange(sections.map((s, i) => i === idx ? { ...s, ...patch } : s));
+  };
+
+  const updateComponent = (idx: number, newComponent: string) => {
+    const section = sections[idx];
+    const currentProps = section?.props ?? {};
+    update(idx, { component: newComponent });
+    const missing = getMissingRequiredProps(newComponent, currentProps);
+    if (missing.length > 0) {
+      expand(idx);
+    }
+  };
+
+  const addMissingRequiredProps = (idx: number) => {
+    const section = sections[idx];
+    const hints = COMPONENT_PROP_HINTS[section.component] ?? {};
+    const currentProps = section?.props ?? {};
+    const missing = getMissingRequiredProps(section.component, currentProps);
+    if (missing.length === 0) return;
+    const added = { ...currentProps };
+    for (const key of missing) {
+      const hint = hints[key];
+      if (!hint) continue;
+      added[key] = hint.type === 'number' ? 0
+        : hint.type === 'boolean' ? false
+        : hint.type === 'array' ? []
+        : hint.type === 'object' ? {}
+        : hint.type === 'enum' ? (hint.options?.[0] ?? '')
+        : '';
+    }
+    onChange(sections.map((s, i) => i === idx ? { ...s, props: added } : s));
+    expand(idx);
   };
 
   const move = (from: number, to: number) => {
@@ -648,20 +686,41 @@ function SectionEditor({
               <span style={{ fontSize: 10, color: '#555', fontFamily: 'monospace' }}>{section.id}</span>
               <span style={{ fontSize: 10, color: '#444' }}>p:{section.priority}</span>
               {hasError && (
-                <span
-                  title={`Missing required props: ${missingProps.join(', ')}`}
-                  style={{
-                    fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-                    padding: '1px 5px', borderRadius: 3,
-                    background: 'rgba(248,113,113,0.15)',
-                    color: '#f87171',
-                    border: '1px solid rgba(248,113,113,0.3)',
-                    cursor: 'default',
-                    flexShrink: 0,
-                  }}
-                >
-                  missing: {missingProps.join(', ')}
-                </span>
+                <>
+                  <span
+                    title={`Missing required props: ${missingProps.join(', ')}`}
+                    style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                      padding: '1px 5px', borderRadius: 3,
+                      background: 'rgba(248,113,113,0.15)',
+                      color: '#f87171',
+                      border: '1px solid rgba(248,113,113,0.3)',
+                      cursor: 'default',
+                      flexShrink: 0,
+                    }}
+                  >
+                    missing: {missingProps.join(', ')}
+                  </span>
+                  {!isOpen && (
+                    <button
+                      type="button"
+                      title={`Add missing required props: ${missingProps.join(', ')}`}
+                      onClick={e => { e.stopPropagation(); addMissingRequiredProps(idx); }}
+                      style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+                        padding: '1px 6px', borderRadius: 3,
+                        background: 'rgba(248,113,113,0.12)',
+                        color: '#f87171',
+                        border: '1px solid rgba(248,113,113,0.5)',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        flexShrink: 0,
+                      }}
+                    >
+                      ⚡ Add missing
+                    </button>
+                  )}
+                </>
               )}
               <button
                 type="button"
@@ -690,15 +749,15 @@ function SectionEditor({
                     <span style={labelStyle}>component</span>
                     {isCustom ? (
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <input type="text" value={section.component ?? ''} onChange={e => update(idx, { component: e.target.value })} style={{ ...inputStyle, flex: 1 }} />
-                        <button type="button" style={{ ...iconButtonStyle, fontSize: 9, padding: '0 5px', width: 'auto' }} onClick={() => update(idx, { component: SCREEN_COMPONENT_KEYS[0] })}>list</button>
+                        <input type="text" value={section.component ?? ''} onChange={e => updateComponent(idx, e.target.value)} style={{ ...inputStyle, flex: 1 }} />
+                        <button type="button" style={{ ...iconButtonStyle, fontSize: 9, padding: '0 5px', width: 'auto' }} onClick={() => updateComponent(idx, SCREEN_COMPONENT_KEYS[0])}>list</button>
                       </div>
                     ) : (
                       <select
                         value={section.component || ''}
                         onChange={e => {
                           if (e.target.value === CUSTOM_SENTINEL) update(idx, { component: '' });
-                          else update(idx, { component: e.target.value });
+                          else updateComponent(idx, e.target.value);
                         }}
                         style={{ ...selectStyle, width: '100%' }}
                       >
@@ -719,6 +778,7 @@ function SectionEditor({
                     props={section.props ?? {}}
                     onChange={p => update(idx, { props: p })}
                     componentKey={section.component}
+                    highlightKeys={missingProps}
                   />
                 </div>
               </div>
