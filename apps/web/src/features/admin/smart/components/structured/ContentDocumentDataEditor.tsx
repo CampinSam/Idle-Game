@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { getMissingBlockProps } from './blockPropHints';
 import {
   containerStyle,
   entryCardStyle,
@@ -401,19 +402,24 @@ export default function ContentDocumentDataEditor({ value, onChange, blockErrors
         <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
           Blocks ({blocks.length})
         </div>
-        {blocks.map((block, idx) => (
-          <BlockEntry
-            key={idx}
-            block={block}
-            onChange={next => updateBlock(idx, next)}
-            onRemove={() => removeBlock(idx)}
-            onMoveUp={() => moveBlock(idx, idx - 1)}
-            onMoveDown={() => moveBlock(idx, idx + 1)}
-            canMoveUp={idx > 0}
-            canMoveDown={idx < blocks.length - 1}
-            missingProps={blockErrors?.get(idx)}
-          />
-        ))}
+        {blocks.map((block, idx) => {
+          const computed = getMissingBlockProps(block.type as string, block as Record<string, unknown>);
+          const external = blockErrors?.get(idx) ?? [];
+          const allMissing = [...new Set([...computed, ...external])];
+          return (
+            <BlockEntry
+              key={idx}
+              block={block}
+              onChange={next => updateBlock(idx, next)}
+              onRemove={() => removeBlock(idx)}
+              onMoveUp={() => moveBlock(idx, idx - 1)}
+              onMoveDown={() => moveBlock(idx, idx + 1)}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < blocks.length - 1}
+              missingProps={allMissing.length > 0 ? allMissing : undefined}
+            />
+          );
+        })}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button type="button" style={addButtonStyle} onClick={addBlock}>+ block</button>
         </div>
