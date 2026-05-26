@@ -225,6 +225,13 @@ export const adminApi = {
       `/nft/collections/${id}/assets?page=${page}&limit=${limit}`,
     ),
 
+  listEntities: (q?: string, limit = 50) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    params.set('limit', String(limit));
+    return adminRequest<{ id: string; name: string }[]>(`/entities?${params.toString()}`);
+  },
+
   listLocationDefs: () => adminRequest<any[]>('/locationDefinition'),
   listSeasons: () => adminRequest<any[]>('/season'),
 

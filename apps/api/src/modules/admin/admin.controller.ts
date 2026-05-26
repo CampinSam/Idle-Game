@@ -133,6 +133,41 @@ export class AdminController {
     return this.screensService.rollback(key, version, type);
   }
 
+  @Get('entities')
+  async listEntities(
+    @Query('q') query?: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+  ) {
+    const cap = Math.min(limit ?? 50, 100);
+    const q = query?.trim() ?? '';
+    type Row = { id: string; display: unknown };
+    let rows: Row[];
+    if (q) {
+      rows = await this.prisma.$queryRaw<Row[]>`
+        SELECT id, display
+        FROM entities
+        WHERE display->>'name' ILIKE ${'%' + q + '%'}
+           OR id ILIKE ${'%' + q + '%'}
+        ORDER BY display->>'name' ASC NULLS LAST
+        LIMIT ${cap}
+      `;
+    } else {
+      rows = await this.prisma.$queryRaw<Row[]>`
+        SELECT id, display
+        FROM entities
+        ORDER BY display->>'name' ASC NULLS LAST
+        LIMIT ${cap}
+      `;
+    }
+    return rows.map(r => {
+      const rawName = (r.display as any)?.name;
+      const name = typeof rawName === 'string' && rawName.trim()
+        ? rawName.trim()
+        : r.id.slice(0, 12);
+      return { id: r.id, name };
+    });
+  }
+
   @Get('players/search')
   searchPlayers(@Query('q') query: string) {
     return this.adminService.searchPlayers(query || '');

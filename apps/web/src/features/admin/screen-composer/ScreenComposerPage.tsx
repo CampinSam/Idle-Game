@@ -56,7 +56,7 @@ type DefType = typeof DEF_TYPES[number];
 // ─── Prop schema hints (from render-blocks.md) ────────────────────────────────
 
 interface PropHint {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker';
   description?: string;
   required?: boolean;
   options?: string[];
@@ -106,7 +106,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     actionLabel: { type: 'string', description: 'CTA button label (default: "JOIN")' },
   },
   EntityDetailView: {
-    entityId: { type: 'string', description: 'Entity ID to preview. When omitted the admin preview shows the first entity in the sync store.' },
+    entityId: { type: 'entityPicker', description: 'Entity ID to pin for preview. When omitted the admin preview shows the first entity in the sync store.' },
   },
   TelemetryCard: {
     telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
@@ -182,6 +182,134 @@ function Msg({ msg }: { msg: { text: string; type: 'success' | 'error' } | null 
       color: msg.type === 'success' ? '#4caf50' : '#ff6b6b',
       border: `1px solid ${msg.type === 'success' ? 'rgba(76,175,80,0.3)' : 'rgba(255,107,107,0.3)'}`,
     }}>{msg.text}</div>
+  );
+}
+
+// ─── Entity ID picker ─────────────────────────────────────────────────────────
+
+function EntityIdPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const fetchEntities = useCallback((q: string) => {
+    setLoading(true);
+    setError('');
+    adminApi.listEntities(q || undefined, 50)
+      .then(rows => { setOptions(rows); setLoading(false); })
+      .catch(e => { setError(e.message || 'Failed to load entities'); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchEntities(query), 200);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, open, fetchEntities]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const selected = options.find(o => o.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="entity id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto', padding: '0 8px', flexShrink: 0,
+            cursor: 'pointer', fontSize: 10, color: open ? '#a78bfa' : '#6b7280',
+            borderColor: open ? 'rgba(139,92,246,0.4)' : undefined,
+          }}
+          title="Pick entity"
+        >
+          {open ? '▲ pick' : '▼ pick'}
+        </button>
+      </div>
+
+      {value && selected && (
+        <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>
+          ✓ {selected.name}
+        </div>
+      )}
+      {value && !selected && options.length > 0 && !loading && (
+        <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>
+          ⚠ ID not found in current results — it may still be valid
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: '#0f0f1e', border: '1px solid rgba(139,92,246,0.3)',
+          borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden',
+        }}>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search by name…"
+            autoFocus
+            style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }}
+          />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && options.length === 0 && (
+              <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>
+                No entities found
+              </div>
+            )}
+            {options.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { onChange(opt.id); setOpen(false); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left' as const,
+                  padding: '4px 6px', background: opt.id === value ? 'rgba(139,92,246,0.15)' : 'transparent',
+                  border: 'none', borderRadius: 4, cursor: 'pointer',
+                  color: opt.id === value ? '#a78bfa' : '#c4b5fd',
+                  fontSize: 11, fontFamily: 'inherit',
+                }}
+                title={opt.id}
+              >
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -271,6 +399,7 @@ function StructuredFieldsEditor({
       {entries.map(([key, val]) => {
         const hint = hints[key];
         const ptype = hint?.type === 'enum' ? 'enum'
+          : hint?.type === 'entityPicker' ? 'entityPicker'
           : hint?.type === 'array' || hint?.type === 'object' ? 'json'
           : detectPropType(val);
         const isMissing = highlightKeys.includes(key);
@@ -285,7 +414,12 @@ function StructuredFieldsEditor({
               )}
             </div>
             <div style={{ flex: 1 }}>
-              {ptype === 'enum' ? (
+              {ptype === 'entityPicker' ? (
+                <EntityIdPicker
+                  value={String(val ?? '')}
+                  onChange={v => updateProp(key, v)}
+                />
+              ) : ptype === 'enum' ? (
                 <select
                   value={String(val ?? '')}
                   onChange={e => updateProp(key, e.target.value)}
