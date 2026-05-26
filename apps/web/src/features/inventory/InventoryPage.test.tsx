@@ -7,6 +7,7 @@ vi.mock('../../services/api', () => ({
   api: {
     sendCommand: vi.fn(),
     getCraftingWorkshops: vi.fn().mockResolvedValue([]),
+    getScreenComposition: vi.fn().mockResolvedValue(null),
     setToken: vi.fn(),
   },
 }));
@@ -63,7 +64,7 @@ describe('InventoryPage', () => {
     renderWithProviders(<InventoryPage />, {
       preloadedState: { sync: { ...baseSync } } as any,
     });
-    expect(screen.getByText('All')).toBeInTheDocument();
+    expect(screen.getAllByText('All').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Materials')).toBeInTheDocument();
     expect(screen.getByText('Consumables')).toBeInTheDocument();
     expect(screen.getByText('Gear')).toBeInTheDocument();
