@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNow } from '../../hooks/useNow';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { ScreenSectionDefinition } from '@derp/shared';
 import {
   useSyncEntities,
@@ -14,7 +14,7 @@ import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
 import { BannerCarousel } from '../home/BannerCarousel';
 import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
 import { api } from '../../services/api';
-import { EntityList } from '../entities/components';
+import { EntityList, EntityDetail } from '../entities/components';
 import EntityDetailContent from '../entities/EntityDetailContent';
 import { normalizeFilter } from '../entities/entityListUtils';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
@@ -878,8 +878,54 @@ function EntityRosterComp(_: ScreenComponentProps) {
   );
 }
 
-function EntityDetailViewComp(_: ScreenComponentProps) {
-  return <EntityDetailContent />;
+function EntityDetailViewComp({ section }: ScreenComponentProps) {
+  const { id: routeId } = useParams<{ id: string }>();
+
+  // At runtime on /entities/:id the route param is present — delegate to the
+  // full page component which handles navigation, rename menu, swipe, etc.
+  if (routeId) {
+    return <EntityDetailContent />;
+  }
+
+  // ── Admin preview context (no :id in URL) ────────────────────────────────
+  // Use the optional entityId prop, otherwise fall back to the first entity in
+  // the sync store so the preview panel always shows something meaningful.
+  return <EntityDetailPreview section={section} onAction={() => {}} />;
+}
+
+function EntityDetailPreview({ section }: ScreenComponentProps) {
+  const entities = useSyncEntities();
+  const entityId = section.props?.entityId as string | undefined;
+
+  const entity = entityId
+    ? entities.find((e: any) => e.id === entityId)
+    : entities[0];
+
+  if (!entity) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+        <span className="text-3xl opacity-40">🪶</span>
+        <div className="text-[13px] font-bold text-text-secondary">No entity to preview</div>
+        <div className="text-[11px] text-text-secondary/60 max-w-[220px] leading-relaxed">
+          {entityId
+            ? `Entity "${entityId}" not found in sync store.`
+            : 'No entities loaded. Set an entityId prop or ensure the sync store is populated.'}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+      {!entityId && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-[10px] text-amber-400/80">
+          <span>⚠️</span>
+          <span>Preview — showing first entity. Set <code className="font-mono bg-black/20 px-1 rounded">entityId</code> prop to pin a specific entity.</span>
+        </div>
+      )}
+      <EntityDetail entity={entity} variant="full" />
+    </div>
+  );
 }
 
 function makeStub(key: string): ScreenComponentType {

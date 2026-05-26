@@ -105,6 +105,9 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     actionKey: { type: 'string', description: 'Action key for CTA button. Button hidden if omitted.' },
     actionLabel: { type: 'string', description: 'CTA button label (default: "JOIN")' },
   },
+  EntityDetailView: {
+    entityId: { type: 'string', description: 'Entity ID to preview. When omitted the admin preview shows the first entity in the sync store.' },
+  },
   TelemetryCard: {
     telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
     displayType: {
@@ -1360,7 +1363,7 @@ function ScreenComposer() {
   const [defs, setDefs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<'all' | DefType>('all');
+  const [filterType, setFilterType] = useState<'all' | DefType | 'entities'>('all');
   const [selected, setSelected] = useState<any | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [dupeSource, setDupeSource] = useState<any | null>(null);
@@ -1437,7 +1440,11 @@ function ScreenComposer() {
   };
 
   const filtered = useMemo(() => defs.filter(d => {
-    if (filterType !== 'all' && d.type !== filterType) return false;
+    if (filterType === 'entities') {
+      if (!d.key.toLowerCase().includes('entit')) return false;
+    } else if (filterType !== 'all' && d.type !== filterType) {
+      return false;
+    }
     if (search && !d.key.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   }), [defs, filterType, search]);
@@ -1473,14 +1480,27 @@ function ScreenComposer() {
             + New Definition
           </button>
           <input type="text" placeholder="Filter by key…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
-          <div style={{ display: 'flex', gap: 3 }}>
-            {(['all', 'screen_composition', 'content_document'] as const).map(t => (
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' as const }}>
+            {(['all', 'screen_composition', 'content_document', 'entities'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setFilterType(t)}
-                style={{ flex: 1, padding: '0.22rem 0', border: '1px solid #2a2a4e', borderRadius: 4, background: filterType === t ? 'rgba(139,92,246,0.15)' : 'transparent', color: filterType === t ? '#a78bfa' : '#666', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em' }}
+                style={{
+                  flex: '1 1 auto', padding: '0.22rem 0', border: '1px solid',
+                  borderRadius: 4,
+                  background: filterType === t
+                    ? t === 'entities' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.15)'
+                    : 'transparent',
+                  color: filterType === t
+                    ? t === 'entities' ? '#10b981' : '#a78bfa'
+                    : '#666',
+                  borderColor: filterType === t
+                    ? t === 'entities' ? 'rgba(16,185,129,0.4)' : 'rgba(139,92,246,0.3)'
+                    : '#2a2a4e',
+                  cursor: 'pointer', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em',
+                }}
               >
-                {t === 'all' ? 'All' : t === 'screen_composition' ? 'Screen' : 'Content'}
+                {t === 'all' ? 'All' : t === 'screen_composition' ? 'Screen' : t === 'content_document' ? 'Content' : '🪶 Entity'}
               </button>
             ))}
           </div>

@@ -773,7 +773,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   EntityDetailView: {
     friendlyName: 'Entity Detail View',
-    description: 'Full entity detail page including header, navigation arrows, rename menu, and tabbed stats panel. Reads entity from the URL :id param. Use with pass_through layout on the /entities/:id screen.',
+    description: 'Full entity detail panel including header, stats, and equipment. Optionally pin a specific entity via the entityId prop; otherwise previews the first entity in the sync store. Use with pass_through layout on the /entities/:id screen.',
     group: 'Entities',
     color: '#10b981',
     preview: () => P.wrap(
@@ -800,7 +800,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard', 'EntityRoster', 'EntityDetailView',
+  'SeasonProgressCard', 'EntityRoster',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
