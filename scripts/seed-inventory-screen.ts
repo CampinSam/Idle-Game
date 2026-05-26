@@ -12,7 +12,7 @@ const inventoryScreenData = {
   sections: [
     {
       id: 'inventory-item-list-main',
-      component: 'InventoryItemList',
+      component: 'InventoryItemBrowser',
       priority: 10,
       props: {},
     },

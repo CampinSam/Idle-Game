@@ -33,7 +33,7 @@ const SCREEN_COMPONENT_KEYS = [
   'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
   'InventoryCategoryGrid', 'WalletPromptCard', 'NFTCapacityInfoCard',
   'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
-  'EntityRoster', 'EntityDetailView', 'InventoryItemList',
+  'EntityRoster', 'EntityDetailView', 'InventoryItemBrowser',
 ];
 
 const LAYOUT_TYPES: { value: string; label: string }[] = [

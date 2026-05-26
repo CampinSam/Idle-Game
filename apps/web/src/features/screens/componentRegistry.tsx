@@ -940,7 +940,7 @@ function makeStub(key: string): ScreenComponentType {
   };
 }
 
-function InventoryItemListComp(_: ScreenComponentProps) {
+function InventoryItemBrowserComp(_: ScreenComponentProps) {
   return <InventoryContent />;
 }
 
@@ -987,5 +987,5 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   GemPackGrid: makeStub('GemPackGrid'),
   EntityRoster: EntityRosterComp,
   EntityDetailView: EntityDetailViewComp,
-  InventoryItemList: InventoryItemListComp,
+  InventoryItemBrowser: InventoryItemBrowserComp,
 };

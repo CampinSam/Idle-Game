@@ -199,7 +199,7 @@ export type ScreenComponentKey =
   | 'GemPackGrid'
   | 'EntityRoster'
   | 'EntityDetailView'
-  | 'InventoryItemList'
+  | 'InventoryItemBrowser'
   | (string & Record<never, never>);
 
 // ─── Layout ───────────────────────────────────────────────────────────────────

@@ -9,11 +9,12 @@ export type ComponentGroup =
   | 'Progress'
   | 'News'
   | 'Entities'
+  | 'Inventory'
   | 'Utility';
 
 export const COMPONENT_GROUP_ORDER: ComponentGroup[] = [
   'Core HUD', 'Daily / Events', 'Missions', 'Crafting',
-  'Store', 'Progress', 'News', 'Entities', 'Utility',
+  'Store', 'Progress', 'News', 'Entities', 'Inventory', 'Utility',
 ];
 
 export interface ComponentMeta {
@@ -771,10 +772,10 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
-  InventoryItemList: {
-    friendlyName: 'Inventory Item List',
+  InventoryItemBrowser: {
+    friendlyName: 'Inventory Item Browser',
     description: 'Full inventory screen — item grid with category tabs, search, rarity/sort filters, detail panel, and equip/use/open action flows. All data from sync store. Use with pass_through layout on the /inventory screen.',
-    group: 'Entities',
+    group: 'Inventory',
     color: '#10b981',
     preview: () => P.wrap(
       <>
@@ -823,7 +824,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard', 'EntityRoster', 'InventoryItemList',
+  'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
