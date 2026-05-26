@@ -18,6 +18,7 @@ import { EntityList, EntityDetail } from '../entities/components';
 import EntityDetailContent from '../entities/EntityDetailContent';
 import { normalizeFilter } from '../entities/entityListUtils';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
+import InventoryContent from '../inventory/InventoryContent';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -939,6 +940,10 @@ function makeStub(key: string): ScreenComponentType {
   };
 }
 
+function InventoryItemListComp(_: ScreenComponentProps) {
+  return <InventoryContent />;
+}
+
 export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
@@ -982,4 +987,5 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   GemPackGrid: makeStub('GemPackGrid'),
   EntityRoster: EntityRosterComp,
   EntityDetailView: EntityDetailViewComp,
+  InventoryItemList: InventoryItemListComp,
 };

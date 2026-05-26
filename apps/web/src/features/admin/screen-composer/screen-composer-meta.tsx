@@ -771,6 +771,29 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  InventoryItemList: {
+    friendlyName: 'Inventory Item List',
+    description: 'Full inventory screen — item grid with category tabs, search, rarity/sort filters, detail panel, and equip/use/open action flows. All data from sync store. Use with pass_through layout on the /inventory screen.',
+    group: 'Entities',
+    color: '#10b981',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          {['All', 'Gear', 'Consumables', 'Materials'].map((label, i) => (
+            <div key={i} style={{ flex: i === 0 ? 0 : 1, padding: '3px 6px', borderRadius: 20, background: i === 0 ? '#10b98122' : 'rgba(255,255,255,0.05)', border: `1px solid ${i === 0 ? '#10b98144' : 'rgba(255,255,255,0.08)'}` }}>
+              <span style={{ fontSize: 7, color: i === 0 ? '#6ee7b7' : '#888' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 3 }}>
+          {['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f472b6', '#34d399'].map((c, i) => (
+            <div key={i} style={{ height: 30, borderRadius: 5, background: `${c}22`, border: `1px solid ${c}44` }} />
+          ))}
+        </div>
+      </>
+    ),
+  },
+
   EntityDetailView: {
     friendlyName: 'Entity Detail View',
     description: 'Full entity detail panel including header, stats, and equipment. Optionally pin a specific entity via the entityId prop; otherwise previews the first entity in the sync store. Use with pass_through layout on the /entities/:id screen.',
@@ -800,7 +823,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard', 'EntityRoster',
+  'SeasonProgressCard', 'EntityRoster', 'InventoryItemList',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
