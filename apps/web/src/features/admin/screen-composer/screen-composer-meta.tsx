@@ -10,11 +10,12 @@ export type ComponentGroup =
   | 'News'
   | 'Entities'
   | 'Inventory'
+  | 'Outposts'
   | 'Utility';
 
 export const COMPONENT_GROUP_ORDER: ComponentGroup[] = [
   'Core HUD', 'Daily / Events', 'Missions', 'Crafting',
-  'Store', 'Progress', 'News', 'Entities', 'Inventory', 'Utility',
+  'Store', 'Progress', 'News', 'Entities', 'Inventory', 'Outposts', 'Utility',
 ];
 
 export interface ComponentMeta {
@@ -588,6 +589,71 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  ForgeBrowser: {
+    friendlyName: 'Forge / Workshop',
+    description: 'Full crafting workshop page — recipe picker, entity selector, live outcome preview, active jobs list, and swipe navigation between building pages. Resolves workshop by URL :id param. Use with pass_through layout on the /locations/:id/workshop screen.',
+    group: 'Outposts',
+    color: '#f59e0b',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ height: 7, borderRadius: 3, background: '#f59e0b55', width: '50%' }} />
+          <div style={{ display: 'flex', gap: 3 }}>
+            <div style={{ height: 14, width: 28, borderRadius: 4, background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)' }} />
+            <div style={{ height: 14, width: 32, borderRadius: 4, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 4 }}>
+          {P.card(<div style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚗️</div>)}
+          {P.card(<div style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#34d399' }}>100%</div>)}
+        </div>
+        {P.card(<div style={{ height: 12 }} />)}
+      </>
+    ),
+  },
+
+  LocationDetailBrowser: {
+    friendlyName: 'Location Detail',
+    description: 'Full outpost detail page — resolves the outpost by URL :id param and renders its type-specific Page component (DerpOutpost, default, etc.). Use with pass_through layout on the /locations/:id screen.',
+    group: 'Outposts',
+    color: '#60a5fa',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <div style={{ width: 22, height: 22, borderRadius: 5, background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>🏠</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 7, borderRadius: 3, background: '#60a5fa55', width: '65%' }} />
+            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', width: '40%', marginTop: 3 }} />
+          </div>
+        </div>
+        {[1, 2, 3].map(i => P.card(<div key={i} style={{ height: 14, opacity: 0.4 }} />))}
+      </>
+    ),
+  },
+
+  LocationBrowser: {
+    friendlyName: 'Location Browser',
+    description: 'Full outposts/locations screen — slot counter, primary outpost card, and secondary outpost list. All data from sync store. Use with pass_through layout on the /locations screen.',
+    group: 'Outposts',
+    color: '#60a5fa',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+          <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Outpost Slots</span>
+          <div style={{ padding: '2px 7px', borderRadius: 20, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.4)' }}>
+            <span style={{ fontSize: 8, color: '#c4b5fd', fontWeight: 700 }}>2 / 4</span>
+          </div>
+        </div>
+        <div style={{ height: 32, borderRadius: 7, background: 'linear-gradient(135deg, #1e1b4b, #312e81)', border: '1px solid rgba(139,92,246,0.3)', marginBottom: 4 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+          {['#60a5fa', '#818cf8'].map((c, i) => (
+            <div key={i} style={{ height: 26, borderRadius: 5, background: `${c}22`, border: `1px solid ${c}44` }} />
+          ))}
+        </div>
+      </>
+    ),
+  },
+
   OutpostReadyList: {
     friendlyName: 'Outpost Ready List',
     description: 'Lists outposts with completed production ready to collect. Stub in current build.',
@@ -848,6 +914,7 @@ export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
   'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
+  'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */

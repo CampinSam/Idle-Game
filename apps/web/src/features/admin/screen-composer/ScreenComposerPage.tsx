@@ -34,6 +34,7 @@ const SCREEN_COMPONENT_KEYS = [
   'InventoryCategoryGrid', 'WalletPromptCard', 'NFTCapacityInfoCard',
   'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
   'EntityRoster', 'EntityDetailView', 'InventoryItemBrowser', 'MissionBrowser',
+  'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser',
 ];
 
 const LAYOUT_TYPES: { value: string; label: string }[] = [

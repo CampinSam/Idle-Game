@@ -20,6 +20,9 @@ import { normalizeFilter } from '../entities/entityListUtils';
 import type { EntityFilter, EntitySortBy } from '../entities/types';
 import InventoryContent from '../inventory/InventoryContent';
 import MissionsContent from '../missions/MissionsContent';
+import LocationsContent from '../locations/LocationsContent';
+import LocationDetailContent from '../locations/LocationDetailContent';
+import ForgeContent from '../forge/ForgeContent';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -949,6 +952,18 @@ function MissionBrowserComp(_: ScreenComponentProps) {
   return <MissionsContent />;
 }
 
+function LocationBrowserComp(_: ScreenComponentProps) {
+  return <LocationsContent />;
+}
+
+function LocationDetailBrowserComp(_: ScreenComponentProps) {
+  return <LocationDetailContent />;
+}
+
+function ForgeBrowserComp(_: ScreenComponentProps) {
+  return <ForgeContent />;
+}
+
 export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
@@ -994,4 +1009,7 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   EntityDetailView: EntityDetailViewComp,
   InventoryItemBrowser: InventoryItemBrowserComp,
   MissionBrowser: MissionBrowserComp,
+  LocationBrowser: LocationBrowserComp,
+  LocationDetailBrowser: LocationDetailBrowserComp,
+  ForgeBrowser: ForgeBrowserComp,
 };
