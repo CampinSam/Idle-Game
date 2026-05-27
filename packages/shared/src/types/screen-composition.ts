@@ -200,6 +200,7 @@ export type ScreenComponentKey =
   | 'EntityRoster'
   | 'EntityDetailView'
   | 'InventoryItemBrowser'
+  | 'MissionBrowser'
   | (string & Record<never, never>);
 
 // ─── Layout ───────────────────────────────────────────────────────────────────

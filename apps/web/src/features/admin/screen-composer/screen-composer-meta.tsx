@@ -291,6 +291,29 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  MissionBrowser: {
+    friendlyName: 'Mission Browser',
+    description: 'Full missions screen — category grid, mission list, activity panel, and mission builder flow. All data from sync store and game slice. Use with pass_through layout on the /missions screen.',
+    group: 'Missions',
+    color: '#a78bfa',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          {['Combat', 'Gather', 'Explore', 'Trade'].map((label, i) => (
+            <div key={label} style={{ flex: 1, padding: '3px 0', borderRadius: 6, background: i === 0 ? '#a78bfa22' : 'rgba(255,255,255,0.05)', border: `1px solid ${i === 0 ? '#a78bfa44' : 'rgba(255,255,255,0.08)'}`, textAlign: 'center' }}>
+              <span style={{ fontSize: 7, color: i === 0 ? '#c4b5fd' : '#888' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+          {['#a78bfa', '#8b5cf6', '#7c3aed', '#6d28d9'].map((c, i) => (
+            <div key={i} style={{ height: 26, borderRadius: 5, background: `${c}22`, border: `1px solid ${c}44` }} />
+          ))}
+        </div>
+      </>
+    ),
+  },
+
   MissionCategoryRail: {
     friendlyName: 'Mission Category Rail',
     description: 'Horizontal scrollable rail of mission category chips. Stub in current build.',
@@ -824,7 +847,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
-  'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser',
+  'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
