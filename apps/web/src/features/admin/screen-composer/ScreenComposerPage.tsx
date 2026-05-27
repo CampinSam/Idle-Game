@@ -35,6 +35,7 @@ const SCREEN_COMPONENT_KEYS = [
   'PatchNotesCard', 'SeasonProgressCard', 'EventCountdownCard', 'TelemetryCard',
   'EntityRoster', 'EntityDetailView', 'InventoryItemBrowser', 'MissionBrowser',
   'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
+  'AchievementsBrowser', 'ProfileBrowser', 'RewardsBrowser', 'SettingsBrowser',
 ];
 
 const LAYOUT_TYPES: { value: string; label: string }[] = [

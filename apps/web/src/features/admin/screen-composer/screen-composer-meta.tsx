@@ -589,6 +589,32 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  SettingsBrowser: {
+    friendlyName: 'Settings',
+    description: 'Full settings page — audio bus volume sliders, linked wallet management (EVM/Cardano), NFT resync, and password/security tab. All data from Redux auth + audioEngine. Use with pass_through layout on the /settings screen.',
+    group: 'Utility',
+    color: '#94a3b8',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+          {['🎵 Audio','🔗 Wallet','🔒 Security'].map((t, i) => (
+            <div key={i} style={{ flex: 1, fontSize: 7, textAlign: 'center', padding: '3px 0', borderRadius: 4, background: i === 0 ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.05)', color: i === 0 ? '#c4b5fd' : 'rgba(255,255,255,0.4)', borderBottom: i === 0 ? '2px solid #7c3aed' : '2px solid transparent' }}>{t}</div>
+          ))}
+        </div>
+        {['Music','SFX','UI','Ambient'].map((l, i) => (
+          <div key={l} style={{ display: 'grid', gridTemplateColumns: '10px 28px 1fr 12px', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 8 }}>{'🎵💥🔔🌿'[i]}</div>
+            <div style={{ fontSize: 7, color: '#b8b8ff' }}>{l}</div>
+            <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${[80,60,70,40][i]}%`, background: '#818cf8', borderRadius: 2 }} />
+            </div>
+            <div style={{ fontSize: 7, color: '#666', textAlign: 'right' }}>{[80,60,70,40][i]}</div>
+          </div>
+        ))}
+      </>
+    ),
+  },
+
   StoreBrowser: {
     friendlyName: 'Store',
     description: 'Full in-game store — featured items, gem packs (Stripe + crypto), currency/bundle/item tabs, Derp Pass banner, and payment modals. All data fetched client-side. Use with pass_through layout on the /store screen.',
@@ -606,6 +632,90 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
         </div>
         {P.card(
           <div style={{ height: 10, background: 'rgba(251,191,36,0.2)', borderRadius: 4 }} />
+        )}
+      </>
+    ),
+  },
+
+  AchievementsBrowser: {
+    friendlyName: 'Achievements',
+    description: 'Full achievements page — progress bar, sorted achievement cards (completed, active, not started, claimed). All data from sync store. Use with pass_through layout on the /achievements screen.',
+    group: 'Progress',
+    color: '#ffd76a',
+    preview: () => P.wrap(
+      <>
+        {P.card(
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 10 }}>🏆</div>
+            <div style={{ flex: 1 }}>{P.bar('60%', '#ffd76a')}</div>
+            <div style={{ fontSize: 8, color: '#ffd76a' }}>60%</div>
+          </div>,
+          { border: '1px solid rgba(255,215,0,0.2)' }
+        )}
+        {[0,1,2].map(i => P.card(
+          <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: i === 0 ? '#22c55e' : i === 1 ? '#818cf8' : 'rgba(255,255,255,0.15)' }} />
+            {P.bar(i === 0 ? '80%' : i === 1 ? '55%' : '40%', i === 0 ? '#22c55e' : '#818cf8')}
+          </div>
+        ))}
+      </>
+    ),
+  },
+
+  ProfileBrowser: {
+    friendlyName: 'Profile',
+    description: 'Player profile page — avatar initials, username/email, keeper level badge, member-since date. All data from Redux auth state. Use with pass_through layout on the /profile screen.',
+    group: 'Utility',
+    color: '#c4b5fd',
+    preview: () => P.wrap(
+      <>
+        {P.card(
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'linear-gradient(135deg,#6D28D9,#4C1D95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, color: '#e2d9ff', fontWeight: 700 }}>KP</div>
+            <div style={{ flex: 1 }}>
+              {P.bar('65%', '#c4b5fd')}
+              <div style={{ marginTop: 3 }}>{P.bar('35%', '#818cf8')}</div>
+            </div>
+          </div>,
+          { border: '1px solid rgba(139,92,246,0.2)' }
+        )}
+        {['Username','Email','Level','Since'].map(l => (
+          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: '1px solid rgba(139,92,246,0.1)' }}>
+            <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{l}</div>
+            {P.bar('30%', '#c4b5fd')}
+          </div>
+        ))}
+      </>
+    ),
+  },
+
+  RewardsBrowser: {
+    friendlyName: 'Rewards',
+    description: 'Rewards hub — daily check-in calendar, pending gift claim list, and active quest list. All data from sync store. Use with pass_through layout on the /rewards screen.',
+    group: 'Daily / Events',
+    color: '#a78bfa',
+    preview: () => P.wrap(
+      <>
+        {P.card(
+          <>
+            {P.bar('45%', '#a78bfa')}
+            <div style={{ marginTop: 4, display: 'flex', gap: 3 }}>
+              {[0,1,2,3,4,5,6].map(i => (
+                <div key={i} style={{ flex: 1, height: 10, borderRadius: 3, background: i < 3 ? 'rgba(167,139,250,0.4)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(167,139,250,0.2)' }} />
+              ))}
+            </div>
+          </>,
+          { border: '1px solid rgba(139,92,246,0.25)' }
+        )}
+        {P.card(
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(139,92,246,0.2)' }} />
+              {P.bar('50px', '#e2d9ff')}
+            </div>
+            <div style={{ fontSize: 8, color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.4)', padding: '1px 5px', borderRadius: 4 }}>Claim</div>
+          </div>,
+          { border: '1px solid rgba(139,92,246,0.25)' }
         )}
       </>
     ),
@@ -937,6 +1047,7 @@ export const NO_PROPS_COMPONENTS = new Set([
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
   'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
   'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
+  'AchievementsBrowser', 'ProfileBrowser', 'RewardsBrowser', 'SettingsBrowser',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */

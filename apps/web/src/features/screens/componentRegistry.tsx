@@ -24,6 +24,10 @@ import LocationsContent from '../locations/LocationsContent';
 import LocationDetailContent from '../locations/LocationDetailContent';
 import ForgeContent from '../forge/ForgeContent';
 import StoreContent from '../store/StoreContent';
+import AchievementsContent from '../achievements/AchievementsContent';
+import ProfileContent from '../profile/ProfileContent';
+import RewardsContent from '../rewards/RewardsContent';
+import SettingsContent from '../settings/SettingsContent';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -969,6 +973,22 @@ function StoreBrowserComp(_: ScreenComponentProps) {
   return <StoreContent />;
 }
 
+function AchievementsBrowserComp(_: ScreenComponentProps) {
+  return <AchievementsContent />;
+}
+
+function ProfileBrowserComp(_: ScreenComponentProps) {
+  return <ProfileContent />;
+}
+
+function RewardsBrowserComp(_: ScreenComponentProps) {
+  return <RewardsContent />;
+}
+
+function SettingsBrowserComp(_: ScreenComponentProps) {
+  return <SettingsContent />;
+}
+
 export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
@@ -1018,4 +1038,8 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   LocationDetailBrowser: LocationDetailBrowserComp,
   ForgeBrowser: ForgeBrowserComp,
   StoreBrowser: StoreBrowserComp,
+  AchievementsBrowser: AchievementsBrowserComp,
+  ProfileBrowser: ProfileBrowserComp,
+  RewardsBrowser: RewardsBrowserComp,
+  SettingsBrowser: SettingsBrowserComp,
 };

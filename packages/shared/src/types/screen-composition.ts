@@ -205,6 +205,10 @@ export type ScreenComponentKey =
   | 'LocationDetailBrowser'
   | 'ForgeBrowser'
   | 'StoreBrowser'
+  | 'AchievementsBrowser'
+  | 'ProfileBrowser'
+  | 'RewardsBrowser'
+  | 'SettingsBrowser'
   | (string & Record<never, never>);
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
