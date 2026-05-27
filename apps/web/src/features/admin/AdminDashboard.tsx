@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout } from 'lucide-react';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout, Wallet } from 'lucide-react';
 import { adminApi, getAdminKey, setAdminKey } from './adminApi';
 import { GodModePanel } from './GodModePanel';
+import { CryptoAdminPage } from './CryptoAdminPage';
 import './admin.css';
 
 const DEV_ADMIN_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
@@ -1234,7 +1235,7 @@ function NftCollectionsPanel() {
   );
 }
 
-type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft';
+type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft' | 'crypto';
 
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'players', label: 'Player Editor', icon: Users },
@@ -1242,6 +1243,7 @@ const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'events', label: 'Events & Gifts', icon: Gift },
   { key: 'nft', label: 'NFT Collections', icon: Layers },
+  { key: 'crypto', label: 'Crypto Wallet', icon: Wallet },
   { key: 'tools', label: 'Tools', icon: Wrench },
 ];
 
@@ -1316,6 +1318,7 @@ function Dashboard() {
         {tab === 'notifications' && <NotificationPanel />}
         {tab === 'events' && <EventGiftPanel />}
         {tab === 'nft' && <NftCollectionsPanel />}
+        {tab === 'crypto' && <CryptoAdminPage />}
         {tab === 'tools' && <ToolsPanel />}
       </div>
     </div>

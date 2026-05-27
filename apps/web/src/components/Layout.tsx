@@ -144,6 +144,15 @@ export default function Layout() {
                     Achievements
                   </button>
                   <button
+                    className="top-bar-menu-profile"
+                    onClick={() => {
+                      navigate("/crypto");
+                      setShowMenu(false);
+                    }}
+                  >
+                    DERP Wallet
+                  </button>
+                  <button
                     className="top-bar-menu-logout"
                     onClick={handleLogout}
                   >
@@ -163,6 +172,7 @@ export default function Layout() {
                   "soft_arcanium",
                   "hard_essence",
                   "premium_gems",
+                  "crypto_derp",
                 ];
                 const visible = (currencyDefs ?? [])
                   .filter((d: any) => d?.enabled !== false)
@@ -173,8 +183,7 @@ export default function Layout() {
                       String(a?.id ?? "").localeCompare(String(b?.id ?? "")),
                   )
                   .slice(0, 6);
-                //const ids = visible.length > 0 ? visible.map((d: any) => d.id) : FALLBACK;
-                const ids = FALLBACK;
+                const ids = visible.length > 0 ? visible.map((d: any) => d.id) : FALLBACK;
                 return ids.map((id: string) => (
                   <div key={id} className="top-bar-currency">
                     <ItemQty

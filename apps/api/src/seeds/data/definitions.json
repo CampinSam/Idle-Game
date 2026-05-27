@@ -1,6 +1,18 @@
 {
   "currencies": [
     {
+      "id": "crypto_derp",
+      "name": "DERP",
+      "symbol": "DERP",
+      "iconKey": "crypto_derp",
+      "type": "CRYPTO",
+      "seasonId": null,
+      "isTradeable": false,
+      "isSpendable": true,
+      "decimals": 0,
+      "cap": null
+    },
+    {
       "id": "hard_essence",
       "name": "Essence",
       "symbol": "💠",

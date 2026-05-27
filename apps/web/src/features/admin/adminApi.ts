@@ -275,6 +275,28 @@ export const adminApi = {
     });
   },
 
+  getCryptoConfig: () => adminRequest<any>('/crypto/config'),
+  updateCryptoConfig: (data: {
+    hotWalletAddress?: string;
+    blockfrostProjectId?: string;
+    cntPolicyId?: string;
+    cntAssetName?: string;
+    cntPriceAda?: number;
+    minWithdrawalType?: string;
+    minWithdrawalAmount?: number;
+    withdrawalFee?: number;
+    autoApprovalThreshold?: number;
+  }) => adminRequest<any>('/crypto/config', { method: 'PUT', body: JSON.stringify(data) }),
+  getCryptoBalance: () => adminRequest<{ ada: string; cnt: string } | null>('/crypto/balance'),
+  getCryptoWithdrawals: (status?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (limit) params.set('limit', String(limit));
+    return adminRequest<any[]>(`/crypto/withdrawals?${params.toString()}`);
+  },
+  updateCryptoWithdrawal: (id: string, data: { status?: string; txHash?: string; adminNote?: string }) =>
+    adminRequest<any>(`/crypto/withdrawals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   listPlayerWallets: (userId: string) =>
     adminRequest<Array<{ id: string; chain: string; address: string; isPrimary: boolean; createdAt: string }>>(
       `/players/${userId}/wallets`,

@@ -1594,3 +1594,137 @@ Supported triggers: `job.completed`, `job.failed`, `job.ready`
 | `image` | `assetKey?`, `caption?` | Full-width image |
 | `divider` | — | Horizontal rule |
 | `key_value_row` | `label`, `value` | Single label/value pair |
+
+---
+
+## Crypto Wallet — `/api/admin/crypto`
+
+All endpoints require `X-Admin-Key` header.
+
+### `GET /api/admin/crypto/config`
+Get the current hot wallet configuration.
+
+**Response:**
+```json
+{
+  "id": "default",
+  "hotWalletAddress": "addr1...",
+  "blockfrostProjectId": "mainnetXXXXXXXXXX",
+  "cntPolicyId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6",
+  "cntAssetName": "45525020434f494e",
+  "cntPriceAda": 0.001,
+  "minWithdrawalType": "QUANTITY",
+  "minWithdrawalAmount": 1,
+  "withdrawalFee": "0",
+  "autoApprovalThreshold": "0",
+  "processedTxHashes": [],
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+---
+
+### `PUT /api/admin/crypto/config`
+Update hot wallet configuration.
+
+**Body (all fields optional):**
+```json
+{
+  "hotWalletAddress": "addr1...",
+  "blockfrostProjectId": "mainnetXXXXXXXXXX",
+  "cntPolicyId": "hex56chars",
+  "cntAssetName": "hexAssetName",
+  "cntPriceAda": 0.001,
+  "minWithdrawalType": "QUANTITY",
+  "minWithdrawalAmount": 100,
+  "withdrawalFee": 10,
+  "autoApprovalThreshold": 1000
+}
+```
+- `minWithdrawalType`: `"QUANTITY"` | `"ADA_VALUE"` | `"USD_VALUE"`
+- `cntPriceAda`: Admin-set ADA price per 1 CNT unit (e.g. `0.001`). Required for `ADA_VALUE` / `USD_VALUE` minimum checks — the service fetches live ADA/USD via CoinGecko to convert to USD. Set to `0` to disable value-based minimums (falls back to quantity check).
+
+---
+
+### `GET /api/admin/crypto/balance`
+Fetch the hot wallet's current ADA and CNT balance from Blockfrost.
+
+**Response:**
+```json
+{ "ada": "12.345678", "cnt": "50000" }
+```
+Returns `null` if `BLOCKFROST_API_KEY` is not set or wallet address is unconfigured.
+
+---
+
+### `GET /api/admin/crypto/withdrawals`
+List withdrawal requests.
+
+**Query:** `status` (optional: `PENDING` | `APPROVED` | `REJECTED` | `SENT`), `limit` (default 50)
+
+**Response:** `CryptoWithdrawal[]` with `user` nested object
+
+---
+
+### `PUT /api/admin/crypto/withdrawals/:id`
+Update a withdrawal request (set status, attach tx hash, add admin note).
+
+**Body:**
+```json
+{
+  "status": "SENT",
+  "txHash": "cardano-tx-hash-here",
+  "adminNote": "Processed manually"
+}
+```
+
+---
+
+## Crypto Wallet (Player) — `/api/crypto`
+
+All endpoints require `Authorization: Bearer <jwt>`.
+
+### `GET /api/crypto/deposit-info`
+Get the hot wallet deposit address.
+
+**Response:**
+```json
+{
+  "hotWalletAddress": "addr1...",
+  "currencyId": "crypto_derp",
+  "cntAssetId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f645045525020434f494e",
+  "note": "Send DERP COIN to the deposit address..."
+}
+```
+
+---
+
+### `POST /api/crypto/withdraw`
+Request an on-chain withdrawal. Deducts from balance immediately; creates a withdrawal record.
+
+**Body:**
+```json
+{
+  "amount": 500,
+  "destinationAddress": "addr1..."
+}
+```
+`destinationAddress` is optional — defaults to the user's primary linked Cardano wallet.
+
+**Response:** `CryptoWithdrawal` object
+
+---
+
+### `GET /api/crypto/withdrawals`
+List the authenticated player's withdrawal history.
+
+**Query:** `limit` (default 20)
+
+---
+
+### `GET /api/crypto/deposits`
+List the authenticated player's on-chain deposit history (ledger entries with sourceType `CRYPTO_DEPOSIT`).
+
+**Query:** `limit` (default 20)
+

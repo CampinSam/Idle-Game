@@ -15,11 +15,12 @@ import { CommandsModule } from '../commands/commands.module';
 import { PlayerModule } from '../player/player.module';
 import { AuthModule } from '../auth/auth.module';
 import { ScreensModule } from '../screens/screens.module';
+import { PaymentModule } from '../payment/payment.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule, CraftingModule, CommandsModule, PlayerModule, AuthModule, ScreensModule],
+  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule, CraftingModule, CommandsModule, PlayerModule, AuthModule, ScreensModule, PaymentModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

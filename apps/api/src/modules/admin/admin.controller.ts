@@ -11,6 +11,7 @@ import { GiftService } from '../gift/gift.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
 import { WalletService } from '../player/wallet.service';
+import { CryptoWalletService } from '../payment/crypto-wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
@@ -30,6 +31,7 @@ export class AdminController {
     private settlementService: LocationSettlementService,
     private nftCollectionService: NftCollectionService,
     private walletService: WalletService,
+    private cryptoWalletService: CryptoWalletService,
     private prisma: PrismaService,
     private authService: AuthService,
   ) {}
@@ -777,6 +779,51 @@ export class AdminController {
     },
   ) {
     return this.adminService.updateAdminGemPack(packId, body);
+  }
+
+  // ─── Crypto Wallet Admin ─────────────────────────────────────────────────────
+
+  @Get('crypto/config')
+  getCryptoConfig() {
+    return this.cryptoWalletService.getConfig();
+  }
+
+  @Put('crypto/config')
+  updateCryptoConfig(
+    @Body() body: {
+      hotWalletAddress?: string;
+      blockfrostProjectId?: string;
+      cntPolicyId?: string;
+      cntAssetName?: string;
+      cntPriceAda?: number;
+      minWithdrawalType?: string;
+      minWithdrawalAmount?: number;
+      withdrawalFee?: number;
+      autoApprovalThreshold?: number;
+    },
+  ) {
+    return this.cryptoWalletService.updateConfig(body);
+  }
+
+  @Get('crypto/balance')
+  getCryptoBalance() {
+    return this.cryptoWalletService.getHotWalletBalance();
+  }
+
+  @Get('crypto/withdrawals')
+  getCryptoWithdrawals(
+    @Query('status') status?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.cryptoWalletService.adminGetWithdrawals(status, limit ? parseInt(limit, 10) : 50);
+  }
+
+  @Put('crypto/withdrawals/:id')
+  updateCryptoWithdrawal(
+    @Param('id') id: string,
+    @Body() body: { status?: string; txHash?: string; adminNote?: string },
+  ) {
+    return this.cryptoWalletService.adminUpdateWithdrawal(id, body);
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Derp Universe — Game Definition Schemas",
+  "title": "Derp Universe \u2014 Game Definition Schemas",
   "description": "JSON schema documentation for all game definition data files loaded by the definitions seed.",
   "definitions": {
     "RuleRefNode": {
@@ -14,7 +14,7 @@
         "type": {
           "type": "string",
           "const": "rule_ref",
-          "description": "Discriminator — must be exactly \"rule_ref\"."
+          "description": "Discriminator \u2014 must be exactly \"rule_ref\"."
         },
         "id": {
           "type": "string",
@@ -114,7 +114,7 @@
       }
     },
     "RichSelectionChild": {
-      "description": "A single child node inside a RichSelection group — either a sub-group, a leaf rule, or a rule_ref.",
+      "description": "A single child node inside a RichSelection group \u2014 either a sub-group, a leaf rule, or a rule_ref.",
       "oneOf": [
         {
           "$ref": "#/definitions/RichSelection"
@@ -149,7 +149,7 @@
           "items": {
             "$ref": "#/definitions/RichSelectionChild"
           },
-          "description": "Child nodes — each is a sub-group, a leaf rule, or a rule_ref."
+          "description": "Child nodes \u2014 each is a sub-group, a leaf rule, or a rule_ref."
         },
         "label": {
           "type": "string"
@@ -481,12 +481,12 @@
         "startsAt": {
           "type": "string",
           "format": "date-time",
-          "description": "ISO datetime — rule only fires after this time."
+          "description": "ISO datetime \u2014 rule only fires after this time."
         },
         "endsAt": {
           "type": "string",
           "format": "date-time",
-          "description": "ISO datetime — rule stops firing after this time."
+          "description": "ISO datetime \u2014 rule stops firing after this time."
         }
       }
     },
@@ -788,15 +788,15 @@
                 "flat",
                 "linear"
               ],
-              "description": "'flat' = fixed duration regardless of quantity; 'linear' = duration × quantity. Default: flat"
+              "description": "'flat' = fixed duration regardless of quantity; 'linear' = duration \u00d7 quantity. Default: flat"
             }
           }
         },
         "requirements": {
-          "description": "RichSelection tree — conditions the player must satisfy to start crafting"
+          "description": "RichSelection tree \u2014 conditions the player must satisfy to start crafting"
         },
         "visibilityRequirements": {
-          "description": "RichSelection tree — conditions that must be met for the recipe to appear in the UI"
+          "description": "RichSelection tree \u2014 conditions that must be met for the recipe to appear in the UI"
         },
         "effects": {
           "type": "array",
@@ -874,7 +874,7 @@
       ]
     },
     "TelemetrySubEventSpec": {
-      "description": "One counter within a TelemetryDef — bound to an event type and optional RichSelection filter.",
+      "description": "One counter within a TelemetryDef \u2014 bound to an event type and optional RichSelection filter.",
       "properties": {
         "key": {
           "type": "string",
@@ -1228,7 +1228,7 @@
         },
         "key": {
           "type": "string",
-          "description": "Optional — narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
+          "description": "Optional \u2014 narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
         },
         "target": {
           "type": "number",
@@ -1267,8 +1267,12 @@
         "type": "array",
         "items": {
           "oneOf": [
-            { "$ref": "#/definitions/ScreenCompositionDefinition" },
-            { "$ref": "#/definitions/ContentDocumentDefinition" }
+            {
+              "$ref": "#/definitions/ScreenCompositionDefinition"
+            },
+            {
+              "$ref": "#/definitions/ContentDocumentDefinition"
+            }
           ]
         }
       }
@@ -1276,7 +1280,11 @@
     "ContentDocumentDefinition": {
       "description": "A reusable, surface-agnostic block list stored in the GameDefinition table with type='content_document'. Blocks are ordered and rendered top-to-bottom by the surface that owns the document. The surface supplies runtime context (missionMode, teamMode, rewardMode); the document only declares structure.",
       "type": "object",
-      "required": ["id", "version", "blocks"],
+      "required": [
+        "id",
+        "version",
+        "blocks"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1291,7 +1299,9 @@
           "description": "Ordered list of content blocks to render.",
           "items": {
             "type": "object",
-            "required": ["type"],
+            "required": [
+              "type"
+            ],
             "properties": {
               "type": {
                 "type": "string",
@@ -1323,15 +1333,25 @@
           "properties": {
             "missionMode": {
               "type": "string",
-              "enum": ["planning", "in_progress", "outcome"]
+              "enum": [
+                "planning",
+                "in_progress",
+                "outcome"
+              ]
             },
             "teamMode": {
               "type": "string",
-              "enum": ["editable", "locked"]
+              "enum": [
+                "editable",
+                "locked"
+              ]
             },
             "rewardMode": {
               "type": "string",
-              "enum": ["preview", "actual"]
+              "enum": [
+                "preview",
+                "actual"
+              ]
             }
           },
           "additionalProperties": true

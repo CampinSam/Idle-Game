@@ -34,6 +34,20 @@ enum CurrencyType {
   SEASONAL
   EVENT
   GUILD
+  CRYPTO
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT
+}
+
+enum WithdrawalMinType {
+  QUANTITY
+  ADA_VALUE
+  USD_VALUE
 }
 
 model User {
@@ -74,6 +88,7 @@ model User {
   activeEffects      ActiveEffect[]
   passwordResets     PasswordReset[]
   purchases          Purchase[]
+  cryptoWithdrawals  CryptoWithdrawal[]
 
   @@unique([authProvider, providerId])
   @@index([ecosystemId])
@@ -1275,6 +1290,68 @@ model ShopItemDef {
   createdAt    DateTime  @default(now())
 
   @@map("shop_item_defs")
+}
+
+// ═══════════════════════════════════════════════════
+// CRYPTO WALLET (CNT deposit / withdrawal)
+// ═══════════════════════════════════════════════════
+
+/// Idempotency guard: one row per processed on-chain tx hash.
+/// Inserted inside the same transaction as the credit; unique PK
+/// prevents double-credit even under concurrent pollers.
+model ProcessedCryptoTx {
+  txHash      String   @id
+  processedAt DateTime @default(now())
+
+  @@map("processed_crypto_txs")
+}
+
+model CryptoWalletConfig {
+  id                    String            @id @default("default")
+  hotWalletAddress      String            @default("")
+  cntPolicyId           String            @default("")
+  cntAssetName          String            @default("")
+  // Blockfrost project ID for on-chain deposit polling and balance queries
+  // Falls back to BLOCKFROST_API_KEY env var if empty
+  blockfrostProjectId   String            @default("")
+  // Admin-set CNT price in ADA (e.g. 0.001 means 1 CNT = 0.001 ADA)
+  // Used for ADA_VALUE and USD_VALUE minimum withdrawal checks
+  cntPriceAda           Float             @default(0)
+  // Minimum withdrawal configuration
+  minWithdrawalType     WithdrawalMinType @default(QUANTITY)
+  minWithdrawalAmount   Float             @default(1)
+  // Fixed fee deducted from withdrawal (in smallest CNT units)
+  withdrawalFee         BigInt            @default(0)
+  // Auto-approve withdrawals at or below this CNT amount (0 = always queue)
+  autoApprovalThreshold BigInt            @default(0)
+  // Blockfrost pagination cursor: the ASC page number we've processed up to.
+  // 0 = not yet initialized (first poll will start from the current latest page
+  // to skip historical txs and avoid accidental back-crediting on first deploy).
+  depositScanPage       Int               @default(0)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@map("crypto_wallet_configs")
+}
+
+model CryptoWithdrawal {
+  id                 String           @id @default(uuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currencyId         String
+  amount             BigInt
+  fee                BigInt           @default(0)
+  destinationAddress String
+  status             WithdrawalStatus @default(PENDING)
+  autoApproved       Boolean          @default(false)
+  txHash             String?
+  adminNote          String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("crypto_withdrawals")
 }
 
 // ═══════════════════════════════════════════════════

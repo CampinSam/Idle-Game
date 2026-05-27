@@ -1,4 +1,4 @@
-export type CurrencyTypeEnum = 'SOFT' | 'HARD' | 'PREMIUM' | 'SEASONAL' | 'EVENT' | 'GUILD';
+export type CurrencyTypeEnum = 'SOFT' | 'HARD' | 'PREMIUM' | 'SEASONAL' | 'EVENT' | 'GUILD' | 'CRYPTO';
 
 export interface CurrencyDef {
   id: string;
@@ -26,4 +26,35 @@ export interface LedgerEntry {
   sourceId: string | null;
   metadata: Record<string, any>;
   createdAt: string;
+}
+
+export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SENT';
+export type WithdrawalMinType = 'QUANTITY' | 'ADA_VALUE' | 'USD_VALUE';
+
+export interface CryptoWalletConfig {
+  id: string;
+  hotWalletAddress: string;
+  cntPolicyId: string;
+  cntAssetName: string;
+  minWithdrawalType: WithdrawalMinType;
+  minWithdrawalAmount: number;
+  withdrawalFee: string;
+  autoApprovalThreshold: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CryptoWithdrawal {
+  id: string;
+  userId: string;
+  currencyId: string;
+  amount: string;
+  fee: string;
+  destinationAddress: string;
+  status: WithdrawalStatus;
+  autoApproved: boolean;
+  txHash: string | null;
+  adminNote: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
