@@ -23,6 +23,7 @@ import MissionsContent from '../missions/MissionsContent';
 import LocationsContent from '../locations/LocationsContent';
 import LocationDetailContent from '../locations/LocationDetailContent';
 import ForgeContent from '../forge/ForgeContent';
+import StoreContent from '../store/StoreContent';
 
 export interface ScreenComponentProps {
   section: ScreenSectionDefinition;
@@ -964,6 +965,10 @@ function ForgeBrowserComp(_: ScreenComponentProps) {
   return <ForgeContent />;
 }
 
+function StoreBrowserComp(_: ScreenComponentProps) {
+  return <StoreContent />;
+}
+
 export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
@@ -1012,4 +1017,5 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   LocationBrowser: LocationBrowserComp,
   LocationDetailBrowser: LocationDetailBrowserComp,
   ForgeBrowser: ForgeBrowserComp,
+  StoreBrowser: StoreBrowserComp,
 };

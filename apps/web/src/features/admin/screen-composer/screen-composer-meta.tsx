@@ -589,6 +589,28 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  StoreBrowser: {
+    friendlyName: 'Store',
+    description: 'Full in-game store — featured items, gem packs (Stripe + crypto), currency/bundle/item tabs, Derp Pass banner, and payment modals. All data fetched client-side. Use with pass_through layout on the /store screen.',
+    group: 'Store',
+    color: '#22c55e',
+    preview: () => P.wrap(
+      <>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          {['💎','⭐','🎁'].map((e, i) => (
+            <div key={i} style={{ flex: 1, height: 14, borderRadius: 6, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>{e}</div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, marginBottom: 4 }}>
+          {[0,1,2].map(i => P.card(<div key={i} style={{ height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>💎</div>))}
+        </div>
+        {P.card(
+          <div style={{ height: 10, background: 'rgba(251,191,36,0.2)', borderRadius: 4 }} />
+        )}
+      </>
+    ),
+  },
+
   ForgeBrowser: {
     friendlyName: 'Forge / Workshop',
     description: 'Full crafting workshop page — recipe picker, entity selector, live outcome preview, active jobs list, and swipe navigation between building pages. Resolves workshop by URL :id param. Use with pass_through layout on the /locations/:id/workshop screen.',
@@ -914,7 +936,7 @@ export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
   'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
   'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
-  'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser',
+  'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
