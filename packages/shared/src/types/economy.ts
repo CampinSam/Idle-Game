@@ -28,7 +28,7 @@ export interface LedgerEntry {
   createdAt: string;
 }
 
-export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SENT';
+export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'PROCESSING' | 'REJECTED' | 'SENT' | 'FAILED';
 export type WithdrawalMinType = 'QUANTITY' | 'ADA_VALUE' | 'USD_VALUE';
 
 export interface CryptoWalletConfig {

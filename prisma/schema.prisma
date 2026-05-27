@@ -40,8 +40,10 @@ enum CurrencyType {
 enum WithdrawalStatus {
   PENDING
   APPROVED
+  PROCESSING
   REJECTED
   SENT
+  FAILED
 }
 
 enum WithdrawalMinType {

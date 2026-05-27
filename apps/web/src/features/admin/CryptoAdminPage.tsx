@@ -4,8 +4,10 @@ import { adminApi } from './adminApi';
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   PENDING: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: 'rgba(251,191,36,0.3)' },
   APPROVED: { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: 'rgba(59,130,246,0.3)' },
+  PROCESSING: { bg: 'rgba(168,85,247,0.12)', color: '#c084fc', border: 'rgba(168,85,247,0.3)' },
   REJECTED: { bg: 'rgba(255,107,107,0.12)', color: '#ff6b6b', border: 'rgba(255,107,107,0.3)' },
   SENT: { bg: 'rgba(76,175,80,0.12)', color: '#4caf50', border: 'rgba(76,175,80,0.3)' },
+  FAILED: { bg: 'rgba(239,68,68,0.12)', color: '#f87171', border: 'rgba(239,68,68,0.3)' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -225,8 +227,10 @@ function WithdrawalsTab() {
           <option value="">All Statuses</option>
           <option value="PENDING">Pending</option>
           <option value="APPROVED">Approved</option>
+          <option value="PROCESSING">Processing</option>
           <option value="REJECTED">Rejected</option>
           <option value="SENT">Sent</option>
+          <option value="FAILED">Failed</option>
         </select>
         <button onClick={load} style={{ padding: '0.4rem 0.9rem', borderRadius: 6, border: '1px solid rgba(99,102,241,0.5)', background: 'rgba(99,102,241,0.15)', color: '#a78bfa', cursor: 'pointer' }}>
           Refresh
@@ -243,16 +247,50 @@ function WithdrawalsTab() {
           <div style={{ display: 'grid', gap: '0.75rem' }}>
             <div>
               <label style={{ fontSize: '0.8rem', color: '#a0a0c0', display: 'block', marginBottom: 3 }}>Status</label>
-              <select
-                value={editForm.status}
-                onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#e0e0ff', padding: '0.4rem 0.6rem', fontSize: '0.85rem', width: '100%' }}
-              >
-                <option value="PENDING">PENDING</option>
-                <option value="APPROVED">APPROVED</option>
-                <option value="REJECTED">REJECTED</option>
-                <option value="SENT">SENT</option>
-              </select>
+              {editForm.status === 'SENT' ? (
+                <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.2)', color: '#4caf50', fontSize: '0.85rem' }}>
+                  SENT — on-chain transfer completed; status is immutable.
+                </div>
+              ) : editForm.status === 'PROCESSING' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)', color: '#c084fc', fontSize: '0.85rem' }}>
+                    PROCESSING — scheduler is submitting on-chain.
+                  </div>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#e0e0ff', padding: '0.4rem 0.6rem', fontSize: '0.85rem', width: '100%' }}
+                  >
+                    <option value="PROCESSING">PROCESSING (no change)</option>
+                    <option value="FAILED">FAILED (force-fail — verify blockchain first)</option>
+                  </select>
+                </div>
+              ) : (
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#e0e0ff', padding: '0.4rem 0.6rem', fontSize: '0.85rem', width: '100%' }}
+                >
+                  {editForm.status === 'PENDING' && (<>
+                    <option value="PENDING">PENDING</option>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </>)}
+                  {editForm.status === 'APPROVED' && (<>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </>)}
+                  {editForm.status === 'FAILED' && (<>
+                    <option value="FAILED">FAILED</option>
+                    <option value="APPROVED">APPROVED (re-queue)</option>
+                    <option value="REJECTED">REJECTED (refund)</option>
+                  </>)}
+                  {editForm.status === 'REJECTED' && (<>
+                    <option value="REJECTED">REJECTED</option>
+                    <option value="APPROVED">APPROVED (re-open)</option>
+                  </>)}
+                </select>
+              )}
             </div>
             <div>
               <label style={{ fontSize: '0.8rem', color: '#a0a0c0', display: 'block', marginBottom: 3 }}>TX Hash (on-chain)</label>

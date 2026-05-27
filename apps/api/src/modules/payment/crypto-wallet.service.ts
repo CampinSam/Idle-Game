@@ -10,6 +10,13 @@ const CNT_ASSET_NAME_DEFAULT = '45525020434f494e';
 const CURRENCY_ID = 'crypto_derp';
 const BLOCKFROST_BASE = 'https://cardano-mainnet.blockfrost.io/api/v0';
 const POLL_INTERVAL_MS = 20_000;
+const WITHDRAWAL_POLL_INTERVAL_MS = 30_000;
+
+// Minimum ADA (lovelace) that must accompany a native-asset output
+const MIN_ADA_LOVELACE = 2_000_000n;
+// Estimated max tx fee in lovelace (0.2 ADA); CSL calculates the real fee but we need
+// this for UTXO selection before building the tx.
+const ESTIMATED_FEE_LOVELACE = 200_000n;
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -26,7 +33,9 @@ function serializeBigInts(obj: any): any {
 @Injectable()
 export class CryptoWalletService {
   private readonly logger = new Logger(CryptoWalletService.name);
-  private intervalRef: NodeJS.Timeout | null = null;
+  private depositIntervalRef: NodeJS.Timeout | null = null;
+  private withdrawalIntervalRef: NodeJS.Timeout | null = null;
+  private withdrawalProcessing = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -36,17 +45,27 @@ export class CryptoWalletService {
   ) {}
 
   onModuleInit() {
-    this.intervalRef = setInterval(() => {
+    this.depositIntervalRef = setInterval(() => {
       this.pollDeposits().catch((err) => {
         this.logger.error(`CNT deposit poll error: ${err}`);
       });
     }, POLL_INTERVAL_MS);
+
+    this.withdrawalIntervalRef = setInterval(() => {
+      this.processApprovedWithdrawals().catch((err) => {
+        this.logger.error(`Withdrawal processor error: ${err}`);
+      });
+    }, WITHDRAWAL_POLL_INTERVAL_MS);
   }
 
   onModuleDestroy() {
-    if (this.intervalRef) {
-      clearInterval(this.intervalRef);
-      this.intervalRef = null;
+    if (this.depositIntervalRef) {
+      clearInterval(this.depositIntervalRef);
+      this.depositIntervalRef = null;
+    }
+    if (this.withdrawalIntervalRef) {
+      clearInterval(this.withdrawalIntervalRef);
+      this.withdrawalIntervalRef = null;
     }
   }
 
@@ -229,6 +248,400 @@ export class CryptoWalletService {
     }));
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Automated on-chain withdrawal sender
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Scheduler: processes all APPROVED withdrawals by submitting them on-chain.
+   *
+   * A simple boolean flag (`withdrawalProcessing`) prevents concurrent runs.
+   * Each withdrawal is atomically moved to PROCESSING before any on-chain work
+   * begins, so a server restart or crash cannot double-send.
+   */
+  async processApprovedWithdrawals(): Promise<void> {
+    if (this.withdrawalProcessing) return;
+    this.withdrawalProcessing = true;
+    try {
+      const config = await this.getConfig();
+      const apiKey = this.getBlockfrostApiKey(config);
+      const hotWalletAddress: string = config.hotWalletAddress;
+      const skeyHex: string | undefined = process.env.HOT_WALLET_SKEY_HEX?.trim();
+
+      if (!apiKey || !hotWalletAddress || !skeyHex) {
+        // Not fully configured — silently skip; admin must set up hot-wallet keys.
+        return;
+      }
+
+      // Reaper: reset stale PROCESSING rows (older than 15 min) to FAILED.
+      // This recovers withdrawals that were locked by a prior process that
+      // crashed before completing the on-chain submission or the final DB update.
+      // FAILED is chosen over APPROVED because we cannot know whether the TX
+      // was actually broadcast; an admin must inspect the blockchain before
+      // re-queuing to APPROVED or manually marking as SENT.
+      const staleThreshold = new Date(Date.now() - 15 * 60 * 1000);
+      const staleResult = await (this.prisma as any).cryptoWithdrawal.updateMany({
+        where: { status: 'PROCESSING', updatedAt: { lt: staleThreshold } },
+        data: {
+          status: 'FAILED',
+          adminNote: 'Auto-recovered from stale PROCESSING by scheduler reaper. ' +
+            'Check blockchain for a broadcast transaction before re-queueing.',
+        },
+      });
+      if (staleResult.count > 0) {
+        this.logger.warn(
+          `[Withdrawals] Recovered ${staleResult.count} stale PROCESSING withdrawal(s) → FAILED`,
+        );
+      }
+
+      const approved = await (this.prisma as any).cryptoWithdrawal.findMany({
+        where: { status: 'APPROVED' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      for (const withdrawal of approved) {
+        await this.sendWithdrawalOnChain(withdrawal, config, apiKey, hotWalletAddress, skeyHex);
+      }
+    } finally {
+      this.withdrawalProcessing = false;
+    }
+  }
+
+  /**
+   * Sends a single approved withdrawal on-chain.
+   *
+   * Flow:
+   * 1. Atomically move status APPROVED → PROCESSING (acts as a distributed lock;
+   *    if update returns 0 rows another process already grabbed it).
+   * 2. Fetch UTXOs from the hot wallet via Blockfrost.
+   * 3. Build + sign the Cardano transaction using CSL.
+   * 4. Submit via Blockfrost `/tx/submit`.
+   * 5. On success → SENT + txHash.  On failure → FAILED + adminNote with error.
+   *
+   * @param withdrawal  Raw Prisma `CryptoWithdrawal` record
+   * @param config      Wallet config (policyId, assetName, etc.)
+   * @param apiKey      Blockfrost project ID
+   * @param hotWalletAddress  Bech32 hot wallet address
+   * @param skeyHex     Hot wallet extended spending key as hex CBOR (enterprise or base addr)
+   */
+  private async sendWithdrawalOnChain(
+    withdrawal: any,
+    config: any,
+    apiKey: string,
+    hotWalletAddress: string,
+    skeyHex: string,
+  ): Promise<void> {
+    const id: string = withdrawal.id;
+    const netAmount: bigint = BigInt(withdrawal.amount) - BigInt(withdrawal.fee);
+    const destination: string = withdrawal.destinationAddress;
+
+    // ── Step 1: atomic lock — move APPROVED → PROCESSING ─────────────────────
+    const locked = await (this.prisma as any).cryptoWithdrawal.updateMany({
+      where: { id, status: 'APPROVED' },
+      data: { status: 'PROCESSING' },
+    });
+    if (locked.count === 0) {
+      // Another process already grabbed this withdrawal
+      return;
+    }
+
+    try {
+      // ── Step 2: fetch UTXOs from hot wallet ─────────────────────────────────
+      const utxos = await this.fetchHotWalletUtxos(hotWalletAddress, apiKey);
+      if (utxos.length === 0) {
+        throw new Error('Hot wallet has no UTXOs — cannot build transaction');
+      }
+
+      const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
+      const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
+      const unit = `${policyId}${assetName}`;
+
+      // ── Step 3: select UTXOs and build the transaction ────────────────────
+      const txHex = await this.buildAndSignCntTransfer({
+        utxos,
+        destinationAddress: destination,
+        hotWalletAddress,
+        cntAmount: netAmount,
+        policyIdHex: policyId,
+        assetNameHex: assetName,
+        skeyHex,
+        apiKey,
+      });
+
+      // ── Step 4: pre-submit status recheck ───────────────────────────────────
+      // Admin may have intervened between our PROCESSING lock and now.
+      // If the record is no longer PROCESSING we must not submit — the admin's
+      // action (e.g. setting back to APPROVED to defer) takes precedence.
+      const current = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
+      if (!current || current.status !== 'PROCESSING') {
+        this.logger.warn(
+          `Withdrawal ${id} is no longer PROCESSING (now: ${current?.status ?? 'deleted'}) — aborting send`,
+        );
+        return;
+      }
+
+      // ── Step 5: submit via Blockfrost ─────────────────────────────────────
+      const txHash = await this.submitTransaction(txHex, apiKey);
+
+      // ── Step 6: conditional SENT update ───────────────────────────────────
+      // Use updateMany with status guard so we never overwrite a status that
+      // was changed concurrently (e.g., admin forcefully moved it elsewhere).
+      const sentUpdate = await (this.prisma as any).cryptoWithdrawal.updateMany({
+        where: { id, status: 'PROCESSING' },
+        data: { status: 'SENT', txHash },
+      });
+      if (sentUpdate.count === 0) {
+        // TX was submitted on-chain but status changed under us — log critical
+        // warning so admins can reconcile manually.
+        this.logger.error(
+          `CRITICAL: Withdrawal ${id} was sent on-chain (txHash: ${txHash}) but ` +
+          `status had already changed — manual reconciliation required`,
+        );
+      } else {
+        this.logger.log(`Withdrawal ${id} sent on-chain — txHash: ${txHash}`);
+      }
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+      this.logger.error(`Withdrawal ${id} failed: ${msg}`);
+
+      // Conditional update: only move to FAILED if still PROCESSING.
+      // If status changed (e.g. admin intervened), skip the FAILED write.
+      await (this.prisma as any).cryptoWithdrawal.updateMany({
+        where: { id, status: 'PROCESSING' },
+        data: {
+          status: 'FAILED',
+          adminNote: `Auto-send failed: ${msg.slice(0, 500)}`,
+        },
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Cardano transaction construction helpers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Fetches all UTXOs for the hot wallet address via Blockfrost.
+   * Returns raw Blockfrost UTXO objects.
+   */
+  private async fetchHotWalletUtxos(address: string, apiKey: string): Promise<any[]> {
+    const resp = await fetch(
+      `${BLOCKFROST_BASE}/addresses/${address}/utxos?count=100&order=asc`,
+      { headers: { project_id: apiKey }, signal: AbortSignal.timeout(15_000) },
+    );
+    if (resp.status === 404) return [];
+    if (!resp.ok) throw new Error(`Blockfrost UTXOs responded ${resp.status}`);
+    return (await resp.json()) as any[];
+  }
+
+  /**
+   * Fetches the latest protocol parameters from Blockfrost.
+   */
+  private async fetchProtocolParams(apiKey: string): Promise<any> {
+    const resp = await fetch(
+      `${BLOCKFROST_BASE}/epochs/latest/parameters`,
+      { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
+    );
+    if (!resp.ok) throw new Error(`Blockfrost protocol params responded ${resp.status}`);
+    return (await resp.json()) as any;
+  }
+
+  /**
+   * Builds, balances, and signs a Cardano native-asset (CNT) transfer transaction
+   * using `@emurgo/cardano-serialization-lib-nodejs`.
+   *
+   * Returns the signed transaction as hex CBOR, ready for Blockfrost submission.
+   */
+  private async buildAndSignCntTransfer(params: {
+    utxos: any[];
+    destinationAddress: string;
+    hotWalletAddress: string;
+    cntAmount: bigint;
+    policyIdHex: string;
+    assetNameHex: string;
+    skeyHex: string;
+    apiKey: string;
+  }): Promise<string> {
+    const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+
+    const {
+      utxos,
+      destinationAddress,
+      hotWalletAddress,
+      cntAmount,
+      policyIdHex,
+      assetNameHex,
+      skeyHex,
+      apiKey,
+    } = params;
+
+    // Fetch live protocol params for accurate fee calculation
+    const pp = await this.fetchProtocolParams(apiKey);
+
+    const linearFee = CSL.LinearFee.new(
+      CSL.BigNum.from_str(String(pp.min_fee_a ?? 44)),
+      CSL.BigNum.from_str(String(pp.min_fee_b ?? 155381)),
+    );
+    const txBuilderCfg = CSL.TransactionBuilderConfigBuilder.new()
+      .fee_algo(linearFee)
+      .pool_deposit(CSL.BigNum.from_str(String(pp.pool_deposit ?? 500000000)))
+      .key_deposit(CSL.BigNum.from_str(String(pp.key_deposit ?? 2000000)))
+      .max_value_size(pp.max_val_size ?? 5000)
+      .max_tx_size(pp.max_tx_size ?? 16384)
+      .coins_per_utxo_byte(CSL.BigNum.from_str(String(pp.coins_per_utxo_size ?? pp.coins_per_utxo_word ?? 4310)))
+      .build();
+
+    const txBuilder = CSL.TransactionBuilder.new(txBuilderCfg);
+
+    const policyId = CSL.ScriptHash.from_bytes(Buffer.from(policyIdHex, 'hex'));
+    const assetNameBytes = CSL.AssetName.new(Buffer.from(assetNameHex, 'hex'));
+    const cntAmountCSL = CSL.BigNum.from_str(String(cntAmount));
+
+    // ── UTXO selection ────────────────────────────────────────────────────────
+    // We need enough CNT and enough ADA (for min-ADA on output + tx fee).
+    let selectedLovelace = 0n;
+    let selectedCnt = 0n;
+    const neededLovelace = MIN_ADA_LOVELACE + ESTIMATED_FEE_LOVELACE;
+    const selectedInputs: any[] = [];
+
+    // Sort: prefer UTXOs that carry CNT first, then by ADA descending
+    const sorted = [...utxos].sort((a, b) => {
+      const aHasCnt = (a.amount ?? []).some((e: any) => e.unit === `${policyIdHex}${assetNameHex}`);
+      const bHasCnt = (b.amount ?? []).some((e: any) => e.unit === `${policyIdHex}${assetNameHex}`);
+      if (aHasCnt && !bHasCnt) return -1;
+      if (!aHasCnt && bHasCnt) return 1;
+      const aAda = BigInt((a.amount ?? []).find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      const bAda = BigInt((b.amount ?? []).find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      return bAda > aAda ? 1 : -1;
+    });
+
+    for (const utxo of sorted) {
+      if (selectedCnt >= cntAmount && selectedLovelace >= neededLovelace) break;
+
+      const amounts: Array<{ unit: string; quantity: string }> = utxo.amount ?? [];
+      const lovelace = BigInt(amounts.find((a) => a.unit === 'lovelace')?.quantity ?? 0);
+      const cnt = BigInt(amounts.find((a) => a.unit === `${policyIdHex}${assetNameHex}`)?.quantity ?? 0);
+
+      selectedLovelace += lovelace;
+      selectedCnt += cnt;
+      selectedInputs.push(utxo);
+    }
+
+    if (selectedCnt < cntAmount) {
+      throw new Error(
+        `Insufficient CNT in hot wallet: need ${cntAmount}, have ${selectedCnt}`,
+      );
+    }
+    if (selectedLovelace < neededLovelace) {
+      throw new Error(
+        `Insufficient ADA in hot wallet: need ≥${neededLovelace} lovelace, have ${selectedLovelace}`,
+      );
+    }
+
+    // ── Add inputs ────────────────────────────────────────────────────────────
+    const hotAddr = CSL.Address.from_bech32(hotWalletAddress);
+    for (const utxo of selectedInputs) {
+      const txInput = CSL.TransactionInput.new(
+        CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, 'hex')),
+        utxo.tx_index,
+      );
+
+      // Build the input's Value (lovelace + any multi-assets on this UTXO)
+      const inputAmounts: Array<{ unit: string; quantity: string }> = utxo.amount ?? [];
+      const inputLovelace = BigInt(inputAmounts.find((a) => a.unit === 'lovelace')?.quantity ?? 0);
+      const inputValue = CSL.Value.new(CSL.BigNum.from_str(String(inputLovelace)));
+      const utxoMa = CSL.MultiAsset.new();
+      for (const entry of inputAmounts) {
+        if (entry.unit === 'lovelace') continue;
+        const entryPolicyHex = entry.unit.slice(0, 56);
+        const entryAssetHex = entry.unit.slice(56);
+        const entryPolicy = CSL.ScriptHash.from_bytes(Buffer.from(entryPolicyHex, 'hex'));
+        const entryAsset = CSL.AssetName.new(Buffer.from(entryAssetHex, 'hex'));
+        const entryAssets = CSL.Assets.new();
+        entryAssets.insert(entryAsset, CSL.BigNum.from_str(entry.quantity));
+        utxoMa.insert(entryPolicy, entryAssets);
+      }
+      if (utxoMa.len() > 0) inputValue.set_multiasset(utxoMa);
+
+      // CSL v15 uses add_regular_input(address, input, amount) for enterprise/base addr inputs
+      txBuilder.add_regular_input(hotAddr, txInput, inputValue);
+    }
+
+    // ── Output: send CNT + min-ADA to destination ─────────────────────────────
+    const destAddr = CSL.Address.from_bech32(destinationAddress);
+    const outputMa = CSL.MultiAsset.new();
+    const outputAssets = CSL.Assets.new();
+    outputAssets.insert(assetNameBytes, cntAmountCSL);
+    outputMa.insert(policyId, outputAssets);
+    const outputValue = CSL.Value.new(CSL.BigNum.from_str(String(MIN_ADA_LOVELACE)));
+    outputValue.set_multiasset(outputMa);
+    txBuilder.add_output(CSL.TransactionOutput.new(destAddr, outputValue));
+
+    // ── Change output: remaining CNT + ADA (CSL calculates exact fee) ─────────
+    txBuilder.add_change_if_needed(hotAddr);
+
+    // ── Sign ──────────────────────────────────────────────────────────────────
+    const txBody = txBuilder.build();
+    const txHash = CSL.hash_transaction(txBody);
+
+    // Decode the spending key: accept raw 64-byte hex or hex-CBOR Ed25519 private key
+    let privateKey: any;
+    try {
+      // Try as raw 64-byte hex first (most common export format)
+      const skeyBytes = Buffer.from(skeyHex, 'hex');
+      if (skeyBytes.length === 64) {
+        privateKey = CSL.PrivateKey.from_extended_bytes(skeyBytes);
+      } else if (skeyBytes.length === 32) {
+        privateKey = CSL.PrivateKey.from_normal_bytes(skeyBytes);
+      } else {
+        // Try as bech32-encoded key (ed25519_sk... or addr_sk...)
+        privateKey = CSL.PrivateKey.from_bech32(skeyHex);
+      }
+    } catch {
+      // Final fallback: treat as hex-encoded CBOR envelope
+      privateKey = CSL.PrivateKey.from_extended_bytes(Buffer.from(skeyHex, 'hex').slice(4));
+    }
+
+    const vkeyWitness = CSL.make_vkey_witness(txHash, privateKey);
+    const witnesses = CSL.TransactionWitnessSet.new();
+    const vkeys = CSL.Vkeywitnesses.new();
+    vkeys.add(vkeyWitness);
+    witnesses.set_vkeys(vkeys);
+
+    const signedTx = CSL.Transaction.new(txBody, witnesses, undefined);
+    return Buffer.from(signedTx.to_bytes()).toString('hex');
+  }
+
+  /**
+   * Submits a signed transaction CBOR (hex) to Blockfrost.
+   * Returns the on-chain transaction hash on success.
+   */
+  private async submitTransaction(txHex: string, apiKey: string): Promise<string> {
+    const txBytes = Buffer.from(txHex, 'hex');
+    const resp = await fetch(`${BLOCKFROST_BASE}/tx/submit`, {
+      method: 'POST',
+      headers: {
+        project_id: apiKey,
+        'Content-Type': 'application/cbor',
+      },
+      body: txBytes,
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(`Blockfrost /tx/submit responded ${resp.status}: ${body.slice(0, 300)}`);
+    }
+
+    // Blockfrost returns the tx hash as a JSON string (with quotes)
+    const raw = await resp.text();
+    return raw.replace(/^"|"$/g, '').trim();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Validation
+  // ─────────────────────────────────────────────────────────────────────────────
+
   /**
    * Validates the withdrawal amount against the configured minimum.
    *
@@ -250,7 +663,6 @@ export class CryptoWalletService {
     if (minType === 'ADA_VALUE') {
       const cntPriceAda = Number(config.cntPriceAda ?? 0);
       if (cntPriceAda <= 0) {
-        // Fall back to quantity check if price is not configured
         if (amount < minAmount) {
           throw new BadRequestException(`Minimum withdrawal is ${minAmount} DERP (ADA price not configured)`);
         }
@@ -274,7 +686,6 @@ export class CryptoWalletService {
         return;
       }
       const adaValue = amount * cntPriceAda;
-      // adaValue in ADA → USD: lovelacePerUsd = lovelace per $1
       const lovelacePerUsd = await this.adaRateService.getLovelacePerUsd();
       const adaPerUsd = lovelacePerUsd / 1_000_000;
       const usdValue = adaValue / adaPerUsd;
@@ -291,6 +702,10 @@ export class CryptoWalletService {
       throw new BadRequestException(`Minimum withdrawal is ${minAmount}`);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Deposit poller (unchanged)
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /**
    * Cursor-based deposit poller.
@@ -360,8 +775,6 @@ export class CryptoWalletService {
   }
 
   private async discoverCurrentPage(address: string, apiKey: string, pageSize: number): Promise<number> {
-    // Binary-search-style: fetch a large page number descending to find current tip page
-    // Simple approach: start at page 1 asc, walk until we get a partial page
     let page = 1;
     while (true) {
       const resp = await fetch(
@@ -418,7 +831,6 @@ export class CryptoWalletService {
     const player = await this.findPlayerBySenderAddresses(senderAddresses);
     if (!player) {
       this.logger.warn(`CNT deposit tx ${tx_hash}: no linked player for senders [${senderAddresses.join(', ')}]`);
-      // Still mark processed via the ProcessedCryptoTx insert below so we don't re-examine it
     }
 
     // Atomic credit + idempotency gate.
@@ -454,7 +866,6 @@ export class CryptoWalletService {
       }
     } catch (err: any) {
       if (err?.code === 'P2002') {
-        // Another concurrent poller already handled this tx
         this.logger.debug(`Tx ${tx_hash} already processed by concurrent poller — skipping`);
       } else {
         this.logger.error(`Failed to process deposit tx ${tx_hash}: ${err}`);
@@ -486,6 +897,10 @@ export class CryptoWalletService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Admin methods
+  // ─────────────────────────────────────────────────────────────────────────────
+
   async adminGetWithdrawals(status?: string, limit = 50): Promise<any[]> {
     const where: any = {};
     if (status) where.status = status;
@@ -502,19 +917,81 @@ export class CryptoWalletService {
     const existing = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Withdrawal ${id} not found`);
 
+    // Explicit state-transition matrix — prevents financial integrity violations.
+    //
+    // Allowed admin transitions:
+    //   PENDING    → APPROVED | REJECTED
+    //   APPROVED   → REJECTED
+    //   PROCESSING → FAILED (force-fail escape hatch; admin must verify blockchain
+    //                before re-queueing to APPROVED or manually marking SENT)
+    //   FAILED     → APPROVED | REJECTED
+    //   REJECTED   → APPROVED
+    //   SENT       → (txHash / adminNote edits only — status is immutable)
+    //
+    // SENT → anything: blocked (tokens already on-chain; status change would
+    // misrepresent reality and REJECTED would double-pay the player).
+    //
+    // All status-change updates are additionally guarded at the DB level with
+    // a conditional updateMany to close the TOCTOU race with the scheduler.
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+      PENDING:    ['APPROVED', 'REJECTED'],
+      APPROVED:   ['REJECTED'],
+      PROCESSING: ['FAILED'],   // force-fail escape hatch only
+      FAILED:     ['APPROVED', 'REJECTED'],
+      REJECTED:   ['APPROVED'],
+      SENT:       [],           // status immutable; txHash/adminNote edits via non-status path
+    };
+
+    if (data.status && data.status !== existing.status) {
+      const allowed = ALLOWED_TRANSITIONS[existing.status as string] ?? [];
+      if (!allowed.includes(data.status)) {
+        if (existing.status === 'SENT') {
+          throw new BadRequestException(
+            'Withdrawal is already SENT on-chain. Status cannot be changed; ' +
+            'use adminNote to annotate the record.',
+          );
+        }
+        if (existing.status === 'PROCESSING') {
+          throw new BadRequestException(
+            'Withdrawal is being submitted on-chain. The only allowed admin override is ' +
+            'force-failing it to FAILED (set status: FAILED). Verify the blockchain first.',
+          );
+        }
+        throw new BadRequestException(
+          `Transition from ${existing.status} → ${data.status} is not permitted.`,
+        );
+      }
+    }
+
     const isRejection = data.status === 'REJECTED' && existing.status !== 'REJECTED';
 
     if (isRejection) {
-      // Atomically reject + refund user balance to prevent fund loss
+      // Statuses from which rejection (with refund) is allowed.
+      // PROCESSING and SENT are excluded to prevent the double-payout race.
+      const rejectableStatuses = ['PENDING', 'APPROVED', 'FAILED'];
+
+      // Atomically reject + refund, guarded so that if the scheduler moved
+      // the row to PROCESSING or SENT between our findUnique and now, the
+      // update hits zero rows and we abort rather than double-pay.
       const updated = await this.prisma.$transaction(async (tx) => {
-        const w = await (tx as any).cryptoWithdrawal.update({
-          where: { id },
+        // Guarded status flip — only succeeds if row is still in a rejectable state
+        const guard = await (tx as any).cryptoWithdrawal.updateMany({
+          where: { id, status: { in: rejectableStatuses } },
           data: {
             status: 'REJECTED',
             ...(data.txHash !== undefined ? { txHash: data.txHash } : {}),
             ...(data.adminNote !== undefined ? { adminNote: data.adminNote } : {}),
           },
         });
+
+        if (guard.count === 0) {
+          // Status changed concurrently (likely moved to PROCESSING or SENT by scheduler)
+          const current = await (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+          throw new BadRequestException(
+            `Withdrawal can no longer be rejected — current status is ${current?.status ?? 'unknown'}. ` +
+            'Wait for the scheduler to complete (SENT/FAILED) before acting.',
+          );
+        }
 
         await tx.userCurrencyBalance.update({
           where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
@@ -533,23 +1010,39 @@ export class CryptoWalletService {
           },
         });
 
-        return w;
+        return (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
       });
 
       await this.emitCurrencyDelta(existing.userId);
       return serializeBigInts(updated);
     }
 
-    // Non-rejection update (e.g. APPROVED → SENT, adding txHash, adminNote)
+    // Non-rejection update (e.g. FAILED → APPROVED re-queue, adding txHash/adminNote).
+    // Also guarded: block the transition if status changed concurrently.
     const updateData: any = {};
     if (data.status) updateData.status = data.status;
     if (data.txHash !== undefined) updateData.txHash = data.txHash;
     if (data.adminNote !== undefined) updateData.adminNote = data.adminNote;
 
-    const updated = await (this.prisma as any).cryptoWithdrawal.update({
-      where: { id },
+    // Guard non-status-change writes (txHash/adminNote on SENT rows) by id only.
+    // Status changes are guarded against the expected prior status.
+    const whereClause: any = data.status && data.status !== existing.status
+      ? { id, status: existing.status }
+      : { id };
+
+    const nonRejectionResult = await (this.prisma as any).cryptoWithdrawal.updateMany({
+      where: whereClause,
       data: updateData,
     });
+
+    if (nonRejectionResult.count === 0 && data.status && data.status !== existing.status) {
+      const current = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
+      throw new BadRequestException(
+        `Withdrawal status changed concurrently — current status is ${current?.status ?? 'unknown'}. Please refresh and retry.`,
+      );
+    }
+
+    const updated = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
     return serializeBigInts(updated);
   }
 }

@@ -485,3 +485,52 @@ Broadcast to all connected clients whenever the underlying tick-boost state chan
 ```
 
 `active` is the list of all currently active tick boosts. `combinedPercent` is the sum of all `percentBoost` values. Clients use this to update the local tick rate. Toast notifications for tick-speed changes are driven by the `global_power.changed` SSE event and the `useGlobalPowerToasts` hook, not by this event directly.
+
+---
+
+## CryptoWithdrawal — Automated On-Chain Sender
+
+`CryptoWithdrawal` records track DERP token withdrawals from the in-game wallet to a Cardano on-chain address.
+
+### Withdrawal Status Lifecycle
+
+| Status | Description |
+|---|---|
+| `PENDING` | Awaiting admin review |
+| `APPROVED` | Approved by admin (or auto-approved); queued for on-chain send |
+| `PROCESSING` | Actively being submitted on-chain — do not edit (set by the scheduler) |
+| `SENT` | Transaction submitted; `txHash` is set |
+| `FAILED` | On-chain send failed; `adminNote` contains the error. Re-queue by setting back to `APPROVED` |
+| `REJECTED` | Rejected by admin; player balance is automatically refunded |
+
+### Automated Sender
+
+When `HOT_WALLET_SKEY_HEX` (env var) is set alongside a valid `BLOCKFROST_API_KEY` (or `blockfrostProjectId` in config) and `hotWalletAddress`, the server automatically sends APPROVED withdrawals on-chain every 30 seconds using `@emurgo/cardano-serialization-lib-nodejs`.
+
+**`HOT_WALLET_SKEY_HEX`** — the hot wallet's Ed25519 extended private key as:
+- 64-byte raw hex (most common export format from `cardano-cli`)
+- 32-byte raw hex (normal private key)
+- bech32 `ed25519_sk...` or `addr_sk...` encoding
+
+If this env var is absent the scheduler silently skips, and admins retain full manual control.
+
+### Admin Override — Allowed Transitions
+
+| From | Allowed admin transitions | Notes |
+|---|---|---|
+| `PENDING` | `APPROVED`, `REJECTED` | Standard approval / early rejection with refund |
+| `APPROVED` | `REJECTED` | Cancel before scheduler picks it up; triggers refund |
+| `PROCESSING` | `FAILED` (force-fail) | Scheduler owns this record; only escape hatch is force-failing to FAILED |
+| `SENT` | _(txHash/adminNote only)_ | Tokens already on-chain; **status cannot be changed** |
+| `FAILED` | `APPROVED`, `REJECTED` | Re-queue for retry or abandon with refund |
+| `REJECTED` | `APPROVED` | Re-open a rejected withdrawal |
+
+**Key safety rules enforced server-side:**
+- `PROCESSING` → anything: **blocked** — prevents double-payout race between scheduler and admin
+- `SENT` → `REJECTED`: **blocked** — tokens already sent; rejecting would cause a second credit to the player's balance (double payout)
+- Any transition to `REJECTED` (from `PENDING`, `APPROVED`, or `FAILED`) atomically refunds the player's full gross amount
+- `PROCESSING` and `SENT` are **never selectable** in the admin edit-status dropdown
+
+### Net Amount
+
+The amount sent on-chain is `amount - fee`. The `amount` field is the gross DERP deducted from the player's balance at request time; `fee` is the configured flat fee.
