@@ -1,5 +1,6 @@
 import { Component, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { api } from '../../../services/api';
 import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRenderer';
 import ContentDocumentDataEditor from '../smart/components/structured/ContentDocumentDataEditor';
 import { getMissingBlockProps } from '../smart/components/structured/blockPropHints';
@@ -58,7 +59,7 @@ type DefType = typeof DEF_TYPES[number];
 // ─── Prop schema hints (from render-blocks.md) ────────────────────────────────
 
 interface PropHint {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker' | 'missionDefPicker';
   description?: string;
   required?: boolean;
   options?: string[];
@@ -69,7 +70,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     maxItems: { type: 'number', description: 'Max currencies shown (default: 4)' },
   },
   MissionFeaturedCard: {
-    missionDefId: { type: 'string', description: 'Pin a specific mission definition ID to feature. Leave blank to auto-show a summary of all active mission jobs.' },
+    missionDefId: { type: 'missionDefPicker', description: 'Pin a specific mission definition ID to feature. Leave blank to auto-show a summary of all active mission jobs.' },
   },
   ActiveMissionList: {
     limit: { type: 'number', description: 'Max active missions to display (default: 5). Use to keep the list compact on smaller screens.' },
@@ -453,6 +454,134 @@ function EntityIdPicker({
   );
 }
 
+// ─── Mission definition picker ────────────────────────────────────────────────
+
+function MissionDefPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allDefs, setAllDefs] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || allDefs.length > 0) return;
+    setLoading(true);
+    setError('');
+    api.getMissionDefinitions()
+      .then((defs: any[]) => {
+        setAllDefs(defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+        setLoading(false);
+      })
+      .catch((e: any) => { setError(e.message || 'Failed to load mission definitions'); setLoading(false); });
+  }, [open, allDefs.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allDefs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allDefs;
+
+  const selected = allDefs.find(d => d.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="mission def id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto', padding: '0 8px', flexShrink: 0,
+            cursor: 'pointer', fontSize: 10, color: open ? '#34d399' : '#6b7280',
+            borderColor: open ? 'rgba(52,211,153,0.4)' : undefined,
+          }}
+          title="Pick mission definition"
+        >
+          {open ? '▲ pick' : '▼ pick'}
+        </button>
+      </div>
+
+      {value && selected && (
+        <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>
+          ✓ {selected.name}
+        </div>
+      )}
+      {value && !selected && allDefs.length > 0 && !loading && (
+        <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>
+          ⚠ ID not found in current results — it may still be valid
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: '#0f0f1e', border: '1px solid rgba(52,211,153,0.3)',
+          borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden',
+        }}>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search by name or id…"
+            autoFocus
+            style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }}
+          />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && (
+              <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>
+                No mission definitions found
+              </div>
+            )}
+            {filtered.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left' as const,
+                  padding: '4px 6px', background: opt.id === value ? 'rgba(52,211,153,0.15)' : 'transparent',
+                  border: 'none', borderRadius: 4, cursor: 'pointer',
+                  color: opt.id === value ? '#34d399' : '#6ee7b7',
+                  fontSize: 11, fontFamily: 'inherit',
+                }}
+                title={opt.id}
+              >
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Structured props editor ──────────────────────────────────────────────────
 
 type PropType = 'string' | 'number' | 'boolean' | 'json';
@@ -540,6 +669,7 @@ function StructuredFieldsEditor({
         const hint = hints[key];
         const ptype = hint?.type === 'enum' ? 'enum'
           : hint?.type === 'entityPicker' ? 'entityPicker'
+          : hint?.type === 'missionDefPicker' ? 'missionDefPicker'
           : hint?.type === 'array' || hint?.type === 'object' ? 'json'
           : detectPropType(val);
         const isMissing = highlightKeys.includes(key);
@@ -556,6 +686,11 @@ function StructuredFieldsEditor({
             <div style={{ flex: 1 }}>
               {ptype === 'entityPicker' ? (
                 <EntityIdPicker
+                  value={String(val ?? '')}
+                  onChange={v => updateProp(key, v)}
+                />
+              ) : ptype === 'missionDefPicker' ? (
+                <MissionDefPicker
                   value={String(val ?? '')}
                   onChange={v => updateProp(key, v)}
                 />
