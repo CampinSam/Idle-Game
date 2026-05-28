@@ -95,15 +95,23 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   BannerCarousel: {
     friendlyName: 'Banner Carousel',
-    description: 'Auto-scrolling carousel of promotional banners for events, store offers, and announcements.',
+    description: 'Auto-scrolling carousel of promotional banners for events, store offers, and announcements. Content sourced from the /api/ui/home-banners endpoint.',
     group: 'Core HUD',
     color: '#818cf8',
     preview: () => P.wrap(
       <>
-        <div style={{ height: 36, background: 'linear-gradient(90deg, #1e1b4b, #4c1d95)', borderRadius: 6 }} />
+        <div style={{ height: 40, background: 'linear-gradient(120deg, #1e1b4b 0%, #4c1d95 60%, #7c3aed 100%)', borderRadius: 6, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.5)', width: '65%', marginBottom: 4 }} />
+            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.25)', width: '40%' }} />
+          </div>
+          <div style={{ width: 22, height: 16, borderRadius: 4, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 7, color: '#fff', fontWeight: 700 }}>GO</span>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
-          {[true, false, false].map((active, i) => (
-            <div key={i} style={{ width: active ? 14 : 6, height: 4, borderRadius: 2, background: active ? '#818cf8' : 'rgba(255,255,255,0.2)' }} />
+          {[true, false, false, false].map((active, i) => (
+            <div key={i} style={{ width: active ? 14 : 5, height: 4, borderRadius: 2, background: active ? '#818cf8' : 'rgba(255,255,255,0.15)' }} />
           ))}
         </div>
       </>
@@ -310,18 +318,28 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     color: '#a78bfa',
     preview: () => P.wrap(
       <>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-          {['Combat', 'Gather', 'Explore', 'Trade'].map((label, i) => (
-            <div key={label} style={{ flex: 1, padding: '3px 0', borderRadius: 6, background: i === 0 ? '#a78bfa22' : 'rgba(255,255,255,0.05)', border: `1px solid ${i === 0 ? '#a78bfa44' : 'rgba(255,255,255,0.08)'}`, textAlign: 'center' }}>
-              <span style={{ fontSize: 7, color: i === 0 ? '#c4b5fd' : '#888' }}>{label}</span>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+          {[['⚔️','Combat',true],['🌿','Gather',false],['🗺','Explore',false],['💰','Trade',false]].map(([icon, label, active]) => (
+            <div key={String(label)} style={{ flex: 1, padding: '3px 2px', borderRadius: 6, background: active ? '#a78bfa22' : 'rgba(255,255,255,0.04)', border: `1px solid ${active ? '#a78bfa55' : 'rgba(255,255,255,0.08)'}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 9 }}>{String(icon)}</div>
+              <div style={{ fontSize: 6, color: active ? '#c4b5fd' : '#666', marginTop: 1 }}>{String(label)}</div>
             </div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-          {['#a78bfa', '#8b5cf6', '#7c3aed', '#6d28d9'].map((c, i) => (
-            <div key={i} style={{ height: 26, borderRadius: 5, background: `${c}22`, border: `1px solid ${c}44` }} />
-          ))}
-        </div>
+        {[['Raid the Outpost','⭐ Tier 2'],['Gathering Run','⭐ Tier 1']].map(([name, tier], i) => (
+          P.card(
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ height: 6, borderRadius: 3, background: '#a78bfa66', width: 60, marginBottom: 3 }} />
+                <span style={{ fontSize: 7, color: '#c4b5fd' }}>{String(tier)}</span>
+              </div>
+              <div style={{ width: 24, height: 14, borderRadius: 4, background: '#7c3aed55', border: '1px solid #7c3aed88', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 6, color: '#e0e0ff', fontWeight: 700 }}>GO</span>
+              </div>
+            </div>,
+            { border: `1px solid #a78bfa33` }
+          )
+        ))}
       </>
     ),
   },
@@ -633,16 +651,37 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     color: '#22c55e',
     preview: () => P.wrap(
       <>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-          {['💎','⭐','🎁'].map((e, i) => (
-            <div key={i} style={{ flex: 1, height: 14, borderRadius: 6, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>{e}</div>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+          {[['💎 Gems',true],['📦 Bundles',false],['🎁 Items',false]].map(([label, active]) => (
+            <div key={String(label)} style={{ flex: 1, padding: '3px 0', borderRadius: 6, background: active ? '#22c55e22' : 'rgba(255,255,255,0.04)', border: `1px solid ${active ? '#22c55e55' : 'rgba(255,255,255,0.08)'}`, textAlign: 'center' }}>
+              <span style={{ fontSize: 7, color: active ? '#86efac' : '#666' }}>{String(label)}</span>
+            </div>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, marginBottom: 4 }}>
-          {[0,1,2].map(i => P.card(<div key={i} style={{ height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>💎</div>))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3, marginBottom: 3 }}>
+          {[['💎','80','#22c55e'],['💎💎','200','#3b82f6'],['💎💎💎','500','#a78bfa']].map(([icon, amount, color]) => (
+            P.card(
+              <div key={String(amount)} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10 }}>{String(icon)}</div>
+                <div style={{ fontSize: 7, color: String(color), fontWeight: 700, marginTop: 2 }}>{String(amount)}</div>
+                <div style={{ marginTop: 3, height: 11, borderRadius: 4, background: `${String(color)}33`, border: `1px solid ${String(color)}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 6, color: String(color), fontWeight: 700 }}>BUY</span>
+                </div>
+              </div>,
+              { border: `1px solid ${String(color)}33` }
+            )
+          ))}
         </div>
         {P.card(
-          <div style={{ height: 10, background: 'rgba(251,191,36,0.2)', borderRadius: 4 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'linear-gradient(90deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04))', borderRadius: 5, padding: '4px 6px' }}>
+            <span style={{ fontSize: 12 }}>⭐</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 5, borderRadius: 3, background: '#fbbf2466', width: '55%', marginBottom: 3 }} />
+              <div style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,0.15)', width: '35%' }} />
+            </div>
+            <div style={{ fontSize: 7, color: '#fbbf24', fontWeight: 700, border: '1px solid rgba(251,191,36,0.4)', padding: '2px 5px', borderRadius: 4 }}>GET</div>
+          </div>,
+          { border: '1px solid rgba(251,191,36,0.2)' }
         )}
       </>
     ),
@@ -707,26 +746,27 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     color: '#a78bfa',
     preview: () => P.wrap(
       <>
+        {P.label('📅 Daily Check-In', '#a78bfa')}
         {P.card(
-          <>
-            {P.bar('45%', '#a78bfa')}
-            <div style={{ marginTop: 4, display: 'flex', gap: 3 }}>
-              {[0,1,2,3,4,5,6].map(i => (
-                <div key={i} style={{ flex: 1, height: 10, borderRadius: 3, background: i < 3 ? 'rgba(167,139,250,0.4)' : 'rgba(255,255,255,0.07)', border: '1px solid rgba(167,139,250,0.2)' }} />
-              ))}
-            </div>
-          </>,
+          <div style={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
+            {[true, true, true, false, false, false, false].map((done, i) => (
+              <div key={i} style={{ flex: 1, height: 14, borderRadius: 3, background: done ? '#a78bfa55' : 'rgba(255,255,255,0.05)', border: `1px solid ${i === 3 ? '#a78bfa' : 'rgba(167,139,250,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {done && <span style={{ fontSize: 7 }}>✓</span>}
+              </div>
+            ))}
+          </div>,
           { border: '1px solid rgba(139,92,246,0.25)' }
         )}
+        {P.label('🎁 Gifts', '#22c55e')}
         {P.card(
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(139,92,246,0.2)' }} />
-              {P.bar('50px', '#e2d9ff')}
+              <span style={{ fontSize: 10 }}>🎁</span>
+              <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.2)', width: 40 }} />
             </div>
-            <div style={{ fontSize: 8, color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.4)', padding: '1px 5px', borderRadius: 4 }}>Claim</div>
+            <div style={{ fontSize: 7, color: '#22c55e', fontWeight: 700, border: '1px solid rgba(34,197,94,0.4)', padding: '2px 5px', borderRadius: 4 }}>CLAIM</div>
           </div>,
-          { border: '1px solid rgba(139,92,246,0.25)' }
+          { border: '1px solid rgba(34,197,94,0.2)' }
         )}
       </>
     ),
@@ -1012,16 +1052,17 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     color: '#10b981',
     preview: () => P.wrap(
       <>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-          {['All', 'Gear', 'Consumables', 'Materials'].map((label, i) => (
-            <div key={i} style={{ flex: i === 0 ? 0 : 1, padding: '3px 6px', borderRadius: 20, background: i === 0 ? '#10b98122' : 'rgba(255,255,255,0.05)', border: `1px solid ${i === 0 ? '#10b98144' : 'rgba(255,255,255,0.08)'}` }}>
-              <span style={{ fontSize: 7, color: i === 0 ? '#6ee7b7' : '#888' }}>{label}</span>
+        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+          {[['All',true],['⚔️ Gear',false],['🧪',false],['🌿',false]].map(([label, active]) => (
+            <div key={String(label)} style={{ flex: 1, padding: '2px 4px', borderRadius: 20, background: active ? '#10b98122' : 'rgba(255,255,255,0.04)', border: `1px solid ${active ? '#10b98155' : 'rgba(255,255,255,0.08)'}`, textAlign: 'center' }}>
+              <span style={{ fontSize: 7, color: active ? '#6ee7b7' : '#666' }}>{String(label)}</span>
             </div>
           ))}
         </div>
+        <div style={{ height: 12, borderRadius: 4, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 3 }} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 3 }}>
-          {['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#f472b6', '#34d399'].map((c, i) => (
-            <div key={i} style={{ height: 30, borderRadius: 5, background: `${c}22`, border: `1px solid ${c}44` }} />
+          {['#10b981','#8b5cf6','#f59e0b','#ef4444','#06b6d4','#3b82f6','#f472b6','#34d399'].map((c, i) => (
+            <div key={i} style={{ aspectRatio: '1', borderRadius: 5, background: `${c}22`, border: `1px solid ${c}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>⚔️</div>
           ))}
         </div>
       </>

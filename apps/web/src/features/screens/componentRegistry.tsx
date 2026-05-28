@@ -166,8 +166,9 @@ function MissionFeaturedCardComp({ section }: ScreenComponentProps) {
 
   const featuredDef = pinnedId
     ? missionDefs.find((d: any) => d.id === pinnedId)
-    : missionDefs.find((d: any) => missionJobs.some((j: any) => j.missionDefId === d.id))
-      ?? missionDefs[0];
+    : missionJobs.length > 0
+      ? missionDefs.find((d: any) => d.id === missionJobs[0].missionDefId)
+      : null;
 
   if (!featuredDef && missionJobs.length === 0) {
     return (
@@ -333,7 +334,8 @@ function ActiveMissionListComp({ section, onAction }: ScreenComponentProps) {
   const navigate = useNavigate();
   const allJobs = useAllActiveJobs();
   const missionJobs = allJobs.filter((j: any) => j.type === 'MissionJob');
-  const limit = Math.max(1, Number(section.props?.limit ?? 5));
+  const rawLimit = section.props?.limit;
+  const limit = rawLimit != null && rawLimit !== '' ? Math.max(1, Number(rawLimit)) : undefined;
 
   if (missionJobs.length === 0) {
     return (
@@ -351,13 +353,13 @@ function ActiveMissionListComp({ section, onAction }: ScreenComponentProps) {
       <div className="px-4 py-3">
         <SectionHeader title="🗺️ ACTIVE MISSIONS" />
         <div className="mt-2 space-y-1 text-[13px] text-text-secondary">
-          {missionJobs.slice(0, limit).map((j: any) => (
+          {(limit != null ? missionJobs.slice(0, limit) : missionJobs).map((j: any) => (
             <div key={j.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
               <span>🗺️</span>
               <span className="flex-1 text-text-primary truncate">{j.name}</span>
             </div>
           ))}
-          {missionJobs.length > limit && (
+          {limit != null && missionJobs.length > limit && (
             <div className="text-[11px] text-text-secondary pt-1">
               +{missionJobs.length - limit} more
             </div>
