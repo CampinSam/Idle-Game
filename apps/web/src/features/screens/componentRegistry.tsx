@@ -10,6 +10,7 @@ import {
   useSyncStatus,
   useSyncItems,
   useSyncActiveCraftingJobs,
+  useSyncPlayer,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs, fetchCraftingRecipes } from '../../store/gameSlice';
@@ -1116,10 +1117,7 @@ const _shopApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.repla
 
 function _shopAuthHeaders(): Record<string, string> {
   try {
-    const token =
-      localStorage.getItem('jwtToken') ??
-      localStorage.getItem('authToken') ??
-      localStorage.getItem('token');
+    const token = localStorage.getItem('derp_token');
     if (token) return { Authorization: `Bearer ${token}` };
   } catch { /* ignore */ }
   return {};
@@ -1265,9 +1263,12 @@ function CraftingQueuePreviewComp({ section }: ScreenComponentProps) {
   const title = String(props.title ?? '⚒️ CRAFTING QUEUE');
   const limit = Number(props.limit ?? 5);
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const now = useNow(1000);
   const activeCraftingJobs = useSyncActiveCraftingJobs();
   const craftingRecipes: any[] = useAppSelector((s: any) => s.game.craftingRecipes) ?? [];
+
+  useEffect(() => { dispatch(fetchCraftingRecipes() as any); }, [dispatch]);
 
   const jobs = (activeCraftingJobs as any[]).slice(0, limit);
 
@@ -1368,7 +1369,8 @@ function OutpostReadyListComp({ section }: ScreenComponentProps) {
     .filter((loc: any) =>
       loc.productionReady === true ||
       (loc.productionBalance != null && Number(loc.productionBalance) > 0) ||
-      loc.status === 'production_ready'
+      loc.status === 'production_ready' ||
+      (loc.buildings ?? []).some((b: any) => b.status === 'ready_notified' || b.status === 'completed')
     )
     .slice(0, limit);
 
@@ -1435,6 +1437,10 @@ function OutpostSummaryCardsComp({ section }: ScreenComponentProps) {
           const statusColor =
             status === 'active' ? '#34d399' :
             status === 'inactive' ? '#94a3b8' : '#60a5fa';
+          const buildings: any[] = loc.buildings ?? [];
+          const activeBuildings = buildings.filter(
+            (b: any) => b.status === 'building' || b.status === 'active' || b.status === 'producing'
+          ).length;
           return (
             <div
               key={loc.id}
@@ -1449,6 +1455,11 @@ function OutpostSummaryCardsComp({ section }: ScreenComponentProps) {
                 <div className="flex items-center gap-1 mt-0.5">
                   <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: statusColor }} />
                   <span className="text-[9px] capitalize" style={{ color: statusColor }}>{status}</span>
+                  {buildings.length > 0 && (
+                    <span className="text-[9px] text-text-secondary ml-1">
+                      · {activeBuildings}/{buildings.length} active
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1505,12 +1516,13 @@ function InventoryCategoryGridComp(_: ScreenComponentProps) {
 function NFTCapacityInfoCardComp(_: ScreenComponentProps) {
   const navigate = useNavigate();
   const entities = useSyncEntities() as any[];
+  const player = useSyncPlayer() as any;
 
   const nftEntities = entities.filter((e: any) => isNftEntity(e));
   const nftCount = nftEntities.length;
-  const total = entities.length;
-  const cap = total || 1;
-  const pct = Math.min(100, (nftCount / cap) * 100);
+  const cap: number = player?.nftCap ?? player?.nft_cap ?? 0;
+  const displayCap = cap > 0 ? cap : '∞';
+  const pct = cap > 0 ? Math.min(100, (nftCount / cap) * 100) : 0;
   const barColor = pct >= 90 ? '#f87171' : '#fbbf24';
 
   return (
@@ -1518,7 +1530,7 @@ function NFTCapacityInfoCardComp(_: ScreenComponentProps) {
       <SectionHeader title="💎 NFT CAPACITY" className="mb-3" />
       <div className="flex justify-between text-[11px] mb-1.5">
         <span className="text-text-secondary">NFT Entities</span>
-        <span className="font-bold text-text-primary">{nftCount} / {total}</span>
+        <span className="font-bold text-text-primary">{nftCount} / {displayCap}</span>
       </div>
       <div className="h-2 bg-white/10 rounded-full overflow-hidden">
         <div
@@ -1552,6 +1564,17 @@ function _ShopLoadingCard({ title }: { title: string }) {
         <div className="h-14 bg-white/5 rounded-lg animate-pulse" />
       </div>
     </Card>
+  );
+}
+
+function _ShopCostLabel({ cost }: { cost: Array<{ id: string; amount: number }> }) {
+  if (!cost || cost.length === 0) return null;
+  const primary = cost[0];
+  const icon = primary.id.toLowerCase().includes('gem') ? '💎' : primary.id.toLowerCase().includes('gold') ? '🪙' : '🔹';
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-400">
+      {icon} {primary.amount.toLocaleString()}
+    </span>
   );
 }
 
@@ -1610,13 +1633,16 @@ function StoreOfferCardComp({ section }: ScreenComponentProps) {
             )}
           </div>
         </div>
-        <button
-          className="mt-3 w-full rounded-lg py-2 text-[12px] font-bold transition-colors"
-          style={{ background: `${accent}22`, border: `1px solid ${accent}55`, color: accent }}
-          onClick={(e) => { e.stopPropagation(); navigate('/store'); }}
-        >
-          VIEW IN STORE
-        </button>
+        <div className="mt-3 flex items-center gap-2">
+          <_ShopCostLabel cost={item.cost} />
+          <button
+            className="flex-1 rounded-lg py-2 text-[12px] font-bold transition-colors"
+            style={{ background: `${accent}22`, border: `1px solid ${accent}55`, color: accent }}
+            onClick={(e) => { e.stopPropagation(); navigate('/store'); }}
+          >
+            BUY NOW
+          </button>
+        </div>
       </div>
     </Card>
   );
@@ -1640,6 +1666,10 @@ function _MiniShopCard({ item, onClick }: { item: _ShopItem; onClick: () => void
         {item.description && (
           <div className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">{item.description}</div>
         )}
+        <div className="mt-1.5 flex items-center justify-between gap-1">
+          <_ShopCostLabel cost={item.cost} />
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${accent}33`, color: accent }}>BUY</span>
+        </div>
       </div>
     </div>
   );
@@ -1708,6 +1738,10 @@ function StoreItemGridComp({ section }: ScreenComponentProps) {
               {item.description && (
                 <div className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">{item.description}</div>
               )}
+              <div className="mt-2 flex items-center justify-between gap-1">
+                <_ShopCostLabel cost={item.cost} />
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: `${accent}33`, color: accent }}>BUY</span>
+              </div>
             </div>
           );
         })}
@@ -1745,6 +1779,10 @@ function StoreItemRailComp({ section }: ScreenComponentProps) {
               {item.badge && (
                 <div className="text-[9px] font-bold mt-0.5" style={{ color: accent }}>{item.badge}</div>
               )}
+              <div className="mt-1.5 flex items-center justify-between gap-1">
+                <_ShopCostLabel cost={item.cost} />
+                <span className="text-[8px] font-bold px-1 py-0.5 rounded" style={{ background: `${accent}33`, color: accent }}>BUY</span>
+              </div>
             </div>
           );
         })}
