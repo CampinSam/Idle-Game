@@ -37,7 +37,7 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
       return <TimerBlock endsAt={block.endsAt} label={block.label} onExpire={onTimerExpire ?? undefined} />;
 
     case 'progress':
-      return <ProgressBlock current={block.current} max={block.max} label={block.label} />;
+      return <ProgressBlock current={block.current} max={block.max} label={block.label} startsAt={block.startsAt} endsAt={block.endsAt} />;
 
     case 'rewardsPreview':
       return <RewardsListBlock items={block.items} title="Preview" compact />;
