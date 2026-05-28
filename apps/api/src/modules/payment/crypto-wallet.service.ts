@@ -282,17 +282,40 @@ export class CryptoWalletService {
       // was actually broadcast; an admin must inspect the blockchain before
       // re-queuing to APPROVED or manually marking as SENT.
       const staleThreshold = new Date(Date.now() - 15 * 60 * 1000);
-      const staleResult = await (this.prisma as any).cryptoWithdrawal.updateMany({
+      // Fetch stale records first so we have userId for per-player notifications.
+      // Then update each record individually so we only notify players whose
+      // withdrawal actually transitioned (guarding against concurrent changes
+      // between the findMany and the update).
+      const staleRecords = await (this.prisma as any).cryptoWithdrawal.findMany({
         where: { status: 'PROCESSING', updatedAt: { lt: staleThreshold } },
-        data: {
-          status: 'FAILED',
-          adminNote: 'Auto-recovered from stale PROCESSING by scheduler reaper. ' +
-            'Check blockchain for a broadcast transaction before re-queueing.',
-        },
+        select: { id: true, userId: true },
       });
-      if (staleResult.count > 0) {
+      let reaperCount = 0;
+      for (const record of staleRecords) {
+        const result = await (this.prisma as any).cryptoWithdrawal.updateMany({
+          where: { id: record.id, status: 'PROCESSING' },
+          data: {
+            status: 'FAILED',
+            adminNote: 'Auto-recovered from stale PROCESSING by scheduler reaper. ' +
+              'Check blockchain for a broadcast transaction before re-queueing.',
+          },
+        });
+        if (result.count > 0) {
+          reaperCount++;
+          await this.emitWithdrawalNotification(
+            record.userId,
+            record.id,
+            'withdrawal_failed',
+            'Withdrawal Failed',
+            'Your DERP withdrawal could not be sent. Please contact support.',
+            { screen: '/wallet' },
+            { withdrawalId: record.id },
+          );
+        }
+      }
+      if (reaperCount > 0) {
         this.logger.warn(
-          `[Withdrawals] Recovered ${staleResult.count} stale PROCESSING withdrawal(s) → FAILED`,
+          `[Withdrawals] Recovered ${reaperCount} stale PROCESSING withdrawal(s) → FAILED`,
         );
       }
 
@@ -401,6 +424,17 @@ export class CryptoWalletService {
         );
       } else {
         this.logger.log(`Withdrawal ${id} sent on-chain — txHash: ${txHash}`);
+        const cardanoscanUrl = `https://cardanoscan.io/transaction/${txHash}`;
+        const shortHash = `${txHash.slice(0, 8)}…${txHash.slice(-8)}`;
+        await this.emitWithdrawalNotification(
+          withdrawal.userId,
+          id,
+          'withdrawal_sent',
+          'Withdrawal Sent!',
+          `Your DERP is on-chain. Tx: ${shortHash} — ${cardanoscanUrl}`,
+          { screen: '/wallet', txHash, cardanoscanUrl },
+          { txHash, withdrawalId: id, cardanoscanUrl },
+        );
       }
     } catch (err: any) {
       const msg = String(err?.message ?? err);
@@ -408,13 +442,24 @@ export class CryptoWalletService {
 
       // Conditional update: only move to FAILED if still PROCESSING.
       // If status changed (e.g. admin intervened), skip the FAILED write.
-      await (this.prisma as any).cryptoWithdrawal.updateMany({
+      const failedUpdate = await (this.prisma as any).cryptoWithdrawal.updateMany({
         where: { id, status: 'PROCESSING' },
         data: {
           status: 'FAILED',
           adminNote: `Auto-send failed: ${msg.slice(0, 500)}`,
         },
       });
+      if (failedUpdate.count > 0) {
+        await this.emitWithdrawalNotification(
+          withdrawal.userId,
+          id,
+          'withdrawal_failed',
+          'Withdrawal Failed',
+          'Your DERP withdrawal could not be sent. Please contact support.',
+          { screen: '/wallet' },
+          { withdrawalId: id },
+        );
+      }
     }
   }
 
@@ -910,6 +955,45 @@ export class CryptoWalletService {
       this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
     } catch (err) {
       this.logger.warn(`emitCurrencyDelta failed: ${err}`);
+    }
+  }
+
+  /**
+   * Creates a withdrawal status notification in the DB and emits it as a
+   * PlayerDelta patch so the client's notification bell and toast pipeline
+   * update in real time via SSE without waiting for a re-bootstrap.
+   */
+  private async emitWithdrawalNotification(
+    userId: string,
+    withdrawalId: string,
+    type: 'withdrawal_sent' | 'withdrawal_failed',
+    title: string,
+    body: string,
+    deepLink: any,
+    meta: any,
+  ): Promise<void> {
+    try {
+      const notification = await this.notificationService.createNotification({
+        userId,
+        type,
+        category: 'wallet',
+        priority: 'high',
+        title,
+        body,
+        deepLink,
+        meta,
+        sourceType: 'crypto_withdrawal',
+        sourceId: withdrawalId,
+      });
+
+      const pb = new PatchBuilder();
+      pb.upsertNotification(notification);
+      const delta = await (this.prisma as any).playerDelta.create({
+        data: { userId, patches: pb.build(), ui: [] },
+      });
+      this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
+    } catch (err) {
+      this.logger.warn(`emitWithdrawalNotification failed for withdrawal ${withdrawalId}: ${err}`);
     }
   }
 
