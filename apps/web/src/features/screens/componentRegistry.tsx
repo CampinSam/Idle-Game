@@ -1414,7 +1414,7 @@ function OutpostReadyListComp({ section }: ScreenComponentProps) {
           <div
             key={loc.id}
             className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2.5 border border-white/10 cursor-pointer hover:bg-white/8 transition-colors"
-            onClick={() => navigate('/outposts')}
+            onClick={() => navigate('/locations')}
           >
             <span className="text-base flex-shrink-0">🏭</span>
             <div className="flex-1 min-w-0">
@@ -1468,7 +1468,7 @@ function OutpostSummaryCardsComp({ section }: ScreenComponentProps) {
             <div
               key={loc.id}
               className="flex items-center gap-2 bg-white/5 rounded-lg px-2.5 py-2 border border-white/10 cursor-pointer hover:bg-white/8 transition-colors"
-              onClick={() => navigate('/outposts')}
+              onClick={() => navigate('/locations')}
             >
               <span className="text-sm flex-shrink-0">🏠</span>
               <div className="flex-1 min-w-0">
@@ -1568,7 +1568,7 @@ function NFTCapacityInfoCardComp(_: ScreenComponentProps) {
       </div>
       <button
         className="mt-3 w-full rounded-lg py-1.5 text-[11px] font-bold text-amber-400 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
-        onClick={() => navigate('/wallet')}
+        onClick={() => navigate('/crypto')}
       >
         {nftCount > 0 ? 'VIEW WALLET' : 'CONNECT WALLET'}
       </button>
