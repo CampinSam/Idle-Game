@@ -1,6 +1,5 @@
 import { Component, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
-import { api } from '../../../services/api';
 import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRenderer';
 import ContentDocumentDataEditor from '../smart/components/structured/ContentDocumentDataEditor';
 import { getMissingBlockProps } from '../smart/components/structured/blockPropHints';
@@ -469,18 +468,32 @@ function MissionDefPicker({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
 
-  useEffect(() => {
-    if (!open || allDefs.length > 0) return;
+  const loadDefs = useCallback(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     setLoading(true);
     setError('');
-    api.getMissionDefinitions()
+    adminApi.list('mission_defs')
       .then((defs: any[]) => {
         setAllDefs(defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
         setLoading(false);
       })
-      .catch((e: any) => { setError(e.message || 'Failed to load mission definitions'); setLoading(false); });
-  }, [open, allDefs.length]);
+      .catch((e: any) => {
+        fetchedRef.current = false;
+        setError(e.message || 'Failed to load mission definitions');
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (value) loadDefs();
+  }, [value, loadDefs]);
+
+  useEffect(() => {
+    if (open) loadDefs();
+  }, [open, loadDefs]);
 
   useEffect(() => {
     if (!open) return;
