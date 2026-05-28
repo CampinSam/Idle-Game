@@ -33,9 +33,11 @@ function StatusMsg({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   );
 }
 
+const ADA_WARNING_THRESHOLD = 5;
+
 function ConfigTab() {
   const [config, setConfig] = useState<any>(null);
-  const [balance, setBalance] = useState<{ ada: string; cnt: string } | null>(null);
+  const [balance, setBalance] = useState<{ ada: string; cnt: string; totalApprovedCnt: string } | null>(null);
   const [form, setForm] = useState<any>({});
   const [skeyInput, setSkeyInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -116,22 +118,69 @@ function ConfigTab() {
     <div style={{ maxWidth: 640 }}>
       <h3 style={{ marginBottom: '1.25rem', color: '#b8b8ff', fontSize: '1rem' }}>Wallet Configuration</h3>
 
-      {balance && (
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
-          marginBottom: '1.5rem', padding: '1rem',
-          background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
-        }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET ADA</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#60a5fa' }}>{balance.ada} ₳</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET DERP CNT</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#a78bfa' }}>{Number(balance.cnt).toLocaleString()}</div>
-          </div>
-        </div>
-      )}
+      {balance && (() => {
+        const adaBalance = parseFloat(balance.ada);
+        const cntBalance = Number(balance.cnt);
+        const totalApprovedCnt = Number(balance.totalApprovedCnt);
+        const cntShort = totalApprovedCnt > 0 && cntBalance < totalApprovedCnt;
+        const adaLow = adaBalance < ADA_WARNING_THRESHOLD;
+        const hasWarning = cntShort || adaLow;
+
+        return (
+          <>
+            {hasWarning && (
+              <div style={{
+                marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: 8,
+                background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.4)',
+                color: '#fbbf24',
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.35rem' }}>
+                  ⚠ Hot Wallet Low Balance
+                </div>
+                {cntShort && (
+                  <div style={{ fontSize: '0.82rem', marginBottom: '0.2rem' }}>
+                    CNT balance ({cntBalance.toLocaleString()}) is below total queued withdrawals ({totalApprovedCnt.toLocaleString()}). Withdrawals are paused until funds are topped up.
+                  </div>
+                )}
+                {adaLow && (
+                  <div style={{ fontSize: '0.82rem' }}>
+                    ADA balance ({adaBalance.toFixed(6)} ₳) is below the {ADA_WARNING_THRESHOLD} ₳ safety threshold. Top up the hot wallet to cover transaction fees.
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+              marginBottom: '1.5rem', padding: '1rem',
+              background: 'rgba(255,255,255,0.04)', borderRadius: 8,
+              border: `1px solid ${hasWarning ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET ADA</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: adaLow ? '#fbbf24' : '#60a5fa' }}>
+                  {balance.ada} ₳
+                </div>
+                {adaLow && (
+                  <div style={{ fontSize: '0.72rem', color: '#fbbf24', marginTop: 2 }}>
+                    Below {ADA_WARNING_THRESHOLD} ₳ threshold
+                  </div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET DERP CNT</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: cntShort ? '#fbbf24' : '#a78bfa' }}>
+                  {cntBalance.toLocaleString()}
+                </div>
+                {totalApprovedCnt > 0 && (
+                  <div style={{ fontSize: '0.72rem', color: cntShort ? '#fbbf24' : '#666', marginTop: 2 }}>
+                    {totalApprovedCnt.toLocaleString()} queued
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {field('Hot Wallet Address', 'hotWalletAddress', 'text', 'Cardano address that receives CNT deposits')}
       {field('Blockfrost Project ID', 'blockfrostProjectId', 'text', 'Blockfrost API key for deposit polling & balance. Falls back to BLOCKFROST_API_KEY env var if empty.')}

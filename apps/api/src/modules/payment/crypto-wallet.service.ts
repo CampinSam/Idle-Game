@@ -211,16 +211,28 @@ export class CryptoWalletService {
     return config.blockfrostProjectId?.trim() || process.env.BLOCKFROST_API_KEY || null;
   }
 
-  async getHotWalletBalance(): Promise<{ ada: string; cnt: string } | null> {
+  /** Returns the sum of CNT across all APPROVED (queued) withdrawals. */
+  private async getApprovedWithdrawalTotalCnt(): Promise<bigint> {
+    const rows = await (this.prisma as any).cryptoWithdrawal.findMany({
+      where: { status: 'APPROVED' },
+      select: { amount: true },
+    });
+    return rows.reduce((acc: bigint, r: any) => acc + BigInt(r.amount), 0n);
+  }
+
+  async getHotWalletBalance(): Promise<{ ada: string; cnt: string; totalApprovedCnt: string } | null> {
     const config = await this.getConfig();
     const apiKey = this.getBlockfrostApiKey(config);
     if (!apiKey || !config.hotWalletAddress) return null;
 
     try {
-      const resp = await fetch(
-        `${BLOCKFROST_BASE}/addresses/${config.hotWalletAddress}`,
-        { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
-      );
+      const [resp, totalApprovedCnt] = await Promise.all([
+        fetch(
+          `${BLOCKFROST_BASE}/addresses/${config.hotWalletAddress}`,
+          { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
+        ),
+        this.getApprovedWithdrawalTotalCnt(),
+      ]);
       if (!resp.ok) return null;
 
       const data = (await resp.json()) as any;
@@ -235,7 +247,7 @@ export class CryptoWalletService {
       const cntEntry = amounts.find((a) => a.unit === unit);
       const cnt = cntEntry ? cntEntry.quantity : '0';
 
-      return { ada: adaNum, cnt };
+      return { ada: adaNum, cnt, totalApprovedCnt: totalApprovedCnt.toString() };
     } catch (err) {
       this.logger.warn(`getHotWalletBalance failed: ${err}`);
       return null;
@@ -413,6 +425,43 @@ export class CryptoWalletService {
         where: { status: 'APPROVED' },
         orderBy: { createdAt: 'asc' },
       });
+
+      if (approved.length > 0) {
+        // ── Balance safety check ─────────────────────────────────────────────
+        // Fetch the live hot-wallet balance and compare against queued totals.
+        // If funds are insufficient, emit a WARNING and skip all on-chain work
+        // until an operator tops up the wallet.
+        const balance = await this.getHotWalletBalance();
+        if (balance) {
+          const adaBalance = parseFloat(balance.ada);
+          const cntBalance = BigInt(balance.cnt);
+          const totalApprovedCnt = BigInt(balance.totalApprovedCnt);
+          const ADA_WARNING_THRESHOLD = 5; // ADA
+
+          const cntShort = cntBalance < totalApprovedCnt;
+          const adaLow = adaBalance < ADA_WARNING_THRESHOLD;
+
+          if (cntShort || adaLow) {
+            const reasons: string[] = [];
+            if (cntShort) {
+              reasons.push(
+                `CNT balance (${cntBalance.toString()}) is below total queued withdrawals (${totalApprovedCnt.toString()})`,
+              );
+            }
+            if (adaLow) {
+              reasons.push(
+                `ADA balance (${adaBalance.toFixed(6)} ₳) is below the ${ADA_WARNING_THRESHOLD} ₳ safety threshold`,
+              );
+            }
+            this.logger.warn(
+              `[Withdrawals] HOT WALLET LOW BALANCE — skipping ${approved.length} queued withdrawal(s). ` +
+              reasons.join('; ') +
+              '. Top up the hot wallet before the next cycle.',
+            );
+            return;
+          }
+        }
+      }
 
       for (const withdrawal of approved) {
         await this.sendWithdrawalOnChain(withdrawal, config, apiKey, hotWalletAddress, skeyHex);

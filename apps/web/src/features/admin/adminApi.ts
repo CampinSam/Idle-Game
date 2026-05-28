@@ -288,7 +288,7 @@ export const adminApi = {
     autoApprovalThreshold?: number;
     hotWalletSkeyHex?: string;
   }) => adminRequest<any>('/crypto/config', { method: 'PUT', body: JSON.stringify(data) }),
-  getCryptoBalance: () => adminRequest<{ ada: string; cnt: string } | null>('/crypto/balance'),
+  getCryptoBalance: () => adminRequest<{ ada: string; cnt: string; totalApprovedCnt: string } | null>('/crypto/balance'),
   getCryptoWithdrawals: (status?: string, limit?: number) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
