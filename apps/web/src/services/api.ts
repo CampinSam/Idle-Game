@@ -200,6 +200,11 @@ class ApiClient {
     });
   }
 
+  // Shop
+  getShopItems() {
+    return this.request<any[]>('/shop/items');
+  }
+
   // Crafting
   getCraftingRecipes() {
     return this.request<any[]>('/crafting/recipes');

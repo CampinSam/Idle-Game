@@ -59,7 +59,7 @@ type DefType = typeof DEF_TYPES[number];
 // ─── Prop schema hints (from render-blocks.md) ────────────────────────────────
 
 interface PropHint {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker' | 'missionDefPicker' | 'recipeDefPicker' | 'locationDefPicker';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker' | 'missionDefPicker' | 'recipeDefPicker' | 'locationDefPicker' | 'storeItemPicker';
   description?: string;
   required?: boolean;
   options?: string[];
@@ -186,7 +186,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
   StoreOfferCard: {
     title: { type: 'string', description: 'Card header text (default: "🔥 FEATURED OFFER")' },
-    offerId: { type: 'string', description: 'Store Item ID to pin a specific offer (leave blank for auto — shows first featured/badged item).' },
+    offerId: { type: 'storeItemPicker', description: 'Store Item ID to pin a specific offer (leave blank for auto — shows first featured/badged item).' },
   },
   StoreOfferCarousel: {
     title: { type: 'string', description: 'Optional section header above the carousel.' },
@@ -883,6 +883,148 @@ function LocationDefPicker({
   );
 }
 
+// ─── Store item picker ────────────────────────────────────────────────────────
+
+function StoreItemPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allItems, setAllItems] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
+
+  const loadItems = useCallback(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError('');
+    api.getShopItems()
+      .then((items: any[]) => {
+        setAllItems(items.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+        setLoading(false);
+      })
+      .catch((e: any) => {
+        fetchedRef.current = false;
+        setError(e.message || 'Failed to load store items');
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (value) loadItems();
+  }, [value, loadItems]);
+
+  useEffect(() => {
+    if (open) loadItems();
+  }, [open, loadItems]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allItems.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allItems;
+
+  const selected = allItems.find(d => d.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="store item id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto', padding: '0 8px', flexShrink: 0,
+            cursor: 'pointer', fontSize: 10, color: open ? '#34d399' : '#6b7280',
+            borderColor: open ? 'rgba(52,211,153,0.4)' : undefined,
+          }}
+          title="Pick store item"
+        >
+          {open ? '▲ pick' : '▼ pick'}
+        </button>
+      </div>
+
+      {value && selected && (
+        <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>
+          ✓ {selected.name}
+        </div>
+      )}
+      {value && !selected && allItems.length > 0 && !loading && (
+        <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>
+          ⚠ ID not found in current results — it may still be valid
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: '#0f0f1e', border: '1px solid rgba(52,211,153,0.3)',
+          borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden',
+        }}>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search by name or id…"
+            autoFocus
+            style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }}
+          />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && (
+              <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>
+                No store items found
+              </div>
+            )}
+            {filtered.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left' as const,
+                  padding: '4px 6px', background: opt.id === value ? 'rgba(52,211,153,0.15)' : 'transparent',
+                  border: 'none', borderRadius: 4, cursor: 'pointer',
+                  color: opt.id === value ? '#34d399' : '#6ee7b7',
+                  fontSize: 11, fontFamily: 'inherit',
+                }}
+                title={opt.id}
+              >
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Structured props editor ──────────────────────────────────────────────────
 
 type PropType = 'string' | 'number' | 'boolean' | 'json';
@@ -973,6 +1115,7 @@ function StructuredFieldsEditor({
           : hint?.type === 'missionDefPicker' ? 'missionDefPicker'
           : hint?.type === 'recipeDefPicker' ? 'recipeDefPicker'
           : hint?.type === 'locationDefPicker' ? 'locationDefPicker'
+          : hint?.type === 'storeItemPicker' ? 'storeItemPicker'
           : hint?.type === 'array' || hint?.type === 'object' ? 'json'
           : detectPropType(val);
         const isMissing = highlightKeys.includes(key);
@@ -1004,6 +1147,11 @@ function StructuredFieldsEditor({
                 />
               ) : ptype === 'locationDefPicker' ? (
                 <LocationDefPicker
+                  value={String(val ?? '')}
+                  onChange={v => updateProp(key, v)}
+                />
+              ) : ptype === 'storeItemPicker' ? (
+                <StoreItemPicker
                   value={String(val ?? '')}
                   onChange={v => updateProp(key, v)}
                 />
