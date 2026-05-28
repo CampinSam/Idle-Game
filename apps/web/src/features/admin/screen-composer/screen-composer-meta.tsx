@@ -230,7 +230,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     preview: () => P.wrap(
       <div style={{ position: 'relative' }}>
         {[1, 2].map(i => P.card(<div key={i} style={{ height: 18, opacity: 0.4 }} />))}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -244,7 +244,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
       <div style={{ position: 'relative', background: 'rgba(255,255,255,0.04)', borderRadius: 6, padding: 8, textAlign: 'center' }}>
         <span style={{ fontSize: 22 }}>👹</span>
         <div style={{ marginTop: 4 }}>{P.bar('45%', '#ef4444')}</div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -346,7 +346,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   MissionCategoryRail: {
     friendlyName: 'Mission Category Rail',
-    description: 'Horizontal scrollable rail of mission category chips. Stub in current build.',
+    description: 'Horizontal scrollable rail of mission category chips sourced from game definitions.',
     group: 'Missions',
     color: '#a78bfa',
     preview: () => P.wrap(
@@ -358,7 +358,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             </div>
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -386,7 +386,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   CraftingQueuePreview: {
     friendlyName: 'Crafting Queue Preview',
-    description: 'Compact list of queued recipe jobs with timers. Stub in current build.',
+    description: 'Compact list of active crafting jobs with recipe names and live countdown timers.',
     group: 'Crafting',
     color: '#34d399',
     preview: () => P.wrap(
@@ -397,14 +397,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             {P.bar('60%', '#34d399')}
           </div>
         ))}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   RecipeCategoryRail: {
     friendlyName: 'Recipe Category Rail',
-    description: 'Horizontal scrollable chips for filtering recipe categories. Stub in current build.',
+    description: 'Horizontal scrollable chips for filtering recipes by category, derived from crafting recipe definitions.',
     group: 'Crafting',
     color: '#34d399',
     preview: () => P.wrap(
@@ -416,7 +416,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             </div>
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -425,7 +425,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   StoreOfferCard: {
     friendlyName: 'Store Offer Card',
-    description: 'Single featured store offer card with artwork, name, price, and buy CTA. Stub.',
+    description: 'Single featured store offer card with name, badge, and CTA. Fetches live shop data.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => (
@@ -439,14 +439,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             </div>
           </div>
         )}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   StoreOfferCarousel: {
     friendlyName: 'Store Offer Carousel',
-    description: 'Horizontal scrollable carousel of store offer cards. Stub in current build.',
+    description: 'Horizontal scrollable carousel of store offer cards. Fetches live shop data.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -456,14 +456,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ flex: '0 0 44px', height: 44, background: '#fbbf2415', border: '1px solid #fbbf2433', borderRadius: 7 }} />
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   StoreItemGrid: {
     friendlyName: 'Store Item Grid',
-    description: 'Grid of purchasable store items with icons and prices. Stub in current build.',
+    description: 'Grid of purchasable store items. Fetches live shop data; filterable by tab.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -473,14 +473,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ height: 28, borderRadius: 5, background: '#fbbf2415', border: '1px solid #fbbf2433' }} />
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   StoreItemRail: {
     friendlyName: 'Store Item Rail',
-    description: 'Horizontal scrollable rail of store items. Stub in current build.',
+    description: 'Horizontal scrollable rail of store items. Fetches live shop data; filterable by tab.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -490,14 +490,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ flex: '0 0 36px', height: 36, background: '#fbbf2415', border: '1px solid #fbbf2433', borderRadius: 6 }} />
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   FeaturedShopRail: {
     friendlyName: 'Featured Shop Rail',
-    description: 'Curated horizontal rail highlighting featured shop items. Stub in current build.',
+    description: 'Curated horizontal rail of badged or time-limited shop items. Fetches live shop data.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -508,14 +508,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ flex: '0 0 60px', height: 36, background: 'linear-gradient(135deg, #78350f, #92400e)', borderRadius: 7, opacity: 0.6 }} />
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   GemPackGrid: {
     friendlyName: 'Gem Pack Grid',
-    description: 'Grid of gem bundle purchase options with price tiers. Stub in current build.',
+    description: 'Grid of gem bundle purchase options. Fetches live gem pack data from the admin gem pack definitions.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -527,7 +527,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             </div>
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -550,7 +550,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   NFTCapacityInfoCard: {
     friendlyName: 'NFT Capacity Info',
-    description: 'Shows how many NFT entity slots the player has used vs. their cap. Stub in current build.',
+    description: 'Shows how many NFT entity slots the player has used vs. their cap. Live data from the sync store.',
     group: 'Store',
     color: '#fbbf24',
     preview: () => P.wrap(
@@ -558,7 +558,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
         {P.label('NFT Capacity')}
         {P.bar('30%', '#fbbf24')}
         <span style={{ fontSize: 9, color: '#aaa' }}>3 / 10 slots</span>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -567,7 +567,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   BattlePassProgress: {
     friendlyName: 'Battle Pass Progress',
-    description: 'Shows current battle pass tier, XP bar, and next reward preview. Stub in current build.',
+    description: 'Shows current battle pass tier, XP bar, and next reward preview. Configured via props.',
     group: 'Progress',
     color: '#60a5fa',
     preview: () => P.wrap(
@@ -578,14 +578,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
           <span style={{ fontSize: 9, color: '#aaa' }}>Tier 7</span>
           <span style={{ fontSize: 9, color: '#60a5fa' }}>550 / 1000</span>
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   BattlePassTierList: {
     friendlyName: 'Battle Pass Tier List',
-    description: 'Full scrollable list of all battle pass reward tiers. Stub in current build.',
+    description: 'Full scrollable list of all battle pass reward tiers. Configured via props.',
     group: 'Progress',
     color: '#60a5fa',
     preview: () => P.wrap(
@@ -596,7 +596,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             {P.bar('60%', '#60a5fa')}
           </div>
         ))}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -839,7 +839,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   OutpostReadyList: {
     friendlyName: 'Outpost Ready List',
-    description: 'Lists outposts with completed production ready to collect. Stub in current build.',
+    description: 'Lists outposts with production ready to collect. Live data from the sync store.',
     group: 'Progress',
     color: '#60a5fa',
     preview: () => P.wrap(
@@ -850,14 +850,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             {P.bar('75%', '#60a5fa')}
           </div>
         ))}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   OutpostSummaryCards: {
     friendlyName: 'Outpost Summary Cards',
-    description: 'Compact summary cards for each outpost showing production rate and status. Stub.',
+    description: 'Compact summary cards for each outpost showing name and status. Live data from the sync store.',
     group: 'Progress',
     color: '#60a5fa',
     preview: () => P.wrap(
@@ -867,14 +867,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ height: 24, borderRadius: 5, background: '#60a5fa15', border: '1px solid #60a5fa33' }} />
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   InventoryCategoryGrid: {
     friendlyName: 'Inventory Category Grid',
-    description: 'Grid of item category shortcuts linking to filtered inventory views. Stub.',
+    description: 'Grid of item category shortcuts linking to filtered inventory views. Live data from sync store.',
     group: 'Progress',
     color: '#60a5fa',
     preview: () => P.wrap(
@@ -884,7 +884,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div key={i} style={{ height: 28, borderRadius: 5, background: '#60a5fa15', border: '1px solid #60a5fa33', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>{icon}</div>
           ))}
         </div>
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -893,7 +893,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   NewsCard: {
     friendlyName: 'News Card',
-    description: 'Single news item card with headline, timestamp, and optional image. Stub.',
+    description: 'Single news item card with headline, optional image, body, tag, and CTA. Configured via props.',
     group: 'News',
     color: '#f472b6',
     preview: () => (
@@ -905,14 +905,14 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div style={{ marginTop: 3, fontSize: 8, color: '#aaa' }}>2 hours ago</div>
           </>
         )}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
 
   AnnouncementFeed: {
     friendlyName: 'Announcement Feed',
-    description: 'Vertically stacked list of game announcements. Stub in current build.',
+    description: 'Vertically stacked list of game announcements. Configured via an items array prop.',
     group: 'News',
     color: '#f472b6',
     preview: () => P.wrap(
@@ -923,7 +923,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             <div style={{ marginTop: 3 }}>{P.bar('50%', '#f472b644')}</div>
           </div>
         ))}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -947,7 +947,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   FeaturedBirdCard: {
     friendlyName: 'Featured Bird Card',
-    description: 'Spotlight card for a specific entity/bird with artwork. Stub in current build.',
+    description: 'Spotlight card for a specific entity with name, level, and status. Optional entityId prop pins a specific entity.',
     group: 'News',
     color: '#f472b6',
     preview: () => (
@@ -961,7 +961,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
             </div>
           </div>
         )}
-        {P.stubOverlay()}
+        
       </div>
     ),
   },
@@ -1103,11 +1103,4 @@ export const NO_PROPS_COMPONENTS = new Set([
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
-export const STUB_COMPONENTS = new Set([
-  'FeaturedBirdCard', 'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid',
-  'StoreItemRail', 'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress',
-  'BattlePassTierList', 'EventCarousel', 'EventCardList', 'SeasonBossPanel',
-  'NewsCard', 'AnnouncementFeed', 'MissionCategoryRail', 'CraftingQueuePreview',
-  'RecipeCategoryRail', 'OutpostReadyList', 'OutpostSummaryCards',
-  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
-]);
+export const STUB_COMPONENTS = new Set<string>();

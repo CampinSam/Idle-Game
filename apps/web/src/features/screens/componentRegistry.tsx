@@ -8,9 +8,12 @@ import {
   useSyncCurrencyBalances,
   useAllActiveJobs,
   useSyncStatus,
+  useSyncItems,
+  useSyncActiveCraftingJobs,
 } from '../../hooks/useSyncSelectors';
 import { useAppSelector, useAppDispatch } from '../../store';
-import { fetchMissionDefs } from '../../store/gameSlice';
+import { fetchMissionDefs, fetchMissionCategoryDefs, fetchCraftingRecipes } from '../../store/gameSlice';
+import { isNftEntity } from '../entities/types/derp_bird/isNftEntity';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
 import { BannerCarousel } from '../home/BannerCarousel';
 import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
@@ -1081,6 +1084,1128 @@ function SettingsBrowserComp(_: ScreenComponentProps) {
   return <SettingsContent />;
 }
 
+// ─── Shop hooks ───────────────────────────────────────────────────────────────
+
+interface _ShopItem {
+  id: string;
+  name: string;
+  description?: string;
+  tab: string;
+  cost: Array<{ id: string; amount: number }>;
+  contents: Array<{ id: string; amount: number }>;
+  badge?: string;
+  badgeColor?: string;
+  imageUrl?: string;
+  displayOrder?: number;
+  limitedUntil?: string | null;
+}
+
+interface _GemPack {
+  id: string;
+  name?: string;
+  gemAmount?: number;
+  unitAmount?: number;
+  currency?: string;
+  displayName?: string;
+  accentColor?: string;
+  borderColor?: string;
+  badgeLabel?: string;
+}
+
+const _shopApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '/api';
+
+function _shopAuthHeaders(): Record<string, string> {
+  try {
+    const token =
+      localStorage.getItem('jwtToken') ??
+      localStorage.getItem('authToken') ??
+      localStorage.getItem('token');
+    if (token) return { Authorization: `Bearer ${token}` };
+  } catch { /* ignore */ }
+  return {};
+}
+
+function useShopItems(tab?: string) {
+  const [items, setItems] = useState<_ShopItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${_shopApiBase}/shop/items`, { headers: _shopAuthHeaders() })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: _ShopItem[]) => {
+        if (!cancelled) setItems(tab ? data.filter(i => i.tab === tab) : data);
+      })
+      .catch(() => { /* swallow — show empty state */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [tab]);
+  return { items, loading };
+}
+
+function useGemPacks() {
+  const [packs, setPacks] = useState<_GemPack[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${_shopApiBase}/admin/gemPacks`, { headers: _shopAuthHeaders() })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: _GemPack[]) => { if (!cancelled) setPacks(data); })
+      .catch(() => { /* swallow */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+  return { packs, loading };
+}
+
+// ─── Countdown helper ─────────────────────────────────────────────────────────
+
+function _fmtCountdown(ms: number): string {
+  const secs = Math.floor(ms / 1000);
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
+  return `${s}s`;
+}
+
+// ─── Group A: Sync-store components ──────────────────────────────────────────
+
+function FeaturedBirdCardComp({ section, onAction }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const entityId = props.entityId as string | undefined;
+  const title = String(props.title ?? '🦜 FEATURED BIRD');
+  const actionKey = props.actionKey as string | undefined;
+  const navigate = useNavigate();
+  const entities = useSyncEntities();
+
+  const entity = entityId ? (entities as any[]).find((e: any) => e.id === entityId) : (entities as any[])[0];
+
+  if (!entity) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <div className="mt-2 text-center py-3 text-text-secondary text-[11px]">No entity to feature</div>
+      </Card>
+    );
+  }
+
+  const e = entity as any;
+  const name: string = e.name ?? e.defId ?? 'Unknown';
+  const level: number = e.level ?? 1;
+  const status: string = e.status ?? 'idle';
+  const statusColor =
+    status === 'idle' ? '#34d399' :
+    status === 'working' || status === 'mission' ? '#60a5fa' :
+    status === 'injured' ? '#f87171' : '#94a3b8';
+
+  return (
+    <Card
+      className="mb-4 p-4 border-fuchsia-500/20 cursor-pointer active:scale-[0.99] transition-transform"
+      onClick={() => { if (actionKey) { onAction(actionKey); } else { navigate(`/entities/${e.id}`); } }}
+    >
+      <SectionHeader title={title} className="mb-3" />
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-900 to-fuchsia-900 border border-fuchsia-500/30 flex items-center justify-center text-2xl flex-shrink-0 select-none">
+          🦜
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-black text-text-primary truncate">{name}</div>
+          <div className="text-[11px] text-text-secondary mt-0.5">Lv {level} · {e.defId ?? ''}</div>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: statusColor }} />
+            <span className="text-[10px] font-bold capitalize" style={{ color: statusColor }}>{status}</span>
+          </div>
+        </div>
+        <span className="text-text-secondary/40 text-lg flex-shrink-0">›</span>
+      </div>
+    </Card>
+  );
+}
+
+function MissionCategoryRailComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const limit = Number(props.limit ?? 10);
+  const path = String(props.path ?? '/missions');
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const missionCategoryDefs: any[] = useAppSelector((s: any) => s.game.missionCategoryDefs) ?? [];
+
+  useEffect(() => { dispatch(fetchMissionCategoryDefs() as any); }, [dispatch]);
+
+  const categories = missionCategoryDefs.slice(0, limit);
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        <button
+          className="flex-shrink-0 px-3.5 py-1.5 rounded-full bg-derp-blue/20 border border-derp-blue/40 text-[11px] font-bold text-blue-300 whitespace-nowrap"
+          onClick={() => navigate(path)}
+        >
+          All
+        </button>
+        {categories.map((cat: any) => (
+          <button
+            key={cat.id}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold text-text-secondary whitespace-nowrap hover:bg-white/10 transition-colors"
+            onClick={() => navigate(`${path}?category=${cat.id}`)}
+          >
+            {cat.icon && <span className="text-xs">{cat.icon}</span>}
+            {cat.name ?? cat.id}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CraftingQueuePreviewComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '⚒️ CRAFTING QUEUE');
+  const limit = Number(props.limit ?? 5);
+  const navigate = useNavigate();
+  const now = useNow(1000);
+  const activeCraftingJobs = useSyncActiveCraftingJobs();
+  const craftingRecipes: any[] = useAppSelector((s: any) => s.game.craftingRecipes) ?? [];
+
+  const jobs = (activeCraftingJobs as any[]).slice(0, limit);
+
+  if (jobs.length === 0) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <div className="mt-2 text-center py-3">
+          <div className="text-text-secondary text-[11px]">No active crafting jobs</div>
+          <button
+            className="mt-2 text-[11px] font-bold text-green-400 hover:underline"
+            onClick={() => navigate('/crafting')}
+          >
+            Start crafting →
+          </button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      <div className="mt-2 space-y-2">
+        {jobs.map((job: any) => {
+          const recipe = craftingRecipes.find((r: any) => r.id === (job.recipeId ?? job.defId));
+          const recipeName: string = recipe?.name ?? job.recipeId ?? job.defId ?? 'Crafting…';
+          const endsAt: number | null = job.endsAt ? new Date(job.endsAt).getTime() : null;
+          const msLeft = endsAt ? Math.max(0, endsAt - now) : null;
+          const isReady = job.status === 'ready_notified' || (msLeft !== null && msLeft <= 0);
+          const timeLabel = isReady ? 'Ready!' : msLeft !== null ? _fmtCountdown(msLeft) : job.status ?? 'active';
+
+          return (
+            <div key={job.id} className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2 border border-white/10">
+              <span className="text-base flex-shrink-0">⚒️</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-bold text-text-primary truncate">{recipeName}</div>
+              </div>
+              <span className={`text-[10px] font-bold flex-shrink-0 ${isReady ? 'text-green-400' : 'text-amber-400'}`}>
+                {timeLabel}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function RecipeCategoryRailComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const limit = Number(props.limit ?? 10);
+  const path = String(props.path ?? '/crafting');
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const craftingRecipes: any[] = useAppSelector((s: any) => s.game.craftingRecipes) ?? [];
+
+  useEffect(() => { dispatch(fetchCraftingRecipes() as any); }, [dispatch]);
+
+  const categories = Array.from(
+    new Set(craftingRecipes.map((r: any) => r.category).filter(Boolean))
+  ).slice(0, limit) as string[];
+
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        <button
+          className="flex-shrink-0 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 whitespace-nowrap"
+          onClick={() => navigate(path)}
+        >
+          All Recipes
+        </button>
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            className="flex-shrink-0 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold text-text-secondary whitespace-nowrap hover:bg-white/10 transition-colors capitalize"
+            onClick={() => navigate(`${path}?category=${cat}`)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OutpostReadyListComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '📦 READY TO COLLECT');
+  const limit = Number(props.limit ?? 5);
+  const navigate = useNavigate();
+  const locations = useSyncLocations() as any[];
+
+  const readyLocations = locations
+    .filter((loc: any) =>
+      loc.productionReady === true ||
+      (loc.productionBalance != null && Number(loc.productionBalance) > 0) ||
+      loc.status === 'production_ready'
+    )
+    .slice(0, limit);
+
+  const displayed = readyLocations.length > 0 ? readyLocations : locations.slice(0, Math.min(limit, 3));
+
+  if (displayed.length === 0) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <EmptyState message="No outposts with ready production" className="py-3" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      <div className="mt-2 space-y-2">
+        {displayed.map((loc: any) => (
+          <div
+            key={loc.id}
+            className="flex items-center gap-3 bg-white/5 rounded-lg px-3 py-2.5 border border-white/10 cursor-pointer hover:bg-white/8 transition-colors"
+            onClick={() => navigate(`/locations/${loc.id}`)}
+          >
+            <span className="text-base flex-shrink-0">🏭</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] font-bold text-text-primary truncate">
+                {loc.name ?? loc.defId ?? loc.id}
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-green-400 flex-shrink-0">COLLECT →</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function OutpostSummaryCardsComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '🏠 MY OUTPOSTS');
+  const limit = Number(props.limit ?? 6);
+  const columns = Number(props.columns ?? 2);
+  const navigate = useNavigate();
+  const locations = useSyncLocations() as any[];
+
+  const displayed = locations.slice(0, limit);
+
+  if (displayed.length === 0) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <EmptyState message="No outposts yet" className="py-3" />
+      </Card>
+    );
+  }
+
+  const colClass = columns === 1 ? 'space-y-2' : 'grid grid-cols-2 gap-2';
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      <div className={`mt-2 ${colClass}`}>
+        {displayed.map((loc: any) => {
+          const status: string = loc.status ?? 'active';
+          const statusColor =
+            status === 'active' ? '#34d399' :
+            status === 'inactive' ? '#94a3b8' : '#60a5fa';
+          return (
+            <div
+              key={loc.id}
+              className="flex items-center gap-2 bg-white/5 rounded-lg px-2.5 py-2 border border-white/10 cursor-pointer hover:bg-white/8 transition-colors"
+              onClick={() => navigate(`/locations/${loc.id}`)}
+            >
+              <span className="text-sm flex-shrink-0">🏠</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-bold text-text-primary truncate">
+                  {loc.name ?? loc.defId ?? loc.id}
+                </div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: statusColor }} />
+                  <span className="text-[9px] capitalize" style={{ color: statusColor }}>{status}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function InventoryCategoryGridComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const path = String(props.path ?? '/inventory');
+  const columns = Number(props.columns ?? 3);
+  const navigate = useNavigate();
+  const items = useSyncItems() as any[];
+
+  const categoryMap: Record<string, number> = {};
+  for (const item of items) {
+    const cat: string = item.type ?? item.category ?? 'Other';
+    categoryMap[cat] = (categoryMap[cat] ?? 0) + (Number(item.quantity) || 1);
+  }
+
+  const CATEGORY_ICONS: Record<string, string> = {
+    equipment: '⚔️', gear: '⚔️', weapon: '⚔️', armor: '🛡️',
+    potion: '🧪', consumable: '🧪', material: '🌿', resource: '🌿',
+    gem: '💎', currency: '💰', lootbox: '🎁', gift: '🎁',
+    misc: '📦', other: '📦',
+  };
+
+  const categories = Object.entries(categoryMap).slice(0, 12);
+  if (categories.length === 0) return null;
+
+  const colClass = columns === 2 ? 'grid-cols-2' : columns === 4 ? 'grid-cols-4' : 'grid-cols-3';
+
+  return (
+    <div className={`grid ${colClass} gap-3 mb-4`}>
+      {categories.map(([cat, count]) => {
+        const icon = CATEGORY_ICONS[cat.toLowerCase()] ?? '📦';
+        return (
+          <button
+            key={cat}
+            className="flex flex-col items-center gap-1.5 bg-bg-card rounded-xl px-3 py-3 border border-white/10 hover:bg-white/8 transition-colors"
+            onClick={() => navigate(`${path}?type=${cat}`)}
+          >
+            <span className="text-xl">{icon}</span>
+            <div className="text-[9px] font-bold text-text-secondary uppercase tracking-wide capitalize text-center truncate w-full">
+              {cat}
+            </div>
+            <div className="text-[10px] font-black text-text-primary">{count}</div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function NFTCapacityInfoCardComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '💎 NFT CAPACITY');
+  const capOverride = props.cap != null ? Number(props.cap) : null;
+  const marketplaceUrl = props.marketplaceUrl as string | undefined;
+  const entities = useSyncEntities() as any[];
+
+  const nftCount = entities.filter((e: any) => isNftEntity(e)).length;
+  const total = entities.length;
+  const cap = capOverride ?? total;
+  const pct = cap > 0 ? Math.min(100, (nftCount / cap) * 100) : 0;
+  const barColor = pct >= 90 ? '#f87171' : '#fbbf24';
+
+  return (
+    <Card className="mb-4 p-4 border-amber-500/20">
+      <SectionHeader title={title} className="mb-3" />
+      <div className="flex justify-between text-[11px] mb-1.5">
+        <span className="text-text-secondary">NFT Entities</span>
+        <span className="font-bold text-text-primary">{nftCount} / {cap}</span>
+      </div>
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${pct}%`, backgroundColor: barColor }}
+        />
+      </div>
+      <div className="mt-2 text-[10px] text-text-secondary">
+        {nftCount === 0
+          ? 'No NFT entities yet — link your wallet to import them.'
+          : `${nftCount} NFT ${nftCount === 1 ? 'entity' : 'entities'} imported.`}
+      </div>
+      {marketplaceUrl && (
+        <a
+          href={marketplaceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 block text-center text-[11px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
+        >
+          Browse Marketplace →
+        </a>
+      )}
+    </Card>
+  );
+}
+
+// ─── Group B: Shop API components ────────────────────────────────────────────
+
+function _ShopLoadingCard({ title }: { title: string }) {
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      <div className="mt-3 space-y-2">
+        <div className="h-14 bg-white/5 rounded-lg animate-pulse" />
+        <div className="h-14 bg-white/5 rounded-lg animate-pulse" />
+      </div>
+    </Card>
+  );
+}
+
+function StoreOfferCardComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '🔥 FEATURED OFFER');
+  const tab = props.tab as string | undefined;
+  const itemId = props.itemId as string | undefined;
+  const navigate = useNavigate();
+  const { items, loading } = useShopItems(tab);
+
+  if (loading) return <_ShopLoadingCard title={title} />;
+
+  const item = itemId ? items.find(i => i.id === itemId) : (items.find(i => i.badge) ?? items[0]);
+  if (!item) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <EmptyState message="No featured offers right now" className="py-3" />
+      </Card>
+    );
+  }
+
+  const accent = item.badgeColor ?? '#fbbf24';
+  return (
+    <Card
+      className="mb-4 overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+      style={{ borderTop: `2px solid ${accent}` } as React.CSSProperties}
+      onClick={() => navigate('/store')}
+    >
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-1">
+          <SectionHeader title={title} className="mb-0" />
+          {item.badge && (
+            <span
+              className="text-[10px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ml-2"
+              style={{ background: accent, color: '#000' }}
+            >
+              {item.badge}
+            </span>
+          )}
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <div
+            className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl border border-white/10"
+            style={{ background: `${accent}22` }}
+          >
+            🎁
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-black text-text-primary truncate">{item.name}</div>
+            {item.description && (
+              <div className="text-[11px] text-text-secondary mt-0.5 line-clamp-2">{item.description}</div>
+            )}
+            {item.limitedUntil && (
+              <div className="text-[10px] text-amber-400 font-bold mt-1">⏱ Limited time</div>
+            )}
+          </div>
+        </div>
+        <button
+          className="mt-3 w-full rounded-lg py-2 text-[12px] font-bold transition-colors"
+          style={{ background: `${accent}22`, border: `1px solid ${accent}55`, color: accent }}
+          onClick={(e) => { e.stopPropagation(); navigate('/store'); }}
+        >
+          VIEW IN STORE
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+function _MiniShopCard({ item, onClick }: { item: _ShopItem; onClick: () => void }) {
+  const accent = item.badgeColor ?? '#fbbf24';
+  return (
+    <div
+      className="flex-shrink-0 w-36 bg-bg-card rounded-xl border border-white/10 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+      style={{ borderTop: `2px solid ${accent}` }}
+      onClick={onClick}
+    >
+      <div className="p-3">
+        {item.badge && (
+          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full mb-1.5 inline-block" style={{ background: accent, color: '#000' }}>
+            {item.badge}
+          </span>
+        )}
+        <div className="text-[12px] font-black text-text-primary line-clamp-2">{item.name}</div>
+        {item.description && (
+          <div className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">{item.description}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StoreOfferCarouselComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = props.title as string | undefined;
+  const tab = props.tab as string | undefined;
+  const limit = Number(props.limit ?? 6);
+  const navigate = useNavigate();
+  const { items, loading } = useShopItems(tab);
+
+  if (loading) return title ? <_ShopLoadingCard title={title} /> : <div className="h-24 bg-white/5 rounded-xl animate-pulse mb-4" />;
+
+  const displayed = items.slice(0, limit);
+  if (displayed.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      {title && <SectionHeader title={title} className="mb-2" />}
+      <div className="flex gap-3 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        {displayed.map(item => (
+          <_MiniShopCard key={item.id} item={item} onClick={() => navigate('/store')} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StoreItemGridComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = props.title as string | undefined;
+  const tab = props.tab as string | undefined;
+  const limit = Number(props.limit ?? 6);
+  const columns = Number(props.columns ?? 2);
+  const navigate = useNavigate();
+  const { items, loading } = useShopItems(tab);
+
+  if (loading) return title ? <_ShopLoadingCard title={title} /> : null;
+
+  const displayed = items.slice(0, limit);
+  if (displayed.length === 0) return null;
+
+  const colClass = columns === 3 ? 'grid-cols-3' : 'grid-cols-2';
+
+  return (
+    <div className="mb-4">
+      {title && <SectionHeader title={title} className="mb-2" />}
+      <div className={`grid ${colClass} gap-3`}>
+        {displayed.map(item => {
+          const accent = item.badgeColor ?? '#fbbf24';
+          return (
+            <div
+              key={item.id}
+              className="bg-bg-card rounded-xl border border-white/10 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform p-3"
+              style={{ borderTop: `2px solid ${accent}` }}
+              onClick={() => navigate('/store')}
+            >
+              {item.badge && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full mb-1.5 inline-block" style={{ background: accent, color: '#000' }}>
+                  {item.badge}
+                </span>
+              )}
+              <div className="text-[12px] font-black text-text-primary line-clamp-2">{item.name}</div>
+              {item.description && (
+                <div className="text-[10px] text-text-secondary mt-0.5 line-clamp-1">{item.description}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StoreItemRailComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = props.title as string | undefined;
+  const tab = props.tab as string | undefined;
+  const limit = Number(props.limit ?? 5);
+  const navigate = useNavigate();
+  const { items, loading } = useShopItems(tab);
+
+  if (loading || items.length === 0) return null;
+
+  const displayed = items.slice(0, limit);
+
+  return (
+    <div className="mb-4">
+      {title && <SectionHeader title={title} className="mb-2" />}
+      <div className="flex gap-2.5 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        {displayed.map(item => {
+          const accent = item.badgeColor ?? '#fbbf24';
+          return (
+            <div
+              key={item.id}
+              className="flex-shrink-0 bg-bg-card rounded-xl border border-white/10 p-2.5 cursor-pointer active:scale-[0.98] transition-transform"
+              style={{ borderTop: `2px solid ${accent}`, minWidth: 100 }}
+              onClick={() => navigate('/store')}
+            >
+              <div className="text-[11px] font-black text-text-primary line-clamp-2">{item.name}</div>
+              {item.badge && (
+                <div className="text-[9px] font-bold mt-0.5" style={{ color: accent }}>{item.badge}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FeaturedShopRailComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '⭐ FEATURED');
+  const limit = Number(props.limit ?? 3);
+  const navigate = useNavigate();
+  const { items, loading } = useShopItems();
+
+  if (loading) return <_ShopLoadingCard title={title} />;
+
+  const featured = items.filter(i => i.badge || i.limitedUntil).slice(0, limit);
+  if (featured.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <SectionHeader title={title} className="mb-2" />
+      <div className="flex gap-3 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        {featured.map(item => {
+          const accent = item.badgeColor ?? '#f59e0b';
+          return (
+            <div
+              key={item.id}
+              className="flex-shrink-0 w-40 rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+              style={{ background: `linear-gradient(135deg, ${accent}22, ${accent}08)`, border: `1px solid ${accent}44` }}
+              onClick={() => navigate('/store')}
+            >
+              <div className="p-3">
+                {item.badge && (
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full mb-2 inline-block" style={{ background: accent, color: '#000' }}>
+                    {item.badge}
+                  </span>
+                )}
+                <div className="text-[13px] font-black text-text-primary line-clamp-2">{item.name}</div>
+                {item.limitedUntil && (
+                  <div className="text-[9px] text-amber-400 font-bold mt-1.5">⏱ Limited</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function GemPackGridComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '💎 GEM PACKS');
+  const limit = Number(props.limit ?? 6);
+  const navigate = useNavigate();
+  const { packs, loading } = useGemPacks();
+
+  if (loading) return <_ShopLoadingCard title={title} />;
+
+  const displayed = packs.slice(0, limit);
+  if (displayed.length === 0) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={title} />
+        <EmptyState message="No gem packs available" className="py-3" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} className="mb-3" />
+      <div className="grid grid-cols-2 gap-3">
+        {displayed.map(pack => {
+          const accent = pack.accentColor ?? '#fbbf24';
+          const gemLabel = pack.gemAmount != null ? `${pack.gemAmount.toLocaleString()} 💎` : pack.name ?? 'Gem Pack';
+          const priceLabel = pack.unitAmount != null
+            ? `${pack.currency === 'USD' ? '$' : ''}${pack.unitAmount}`
+            : null;
+          return (
+            <div
+              key={pack.id}
+              className="rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform text-center"
+              style={{ background: `linear-gradient(135deg, ${accent}22, ${accent}08)`, border: `1px solid ${pack.borderColor ?? accent}66` }}
+              onClick={() => navigate('/store')}
+            >
+              {pack.badgeLabel && (
+                <div className="text-[9px] font-black px-1.5 py-0.5 rounded-full mb-1.5 inline-block" style={{ background: accent, color: '#000' }}>
+                  {pack.badgeLabel}
+                </div>
+              )}
+              <div className="text-[18px] font-black mb-1" style={{ color: accent }}>{gemLabel}</div>
+              {priceLabel && <div className="text-[11px] text-text-secondary">{priceLabel}</div>}
+              <div className="mt-2 rounded-lg py-1.5 text-[10px] font-black" style={{ background: `${accent}33`, color: accent }}>
+                BUY
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Group C: Static / configurable props components ─────────────────────────
+
+function NewsCardComp({ section, onAction }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = props.title as string | undefined;
+  const body = props.body as string | undefined;
+  const date = props.date as string | undefined;
+  const imageUrl = props.imageUrl as string | undefined;
+  const tag = props.tag as string | undefined;
+  const actionKey = props.actionKey as string | undefined;
+  const actionLabel = String(props.actionLabel ?? 'READ MORE');
+
+  if (!title && !body) return null;
+
+  return (
+    <Card className="mb-4 overflow-hidden border-fuchsia-500/20">
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={title ?? 'News'}
+          className="w-full h-28 object-cover"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+      <div className="p-4">
+        {tag && (
+          <span className="inline-block text-[10px] font-black text-fuchsia-400 bg-fuchsia-500/15 border border-fuchsia-500/30 rounded-full px-2 py-0.5 mb-2">
+            {tag}
+          </span>
+        )}
+        {title && <div className="text-[15px] font-black text-text-primary mb-1">{title}</div>}
+        {body && <div className="text-[12px] text-text-secondary leading-relaxed">{body}</div>}
+        <div className="flex items-center justify-between mt-3">
+          {date ? <span className="text-[10px] text-text-secondary/60">{date}</span> : <span />}
+          {actionKey && (
+            <button
+              className="text-[11px] font-bold text-fuchsia-400 hover:text-fuchsia-300 transition-colors"
+              onClick={() => onAction(actionKey)}
+            >
+              {actionLabel} →
+            </button>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+interface _AnnouncementItem {
+  title: string;
+  body?: string;
+  date?: string;
+  tag?: string;
+}
+
+function AnnouncementFeedComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '📢 ANNOUNCEMENTS');
+  const items = Array.isArray(props.items) ? (props.items as _AnnouncementItem[]) : [];
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      {items.length === 0 ? (
+        <EmptyState message="No announcements configured" className="py-3" />
+      ) : (
+        <div className="mt-2 space-y-3">
+          {items.map((item, i) => (
+            <div key={i} className={i < items.length - 1 ? 'pb-3 border-b border-white/10' : ''}>
+              {item.tag && (
+                <span className="inline-block text-[10px] font-black text-fuchsia-400 bg-fuchsia-500/15 border border-fuchsia-500/30 rounded-full px-2 py-0.5 mb-1.5">
+                  {item.tag}
+                </span>
+              )}
+              <div className="text-[13px] font-black text-text-primary">{item.title}</div>
+              {item.body && <div className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{item.body}</div>}
+              {item.date && <div className="text-[10px] text-text-secondary/60 mt-1">{item.date}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function BattlePassProgressComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '🎖️ BATTLE PASS');
+  const tier = Number(props.tier ?? 0);
+  const xp = Number(props.xp ?? 0);
+  const maxXp = Number(props.maxXp ?? 1000);
+  const tierCount = Number(props.tierCount ?? 100);
+  const nextReward = props.nextReward as string | undefined;
+
+  const pct = maxXp > 0 ? Math.min(100, (xp / maxXp) * 100) : 0;
+
+  return (
+    <Card className="mb-4 p-4 border-blue-500/20">
+      <div className="flex items-center justify-between mb-3">
+        <SectionHeader title={title} className="mb-0" />
+        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/15 border border-blue-500/30 rounded-full px-2 py-0.5 flex-shrink-0 ml-2">
+          Tier {tier} / {tierCount}
+        </span>
+      </div>
+      <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-700"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-1.5 text-[10px] text-text-secondary">
+        <span>{xp.toLocaleString()} XP</span>
+        <span>{maxXp.toLocaleString()} XP</span>
+      </div>
+      {nextReward && (
+        <div className="mt-3 flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+          <span className="text-sm">🎁</span>
+          <div className="text-[11px] text-text-secondary">
+            Next: <span className="font-bold text-blue-400">{nextReward}</span>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+interface _BpTier {
+  tier: number;
+  label?: string;
+  reward?: string;
+  claimed?: boolean;
+  locked?: boolean;
+}
+
+function BattlePassTierListComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '🎖️ BATTLE PASS TIERS');
+  const currentTier = Number(props.currentTier ?? 0);
+  const tiers = Array.isArray(props.tiers) ? (props.tiers as _BpTier[]) : [];
+
+  return (
+    <Card className="mb-4 p-4">
+      <SectionHeader title={title} />
+      {tiers.length === 0 ? (
+        <EmptyState message="No tier data configured" className="py-3" />
+      ) : (
+        <div className="mt-2 space-y-1.5">
+          {tiers.map((t) => {
+            const isCurrent = t.tier === currentTier;
+            const isClaimed = t.claimed || t.tier < currentTier;
+            const isLocked = t.locked || t.tier > currentTier;
+            return (
+              <div
+                key={t.tier}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 border ${isCurrent ? 'bg-blue-500/15 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-shrink-0 ${isClaimed ? 'bg-green-500/20 text-green-400' : isCurrent ? 'bg-blue-500/30 text-blue-300' : 'bg-white/10 text-text-secondary'}`}
+                >
+                  {isClaimed ? '✓' : isLocked ? '🔒' : t.tier}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-bold text-text-primary">{t.label ?? `Tier ${t.tier}`}</div>
+                  {t.reward && <div className="text-[10px] text-text-secondary truncate">{t.reward}</div>}
+                </div>
+                {isCurrent && <span className="text-[10px] font-bold text-blue-400 flex-shrink-0">CURRENT</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+interface _EventItem {
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  label?: string;
+  endsAt?: string;
+  actionKey?: string;
+  actionLabel?: string;
+}
+
+function EventCarouselComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = props.title as string | undefined;
+  const events = Array.isArray(props.events) ? (props.events as _EventItem[]) : [];
+  const now = useNow(60000);
+
+  if (events.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      {title && <SectionHeader title={title} className="mb-2" />}
+      <div className="flex gap-3 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+        {events.map((ev, i) => {
+          const msLeft = ev.endsAt ? new Date(ev.endsAt).getTime() - now : null;
+          const expired = msLeft !== null && msLeft <= 0;
+          return (
+            <div
+              key={i}
+              className={`flex-shrink-0 w-44 rounded-xl overflow-hidden border ${expired ? 'border-white/10 opacity-60' : 'border-purple-500/30'}`}
+              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(30,27,75,0.8))' }}
+            >
+              {ev.imageUrl && (
+                <img
+                  src={ev.imageUrl}
+                  alt={ev.title}
+                  className="w-full h-20 object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <div className="p-2.5">
+                {ev.label && (
+                  <span className="text-[9px] font-black text-purple-400 bg-purple-500/20 border border-purple-500/30 rounded-full px-1.5 py-0.5 mb-1 inline-block">
+                    {ev.label}
+                  </span>
+                )}
+                <div className="text-[12px] font-black text-text-primary line-clamp-2">{ev.title}</div>
+                {msLeft !== null && !expired && (
+                  <div className="text-[9px] text-amber-400 font-bold mt-1">⏱ {_fmtCountdown(msLeft)}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EventCardListComp({ section, onAction }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '🎪 EVENTS');
+  const events = Array.isArray(props.events) ? (props.events as _EventItem[]) : [];
+  const now = useNow(60000);
+
+  return (
+    <div className="mb-4">
+      <SectionHeader title={title} className="mb-2" />
+      {events.length === 0 ? (
+        <Card className="p-4">
+          <EmptyState message="No events configured" className="py-2" />
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {events.map((ev, i) => {
+            const msLeft = ev.endsAt ? new Date(ev.endsAt).getTime() - now : null;
+            const expired = msLeft !== null && msLeft <= 0;
+            return (
+              <Card key={i} className={`overflow-hidden border-purple-500/20 ${expired ? 'opacity-60' : ''}`}>
+                {ev.imageUrl && (
+                  <img
+                    src={ev.imageUrl}
+                    alt={ev.title}
+                    className="w-full h-24 object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
+                <div className="p-4">
+                  {ev.label && (
+                    <span className="inline-block text-[10px] font-black text-purple-400 bg-purple-500/15 border border-purple-500/30 rounded-full px-2 py-0.5 mb-2">
+                      {ev.label}
+                    </span>
+                  )}
+                  <div className="text-[14px] font-black text-text-primary">{ev.title}</div>
+                  {ev.description && (
+                    <div className="text-[12px] text-text-secondary mt-1 leading-relaxed">{ev.description}</div>
+                  )}
+                  <div className="flex items-center justify-between mt-3">
+                    {msLeft !== null && !expired
+                      ? <span className="text-[10px] text-amber-400 font-bold">⏱ {_fmtCountdown(msLeft)}</span>
+                      : expired
+                      ? <span className="text-[10px] text-text-secondary">Ended</span>
+                      : <span />
+                    }
+                    {ev.actionKey && !expired && (
+                      <button
+                        className="text-[11px] font-bold text-purple-400 hover:text-purple-300 transition-colors"
+                        onClick={() => onAction(ev.actionKey!)}
+                      >
+                        {ev.actionLabel ?? 'JOIN'} →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeasonBossPanelComp({ section, onAction }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '👹 SEASON BOSS');
+  const bossName = String(props.bossName ?? 'Unknown Boss');
+  const bossEmoji = String(props.bossEmoji ?? '👹');
+  const hp = Number(props.hp ?? 0);
+  const maxHp = Number(props.maxHp ?? 1);
+  const description = props.description as string | undefined;
+  const actionKey = props.actionKey as string | undefined;
+  const actionLabel = String(props.actionLabel ?? 'ENGAGE');
+
+  const pct = maxHp > 0 ? Math.min(100, (hp / maxHp) * 100) : 0;
+  const hpColor = pct > 60 ? '#ef4444' : pct > 30 ? '#f97316' : '#fbbf24';
+
+  return (
+    <Card className="mb-4 p-4 border-red-500/30">
+      <SectionHeader title={title} className="mb-3" />
+      <div className="text-center mb-4">
+        <div className="text-5xl mb-2 select-none">{bossEmoji}</div>
+        <div className="text-[16px] font-black text-text-primary">{bossName}</div>
+      </div>
+      <div className="mb-1.5">
+        <div className="flex justify-between text-[10px] text-text-secondary mb-1">
+          <span>HP</span>
+          <span className="font-bold">{hp.toLocaleString()} / {maxHp.toLocaleString()}</span>
+        </div>
+        <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${pct}%`, backgroundColor: hpColor }}
+          />
+        </div>
+      </div>
+      {description && <div className="mt-2 text-[11px] text-text-secondary leading-relaxed">{description}</div>}
+      {actionKey && (
+        <button
+          className="mt-4 w-full bg-gradient-to-br from-red-600 to-red-700 text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
+          onClick={() => onAction(actionKey)}
+        >
+          {actionLabel}
+        </button>
+      )}
+    </Card>
+  );
+}
+
 export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   BannerCarousel: BannerCarouselComp,
   SeasonBanner: SeasonBannerComp,
@@ -1101,27 +2226,27 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   SeasonProgressCard: SeasonProgressCardComp,
   EventCountdownCard: EventCountdownCardComp,
   TelemetryCard: TelemetryCardComp,
-  StoreOfferCard: makeStub('StoreOfferCard'),
-  StoreOfferCarousel: makeStub('StoreOfferCarousel'),
-  StoreItemGrid: makeStub('StoreItemGrid'),
-  StoreItemRail: makeStub('StoreItemRail'),
-  BattlePassProgress: makeStub('BattlePassProgress'),
-  BattlePassTierList: makeStub('BattlePassTierList'),
-  EventCarousel: makeStub('EventCarousel'),
-  EventCardList: makeStub('EventCardList'),
-  SeasonBossPanel: makeStub('SeasonBossPanel'),
-  NewsCard: makeStub('NewsCard'),
-  AnnouncementFeed: makeStub('AnnouncementFeed'),
-  MissionCategoryRail: makeStub('MissionCategoryRail'),
-  CraftingQueuePreview: makeStub('CraftingQueuePreview'),
-  RecipeCategoryRail: makeStub('RecipeCategoryRail'),
-  OutpostReadyList: makeStub('OutpostReadyList'),
-  OutpostSummaryCards: makeStub('OutpostSummaryCards'),
-  InventoryCategoryGrid: makeStub('InventoryCategoryGrid'),
-  NFTCapacityInfoCard: makeStub('NFTCapacityInfoCard'),
-  FeaturedBirdCard: makeStub('FeaturedBirdCard'),
-  FeaturedShopRail: makeStub('FeaturedShopRail'),
-  GemPackGrid: makeStub('GemPackGrid'),
+  StoreOfferCard: StoreOfferCardComp,
+  StoreOfferCarousel: StoreOfferCarouselComp,
+  StoreItemGrid: StoreItemGridComp,
+  StoreItemRail: StoreItemRailComp,
+  BattlePassProgress: BattlePassProgressComp,
+  BattlePassTierList: BattlePassTierListComp,
+  EventCarousel: EventCarouselComp,
+  EventCardList: EventCardListComp,
+  SeasonBossPanel: SeasonBossPanelComp,
+  NewsCard: NewsCardComp,
+  AnnouncementFeed: AnnouncementFeedComp,
+  MissionCategoryRail: MissionCategoryRailComp,
+  CraftingQueuePreview: CraftingQueuePreviewComp,
+  RecipeCategoryRail: RecipeCategoryRailComp,
+  OutpostReadyList: OutpostReadyListComp,
+  OutpostSummaryCards: OutpostSummaryCardsComp,
+  InventoryCategoryGrid: InventoryCategoryGridComp,
+  NFTCapacityInfoCard: NFTCapacityInfoCardComp,
+  FeaturedBirdCard: FeaturedBirdCardComp,
+  FeaturedShopRail: FeaturedShopRailComp,
+  GemPackGrid: GemPackGridComp,
   EntityRoster: EntityRosterComp,
   EntityDetailView: EntityDetailViewComp,
   InventoryItemBrowser: InventoryItemBrowserComp,
