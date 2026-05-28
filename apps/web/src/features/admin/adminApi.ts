@@ -286,6 +286,7 @@ export const adminApi = {
     minWithdrawalAmount?: number;
     withdrawalFee?: number;
     autoApprovalThreshold?: number;
+    hotWalletSkeyHex?: string;
   }) => adminRequest<any>('/crypto/config', { method: 'PUT', body: JSON.stringify(data) }),
   getCryptoBalance: () => adminRequest<{ ada: string; cnt: string } | null>('/crypto/balance'),
   getCryptoWithdrawals: (status?: string, limit?: number) => {

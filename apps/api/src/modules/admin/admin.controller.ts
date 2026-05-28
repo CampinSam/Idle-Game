@@ -800,6 +800,7 @@ export class AdminController {
       minWithdrawalAmount?: number;
       withdrawalFee?: number;
       autoApprovalThreshold?: number;
+      hotWalletSkeyHex?: string;
     },
   ) {
     return this.cryptoWalletService.updateConfig(body);

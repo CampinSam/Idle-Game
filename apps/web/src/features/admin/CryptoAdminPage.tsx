@@ -37,6 +37,7 @@ function ConfigTab() {
   const [config, setConfig] = useState<any>(null);
   const [balance, setBalance] = useState<{ ada: string; cnt: string } | null>(null);
   const [form, setForm] = useState<any>({});
+  const [skeyInput, setSkeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -69,7 +70,7 @@ function ConfigTab() {
   const save = async () => {
     setSaving(true); setMsg(null);
     try {
-      await adminApi.updateCryptoConfig({
+      const payload: Parameters<typeof adminApi.updateCryptoConfig>[0] = {
         hotWalletAddress: form.hotWalletAddress,
         blockfrostProjectId: form.blockfrostProjectId,
         cntPolicyId: form.cntPolicyId,
@@ -79,7 +80,12 @@ function ConfigTab() {
         minWithdrawalAmount: Number(form.minWithdrawalAmount),
         withdrawalFee: Number(form.withdrawalFee),
         autoApprovalThreshold: Number(form.autoApprovalThreshold),
-      });
+      };
+      if (skeyInput.trim()) {
+        payload.hotWalletSkeyHex = skeyInput.trim();
+      }
+      await adminApi.updateCryptoConfig(payload);
+      setSkeyInput('');
       setMsg({ text: 'Config saved', type: 'success' });
       load();
     } catch (e: any) {
@@ -152,6 +158,47 @@ function ConfigTab() {
       {field('Min Withdrawal Amount', 'minWithdrawalAmount', 'number')}
       {field('Withdrawal Fee (CNT units)', 'withdrawalFee', 'number', 'Flat fee deducted before sending on-chain')}
       {field('Auto-Approval Threshold (CNT units)', 'autoApprovalThreshold', 'number', 'Withdrawals ≤ this amount are auto-approved. Set 0 to disable.')}
+
+      <div style={{ marginBottom: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+        <label style={{ display: 'block', fontSize: '0.82rem', color: '#a0a0c0', marginBottom: 4 }}>
+          Hot Wallet Signing Key (write-only)
+        </label>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          marginBottom: 6,
+        }}>
+          <span style={{
+            fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: 4,
+            background: config?.hasStoredSigningKey
+              ? 'rgba(76,175,80,0.15)'
+              : 'rgba(251,191,36,0.12)',
+            color: config?.hasStoredSigningKey ? '#4caf50' : '#fbbf24',
+            border: `1px solid ${config?.hasStoredSigningKey ? 'rgba(76,175,80,0.3)' : 'rgba(251,191,36,0.3)'}`,
+          }}>
+            {config?.hasStoredSigningKey ? '● Key stored' : '○ No key stored'}
+          </span>
+          {!config?.hasStoredSigningKey && (
+            <span style={{ fontSize: '0.75rem', color: '#666' }}>
+              Falls back to HOT_WALLET_SKEY_HEX env var
+            </span>
+          )}
+        </div>
+        <input
+          type="password"
+          value={skeyInput}
+          onChange={(e) => setSkeyInput(e.target.value)}
+          placeholder={config?.hasStoredSigningKey ? 'Enter new key to replace stored key' : 'Enter hex CBOR spending key'}
+          autoComplete="new-password"
+          style={{
+            width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 6, color: '#e0e0ff', padding: '0.45rem 0.65rem', fontSize: '0.9rem',
+            boxSizing: 'border-box', fontFamily: 'monospace',
+          }}
+        />
+        <div style={{ fontSize: '0.75rem', color: '#666', marginTop: 3 }}>
+          Extended spending key as hex CBOR (enterprise or base address key). Stored encrypted at rest with AES-256-GCM. Leave blank to keep the existing stored key unchanged.
+        </div>
+      </div>
 
       <button
         onClick={save}

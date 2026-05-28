@@ -1330,6 +1330,10 @@ model CryptoWalletConfig {
   // 0 = not yet initialized (first poll will start from the current latest page
   // to skip historical txs and avoid accidental back-crediting on first deploy).
   depositScanPage       Int               @default(0)
+  // Hot wallet signing key stored encrypted at rest (AES-256-GCM).
+  // Format: iv_hex:authTag_hex:ciphertext_hex — never returned to clients.
+  // Falls back to HOT_WALLET_SKEY_HEX env var when empty.
+  hotWalletSkeyEncrypted String           @default("")
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 

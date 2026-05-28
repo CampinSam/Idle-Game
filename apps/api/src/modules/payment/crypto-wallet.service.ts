@@ -1,10 +1,11 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { AdaRateService } from './ada-rate.service';
 import { NotificationService } from '../notification/notification.service';
 import { PatchBuilder, buildCurrencyPatches } from '../commands/patch-builder';
+import * as nodeCrypto from 'crypto';
 
 const CNT_POLICY_ID_DEFAULT = 'd9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6';
 const CNT_ASSET_NAME_DEFAULT = '45525020434f494e';
@@ -29,6 +30,57 @@ function serializeBigInts(obj: any): any {
     return result;
   }
   return obj;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AES-256-GCM encryption helpers for the hot wallet signing key
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Derives a 32-byte AES key from ENCRYPTION_SECRET env var (primary)
+ * or JWT_SECRET (fallback). Both are required env vars in production.
+ */
+function deriveEncryptionKey(): Buffer {
+  const secret = process.env.ENCRYPTION_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    throw new InternalServerErrorException(
+      'ENCRYPTION_SECRET (or JWT_SECRET) env var is required to encrypt the hot wallet signing key',
+    );
+  }
+  return nodeCrypto.createHash('sha256').update(secret).digest();
+}
+
+/**
+ * Encrypts plaintext with AES-256-GCM.
+ * Returns a colon-delimited string: `iv_hex:authTag_hex:ciphertext_hex`.
+ */
+function encryptSkey(plaintext: string): string {
+  const key = deriveEncryptionKey();
+  const iv = nodeCrypto.randomBytes(12);
+  const cipher = nodeCrypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+/**
+ * Decrypts a value produced by `encryptSkey`.
+ * Throws if the ciphertext is malformed or authentication fails.
+ */
+function decryptSkey(stored: string): string {
+  const parts = stored.split(':');
+  if (parts.length !== 3) {
+    throw new InternalServerErrorException('Stored signing key has unexpected format — cannot decrypt');
+  }
+  const [ivHex, authTagHex, ciphertextHex] = parts;
+  const key = deriveEncryptionKey();
+  const decipher = nodeCrypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+  decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(ciphertextHex, 'hex')),
+    decipher.final(),
+  ]);
+  return decrypted.toString('utf8');
 }
 
 @Injectable()
@@ -71,6 +123,12 @@ export class CryptoWalletService {
     }
   }
 
+  /**
+   * Returns the wallet config for display purposes.
+   * `hotWalletSkeyEncrypted` is stripped from the response and replaced with
+   * a `hasStoredSigningKey` boolean so the UI can show "Key stored" without
+   * ever exposing the ciphertext to the client.
+   */
   async getConfig() {
     const config = await (this.prisma as any).cryptoWalletConfig.findUnique({
       where: { id: 'default' },
@@ -83,9 +141,18 @@ export class CryptoWalletService {
           cntAssetName: CNT_ASSET_NAME_DEFAULT,
         },
       });
-      return serializeBigInts(created);
+      return this.sanitizeConfig(serializeBigInts(created));
     }
-    return serializeBigInts(config);
+    return this.sanitizeConfig(serializeBigInts(config));
+  }
+
+  /** Strips the encrypted key and injects a boolean indicator instead. */
+  private sanitizeConfig(config: any): any {
+    const { hotWalletSkeyEncrypted, ...rest } = config;
+    return {
+      ...rest,
+      hasStoredSigningKey: !!(hotWalletSkeyEncrypted && hotWalletSkeyEncrypted.length > 0),
+    };
   }
 
   async updateConfig(data: {
@@ -97,6 +164,7 @@ export class CryptoWalletService {
     minWithdrawalAmount?: number;
     withdrawalFee?: number;
     autoApprovalThreshold?: number;
+    hotWalletSkeyHex?: string;
   }) {
     const updateData: any = {};
     if (data.hotWalletAddress !== undefined) updateData.hotWalletAddress = data.hotWalletAddress;
@@ -108,13 +176,35 @@ export class CryptoWalletService {
     if (data.minWithdrawalAmount !== undefined) updateData.minWithdrawalAmount = data.minWithdrawalAmount;
     if (data.withdrawalFee !== undefined) updateData.withdrawalFee = BigInt(Math.round(data.withdrawalFee));
     if (data.autoApprovalThreshold !== undefined) updateData.autoApprovalThreshold = BigInt(Math.round(data.autoApprovalThreshold));
+    if (data.hotWalletSkeyHex !== undefined && data.hotWalletSkeyHex.trim() !== '') {
+      updateData.hotWalletSkeyEncrypted = encryptSkey(data.hotWalletSkeyHex.trim());
+    }
 
     const saved = await (this.prisma as any).cryptoWalletConfig.upsert({
       where: { id: 'default' },
       create: { id: 'default', ...updateData },
       update: updateData,
     });
-    return serializeBigInts(saved);
+    return this.sanitizeConfig(serializeBigInts(saved));
+  }
+
+  /**
+   * Resolves the hot wallet signing key for the withdrawal processor.
+   * Priority: encrypted DB value → HOT_WALLET_SKEY_HEX env var.
+   */
+  private async getDecryptedSkeyHex(): Promise<string | undefined> {
+    try {
+      const config = await (this.prisma as any).cryptoWalletConfig.findUnique({
+        where: { id: 'default' },
+        select: { hotWalletSkeyEncrypted: true },
+      });
+      if (config?.hotWalletSkeyEncrypted) {
+        return decryptSkey(config.hotWalletSkeyEncrypted);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to decrypt stored signing key: ${err}`);
+    }
+    return process.env.HOT_WALLET_SKEY_HEX?.trim() || undefined;
   }
 
   private getBlockfrostApiKey(config: any): string | null {
@@ -268,7 +358,7 @@ export class CryptoWalletService {
       const config = await this.getConfig();
       const apiKey = this.getBlockfrostApiKey(config);
       const hotWalletAddress: string = config.hotWalletAddress;
-      const skeyHex: string | undefined = process.env.HOT_WALLET_SKEY_HEX?.trim();
+      const skeyHex: string | undefined = await this.getDecryptedSkeyHex();
 
       if (!apiKey || !hotWalletAddress || !skeyHex) {
         // Not fully configured — silently skip; admin must set up hot-wallet keys.
