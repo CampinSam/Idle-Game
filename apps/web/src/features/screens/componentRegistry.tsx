@@ -83,31 +83,45 @@ function QuickStatusCardsComp({ section }: ScreenComponentProps) {
   const entities = useSyncEntities();
   const locations = useSyncLocations();
   const allJobs = useAllActiveJobs();
+  const props = section.props ?? {};
+
+  const showEntities = props.showEntities !== false;
+  const showOutposts = props.showOutposts !== false;
+  const showMissions = props.showMissions !== false;
 
   const idleCount = entities.filter((e: any) => e.status === 'idle').length;
   const missionJobs = allJobs.filter((j: any) => j.type === 'MissionJob').length;
 
+  const visibleCount = [showEntities, showOutposts, showMissions].filter(Boolean).length;
+  const cols = visibleCount === 1 ? 'grid-cols-1' : visibleCount === 2 ? 'grid-cols-2' : 'grid-cols-3';
+
   return (
-    <div className="grid grid-cols-3 gap-2 mb-4">
-      <QuickCard
-        icon="🪶"
-        label="Entities"
-        value={entities.length}
-        sub={`${idleCount} idle`}
-        onClick={() => navigate('/entities')}
-      />
-      <QuickCard
-        icon="🏠"
-        label="Outposts"
-        value={locations.length}
-        onClick={() => navigate('/locations')}
-      />
-      <QuickCard
-        icon="🗺️"
-        label="Missions"
-        value={missionJobs}
-        onClick={() => navigate('/missions')}
-      />
+    <div className={`grid ${cols} gap-2 mb-4`}>
+      {showEntities && (
+        <QuickCard
+          icon="🪶"
+          label="Entities"
+          value={entities.length}
+          sub={`${idleCount} idle`}
+          onClick={() => navigate('/entities')}
+        />
+      )}
+      {showOutposts && (
+        <QuickCard
+          icon="🏠"
+          label="Outposts"
+          value={locations.length}
+          onClick={() => navigate('/locations')}
+        />
+      )}
+      {showMissions && (
+        <QuickCard
+          icon="🗺️"
+          label="Missions"
+          value={missionJobs}
+          onClick={() => navigate('/missions')}
+        />
+      )}
     </div>
   );
 }
@@ -139,12 +153,36 @@ function QuickCard({
 }
 
 function DailyQuestPanelComp({ section }: ScreenComponentProps) {
+  const props = section.props ?? {};
+  const title = String(props.title ?? '📋 DAILY QUESTS');
+  const quests = Array.isArray(props.quests)
+    ? (props.quests as Array<{ title: string; description?: string; completed?: boolean }>)
+    : [];
+
   return (
     <Card className="mb-4 p-4 border-amber-500/20">
-      <SectionHeader title="📋 DAILY QUESTS" />
-      <div className="mt-3 text-[12px] text-text-secondary text-center py-2">
-        Daily quests coming soon — check back each day for challenges!
-      </div>
+      <SectionHeader title={title} />
+      {quests.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {quests.map((q, i) => (
+            <div key={i} className="flex items-start gap-2 py-1.5 border-b border-white/5 last:border-0">
+              <span className="text-sm flex-shrink-0 mt-0.5">{q.completed ? '✅' : '⬜'}</span>
+              <div className="min-w-0">
+                <div className={`text-[13px] font-semibold leading-tight ${q.completed ? 'line-through text-text-secondary' : 'text-text-primary'}`}>
+                  {q.title}
+                </div>
+                {q.description && (
+                  <div className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{q.description}</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 text-[12px] text-text-secondary text-center py-2">
+          Daily quests coming soon — check back each day for challenges!
+        </div>
+      )}
     </Card>
   );
 }
@@ -408,12 +446,17 @@ function WalletPromptCardComp({ section, onAction }: ScreenComponentProps) {
   );
 }
 
-function GlobalBuffsSectionComp(_: ScreenComponentProps) {
-  return <GlobalBuffsSection />;
+function GlobalBuffsSectionComp({ section }: ScreenComponentProps) {
+  const rawMax = section.props?.maxItems;
+  const maxItems = rawMax != null && rawMax !== '' ? Math.max(1, Number(rawMax)) : undefined;
+  return <GlobalBuffsSection maxItems={maxItems} />;
 }
 
-function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
+function CraftingWorkshopsCardComp({ section }: ScreenComponentProps) {
   const navigate = useNavigate();
+  const props = section.props ?? {};
+  const title = String(props.title ?? '⚒️ THE FORGE');
+  const path = String(props.path ?? '/crafting');
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -428,7 +471,7 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
 
   return (
     <Card className="mb-4 p-4 border-orange-500/20">
-      <SectionHeader title="⚒️ THE FORGE" />
+      <SectionHeader title={title} />
       <div className="mt-2 flex items-center gap-2">
         {count != null && (
           <StatPill icon="🏭" value={`${count} workshop${count === 1 ? '' : 's'}`} />
@@ -436,7 +479,7 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
       </div>
       <button
         className="mt-3 w-full bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-[#1a1640] rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(245,158,11,0.4)]"
-        onClick={() => navigate('/crafting')}
+        onClick={() => navigate(path)}
       >
         GO TO WORKSHOPS
       </button>
@@ -444,9 +487,10 @@ function CraftingWorkshopsCardComp(_: ScreenComponentProps) {
   );
 }
 
-function SeasonProgressCardComp(_: ScreenComponentProps) {
+function SeasonProgressCardComp({ section }: ScreenComponentProps) {
   const activeSeason = useAppSelector((s: any) => s.sync.activeSeason);
   const now = useNow(60_000);
+  const titleOverride = section.props?.title as string | undefined;
 
   if (!activeSeason) return null;
   const start = activeSeason.startsAt ? new Date(activeSeason.startsAt).getTime() : now;
@@ -463,10 +507,12 @@ function SeasonProgressCardComp(_: ScreenComponentProps) {
       ? 'bg-amber-500/20 text-amber-400'
       : 'bg-green-500/20 text-green-400';
 
+  const cardTitle = titleOverride ?? `🌟 ${(activeSeason.name ?? 'SEASON').toUpperCase()}`;
+
   return (
     <Card className="mb-4 p-4 border-amber-500/30">
       <div className="flex items-center justify-between mb-3">
-        <SectionHeader title={`🌟 ${(activeSeason.name ?? 'SEASON').toUpperCase()}`} className="mb-0" />
+        <SectionHeader title={cardTitle} className="mb-0" />
         <span className={`text-[10px] font-bold rounded-full px-2 py-0.5 flex-shrink-0 ml-2 ${badgeClass}`}>
           {daysRemaining}d left
         </span>

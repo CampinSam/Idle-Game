@@ -132,6 +132,28 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
       description: 'Display overrides per sub-event key: [{ key, label, icon?, color? }]',
     },
   },
+  SeasonProgressCard: {
+    title: { type: 'string', description: 'Override the card header (default: season name from sync store, e.g. "🌟 SEASON ONE")' },
+  },
+  CraftingWorkshopsCard: {
+    title: { type: 'string', description: 'Card header text (default: "⚒️ THE FORGE")' },
+    path: { type: 'string', description: 'Navigation path for the "GO TO WORKSHOPS" button (default: "/crafting")' },
+  },
+  GlobalBuffsSection: {
+    maxItems: { type: 'number', description: 'Max number of active global buffs to show (default: all). Surplus count shown as "+N more".' },
+  },
+  QuickStatusCards: {
+    showEntities: { type: 'boolean', description: 'Show the Entities quick-status card (default: true)' },
+    showOutposts: { type: 'boolean', description: 'Show the Outposts quick-status card (default: true)' },
+    showMissions: { type: 'boolean', description: 'Show the Missions quick-status card (default: true)' },
+  },
+  DailyQuestPanel: {
+    title: { type: 'string', description: 'Panel header text (default: "📋 DAILY QUESTS")' },
+    quests: {
+      type: 'array',
+      description: 'Static quest entries to display: [{ title: string, description?: string, completed?: boolean }]. Shows placeholder text when omitted.',
+    },
+  },
 };
 
 // ─── Prop validation helpers ──────────────────────────────────────────────────

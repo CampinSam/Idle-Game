@@ -1096,9 +1096,8 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
 /** Components that have no configurable props — all data from sync store or none needed. */
 export const NO_PROPS_COMPONENTS = new Set([
-  'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
-  'QuickStatusCards', 'DailyQuestPanel',
-  'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
+  'BannerCarousel', 'SeasonBanner',
+  'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
   'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
   'AchievementsBrowser', 'ProfileBrowser', 'RewardsBrowser', 'SettingsBrowser',
 ]);

@@ -32,8 +32,9 @@ function BuffRow({ power }: { power: GlobalPowerSnapshot }) {
   );
 }
 
-export function GlobalBuffsSection() {
+export function GlobalBuffsSection({ maxItems }: { maxItems?: number }) {
   const globalPowers = useGlobalPowers();
+  const displayed = maxItems != null ? globalPowers.slice(0, maxItems) : globalPowers;
 
   if (globalPowers.length === 0) return null;
 
@@ -42,9 +43,14 @@ export function GlobalBuffsSection() {
       <div className="px-4 py-3">
         <SectionHeader title="⚡ Global Powers Active" />
         <div className="mt-2">
-          {globalPowers.map((p) => (
+          {displayed.map((p) => (
             <BuffRow key={p.id} power={p} />
           ))}
+          {maxItems != null && globalPowers.length > maxItems && (
+            <div className="text-[11px] text-text-secondary pt-1">
+              +{globalPowers.length - maxItems} more
+            </div>
+          )}
         </div>
       </div>
     </Card>
