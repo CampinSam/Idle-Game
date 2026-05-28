@@ -48,7 +48,8 @@ body {
   background-attachment: fixed;
   background-repeat: no-repeat;
   color: var(--text-primary);
-  min-height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   position: relative;
 }
 
