@@ -191,12 +191,14 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   StoreOfferCarousel: {
     title: { type: 'string', description: 'Optional section header above the carousel.' },
     limit: { type: 'number', description: 'Max number of cards in the carousel (default: 4).' },
+    offerId: { type: 'storeItemPicker', description: 'Pin the carousel to a specific offer ID. Shows all featured offers when omitted.' },
   },
   StoreItemGrid: {
     title: { type: 'string', description: 'Optional section header above the grid.' },
     tab: { type: 'string', description: 'Filter by tab: featured | bundles | items | currency (default: featured).' },
     limit: { type: 'number', description: 'Max number of grid cells (default: 6).' },
     columns: { type: 'number', description: 'Grid columns: 3 (default) or 2.' },
+    offerId: { type: 'storeItemPicker', description: 'Filter the grid to a specific offer ID. Shows all items in the selected tab when omitted.' },
   },
   StoreItemRail: {
     title: { type: 'string', description: 'Optional section header above the rail.' },

@@ -1702,12 +1702,14 @@ function StoreOfferCarouselComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
   const title = props.title as string | undefined;
   const limit = Number(props.limit ?? 4);
+  const offerId = props.offerId as string | undefined;
   const navigate = useNavigate();
   const { items, loading } = useShopItems('featured');
 
   if (loading) return title ? <_ShopLoadingCard title={title} /> : <div className="h-24 bg-white/5 rounded-xl animate-pulse mb-4" />;
 
-  const displayed = items.slice(0, limit);
+  const filtered = offerId ? items.filter(i => i.id === offerId) : items;
+  const displayed = filtered.slice(0, limit);
   if (displayed.length === 0) return null;
 
   return (
@@ -1728,12 +1730,14 @@ function StoreItemGridComp({ section }: ScreenComponentProps) {
   const tab = props.tab as string | undefined;
   const limit = Number(props.limit ?? 6);
   const columns = Number(props.columns ?? 3);
+  const offerId = props.offerId as string | undefined;
   const navigate = useNavigate();
   const { items, loading } = useShopItems(tab);
 
   if (loading) return title ? <_ShopLoadingCard title={title} /> : null;
 
-  const displayed = items.slice(0, limit);
+  const filtered = offerId ? items.filter(i => i.id === offerId) : items;
+  const displayed = filtered.slice(0, limit);
   if (displayed.length === 0) return null;
 
   const colClass = columns === 3 ? 'grid-cols-3' : 'grid-cols-2';
