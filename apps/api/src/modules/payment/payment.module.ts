@@ -8,9 +8,10 @@ import { CryptoWalletService } from './crypto-wallet.service';
 import { CryptoWalletController } from './crypto-wallet.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CurrencyModule } from '../currency/currency.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [PrismaModule, CurrencyModule],
+  imports: [PrismaModule, CurrencyModule, NotificationModule],
   controllers: [PaymentController, CryptoWalletController],
   providers: [PaymentService, PurchaseEventBus, CryptoPollerService, AdaRateService, CryptoWalletService],
   exports: [PaymentService, PurchaseEventBus, CryptoWalletService],

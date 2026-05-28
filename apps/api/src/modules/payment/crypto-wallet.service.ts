@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { AdaRateService } from './ada-rate.service';
+import { NotificationService } from '../notification/notification.service';
 import { PatchBuilder, buildCurrencyPatches } from '../commands/patch-builder';
 
 const CNT_POLICY_ID_DEFAULT = 'd9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6';
@@ -42,6 +43,7 @@ export class CryptoWalletService {
     private readonly currencyService: CurrencyService,
     private readonly pubsub: PubSubService,
     private readonly adaRateService: AdaRateService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   onModuleInit() {
@@ -863,6 +865,20 @@ export class CryptoWalletService {
       if (player) {
         this.logger.log(`Credited ${cntAmount} DERP to user ${player.userId} from tx ${tx_hash}`);
         await this.emitCurrencyDelta(player.userId);
+        this.notificationService.createNotification({
+          userId: player.userId,
+          type: 'crypto_deposit',
+          category: 'wallet',
+          priority: 'high',
+          title: `DERP Deposit Received: +${cntAmount.toString()} DERP`,
+          body: `Tx: ${tx_hash.slice(0, 8)}…${tx_hash.slice(-8)}`,
+          deepLink: { screen: '/wallet' },
+          meta: { txHash: tx_hash, amount: cntAmount.toString() },
+          sourceType: 'CRYPTO_DEPOSIT',
+          sourceId: tx_hash,
+        }).catch((err) => {
+          this.logger.warn(`Failed to create deposit notification for user ${player.userId}: ${err}`);
+        });
       }
     } catch (err: any) {
       if (err?.code === 'P2002') {
