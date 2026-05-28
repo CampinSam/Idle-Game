@@ -160,7 +160,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     actionKey: { type: 'string', description: 'If set, fires this action key on click instead of navigating to the entity detail page.' },
   },
   MissionCategoryRail: {
-    limit: { type: 'number', description: 'Max number of category chips to show (default: 10).' },
+    maxItems: { type: 'number', description: 'Max number of category chips to show. Shows all when omitted.' },
     path: { type: 'string', description: 'Navigation path for the "All" chip and per-category links (default: "/missions").' },
   },
   CraftingQueuePreview: {
@@ -168,7 +168,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     limit: { type: 'number', description: 'Max number of active crafting jobs to show (default: 5).' },
   },
   RecipeCategoryRail: {
-    limit: { type: 'number', description: 'Max number of category chips to show (default: 10).' },
+    maxItems: { type: 'number', description: 'Max number of category chips to show. Shows all when omitted.' },
     path: { type: 'string', description: 'Navigation path for category links (default: "/crafting").' },
   },
   OutpostReadyList: {
@@ -180,35 +180,25 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     limit: { type: 'number', description: 'Max number of outpost cards to show (default: 6).' },
     columns: { type: 'number', description: 'Grid columns: 1 (single column) or 2 (default two-column grid).' },
   },
-  InventoryCategoryGrid: {
-    path: { type: 'string', description: 'Base navigation path for category links (default: "/inventory").' },
-    columns: { type: 'number', description: 'Grid columns: 2, 3 (default), or 4.' },
-  },
-  NFTCapacityInfoCard: {
-    title: { type: 'string', description: 'Card header text (default: "💎 NFT CAPACITY")' },
-    cap: { type: 'number', description: 'Override the NFT capacity cap shown in the progress bar. Defaults to total entity count.' },
-    marketplaceUrl: { type: 'string', description: 'Optional URL for a "Browse Marketplace" link shown at the bottom of the card.' },
-  },
   StoreOfferCard: {
     title: { type: 'string', description: 'Card header text (default: "🔥 FEATURED OFFER")' },
-    tab: { type: 'string', description: 'Filter shop items by tab value (e.g. "bundles", "items"). Shows all tabs when omitted.' },
-    itemId: { type: 'string', description: 'Pin a specific shop item by ID. Falls back to the first badged item.' },
+    offerId: { type: 'string', description: 'Store Item ID to pin a specific offer (leave blank for auto — shows first featured/badged item).' },
   },
   StoreOfferCarousel: {
     title: { type: 'string', description: 'Optional section header above the carousel.' },
-    tab: { type: 'string', description: 'Filter shop items by tab (e.g. "bundles"). Shows all when omitted.' },
-    limit: { type: 'number', description: 'Max number of cards in the carousel (default: 6).' },
+    tab: { type: 'string', description: 'Filter shop items by tab (e.g. "featured", "bundles"). Shows featured tab when omitted.' },
+    limit: { type: 'number', description: 'Max number of cards in the carousel (default: 4).' },
   },
   StoreItemGrid: {
     title: { type: 'string', description: 'Optional section header above the grid.' },
-    tab: { type: 'string', description: 'Filter shop items by tab (e.g. "items"). Shows all when omitted.' },
+    tab: { type: 'string', description: 'Filter by tab: featured | bundles | items | currency (default: featured).' },
     limit: { type: 'number', description: 'Max number of grid cells (default: 6).' },
     columns: { type: 'number', description: 'Grid columns: 2 (default) or 3.' },
   },
   StoreItemRail: {
     title: { type: 'string', description: 'Optional section header above the rail.' },
-    tab: { type: 'string', description: 'Filter shop items by tab. Shows all when omitted.' },
-    limit: { type: 'number', description: 'Max number of items in the rail (default: 5).' },
+    tab: { type: 'string', description: 'Filter by tab: featured | bundles | items | currency (default: featured).' },
+    limit: { type: 'number', description: 'Max number of items in the rail (default: 6).' },
   },
   FeaturedShopRail: {
     title: { type: 'string', description: 'Section header (default: "⭐ FEATURED")' },
@@ -216,67 +206,64 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
   GemPackGrid: {
     title: { type: 'string', description: 'Card header text (default: "💎 GEM PACKS")' },
-    limit: { type: 'number', description: 'Max number of gem pack tiles shown (default: 6).' },
+    limit: { type: 'number', description: 'Max number of gem pack tiles shown (default: show all).' },
   },
   NewsCard: {
-    title: { type: 'string', description: 'News headline text.', required: true },
-    body: { type: 'string', description: 'News body / summary text.' },
-    date: { type: 'string', description: 'Display date string shown below the body (e.g. "May 28, 2026").' },
-    imageUrl: { type: 'string', description: 'Optional full-width header image URL.' },
-    tag: { type: 'string', description: 'Category label shown above the headline (e.g. "PATCH NOTES").' },
-    actionKey: { type: 'string', description: 'If set, shows a CTA link that fires this action key.' },
-    actionLabel: { type: 'string', description: 'CTA link text (default: "READ MORE").' },
+    headline: { type: 'string', description: 'News headline text (required — shows a placeholder when absent).', required: true },
+    body: { type: 'string', description: 'Optional body / summary text shown below the headline.' },
+    timestamp: { type: 'string', description: 'Optional display timestamp shown at the bottom (e.g. "2h ago", "May 28, 2026").' },
+    emoji: { type: 'string', description: 'Leading emoji icon (default: "📰").' },
+    href: { type: 'string', description: 'If set, shows a "READ MORE" link that navigates to this path (e.g. "/rewards").' },
   },
   AnnouncementFeed: {
     title: { type: 'string', description: 'Feed header text (default: "📢 ANNOUNCEMENTS")' },
-    items: {
+    entries: {
       type: 'array',
-      description: 'Announcements to display: [{ title: string, body?: string, date?: string, tag?: string }].',
+      description: 'Announcements to display: [{ headline: string, body?: string, emoji?: string }]. Shows empty state when absent.',
       required: true,
     },
+    limit: { type: 'number', description: 'Max number of entries to show. Shows all when omitted.' },
   },
   BattlePassProgress: {
-    title: { type: 'string', description: 'Card header text (default: "🎖️ BATTLE PASS")' },
-    tier: { type: 'number', description: 'Current tier number (default: 0).' },
-    xp: { type: 'number', description: 'Current XP within the tier (default: 0).' },
-    maxXp: { type: 'number', description: 'XP needed to reach the next tier (default: 1000).' },
-    tierCount: { type: 'number', description: 'Total number of tiers in the pass (default: 100).' },
-    nextReward: { type: 'string', description: 'Label for the next reward shown below the XP bar.' },
+    tierLabel: { type: 'string', description: 'Current tier display text, e.g. "Tier 7". Shows a "coming soon" card when absent.', required: true },
+    currentXP: { type: 'number', description: 'Current XP within the tier (default: 0).' },
+    maxXP: { type: 'number', description: 'XP needed to reach the next tier (default: 1000).' },
+    nextRewardEmoji: { type: 'string', description: 'Emoji shown as the next reward preview, e.g. "⚔️".' },
+    href: { type: 'string', description: 'Navigation path for the "VIEW BATTLE PASS" CTA (default: "/store").' },
   },
   BattlePassTierList: {
     title: { type: 'string', description: 'Card header text (default: "🎖️ BATTLE PASS TIERS")' },
-    currentTier: { type: 'number', description: 'The player\'s current tier (used to mark claimed/locked rows).' },
     tiers: {
       type: 'array',
-      description: 'Tier rows: [{ tier: number, label?: string, reward?: string, claimed?: boolean, locked?: boolean }].',
+      description: 'Tier rows: [{ tier: number, label: string, reward: string, unlocked: boolean }]. Shows empty state when absent.',
       required: true,
     },
+    limit: { type: 'number', description: 'Max number of tier rows to show. Shows all when omitted.' },
   },
   EventCarousel: {
     title: { type: 'string', description: 'Optional section header above the carousel.' },
     events: {
       type: 'array',
-      description: 'Event cards: [{ title: string, imageUrl?: string, label?: string, endsAt?: string (ISO 8601) }].',
+      description: 'Event cards: [{ title: string, emoji: string, endsAt?: string (ISO 8601), href?: string }]. Shows "No active events" when absent.',
       required: true,
     },
+    limit: { type: 'number', description: 'Max number of event cards in the carousel (default: 4).' },
   },
   EventCardList: {
     title: { type: 'string', description: 'Section header (default: "🎪 EVENTS")' },
     events: {
       type: 'array',
-      description: 'Event cards: [{ title: string, description?: string, imageUrl?: string, label?: string, endsAt?: string, actionKey?: string, actionLabel?: string }].',
+      description: 'Event cards: [{ title: string, emoji: string, description?: string, endsAt?: string, href?: string }]. Shows "No events running." when absent.',
       required: true,
     },
+    limit: { type: 'number', description: 'Max number of event cards. Shows all when omitted.' },
   },
   SeasonBossPanel: {
-    title: { type: 'string', description: 'Card header text (default: "👹 SEASON BOSS")' },
-    bossName: { type: 'string', description: 'Boss display name (default: "Unknown Boss").' },
+    bossName: { type: 'string', description: 'Boss display name (required — shows "Season Boss coming soon" when absent).', required: true },
     bossEmoji: { type: 'string', description: 'Large emoji displayed as boss art (default: "👹").' },
-    hp: { type: 'number', description: 'Current boss HP used to fill the progress bar.' },
-    maxHp: { type: 'number', description: 'Maximum boss HP (default: 1).' },
-    description: { type: 'string', description: 'Optional flavour text shown below the HP bar.' },
-    actionKey: { type: 'string', description: 'If set, shows an ENGAGE button that fires this action key.' },
-    actionLabel: { type: 'string', description: 'Engage button label (default: "ENGAGE").' },
+    hpCurrent: { type: 'number', description: 'Current boss HP used to fill the progress bar (default: 0).' },
+    hpMax: { type: 'number', description: 'Maximum boss HP (default: 1).' },
+    href: { type: 'string', description: 'Navigation path for the ENGAGE button (default: "/").' },
   },
 };
 

@@ -1100,6 +1100,7 @@ export const NO_PROPS_COMPONENTS = new Set([
   'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
   'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
   'AchievementsBrowser', 'ProfileBrowser', 'RewardsBrowser', 'SettingsBrowser',
+  'InventoryCategoryGrid', 'NFTCapacityInfoCard',
 ]);
 
 /** Stub-only components — render a placeholder in dev, nothing in production. */
