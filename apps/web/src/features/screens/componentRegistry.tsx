@@ -9,7 +9,8 @@ import {
   useAllActiveJobs,
   useSyncStatus,
 } from '../../hooks/useSyncSelectors';
-import { useAppSelector } from '../../store';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { fetchMissionDefs } from '../../store/gameSlice';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
 import { BannerCarousel } from '../home/BannerCarousel';
 import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
@@ -148,26 +149,68 @@ function DailyQuestPanelComp({ section }: ScreenComponentProps) {
   );
 }
 
-function MissionFeaturedCardComp({ section, onAction }: ScreenComponentProps) {
+function MissionFeaturedCardComp({ section }: ScreenComponentProps) {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const allJobs = useAllActiveJobs();
+  const missionDefs: any[] = useAppSelector((s) => s.game.missionDefs) ?? [];
   const missionJobs = allJobs.filter((j: any) => j.type === 'MissionJob');
-  const readyCount = missionJobs.filter((j: any) => {
-    if (j.startTick == null || j.durationTicks == null) return false;
-    return false;
-  }).length;
+
+  useEffect(() => {
+    if (missionDefs.length === 0) {
+      dispatch(fetchMissionDefs());
+    }
+  }, [dispatch, missionDefs.length]);
+
+  const pinnedId = section.props?.missionDefId as string | undefined;
+
+  const featuredDef = pinnedId
+    ? missionDefs.find((d: any) => d.id === pinnedId)
+    : missionDefs.find((d: any) => missionJobs.some((j: any) => j.missionDefId === d.id))
+      ?? missionDefs[0];
+
+  if (!featuredDef && missionJobs.length === 0) {
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title="🗺️ MISSIONS" />
+        <div className="mt-3 text-[12px] text-text-secondary text-center py-2">No active missions</div>
+        <button
+          className="mt-3 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
+          onClick={() => navigate('/missions')}
+        >
+          VIEW MISSIONS
+        </button>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="mb-4 p-4">
-      <SectionHeader title="🗺️ MISSIONS" />
-      <div className="mt-3 flex gap-2 flex-wrap">
-        <StatPill icon="⏳" value={`${missionJobs.length} Active`} />
-      </div>
+    <Card className="mb-4 p-4 border-purple-500/20">
+      <SectionHeader title="🗺️ FEATURED MISSION" />
+      {featuredDef && (
+        <div className="mt-3 space-y-1">
+          <div className="text-[14px] font-bold text-text-primary leading-tight">{featuredDef.name}</div>
+          {featuredDef.description && (
+            <div className="text-[11px] text-text-secondary leading-relaxed line-clamp-2">{featuredDef.description}</div>
+          )}
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {featuredDef.tier != null && (
+              <StatPill icon="⭐" value={`Tier ${featuredDef.tier}`} />
+            )}
+            <StatPill icon="⏳" value={`${missionJobs.length} Active`} />
+          </div>
+        </div>
+      )}
+      {!featuredDef && (
+        <div className="mt-3 flex gap-2 flex-wrap">
+          <StatPill icon="⏳" value={`${missionJobs.length} Active`} />
+        </div>
+      )}
       <button
         className="mt-3 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
         onClick={() => navigate('/missions')}
       >
-        VIEW MISSIONS
+        GO TO MISSIONS
       </button>
     </Card>
   );
@@ -290,6 +333,7 @@ function ActiveMissionListComp({ section, onAction }: ScreenComponentProps) {
   const navigate = useNavigate();
   const allJobs = useAllActiveJobs();
   const missionJobs = allJobs.filter((j: any) => j.type === 'MissionJob');
+  const limit = Math.max(1, Number(section.props?.limit ?? 5));
 
   if (missionJobs.length === 0) {
     return (
@@ -307,15 +351,15 @@ function ActiveMissionListComp({ section, onAction }: ScreenComponentProps) {
       <div className="px-4 py-3">
         <SectionHeader title="🗺️ ACTIVE MISSIONS" />
         <div className="mt-2 space-y-1 text-[13px] text-text-secondary">
-          {missionJobs.slice(0, 5).map((j: any) => (
+          {missionJobs.slice(0, limit).map((j: any) => (
             <div key={j.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
               <span>🗺️</span>
               <span className="flex-1 text-text-primary truncate">{j.name}</span>
             </div>
           ))}
-          {missionJobs.length > 5 && (
+          {missionJobs.length > limit && (
             <div className="text-[11px] text-text-secondary pt-1">
-              +{missionJobs.length - 5} more
+              +{missionJobs.length - limit} more
             </div>
           )}
         </div>

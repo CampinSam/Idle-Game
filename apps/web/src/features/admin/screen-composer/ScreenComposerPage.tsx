@@ -68,6 +68,12 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   ResourceSummaryBar: {
     maxItems: { type: 'number', description: 'Max currencies shown (default: 4)' },
   },
+  MissionFeaturedCard: {
+    missionDefId: { type: 'string', description: 'Pin a specific mission definition ID to feature. Leave blank to auto-show a summary of all active mission jobs.' },
+  },
+  ActiveMissionList: {
+    limit: { type: 'number', description: 'Max active missions to display (default: 5). Use to keep the list compact on smaller screens.' },
+  },
   EmptyStateCard: {
     message: { type: 'string', description: 'Text shown in the empty state', required: true },
     actionKey: { type: 'string', description: 'Action key emitted when button tapped (omit to hide button)' },
@@ -910,9 +916,10 @@ function SectionEditor({
                   <div style={{ ...fieldGroupStyle, flex: '0 0 76px' }}>
                     <span style={labelStyle}>priority</span>
                     <input type="number" value={section.priority ?? 0} onChange={e => update(idx, { priority: Number(e.target.value) })} style={{ ...inputStyle, width: '100%' }} />
+                    <span style={{ fontSize: 9, color: '#555', marginTop: 2, lineHeight: 1.3 }}>Lower = rendered first</span>
                   </div>
                   <div style={{ ...fieldGroupStyle, flex: '1 1 120px' }}>
-                    <span style={labelStyle} title="Used by tabbed_feed (tab id), hero_stack (hero), grid_feed (header/footer/full), fixed_structure (header/main/footer)">slot</span>
+                    <span style={labelStyle}>slot</span>
                     <input
                       type="text"
                       value={section.slot ?? ''}
@@ -920,6 +927,9 @@ function SectionEditor({
                       style={{ ...inputStyle, width: '100%' }}
                       placeholder="— none —"
                     />
+                    <span style={{ fontSize: 9, color: '#555', marginTop: 2, lineHeight: 1.3 }}>
+                      Layout-specific placement key. tabbed_feed: tab id · hero_stack: &quot;hero&quot; · grid_feed: &quot;header&quot;/&quot;footer&quot;/&quot;full&quot; · fixed_structure: &quot;header&quot;/&quot;main&quot;/&quot;footer&quot;. Leave blank for vertical / pass-through layouts.
+                    </span>
                   </div>
                 </div>
 

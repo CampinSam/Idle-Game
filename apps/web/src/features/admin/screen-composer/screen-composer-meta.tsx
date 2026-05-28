@@ -112,16 +112,17 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   QuickStatusCards: {
     friendlyName: 'Quick Status Cards',
-    description: 'Grid of 2–4 compact stat cards showing active jobs, entity count, outpost status, and similar at-a-glance info.',
+    description: 'Grid of 3 compact stat cards showing entity count, outpost count, and active mission jobs.',
     group: 'Core HUD',
     color: '#818cf8',
     preview: () => (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-        {['Birds', 'Jobs', 'Outposts', 'Quests'].map(label => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+        {[['🪶', 'Entities', '4'], ['🏠', 'Outposts', '2'], ['🗺️', 'Missions', '3']].map(([icon, label, val]) => (
           P.card(
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <span style={{ fontSize: 11 }}>{icon}</span>
+              <span style={{ fontSize: 11, fontWeight: 900, color: '#e0e0ff' }}>{val}</span>
               {P.label(label)}
-              <div style={{ width: 20, height: 10, borderRadius: 3, background: '#818cf855' }} />
             </div>
           )
         ))}
@@ -168,22 +169,21 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   DailyCheckInCard: {
     friendlyName: 'Daily Check-In',
-    description: 'Shows a 7-day check-in track with claimed/unclaimed states. Tap to claim today\'s reward.',
+    description: 'Tap-to-claim card with a gift emoji, subtitle text, and a CLAIM button. Configurable via props.',
     group: 'Daily / Events',
     color: '#fb923c',
-    preview: () => P.wrap(
-      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-        {[true, true, true, false, false, false, false].map((done, i) => (
-          <div key={i} style={{
-            width: 18, height: 18, borderRadius: '50%',
-            background: done ? '#fb923c' : 'rgba(255,255,255,0.08)',
-            border: i === 3 ? '2px solid #fb923c' : '1px solid rgba(255,255,255,0.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {done && <span style={{ fontSize: 8 }}>✓</span>}
-          </div>
-        ))}
-      </div>
+    preview: () => P.card(
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>🎁</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {P.label('Daily Check-In', '#fb923c')}
+          <div style={{ marginTop: 3 }}>{P.bar('80%', 'rgba(255,255,255,0.15)')}</div>
+        </div>
+        <div style={{ flexShrink: 0, background: 'linear-gradient(135deg,#f59e0b,#d97706)', borderRadius: 5, padding: '3px 7px' }}>
+          <span style={{ fontSize: 8, fontWeight: 700, color: '#1a1640' }}>CLAIM</span>
+        </div>
+      </div>,
+      { border: '1px solid rgba(251,146,60,0.25)' }
     ),
   },
 
@@ -262,31 +262,42 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   MissionFeaturedCard: {
     friendlyName: 'Mission Featured Card',
-    description: 'Full-width card for the most prominent available mission with artwork and CTA. Auto-sourced.',
+    description: 'Card with mission name, description, tier badge, active-job count, and "GO TO MISSIONS" CTA. Optional missionDefId prop pins a specific mission.',
     group: 'Missions',
     color: '#a78bfa',
-    preview: () => (
-      <div style={{ background: 'linear-gradient(135deg, #2d1b69, #4c1d95)', borderRadius: 7, padding: '10px 8px' }}>
-        {P.label('Featured Mission', '#a78bfa')}
-        <div style={{ marginTop: 4, height: 8, borderRadius: 3, background: '#a78bfa55', width: '70%' }} />
-      </div>
+    preview: () => P.wrap(
+      <>
+        {P.label('🗺️ Featured Mission', '#a78bfa')}
+        {P.bar('65%', '#a78bfa')}
+        <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', width: '85%', marginTop: 2 }} />
+        <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+          <div style={{ background: '#a78bfa22', border: '1px solid #a78bfa44', borderRadius: 20, padding: '2px 7px' }}>
+            <span style={{ fontSize: 7, color: '#c4b5fd' }}>⭐ Tier 2</span>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '2px 7px' }}>
+            <span style={{ fontSize: 7, color: '#aaa' }}>⏳ 3 Active</span>
+          </div>
+        </div>
+        <div style={{ marginTop: 5, height: 18, borderRadius: 5, background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 8, fontWeight: 700, color: '#fff', letterSpacing: '0.05em' }}>GO TO MISSIONS</span>
+        </div>
+      </>
     ),
   },
 
   ActiveMissionList: {
     friendlyName: 'Active Mission List',
-    description: 'List of missions currently in progress with countdowns and entity avatars. Auto-sourced.',
+    description: 'List of active mission jobs with mission name rows. Shows empty-state with "START MISSION" CTA when idle. Optional limit prop controls max rows shown.',
     group: 'Missions',
     color: '#a78bfa',
     preview: () => P.wrap(
       <>
-        {[['70%'], ['40%'], ['90%']].map(([w], i) => (
-          P.card(
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#a78bfa44', flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>{P.bar(w, '#a78bfa')}</div>
-            </div>
-          )
+        {P.label('🗺️ Active Missions', '#a78bfa')}
+        {[['Raid the Outpost', '70%'], ['Gather Resources', '50%'], ['Explore the Ruins', '85%']].map(([name, w], i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+            <span style={{ fontSize: 9 }}>🗺️</span>
+            {P.bar(w, '#a78bfa')}
+          </div>
         ))}
       </>
     ),
@@ -975,18 +986,19 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   EntityRoster: {
     friendlyName: 'Entity Roster',
-    description: 'Full entity browsing list with search, filter, and sort controls. Reads all entity data from the sync store. Use with vertical_feed layout on the /entities screen.',
+    description: 'Full entity browsing list with search, filter (All/Idle/Busy/Injured), and sort controls. Reads all entity data from the sync store. Use with vertical_feed layout on the /entities screen.',
     group: 'Entities',
     color: '#10b981',
     preview: () => P.wrap(
       <>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 2 }}>
-          <div style={{ flex: 1, height: 20, borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
-          <div style={{ width: 60, height: 20, borderRadius: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+        <div style={{ display: 'flex', gap: 4, marginBottom: 3 }}>
+          <div style={{ flex: 1, height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 36, height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
+          <div style={{ width: 42, height: 14, borderRadius: 4, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
           {['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'].map((c, i) => (
-            <div key={i} style={{ height: 38, borderRadius: 6, background: `${c}22`, border: `1px solid ${c}44` }} />
+            <div key={i} style={{ height: 44, borderRadius: 7, background: `${c}18`, border: `1px solid ${c}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🪶</div>
           ))}
         </div>
       </>
@@ -1044,7 +1056,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 /** Components that have no configurable props — all data from sync store or none needed. */
 export const NO_PROPS_COMPONENTS = new Set([
   'BannerCarousel', 'SeasonBanner', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
-  'QuickStatusCards', 'DailyQuestPanel', 'MissionFeaturedCard', 'ActiveMissionList',
+  'QuickStatusCards', 'DailyQuestPanel',
   'SeasonProgressCard', 'EntityRoster', 'InventoryItemBrowser', 'MissionBrowser',
   'LocationBrowser', 'LocationDetailBrowser', 'ForgeBrowser', 'StoreBrowser',
   'AchievementsBrowser', 'ProfileBrowser', 'RewardsBrowser', 'SettingsBrowser',
