@@ -332,6 +332,16 @@ function WithdrawTab({
                   {Number(w.fee) > 0 && <span style={{ color: '#666', marginLeft: 6, fontSize: '0.78rem' }}>(-{Number(w.fee)} fee)</span>}
                 </div>
                 <StatusBadge status={w.status} />
+                {w.status === 'SENT' && w.txHash && (
+                  <a
+                    href={`https://cardanoscan.io/transaction/${w.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.78rem', color: '#60a5fa', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  >
+                    View on Cardanoscan ↗
+                  </a>
+                )}
                 <div style={{ color: '#555', fontSize: '0.78rem' }}>{new Date(w.createdAt).toLocaleDateString()}</div>
               </div>
             ))}
