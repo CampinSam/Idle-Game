@@ -155,7 +155,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     },
   },
   FeaturedBirdCard: {
-    entityId: { type: 'string', description: 'Pin a specific entity by ID. Falls back to the first entity in the sync store.' },
+    entityId: { type: 'entityPicker', description: 'Pin a specific entity by ID. Falls back to the first entity in the sync store.' },
     title: { type: 'string', description: 'Card header text (default: "🦜 FEATURED BIRD")' },
     actionKey: { type: 'string', description: 'If set, fires this action key on click instead of navigating to the entity detail page.' },
   },
@@ -186,14 +186,13 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   },
   StoreOfferCarousel: {
     title: { type: 'string', description: 'Optional section header above the carousel.' },
-    tab: { type: 'string', description: 'Filter shop items by tab (e.g. "featured", "bundles"). Shows featured tab when omitted.' },
     limit: { type: 'number', description: 'Max number of cards in the carousel (default: 4).' },
   },
   StoreItemGrid: {
     title: { type: 'string', description: 'Optional section header above the grid.' },
     tab: { type: 'string', description: 'Filter by tab: featured | bundles | items | currency (default: featured).' },
     limit: { type: 'number', description: 'Max number of grid cells (default: 6).' },
-    columns: { type: 'number', description: 'Grid columns: 2 (default) or 3.' },
+    columns: { type: 'number', description: 'Grid columns: 3 (default) or 2.' },
   },
   StoreItemRail: {
     title: { type: 'string', description: 'Optional section header above the rail.' },
@@ -213,7 +212,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     body: { type: 'string', description: 'Optional body / summary text shown below the headline.' },
     timestamp: { type: 'string', description: 'Optional display timestamp shown at the bottom (e.g. "2h ago", "May 28, 2026").' },
     emoji: { type: 'string', description: 'Leading emoji icon (default: "📰").' },
-    href: { type: 'string', description: 'If set, shows a "READ MORE" link that navigates to this path (e.g. "/rewards").' },
+    href: { type: 'string', description: 'Navigation path for the "READ MORE" link (default: "/rewards"). Always shown.' },
   },
   AnnouncementFeed: {
     title: { type: 'string', description: 'Feed header text (default: "📢 ANNOUNCEMENTS")' },

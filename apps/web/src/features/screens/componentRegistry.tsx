@@ -1128,11 +1128,12 @@ function useShopItems(tab?: string) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
-    fetch(`${_shopApiBase}/shop/items`, { headers: _shopAuthHeaders() })
+    const url = tab
+      ? `${_shopApiBase}/shop/items?tab=${encodeURIComponent(tab)}`
+      : `${_shopApiBase}/shop/items`;
+    fetch(url, { headers: _shopAuthHeaders() })
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then((data: _ShopItem[]) => {
-        if (!cancelled) setItems(tab ? data.filter(i => i.tab === tab) : data);
-      })
+      .then((data: _ShopItem[]) => { if (!cancelled) setItems(data); })
       .catch(() => { /* swallow — show empty state */ })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -1192,16 +1193,27 @@ function FeaturedBirdCardComp({ section, onAction }: ScreenComponentProps) {
   const name: string = e.name ?? e.defId ?? 'Unknown';
   const level: number = e.level ?? 1;
   const status: string = e.status ?? 'idle';
+  const rarity: string | undefined = e.rarity ?? e.tier;
+  const entityClass: string | undefined = e.class ?? e.entityClass;
+  const entityType: string | undefined = e.type ?? e.entityType;
+  const rarityColor =
+    rarity === 'legendary' ? '#fbbf24' :
+    rarity === 'epic' ? '#a78bfa' :
+    rarity === 'rare' ? '#60a5fa' : '#94a3b8';
   const statusColor =
     status === 'idle' ? '#34d399' :
     status === 'working' || status === 'mission' ? '#60a5fa' :
     status === 'injured' ? '#f87171' : '#94a3b8';
+  const metaParts = [
+    `Lv ${level}`,
+    rarity ? rarity.charAt(0).toUpperCase() + rarity.slice(1) : null,
+    entityClass ?? entityType ?? null,
+  ].filter(Boolean);
+
+  const handleClick = () => { if (actionKey) { onAction(actionKey); } else { navigate(`/entities/${e.id}`); } };
 
   return (
-    <Card
-      className="mb-4 p-4 border-fuchsia-500/20 cursor-pointer active:scale-[0.99] transition-transform"
-      onClick={() => { if (actionKey) { onAction(actionKey); } else { navigate(`/entities/${e.id}`); } }}
-    >
+    <Card className="mb-4 p-4 border-fuchsia-500/20">
       <SectionHeader title={title} className="mb-3" />
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-900 to-fuchsia-900 border border-fuchsia-500/30 flex items-center justify-center text-2xl flex-shrink-0 select-none">
@@ -1209,14 +1221,25 @@ function FeaturedBirdCardComp({ section, onAction }: ScreenComponentProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[14px] font-black text-text-primary truncate">{name}</div>
-          <div className="text-[11px] text-text-secondary mt-0.5">Lv {level} · {e.defId ?? ''}</div>
+          <div className="text-[11px] mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            {metaParts.map((p, i) => (
+              <span key={i} style={{ color: i === 1 && rarity ? rarityColor : undefined }} className={i > 0 ? 'text-text-secondary' : 'text-text-secondary'}>
+                {i > 0 && <span className="opacity-40 mr-1">·</span>}{p}
+              </span>
+            ))}
+          </div>
           <div className="mt-1.5 flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: statusColor }} />
             <span className="text-[10px] font-bold capitalize" style={{ color: statusColor }}>{status}</span>
           </div>
         </div>
-        <span className="text-text-secondary/40 text-lg flex-shrink-0">›</span>
       </div>
+      <button
+        className="mt-3 w-full rounded-lg py-1.5 text-[11px] font-bold text-fuchsia-300 border border-fuchsia-500/30 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 transition-colors"
+        onClick={handleClick}
+      >
+        VIEW BIRD →
+      </button>
     </Card>
   );
 }
@@ -1678,10 +1701,9 @@ function _MiniShopCard({ item, onClick }: { item: _ShopItem; onClick: () => void
 function StoreOfferCarouselComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
   const title = props.title as string | undefined;
-  const tab = props.tab as string | undefined;
-  const limit = Number(props.limit ?? 6);
+  const limit = Number(props.limit ?? 4);
   const navigate = useNavigate();
-  const { items, loading } = useShopItems(tab);
+  const { items, loading } = useShopItems('featured');
 
   if (loading) return title ? <_ShopLoadingCard title={title} /> : <div className="h-24 bg-white/5 rounded-xl animate-pulse mb-4" />;
 
@@ -1705,7 +1727,7 @@ function StoreItemGridComp({ section }: ScreenComponentProps) {
   const title = props.title as string | undefined;
   const tab = props.tab as string | undefined;
   const limit = Number(props.limit ?? 6);
-  const columns = Number(props.columns ?? 2);
+  const columns = Number(props.columns ?? 3);
   const navigate = useNavigate();
   const { items, loading } = useShopItems(tab);
 
@@ -1754,7 +1776,7 @@ function StoreItemRailComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
   const title = props.title as string | undefined;
   const tab = props.tab as string | undefined;
-  const limit = Number(props.limit ?? 5);
+  const limit = Number(props.limit ?? 6);
   const navigate = useNavigate();
   const { items, loading } = useShopItems(tab);
 
@@ -1796,11 +1818,11 @@ function FeaturedShopRailComp({ section }: ScreenComponentProps) {
   const title = String(props.title ?? '⭐ FEATURED');
   const limit = Number(props.limit ?? 3);
   const navigate = useNavigate();
-  const { items, loading } = useShopItems();
+  const { items, loading } = useShopItems('featured');
 
   if (loading) return <_ShopLoadingCard title={title} />;
 
-  const featured = items.filter(i => i.badge || i.limitedUntil).slice(0, limit);
+  const featured = items.slice(0, limit);
   if (featured.length === 0) return null;
 
   return (
@@ -1898,7 +1920,7 @@ function NewsCardComp({ section }: ScreenComponentProps) {
   const body = props.body as string | undefined;
   const timestamp = props.timestamp as string | undefined;
   const emoji = String(props.emoji ?? '📰');
-  const href = props.href as string | undefined;
+  const href = String(props.href ?? '/rewards');
 
   if (!headline) {
     return (
@@ -1920,14 +1942,12 @@ function NewsCardComp({ section }: ScreenComponentProps) {
           {body && <div className="text-[12px] text-text-secondary leading-relaxed">{body}</div>}
           <div className="flex items-center justify-between mt-3">
             {timestamp ? <span className="text-[10px] text-text-secondary/60">{timestamp}</span> : <span />}
-            {href && (
-              <button
-                className="text-[11px] font-bold text-fuchsia-400 hover:text-fuchsia-300 transition-colors"
-                onClick={() => navigate(href)}
-              >
-                READ MORE →
-              </button>
-            )}
+            <button
+              className="text-[11px] font-bold text-fuchsia-400 hover:text-fuchsia-300 transition-colors"
+              onClick={() => navigate(href)}
+            >
+              READ MORE →
+            </button>
           </div>
         </div>
       </div>
@@ -2121,7 +2141,7 @@ function EventCarouselComp({ section }: ScreenComponentProps) {
               key={i}
               className={`flex-shrink-0 w-40 rounded-xl border cursor-pointer active:scale-[0.98] transition-transform ${expired ? 'border-white/10 opacity-60' : 'border-purple-500/30'}`}
               style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.2), rgba(30,27,75,0.8))' }}
-              onClick={() => ev.href && navigate(ev.href)}
+              onClick={() => navigate(ev.href ?? '/')}
             >
               <div className="p-3 text-center">
                 <div className="text-3xl mb-1 select-none">{ev.emoji}</div>
