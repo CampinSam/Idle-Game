@@ -178,6 +178,10 @@ class ApiClient {
     return this.request<any>(`/missions/${jobId}/stats`);
   }
 
+  getMissionLeadIn(defId: string) {
+    return this.request<any>(`/missions/${defId}/lead-in`);
+  }
+
   jobPreview(
     dto: { jobType: string; defId: string; entityIds?: string[]; entityId?: string; quantity?: number; locationId?: string },
     signal?: AbortSignal,

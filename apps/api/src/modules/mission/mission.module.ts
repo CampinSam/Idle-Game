@@ -10,8 +10,9 @@ import { NotificationModule } from '../notification/notification.module';
 import { EventModule } from '../event/event.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { SynergyModule } from '../synergy/synergy.module';
+import { UiModule } from '../ui/ui.module';
 @Module({
-  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule, SynergyModule],
+  imports: [EntityModule, CurrencyModule, PlayerModule, TickModule, InventoryModule, NotificationModule, EventModule, TelemetryModule, SynergyModule, UiModule],
   providers: [MissionService],
   controllers: [MissionController],
   exports: [MissionService],

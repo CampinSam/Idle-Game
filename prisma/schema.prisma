@@ -697,6 +697,7 @@ model MissionDef {
   readyModalDefId          String?
   completedModalDefId      String?
   failedModalDefId         String?
+  leadInModalDefId         String?
   data                     Json               @default("{}")
 
   createdAt                DateTime           @default(now())

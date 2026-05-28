@@ -3,6 +3,7 @@ import { IsString, IsArray, ArrayMinSize } from 'class-validator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { UserThrottlerGuard } from '../../common/guards/user-throttler.guard';
 import { MissionService } from './mission.service';
+import { UiService } from '../ui/ui.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { IdempotencyService } from '../infrastructure/idempotency.service';
@@ -32,6 +33,7 @@ class SynergyPreviewDto {
 export class MissionController {
   constructor(
     private missionService: MissionService,
+    private uiService: UiService,
     private idempotency: IdempotencyService,
   ) {}
 
@@ -101,6 +103,14 @@ export class MissionController {
     @Param('jobId') jobId: string,
   ) {
     return this.missionService.getMissionJobStats(user.id, jobId);
+  }
+
+  @Get(':defId/lead-in')
+  getMissionLeadIn(
+    @CurrentUser() user: { id: string },
+    @Param('defId') defId: string,
+  ) {
+    return this.uiService.buildLeadInModalForMission(user.id, defId);
   }
 
 }

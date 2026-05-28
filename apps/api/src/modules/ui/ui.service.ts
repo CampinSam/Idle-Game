@@ -1225,4 +1225,18 @@ export class UiService {
 
     return generated;
   }
+
+  async buildLeadInModalForMission(userId: string, missionDefId: string): Promise<ModalSpecV1> {
+    const def = await this.prisma.missionDef.findUnique({ where: { id: missionDefId } });
+    if (!def) throw new NotFoundException('Mission definition not found');
+
+    const leadInModalDefId = (def as any).leadInModalDefId as string | null | undefined;
+    if (!leadInModalDefId) throw new NotFoundException('This mission has no narrative lead-in');
+
+    const spec = await this.resolveModalDef(leadInModalDefId);
+    if (!spec) throw new NotFoundException('Lead-in modal definition not found or disabled');
+
+    const ctx = { mission: def };
+    return resolveSpec(spec, ctx as Record<string, any>);
+  }
 }

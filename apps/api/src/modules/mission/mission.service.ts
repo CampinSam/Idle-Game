@@ -229,6 +229,7 @@ export class MissionService {
       inline: def.inline ?? false,
       inlineLabel: def.inlineLabel ?? null,
       missionCategoryDefId: def.missionCategoryDefId,
+      leadInModalDefId: def.leadInModalDefId ?? null,
       display: resolvedDisplay,
       requirementStatus,
       launchRequirementStatus,

@@ -164,6 +164,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       launchRequirements:   { type: 'richSelection', default: null,  description: 'Launch-time gate evaluated with the real selected team (teamSize, entity traits). Both requirements AND launchRequirements must pass server-side for startMission to succeed.', section: 'requirements' },
       visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions',                                                    section: 'requirements' },
       displayDefId:         { type: 'ref',           refTable: 'DisplayDef', description: 'Visual styling',                                                    section: 'display' },
+      leadInModalDefId:     { type: 'ref',           refTable: 'ModalDef', description: 'Narrative modal shown automatically when a player opens this mission (once per session). Player can reopen via the "Open Narrative" button.', section: 'display' },
       activeModalDefId:     { type: 'ref',           refTable: 'ModalDef', description: 'Custom modal while mission is active',                                section: 'display' },
       readyModalDefId:      { type: 'ref',           refTable: 'ModalDef', description: 'Custom modal when mission is ready to claim (falls back to active)',  section: 'display' },
       completedModalDefId:  { type: 'ref',           refTable: 'ModalDef', description: 'Custom modal after mission completes',                                section: 'display' },

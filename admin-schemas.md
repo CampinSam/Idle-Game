@@ -532,6 +532,35 @@ Quest and achievement objectives support an optional `selectionRule` field in ad
 
 ---
 
+## MissionDef — `leadInModalDefId` field
+
+`MissionDef` supports an optional `leadInModalDefId` that attaches a narrative lead-in modal to a mission. When set, the modal appears automatically the first time a player opens the mission details page each session. The player can reopen it any time using the **"Open Narrative"** button in the mission footer.
+
+### Endpoint
+
+`GET /api/missions/:defId/lead-in` — Returns the resolved `ModalSpecV1` for the lead-in. Auth: JWT (player). Returns `404` if the mission has no `leadInModalDefId` set or if the referenced `ModalDef` is disabled.
+
+### Behaviour
+
+| Aspect | Detail |
+|--------|--------|
+| Auto-open | Fires once per session per mission, tracked via `sessionStorage`. Subsequent visits to the same mission do not re-trigger the modal automatically. |
+| Manual reopen | An **"Open Narrative"** button appears in the mission footer whenever `leadInModalDefId` is set. Clicking it always opens the modal, bypassing the session guard. |
+| Multi-page | Fully supported via existing `NEXT_PAGE` / `PREV_PAGE` button actions in the `ModalDef` spec. |
+| Context | The modal spec is resolved server-side with context `{ mission }`, so template tokens like `${mission.name}` work. |
+
+### Modal fields summary
+
+| Field | Description |
+|-------|-------------|
+| `leadInModalDefId` | `ModalDef.id` for the narrative lead-in (auto-opened once per session; reopenable). |
+| `activeModalDefId` | `ModalDef.id` shown while the mission job is in progress. |
+| `readyModalDefId` | `ModalDef.id` when ready to claim (falls back to `activeModalDefId`). |
+| `completedModalDefId` | `ModalDef.id` after mission success. |
+| `failedModalDefId` | `ModalDef.id` on mission failure (falls back to `completedModalDefId`). |
+
+---
+
 ## `launchRequirements` — Mission Launch Gate
 
 `MissionDef` now has a **second** `RichSelection` field alongside the existing `requirements`:

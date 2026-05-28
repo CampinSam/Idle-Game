@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemQty from '../../../components/ItemQty';
 import { useAppSelector } from '../../../store';
 import { useSyncEntities } from '../../../hooks/useSyncSelectors';
@@ -43,6 +43,28 @@ export function MissionBuilder(props: MissionBuilderProps) {
 
   const [selectedEntities, setSelectedEntities] = useState<string[]>(props.initialSelectedEntities ?? []);
   const [planningError, setPlanningError] = useState(props.error ?? '');
+  const leadInShownRef = useRef(false);
+
+  const hasLeadIn = !!rawActiveDef?.leadInModalDefId;
+
+  const openLeadIn = useCallback(async () => {
+    if (!rawActiveDef) return;
+    try {
+      const spec = await api.getMissionLeadIn(rawActiveDef.id);
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err) {
+      console.error('[MissionBuilder] Failed to fetch lead-in modal:', err);
+    }
+  }, [rawActiveDef, pushModal]);
+
+  useEffect(() => {
+    if (!hasLeadIn || !rawActiveDef || leadInShownRef.current) return;
+    const sessionKey = `lead-in-shown:${rawActiveDef.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    leadInShownRef.current = true;
+    sessionStorage.setItem(sessionKey, '1');
+    openLeadIn();
+  }, [hasLeadIn, rawActiveDef, openLeadIn]);
 
   const entities = props.entities ?? storeEntities;
   const idleEntities = props.idleEntities ?? entities.filter((e: any) => e.status === 'idle');
@@ -191,49 +213,59 @@ export function MissionBuilder(props: MissionBuilderProps) {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
-            {idleEntities.length === 0 && selectedEntities.length === 0 ? (
-              <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
-                No entities available
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={handleAutoAssign}
-                  disabled={idleEntities.length === 0}
-                  className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-                >
-                  AUTO BUILD TEAM
-                </button>
-                {selectedEntities.length > 0 && (
-                  <button
-                    disabled={!canStart}
-                    onClick={handleStart}
-                    className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
-                      START MISSION ⚡
-                    </span>
-                    <span className="flex items-center gap-1.5 mt-0.5">
-                      {missionDuration > 0 && (
-                        <span className="text-[10px] font-semibold opacity-60">
-                          ⏱ {formatDuration(missionDuration)}
-                        </span>
-                      )}
-                      {missionCost.length > 0 && (
-                        <span
-                          className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
-                        >
-                          {missionCost.map((c, i) => (
-                            <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
-                          ))}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                )}
-              </>
+          <div className="flex flex-col gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
+            {hasLeadIn && (
+              <button
+                onClick={openLeadIn}
+                className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
+              >
+                📖 Open Narrative
+              </button>
             )}
+            <div className="grid grid-cols-2 gap-2">
+              {idleEntities.length === 0 && selectedEntities.length === 0 ? (
+                <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
+                  No entities available
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAutoAssign}
+                    disabled={idleEntities.length === 0}
+                    className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+                  >
+                    AUTO BUILD TEAM
+                  </button>
+                  {selectedEntities.length > 0 && (
+                    <button
+                      disabled={!canStart}
+                      onClick={handleStart}
+                      className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
+                        START MISSION ⚡
+                      </span>
+                      <span className="flex items-center gap-1.5 mt-0.5">
+                        {missionDuration > 0 && (
+                          <span className="text-[10px] font-semibold opacity-60">
+                            ⏱ {formatDuration(missionDuration)}
+                          </span>
+                        )}
+                        {missionCost.length > 0 && (
+                          <span
+                            className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
+                          >
+                            {missionCost.map((c, i) => (
+                              <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1214,6 +1214,31 @@
         }
       }
     },
+    "MissionDef_modal_fields": {
+      "description": "MissionDef modal hook fields. These are optional ModalDef references that attach custom narrative or informational modals to different stages of a mission's lifecycle.",
+      "properties": {
+        "leadInModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id for the narrative lead-in shown automatically when a player opens this mission for the first time each session. The player can reopen it at any time via the 'Open Narrative' button on the details page. The modal is resolved with context { mission } so templates can reference mission fields. Multi-page narratives use NEXT_PAGE / PREV_PAGE buttons."
+        },
+        "activeModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown while the mission job is active."
+        },
+        "readyModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown when the mission is ready to claim (falls back to activeModalDefId if unset)."
+        },
+        "completedModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown after the mission completes successfully."
+        },
+        "failedModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown when the mission fails (falls back to completedModalDefId if unset)."
+        }
+      }
+    },
     "QuestObjective": {
       "description": "A single objective entry inside QuestDef.objectives. Applies to both quests and achievements (category='achievement' in QuestDef).",
       "type": "object",
