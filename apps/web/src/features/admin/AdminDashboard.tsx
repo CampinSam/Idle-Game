@@ -1545,7 +1545,7 @@ function ReviewQueuePanel() {
   };
 
   const opColor: Record<string, string> = { create: '#4caf50', update: '#60a5fa', delete: '#ef4444' };
-  const statusColor: Record<string, string> = { pending: '#f59e0b', approved: '#4caf50', rejected: '#ef4444' };
+  const statusColor: Record<string, string> = { pending: '#f59e0b', applying: '#a78bfa', approved: '#4caf50', rejected: '#ef4444' };
 
   return (
     <div style={{ padding: '20px 24px', maxWidth: 900, fontFamily: 'ui-monospace, monospace' }}>

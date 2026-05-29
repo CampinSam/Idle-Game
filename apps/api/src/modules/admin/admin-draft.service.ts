@@ -21,7 +21,7 @@ export class AdminDraftService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // Enforce DB-level uniqueness: only one pending draft per (tableName, recordId)
+    // Enforce DB-level uniqueness: only one pending/applying draft per (tableName, recordId)
     try {
       await this.prisma.$executeRawUnsafe(`
         CREATE UNIQUE INDEX IF NOT EXISTS content_drafts_pending_record_unique
@@ -30,6 +30,27 @@ export class AdminDraftService implements OnModuleInit {
       `);
     } catch (err) {
       this.logger.warn(`Pending-draft unique index already exists or could not be created: ${(err as any)?.message}`);
+    }
+
+    // Boot-time recovery: revert any drafts stuck in 'applying' from a previous crashed approval
+    try {
+      const stuck = await (this.prisma as any).contentDraft.findMany({
+        where: { status: 'applying' },
+        select: { id: true },
+      });
+      if (stuck.length > 0) {
+        this.logger.warn(`Recovering ${stuck.length} draft(s) stuck in 'applying' state → reverting to 'pending'`);
+        await (this.prisma as any).contentDraft.updateMany({
+          where: { status: 'applying' },
+          data: {
+            status: 'pending',
+            reviewerId: null,
+            reviewComment: 'Recovered: server restarted during approval — please re-review',
+          },
+        });
+      }
+    } catch (err) {
+      this.logger.error(`Failed to recover applying drafts on boot: ${(err as any)?.message}`);
     }
   }
 
@@ -93,7 +114,7 @@ export class AdminDraftService implements OnModuleInit {
       where: {
         tableName:  opts.tableName,
         recordId:   opts.recordId,
-        status:     'pending',
+        status:     { in: ['pending', 'applying'] },
       },
     });
     if (conflicting) {
@@ -167,7 +188,13 @@ export class AdminDraftService implements OnModuleInit {
     return { ...draft, liveRecord, diff };
   }
 
-  // ─── Approval (atomic via transaction + compensation) ──────────────────────
+  // ─── Approval (3-step state machine: pending → applying → approved) ─────────
+  //
+  // Step 1 (tx):  pending → applying   (atomic; prevents race; crash here leaves 'pending')
+  // Step 2:       apply live mutation   (crash here leaves 'applying'; boot recovery reverts to 'pending')
+  // Step 3 (tx):  applying → approved  (crash here leaves 'applying'; boot recovery reverts to 'pending')
+  //
+  // The 'applying' intermediate state is cleaned up on each boot via onModuleInit.
 
   async approveDraft(
     id:             string,
@@ -175,9 +202,7 @@ export class AdminDraftService implements OnModuleInit {
     reviewerRole:   string,
     reviewerScopes: string[],
   ) {
-    // Atomically read the draft and mark it as 'approved' inside a transaction.
-    // This prevents double-approval races. If the subsequent live mutation fails
-    // we compensate by reverting the draft status back to 'pending'.
+    // Step 1: Atomically transition pending → applying
     const draft = await (this.prisma as any).$transaction(async (tx: any) => {
       const d = await tx.contentDraft.findUnique({
         where: { id },
@@ -196,10 +221,9 @@ export class AdminDraftService implements OnModuleInit {
         }
       }
 
-      // Atomically transition to 'approved' (prevents parallel approve of same draft)
       return tx.contentDraft.update({
         where: { id },
-        data: { status: 'approved', reviewerId },
+        data: { status: 'applying', reviewerId },
         include: {
           author:   { select: { username: true } },
           reviewer: { select: { username: true } },
@@ -207,7 +231,7 @@ export class AdminDraftService implements OnModuleInit {
       });
     });
 
-    // Apply the live mutation outside the transaction
+    // Step 2: Apply the live mutation (crash here → 'applying' → boot recovery → 'pending')
     try {
       if (draft.operation === 'create') {
         await this.adminService.createRecord(draft.tableName, { ...(draft.payload as any) });
@@ -217,7 +241,7 @@ export class AdminDraftService implements OnModuleInit {
         await this.adminService.deleteRecord(draft.tableName, draft.recordId);
       }
     } catch (mutationErr: any) {
-      // Compensate: revert draft back to pending so reviewer can retry or reject
+      // Mutation failed: revert applying → pending so reviewer can retry or reject
       this.logger.error(
         `Draft ${id} mutation failed during approval (reverting to pending): ${mutationErr?.message}`,
       );
@@ -231,15 +255,25 @@ export class AdminDraftService implements OnModuleInit {
           },
         });
       } catch (revertErr: any) {
-        this.logger.error(`Could not revert draft ${id} status: ${revertErr?.message}`);
+        this.logger.error(`Could not revert draft ${id} to pending: ${revertErr?.message}`);
       }
       throw new BadRequestException(`Failed to apply draft: ${mutationErr?.message}`);
     }
 
+    // Step 3: Transition applying → approved
+    const approved = await (this.prisma as any).contentDraft.update({
+      where: { id },
+      data: { status: 'approved' },
+      include: {
+        author:   { select: { username: true } },
+        reviewer: { select: { username: true } },
+      },
+    });
+
     this.logger.log(
       `Draft ${id} approved by ${reviewerId}: ${draft.operation} on ${draft.tableName}/${draft.recordId}`,
     );
-    return draft;
+    return approved;
   }
 
   async rejectDraft(

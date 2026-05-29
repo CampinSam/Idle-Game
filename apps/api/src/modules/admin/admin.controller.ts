@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ParseIntPipe, DefaultValuePipe, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, ParseIntPipe, DefaultValuePipe, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
@@ -6,6 +6,7 @@ import { AdminService } from './admin.service';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminAuditService } from './admin-audit.service';
 import { AdminDraftService } from './admin-draft.service';
+import { TABLE_KEY_TO_GROUP } from './admin-permissions';
 import { ScreensService } from '../screens/screens.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
@@ -1059,6 +1060,15 @@ export class AdminController {
     @Req() req: any,
     @Body() body: { tableName: string; recordId: string; operation: 'create' | 'update' | 'delete'; payload: any },
   ) {
+    // Non-super-admin: enforce content-scope on the target table
+    if (req.adminUser.role !== 'super_admin') {
+      const group = TABLE_KEY_TO_GROUP[body.tableName] ?? null;
+      if (group && !(req.adminUser.scopes ?? []).includes(group)) {
+        throw new ForbiddenException(
+          `Content scope '${group}' is required to create drafts for table '${body.tableName}'`,
+        );
+      }
+    }
     const draft = await this.adminDraftService.createDraft({
       tableName: body.tableName,
       recordId:  body.recordId,

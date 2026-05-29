@@ -222,6 +222,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
 
   const [me, setMe] = useState<any>(null);
   const [pendingDrafts, setPendingDrafts] = useState<Record<string, any>>({});
+  const [rejectedDrafts, setRejectedDrafts] = useState<Record<string, any>>({});
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
@@ -234,10 +235,11 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const loadPendingDrafts = useCallback(async (tableKey: string) => {
+  const loadPendingDrafts = useCallback(async (tableKey: string, myId?: string) => {
     if (!tableKey) { setPendingDrafts({}); return; }
     try {
-      const drafts = await adminApi.listDrafts({ tableName: tableKey, status: 'pending' });
+      // Filter by authorId so users only see their own pending drafts in the editor overlay
+      const drafts = await adminApi.listDrafts({ tableName: tableKey, status: 'pending', authorId: myId });
       const map: Record<string, any> = {};
       (drafts as any[]).forEach((d: any) => { map[d.recordId] = d; });
       setPendingDrafts(map);
@@ -245,6 +247,33 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       setPendingDrafts({});
     }
   }, []);
+
+  const loadRejectedDrafts = useCallback(async (tableKey: string, myId?: string) => {
+    if (!tableKey || !myId) { setRejectedDrafts({}); return; }
+    try {
+      // Fetch the author's own rejected drafts so we can show a banner in the editor
+      const drafts = await adminApi.listDrafts({ tableName: tableKey, status: 'rejected', authorId: myId });
+      const map: Record<string, any> = {};
+      // Keep only the most-recent rejection per recordId
+      (drafts as any[]).forEach((d: any) => {
+        if (!map[d.recordId] || new Date(d.createdAt) > new Date(map[d.recordId].createdAt)) {
+          map[d.recordId] = d;
+        }
+      });
+      setRejectedDrafts(map);
+    } catch {
+      setRejectedDrafts({});
+    }
+  }, []);
+
+  // Re-load drafts once `me` resolves (handles the race between table-select and getMe)
+  useEffect(() => {
+    if (me?.id && activeMappedKey) {
+      loadPendingDrafts(activeMappedKey, me.id);
+      loadRejectedDrafts(activeMappedKey, me.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.id]);
 
   const activeMappedKey = useMemo(() => {
     if (!activeTable) return '';
@@ -273,7 +302,8 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setActiveSectionId(null);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
-    loadPendingDrafts(key);
+    loadPendingDrafts(key, me?.id);
+    loadRejectedDrafts(key, me?.id);
   };
 
   const handleSelectRecord = (rec: any) => {
@@ -388,7 +418,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         } else {
           dispatch({ type: 'SAVE_DRAFT', record: editorState.record, draftId: saved.draftId, operation: saved.operation });
         }
-        await loadPendingDrafts(activeMappedKey);
+        await loadPendingDrafts(activeMappedKey, me?.id);
         await loadRecords(activeTable);
       } else {
         dispatch({ type: 'SAVE_OK', record: saved });
@@ -396,7 +426,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         setSelectedId(saved.id);
         invalidateRefCache(activeTable);
         await loadRecords(activeTable);
-        await loadPendingDrafts(activeMappedKey);
+        await loadPendingDrafts(activeMappedKey, me?.id);
       }
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Save failed' });
@@ -411,14 +441,14 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         // Non-super-admin: delete draft submitted
         dispatch({ type: 'SAVE_DRAFT', record: editorState.record, draftId: result.draftId, operation: 'delete' });
         setDeleteConfirm(false);
-        await loadPendingDrafts(activeMappedKey);
+        await loadPendingDrafts(activeMappedKey, me?.id);
       } else {
         dispatch({ type: 'CLEAR' });
         setSelectedId(null);
         setDeleteConfirm(false);
         invalidateRefCache(activeTable);
         await loadRecords(activeTable);
-        await loadPendingDrafts(activeMappedKey);
+        await loadPendingDrafts(activeMappedKey, me?.id);
       }
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Delete failed' });
@@ -844,6 +874,33 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   </span>
                 </div>
               )}
+              {/* REJECTED DRAFT banner — show when the current record has a rejected draft from this author */}
+              {!editorState.isDraftMode && selectedId && rejectedDrafts[selectedId] && (() => {
+                const rd = rejectedDrafts[selectedId];
+                return (
+                  <div style={{
+                    padding: '8px 20px',
+                    background: 'rgba(127, 29, 29, 0.3)',
+                    borderBottom: '1px solid rgba(239, 68, 68, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexShrink: 0,
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#f87171', textTransform: 'uppercase' }}>
+                      ✗ DRAFT REJECTED
+                    </span>
+                    <span style={{ fontSize: 11, color: '#fca5a5', flex: 1 }}>
+                      {rd.reviewComment
+                        ? <>Reviewer comment: <em>"{rd.reviewComment}"</em></>
+                        : 'Your previous draft was rejected. You may submit a new one.'}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#7f1d1d' }}>
+                      by {rd.reviewer?.username ?? '?'} · {new Date(rd.updatedAt).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })()}
               <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
