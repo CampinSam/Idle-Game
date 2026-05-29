@@ -1445,11 +1445,48 @@ function AuditLogPanel() {
   );
 }
 
+function DiffView({ diff, operation }: { diff: Record<string, { old: any; new: any }>; operation: string }) {
+  const entries = Object.entries(diff);
+  if (entries.length === 0) {
+    return <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>No field differences detected.</div>;
+  }
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+      <thead>
+        <tr>
+          <th style={{ textAlign: 'left', padding: '3px 6px', color: '#666', fontWeight: 600, borderBottom: '1px solid #1a1a3e', width: '25%' }}>Field</th>
+          <th style={{ textAlign: 'left', padding: '3px 6px', color: '#f87171', fontWeight: 600, borderBottom: '1px solid #1a1a3e', width: '37.5%' }}>
+            {operation === 'create' ? '(new)' : 'Before'}
+          </th>
+          <th style={{ textAlign: 'left', padding: '3px 6px', color: '#4ade80', fontWeight: 600, borderBottom: '1px solid #1a1a3e', width: '37.5%' }}>
+            {operation === 'delete' ? '(removed)' : 'After'}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {entries.map(([field, { old: oldVal, new: newVal }]) => (
+          <tr key={field} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <td style={{ padding: '3px 6px', color: '#a78bfa', fontFamily: 'monospace' }}>{field}</td>
+            <td style={{ padding: '3px 6px', color: '#f87171', fontFamily: 'monospace', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {oldVal === undefined ? <span style={{ color: '#444', fontStyle: 'italic' }}>—</span> : JSON.stringify(oldVal)}
+            </td>
+            <td style={{ padding: '3px 6px', color: '#4ade80', fontFamily: 'monospace', maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {newVal === undefined ? <span style={{ color: '#444', fontStyle: 'italic' }}>—</span> : JSON.stringify(newVal)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function ReviewQueuePanel() {
   const [drafts, setDrafts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [detailCache, setDetailCache] = useState<Record<string, any>>({});
+  const [detailLoading, setDetailLoading] = useState<Record<string, boolean>>({});
   const [commentMap, setCommentMap] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -1464,6 +1501,20 @@ function ReviewQueuePanel() {
   }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleExpand = useCallback(async (id: string) => {
+    const wasExpanded = !!expanded[id];
+    setExpanded(prev => ({ ...prev, [id]: !wasExpanded }));
+    // Fetch full detail (with diff) on first expand
+    if (!wasExpanded && !detailCache[id]) {
+      setDetailLoading(prev => ({ ...prev, [id]: true }));
+      try {
+        const detail = await adminApi.getDraft(id);
+        setDetailCache(prev => ({ ...prev, [id]: detail }));
+      } catch { /* use list-level data as fallback */ }
+      finally { setDetailLoading(prev => ({ ...prev, [id]: false })); }
+    }
+  }, [expanded, detailCache]);
 
   const handleApprove = async (id: string) => {
     setActionLoading(prev => ({ ...prev, [id]: true }));
@@ -1497,7 +1548,7 @@ function ReviewQueuePanel() {
   const statusColor: Record<string, string> = { pending: '#f59e0b', approved: '#4caf50', rejected: '#ef4444' };
 
   return (
-    <div style={{ padding: '20px 24px', maxWidth: 860, fontFamily: 'ui-monospace, monospace' }}>
+    <div style={{ padding: '20px 24px', maxWidth: 900, fontFamily: 'ui-monospace, monospace' }}>
       <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#e0e0ff' }}>Content Draft Review</h2>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
@@ -1530,12 +1581,14 @@ function ReviewQueuePanel() {
       {drafts.map(draft => {
         const isExpanded = !!expanded[draft.id];
         const busy = !!actionLoading[draft.id];
+        const detail = detailCache[draft.id];
+        const loadingDetail = !!detailLoading[draft.id];
         return (
           <div key={draft.id} style={{ background: '#0d0d1e', border: '1px solid #1a1a3e', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
             {/* Header row */}
             <div
               style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: isExpanded ? '1px solid #1a1a3e' : 'none' }}
-              onClick={() => setExpanded(prev => ({ ...prev, [draft.id]: !isExpanded }))}
+              onClick={() => toggleExpand(draft.id)}
             >
               {isExpanded ? <ChevronDown size={14} color="#666" /> : <ChevronRight size={14} color="#666" />}
               <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 3, background: opColor[draft.operation] + '22', color: opColor[draft.operation], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -1554,12 +1607,34 @@ function ReviewQueuePanel() {
             {/* Expanded detail */}
             {isExpanded && (
               <div style={{ padding: '12px 14px' }}>
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Payload</div>
-                  <pre style={{ fontSize: 11, color: '#c4b5fd', background: '#08081a', borderRadius: 4, padding: '8px 10px', overflow: 'auto', maxHeight: 200, margin: 0 }}>
-                    {JSON.stringify(draft.payload, null, 2)}
-                  </pre>
-                </div>
+                {loadingDetail && <div style={{ color: '#555', fontSize: 12, marginBottom: 10 }}>Loading diff…</div>}
+
+                {/* Structured diff view */}
+                {!loadingDetail && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
+                      {draft.operation === 'delete'
+                        ? 'Record to be deleted'
+                        : draft.operation === 'create'
+                        ? 'New record fields'
+                        : 'Changed fields'}
+                    </div>
+                    {draft.operation === 'delete' ? (
+                      <div style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4, fontSize: 11, color: '#f87171' }}>
+                        ⚠ This will permanently delete record <strong>{draft.recordId}</strong> from <strong>{draft.tableName}</strong>.
+                      </div>
+                    ) : detail?.diff ? (
+                      Object.keys(detail.diff).length > 0
+                        ? <DiffView diff={detail.diff} operation={draft.operation} />
+                        : <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>No field differences detected.</div>
+                    ) : (
+                      <pre style={{ fontSize: 11, color: '#c4b5fd', background: '#08081a', borderRadius: 4, padding: '8px 10px', overflow: 'auto', maxHeight: 200, margin: 0 }}>
+                        {JSON.stringify(draft.payload, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                )}
+
                 {draft.reviewer && (
                   <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
                     Reviewed by <strong style={{ color: '#888' }}>{draft.reviewer.username}</strong>
@@ -1569,7 +1644,7 @@ function ReviewQueuePanel() {
                   </div>
                 )}
                 {draft.status === 'pending' && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap', marginTop: 10 }}>
                     <input
                       type="text"
                       placeholder="Rejection reason (optional)"

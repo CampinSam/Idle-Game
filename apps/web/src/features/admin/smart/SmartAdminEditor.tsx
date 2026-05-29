@@ -281,9 +281,20 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       if (!confirm('You have unsaved changes. Discard them?')) return;
     }
     setSelectedId(rec.id);
-    setIsNew(false);
     setDeleteConfirm(false);
 
+    if (rec._ghostDraft) {
+      // Pending create draft with no live record yet — open as new record in draft mode
+      setIsNew(true);
+      const draftPayload =
+        typeof rec._draft.payload === 'object' && rec._draft.payload !== null
+          ? rec._draft.payload
+          : {};
+      dispatch({ type: 'LOAD_AS_DRAFT', record: draftPayload as Record<string, any>, draftId: rec._draft.id, operation: 'create' });
+      return;
+    }
+
+    setIsNew(false);
     const pendingDraft = pendingDrafts[rec.id];
     if (pendingDraft) {
       const draftPayload =
@@ -414,14 +425,28 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     }
   };
 
-  const filteredRecords = useMemo(() =>
-    records.filter(r => {
+  const isSuperAdmin = me?.role?.slug === 'super_admin' || me?.isBootstrap === true;
+
+  const ghostCreateDrafts = useMemo<any[]>(() => {
+    const liveIds = new Set(records.map((r: any) => r.id));
+    return Object.values(pendingDrafts)
+      .filter((d: any) => d.operation === 'create' && !liveIds.has(d.recordId))
+      .map((d: any) => ({
+        id:          d.recordId,
+        name:        '[Pending Create Draft]',
+        _ghostDraft: true,
+        _draft:      d,
+      }));
+  }, [pendingDrafts, records]);
+
+  const filteredRecords = useMemo(() => {
+    const filtered = records.filter((r: any) => {
       if (!search) return true;
       const s = search.toLowerCase();
       return (r.id || '').toLowerCase().includes(s) || (r.name || '').toLowerCase().includes(s);
-    }),
-    [records, search]
-  );
+    });
+    return [...ghostCreateDrafts, ...filtered];
+  }, [records, search, ghostCreateDrafts]);
 
   const tableGroupsForSidebar = useMemo(() => {
     const grouped: Array<{ group: string; items: TableEntry[] }> = [];
@@ -646,24 +671,36 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               </div>
             )}
             {filteredRecords.map(r => {
-              const rowBadge = schema?.getRowBadge?.(r) ?? null;
-              const hasPendingDraft = !!pendingDrafts[r.id];
+              const rowBadge = !r._ghostDraft ? (schema?.getRowBadge?.(r) ?? null) : null;
+              const hasPendingDraft = !r._ghostDraft && !!pendingDrafts[r.id];
               return (
                 <div
                   key={r.id}
                   onClick={() => handleSelectRecord(r)}
                   style={{
                     padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
-                    background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
-                    borderLeft: selectedId === r.id ? '3px solid #a78bfa' : hasPendingDraft ? '3px solid #f59e0b' : '3px solid transparent',
+                    background: selectedId === r.id
+                      ? (r._ghostDraft ? 'rgba(245,158,11,0.1)' : 'rgba(167,139,250,0.12)')
+                      : (r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'),
+                    borderLeft: selectedId === r.id ? `3px solid ${r._ghostDraft ? '#f59e0b' : '#a78bfa'}` : hasPendingDraft ? '3px solid #f59e0b' : '3px solid transparent',
                   }}
                   onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-                  onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
+                  onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? (r._ghostDraft ? '#fbbf24' : '#a78bfa') : (r._ghostDraft ? '#d97706' : '#e0e0ff'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
                       {r.id}
                     </div>
+                    {r._ghostDraft && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                        padding: '1px 5px', borderRadius: 3,
+                        background: '#78350f', color: '#fbbf24',
+                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                      }}>
+                        PENDING CREATE
+                      </span>
+                    )}
                     {hasPendingDraft && (
                       <span style={{
                         fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
@@ -864,22 +901,29 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   </details>
                 )}
                 {!editorState.isDraftMode && (
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={editorState.saving || !editorState.dirty || structuredErrorCount > 0}
-                    title={structuredErrorCount > 0 ? 'Fix validation errors before saving' : undefined}
-                    style={{
-                      padding: '6px 16px', flexShrink: 0,
-                      background: editorState.dirty && structuredErrorCount === 0 ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
-                      border: 'none', borderRadius: 6, color: '#fff',
-                      cursor: editorState.dirty && structuredErrorCount === 0 ? 'pointer' : 'not-allowed',
-                      fontSize: 13, fontWeight: 600,
-                      opacity: editorState.saving ? 0.7 : 1,
-                    }}
-                  >
-                    {editorState.saving ? 'Saving...' : 'Save'}
-                  </button>
+                  <>
+                    {isSuperAdmin && (
+                      <span title="You are super_admin — saves publish directly to the live database" style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: '0.04em', flexShrink: 0 }}>
+                        ⚡ LIVE
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={editorState.saving || !editorState.dirty || structuredErrorCount > 0}
+                      title={structuredErrorCount > 0 ? 'Fix validation errors before saving' : isSuperAdmin ? 'Save directly to live database (super_admin)' : 'Submit change for review'}
+                      style={{
+                        padding: '6px 16px', flexShrink: 0,
+                        background: editorState.dirty && structuredErrorCount === 0 ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
+                        border: 'none', borderRadius: 6, color: '#fff',
+                        cursor: editorState.dirty && structuredErrorCount === 0 ? 'pointer' : 'not-allowed',
+                        fontSize: 13, fontWeight: 600,
+                        opacity: editorState.saving ? 0.7 : 1,
+                      }}
+                    >
+                      {editorState.saving ? 'Saving...' : isSuperAdmin ? 'Publish' : 'Submit for Review'}
+                    </button>
+                  </>
                 )}
                 {editorState.isDraftMode && editorState.dirty && (
                   <button

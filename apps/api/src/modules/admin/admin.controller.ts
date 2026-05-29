@@ -1054,6 +1054,29 @@ export class AdminController {
 
   // ─── Content Draft & Review ──────────────────────────────────────────────────
 
+  @Post('drafts')
+  async createDraftExplicit(
+    @Req() req: any,
+    @Body() body: { tableName: string; recordId: string; operation: 'create' | 'update' | 'delete'; payload: any },
+  ) {
+    const draft = await this.adminDraftService.createDraft({
+      tableName: body.tableName,
+      recordId:  body.recordId,
+      operation: body.operation,
+      payload:   body.payload ?? {},
+      authorId:  req.adminUser.id,
+    });
+    return {
+      mode:           'draft' as const,
+      draftId:        (draft as any).id,
+      tableName:      body.tableName,
+      recordId:       body.recordId,
+      operation:      body.operation,
+      status:         'pending',
+      authorUsername: (draft as any).author?.username,
+    };
+  }
+
   @Get('drafts')
   listDrafts(
     @Query('status') status?: string,
