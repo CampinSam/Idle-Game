@@ -1,5 +1,5 @@
 import { Controller, Post, Patch, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
-import { ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
+import { ThrottlerGuard, SkipThrottle, Throttle } from '@nestjs/throttler';
 import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -165,6 +165,7 @@ export class AuthController {
   @Patch('change-password')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ auth: { limit: 5, ttl: 15 * 60_000 } })
   changePassword(@Body() dto: ChangePasswordDto, @Request() req: any) {
     return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
