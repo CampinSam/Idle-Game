@@ -84,8 +84,8 @@ export class AdminGuard implements CanActivate {
     const adminUser: AdminAccountUser = request.adminUser;
     const rawPath: string = request.path ?? '';
 
-    // Strip /api/admin prefix to get the admin-relative path
-    const adminPath = rawPath.replace(/^\/api\/admin/, '') || '/';
+    // Strip /admin or /api/admin prefix to get the admin-relative path
+    const adminPath = rawPath.replace(/^(?:\/api)?\/admin/, '') || '/';
 
     const result = resolveRequiredPermission(adminPath, request.method, adminUser);
     if (!result.allowed) {

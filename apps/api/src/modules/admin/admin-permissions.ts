@@ -101,9 +101,15 @@ export function resolveRequiredPermission(
   const M = method.toUpperCase();
   const isWrite = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(M);
 
-  // Super Admin only routes
-  if (adminPath.startsWith('/accounts') || adminPath.startsWith('/audit-log')) {
+  // Account management: Super Admin only
+  if (adminPath.startsWith('/accounts')) {
     return requireRole(user, 'super_admin');
+  }
+
+  // Audit log: Super Admin + Senior Support
+  if (adminPath.startsWith('/audit-log')) {
+    if (user.role === 'super_admin' || user.role === 'senior_support') return { allowed: true };
+    return { allowed: false, reason: "Requires 'super_admin' or 'senior_support' role" };
   }
 
   // Always allowed for any authenticated admin

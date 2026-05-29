@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AuditLogEntry {
   id: string;
-  adminId: string;
+  adminId: string | null;
   adminUsername?: string;
   action: string;
   tableName: string | null;
@@ -27,20 +27,22 @@ export class AdminAuditService {
     diff?: any;
     metadata?: any;
   }): Promise<void> {
-    if (opts.adminId === '__bootstrap__') {
+    const isBootstrap = opts.adminId === '__bootstrap__';
+    if (isBootstrap) {
       this.logger.debug(`[AUDIT bootstrap] ${opts.action} ${opts.tableName ?? ''} ${opts.recordId ?? ''}`);
-      return;
     }
 
     try {
       await this.prisma.adminAuditLog.create({
         data: {
-          adminId: opts.adminId,
+          adminId: isBootstrap ? null : opts.adminId,
           action: opts.action,
           tableName: opts.tableName ?? null,
           recordId: opts.recordId ?? null,
           diff: opts.diff ?? undefined,
-          metadata: opts.metadata ?? {},
+          metadata: isBootstrap
+            ? { ...(opts.metadata ?? {}), _bootstrap: true }
+            : (opts.metadata ?? {}),
         },
       });
     } catch (err) {

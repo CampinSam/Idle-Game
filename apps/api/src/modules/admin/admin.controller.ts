@@ -141,43 +141,52 @@ export class AdminController {
   }
 
   @Get('tables')
-  getTables() {
-    return [
-      { key: 'displayDef', name: 'Display Definitions', table: 'display_defs' },
-      { key: 'missionCategoryDef', name: 'Mission Categories', table: 'mission_category_defs' },
-      { key: 'missionDef', name: 'Mission Definitions', table: 'mission_defs' },
-      { key: 'recipeDef', name: 'Recipe Definitions', table: 'recipe_defs' },
-      { key: 'buildingDef', name: 'Building Definitions', table: 'building_defs' },
-      { key: 'roomDef', name: 'Room Definitions', table: 'room_defs' },
-      { key: 'currency', name: 'Currencies', table: 'currencies' },
-      { key: 'itemDef', name: 'Item Definitions', table: 'item_defs' },
-      { key: 'entityDefinition', name: 'Entity Definitions', table: 'entity_definitions' },
-      { key: 'regionDefinition', name: 'Region Definitions', table: 'region_definitions' },
-      { key: 'locationDefinition', name: 'Location Definitions', table: 'location_definitions' },
-      { key: 'eventDefinition', name: 'Event Definitions', table: 'event_definitions' },
-      { key: 'giftDef', name: 'Gift Definitions', table: 'gift_defs' },
-      { key: 'lootboxDef', name: 'Lootbox Definitions', table: 'lootbox_defs' },
-      { key: 'bundleDef', name: 'Bundle Definitions', table: 'bundle_defs' },
-      { key: 'checkInDef', name: 'Check-In Definitions', table: 'checkin_defs' },
-      { key: 'questDef', name: 'Quest Definitions', table: 'quest_defs' },
-      { key: 'shopHeroDef', name: 'Shop Hero Banners', table: 'shop_hero_defs' },
-      { key: 'shopTabDef', name: 'Shop Tab Definitions', table: 'shop_tab_defs' },
-      { key: 'shopSectionDef', name: 'Shop Section Definitions', table: 'shop_section_defs' },
-      { key: 'shopItemDef', name: 'Shop Item Definitions', table: 'shop_item_defs' },
-      { key: 'nftCollectionDef', name: 'NFT Collection Definitions', table: 'nft_collection_defs' },
-      { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },
-      { key: 'effectDef', name: 'Effect Definitions', table: 'effect_defs' },
-      { key: 'tagDef', name: 'Visual Tag Definitions', table: 'tag_defs' },
-      { key: 'visualEffectDef', name: 'Visual Effect Definitions', table: 'visual_effect_defs' },
-      { key: 'homeBannerDef', name: 'Home Banners', table: 'home_banner_defs' },
-      { key: 'systemIconDef', name: 'System Icon Definitions', table: 'system_icon_defs' },
-      { key: 'synergyRule', name: 'Synergy Rules', table: 'synergy_rules' },
-      { key: 'selectionRuleDef', name: 'Selection Rule Definitions', table: 'selection_rule_defs' },
-      { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
-      { key: 'gemPacks', name: 'Gem Pack Display', table: 'stripe.products' },
-      { key: 'game-definitions', name: 'Game Definitions', table: 'game_definitions' },
-      { key: 'cryptoRateConfig', name: 'Crypto Rate Config', table: 'crypto_rate_configs' },
+  getTables(@Req() req: any) {
+    const adminUser = req.adminUser;
+    const isSuperAdmin = adminUser.role === 'super_admin';
+    const canRead = isSuperAdmin || adminUser.perms?.read;
+    const scopes: string[] = adminUser.scopes ?? [];
+
+    const ALL_TABLES = [
+      { key: 'displayDef',        name: 'Display Definitions',        table: 'display_defs',         group: 'UI' },
+      { key: 'missionCategoryDef',name: 'Mission Categories',         table: 'mission_category_defs',group: 'Missions' },
+      { key: 'missionDef',        name: 'Mission Definitions',        table: 'mission_defs',         group: 'Missions' },
+      { key: 'recipeDef',         name: 'Recipe Definitions',         table: 'recipe_defs',          group: 'Crafting' },
+      { key: 'buildingDef',       name: 'Building Definitions',       table: 'building_defs',        group: 'Locations' },
+      { key: 'roomDef',           name: 'Room Definitions',           table: 'room_defs',            group: 'Locations' },
+      { key: 'currency',          name: 'Currencies',                 table: 'currencies',           group: 'Economy' },
+      { key: 'itemDef',           name: 'Item Definitions',           table: 'item_defs',            group: 'Economy' },
+      { key: 'entityDefinition',  name: 'Entity Definitions',         table: 'entity_definitions',   group: 'Entities' },
+      { key: 'regionDefinition',  name: 'Region Definitions',         table: 'region_definitions',   group: 'Locations' },
+      { key: 'locationDefinition',name: 'Location Definitions',       table: 'location_definitions', group: 'Locations' },
+      { key: 'eventDefinition',   name: 'Event Definitions',          table: 'event_definitions',    group: 'System' },
+      { key: 'giftDef',           name: 'Gift Definitions',           table: 'gift_defs',            group: 'Rewards' },
+      { key: 'lootboxDef',        name: 'Lootbox Definitions',        table: 'lootbox_defs',         group: 'Rewards' },
+      { key: 'bundleDef',         name: 'Bundle Definitions',         table: 'bundle_defs',          group: 'Rewards' },
+      { key: 'checkInDef',        name: 'Check-In Definitions',       table: 'checkin_defs',         group: 'Rewards' },
+      { key: 'questDef',          name: 'Quest Definitions',          table: 'quest_defs',           group: 'Rewards' },
+      { key: 'shopHeroDef',       name: 'Shop Hero Banners',          table: 'shop_hero_defs',       group: 'Store' },
+      { key: 'shopTabDef',        name: 'Shop Tab Definitions',       table: 'shop_tab_defs',        group: 'Store' },
+      { key: 'shopSectionDef',    name: 'Shop Section Definitions',   table: 'shop_section_defs',    group: 'Store' },
+      { key: 'shopItemDef',       name: 'Shop Item Definitions',      table: 'shop_item_defs',       group: 'Store' },
+      { key: 'nftCollectionDef',  name: 'NFT Collection Definitions', table: 'nft_collection_defs',  group: 'NFT' },
+      { key: 'modalDef',          name: 'Modal Definitions',          table: 'modal_defs',           group: 'UI' },
+      { key: 'effectDef',         name: 'Effect Definitions',         table: 'effect_defs',          group: 'Effects' },
+      { key: 'tagDef',            name: 'Visual Tag Definitions',     table: 'tag_defs',             group: 'UI' },
+      { key: 'visualEffectDef',   name: 'Visual Effect Definitions',  table: 'visual_effect_defs',   group: 'UI' },
+      { key: 'homeBannerDef',     name: 'Home Banners',              table: 'home_banner_defs',     group: 'UI' },
+      { key: 'systemIconDef',     name: 'System Icon Definitions',    table: 'system_icon_defs',     group: 'UI' },
+      { key: 'synergyRule',       name: 'Synergy Rules',              table: 'synergy_rules',        group: 'Synergy' },
+      { key: 'selectionRuleDef',  name: 'Selection Rule Definitions', table: 'selection_rule_defs',  group: 'Rules' },
+      { key: 'telemetryDef',      name: 'Telemetry Definitions',      table: 'telemetry_defs',       group: 'Telemetry' },
+      { key: 'gemPacks',          name: 'Gem Pack Display',           table: 'stripe.products',      group: 'Store' },
+      { key: 'game-definitions',  name: 'Game Definitions',           table: 'game_definitions',     group: 'Screens' },
+      { key: 'cryptoRateConfig',  name: 'Crypto Rate Config',         table: 'crypto_rate_configs',  group: 'Payments' },
     ];
+
+    if (!canRead) return [];
+    if (isSuperAdmin || scopes.length === 0) return ALL_TABLES;
+    return ALL_TABLES.filter((t) => scopes.includes(t.group));
   }
 
   // ─── Game Definitions: dedicated CRUD ────────────────────────────────────
@@ -948,17 +957,40 @@ export class AdminController {
   }
 
   @Post(':table')
-  create(@Param('table') table: string, @Body() body: any) {
-    return this.adminService.createRecord(table, body);
+  async create(@Req() req: any, @Param('table') table: string, @Body() body: any) {
+    const result = await this.adminService.createRecord(table, body);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'create',
+      tableName: table,
+      recordId: result?.id ? String(result.id) : undefined,
+      diff: body,
+    });
+    return result;
   }
 
   @Put(':table/:id')
-  update(@Param('table') table: string, @Param('id') id: string, @Body() body: any) {
-    return this.adminService.updateRecord(table, id, body);
+  async update(@Req() req: any, @Param('table') table: string, @Param('id') id: string, @Body() body: any) {
+    const result = await this.adminService.updateRecord(table, id, body);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'update',
+      tableName: table,
+      recordId: id,
+      diff: body,
+    });
+    return result;
   }
 
   @Delete(':table/:id')
-  remove(@Param('table') table: string, @Param('id') id: string) {
-    return this.adminService.deleteRecord(table, id);
+  async remove(@Req() req: any, @Param('table') table: string, @Param('id') id: string) {
+    const result = await this.adminService.deleteRecord(table, id);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'delete',
+      tableName: table,
+      recordId: id,
+    });
+    return result;
   }
 }
