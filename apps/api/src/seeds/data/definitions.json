@@ -7033,6 +7033,36 @@
       "displayOrder": 1,
       "enabled": true,
       "limitedUntil": null
+    },
+    {
+      "id": "outpost_expansion_1",
+      "name": "Outpost Expansion",
+      "description": "Permanently unlocks +1 additional outpost slot, allowing you to claim and manage more territory.",
+      "tab": "items",
+      "cost": [{ "type": "currency", "id": "hard_essence", "amount": 150 }],
+      "originalCost": null,
+      "contents": [{ "type": "outpost_slots", "amount": 1 }],
+      "badge": "EXPAND",
+      "badgeColor": "#10b981",
+      "imageUrl": null,
+      "displayOrder": 2,
+      "enabled": true,
+      "limitedUntil": null
+    },
+    {
+      "id": "outpost_expansion_3",
+      "name": "Outpost Expansion Pack",
+      "description": "Unlock +3 outpost slots in one go. Ideal for aggressive expansion keepers.",
+      "tab": "bundle",
+      "cost": [{ "type": "currency", "id": "hard_essence", "amount": 400 }],
+      "originalCost": [{ "type": "currency", "id": "hard_essence", "amount": 450 }],
+      "contents": [{ "type": "outpost_slots", "amount": 3 }],
+      "badge": "BEST VALUE",
+      "badgeColor": "#8b5cf6",
+      "imageUrl": null,
+      "displayOrder": 2,
+      "enabled": true,
+      "limitedUntil": null
     }
   ],
   "eventDefinitions": [
@@ -7550,33 +7580,6 @@
           }
         ]
       },
-      "enabled": true
-    }
-  ],
-  "shopItemDefs": [
-    {
-      "id": "outpost_expansion_1",
-      "name": "Outpost Expansion",
-      "description": "Permanently unlocks +1 additional outpost slot, allowing you to claim and manage more territory.",
-      "tab": "items",
-      "cost": [{ "type": "currency", "id": "hard_essence", "amount": 150 }],
-      "contents": [{ "type": "outpost_slots", "amount": 1 }],
-      "badge": "EXPAND",
-      "badgeColor": "#10b981",
-      "displayOrder": 10,
-      "enabled": true
-    },
-    {
-      "id": "outpost_expansion_3",
-      "name": "Outpost Expansion Pack",
-      "description": "Unlock +3 outpost slots in one go. Ideal for aggressive expansion keepers.",
-      "tab": "bundle",
-      "cost": [{ "type": "currency", "id": "hard_essence", "amount": 400 }],
-      "originalCost": [{ "type": "currency", "id": "hard_essence", "amount": 450 }],
-      "contents": [{ "type": "outpost_slots", "amount": 3 }],
-      "badge": "BEST VALUE",
-      "badgeColor": "#8b5cf6",
-      "displayOrder": 10,
       "enabled": true
     }
   ],
