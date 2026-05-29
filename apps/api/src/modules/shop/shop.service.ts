@@ -1,11 +1,27 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const CANONICAL_TABS = [
+  { id: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', sortOrder: 0, enabled: true },
+  { id: 'gems',      name: '💎 Gems',     tabType: 'gems_packs', layout: 'grid-3',   sortOrder: 1, enabled: true },
+  { id: 'currency',  name: 'Currencies',  tabType: 'items',      layout: 'grid-3',   sortOrder: 2, enabled: true },
+  { id: 'bundle',    name: 'Bundles',     tabType: 'items',      layout: 'grid-2',   sortOrder: 3, enabled: true },
+  { id: 'items',     name: 'Items',       tabType: 'items',      layout: 'grid-2',   sortOrder: 4, enabled: true },
+];
+
 @Injectable()
 export class ShopService implements OnApplicationBootstrap {
   constructor(private prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
+    for (const tab of CANONICAL_TABS) {
+      await this.prisma.shopTabDef.upsert({
+        where: { id: tab.id },
+        update: {},
+        create: tab,
+      });
+    }
+
     const count = await this.prisma.shopItemDef.count();
     if (count > 0) return;
 
@@ -116,10 +132,20 @@ export class ShopService implements OnApplicationBootstrap {
   }
 
   async findAll() {
-    return this.prisma.shopItemDef.findMany({
-      where: { enabled: true },
-      orderBy: [{ tab: 'asc' }, { displayOrder: 'asc' }],
-    });
+    const [tabs, sections, items] = await Promise.all([
+      this.prisma.shopTabDef.findMany({
+        where: { enabled: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      this.prisma.shopSectionDef.findMany({
+        orderBy: [{ tabId: 'asc' }, { sortOrder: 'asc' }],
+      }),
+      this.prisma.shopItemDef.findMany({
+        where: { enabled: true },
+        orderBy: [{ tab: 'asc' }, { displayOrder: 'asc' }],
+      }),
+    ]);
+    return { tabs, sections, items };
   }
 
   async findOne(id: string) {

@@ -1353,6 +1353,94 @@ Get purchase status. Players can only fetch their own purchases.
 
 ---
 
+## Store Tabs — `ShopTabDef` (Admin Smart Table)
+
+Store tabs are managed via the generic admin smart-editor at `GET /api/admin/shopTabDef`.
+
+Five canonical tabs are seeded automatically on startup (`featured`, `gems`, `currency`, `bundle`, `items`). Custom tabs can be created by admins; they appear in the player store immediately.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique tab identifier (e.g. `featured`, `seasonal`). Used as the `tab` key on `ShopItemDef` rows. |
+| `name` | string | ✓ | Label shown in the player-facing tab strip. Supports emoji (e.g. `💎 Gems`). |
+| `tabType` | enum | | `items` (default) — renders `ShopItemDef` rows. `gems_packs` — renders the special gem packs + Derp Pass UI. |
+| `layout` | enum | | Card layout within the tab. `featured` = full-width cards, `grid-3` = 3-column currency cards, `grid-2` = 2-column item/bundle cards (default). |
+| `sortOrder` | number | | Left-to-right tab order. Lower = further left. Default `0`. |
+| `enabled` | boolean | | Disabled tabs are hidden from all players. Default `true`. |
+
+---
+
+## Store Sections — `ShopSectionDef` (Admin Smart Table)
+
+Store sections are managed via the generic admin smart-editor at `GET /api/admin/shopSectionDef`.
+
+Sections let admins insert named group headings between items within a tab. Items with no `sectionId` appear before any sections.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique section identifier (e.g. `section_limited_time`). |
+| `tabId` | string (FK) | ✓ | The `ShopTabDef.id` this section belongs to. |
+| `label` | string | ✓ | Section heading shown above the item group. |
+| `subtitle` | string | | Optional subtitle line shown below the heading. |
+| `sortOrder` | number | | Vertical ordering within the tab. Lower = higher on screen. Default `0`. |
+
+---
+
+## Player Shop Catalog — `GET /api/shop/items`
+
+Returns the full store catalog for the authenticated player.
+
+**Auth:** JWT (player)
+
+**Response:**
+```json
+{
+  "tabs": [
+    {
+      "id": "featured",
+      "name": "Featured",
+      "tabType": "items",
+      "layout": "featured",
+      "sortOrder": 0,
+      "enabled": true
+    }
+  ],
+  "sections": [
+    {
+      "id": "section_limited_time",
+      "tabId": "featured",
+      "label": "Limited Time",
+      "subtitle": "These offers expire soon!",
+      "sortOrder": 0
+    }
+  ],
+  "items": [
+    {
+      "id": "cuid...",
+      "name": "Adventurer's Bundle",
+      "description": "...",
+      "tab": "featured",
+      "sectionId": null,
+      "cost": [{ "type": "currency", "id": "soft_arcanium", "amount": 500 }],
+      "contents": [{ "type": "currency", "id": "hard_essence", "amount": 50 }],
+      "badge": "HOT DEAL",
+      "badgeColor": "#ef4444",
+      "displayOrder": 0,
+      "enabled": true,
+      "limitedUntil": null
+    }
+  ]
+}
+```
+
+Only enabled tabs and enabled items are returned. All sections (including those with no items) are returned — the frontend hides sections with no visible items.
+
+---
+
 ## Gem Pack Display — `/api/admin/gemPacks`
 
 These endpoints let content editors update the visual presentation of gem packs (labels, colors, badges) without a code change or redeploy. The display metadata is stored in Stripe product metadata and read by the public `/v1/payments/packs` endpoint.

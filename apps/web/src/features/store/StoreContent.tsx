@@ -42,6 +42,7 @@ interface ShopItem {
   name: string;
   description: string;
   tab: string;
+  sectionId?: string;
   cost: CostEntry[];
   originalCost?: CostEntry[];
   contents: ContentEntry[];
@@ -50,6 +51,23 @@ interface ShopItem {
   imageUrl?: string;
   displayOrder: number;
   limitedUntil?: string;
+}
+
+interface ShopTab {
+  id: string;
+  name: string;
+  tabType: string;
+  layout: string;
+  sortOrder: number;
+  enabled: boolean;
+}
+
+interface ShopSection {
+  id: string;
+  tabId: string;
+  label: string;
+  subtitle?: string;
+  sortOrder: number;
 }
 
 interface LinkedWallet {
@@ -122,6 +140,15 @@ function CostDisplay({ cost, size = 16 }: { cost: CostEntry[]; size?: number }) 
         <ItemQty key={i} src={e.id} amount={e.amount} size={size} />
       ))}
     </span>
+  );
+}
+
+function SectionHeader({ label, subtitle }: { label: string; subtitle?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 pt-1 pb-0.5">
+      <div className="text-[11px] font-black tracking-[1px] uppercase text-[#c4b5fd]">{label}</div>
+      {subtitle && <div className="text-[10px] text-text-secondary leading-snug">{subtitle}</div>}
+    </div>
   );
 }
 
@@ -655,16 +682,9 @@ function GemPackCard({
   );
 }
 
-const TABS = ['featured', 'gems', 'currency', 'bundle', 'items'] as const;
-const TAB_LABELS: Record<string, string> = {
-  featured: 'Featured',
-  gems: '💎 Gems',
-  currency: 'Currencies',
-  bundle: 'Bundles',
-  items: 'Items',
-};
-
 export default function StoreContent() {
+  const [tabs, setTabs] = useState<ShopTab[]>([]);
+  const [sections, setSections] = useState<ShopSection[]>([]);
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('featured');
@@ -696,7 +716,20 @@ export default function StoreContent() {
   useEffect(() => {
     fetch('/api/shop/items', { headers: authHeaders() })
       .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setItems(data); })
+      .then((data) => {
+        if (data && Array.isArray(data.items)) {
+          setItems(data.items);
+          setTabs(data.tabs ?? []);
+          setSections(data.sections ?? []);
+          if (data.tabs?.length > 0) {
+            setActiveTab((prev) =>
+              data.tabs.find((t: ShopTab) => t.id === prev) ? prev : data.tabs[0].id
+            );
+          }
+        } else if (Array.isArray(data)) {
+          setItems(data);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -708,8 +741,11 @@ export default function StoreContent() {
       .catch(() => {});
   }, []);
 
+  const activeTabDef = tabs.find((t) => t.id === activeTab);
+  const isGemPacksTab = activeTabDef?.tabType === 'gems_packs';
+
   useEffect(() => {
-    if (activeTab !== 'gems') return;
+    if (!isGemPacksTab) return;
     setGemPacksLoading(true);
     setGemPacksError(null);
     fetch('/api/v1/payments/packs')
@@ -720,7 +756,7 @@ export default function StoreContent() {
       })
       .catch(() => setGemPacksError('Could not load gem packs.'))
       .finally(() => setGemPacksLoading(false));
-  }, [activeTab]);
+  }, [isGemPacksTab]);
 
   const handleBuyGemPack = useCallback(async (pack: GemPack) => {
     setBuyingPackId(pack.id);
@@ -817,6 +853,69 @@ export default function StoreContent() {
   }, []);
 
   const tabItems = items.filter((i) => i.tab === activeTab);
+  const tabSections = sections
+    .filter((s) => s.tabId === activeTab)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  function renderItemGroup(groupItems: ShopItem[], layout: string) {
+    if (layout === 'featured') {
+      return (
+        <div className="flex flex-col gap-2.5">
+          {groupItems.map((item) => (
+            <FeaturedCard key={item.id} item={item} onOpen={handleOpenModal} />
+          ))}
+        </div>
+      );
+    }
+    if (layout === 'grid-3') {
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          {groupItems.map((item) => (
+            <CurrencyCard key={item.id} item={item} onOpen={handleOpenModal} />
+          ))}
+        </div>
+      );
+    }
+    if (activeTab === 'bundle') {
+      return (
+        <div className="grid grid-cols-2 gap-2.5">
+          {groupItems.map((item) => (
+            <BundleCard key={item.id} item={item} onOpen={handleOpenModal} />
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-cols-2 gap-2.5">
+        {groupItems.map((item) => (
+          <ItemCard key={item.id} item={item} onOpen={handleOpenModal} />
+        ))}
+      </div>
+    );
+  }
+
+  function renderTabItemsWithSections() {
+    const layout = activeTabDef?.layout ?? 'grid-2';
+    if (tabSections.length === 0) {
+      return renderItemGroup(tabItems, layout);
+    }
+    const ungrouped = tabItems.filter((i) => !i.sectionId);
+    return (
+      <div className="flex flex-col gap-3">
+        {ungrouped.length > 0 && renderItemGroup(ungrouped, layout)}
+        {tabSections.map((section) => {
+          const sectionItems = tabItems.filter((i) => i.sectionId === section.id);
+          if (sectionItems.length === 0) return null;
+          return (
+            <div key={section.id} className="flex flex-col gap-2">
+              <SectionHeader label={section.label} subtitle={section.subtitle} />
+              {renderItemGroup(sectionItems, layout)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   const handleOpenModal = useCallback((item: ShopItem) => {
     const body: ModalSpecV1['pages'][number]['body'] = [];
@@ -972,26 +1071,26 @@ export default function StoreContent() {
           ))}
         </div>
 
-        <div className="flex bg-black/25 border-y border-[rgba(139,92,246,0.12)] overflow-hidden">
-          {TABS.map((tab) => (
+        <div className="flex bg-black/25 border-y border-[rgba(139,92,246,0.12)] overflow-x-auto overflow-y-hidden">
+          {tabs.map((tab) => (
             <button
-              key={tab}
+              key={tab.id}
               className={
-                `flex-1 py-2.5 px-1 text-[11px] font-bold tracking-[0.5px] uppercase bg-transparent ` +
+                `flex-shrink-0 flex-1 min-w-[60px] py-2.5 px-1 text-[11px] font-bold tracking-[0.5px] uppercase bg-transparent ` +
                 `border-0 border-b-2 cursor-pointer transition-[color,border-color] duration-150 ` +
-                (activeTab === tab
+                (activeTab === tab.id
                   ? 'text-[#c4b5fd] border-b-derp-purple'
                   : 'text-text-secondary border-b-transparent')
               }
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setActiveTab(tab.id)}
             >
-              {TAB_LABELS[tab]}
+              {tab.name}
             </button>
           ))}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-3.5">
-          {activeTab === 'gems' ? (
+          {isGemPacksTab ? (
             gemPacksLoading ? (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-4 gap-2"></div>
@@ -1068,7 +1167,7 @@ export default function StoreContent() {
             )
           ) : loading ? (
             <div className="flex flex-col gap-2.5">
-              {activeTab === 'featured' ? (
+              {activeTabDef?.layout === 'featured' ? (
                 <>
                   <SkeletonCard wide />
                   <SkeletonCard wide />
@@ -1085,30 +1184,8 @@ export default function StoreContent() {
             </div>
           ) : tabItems.length === 0 ? (
             <div className="text-center py-10 px-5 text-text-secondary text-[14px]">Nothing here yet. Check back soon!</div>
-          ) : activeTab === 'featured' ? (
-            <div className="flex flex-col gap-2.5">
-              {tabItems.map((item) => (
-                <FeaturedCard key={item.id} item={item} onOpen={handleOpenModal} />
-              ))}
-            </div>
-          ) : activeTab === 'currency' ? (
-            <div className="grid grid-cols-3 gap-2">
-              {tabItems.map((item) => (
-                <CurrencyCard key={item.id} item={item} onOpen={handleOpenModal} />
-              ))}
-            </div>
-          ) : activeTab === 'bundle' ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {tabItems.map((item) => (
-                <BundleCard key={item.id} item={item} onOpen={handleOpenModal} />
-              ))}
-            </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              {tabItems.map((item) => (
-                <ItemCard key={item.id} item={item} onOpen={handleOpenModal} />
-              ))}
-            </div>
+            renderTabItemsWithSections()
           )}
         </div>
 

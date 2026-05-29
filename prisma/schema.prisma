@@ -1284,6 +1284,7 @@ model ShopItemDef {
   name         String
   description  String    @default("")
   tab          String    @default("featured")
+  sectionId    String?
   cost         Json
   originalCost Json?
   contents     Json
@@ -1296,6 +1297,32 @@ model ShopItemDef {
   createdAt    DateTime  @default(now())
 
   @@map("shop_item_defs")
+}
+
+model ShopTabDef {
+  id        String   @id
+  name      String
+  tabType   String   @default("items")
+  layout    String   @default("grid-2")
+  sortOrder Int      @default(0)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  sections  ShopSectionDef[]
+
+  @@map("shop_tab_defs")
+}
+
+model ShopSectionDef {
+  id        String     @id @default(cuid())
+  tabId     String
+  label     String
+  subtitle  String?
+  sortOrder Int        @default(0)
+
+  tab       ShopTabDef @relation(fields: [tabId], references: [id])
+
+  @@map("shop_section_defs")
 }
 
 // ═══════════════════════════════════════════════════

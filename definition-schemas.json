@@ -1438,6 +1438,73 @@
         }
       },
       "additionalProperties": false
+    },
+    "ShopTabDef": {
+      "type": "object",
+      "description": "A store tab that groups ShopItemDef rows in the player-facing store. Five canonical tabs are seeded automatically; additional tabs can be created by admins.",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique tab identifier (e.g. featured, gems, currency). Used as the tab key on ShopItemDef rows."
+        },
+        "name": {
+          "type": "string",
+          "description": "Label shown in the player-facing tab strip. Supports emoji (e.g. 💎 Gems)."
+        },
+        "tabType": {
+          "type": "string",
+          "enum": ["items", "gems_packs"],
+          "default": "items",
+          "description": "items = renders ShopItemDef rows. gems_packs = renders the special gem packs + Derp Pass UI."
+        },
+        "layout": {
+          "type": "string",
+          "enum": ["featured", "grid-3", "grid-2"],
+          "default": "grid-2",
+          "description": "Card layout: featured = full-width cards, grid-3 = 3-column currency cards, grid-2 = 2-column item/bundle cards."
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Left-to-right tab order. Lower = further left."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled tabs are hidden from all players."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShopSectionDef": {
+      "type": "object",
+      "description": "A named section header within a store tab. Items assigned to a section are rendered beneath the section heading. Ungrouped items (no sectionId) appear before any sections.",
+      "required": ["id", "tabId", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique section identifier (e.g. section_limited_time)."
+        },
+        "tabId": {
+          "type": "string",
+          "description": "The ShopTabDef.id this section belongs to."
+        },
+        "label": {
+          "type": "string",
+          "description": "Section heading shown above the item group."
+        },
+        "subtitle": {
+          "type": ["string", "null"],
+          "description": "Optional subtitle line shown below the heading."
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Vertical ordering within the tab. Lower = higher on screen."
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
