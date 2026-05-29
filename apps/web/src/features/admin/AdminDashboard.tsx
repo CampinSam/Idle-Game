@@ -1,42 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout, Wallet } from 'lucide-react';
-import { adminApi, getAdminKey, setAdminKey } from './adminApi';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout, Wallet, Shield, FileText, UserCog } from 'lucide-react';
+import { adminApi, AdminMe, getAdminToken, setAdminToken, clearAdminToken } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import { CryptoAdminPage } from './CryptoAdminPage';
 import './admin.css';
 
-const DEV_ADMIN_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
-
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [key, setKey] = useState(getAdminKey() || DEV_ADMIN_KEY);
+function AdminLogin({ onLogin }: { onLogin: (me: AdminMe) => void }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const autoSubmitted = useRef(false);
-
-  const doLogin = useCallback(async (loginKey: string) => {
-    setLoading(true);
-    setError('');
-    setAdminKey(loginKey);
-    try {
-      await adminApi.getTables();
-      onLogin();
-    } catch {
-      setError('Invalid admin key');
-    } finally {
-      setLoading(false);
-    }
-  }, [onLogin]);
-
-  useEffect(() => {
-    if (import.meta.env.DEV && DEV_ADMIN_KEY && !autoSubmitted.current) {
-      autoSubmitted.current = true;
-      doLogin(DEV_ADMIN_KEY);
-    }
-  }, [doLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    doLogin(key);
+    if (!username.trim() || !password) return;
+    setLoading(true);
+    setError('');
+    try {
+      const result = await adminApi.login(username.trim(), password);
+      setAdminToken(result.token);
+      onLogin(result.account);
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,14 +32,22 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
       <form className="admin-login-card" onSubmit={handleSubmit}>
         <h1>Derp Universe Admin</h1>
         <input
-          type="password"
-          placeholder="Admin Key"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           autoFocus
+          autoComplete="username"
         />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Verifying...' : 'Enter'}
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+        <button type="submit" disabled={loading || !username.trim() || !password}>
+          {loading ? 'Signing in…' : 'Sign In'}
         </button>
         {error && <div className="admin-error">{error}</div>}
       </form>
@@ -1235,21 +1231,244 @@ function NftCollectionsPanel() {
   );
 }
 
-type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft' | 'crypto';
+function AccountsPanel() {
+  const [roles, setRoles] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ username: '', password: '', roleId: '', contentScopes: '' });
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
-  { key: 'players', label: 'Player Editor', icon: Users },
-  { key: 'powers', label: 'Global Powers', icon: Flame },
-  { key: 'notifications', label: 'Notifications', icon: Bell },
-  { key: 'events', label: 'Events & Gifts', icon: Gift },
-  { key: 'nft', label: 'NFT Collections', icon: Layers },
-  { key: 'crypto', label: 'Crypto Wallet', icon: Wallet },
-  { key: 'tools', label: 'Tools', icon: Wrench },
-];
+  const ALL_GROUPS = ['UI', 'Missions', 'Crafting', 'Locations', 'Economy', 'Entities', 'Rewards', 'Store', 'NFT', 'Effects', 'Synergy', 'Rules', 'System', 'Telemetry', 'Screens', 'Payments'];
 
-function Dashboard() {
-  const [tab, setTab] = useState<Tab>('players');
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [r, a] = await Promise.all([adminApi.listRoles(), adminApi.listAccounts()]);
+      setRoles(r);
+      setAccounts(a);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const startCreate = () => {
+    setCreating(true);
+    setEditing(null);
+    setForm({ username: '', password: '', roleId: roles[0]?.id || '', contentScopes: '' });
+    setMsg(null);
+  };
+
+  const startEdit = (acc: any) => {
+    setEditing(acc);
+    setCreating(false);
+    setForm({ username: acc.username, password: '', roleId: acc.roleId, contentScopes: acc.contentScopes.join(', ') });
+    setMsg(null);
+  };
+
+  const cancel = () => { setCreating(false); setEditing(null); setMsg(null); };
+
+  const save = async () => {
+    setMsg(null);
+    const scopes = form.contentScopes.split(',').map((s) => s.trim()).filter(Boolean);
+    try {
+      if (creating) {
+        await adminApi.createAccount({ username: form.username, password: form.password, roleId: form.roleId, contentScopes: scopes });
+        setMsg({ text: 'Account created', type: 'success' });
+      } else if (editing) {
+        const data: any = { roleId: form.roleId, contentScopes: scopes };
+        if (form.username !== editing.username) data.username = form.username;
+        if (form.password) data.password = form.password;
+        await adminApi.updateAccount(editing.id, data);
+        setMsg({ text: 'Account updated', type: 'success' });
+      }
+      cancel();
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const toggleEnabled = async (acc: any) => {
+    try {
+      await adminApi.updateAccount(acc.id, { enabled: !acc.enabled });
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const deleteAccount = async (acc: any) => {
+    if (!confirm(`Delete account '${acc.username}'? This cannot be undone.`)) return;
+    try {
+      await adminApi.deleteAccount(acc.id);
+      await load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+  };
+
+  const inputStyle: React.CSSProperties = { padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' };
+  const needsScopes = (roleId: string) => {
+    const role = roles.find((r) => r.id === roleId);
+    return role && (role.slug === 'content_creator' || role.slug === 'content_reviewer');
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.3rem' }}>Admin Accounts</h2>
+        <button onClick={startCreate} className="btn-save" style={{ padding: '0.4rem 1rem' }}>+ New Account</button>
+      </div>
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+
+      {(creating || editing) && (
+        <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1.25rem' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', color: '#b8b8ff' }}>{creating ? 'Create Account' : `Edit: ${editing.username}`}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div className="form-field">
+              <label>Username</label>
+              <input style={inputStyle} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" />
+            </div>
+            <div className="form-field">
+              <label>{creating ? 'Password' : 'New Password (leave blank to keep)'}</label>
+              <input style={inputStyle} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={creating ? 'min 8 chars' : '(unchanged)'} />
+            </div>
+          </div>
+          <div className="form-field" style={{ marginBottom: '0.75rem' }}>
+            <label>Role</label>
+            <select style={{ ...inputStyle }} value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          {needsScopes(form.roleId) && (
+            <div className="form-field" style={{ marginBottom: '0.75rem' }}>
+              <label>Content Scopes (comma-separated)</label>
+              <input style={inputStyle} value={form.contentScopes} onChange={(e) => setForm({ ...form, contentScopes: e.target.value })} placeholder={ALL_GROUPS.join(', ')} />
+              <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {ALL_GROUPS.map((g) => {
+                  const active = form.contentScopes.split(',').map((s) => s.trim()).includes(g);
+                  return (
+                    <button key={g} type="button" onClick={() => {
+                      const current = form.contentScopes.split(',').map((s) => s.trim()).filter(Boolean);
+                      const next = active ? current.filter((s) => s !== g) : [...current, g];
+                      setForm({ ...form, contentScopes: next.join(', ') });
+                    }} style={{
+                      padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', cursor: 'pointer',
+                      background: active ? 'rgba(167,139,250,0.2)' : 'transparent',
+                      border: `1px solid ${active ? '#a78bfa' : '#444'}`,
+                      color: active ? '#a78bfa' : '#888',
+                    }}>{g}</button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={save} className="btn-save">Save</button>
+            <button onClick={cancel} style={{ padding: '0.5rem 1rem', border: '1px solid #555', borderRadius: 6, background: 'transparent', color: '#aaa', cursor: 'pointer' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading && <div className="loading">Loading accounts...</div>}
+      {!loading && accounts.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: '2rem 0' }}>No accounts yet.</div>}
+
+      {accounts.map((acc) => (
+        <div key={acc.id} style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 8, padding: '0.85rem 1rem', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <strong style={{ color: acc.enabled ? '#e0e0ff' : '#555' }}>{acc.username}</strong>
+              <span style={{ fontSize: '0.75rem', padding: '1px 6px', borderRadius: 4, background: 'rgba(167,139,250,0.15)', color: '#b8b8ff', border: '1px solid rgba(167,139,250,0.3)' }}>{acc.role?.name}</span>
+              {!acc.enabled && <span style={{ fontSize: '0.7rem', color: '#ff6b6b' }}>disabled</span>}
+            </div>
+            {acc.contentScopes?.length > 0 && (
+              <div style={{ marginTop: 4, fontSize: '0.75rem', color: '#666' }}>Scopes: {acc.contentScopes.join(', ')}</div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => startEdit(acc)} style={{ padding: '0.3rem 0.7rem', border: '1px solid #444', borderRadius: 5, background: 'transparent', color: '#aaa', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+            <button onClick={() => toggleEnabled(acc)} style={{ padding: '0.3rem 0.7rem', border: `1px solid ${acc.enabled ? '#555' : 'rgba(76,175,80,0.5)'}`, borderRadius: 5, background: 'transparent', color: acc.enabled ? '#888' : '#4caf50', cursor: 'pointer', fontSize: '0.8rem' }}>{acc.enabled ? 'Disable' : 'Enable'}</button>
+            <button onClick={() => deleteAccount(acc)} style={{ padding: '0.3rem 0.7rem', border: '1px solid rgba(255,107,107,0.4)', borderRadius: 5, background: 'transparent', color: '#ff6b6b', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AuditLogPanel() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({ action: '', tableName: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await adminApi.listAuditLog({ action: filters.action || undefined, tableName: filters.tableName || undefined, limit: 100 });
+      setLogs(data);
+    } catch {}
+    finally { setLoading(false); }
+  }, [filters]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fmt = (d: string) => new Date(d).toLocaleString();
+
+  return (
+    <div>
+      <h2 style={{ margin: '0 0 1rem', fontSize: '1.3rem' }}>Audit Log</h2>
+      <div style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
+        <input placeholder="Filter action..." value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })} style={{ padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', width: 160 }} />
+        <input placeholder="Filter table..." value={filters.tableName} onChange={(e) => setFilters({ ...filters, tableName: e.target.value })} style={{ padding: '0.5rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.85rem', width: 160 }} />
+        <button onClick={load} className="btn-save" style={{ padding: '0.5rem 1rem' }}>Refresh</button>
+      </div>
+      {loading && <div className="loading">Loading...</div>}
+      {!loading && logs.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: '2rem 0' }}>No audit entries.</div>}
+      {logs.map((log) => (
+        <div key={log.id} style={{ background: '#16213e', border: '1px solid #2a2a4e', borderRadius: 6, padding: '0.6rem 0.85rem', marginBottom: 6, fontSize: '0.82rem' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ color: '#a78bfa', fontWeight: 600 }}>{log.adminUsername ?? log.adminId}</span>
+            <span style={{ background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', borderRadius: 4, padding: '1px 6px' }}>{log.action}</span>
+            {log.tableName && <span style={{ color: '#888' }}>{log.tableName}{log.recordId ? ` / ${log.recordId.slice(0, 8)}…` : ''}</span>}
+            <span style={{ color: '#555', marginLeft: 'auto' }}>{fmt(log.createdAt)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft' | 'crypto' | 'accounts' | 'audit';
+
+interface TabDef { key: Tab; label: string; icon: typeof Users; }
+
+function Dashboard({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
+  const perms = me.role.permissionFlags;
+  const isSuperAdmin = me.role.slug === 'super_admin' || me.isBootstrap;
+
+  const tabs: TabDef[] = [
+    ...(perms.player_read ? [{ key: 'players' as Tab, label: 'Player Editor', icon: Users }] : []),
+    ...(perms.system_tools ? [{ key: 'powers' as Tab, label: 'Global Powers', icon: Flame }] : []),
+    ...(perms.system_tools ? [{ key: 'notifications' as Tab, label: 'Notifications', icon: Bell }] : []),
+    ...(perms.system_tools ? [{ key: 'events' as Tab, label: 'Events & Gifts', icon: Gift }] : []),
+    ...(perms.system_tools ? [{ key: 'nft' as Tab, label: 'NFT Collections', icon: Layers }] : []),
+    ...(perms.system_tools ? [{ key: 'crypto' as Tab, label: 'Crypto Wallet', icon: Wallet }] : []),
+    ...(perms.system_tools ? [{ key: 'tools' as Tab, label: 'Tools', icon: Wrench }] : []),
+    ...(isSuperAdmin ? [{ key: 'accounts' as Tab, label: 'Accounts', icon: UserCog }] : []),
+    ...(isSuperAdmin ? [{ key: 'audit' as Tab, label: 'Audit Log', icon: FileText }] : []),
+  ];
+
+  const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'players');
   const [collapsed, setCollapsed] = useState(false);
+
+  const currentTab = tabs.find((t) => t.key === tab) ? tab : (tabs[0]?.key ?? 'players');
 
   return (
     <div className="admin-panel">
@@ -1260,25 +1479,34 @@ function Dashboard() {
             {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
+        {!collapsed && (
+          <div style={{ padding: '4px 12px 8px', fontSize: '0.7rem', color: '#666', borderBottom: '1px solid #1a1a3e' }}>
+            {me.username} · <span style={{ color: '#a78bfa' }}>{me.role.name}</span>
+          </div>
+        )}
         <nav>
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const Icon = t.icon;
             return (
-              <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)} title={t.label}>
+              <button key={t.key} className={currentTab === t.key ? 'active' : ''} onClick={() => setTab(t.key)} title={t.label}>
                 <Icon size={16} />
                 {!collapsed && <span>{t.label}</span>}
               </button>
             );
           })}
         </nav>
-        <a href="/admin/screens" className="sidebar-link" title="Screen Composer">
-          <Layout size={16} />
-          {!collapsed && <span>Screen Composer</span>}
-        </a>
-        <a href="/admin/def" className="sidebar-link" title="Definition Editor">
-          <Database size={16} />
-          {!collapsed && <span>Definition Editor</span>}
-        </a>
+        {(perms.read || isSuperAdmin) && (
+          <>
+            <a href="/admin/screens" className="sidebar-link" title="Screen Composer">
+              <Layout size={16} />
+              {!collapsed && <span>Screen Composer</span>}
+            </a>
+            <a href="/admin/def" className="sidebar-link" title="Definition Editor">
+              <Database size={16} />
+              {!collapsed && <span>Definition Editor</span>}
+            </a>
+          </>
+        )}
         <a href="/admin/icons" className="sidebar-link" title="Game Icons">
           <Image size={16} />
           {!collapsed && <span>Game Icons</span>}
@@ -1303,34 +1531,61 @@ function Dashboard() {
           <BarChart3 size={16} />
           {!collapsed && <span>Telemetry</span>}
         </a>
-        <a href="/admin/player-events" className="sidebar-link" title="Player Event History">
-          <Layers size={16} />
-          {!collapsed && <span>Player Events</span>}
-        </a>
-        <button onClick={() => { setAdminKey(''); sessionStorage.removeItem('adminKey'); window.location.reload(); }} className="btn-logout" title="Logout">
+        {perms.player_read && (
+          <a href="/admin/player-events" className="sidebar-link" title="Player Event History">
+            <Layers size={16} />
+            {!collapsed && <span>Player Events</span>}
+          </a>
+        )}
+        <button onClick={onLogout} className="btn-logout" title="Logout">
           <LogOut size={16} />
           {!collapsed && <span>Logout</span>}
         </button>
       </div>
       <div className="admin-content">
-        {tab === 'players' && <PlayerPanel />}
-        {tab === 'powers' && <GlobalPowerPanel />}
-        {tab === 'notifications' && <NotificationPanel />}
-        {tab === 'events' && <EventGiftPanel />}
-        {tab === 'nft' && <NftCollectionsPanel />}
-        {tab === 'crypto' && <CryptoAdminPage />}
-        {tab === 'tools' && <ToolsPanel />}
+        {currentTab === 'players' && <PlayerPanel />}
+        {currentTab === 'powers' && <GlobalPowerPanel />}
+        {currentTab === 'notifications' && <NotificationPanel />}
+        {currentTab === 'events' && <EventGiftPanel />}
+        {currentTab === 'nft' && <NftCollectionsPanel />}
+        {currentTab === 'crypto' && <CryptoAdminPage />}
+        {currentTab === 'tools' && <ToolsPanel />}
+        {currentTab === 'accounts' && <AccountsPanel />}
+        {currentTab === 'audit' && <AuditLogPanel />}
       </div>
     </div>
   );
 }
 
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(false);
+  const [me, setMe] = useState<AdminMe | null>(null);
+  const [checking, setChecking] = useState(true);
 
-  if (!authed) {
-    return <AdminLogin onLogin={() => setAuthed(true)} />;
+  useEffect(() => {
+    // Try to restore existing session (stored JWT or DEV bootstrap via X-Admin-Key fallback)
+    adminApi.getMe().then((result) => {
+      setMe(result);
+    }).catch(() => {
+      // Not authenticated — show login form
+    }).finally(() => setChecking(false));
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="admin-login">
+        <div style={{ color: '#888', fontSize: '0.9rem' }}>Loading…</div>
+      </div>
+    );
   }
 
-  return <Dashboard />;
+  if (!me) {
+    return <AdminLogin onLogin={(account) => setMe(account)} />;
+  }
+
+  const handleLogout = () => {
+    clearAdminToken();
+    setMe(null);
+  };
+
+  return <Dashboard me={me} onLogout={handleLogout} />;
 }

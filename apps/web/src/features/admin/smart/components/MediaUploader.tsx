@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { adminApi } from '../../adminApi';
-import { getAdminKey } from '../../adminApi';
+import { adminApi, getAdminToken } from '../../adminApi';
 import { resolveAssetUrl } from '../../../../utils/iconResolver';
 
 interface MediaAsset {
@@ -17,12 +16,19 @@ interface Props {
   onClose: () => void;
 }
 
+function adminAuthHeader(): Record<string, string> {
+  const token = getAdminToken();
+  if (token) return { Authorization: `Bearer ${token}` };
+  if (import.meta.env.DEV) return { 'X-Admin-Key': import.meta.env.VITE_ADMIN_KEY || 'derp-admin-2026' };
+  return {};
+}
+
 async function uploadMedia(file: File): Promise<{ assetKey: string; url: string }> {
   const formData = new FormData();
   formData.append('file', file);
   const res = await fetch('/api/admin/media/upload', {
     method: 'POST',
-    headers: { 'X-Admin-Key': getAdminKey() },
+    headers: adminAuthHeader(),
     body: formData,
   });
   if (!res.ok) {
@@ -34,7 +40,7 @@ async function uploadMedia(file: File): Promise<{ assetKey: string; url: string 
 
 async function listMedia(): Promise<MediaAsset[]> {
   const res = await fetch('/api/admin/media/list', {
-    headers: { 'X-Admin-Key': getAdminKey(), 'Content-Type': 'application/json' },
+    headers: { ...adminAuthHeader(), 'Content-Type': 'application/json' },
   });
   if (!res.ok) return [];
   return res.json();

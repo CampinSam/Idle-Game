@@ -1770,6 +1770,56 @@ model GlobalActivePower {
 }
 
 // ═══════════════════════════════════════════════════
+// ADMIN ACCOUNTS, ROLES & AUDIT LOG
+// ═══════════════════════════════════════════════════
+
+model AdminRole {
+  id              String         @id
+  name            String
+  slug            String         @unique
+  permissionFlags Json           @default("{}") @map("permission_flags")
+  isBuiltIn       Boolean        @default(true)  @map("is_built_in")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  accounts        AdminAccount[]
+
+  @@map("admin_roles")
+}
+
+model AdminAccount {
+  id            String       @id @default(uuid())
+  username      String       @unique
+  passwordHash  String       @map("password_hash")
+  roleId        String       @map("role_id")
+  role          AdminRole    @relation(fields: [roleId], references: [id])
+  contentScopes String[]     @map("content_scopes")
+  enabled       Boolean      @default(true)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt      @map("updated_at")
+
+  auditLogs     AdminAuditLog[]
+
+  @@index([roleId])
+  @@map("admin_accounts")
+}
+
+model AdminAuditLog {
+  id        BigInt       @id @default(autoincrement())
+  adminId   String       @map("admin_id")
+  admin     AdminAccount @relation(fields: [adminId], references: [id])
+  action    String
+  tableName String?      @map("table_name")
+  recordId  String?      @map("record_id")
+  diff      Json?
+  metadata  Json         @default("{}")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([adminId, createdAt(sort: Desc)])
+  @@index([tableName, createdAt(sort: Desc)])
+  @@map("admin_audit_logs")
+}
+
+// ═══════════════════════════════════════════════════
 // GAME DEFINITIONS (screen compositions, etc.)
 // ═══════════════════════════════════════════════════
 

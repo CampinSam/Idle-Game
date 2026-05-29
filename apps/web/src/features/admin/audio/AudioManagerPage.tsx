@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { adminApi, getAdminToken } from '../adminApi';
 import { resolveAssetUrl } from '../../../utils/iconResolver';
 import '../admin.css';
 import './AudioManagerPage.css';
-
-const DEV_ADMIN_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
 
 const BUS_OPTIONS = ['music', 'sfx', 'ui', 'ambient'];
 
@@ -55,40 +53,23 @@ const ALL_ACTION_KEYS = {
 };
 
 function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [key, setKey] = useState(getAdminKey() || DEV_ADMIN_KEY);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const autoSubmitted = useRef(false);
 
-  const doLogin = useCallback(async (loginKey: string) => {
-    setLoading(true);
-    setError('');
-    setAdminKey(loginKey);
-    try {
-      await adminApi.getTables();
-      onLogin();
-    } catch {
-      setError('Invalid admin key');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!autoSubmitted.current) {
+      autoSubmitted.current = true;
+      adminApi.getTables().then(() => onLogin()).catch(() => {});
     }
   }, [onLogin]);
 
-  useEffect(() => {
-    if (import.meta.env.DEV && DEV_ADMIN_KEY && !autoSubmitted.current) {
-      autoSubmitted.current = true;
-      doLogin(DEV_ADMIN_KEY);
-    }
-  }, [doLogin]);
-
   return (
     <div className="admin-login">
-      <form className="admin-login-card" onSubmit={(e) => { e.preventDefault(); doLogin(key); }}>
+      <div className="admin-login-card" style={{ textAlign: 'center' }}>
         <h1>Derp Universe Admin</h1>
-        <input type="password" placeholder="Admin Key" value={key} onChange={(e) => setKey(e.target.value)} autoFocus />
-        <button type="submit" disabled={loading}>{loading ? 'Verifying...' : 'Enter'}</button>
-        {error && <div className="admin-error">{error}</div>}
-      </form>
+        <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>
+          Please <a href="/admin" style={{ color: '#7c3aed' }}>sign in</a> to access this page.
+        </p>
+      </div>
     </div>
   );
 }
@@ -726,7 +707,7 @@ function AudioManagerContent() {
 }
 
 export default function AudioManagerPage() {
-  const [authed, setAuthed] = useState(!!getAdminKey());
+  const [authed, setAuthed] = useState(!!(getAdminToken() || import.meta.env.DEV));
   if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
   return <AudioManagerContent />;
 }

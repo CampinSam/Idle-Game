@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ParseIntPipe, DefaultValuePipe, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
+import { AdminAuthService } from './admin-auth.service';
+import { AdminAuditService } from './admin-audit.service';
 import { ScreensService } from '../screens/screens.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
@@ -23,6 +25,8 @@ export class AdminController {
 
   constructor(
     private adminService: AdminService,
+    private adminAuthService: AdminAuthService,
+    private adminAuditService: AdminAuditService,
     private screensService: ScreensService,
     private globalPowerService: GlobalPowerService,
     private notificationService: NotificationService,
@@ -35,6 +39,106 @@ export class AdminController {
     private prisma: PrismaService,
     private authService: AuthService,
   ) {}
+
+  // ─── Identity ────────────────────────────────────────────────────────────────
+
+  @Get('me')
+  async getMe(@Req() req: any) {
+    const adminUser = req.adminUser;
+    if (adminUser.isBootstrap) {
+      return {
+        id: '__bootstrap__',
+        username: '__bootstrap__',
+        roleId: 'role_super_admin',
+        role: {
+          id: 'role_super_admin',
+          name: 'Super Admin',
+          slug: 'super_admin',
+          permissionFlags: adminUser.perms,
+        },
+        contentScopes: [],
+        enabled: true,
+        isBootstrap: true,
+      };
+    }
+    return this.adminAuthService.getMe(adminUser.id);
+  }
+
+  // ─── Roles ───────────────────────────────────────────────────────────────────
+
+  @Get('roles')
+  listRoles() {
+    return this.adminAuthService.listRoles();
+  }
+
+  // ─── Account Management (Super Admin only) ────────────────────────────────
+
+  @Get('accounts')
+  listAccounts() {
+    return this.adminAuthService.listAccounts();
+  }
+
+  @Post('accounts')
+  async createAccount(
+    @Req() req: any,
+    @Body() body: { username: string; password: string; roleId: string; contentScopes?: string[] },
+  ) {
+    const account = await this.adminAuthService.createAccount(body);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'create_account',
+      recordId: account.id,
+      metadata: { username: account.username, roleId: account.roleId },
+    });
+    return account;
+  }
+
+  @Put('accounts/:id')
+  async updateAccount(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean },
+  ) {
+    const account = await this.adminAuthService.updateAccount(id, body, req.adminUser.id);
+    const { password: _pw, ...logBody } = body;
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'update_account',
+      recordId: id,
+      metadata: { changes: _pw ? { ...logBody, password: '[redacted]' } : logBody },
+    });
+    return account;
+  }
+
+  @Delete('accounts/:id')
+  async deleteAccount(@Req() req: any, @Param('id') id: string) {
+    await this.adminAuthService.deleteAccount(id, req.adminUser.id);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'delete_account',
+      recordId: id,
+    });
+    return { success: true };
+  }
+
+  // ─── Audit Log (Super Admin only) ─────────────────────────────────────────
+
+  @Get('audit-log')
+  getAuditLog(
+    @Query('adminId') adminId?: string,
+    @Query('action') action?: string,
+    @Query('tableName') tableName?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.adminAuditService.list({
+      adminId,
+      action,
+      tableName,
+      limit: limit ? parseInt(limit, 10) : 100,
+      offset: offset ? parseInt(offset, 10) : 0,
+    });
+  }
 
   @Get('tables')
   getTables() {

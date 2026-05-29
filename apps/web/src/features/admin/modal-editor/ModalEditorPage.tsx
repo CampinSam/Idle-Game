@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi, getAdminKey, setAdminKey } from '../adminApi';
+import { adminApi, getAdminToken } from '../adminApi';
 import ModalSpecEditor, { DEFAULT_SPEC } from './ModalSpecEditor';
 import type { ModalSpecV1 } from '@derp/shared';
 import '../admin.css';
 import './ModalEditorPage.css';
-
-const DEV_ADMIN_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
 
 const DEFAULT_DB = { id: '', name: '', description: '', enabled: true, version: 1 };
 
@@ -32,53 +30,10 @@ function Row({ children }: { children: React.ReactNode }) {
   return <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{children}</div>;
 }
 
-// ─── Admin Login ──────────────────────────────────────────────────────────────
-
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [key, setKey] = useState(getAdminKey() || DEV_ADMIN_KEY);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const autoSubmitted = { current: false };
-
-  const doLogin = useCallback(async (k: string) => {
-    setLoading(true);
-    setError('');
-    setAdminKey(k);
-    try {
-      await adminApi.getTables();
-      onLogin();
-    } catch {
-      setError('Invalid admin key');
-    } finally {
-      setLoading(false);
-    }
-  }, [onLogin]);
-
-  useEffect(() => {
-    if (import.meta.env.DEV && DEV_ADMIN_KEY && !autoSubmitted.current) {
-      autoSubmitted.current = true;
-      doLogin(DEV_ADMIN_KEY);
-    }
-  }, [doLogin]);
-
-  return (
-    <div className="admin-login">
-      <form className="admin-login-card" onSubmit={e => { e.preventDefault(); doLogin(key); }}>
-        <h1>Modal Editor</h1>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>Derp Universe Admin</p>
-        <input type="password" placeholder="Admin Key" value={key} onChange={e => setKey(e.target.value)} autoFocus />
-        <button type="submit" disabled={loading}>{loading ? 'Verifying...' : 'Enter'}</button>
-        {error && <div className="admin-error">{error}</div>}
-        <a href="/admin" style={{ display: 'block', marginTop: 16, color: '#555', fontSize: 12, textDecoration: 'none' }}>← Admin Dashboard</a>
-      </form>
-    </div>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ModalEditorPage() {
-  const [authed, setAuthed] = useState(!!getAdminKey());
+  const [authed, setAuthed] = useState(!!(getAdminToken() || import.meta.env.DEV));
   const [modalList, setModalList] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dbRecord, setDbRecord] = useState({ ...DEFAULT_DB });

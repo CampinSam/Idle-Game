@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Play, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import type { RichSelection } from '@derp/shared';
-import { adminApi, getAdminKey, setAdminKey, type TraceNode } from '../adminApi';
+import { adminApi, getAdminToken, type TraceNode } from '../adminApi';
 import RichSelectionEditor from '../smart/components/structured/RichSelectionEditor';
 import EntityList from '../../entities/components/EntityList';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
@@ -304,28 +304,15 @@ function TraceNodeRow({ node, depth = 0 }: { node: TraceNode; depth?: number }) 
 }
 
 export default function SelectionTesterPage() {
-  const DEV_KEY = import.meta.env.DEV ? 'derp-admin-2026' : '';
-  const adminKey = getAdminKey();
-  const [authKey, setAuthKeyState] = useState(adminKey || DEV_KEY);
-  const [authed, setAuthed] = useState(!!adminKey);
+  const [authed, setAuthed] = useState(!!(getAdminToken() || import.meta.env.DEV));
   const autoSubmitted = useRef(false);
 
-  const doAuth = useCallback(async (key: string) => {
-    setAdminKey(key);
-    try {
-      await adminApi.getTables();
-      setAuthed(true);
-    } catch {
-      alert('Invalid admin key');
-    }
-  }, []);
-
   useEffect(() => {
-    if (import.meta.env.DEV && DEV_KEY && !authed && !autoSubmitted.current) {
+    if (!authed && !autoSubmitted.current) {
       autoSubmitted.current = true;
-      doAuth(DEV_KEY);
+      adminApi.getTables().then(() => setAuthed(true)).catch(() => {});
     }
-  }, [DEV_KEY, authed, doAuth]);
+  }, [authed]);
 
   const [playerQuery, setPlayerQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);

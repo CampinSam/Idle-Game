@@ -18,10 +18,33 @@ import { ScreensModule } from '../screens/screens.module';
 import { PaymentModule } from '../payment/payment.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminAuthService } from './admin-auth.service';
+import { AdminAuditService } from './admin-audit.service';
+import { AdminAuthController } from './admin-auth.controller';
+import { AdminGuard } from './admin.guard';
 
 @Module({
-  imports: [PrismaModule, TickModule, NotificationModule, EventModule, GiftModule, LocationModule, NftModule, MissionModule, InventoryModule, HomeBannerModule, GlobalPowerModule, CraftingModule, CommandsModule, PlayerModule, AuthModule, ScreensModule, PaymentModule],
-  controllers: [AdminController],
-  providers: [AdminService],
+  imports: [
+    PrismaModule,
+    TickModule,
+    NotificationModule,
+    EventModule,
+    GiftModule,
+    LocationModule,
+    NftModule,
+    MissionModule,
+    InventoryModule,
+    HomeBannerModule,
+    GlobalPowerModule,
+    CraftingModule,
+    CommandsModule,
+    PlayerModule,
+    AuthModule,
+    ScreensModule,
+    PaymentModule,
+  ],
+  controllers: [AdminController, AdminAuthController],
+  providers: [AdminService, AdminAuthService, AdminAuditService, AdminGuard],
+  exports: [AdminGuard],
 })
 export class AdminModule {}

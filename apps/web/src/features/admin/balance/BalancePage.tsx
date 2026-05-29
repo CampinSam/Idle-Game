@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { adminApi, getAdminKey } from '../adminApi';
+import { adminApi, getAdminToken } from '../adminApi';
 import {
   simulateEntityProgression,
   type BalanceBundle,
@@ -130,7 +130,7 @@ export default function BalancePage() {
     });
   };
 
-  if (!getAdminKey()) {
+  if (!getAdminToken() && !import.meta.env.DEV) {
     return (
       <div className="balance-page-empty">
         <p>Open the <a href="/admin">admin dashboard</a> first to authenticate.</p>

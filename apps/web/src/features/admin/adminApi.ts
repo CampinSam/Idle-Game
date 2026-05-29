@@ -9,21 +9,64 @@ export interface TraceNode {
   error?: string;
 }
 
-let adminKey = sessionStorage.getItem('adminKey') || '';
-
-export function setAdminKey(key: string) {
-  adminKey = key;
-  sessionStorage.setItem('adminKey', key);
+export interface AdminPermissionFlags {
+  read: boolean;
+  write: boolean;
+  approve: boolean;
+  player_read: boolean;
+  player_write: boolean;
+  system_tools: boolean;
 }
 
-export function getAdminKey() {
-  return adminKey;
+export interface AdminMe {
+  id: string;
+  username: string;
+  roleId: string;
+  role: {
+    id: string;
+    name: string;
+    slug: string;
+    permissionFlags: AdminPermissionFlags;
+  };
+  contentScopes: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  isBootstrap?: boolean;
+}
+
+let adminToken = sessionStorage.getItem('adminToken') || '';
+
+export function setAdminToken(token: string) {
+  adminToken = token;
+  sessionStorage.setItem('adminToken', token);
+}
+
+export function getAdminToken() {
+  return adminToken;
+}
+
+export function clearAdminToken() {
+  adminToken = '';
+  sessionStorage.removeItem('adminToken');
+}
+
+function authHeaders(): Record<string, string> {
+  if (adminToken) {
+    return { Authorization: `Bearer ${adminToken}` };
+  }
+  // Dev-only fallback for bootstrap access before any account exists
+  const devKey = import.meta.env.DEV ? (import.meta.env.VITE_ADMIN_KEY || 'derp-admin-2026') : '';
+  if (devKey) {
+    return { 'X-Admin-Key': devKey };
+  }
+  return {};
 }
 
 async function adminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Admin-Key': adminKey,
+    ...authHeaders(),
     ...((options.headers as Record<string, string>) || {}),
   };
 
@@ -40,7 +83,7 @@ async function adminRequest<T>(path: string, options: RequestInit = {}): Promise
 async function nftAdminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Admin-Key': adminKey,
+    ...authHeaders(),
     ...((options.headers as Record<string, string>) || {}),
   };
 
@@ -55,6 +98,46 @@ async function nftAdminRequest<T>(path: string, options: RequestInit = {}): Prom
 }
 
 export const adminApi = {
+  // ─── Auth ────────────────────────────────────────────────────────────────────
+
+  login: (username: string, password: string) =>
+    fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    }).then(async (res) => {
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || `Login failed: ${res.status}`);
+      return body as { token: string; account: AdminMe };
+    }),
+
+  getMe: () => adminRequest<AdminMe>('/me'),
+
+  // ─── Account Management (Super Admin only) ────────────────────────────────
+
+  listRoles: () => adminRequest<any[]>('/roles'),
+  listAccounts: () => adminRequest<any[]>('/accounts'),
+  createAccount: (data: { username: string; password: string; roleId: string; contentScopes?: string[] }) =>
+    adminRequest<any>('/accounts', { method: 'POST', body: JSON.stringify(data) }),
+  updateAccount: (id: string, data: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean }) =>
+    adminRequest<any>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAccount: (id: string) =>
+    adminRequest<any>(`/accounts/${id}`, { method: 'DELETE' }),
+
+  // ─── Audit Log ───────────────────────────────────────────────────────────
+
+  listAuditLog: (opts: { adminId?: string; action?: string; tableName?: string; limit?: number; offset?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.adminId) params.set('adminId', opts.adminId);
+    if (opts.action) params.set('action', opts.action);
+    if (opts.tableName) params.set('tableName', opts.tableName);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    if (opts.offset) params.set('offset', String(opts.offset));
+    return adminRequest<any[]>(`/audit-log?${params.toString()}`);
+  },
+
+  // ─── Tables / Generic CRUD ───────────────────────────────────────────────
+
   getTables: () => adminRequest<{ key: string; name: string; table: string }[]>('/tables'),
   list: (table: string) => adminRequest<any[]>(`/${table}`),
   get: (table: string, id: string) => adminRequest<any>(`/${table}/${id}`),
@@ -64,6 +147,9 @@ export const adminApi = {
     adminRequest<any>(`/${table}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (table: string, id: string) =>
     adminRequest<any>(`/${table}/${id}`, { method: 'DELETE' }),
+
+  // ─── Players ─────────────────────────────────────────────────────────────
+
   searchPlayers: (q: string) => adminRequest<any[]>(`/players/search?q=${encodeURIComponent(q)}`),
   getPlayer: (id: string) => adminRequest<any>(`/players/${id}`),
   updatePlayer: (id: string, data: any) =>
@@ -135,9 +221,6 @@ export const adminApi = {
 
   getBalanceBundle: () => adminRequest<{
     entityDefinitions: Array<{ id: string; name: string; speciesId: string; slots: Record<string, string[]> }>;
-    // Flattened trait lookup derived from EntityDefinition.traits across all
-    // species — same shape the simulator expects regardless of which entity
-    // def the archetype originated from.
     traitDefinitions: Record<string, { archetype: string; slotStats: Record<string, Record<string, number>>; scaling: Record<string, number>; rarityMultiplier: number }>;
   }>('/balance/bundle'),
 
@@ -264,7 +347,7 @@ export const adminApi = {
     formData.append('file', file);
     return fetch(`${API_BASE}/audio/upload`, {
       method: 'POST',
-      headers: { 'X-Admin-Key': adminKey },
+      headers: authHeaders(),
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {
@@ -346,7 +429,7 @@ export const adminApi = {
       : `${API_BASE}/media/upload`;
     return fetch(url, {
       method: 'POST',
-      headers: { 'X-Admin-Key': adminKey },
+      headers: authHeaders(),
       body: formData,
     }).then(async (res) => {
       if (!res.ok) {
