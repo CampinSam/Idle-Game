@@ -171,7 +171,7 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.currencies) {
-    await upsertMany(prisma, 'currency', defs.currencies, (r) => {
+    await upsertManyForce(prisma, 'currency', defs.currencies, (r) => {
       const copy = { ...r };
       if (copy.cap !== null && copy.cap !== undefined) {
         copy.cap = BigInt(copy.cap);

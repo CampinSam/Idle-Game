@@ -165,16 +165,19 @@ export default function Layout() {
             <div className="top-bar-currencies">
               {(() => {
                 // Data-driven currency chips. Pulls every currency flagged for
-                // the top bar, sorts by sortOrder (then id for stability), caps
-                // at 6 to protect the layout, and falls back to the canonical
-                // four while definitions are still loading.
+                // the top bar, sorts by sortOrder (then id for stability), and
+                // caps at 6 to protect the layout. Falls back to the canonical
+                // four only while definitions are still loading (empty array =
+                // not yet fetched). Once loaded, only showInTopBar currencies
+                // appear — an empty result renders nothing.
                 const FALLBACK = [
                   "soft_arcanium",
                   "hard_essence",
                   "premium_gems",
                   "crypto_derp",
                 ];
-                const visible = (currencyDefs ?? [])
+                const defsLoaded = currencyDefs.length > 0;
+                const visible = currencyDefs
                   .filter((d: any) => d?.showInTopBar === true)
                   .slice()
                   .sort(
@@ -183,7 +186,7 @@ export default function Layout() {
                       String(a?.id ?? "").localeCompare(String(b?.id ?? "")),
                   )
                   .slice(0, 6);
-                const ids = visible.length > 0 ? visible.map((d: any) => d.id) : FALLBACK;
+                const ids = defsLoaded ? visible.map((d: any) => d.id) : FALLBACK;
                 return ids.map((id: string) => (
                   <div key={id} className="top-bar-currency">
                     <ItemQty
