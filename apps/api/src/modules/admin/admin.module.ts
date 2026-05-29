@@ -20,6 +20,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminAuditService } from './admin-audit.service';
+import { AdminDraftService } from './admin-draft.service';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminGuard } from './admin.guard';
 
@@ -44,7 +45,7 @@ import { AdminGuard } from './admin.guard';
     PaymentModule,
   ],
   controllers: [AdminController, AdminAuthController],
-  providers: [AdminService, AdminAuthService, AdminAuditService, AdminGuard],
+  providers: [AdminService, AdminAuthService, AdminAuditService, AdminDraftService, AdminGuard],
   exports: [AdminGuard],
 })
 export class AdminModule {}

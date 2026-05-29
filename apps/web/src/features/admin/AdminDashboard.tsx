@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout, Wallet, Shield, FileText, UserCog } from 'lucide-react';
+import { Users, Bell, Gift, Database, LogOut, PanelLeftClose, PanelLeft, Image, Music, BarChart3, Tag as TagIcon, Wrench, Flame, Layers, Layout, Wallet, Shield, FileText, UserCog, ClipboardList, CheckCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { adminApi, AdminMe, getAdminToken, setAdminToken, clearAdminToken } from './adminApi';
 import { GodModePanel } from './GodModePanel';
 import { CryptoAdminPage } from './CryptoAdminPage';
@@ -1445,7 +1445,164 @@ function AuditLogPanel() {
   );
 }
 
-type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft' | 'crypto' | 'accounts' | 'audit';
+function ReviewQueuePanel() {
+  const [drafts, setDrafts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('pending');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [commentMap, setCommentMap] = useState<Record<string, string>>({});
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await adminApi.listDrafts({ status: statusFilter || undefined, limit: 200 });
+      setDrafts(data as any[]);
+    } catch { setDrafts([]); }
+    finally { setLoading(false); }
+  }, [statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleApprove = async (id: string) => {
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    setMsg(null);
+    try {
+      await adminApi.approveDraft(id);
+      setMsg({ text: 'Draft approved and applied.', type: 'success' });
+      load();
+    } catch (e: any) {
+      setMsg({ text: e.message || 'Approve failed', type: 'error' });
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    setMsg(null);
+    try {
+      await adminApi.rejectDraft(id, commentMap[id]);
+      setMsg({ text: 'Draft rejected.', type: 'success' });
+      load();
+    } catch (e: any) {
+      setMsg({ text: e.message || 'Reject failed', type: 'error' });
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const opColor: Record<string, string> = { create: '#4caf50', update: '#60a5fa', delete: '#ef4444' };
+  const statusColor: Record<string, string> = { pending: '#f59e0b', approved: '#4caf50', rejected: '#ef4444' };
+
+  return (
+    <div style={{ padding: '20px 24px', maxWidth: 860, fontFamily: 'ui-monospace, monospace' }}>
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: '#e0e0ff' }}>Content Draft Review</h2>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+        {(['pending', 'approved', 'rejected', ''] as string[]).map(s => (
+          <button
+            key={s || 'all'}
+            onClick={() => setStatusFilter(s)}
+            style={{
+              padding: '4px 12px', fontSize: 12, borderRadius: 4, border: 'none', cursor: 'pointer',
+              background: statusFilter === s ? '#7c3aed' : '#1a1a3e',
+              color: statusFilter === s ? '#fff' : '#888',
+              fontWeight: statusFilter === s ? 600 : 400,
+            }}
+          >
+            {s || 'All'}
+          </button>
+        ))}
+        <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: 12, background: '#1a1a3e', border: 'none', borderRadius: 4, color: '#888', cursor: 'pointer' }}>
+          ↻ Refresh
+        </button>
+      </div>
+
+      {msg && <StatusMsg msg={msg.text} type={msg.type} />}
+
+      {loading && <div style={{ color: '#555', fontSize: 13, padding: '12px 0' }}>Loading drafts…</div>}
+      {!loading && drafts.length === 0 && (
+        <div style={{ color: '#555', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No drafts found.</div>
+      )}
+
+      {drafts.map(draft => {
+        const isExpanded = !!expanded[draft.id];
+        const busy = !!actionLoading[draft.id];
+        return (
+          <div key={draft.id} style={{ background: '#0d0d1e', border: '1px solid #1a1a3e', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
+            {/* Header row */}
+            <div
+              style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: isExpanded ? '1px solid #1a1a3e' : 'none' }}
+              onClick={() => setExpanded(prev => ({ ...prev, [draft.id]: !isExpanded }))}
+            >
+              {isExpanded ? <ChevronDown size={14} color="#666" /> : <ChevronRight size={14} color="#666" />}
+              <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 3, background: opColor[draft.operation] + '22', color: opColor[draft.operation], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {draft.operation}
+              </span>
+              <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>{draft.tableName}</span>
+              <span style={{ fontSize: 11, color: '#666' }}>/{draft.recordId}</span>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontSize: 10, color: '#555' }}>by {draft.author?.username ?? '?'}</span>
+              <span style={{ fontSize: 10, color: '#444' }}>{new Date(draft.createdAt).toLocaleString()}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: (statusColor[draft.status] ?? '#666') + '22', color: statusColor[draft.status] ?? '#666', textTransform: 'uppercase' }}>
+                {draft.status}
+              </span>
+            </div>
+
+            {/* Expanded detail */}
+            {isExpanded && (
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>Payload</div>
+                  <pre style={{ fontSize: 11, color: '#c4b5fd', background: '#08081a', borderRadius: 4, padding: '8px 10px', overflow: 'auto', maxHeight: 200, margin: 0 }}>
+                    {JSON.stringify(draft.payload, null, 2)}
+                  </pre>
+                </div>
+                {draft.reviewer && (
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+                    Reviewed by <strong style={{ color: '#888' }}>{draft.reviewer.username}</strong>
+                    {draft.reviewComment && (
+                      <span style={{ color: '#ef9a9a', marginLeft: 8 }}>"{draft.reviewComment}"</span>
+                    )}
+                  </div>
+                )}
+                {draft.status === 'pending' && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder="Rejection reason (optional)"
+                      value={commentMap[draft.id] ?? ''}
+                      onChange={e => setCommentMap(prev => ({ ...prev, [draft.id]: e.target.value }))}
+                      style={{ flex: 1, minWidth: 160, padding: '5px 10px', background: '#111128', border: '1px solid #2a2a4e', borderRadius: 4, color: '#e0e0ff', fontSize: 12, outline: 'none' }}
+                    />
+                    <button
+                      onClick={() => handleApprove(draft.id)}
+                      disabled={busy}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', background: '#14532d', border: '1px solid #16a34a', borderRadius: 4, color: '#4ade80', fontSize: 12, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                    >
+                      <CheckCircle size={13} /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(draft.id)}
+                      disabled={busy}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 14px', background: '#450a0a', border: '1px solid #dc2626', borderRadius: 4, color: '#f87171', fontSize: 12, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                    >
+                      <XCircle size={13} /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type Tab = 'players' | 'powers' | 'notifications' | 'events' | 'tools' | 'nft' | 'crypto' | 'accounts' | 'audit' | 'review';
 
 interface TabDef { key: Tab; label: string; icon: typeof Users; }
 
@@ -1463,6 +1620,7 @@ function Dashboard({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
     ...(perms.system_tools ? [{ key: 'tools' as Tab, label: 'Tools', icon: Wrench }] : []),
     ...(isSuperAdmin ? [{ key: 'accounts' as Tab, label: 'Accounts', icon: UserCog }] : []),
     ...((isSuperAdmin || me?.role?.slug === 'senior_support') ? [{ key: 'audit' as Tab, label: 'Audit Log', icon: FileText }] : []),
+    ...((isSuperAdmin || perms.approve) ? [{ key: 'review' as Tab, label: 'Review Queue', icon: ClipboardList }] : []),
   ];
 
   const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'players');
@@ -1552,6 +1710,7 @@ function Dashboard({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
         {currentTab === 'tools' && <ToolsPanel />}
         {currentTab === 'accounts' && <AccountsPanel />}
         {currentTab === 'audit' && <AuditLogPanel />}
+        {currentTab === 'review' && <ReviewQueuePanel />}
       </div>
     </div>
   );

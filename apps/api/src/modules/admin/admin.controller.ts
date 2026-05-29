@@ -5,6 +5,7 @@ import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminAuditService } from './admin-audit.service';
+import { AdminDraftService } from './admin-draft.service';
 import { ScreensService } from '../screens/screens.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { NotificationService } from '../notification/notification.service';
@@ -27,6 +28,7 @@ export class AdminController {
     private adminService: AdminService,
     private adminAuthService: AdminAuthService,
     private adminAuditService: AdminAuditService,
+    private adminDraftService: AdminDraftService,
     private screensService: ScreensService,
     private globalPowerService: GlobalPowerService,
     private notificationService: NotificationService,
@@ -1050,6 +1052,73 @@ export class AdminController {
     return result;
   }
 
+  // ─── Content Draft & Review ──────────────────────────────────────────────────
+
+  @Get('drafts')
+  listDrafts(
+    @Query('status') status?: string,
+    @Query('tableName') tableName?: string,
+    @Query('recordId') recordId?: string,
+    @Query('authorId') authorId?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.adminDraftService.listDrafts({
+      status,
+      tableName,
+      recordId,
+      authorId,
+      limit: limit ? parseInt(limit, 10) : 100,
+      offset: offset ? parseInt(offset, 10) : 0,
+    });
+  }
+
+  @Get('drafts/:id')
+  getDraft(@Param('id') id: string) {
+    return this.adminDraftService.getDraft(id);
+  }
+
+  @Post('drafts/:id/approve')
+  async approveDraft(@Req() req: any, @Param('id') id: string) {
+    const result = await this.adminDraftService.approveDraft(
+      id,
+      req.adminUser.id,
+      req.adminUser.role,
+      req.adminUser.scopes ?? [],
+    );
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'draft_approve',
+      tableName: result.tableName,
+      recordId: result.recordId,
+      metadata: { draftId: id, operation: result.operation },
+    });
+    return result;
+  }
+
+  @Post('drafts/:id/reject')
+  async rejectDraft(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { reviewComment?: string },
+  ) {
+    const result = await this.adminDraftService.rejectDraft(
+      id,
+      req.adminUser.id,
+      req.adminUser.role,
+      req.adminUser.scopes ?? [],
+      body.reviewComment,
+    );
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'draft_reject',
+      tableName: result.tableName,
+      recordId: result.recordId,
+      metadata: { draftId: id, operation: result.operation, reviewComment: body.reviewComment },
+    });
+    return result;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   @Get(':table')
@@ -1064,6 +1133,30 @@ export class AdminController {
 
   @Post(':table')
   async create(@Req() req: any, @Param('table') table: string, @Body() body: any) {
+    const isSuperAdmin = req.adminUser.role === 'super_admin';
+
+    if (!isSuperAdmin) {
+      const recordId: string = body.id || `draft_${Date.now()}`;
+      const payload = { ...body };
+      if (!payload.id) payload.id = recordId;
+      const draft = await this.adminDraftService.createDraft({
+        tableName: table,
+        recordId,
+        operation: 'create',
+        payload,
+        authorId: req.adminUser.id,
+      });
+      return {
+        mode: 'draft' as const,
+        draftId: draft.id,
+        tableName: table,
+        recordId,
+        operation: 'create',
+        status: 'pending',
+        authorUsername: (draft as any).author?.username,
+      };
+    }
+
     const result = await this.adminService.createRecord(table, body);
     await this.adminAuditService.log({
       adminId: req.adminUser.id,
@@ -1071,12 +1164,34 @@ export class AdminController {
       tableName: table,
       recordId: result?.id ? String(result.id) : undefined,
       diff: body,
+      metadata: { bypassReview: true },
     });
     return result;
   }
 
   @Put(':table/:id')
   async update(@Req() req: any, @Param('table') table: string, @Param('id') id: string, @Body() body: any) {
+    const isSuperAdmin = req.adminUser.role === 'super_admin';
+
+    if (!isSuperAdmin) {
+      const draft = await this.adminDraftService.createDraft({
+        tableName: table,
+        recordId: id,
+        operation: 'update',
+        payload: body,
+        authorId: req.adminUser.id,
+      });
+      return {
+        mode: 'draft' as const,
+        draftId: draft.id,
+        tableName: table,
+        recordId: id,
+        operation: 'update',
+        status: 'pending',
+        authorUsername: (draft as any).author?.username,
+      };
+    }
+
     const result = await this.adminService.updateRecord(table, id, body);
     await this.adminAuditService.log({
       adminId: req.adminUser.id,
@@ -1084,18 +1199,41 @@ export class AdminController {
       tableName: table,
       recordId: id,
       diff: body,
+      metadata: { bypassReview: true },
     });
     return result;
   }
 
   @Delete(':table/:id')
   async remove(@Req() req: any, @Param('table') table: string, @Param('id') id: string) {
+    const isSuperAdmin = req.adminUser.role === 'super_admin';
+
+    if (!isSuperAdmin) {
+      const draft = await this.adminDraftService.createDraft({
+        tableName: table,
+        recordId: id,
+        operation: 'delete',
+        payload: {},
+        authorId: req.adminUser.id,
+      });
+      return {
+        mode: 'draft' as const,
+        draftId: draft.id,
+        tableName: table,
+        recordId: id,
+        operation: 'delete',
+        status: 'pending',
+        authorUsername: (draft as any).author?.username,
+      };
+    }
+
     const result = await this.adminService.deleteRecord(table, id);
     await this.adminAuditService.log({
       adminId: req.adminUser.id,
       action: 'delete',
       tableName: table,
       recordId: id,
+      metadata: { bypassReview: true },
     });
     return result;
   }

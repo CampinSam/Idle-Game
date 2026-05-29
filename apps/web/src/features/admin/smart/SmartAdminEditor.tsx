@@ -19,23 +19,30 @@ interface EditorState {
   dirty: boolean;
   saving: boolean;
   saveError: string | null;
+  isDraftMode: boolean;
+  activeDraftId: string | null;
+  draftOperation: string | null;
 }
 
 type EditorAction =
   | { type: 'LOAD'; record: Record<string, any> }
   | { type: 'LOAD_DIRTY'; record: Record<string, any> }
+  | { type: 'LOAD_AS_DRAFT'; record: Record<string, any>; draftId: string; operation: string }
   | { type: 'SET_FIELD'; field: string; value: any }
   | { type: 'SAVE_START' }
   | { type: 'SAVE_OK'; record: Record<string, any> }
   | { type: 'SAVE_ERR'; error: string }
+  | { type: 'SAVE_DRAFT'; record: Record<string, any>; draftId: string; operation: string }
   | { type: 'CLEAR' };
 
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
     case 'LOAD':
-      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null };
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null, isDraftMode: false, activeDraftId: null, draftOperation: null };
     case 'LOAD_DIRTY':
-      return { record: { ...action.record }, original: {}, dirty: true, saving: false, saveError: null };
+      return { record: { ...action.record }, original: {}, dirty: true, saving: false, saveError: null, isDraftMode: false, activeDraftId: null, draftOperation: null };
+    case 'LOAD_AS_DRAFT':
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null, isDraftMode: true, activeDraftId: action.draftId, draftOperation: action.operation };
     case 'SET_FIELD':
       if (!state.record) return state;
       const updated = { ...state.record, [action.field]: action.value };
@@ -43,11 +50,13 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'SAVE_START':
       return { ...state, saving: true, saveError: null };
     case 'SAVE_OK':
-      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null };
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null, isDraftMode: false, activeDraftId: null, draftOperation: null };
+    case 'SAVE_DRAFT':
+      return { record: { ...action.record }, original: { ...action.record }, dirty: false, saving: false, saveError: null, isDraftMode: true, activeDraftId: action.draftId, draftOperation: action.operation };
     case 'SAVE_ERR':
       return { ...state, saving: false, saveError: action.error };
     case 'CLEAR':
-      return { record: null, original: null, dirty: false, saving: false, saveError: null };
+      return { record: null, original: null, dirty: false, saving: false, saveError: null, isDraftMode: false, activeDraftId: null, draftOperation: null };
     default:
       return state;
   }
@@ -208,16 +217,33 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
 
   const [editorState, dispatch] = useReducer(editorReducer, {
     record: null, original: null, dirty: false, saving: false, saveError: null,
+    isDraftMode: false, activeDraftId: null, draftOperation: null,
   });
+
+  const [me, setMe] = useState<any>(null);
+  const [pendingDrafts, setPendingDrafts] = useState<Record<string, any>>({});
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
     fetch('/api/meta/enums').then(r => r.json()).then(setEnumOptions).catch(() => {});
+    adminApi.getMe().then(setMe).catch(() => {});
     const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const loadPendingDrafts = useCallback(async (tableKey: string) => {
+    if (!tableKey) { setPendingDrafts({}); return; }
+    try {
+      const drafts = await adminApi.listDrafts({ tableName: tableKey, status: 'pending' });
+      const map: Record<string, any> = {};
+      (drafts as any[]).forEach((d: any) => { map[d.recordId] = d; });
+      setPendingDrafts(map);
+    } catch {
+      setPendingDrafts({});
+    }
   }, []);
 
   const activeMappedKey = useMemo(() => {
@@ -247,6 +273,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setActiveSectionId(null);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
+    loadPendingDrafts(key);
   };
 
   const handleSelectRecord = (rec: any) => {
@@ -256,7 +283,15 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     setSelectedId(rec.id);
     setIsNew(false);
     setDeleteConfirm(false);
-    if (activeTable === TABLE_API_KEYS.MissionDef) {
+
+    const pendingDraft = pendingDrafts[rec.id];
+    if (pendingDraft) {
+      const draftPayload =
+        typeof pendingDraft.payload === 'object' && pendingDraft.payload !== null
+          ? pendingDraft.payload
+          : rec;
+      dispatch({ type: 'LOAD_AS_DRAFT', record: draftPayload as Record<string, any>, draftId: pendingDraft.id, operation: pendingDraft.operation });
+    } else if (activeTable === TABLE_API_KEYS.MissionDef) {
       const { record: migrated, migrated: wasMigrated } = migrateMissionOutcomes(rec);
       dispatch({ type: wasMigrated ? 'LOAD_DIRTY' : 'LOAD', record: migrated });
     } else {
@@ -332,11 +367,26 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
       } else {
         saved = await adminApi.update(activeMappedKey, editorState.record.id, editorState.record);
       }
-      dispatch({ type: 'SAVE_OK', record: saved });
-      setIsNew(false);
-      setSelectedId(saved.id);
-      invalidateRefCache(activeTable);
-      await loadRecords(activeTable);
+      if (saved?.mode === 'draft') {
+        // Non-super-admin: draft submitted for review
+        if (isNew) {
+          // New record draft — clear the editor (record doesn't exist yet)
+          dispatch({ type: 'CLEAR' });
+          setIsNew(false);
+          setSelectedId(null);
+        } else {
+          dispatch({ type: 'SAVE_DRAFT', record: editorState.record, draftId: saved.draftId, operation: saved.operation });
+        }
+        await loadPendingDrafts(activeMappedKey);
+        await loadRecords(activeTable);
+      } else {
+        dispatch({ type: 'SAVE_OK', record: saved });
+        setIsNew(false);
+        setSelectedId(saved.id);
+        invalidateRefCache(activeTable);
+        await loadRecords(activeTable);
+        await loadPendingDrafts(activeMappedKey);
+      }
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Save failed' });
     }
@@ -345,12 +395,20 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
   const handleDelete = async () => {
     if (!editorState.record?.id || isNew) return;
     try {
-      await adminApi.delete(activeMappedKey, editorState.record.id);
-      dispatch({ type: 'CLEAR' });
-      setSelectedId(null);
-      setDeleteConfirm(false);
-      invalidateRefCache(activeTable);
-      await loadRecords(activeTable);
+      const result: any = await adminApi.delete(activeMappedKey, editorState.record.id);
+      if (result?.mode === 'draft') {
+        // Non-super-admin: delete draft submitted
+        dispatch({ type: 'SAVE_DRAFT', record: editorState.record, draftId: result.draftId, operation: 'delete' });
+        setDeleteConfirm(false);
+        await loadPendingDrafts(activeMappedKey);
+      } else {
+        dispatch({ type: 'CLEAR' });
+        setSelectedId(null);
+        setDeleteConfirm(false);
+        invalidateRefCache(activeTable);
+        await loadRecords(activeTable);
+        await loadPendingDrafts(activeMappedKey);
+      }
     } catch (e: any) {
       dispatch({ type: 'SAVE_ERR', error: e.message || 'Delete failed' });
     }
@@ -589,6 +647,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
             )}
             {filteredRecords.map(r => {
               const rowBadge = schema?.getRowBadge?.(r) ?? null;
+              const hasPendingDraft = !!pendingDrafts[r.id];
               return (
                 <div
                   key={r.id}
@@ -596,7 +655,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                   style={{
                     padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
                     background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
-                    borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
+                    borderLeft: selectedId === r.id ? '3px solid #a78bfa' : hasPendingDraft ? '3px solid #f59e0b' : '3px solid transparent',
                   }}
                   onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
                   onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
@@ -605,6 +664,16 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                     <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
                       {r.id}
                     </div>
+                    {hasPendingDraft && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                        padding: '1px 5px', borderRadius: 3,
+                        background: '#92400e', color: '#fbbf24',
+                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                      }}>
+                        DRAFT
+                      </span>
+                    )}
                     {rowBadge && (
                       <span style={{
                         fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
@@ -719,6 +788,25 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
         ) : (
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* PENDING REVIEW banner */}
+              {editorState.isDraftMode && (
+                <div style={{
+                  padding: '8px 20px',
+                  background: 'rgba(146, 64, 14, 0.25)',
+                  borderBottom: '1px solid rgba(245, 158, 11, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#fbbf24', textTransform: 'uppercase' }}>
+                    ⏳ {editorState.draftOperation === 'delete' ? 'DELETE' : 'EDIT'} PENDING REVIEW
+                  </span>
+                  <span style={{ fontSize: 11, color: '#d97706', flex: 1 }}>
+                    Changes are queued for approval and are not live yet.
+                  </span>
+                </div>
+              )}
               <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -733,7 +821,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                     {editorState.saveError}
                   </span>
                 )}
-                {!isNew && !deleteConfirm && (
+                {!isNew && !deleteConfirm && !editorState.isDraftMode && (
                   <>
                     <button
                       type="button"
@@ -775,22 +863,41 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                     </ul>
                   </details>
                 )}
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={editorState.saving || !editorState.dirty || structuredErrorCount > 0}
-                  title={structuredErrorCount > 0 ? 'Fix validation errors before saving' : undefined}
-                  style={{
-                    padding: '6px 16px', flexShrink: 0,
-                    background: editorState.dirty && structuredErrorCount === 0 ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
-                    border: 'none', borderRadius: 6, color: '#fff',
-                    cursor: editorState.dirty && structuredErrorCount === 0 ? 'pointer' : 'not-allowed',
-                    fontSize: 13, fontWeight: 600,
-                    opacity: editorState.saving ? 0.7 : 1,
-                  }}
-                >
-                  {editorState.saving ? 'Saving...' : 'Save'}
-                </button>
+                {!editorState.isDraftMode && (
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={editorState.saving || !editorState.dirty || structuredErrorCount > 0}
+                    title={structuredErrorCount > 0 ? 'Fix validation errors before saving' : undefined}
+                    style={{
+                      padding: '6px 16px', flexShrink: 0,
+                      background: editorState.dirty && structuredErrorCount === 0 ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
+                      border: 'none', borderRadius: 6, color: '#fff',
+                      cursor: editorState.dirty && structuredErrorCount === 0 ? 'pointer' : 'not-allowed',
+                      fontSize: 13, fontWeight: 600,
+                      opacity: editorState.saving ? 0.7 : 1,
+                    }}
+                  >
+                    {editorState.saving ? 'Saving...' : 'Save'}
+                  </button>
+                )}
+                {editorState.isDraftMode && editorState.dirty && (
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={editorState.saving || structuredErrorCount > 0}
+                    title="Submit updated draft for review"
+                    style={{
+                      padding: '6px 16px', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #92400e, #d97706)',
+                      border: 'none', borderRadius: 6, color: '#fff',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                      opacity: editorState.saving ? 0.7 : 1,
+                    }}
+                  >
+                    {editorState.saving ? 'Submitting...' : 'Resubmit Draft'}
+                  </button>
+                )}
               </div>
 
               {schema?.sections && schema.sections.length > 0 ? (

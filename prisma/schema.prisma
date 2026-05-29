@@ -1797,7 +1797,9 @@ model AdminAccount {
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt      @map("updated_at")
 
-  auditLogs     AdminAuditLog[]
+  auditLogs      AdminAuditLog[]
+  authoredDrafts ContentDraft[]  @relation("DraftAuthor")
+  reviewedDrafts ContentDraft[]  @relation("DraftReviewer")
 
   @@index([roleId])
   @@map("admin_accounts")
@@ -1840,4 +1842,41 @@ model GameDefinition {
   @@unique([type, key, version])
   @@index([type, key, isActive])
   @@map("game_definitions")
+}
+
+// ═══════════════════════════════════════════════════
+// CONTENT DRAFT & REVIEW
+// ═══════════════════════════════════════════════════
+
+enum ContentDraftOperation {
+  create
+  update
+  delete
+}
+
+enum ContentDraftStatus {
+  pending
+  approved
+  rejected
+}
+
+model ContentDraft {
+  id            String                 @id @default(uuid())
+  tableName     String                 @map("table_name")
+  recordId      String                 @map("record_id")
+  operation     ContentDraftOperation
+  payload       Json
+  status        ContentDraftStatus     @default(pending)
+  authorId      String                 @map("author_id")
+  author        AdminAccount           @relation("DraftAuthor",   fields: [authorId],   references: [id], onDelete: Cascade)
+  reviewerId    String?                @map("reviewer_id")
+  reviewer      AdminAccount?          @relation("DraftReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewComment String?                @map("review_comment")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt      @map("updated_at")
+
+  @@index([tableName, status])
+  @@index([authorId,  status])
+  @@index([status,    createdAt(sort: Desc)])
+  @@map("content_drafts")
 }

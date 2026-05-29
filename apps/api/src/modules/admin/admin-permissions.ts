@@ -21,7 +21,7 @@ export interface PermissionCheckResult {
   reason?: string;
 }
 
-const TABLE_KEY_TO_GROUP: Record<string, string> = {
+export const TABLE_KEY_TO_GROUP: Record<string, string> = {
   displayDef: 'UI',
   modalDef: 'UI',
   homeBannerDef: 'UI',
@@ -108,6 +108,21 @@ export function resolveRequiredPermission(
   // Account management: Super Admin only
   if (adminPath.startsWith('/accounts')) {
     return requireRole(user, 'super_admin');
+  }
+
+  // Content draft endpoints
+  if (adminPath.startsWith('/drafts')) {
+    // Approve / reject require approve permission
+    if (adminPath.includes('/approve') || adminPath.includes('/reject')) {
+      return requirePerm(user, 'approve');
+    }
+    // List / get drafts: any admin with read or approve
+    if (!isWrite) {
+      if (user.role === 'super_admin' || user.perms.read || user.perms.approve) return { allowed: true };
+      return { allowed: false, reason: "Requires 'read' or 'approve' permission" };
+    }
+    // Explicit draft creation (POST /drafts) is allowed for anyone with write permission
+    return requirePerm(user, 'write');
   }
 
   // Audit log: Super Admin + Senior Support

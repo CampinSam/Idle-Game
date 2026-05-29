@@ -2005,3 +2005,57 @@ List the authenticated player's on-chain deposit history (ledger entries with so
 - The bar is capped at **6** currencies regardless of how many have `showInTopBar = true`.
 - Changes take effect on the player's next page load (currency definitions are fetched at bootstrap).
 
+
+---
+
+## Content Draft & Review
+
+Non-super-admin writes to `POST/PUT/DELETE /admin/:table` are intercepted and stored as `ContentDraft` records awaiting approval. Super-admins write directly (audit-logged with `bypassReview: true`).
+
+### Draft response shape (non-super-admin writes)
+
+```json
+{
+  "mode": "draft",
+  "draftId": "uuid",
+  "tableName": "entityDefinition",
+  "recordId": "my_entity",
+  "operation": "create | update | delete",
+  "status": "pending",
+  "authorUsername": "alice"
+}
+```
+
+### `GET /admin/drafts`
+
+List content drafts. Requires `read` or `approve` permission.
+
+**Query params:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `status` | `pending\|approved\|rejected` | Filter by status (omit for all) |
+| `tableName` | string | Filter by table |
+| `recordId` | string | Filter by record ID |
+| `authorId` | string | Filter by author admin ID |
+| `limit` | integer | Max results (default 100) |
+| `offset` | integer | Pagination offset (default 0) |
+
+### `GET /admin/drafts/:id`
+
+Get a single draft. Includes `liveRecord` field with current DB state for diffing.
+
+### `POST /admin/drafts/:id/approve`
+
+Approve a draft — applies the change to the live database. Requires `approve` permission.
+Content-scope guards apply: reviewers may only approve drafts for tables within their assigned content scopes.
+
+### `POST /admin/drafts/:id/reject`
+
+Reject a draft. Requires `approve` permission.
+
+**Body:**
+
+```json
+{ "reviewComment": "optional reason" }
+```

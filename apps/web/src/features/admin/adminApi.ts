@@ -421,6 +421,25 @@ export const adminApi = {
       body: JSON.stringify(body),
     }),
 
+  // ─── Content Drafts ──────────────────────────────────────────────────────
+  listDrafts: (opts: { status?: string; tableName?: string; recordId?: string; authorId?: string; limit?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.status) params.set('status', opts.status);
+    if (opts.tableName) params.set('tableName', opts.tableName);
+    if (opts.recordId) params.set('recordId', opts.recordId);
+    if (opts.authorId) params.set('authorId', opts.authorId);
+    if (opts.limit) params.set('limit', String(opts.limit));
+    return adminRequest<any[]>(`/drafts?${params.toString()}`);
+  },
+
+  getDraft: (id: string) => adminRequest<any>(`/drafts/${id}`),
+
+  approveDraft: (id: string) =>
+    adminRequest<any>(`/drafts/${id}/approve`, { method: 'POST', body: JSON.stringify({}) }),
+
+  rejectDraft: (id: string, reviewComment?: string) =>
+    adminRequest<any>(`/drafts/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewComment }) }),
+
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();
     formData.append('file', file);
