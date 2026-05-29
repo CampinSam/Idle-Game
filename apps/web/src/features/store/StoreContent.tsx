@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNow } from '../../hooks/useNow';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
@@ -69,6 +69,153 @@ interface ShopSection {
   label: string;
   subtitle?: string;
   sortOrder: number;
+}
+
+interface ShopHero {
+  id: string;
+  headline: string;
+  subText?: string;
+  imageUrl?: string;
+  backgroundColor?: string;
+  ctaLabel?: string;
+  ctaTarget?: string;
+  sortOrder: number;
+  enabled: boolean;
+  limitedUntil?: string;
+}
+
+const HERO_AUTO_ADVANCE_MS = 5000;
+const HERO_PAUSE_MS = 10000;
+const HERO_SWIPE_THRESHOLD = 50;
+const HERO_TAP_THRESHOLD = 8;
+
+function StoreHeroCarousel({
+  heroes,
+  onTabSelect,
+}: {
+  heroes: ShopHero[];
+  onTabSelect: (tabId: string) => void;
+}) {
+  const now = useNow(30_000);
+  const activeHeroes = useMemo(
+    () => heroes.filter((h) => !h.limitedUntil || new Date(h.limitedUntil).getTime() > now),
+    [heroes, now],
+  );
+
+  const [page, setPage] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+  const suppressClickRef = useRef(false);
+
+  useEffect(() => () => { if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current); }, []);
+  useEffect(() => {
+    if (page >= activeHeroes.length && activeHeroes.length > 0) setPage(0);
+  }, [activeHeroes.length, page]);
+  useEffect(() => {
+    if (activeHeroes.length < 2 || paused) return;
+    const id = setInterval(() => setPage((p) => (p + 1) % activeHeroes.length), HERO_AUTO_ADVANCE_MS);
+    return () => clearInterval(id);
+  }, [activeHeroes.length, paused]);
+
+  const pauseAutoAdvance = useCallback(() => {
+    setPaused(true);
+    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = setTimeout(() => { setPaused(false); pauseTimerRef.current = null; }, HERO_PAUSE_MS);
+  }, []);
+
+  const handleCta = useCallback((hero: ShopHero) => {
+    pauseAutoAdvance();
+    if (!hero.ctaTarget) return;
+    if (hero.ctaTarget.startsWith('http')) {
+      window.open(hero.ctaTarget, '_blank', 'noopener,noreferrer');
+    } else {
+      onTabSelect(hero.ctaTarget);
+    }
+  }, [onTabSelect, pauseAutoAdvance]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  }, []);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  }, []);
+  const handleTouchEnd = useCallback((hero: ShopHero) => {
+    const delta = touchDeltaX.current;
+    const abs = Math.abs(delta);
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 400);
+    if (abs <= HERO_TAP_THRESHOLD) { handleCta(hero); return; }
+    if (abs < HERO_SWIPE_THRESHOLD || activeHeroes.length < 2) return;
+    pauseAutoAdvance();
+    if (delta < 0) setPage((p) => (p + 1) % activeHeroes.length);
+    else setPage((p) => (p - 1 + activeHeroes.length) % activeHeroes.length);
+  }, [activeHeroes.length, handleCta, pauseAutoAdvance]);
+
+  if (activeHeroes.length === 0) return null;
+
+  const activeIndex = Math.min(page, activeHeroes.length - 1);
+  const hero = activeHeroes[activeIndex];
+  const isCarousel = activeHeroes.length > 1;
+
+  return (
+    <div className="px-3.5 pt-3">
+      <div
+        className="relative rounded-[14px] overflow-hidden cursor-pointer select-none touch-pan-y border border-[rgba(139,92,246,0.3)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(139,92,246,0.3)]"
+        style={{ background: hero.backgroundColor || '#1a1640', minHeight: hero.imageUrl ? undefined : '120px' }}
+        onClick={() => { if (!suppressClickRef.current) handleCta(hero); }}
+        onTouchStart={isCarousel ? handleTouchStart : undefined}
+        onTouchMove={isCarousel ? handleTouchMove : undefined}
+        onTouchEnd={isCarousel ? () => handleTouchEnd(hero) : undefined}
+      >
+        {hero.imageUrl && (
+          <img src={hero.imageUrl} alt="" className="w-full h-[160px] object-cover block" />
+        )}
+        <div className={`${hero.imageUrl ? 'absolute inset-0' : ''} p-4 flex flex-col justify-center bg-gradient-to-br from-[rgba(15,10,40,0.85)] via-[rgba(30,20,60,0.55)] to-transparent`}>
+          <h3 className="font-cinzel text-[20px] max-[480px]:text-[16px] font-black tracking-[0.1em] text-[#f0e6ff] mb-0.5 [text-shadow:0_2px_8px_rgba(139,92,246,0.5)]">
+            {hero.headline.toUpperCase()}
+          </h3>
+          {hero.subText && (
+            <p className="text-[12px] text-[#c4b5fd] mb-2 leading-snug">{hero.subText}</p>
+          )}
+          {hero.ctaLabel && (
+            <button
+              className="self-start bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white border-0 rounded-lg px-4 py-1.5 text-xs font-extrabold tracking-[0.08em] cursor-pointer transition-transform hover:scale-105"
+              onClick={(e) => { e.stopPropagation(); handleCta(hero); }}
+            >
+              {hero.ctaLabel}
+            </button>
+          )}
+        </div>
+
+        {isCarousel && (
+          <div
+            className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-auto"
+            role="tablist"
+            aria-label="Store hero banner pagination"
+          >
+            {activeHeroes.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === activeIndex}
+                aria-label={`Banner ${i + 1} of ${activeHeroes.length}`}
+                className={`w-[7px] h-[7px] rounded-full border-0 p-0 cursor-pointer transition-all ${
+                  i === activeIndex
+                    ? 'bg-[#f0e6ff] scale-125 shadow-[0_0_6px_rgba(196,181,253,0.8)]'
+                    : 'bg-white/35 hover:bg-white/60'
+                }`}
+                onClick={(e) => { e.stopPropagation(); pauseAutoAdvance(); setPage(i); }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 interface LinkedWallet {
@@ -687,6 +834,7 @@ export default function StoreContent() {
   const [tabs, setTabs] = useState<ShopTab[]>([]);
   const [sections, setSections] = useState<ShopSection[]>([]);
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [heroes, setHeroes] = useState<ShopHero[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('featured');
 
@@ -722,6 +870,7 @@ export default function StoreContent() {
           setItems(data.items);
           setTabs(data.tabs ?? []);
           setSections(data.sections ?? []);
+          setHeroes(data.heroes ?? []);
           if (data.tabs?.length > 0) {
             setActiveTab((prev) =>
               data.tabs.find((t: ShopTab) => t.id === prev) ? prev : data.tabs[0].id
@@ -1067,6 +1216,8 @@ export default function StoreContent() {
       )}
 
       <div className="overflow-hidden flex flex-col flex-1 min-h-0">
+
+        <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
           {mainCurrencies.map((id) => (

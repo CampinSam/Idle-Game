@@ -1439,6 +1439,57 @@
       },
       "additionalProperties": false
     },
+    "ShopHeroDef": {
+      "type": "object",
+      "description": "A hero banner card displayed in the store carousel above the tab bar. Banners cycle automatically every 5 seconds and support swipe navigation.",
+      "required": ["headline"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Auto-generated CUID. Omit when creating."
+        },
+        "headline": {
+          "type": "string",
+          "description": "Main banner headline displayed in uppercase with Cinzel font."
+        },
+        "subText": {
+          "type": ["string", "null"],
+          "description": "Secondary line below the headline."
+        },
+        "imageUrl": {
+          "type": ["string", "null"],
+          "description": "Background image URL or asset key. Displayed at 160px height."
+        },
+        "backgroundColor": {
+          "type": ["string", "null"],
+          "description": "CSS background color used when no imageUrl is set or as an overlay base. Default: #1a1640."
+        },
+        "ctaLabel": {
+          "type": ["string", "null"],
+          "description": "Call-to-action button label. Leave null to hide the button."
+        },
+        "ctaTarget": {
+          "type": ["string", "null"],
+          "description": "CTA destination: a store tab ID (e.g. featured, gems) to switch tabs, or a full https:// URL to open externally."
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Position in the carousel. Lower = left-most / first."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disabled banners are hidden from all players."
+        },
+        "limitedUntil": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "ISO datetime — banner automatically hides after this time."
+        }
+      },
+      "additionalProperties": false
+    },
     "ShopTabDef": {
       "type": "object",
       "description": "A store tab that groups ShopItemDef rows in the player-facing store. Five canonical tabs are seeded automatically; additional tabs can be created by admins.",

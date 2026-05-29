@@ -1299,6 +1299,22 @@ model ShopItemDef {
   @@map("shop_item_defs")
 }
 
+model ShopHeroDef {
+  id              String    @id @default(cuid())
+  headline        String
+  subText         String?
+  imageUrl        String?
+  backgroundColor String?
+  ctaLabel        String?
+  ctaTarget       String?
+  sortOrder       Int       @default(0)
+  enabled         Boolean   @default(true)
+  limitedUntil    DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@map("shop_hero_defs")
+}
+
 model ShopTabDef {
   id                  String   @id
   name                String

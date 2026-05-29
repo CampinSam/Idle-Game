@@ -1353,6 +1353,35 @@ Get purchase status. Players can only fetch their own purchases.
 
 ---
 
+## Store Hero Banners — `ShopHeroDef` (Admin Smart Table)
+
+Hero banners are managed via the generic admin smart-editor at `GET /api/admin/shopHeroDef`.
+
+Banners are rendered as a swipeable carousel at the very top of the player store, above the tab bar. When no active banners exist the carousel collapses and the tab bar sits at the top as normal.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string (cuid) | auto | Auto-generated. Leave blank when creating. |
+| `headline` | string | ✓ | Main banner text. Displayed in uppercase with Cinzel font. |
+| `subText` | string | | Secondary line shown below the headline. |
+| `imageUrl` | string | | Background image URL or asset key (displayed at 160 px height). |
+| `backgroundColor` | string | | CSS background color used when no image is set, or as overlay base. Default `#1a1640`. |
+| `ctaLabel` | string | | Call-to-action button label (e.g. `Shop Now`). Leave blank to hide the button. |
+| `ctaTarget` | string | | CTA destination: a store tab ID (e.g. `featured`, `gems`, `bundle`) to switch tabs in-app, or a full `https://` URL to open externally. |
+| `sortOrder` | number | | Position in the carousel. Lower = appears first. Default `0`. |
+| `enabled` | boolean | | Disabled banners are hidden from all players. Default `true`. |
+| `limitedUntil` | datetime | | ISO datetime — banner automatically hides after this time. The API pre-filters expired banners; the frontend also filters via `serverNow()` so banners drop out in real time without a re-fetch. |
+
+### Carousel behaviour
+
+- **0 active banners** — carousel is hidden; store opens directly at the tab bar.
+- **1 active banner** — rendered as a static card (no dots, no swipe handling).
+- **2–5 active banners** — swipeable carousel with dot indicators and 5-second auto-advance. Auto-advance pauses 10 seconds after any user interaction (swipe, dot click, CTA tap).
+
+---
+
 ## Store Tabs — `ShopTabDef` (Admin Smart Table)
 
 Store tabs are managed via the generic admin smart-editor at `GET /api/admin/shopTabDef`.

@@ -132,7 +132,8 @@ export class ShopService implements OnApplicationBootstrap {
   }
 
   async findAll() {
-    const [tabs, sections, items] = await Promise.all([
+    const now = new Date();
+    const [tabs, sections, items, heroes] = await Promise.all([
       this.prisma.shopTabDef.findMany({
         where: { enabled: true },
         orderBy: { sortOrder: 'asc' },
@@ -144,8 +145,15 @@ export class ShopService implements OnApplicationBootstrap {
         where: { enabled: true },
         orderBy: [{ tab: 'asc' }, { displayOrder: 'asc' }],
       }),
+      this.prisma.shopHeroDef.findMany({
+        where: {
+          enabled: true,
+          OR: [{ limitedUntil: null }, { limitedUntil: { gt: now } }],
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
     ]);
-    return { tabs, sections, items };
+    return { tabs, sections, items, heroes };
   }
 
   async findOne(id: string) {
