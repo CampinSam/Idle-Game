@@ -33,6 +33,23 @@ export class PaymentController {
       ? origin.replace(/\/$/, '')
       : `${req.protocol}://${req.get('host')}`;
 
+    if (dto.shopItemDefId) {
+      if (dto.paymentMethod === 'crypto_evm') {
+        throw new BadRequestException('EVM payment is not supported for shop items.');
+      }
+      return this.paymentService.createShopItemPurchase(
+        userId,
+        dto.shopItemDefId,
+        dto.paymentMethod as 'stripe' | 'crypto_cardano',
+        `${baseUrl}/store?success=1`,
+        `${baseUrl}/store?cancelled=1`,
+      );
+    }
+
+    if (!dto.packId) {
+      throw new BadRequestException('Either packId or shopItemDefId is required.');
+    }
+
     return this.paymentService.createPurchase(
       userId,
       dto.packId,

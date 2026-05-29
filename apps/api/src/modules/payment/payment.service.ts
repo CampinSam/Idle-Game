@@ -112,6 +112,221 @@ export class PaymentService {
     throw new BadRequestException(`Payment method "${paymentMethod}" is not yet supported`);
   }
 
+  /**
+   * Create a purchase session for a ShopItemDef with real-money cost entries.
+   * Routes based on the cost entry type found in ShopItemDef.cost[]:
+   *   - type:"usd"              + paymentMethod:"stripe"          → Stripe ad-hoc checkout
+   *   - type:"usd" allowAda:true + paymentMethod:"crypto_cardano"  → ADA via live TWA rate
+   *   - type:"ada"              + paymentMethod:"crypto_cardano"  → flat lovelace (no oracle)
+   *   - type:"cnt"              + paymentMethod:"crypto_cardano"  → flat CNT on-chain (no oracle)
+   */
+  async createShopItemPurchase(
+    userId: string,
+    shopItemDefId: string,
+    paymentMethod: 'stripe' | 'crypto_cardano',
+    successUrl: string,
+    cancelUrl: string,
+  ): Promise<CreatePurchaseResult> {
+    if (paymentMethod === 'crypto_evm' as any) {
+      throw new BadRequestException('EVM payment is not supported for shop items.');
+    }
+
+    const item = await (this.prisma as any).shopItemDef.findUnique({ where: { id: shopItemDefId } });
+    if (!item) throw new NotFoundException(`Shop item "${shopItemDefId}" not found`);
+    if (!item.enabled) throw new BadRequestException('This item is currently unavailable');
+
+    const costEntries: Array<any> = Array.isArray(item.cost) ? item.cost : [];
+    const usdEntry = costEntries.find((c: any) => c.type === 'usd');
+    const adaEntry = costEntries.find((c: any) => c.type === 'ada');
+    const cntEntry = costEntries.find((c: any) => c.type === 'cnt');
+
+    if (paymentMethod === 'stripe') {
+      if (!usdEntry) {
+        throw new BadRequestException(
+          `"${item.name}" has no USD price. For ADA/CNT payment use paymentMethod: "crypto_cardano".`,
+        );
+      }
+      return this.createStripeShopItemPurchase(userId, shopItemDefId, item.name, usdEntry.amount, successUrl, cancelUrl);
+    }
+
+    // crypto_cardano: prefer usd+allowAda, then ada, then cnt
+    if (usdEntry?.allowAda) {
+      return this.createCardanoShopItemByUsd(userId, shopItemDefId, usdEntry.amount);
+    }
+    if (adaEntry) {
+      return this.createCardanoShopItemFlat(userId, shopItemDefId, BigInt(adaEntry.lovelaceAmount), 'ADA');
+    }
+    if (cntEntry) {
+      return this.createCardanoShopItemFlat(userId, shopItemDefId, BigInt(cntEntry.amount), 'CNT');
+    }
+
+    throw new BadRequestException(
+      `"${item.name}" has no Cardano-compatible price (ada, cnt, or usd+allowAda). ` +
+        `For Stripe payment use paymentMethod: "stripe".`,
+    );
+  }
+
+  private async createStripeShopItemPurchase(
+    userId: string,
+    shopItemDefId: string,
+    itemName: string,
+    usdAmount: number,
+    successUrl: string,
+    cancelUrl: string,
+  ): Promise<CreatePurchaseResult> {
+    let stripe: any;
+    try {
+      stripe = await getUncachableStripeClient();
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      const isNotConfigured =
+        msg.includes('Missing Replit environment variables') ||
+        msg.includes('Stripe integration not connected or missing secret key');
+      if (!isNotConfigured) throw err;
+      return { purchaseId: 'demo', action: { type: 'coming_soon' }, comingSoon: true };
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    let stripeCustomerId = user.stripeCustomerId ?? undefined;
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({ email: user.email, metadata: { userId } });
+      stripeCustomerId = customer.id;
+      await this.prisma.user.update({ where: { id: userId }, data: { stripeCustomerId } });
+    }
+
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        userId,
+        packId: shopItemDefId,
+        gemAmount: 0,
+        paymentMethod: PurchasePaymentMethod.STRIPE,
+        status: PurchaseStatus.PENDING,
+      },
+    });
+
+    const amountCents = Math.round(usdAmount * 100);
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: { name: itemName },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { purchaseId: purchase.id, shopItemDefId },
+    });
+
+    await this.prisma.purchase.update({
+      where: { id: purchase.id },
+      data: { stripeSessionId: session.id },
+    });
+
+    return { purchaseId: purchase.id, action: { type: 'redirect', url: session.url } };
+  }
+
+  private async createCardanoShopItemByUsd(
+    userId: string,
+    shopItemDefId: string,
+    usdAmount: number,
+  ): Promise<CreatePurchaseResult> {
+    const destinationAddress = process.env['PAYMENT_ADDRESS_CARDANO'];
+    const DEMO_ADA_ADDRESS =
+      'addr1qxy6nqz5kzqkxwkdqze3e0fq0ztq0xxjhx5z3t0pqzq5fkqzx0zqtq0qderpuniverse00000000000000000000000000000s67zjs';
+    const address = destinationAddress ?? DEMO_ADA_ADDRESS;
+    const comingSoon = !destinationAddress;
+
+    const snapshot = await this.adaRateService.getRateSnapshot(usdAmount);
+    const amountExpected = BigInt(snapshot['ADA/USD'].lovelaceAmount);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        userId,
+        packId: shopItemDefId,
+        gemAmount: 0,
+        paymentMethod: PurchasePaymentMethod.CRYPTO_CARDANO,
+        status: PurchaseStatus.PENDING,
+        chain: 'CARDANO',
+        destinationAddress: address,
+        amountExpected,
+        expiresAt,
+        rateSnapshot: snapshot as any,
+      },
+    });
+
+    const amountDisplay = `${(Number(amountExpected) / 1_000_000).toFixed(6)} ADA`;
+    return {
+      purchaseId: purchase.id,
+      comingSoon: comingSoon || undefined,
+      action: {
+        type: 'payment_address',
+        address,
+        amountExpected: amountExpected.toString(),
+        amountDisplay,
+        chain: 'CARDANO',
+        expiresAt: expiresAt.toISOString(),
+      } as any,
+    };
+  }
+
+  private async createCardanoShopItemFlat(
+    userId: string,
+    shopItemDefId: string,
+    amount: bigint,
+    denomination: 'ADA' | 'CNT',
+  ): Promise<CreatePurchaseResult> {
+    const destinationAddress = process.env['PAYMENT_ADDRESS_CARDANO'];
+    const DEMO_ADA_ADDRESS =
+      'addr1qxy6nqz5kzqkxwkdqze3e0fq0ztq0xxjhx5z3t0pqzq5fkqzx0zqtq0qderpuniverse00000000000000000000000000000s67zjs';
+    const address = destinationAddress ?? DEMO_ADA_ADDRESS;
+    const comingSoon = !destinationAddress;
+
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        userId,
+        packId: shopItemDefId,
+        gemAmount: 0,
+        paymentMethod: PurchasePaymentMethod.CRYPTO_CARDANO,
+        status: PurchaseStatus.PENDING,
+        chain: 'CARDANO',
+        destinationAddress: address,
+        amountExpected: amount,
+        expiresAt,
+        // No rateSnapshot — flat denomination, no oracle conversion
+      },
+    });
+
+    const amountDisplay =
+      denomination === 'ADA'
+        ? `${(Number(amount) / 1_000_000).toFixed(6)} ADA`
+        : `${amount.toString()} ${denomination}`;
+
+    return {
+      purchaseId: purchase.id,
+      comingSoon: comingSoon || undefined,
+      action: {
+        type: 'payment_address',
+        address,
+        amountExpected: amount.toString(),
+        amountDisplay,
+        chain: 'CARDANO',
+        expiresAt: expiresAt.toISOString(),
+      } as any,
+    };
+  }
+
   private async createCryptoPurchase(
     userId: string,
     packId: string,
