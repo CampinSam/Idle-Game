@@ -1817,6 +1817,30 @@ Returns the current time-weighted average ADA/USD rate and sample statistics.
 
 **Admin Records Editor:** `CryptoRateConfig` table is available in the admin panel under the **Payments** group. Fields: `oracleUrl`, `pollIntervalSeconds`, `twaWindowSeconds`, `fallbackLovelacePerUsd`, `enabled`.
 
+### `GET /api/admin/crypto/rates/ada/samples`
+
+Returns recent ADA rate samples from the oracle (read-only, for inspection).
+
+**Auth:** `X-Admin-Key`
+
+**Query params:**
+- `limit` — number of samples to return (default `50`, max `200`)
+
+**Response:** array ordered newest-first:
+```json
+[
+  {
+    "id": "17",
+    "usdPrice": 0.232627,
+    "lovelacePerUsd": "4298727",
+    "usdPerAda": 0.232627,
+    "fetchedAt": "2026-05-29T19:57:46.094Z"
+  }
+]
+```
+
+Samples older than 24 h are automatically pruned by the oracle poller.
+
 ---
 
 ## Crypto Wallet — `/api/admin/crypto`

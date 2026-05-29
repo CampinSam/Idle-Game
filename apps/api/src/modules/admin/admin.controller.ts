@@ -72,6 +72,7 @@ export class AdminController {
       { key: 'telemetryDef', name: 'Telemetry Definitions', table: 'telemetry_defs' },
       { key: 'gemPacks', name: 'Gem Pack Display', table: 'stripe.products' },
       { key: 'game-definitions', name: 'Game Definitions', table: 'game_definitions' },
+      { key: 'cryptoRateConfig', name: 'Crypto Rate Config', table: 'crypto_rate_configs' },
     ];
   }
 
