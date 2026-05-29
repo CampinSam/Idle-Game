@@ -155,7 +155,8 @@ export function resolveRequiredPermission(
     adminPath.startsWith('/events') ||
     adminPath.startsWith('/gifts') ||
     adminPath.startsWith('/global-powers') ||
-    adminPath.startsWith('/backfill')
+    adminPath.startsWith('/backfill') ||
+    adminPath.startsWith('/seeds')
   ) {
     return requirePerm(user, 'system_tools');
   }
@@ -193,6 +194,14 @@ export function resolveRequiredPermission(
   // Generic table CRUD (/:table and /:table/:id) — must come last
   const tableKey = adminPath.split('/').filter(Boolean)[0] ?? '';
   const group = TABLE_KEY_TO_GROUP[tableKey] ?? null;
+
+  // Deny-by-default: unrecognised paths that aren't in TABLE_KEY_TO_GROUP
+  // are not allowed for non-super-admins (prevents privilege escalation via
+  // new routes that haven't been explicitly enumerated above).
+  if (!group) {
+    if (user.role === 'super_admin') return { allowed: true };
+    return { allowed: false, reason: 'Access to this endpoint requires Super Admin role' };
+  }
 
   if (isWrite) return requireContentPerm(user, 'write', group);
   return requireContentPerm(user, 'read', group);

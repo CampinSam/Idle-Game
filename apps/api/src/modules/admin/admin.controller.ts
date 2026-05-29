@@ -771,8 +771,10 @@ export class AdminController {
   }
 
   @Post('seeds/nft-entities')
-  seedNftEntities() {
-    return this.nftCollectionService.seedNftEntities();
+  async seedNftEntities(@Req() req: any) {
+    const result = await this.nftCollectionService.seedNftEntities();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'seeds_nft_entities', diff: result });
+    return result;
   }
 
   @Get('balance/bundle')
