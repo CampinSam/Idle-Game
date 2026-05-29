@@ -72,11 +72,17 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
             .map((w) => w.address);
           if (cardanoAddresses.length === 0) continue;
 
+          // Extract CNT token identity from rateSnapshot (if this is a CNT purchase).
+          const snap = purchase.rateSnapshot as any;
+          const cntMeta: { policyId: string; assetName: string; amountExpected: string } | null =
+            snap?.CNT?.denomination === 'CNT' ? snap.CNT : null;
+
           txHash = await this.checkCardanoPayment(
             purchase.destinationAddress,
             purchase.amountExpected,
             purchase.createdAt,
             cardanoAddresses,
+            cntMeta ?? undefined,
           );
         } else if (purchase.paymentMethod === PurchasePaymentMethod.CRYPTO_EVM) {
           const evmAddresses = linkedWallets
@@ -112,16 +118,29 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Check for a confirmed Cardano payment to the treasury address.
+   *
+   * @param cntToken - When provided, validates a Cardano Native Token transfer
+   *   (policyId + assetName) instead of lovelace. The Blockfrost asset unit is
+   *   constructed as `policyId + assetName` (hex-concatenated, no separator).
+   *   If cntToken is omitted the check falls back to lovelace validation.
+   */
   private async checkCardanoPayment(
     destinationAddress: string,
     amountExpected: bigint,
     createdAt: Date,
     allowedSenderAddresses: string[],
+    cntToken?: { policyId: string; assetName: string; amountExpected: string },
   ): Promise<string | null> {
     const apiKey = process.env.BLOCKFROST_API_KEY;
     if (!apiKey) return null;
 
     const createdAtSec = Math.floor(createdAt.getTime() / 1000);
+
+    // Blockfrost native-asset unit = policyId + assetName (hex, no separator).
+    const cntUnit = cntToken ? `${cntToken.policyId}${cntToken.assetName}` : null;
+    const cntRequired = cntToken ? BigInt(cntToken.amountExpected) : null;
 
     try {
       const resp = await fetch(
@@ -153,12 +172,22 @@ export class CryptoPollerService implements OnModuleInit, OnModuleDestroy {
         );
         if (!senderMatch) continue;
 
-        // Verify at least one output sends sufficient ADA to our treasury.
+        // Verify at least one output sends the required token/amount to our treasury.
         for (const output of utxos.outputs ?? []) {
           if (output.address !== destinationAddress) continue;
-          const lovelace = output.amount?.find((a) => a.unit === 'lovelace');
-          if (lovelace && BigInt(lovelace.quantity) >= amountExpected) {
-            return tx_hash;
+
+          if (cntUnit && cntRequired !== null) {
+            // CNT path: verify the specific native asset quantity.
+            const cntAsset = output.amount?.find((a) => a.unit === cntUnit);
+            if (cntAsset && BigInt(cntAsset.quantity) >= cntRequired) {
+              return tx_hash;
+            }
+          } else {
+            // ADA/lovelace path.
+            const lovelace = output.amount?.find((a) => a.unit === 'lovelace');
+            if (lovelace && BigInt(lovelace.quantity) >= amountExpected) {
+              return tx_hash;
+            }
           }
         }
       }

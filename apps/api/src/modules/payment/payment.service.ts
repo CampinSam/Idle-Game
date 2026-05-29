@@ -157,7 +157,10 @@ export class PaymentService {
       return this.createCardanoShopItemFlat(userId, shopItemDefId, BigInt(adaEntry.lovelaceAmount), 'ADA');
     }
     if (cntEntry) {
-      return this.createCardanoShopItemFlat(userId, shopItemDefId, BigInt(cntEntry.amount), 'CNT');
+      return this.createCardanoShopItemFlat(userId, shopItemDefId, BigInt(cntEntry.amount), 'CNT', {
+        policyId: cntEntry.policyId,
+        assetName: cntEntry.assetName,
+      });
     }
 
     throw new BadRequestException(
@@ -284,6 +287,7 @@ export class PaymentService {
     shopItemDefId: string,
     amount: bigint,
     denomination: 'ADA' | 'CNT',
+    cntMeta?: { policyId: string; assetName: string },
   ): Promise<CreatePurchaseResult> {
     const destinationAddress = process.env['PAYMENT_ADDRESS_CARDANO'];
     const DEMO_ADA_ADDRESS =
@@ -292,6 +296,20 @@ export class PaymentService {
     const comingSoon = !destinationAddress;
 
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    // For CNT purchases, store token identity in rateSnapshot so the payment
+    // validator can deterministically verify the correct native asset, not lovelace.
+    const rateSnapshot: object | null =
+      denomination === 'CNT' && cntMeta
+        ? {
+            CNT: {
+              policyId: cntMeta.policyId,
+              assetName: cntMeta.assetName,
+              amountExpected: amount.toString(),
+              denomination: 'CNT',
+            },
+          }
+        : null;
 
     const purchase = await this.prisma.purchase.create({
       data: {
@@ -304,7 +322,7 @@ export class PaymentService {
         destinationAddress: address,
         amountExpected: amount,
         expiresAt,
-        // No rateSnapshot — flat denomination, no oracle conversion
+        ...(rateSnapshot ? { rateSnapshot } : {}),
       },
     });
 
