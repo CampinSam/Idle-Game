@@ -180,20 +180,19 @@ export async function seedDefinitions(prisma: any) {
       return copy;
     });
 
-    // Migration backfill: when these schema columns were first added, existing
-    // rows defaulted to showInTopBar=false. This conditional updateMany sets
-    // showInTopBar=true and the intended sortOrder only for currency rows that
-    // still carry the migration default (showInTopBar=false). Rows where an
-    // admin has already made an explicit change (showInTopBar=true or a
-    // non-zero sortOrder) are left untouched.
-    const topBarSeeds: { id: string; sortOrder: number }[] = defs.currencies
-      .filter((r: any) => r.showInTopBar === true)
-      .map((r: any) => ({ id: r.id, sortOrder: r.sortOrder ?? 0 }));
+    // Migration backfill: showInTopBar is nullable with no schema default, so
+    // when the column is first added to an existing DB (prisma db push), rows
+    // that existed before this field will have NULL. This updateMany runs for
+    // every boot but only writes to rows where showInTopBar IS NULL — meaning
+    // they have never been explicitly set. Once an admin toggles the value
+    // (true or false), it becomes non-null and is never touched again.
+    const topBarSeeds: { id: string; sortOrder: number; showInTopBar: boolean }[] = defs.currencies
+      .map((r: any) => ({ id: r.id, showInTopBar: r.showInTopBar ?? false, sortOrder: r.sortOrder ?? 0 }));
 
     for (const row of topBarSeeds) {
       await prisma.currency.updateMany({
-        where: { id: row.id, showInTopBar: false },
-        data: { showInTopBar: true, sortOrder: row.sortOrder },
+        where: { id: row.id, showInTopBar: null },
+        data: { showInTopBar: row.showInTopBar, sortOrder: row.sortOrder },
       });
     }
   }
