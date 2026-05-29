@@ -1130,6 +1130,7 @@ export class AdminController {
 
   @Get('drafts')
   listDrafts(
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('tableName') tableName?: string,
     @Query('recordId') recordId?: string,
@@ -1137,37 +1138,57 @@ export class AdminController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
+    const isSuperAdmin = req.adminUser.role === 'super_admin';
+    const canReview    = req.adminUser.perms?.approve === true;
+
+    // Creators without review permission may only see their own drafts
+    const enforcedAuthorId = (!isSuperAdmin && !canReview) ? req.adminUser.id : authorId;
+
     return this.adminDraftService.listDrafts({
       status,
       tableName,
       recordId,
-      authorId,
-      limit: limit ? parseInt(limit, 10) : 100,
+      authorId:   enforcedAuthorId,
+      limit:  limit  ? parseInt(limit,  10) : 100,
       offset: offset ? parseInt(offset, 10) : 0,
     });
   }
 
   @Get('drafts/:id')
-  getDraft(@Param('id') id: string) {
-    return this.adminDraftService.getDraft(id);
+  async getDraft(@Req() req: any, @Param('id') id: string) {
+    const draft = await this.adminDraftService.getDraft(id);
+    const isSuperAdmin = req.adminUser.role === 'super_admin';
+    const canReview    = req.adminUser.perms?.approve === true;
+
+    if (!isSuperAdmin) {
+      if ((draft as any).authorId === req.adminUser.id) return draft; // own draft — always allowed
+
+      if (!canReview) {
+        throw new ForbiddenException('You can only view your own drafts');
+      }
+
+      // Reviewer: must have the scope for this draft's table
+      const group = TABLE_KEY_TO_GROUP[(draft as any).tableName] ?? null;
+      if (group && !(req.adminUser.scopes ?? []).includes(group)) {
+        throw new ForbiddenException(
+          `Draft table '${(draft as any).tableName}' is not in your allowed content scopes`,
+        );
+      }
+    }
+
+    return draft;
   }
 
   @Post('drafts/:id/approve')
   async approveDraft(@Req() req: any, @Param('id') id: string) {
-    const result = await this.adminDraftService.approveDraft(
+    // Audit log is written atomically inside approveDraft (DB transaction for DB tables,
+    // best-effort for the gemPacks/Stripe path).
+    return this.adminDraftService.approveDraft(
       id,
       req.adminUser.id,
       req.adminUser.role,
       req.adminUser.scopes ?? [],
     );
-    await this.adminAuditService.log({
-      adminId: req.adminUser.id,
-      action: 'draft_approve',
-      tableName: result.tableName,
-      recordId: result.recordId,
-      metadata: { draftId: id, operation: result.operation },
-    });
-    return result;
   }
 
   @Post('drafts/:id/reject')
@@ -1184,11 +1205,11 @@ export class AdminController {
       body.reviewComment,
     );
     await this.adminAuditService.log({
-      adminId: req.adminUser.id,
-      action: 'draft_reject',
+      adminId:   req.adminUser.id,
+      action:    'draft_reject',
       tableName: result.tableName,
-      recordId: result.recordId,
-      metadata: { draftId: id, operation: result.operation, reviewComment: body.reviewComment },
+      recordId:  result.recordId,
+      metadata:  { draftId: id, operation: result.operation, reviewComment: body.reviewComment },
     });
     return result;
   }
