@@ -119,8 +119,9 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       const idxs: number[] = [];
       for (let i = 0; i < objectives.length; i++) {
         const obj = objectives[i];
-        if (!obj?.selector) continue;
-        const passes = this.selectionResolver.evaluateAll(obj.selector, contextWithEvent);
+        // evaluateAll returns true when selector is null/undefined, preserving
+        // the "count every matching event" behavior for objectives without a selector.
+        const passes = this.selectionResolver.evaluateAll(obj?.selector ?? null, contextWithEvent);
         if (passes) idxs.push(i);
       }
       if (idxs.length > 0) matchingDefs.push({ def, objectiveIdxs: idxs });

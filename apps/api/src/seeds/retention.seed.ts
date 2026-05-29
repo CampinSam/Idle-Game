@@ -76,6 +76,39 @@ const DAILY_QUESTS = [
     sortOrder: 30,
     enabled: true,
   },
+  // Demonstrates the selector field: only mission_complete events with
+  // amount >= 1 increment this objective. The selector uses event.type eq
+  // so it won't fire for crafting, check-in, or any other event type.
+  {
+    id: 'q_daily_swift_missions',
+    name: 'Swift Missions',
+    description: 'Complete 2 missions today using the selector filter.',
+    category: 'daily',
+    cadence: 'daily',
+    repeatable: true,
+    objectives: [
+      {
+        description: 'Complete 2 missions',
+        target: 2,
+        selector: {
+          op: 'AND',
+          rules: [
+            {
+              scope: 'event',
+              field: 'type',
+              operator: 'eq',
+              value: 'mission_complete',
+            },
+          ],
+        },
+      },
+    ],
+    rewardSpec: [
+      { type: 'currency', key: 'soft_arcanium', min: 80, max: 80 },
+    ],
+    sortOrder: 35,
+    enabled: true,
+  },
 ];
 
 const WEEKLY_QUESTS = [
