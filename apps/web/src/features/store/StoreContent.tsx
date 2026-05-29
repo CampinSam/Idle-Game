@@ -58,6 +58,7 @@ interface ShopTab {
   name: string;
   tabType: string;
   layout: string;
+  ungroupedPlacement: string;
   sortOrder: number;
   enabled: boolean;
 }
@@ -896,23 +897,27 @@ export default function StoreContent() {
 
   function renderTabItemsWithSections() {
     const layout = activeTabDef?.layout ?? 'grid-2';
+    const placeBefore = (activeTabDef?.ungroupedPlacement ?? 'before') === 'before';
     if (tabSections.length === 0) {
       return renderItemGroup(tabItems, layout);
     }
     const ungrouped = tabItems.filter((i) => !i.sectionId);
+    const sectionedBlock = tabSections.map((section) => {
+      const sectionItems = tabItems.filter((i) => i.sectionId === section.id);
+      if (sectionItems.length === 0) return null;
+      return (
+        <div key={section.id} className="flex flex-col gap-2">
+          <SectionHeader label={section.label} subtitle={section.subtitle} />
+          {renderItemGroup(sectionItems, layout)}
+        </div>
+      );
+    });
+    const ungroupedBlock = ungrouped.length > 0 ? renderItemGroup(ungrouped, layout) : null;
     return (
       <div className="flex flex-col gap-3">
-        {ungrouped.length > 0 && renderItemGroup(ungrouped, layout)}
-        {tabSections.map((section) => {
-          const sectionItems = tabItems.filter((i) => i.sectionId === section.id);
-          if (sectionItems.length === 0) return null;
-          return (
-            <div key={section.id} className="flex flex-col gap-2">
-              <SectionHeader label={section.label} subtitle={section.subtitle} />
-              {renderItemGroup(sectionItems, layout)}
-            </div>
-          );
-        })}
+        {placeBefore ? ungroupedBlock : null}
+        {sectionedBlock}
+        {!placeBefore ? ungroupedBlock : null}
       </div>
     );
   }

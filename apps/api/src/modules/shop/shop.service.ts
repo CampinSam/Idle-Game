@@ -2,11 +2,11 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const CANONICAL_TABS = [
-  { id: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', sortOrder: 0, enabled: true },
-  { id: 'gems',      name: '💎 Gems',     tabType: 'gems_packs', layout: 'grid-3',   sortOrder: 1, enabled: true },
-  { id: 'currency',  name: 'Currencies',  tabType: 'items',      layout: 'grid-3',   sortOrder: 2, enabled: true },
-  { id: 'bundle',    name: 'Bundles',     tabType: 'items',      layout: 'grid-2',   sortOrder: 3, enabled: true },
-  { id: 'items',     name: 'Items',       tabType: 'items',      layout: 'grid-2',   sortOrder: 4, enabled: true },
+  { id: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', ungroupedPlacement: 'before', sortOrder: 0, enabled: true },
+  { id: 'gems',      name: '💎 Gems',     tabType: 'gems_packs', layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 1, enabled: true },
+  { id: 'currency',  name: 'Currencies',  tabType: 'items',      layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 2, enabled: true },
+  { id: 'bundle',    name: 'Bundles',     tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 3, enabled: true },
+  { id: 'items',     name: 'Items',       tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 4, enabled: true },
 ];
 
 @Injectable()

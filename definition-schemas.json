@@ -1464,6 +1464,12 @@
           "default": "grid-2",
           "description": "Card layout: featured = full-width cards, grid-3 = 3-column currency cards, grid-2 = 2-column item/bundle cards."
         },
+        "ungroupedPlacement": {
+          "type": "string",
+          "enum": ["before", "after"],
+          "default": "before",
+          "description": "Where items with no sectionId appear relative to named sections. before = above all sections (default), after = below all sections."
+        },
         "sortOrder": {
           "type": "integer",
           "default": 0,

@@ -1300,13 +1300,14 @@ model ShopItemDef {
 }
 
 model ShopTabDef {
-  id        String   @id
-  name      String
-  tabType   String   @default("items")
-  layout    String   @default("grid-2")
-  sortOrder Int      @default(0)
-  enabled   Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id                  String   @id
+  name                String
+  tabType             String   @default("items")
+  layout              String   @default("grid-2")
+  ungroupedPlacement  String   @default("before")
+  sortOrder           Int      @default(0)
+  enabled             Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
   sections  ShopSectionDef[]
 

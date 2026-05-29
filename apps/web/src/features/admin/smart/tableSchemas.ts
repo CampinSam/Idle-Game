@@ -403,6 +403,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       name: { type: 'string', required: true, description: 'Label shown in the player-facing tab strip (supports emoji, e.g. 💎 Gems)' },
       tabType: { type: 'options', options: ['items', 'gems_packs'], default: 'items', description: 'items = renders ShopItemDef rows; gems_packs = renders the special gem packs + Derp Pass UI' },
       layout: { type: 'options', options: ['featured', 'grid-3', 'grid-2'], default: 'grid-2', description: 'Card layout: featured = full-width cards, grid-3 = 3-column currency cards, grid-2 = 2-column item/bundle cards' },
+      ungroupedPlacement: { type: 'options', options: ['before', 'after'], default: 'before', description: 'Whether ungrouped items (no sectionId) appear before or after section groups within the tab' },
       sortOrder: { type: 'number', default: 0, description: 'Left-to-right tab order (lower = further left)' },
       enabled: { type: 'boolean', default: true, description: 'Disabled tabs are hidden from all players' },
     },

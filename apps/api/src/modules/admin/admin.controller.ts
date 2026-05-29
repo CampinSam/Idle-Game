@@ -56,6 +56,8 @@ export class AdminController {
       { key: 'bundleDef', name: 'Bundle Definitions', table: 'bundle_defs' },
       { key: 'checkInDef', name: 'Check-In Definitions', table: 'checkin_defs' },
       { key: 'questDef', name: 'Quest Definitions', table: 'quest_defs' },
+      { key: 'shopTabDef', name: 'Shop Tab Definitions', table: 'shop_tab_defs' },
+      { key: 'shopSectionDef', name: 'Shop Section Definitions', table: 'shop_section_defs' },
       { key: 'shopItemDef', name: 'Shop Item Definitions', table: 'shop_item_defs' },
       { key: 'nftCollectionDef', name: 'NFT Collection Definitions', table: 'nft_collection_defs' },
       { key: 'modalDef', name: 'Modal Definitions', table: 'modal_defs' },

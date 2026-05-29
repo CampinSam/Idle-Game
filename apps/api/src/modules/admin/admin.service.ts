@@ -1102,6 +1102,8 @@ export class AdminService {
       checkInDef: (this.prisma as any).checkInDef,
       questDef: (this.prisma as any).questDef,
       shopItemDef: (this.prisma as any).shopItemDef,
+      shopTabDef: (this.prisma as any).shopTabDef,
+      shopSectionDef: (this.prisma as any).shopSectionDef,
       nftCollectionDef: (this.prisma as any).nftCollectionDef,
       modalDef: (this.prisma as any).modalDef,
       effectDef: (this.prisma as any).effectDef,

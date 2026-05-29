@@ -1367,6 +1367,7 @@ Five canonical tabs are seeded automatically on startup (`featured`, `gems`, `cu
 | `name` | string | ✓ | Label shown in the player-facing tab strip. Supports emoji (e.g. `💎 Gems`). |
 | `tabType` | enum | | `items` (default) — renders `ShopItemDef` rows. `gems_packs` — renders the special gem packs + Derp Pass UI. |
 | `layout` | enum | | Card layout within the tab. `featured` = full-width cards, `grid-3` = 3-column currency cards, `grid-2` = 2-column item/bundle cards (default). |
+| `ungroupedPlacement` | enum | | Where items with no `sectionId` appear relative to sections. `before` (default) = above all sections, `after` = below all sections. |
 | `sortOrder` | number | | Left-to-right tab order. Lower = further left. Default `0`. |
 | `enabled` | boolean | | Disabled tabs are hidden from all players. Default `true`. |
 
