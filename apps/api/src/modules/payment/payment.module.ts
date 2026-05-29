@@ -11,9 +11,10 @@ import { CryptoRatesAdminController } from './crypto-rates-admin.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { NotificationModule } from '../notification/notification.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
-  imports: [PrismaModule, CurrencyModule, NotificationModule],
+  imports: [PrismaModule, CurrencyModule, NotificationModule, InventoryModule],
   controllers: [PaymentController, CryptoWalletController, CryptoRatesAdminController],
   providers: [PaymentService, PurchaseEventBus, CryptoPollerService, AdaRateService, AdaOraclePoller, CryptoWalletService],
   exports: [PaymentService, PurchaseEventBus, CryptoWalletService, AdaRateService],

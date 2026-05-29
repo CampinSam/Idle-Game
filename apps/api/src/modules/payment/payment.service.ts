@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { PurchaseEventBus } from './purchase-event.bus';
 import { AdaRateService } from './ada-rate.service';
 import { getUncachableStripeClient } from '../../stripe/stripe-client';
@@ -36,6 +37,7 @@ export class PaymentService {
   constructor(
     private prisma: PrismaService,
     private currencyService: CurrencyService,
+    private inventoryService: InventoryService,
     private purchaseEventBus: PurchaseEventBus,
     private adaRateService: AdaRateService,
   ) {}
@@ -537,14 +539,54 @@ export class PaymentService {
       // We won the race — read the row to get userId/gemAmount for crediting.
       const purchase = await tx.purchase.findUniqueOrThrow({ where: { id: purchaseId } });
 
-      await this.currencyService.creditTx(tx as any, {
-        userId: purchase.userId,
-        currencyId: 'premium_gems',
-        amount: purchase.gemAmount,
-        reason: `Gem purchase: ${purchase.packId}`,
-        sourceType: 'purchase',
-        sourceId: purchaseId,
-      });
+      // Determine if this purchase is for a ShopItemDef (packId = shopItemDef.id).
+      // ShopItemDef purchases carry gemAmount=0 and deliver arbitrary contents;
+      // gem-pack purchases carry gemAmount>0 and credit premium_gems directly.
+      const shopItem = await (tx as any).shopItemDef.findUnique({ where: { id: purchase.packId } });
+
+      if (shopItem) {
+        // ── ShopItemDef fulfillment ──────────────────────────────────────────
+        const contents: Array<{ type: string; id: string; amount: number }> =
+          Array.isArray(shopItem.contents) ? shopItem.contents : [];
+
+        for (const content of contents) {
+          if (!content.amount || content.amount <= 0) continue;
+          if (content.type === 'currency') {
+            await this.currencyService.creditTx(tx as any, {
+              userId: purchase.userId,
+              currencyId: content.id,
+              amount: content.amount,
+              reason: `Shop purchase: ${shopItem.name}`,
+              sourceType: 'purchase',
+              sourceId: purchaseId,
+            });
+          } else if (content.type === 'item') {
+            await this.inventoryService.addItemTx(tx as any, {
+              userId: purchase.userId,
+              itemId: content.id,
+              quantity: content.amount,
+              reason: `Shop purchase: ${shopItem.name}`,
+              sourceType: 'purchase',
+              sourceId: purchaseId,
+            });
+          } else if (content.type === 'outpost_slots') {
+            await (tx as any).user.update({
+              where: { id: purchase.userId },
+              data: { bonusOutpostSlots: { increment: content.amount } },
+            });
+          }
+        }
+      } else {
+        // ── Gem-pack fulfillment ─────────────────────────────────────────────
+        await this.currencyService.creditTx(tx as any, {
+          userId: purchase.userId,
+          currencyId: 'premium_gems',
+          amount: purchase.gemAmount,
+          reason: `Gem purchase: ${purchase.packId}`,
+          sourceType: 'purchase',
+          sourceId: purchaseId,
+        });
+      }
 
       confirmedPurchase = {
         purchaseId: purchase.id,
