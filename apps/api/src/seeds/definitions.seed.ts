@@ -180,24 +180,20 @@ export async function seedDefinitions(prisma: any) {
       return copy;
     });
 
-    // One-time backfill: when schema columns are first added, existing rows
-    // default to showInTopBar=false and sortOrder=0. Push the intended seed
-    // values onto rows that still carry the post-migration defaults so that
-    // canonical currencies appear in the top bar without requiring manual admin
-    // action. Only the three new fields are touched; all other columns retain
-    // whatever the admin or earlier seeds have set.
-    const canonicalTopBarUpdates: { id: string; showInTopBar: boolean; sortOrder: number; enabled: boolean }[] =
-      defs.currencies
-        .filter((r: any) => r.showInTopBar === true || r.enabled === false)
-        .map((r: any) => ({ id: r.id, showInTopBar: r.showInTopBar ?? false, sortOrder: r.sortOrder ?? 0, enabled: r.enabled ?? true }));
+    // Migration backfill: when these schema columns were first added, existing
+    // rows defaulted to showInTopBar=false. This conditional updateMany sets
+    // showInTopBar=true and the intended sortOrder only for currency rows that
+    // still carry the migration default (showInTopBar=false). Rows where an
+    // admin has already made an explicit change (showInTopBar=true or a
+    // non-zero sortOrder) are left untouched.
+    const topBarSeeds: { id: string; sortOrder: number }[] = defs.currencies
+      .filter((r: any) => r.showInTopBar === true)
+      .map((r: any) => ({ id: r.id, sortOrder: r.sortOrder ?? 0 }));
 
-    for (const row of canonicalTopBarUpdates) {
-      await prisma.currency.update({
-        where: { id: row.id },
-        data: { showInTopBar: row.showInTopBar, sortOrder: row.sortOrder, enabled: row.enabled },
-      }).catch(() => {
-        // Row may not exist yet (just created by upsertMany above — already
-        // has the correct seed values). Ignore the not-found error.
+    for (const row of topBarSeeds) {
+      await prisma.currency.updateMany({
+        where: { id: row.id, showInTopBar: false },
+        data: { showInTopBar: true, sortOrder: row.sortOrder },
       });
     }
   }

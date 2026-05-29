@@ -105,6 +105,9 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       isSpendable: { type: 'boolean', default: true, description: 'Can be spent?' },
       decimals: { type: 'number', default: 0, description: 'Decimal precision' },
       cap: { type: 'number', description: 'Max amount (blank = unlimited)' },
+      enabled: { type: 'boolean', default: true, description: 'Enabled? Disabled currencies are hidden across all game systems' },
+      showInTopBar: { type: 'boolean', default: false, description: 'Show in player top bar? Only currencies with this on appear in the HUD' },
+      sortOrder: { type: 'number', default: 0, description: 'Top-bar display order — lower = further left. Ties broken alphabetically' },
     },
   },
   ItemDef: {
