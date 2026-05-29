@@ -1462,7 +1462,7 @@ function Dashboard({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
     ...(perms.system_tools ? [{ key: 'crypto' as Tab, label: 'Crypto Wallet', icon: Wallet }] : []),
     ...(perms.system_tools ? [{ key: 'tools' as Tab, label: 'Tools', icon: Wrench }] : []),
     ...(isSuperAdmin ? [{ key: 'accounts' as Tab, label: 'Accounts', icon: UserCog }] : []),
-    ...(isSuperAdmin ? [{ key: 'audit' as Tab, label: 'Audit Log', icon: FileText }] : []),
+    ...((isSuperAdmin || me?.role?.slug === 'senior_support') ? [{ key: 'audit' as Tab, label: 'Audit Log', icon: FileText }] : []),
   ];
 
   const [tab, setTab] = useState<Tab>(tabs[0]?.key ?? 'players');

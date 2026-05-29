@@ -298,39 +298,51 @@ export class AdminController {
   }
 
   @Put('players/:id')
-  updatePlayer(
+  async updatePlayer(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { keeperLevel?: number; keeperXp?: number | string; flags?: any; prestigeTokens?: number },
   ) {
-    return this.adminService.updatePlayer(id, body);
+    const result = await this.adminService.updatePlayer(id, body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_update', recordId: id, diff: body });
+    return result;
   }
 
   @Put('players/:id/currency')
-  setPlayerCurrency(
+  async setPlayerCurrency(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { currencyId: string; balance: string | number },
   ) {
-    return this.adminService.setPlayerCurrency(id, body.currencyId, body.balance);
+    const result = await this.adminService.setPlayerCurrency(id, body.currencyId, body.balance);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_set_currency', recordId: id, diff: body });
+    return result;
   }
 
   @Post('players/:id/reset')
-  resetPlayer(@Param('id') id: string) {
-    return this.adminService.resetPlayer(id);
+  async resetPlayer(@Req() req: any, @Param('id') id: string) {
+    const result = await this.adminService.resetPlayer(id);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_reset', recordId: id });
+    return result;
   }
 
   @Post('players/:id/generate-reset-link')
-  generateResetLink(
+  async generateResetLink(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { appUrl?: string },
   ) {
-    return this.authService.adminGenerateResetLink(id, body?.appUrl);
+    const result = await this.authService.adminGenerateResetLink(id, body?.appUrl);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_generate_reset_link', recordId: id });
+    return result;
   }
 
   @Post('notifications/send')
-  sendNotification(
+  async sendNotification(
+    @Req() req: any,
     @Body() body: { userId: string; type: string; category: string; priority: string; title: string; body: string },
   ) {
-    return this.notificationService.createNotification({
+    const result = await this.notificationService.createNotification({
       userId: body.userId,
       type: body.type,
       category: body.category,
@@ -338,23 +350,29 @@ export class AdminController {
       title: body.title,
       body: body.body,
     });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'notification_send', recordId: body.userId, diff: { type: body.type, title: body.title } });
+    return result;
   }
 
   @Post('events/dispatch')
-  dispatchEvent(
+  async dispatchEvent(
+    @Req() req: any,
     @Body() body: { userId: string; defId: string; payload?: any },
   ) {
-    return this.eventService.dispatch(body.defId, body.payload || {}, {
+    const result = await this.eventService.dispatch(body.defId, body.payload || {}, {
       userId: body.userId,
       sourceType: 'admin',
     });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'event_dispatch', recordId: body.userId, diff: { defId: body.defId } });
+    return result;
   }
 
   @Post('gifts/send')
-  sendGift(
+  async sendGift(
+    @Req() req: any,
     @Body() body: { userId: string; giftDefId: string; contextData?: Record<string, unknown> },
   ) {
-    return this.giftService.createGiftForPlayer(
+    const result = await this.giftService.createGiftForPlayer(
       body.userId,
       { giftDefId: body.giftDefId },
       'admin',
@@ -362,30 +380,40 @@ export class AdminController {
       undefined,
       body.contextData,
     );
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'gift_send', recordId: body.userId, diff: { giftDefId: body.giftDefId } });
+    return result;
   }
 
   @Post('backfill/item-rarity')
-  async backfillItemRarity() {
-    return this.adminService.backfillItemRarity();
+  async backfillItemRarity(@Req() req: any) {
+    const result = await this.adminService.backfillItemRarity();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_item_rarity' });
+    return result;
   }
 
   @Post('backfill/entity-stats')
-  async backfillEntityStats() {
-    return this.adminService.backfillEntityStats();
+  async backfillEntityStats(@Req() req: any) {
+    const result = await this.adminService.backfillEntityStats();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_entity_stats' });
+    return result;
   }
 
   @Post('backfill/nft-metadata')
-  async backfillNftMetadata() {
-    return this.nftCollectionService.backfillNftMetadata();
+  async backfillNftMetadata(@Req() req: any) {
+    const result = await this.nftCollectionService.backfillNftMetadata();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_nft_metadata' });
+    return result;
   }
 
   @Post('backfill/nft-entity-traits')
-  async rebuildNftEntityTraits(@Query('collectionId') collectionId?: string) {
-    return this.nftCollectionService.rebuildNftEntityTraits(collectionId);
+  async rebuildNftEntityTraits(@Req() req: any, @Query('collectionId') collectionId?: string) {
+    const result = await this.nftCollectionService.rebuildNftEntityTraits(collectionId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_nft_entity_traits', diff: { collectionId } });
+    return result;
   }
 
   @Post('backfill/production-rates')
-  async backfillProductionRates() {
+  async backfillProductionRates(@Req() req: any) {
     const locations = await (this.prisma as any).locationInstance.findMany({
       select: { id: true },
     });
@@ -400,6 +428,7 @@ export class AdminController {
         failed++;
       }
     }
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'backfill_production_rates', diff: { total: locations.length, updated, failed } });
     return { total: locations.length, updated, failed };
   }
 
@@ -586,16 +615,21 @@ export class AdminController {
   }
 
   @Post('players/:id/jobs/:jobId/force-complete')
-  forceCompleteJob(@Param('id') id: string, @Param('jobId') jobId: string) {
-    return this.adminService.forceCompleteJob(id, jobId);
+  async forceCompleteJob(@Req() req: any, @Param('id') id: string, @Param('jobId') jobId: string) {
+    const result = await this.adminService.forceCompleteJob(id, jobId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'job_force_complete', recordId: id, diff: { jobId } });
+    return result;
   }
 
   @Post('players/:id/items')
-  grantItems(
+  async grantItems(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { itemId: string; quantity: number },
   ) {
-    return this.adminService.grantItems(id, body.itemId, body.quantity);
+    const result = await this.adminService.grantItems(id, body.itemId, body.quantity);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_grant_items', recordId: id, diff: body });
+    return result;
   }
 
   @Get('players/:id/items')
@@ -609,17 +643,22 @@ export class AdminController {
   }
 
   @Put('players/:id/entities/:entityId')
-  updatePlayerEntity(
+  async updatePlayerEntity(
+    @Req() req: any,
     @Param('id') id: string,
     @Param('entityId') entityId: string,
     @Body() body: { stats?: any; level?: number; name?: string },
   ) {
-    return this.adminService.updatePlayerEntity(id, entityId, body);
+    const result = await this.adminService.updatePlayerEntity(id, entityId, body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_update_entity', recordId: entityId, diff: body, metadata: { userId: id } });
+    return result;
   }
 
   @Post('players/:id/locations/:locationId/settle')
-  forceSettleLocation(@Param('id') id: string, @Param('locationId') locationId: string) {
-    return this.adminService.forceSettleLocation(id, locationId);
+  async forceSettleLocation(@Req() req: any, @Param('id') id: string, @Param('locationId') locationId: string) {
+    const result = await this.adminService.forceSettleLocation(id, locationId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'location_force_settle', recordId: locationId, metadata: { userId: id } });
+    return result;
   }
 
   @Get('players/:id/effects')
@@ -628,8 +667,10 @@ export class AdminController {
   }
 
   @Delete('players/:id/effects/:effectId')
-  deletePlayerEffect(@Param('id') id: string, @Param('effectId') effectId: string) {
-    return this.adminService.deletePlayerEffect(id, effectId);
+  async deletePlayerEffect(@Req() req: any, @Param('id') id: string, @Param('effectId') effectId: string) {
+    const result = await this.adminService.deletePlayerEffect(id, effectId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_delete_effect', recordId: effectId, metadata: { userId: id } });
+    return result;
   }
 
   @Get('players/:id/wallets')
@@ -639,6 +680,7 @@ export class AdminController {
 
   @Post('players/:id/wallets')
   async addPlayerWallet(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { chain: string; address: string },
   ) {
@@ -647,20 +689,26 @@ export class AdminController {
       throw new BadRequestException('chain and address are required');
     }
     await this.walletService.addManualWallet(id, chain, address);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_add_wallet', recordId: id, diff: { chain } });
     return { success: true };
   }
 
   @Delete('players/:id/wallets/:walletId')
-  removePlayerWallet(@Param('id') id: string, @Param('walletId') walletId: string) {
-    return this.walletService.adminRemoveWallet(id, walletId);
+  async removePlayerWallet(@Req() req: any, @Param('id') id: string, @Param('walletId') walletId: string) {
+    const result = await this.walletService.adminRemoveWallet(id, walletId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_remove_wallet', recordId: walletId, metadata: { userId: id } });
+    return result;
   }
 
   @Post('players/:userId/entities/:entityId/reconcile-status')
-  reconcileEntityStatus(
+  async reconcileEntityStatus(
+    @Req() req: any,
     @Param('userId') userId: string,
     @Param('entityId') entityId: string,
   ) {
-    return this.adminService.reconcileEntityStatus(userId, entityId);
+    const result = await this.adminService.reconcileEntityStatus(userId, entityId);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'entity_reconcile_status', recordId: entityId, metadata: { userId } });
+    return result;
   }
 
   @Get('players/:userId/entities/:entityId/power-usage')
@@ -672,12 +720,15 @@ export class AdminController {
   }
 
   @Delete('players/:userId/entities/:entityId/power-usage/:powerKey')
-  resetEntityPowerUsage(
+  async resetEntityPowerUsage(
+    @Req() req: any,
     @Param('userId') userId: string,
     @Param('entityId') entityId: string,
     @Param('powerKey') powerKey: string,
   ) {
-    return this.adminService.resetEntityPowerUsage(userId, entityId, powerKey);
+    const result = await this.adminService.resetEntityPowerUsage(userId, entityId, powerKey);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'entity_reset_power_usage', recordId: entityId, diff: { powerKey }, metadata: { userId } });
+    return result;
   }
 
   @Get('players/:id/telemetry')
@@ -792,11 +843,14 @@ export class AdminController {
   }
 
   @Put('players/:id/bonus-outpost-slots')
-  setBonusOutpostSlots(
+  async setBonusOutpostSlots(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { slots: number },
   ) {
-    return this.adminService.setBonusOutpostSlots(id, body.slots);
+    const result = await this.adminService.setBonusOutpostSlots(id, body.slots);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_set_bonus_slots', recordId: id, diff: body });
+    return result;
   }
 
   // ─── Effect Defs (read-only for admin power creation) ───────────────────────
@@ -822,6 +876,7 @@ export class AdminController {
 
   @Post('global-powers')
   async createGlobalPower(
+    @Req() req: any,
     @Body() body: {
       label: string;
       /** null → tick_speed_boost (uses BoostEvent machinery, not effect resolver) */
@@ -836,7 +891,7 @@ export class AdminController {
     if (!body.label) throw new BadRequestException('label is required');
     if (body.effectDefId === undefined) throw new BadRequestException('effectDefId is required (use null for tick_speed_boost)');
     if (!body.durationMinutes) throw new BadRequestException('durationMinutes is required');
-    return this.globalPowerService.createPower({
+    const result = await this.globalPowerService.createPower({
       label: body.label,
       effectDefId: body.effectDefId,
       effectOverrides: body.effectOverrides as any,
@@ -845,11 +900,15 @@ export class AdminController {
       scheduledFor: body.scheduledFor,
       triggeredByUserId: body.triggeredByUserId,
     });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'global_power_create', diff: { label: body.label, effectDefId: body.effectDefId, durationMinutes: body.durationMinutes } });
+    return result;
   }
 
   @Delete('global-powers/:id')
-  cancelGlobalPower(@Param('id') id: string) {
-    return this.globalPowerService.cancelPower(id);
+  async cancelGlobalPower(@Req() req: any, @Param('id') id: string) {
+    const result = await this.globalPowerService.cancelPower(id);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'global_power_cancel', recordId: id });
+    return result;
   }
 
   @Post('selection/evaluate')
@@ -906,7 +965,8 @@ export class AdminController {
   }
 
   @Put('crypto/config')
-  updateCryptoConfig(
+  async updateCryptoConfig(
+    @Req() req: any,
     @Body() body: {
       hotWalletAddress?: string;
       blockfrostProjectId?: string;
@@ -920,7 +980,10 @@ export class AdminController {
       hotWalletSkeyHex?: string;
     },
   ) {
-    return this.cryptoWalletService.updateConfig(body);
+    const result = await this.cryptoWalletService.updateConfig(body);
+    const { hotWalletSkeyHex: _skey, ...safeDiff } = body;
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'crypto_config_update', diff: safeDiff });
+    return result;
   }
 
   @Get('crypto/balance')
@@ -937,11 +1000,14 @@ export class AdminController {
   }
 
   @Put('crypto/withdrawals/:id')
-  updateCryptoWithdrawal(
+  async updateCryptoWithdrawal(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: { status?: string; txHash?: string; adminNote?: string },
   ) {
-    return this.cryptoWalletService.adminUpdateWithdrawal(id, body);
+    const result = await this.cryptoWalletService.adminUpdateWithdrawal(id, body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'crypto_withdrawal_update', recordId: id, diff: body });
+    return result;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

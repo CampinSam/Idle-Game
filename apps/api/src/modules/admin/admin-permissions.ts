@@ -76,7 +76,11 @@ function requireContentPerm(
 ): PermissionCheckResult {
   if (user.role === 'super_admin') return { allowed: true };
   if (!user.perms[perm]) return { allowed: false, reason: `Requires '${perm}' permission` };
-  if (group && user.scopes.length > 0 && !user.scopes.includes(group)) {
+  // Content roles must have scopes explicitly assigned — empty scopes = no content access
+  if (user.scopes.length === 0) {
+    return { allowed: false, reason: 'No content scopes assigned. Ask a Super Admin to assign scopes to your account.' };
+  }
+  if (group && !user.scopes.includes(group)) {
     return { allowed: false, reason: `Content scope '${group}' is not in your allowed scopes` };
   }
   return { allowed: true };

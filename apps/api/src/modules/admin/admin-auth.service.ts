@@ -57,14 +57,17 @@ export class AdminAuthService {
     }
 
     const perms = account.role.permissionFlags as unknown as PermissionFlags;
-    const token = this.jwt.sign({
-      sub: account.id,
-      username: account.username,
-      role: account.role.slug,
-      perms,
-      scopes: account.contentScopes,
-      type: 'admin',
-    });
+    const token = this.jwt.sign(
+      {
+        sub: account.id,
+        username: account.username,
+        role: account.role.slug,
+        perms,
+        scopes: account.contentScopes,
+        type: 'admin',
+      },
+      { expiresIn: '4h' },
+    );
 
     return {
       token,
