@@ -52,8 +52,33 @@ export function useWalletConnect(): WalletConnectState & WalletConnectActions {
   const [hasEvm, setHasEvm] = useState(false);
 
   useEffect(() => {
-    setDetectedCardanoWallets(detectCardanoWallets());
-    setHasEvm(detectEvmWallet());
+    // Run detection immediately, then retry a few times with short delays to
+    // catch mobile-browser wallets that inject window.cardano / window.ethereum
+    // asynchronously (often 100–400 ms after page load).
+    const MAX_RETRIES = 5;
+    const RETRY_INTERVAL_MS = 120;
+    let cancelled = false;
+    let retries = 0;
+
+    function runDetection() {
+      if (cancelled) return;
+      const cardano = detectCardanoWallets();
+      const evm = detectEvmWallet();
+      setDetectedCardanoWallets((prev) => {
+        const same =
+          prev.length === cardano.length &&
+          prev.every((w, i) => w.key === cardano[i].key);
+        return same ? prev : cardano;
+      });
+      setHasEvm(evm);
+      retries++;
+      if (retries < MAX_RETRIES && !evm && cardano.length === 0) {
+        setTimeout(runDetection, RETRY_INTERVAL_MS);
+      }
+    }
+
+    runDetection();
+    return () => { cancelled = true; };
   }, []);
 
   const connectEvm = async (): Promise<WalletConnectResult | null> => {

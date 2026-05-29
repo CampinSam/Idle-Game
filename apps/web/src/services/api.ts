@@ -504,10 +504,10 @@ class ApiClient {
     });
   }
 
-  walletCompleteOnboarding(walletToken: string, username: string, email?: string) {
+  walletCompleteOnboarding(walletToken: string, username: string, email?: string, password?: string) {
     return this.request<{ accessToken: string; player: any }>('/auth/wallet/complete', {
       method: 'POST',
-      body: JSON.stringify({ walletToken, username, email }),
+      body: JSON.stringify({ walletToken, username, email, password }),
     });
   }
 

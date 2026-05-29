@@ -34,6 +34,8 @@ export default function WalletOnboardingPage() {
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,12 +47,21 @@ export default function WalletOnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (password && password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (password && password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await api.walletCompleteOnboarding(
         state.walletToken,
         username.trim(),
         email.trim() || undefined,
+        password || undefined,
       );
       dispatch(setAuth({ token: res.accessToken, player: res.player }));
       navigate('/');
@@ -122,6 +133,27 @@ export default function WalletOnboardingPage() {
               placeholder="keeper@example.com"
             />
           </div>
+          <div className="form-group">
+            <label>Password <span style={{ opacity: 0.6, fontWeight: 400 }}>(optional — for email sign-in)</span></label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(null); }}
+              placeholder="At least 6 characters"
+              minLength={6}
+            />
+          </div>
+          {password && (
+            <div className="form-group">
+              <label>Confirm password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => { setConfirmPassword(e.target.value); setError(null); }}
+                placeholder="Repeat your password"
+              />
+            </div>
+          )}
           <button type="submit" className="auth-btn" disabled={submitting || username.trim().length < 3}>
             {submitting ? 'Creating account...' : 'Create account'}
           </button>

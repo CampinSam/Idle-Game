@@ -63,6 +63,11 @@ class WalletCompleteOnboardingDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(6)
+  password?: string;
 }
 
 class ForgotPasswordDto {
@@ -126,7 +131,7 @@ export class AuthController {
 
   @Post('wallet/complete')
   walletCompleteOnboarding(@Body() dto: WalletCompleteOnboardingDto) {
-    return this.authService.completeWalletOnboarding(dto.walletToken, dto.username, dto.email);
+    return this.authService.completeWalletOnboarding(dto.walletToken, dto.username, dto.email, dto.password);
   }
 
   @Post('forgot-password')

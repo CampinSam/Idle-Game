@@ -273,6 +273,7 @@ export class AuthService {
     walletToken: string,
     username: string,
     email?: string,
+    password?: string,
   ): Promise<{ accessToken: string; player: any }> {
     let payload: any;
     try {
@@ -310,6 +311,8 @@ export class AuthService {
       throw new ConflictException('This wallet is already linked to an account');
     }
 
+    const passwordHash = password ? await bcrypt.hash(password, 12) : null;
+
     const user = await this.prisma.user.create({
       data: {
         username: trimmedUsername,
@@ -317,6 +320,7 @@ export class AuthService {
         authProvider: 'wallet',
         walletAddress: normalizedAddress,
         ecosystemId: chain,
+        ...(passwordHash ? { passwordHash } : {}),
       },
     });
     await (this.prisma as any).linkedWallet.create({
