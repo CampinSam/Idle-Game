@@ -313,8 +313,9 @@ export default function SmartField({ fieldName, fieldDef, value, onChange, enumO
     if (t === 'costArray') {
       const safeVal = Array.isArray(value) ? value : [];
       const allowEntity = fieldName === 'contents';
+      const allowOutpostSlots = fieldName === 'contents';
       return renderStructured(
-        <CostListEditor value={safeVal} onChange={onChange} allowEntity={allowEntity} />
+        <CostListEditor value={safeVal} onChange={onChange} allowEntity={allowEntity} allowOutpostSlots={allowOutpostSlots} />
       );
     }
 

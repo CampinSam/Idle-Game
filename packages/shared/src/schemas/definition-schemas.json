@@ -862,6 +862,54 @@
         }
       }
     },
+    "ShopCostEntry": {
+      "description": "A cost or original-cost entry for a ShopItemDef. Requires both an id and an amount.",
+      "properties": {
+        "type": {
+          "type": "enum",
+          "enum": ["currency", "item"],
+          "description": "Resource type — 'currency' deducts a currency balance, 'item' removes inventory items"
+        },
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Currency ID or ItemDefinition ID"
+        },
+        "amount": {
+          "type": "number",
+          "required": true,
+          "description": "Quantity to deduct"
+        }
+      }
+    },
+    "ShopContentEntry": {
+      "description": "A content entry granted to the player on a successful ShopItemDef purchase. The 'outpost_slots' type has no id.",
+      "variants": {
+        "currency": {
+          "description": "Credits a currency balance",
+          "properties": {
+            "type": { "type": "string", "const": "currency" },
+            "id": { "type": "string", "required": true, "description": "Currency ID" },
+            "amount": { "type": "number", "required": true, "description": "Amount to credit" }
+          }
+        },
+        "item": {
+          "description": "Adds items to the player inventory",
+          "properties": {
+            "type": { "type": "string", "const": "item" },
+            "id": { "type": "string", "required": true, "description": "ItemDefinition ID" },
+            "amount": { "type": "number", "required": true, "description": "Quantity to add" }
+          }
+        },
+        "outpost_slots": {
+          "description": "Permanently increments the player's bonusOutpostSlots — no id needed",
+          "properties": {
+            "type": { "type": "string", "const": "outpost_slots" },
+            "amount": { "type": "number", "required": true, "description": "Number of extra outpost slots to unlock" }
+          }
+        }
+      }
+    },
     "DisplayButtonStateStyle": {
       "description": "Per-state visual overrides for an inline mission button. All fields are optional; omitting a field falls back to the hardcoded default.",
       "properties": {
@@ -3659,10 +3707,10 @@
         "contents": {
           "type": "array",
           "items": {
-            "$ref": "#/complexTypes/ShopCostEntry"
+            "$ref": "#/complexTypes/ShopContentEntry"
           },
           "default": [],
-          "description": "What the player receives on purchase"
+          "description": "What the player receives on purchase. Supports 'currency', 'item', and 'outpost_slots' entries. The 'outpost_slots' type has no id field — it permanently increments bonusOutpostSlots."
         },
         "badge": {
           "type": "string",

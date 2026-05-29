@@ -18,7 +18,7 @@ import {
   errorWrapperStyle,
 } from './validation';
 
-export type CostType = 'currency' | 'item' | 'entity';
+export type CostType = 'currency' | 'item' | 'entity' | 'outpost_slots';
 
 export interface CostEntry {
   type?: CostType;
@@ -32,9 +32,10 @@ interface ListProps {
   value: any;
   onChange: (val: CostEntry[]) => void;
   allowEntity?: boolean;
+  allowOutpostSlots?: boolean;
 }
 
-const TYPE_TO_REF: Record<CostType, string> = {
+const TYPE_TO_REF: Partial<Record<CostType, string>> = {
   currency: 'Currency',
   item: 'ItemDef',
   entity: 'EntityDefinition',
@@ -66,6 +67,7 @@ function CostEntryEditor({
   canMoveUp,
   canMoveDown,
   allowEntity,
+  allowOutpostSlots,
 }: {
   entry: CostEntry;
   onChange: (e: CostEntry) => void;
@@ -75,19 +77,19 @@ function CostEntryEditor({
   canMoveUp: boolean;
   canMoveDown: boolean;
   allowEntity?: boolean;
+  allowOutpostSlots?: boolean;
 }) {
   const type: CostType = (entry.type as CostType) || 'currency';
   const refTable = TYPE_TO_REF[type];
   const errs = validateCostEntry(entry);
+  const hasRef = type !== 'outpost_slots';
 
   const handleTypeChange = (newType: CostType) => {
-    const next: CostEntry = { ...entry, type: newType };
+    const next: CostEntry = { type: newType, amount: entry.amount };
     if (newType === 'entity') {
       next.definitionId = entry.id ?? entry.definitionId ?? '';
-      delete next.id;
-    } else {
+    } else if (newType !== 'outpost_slots') {
       next.id = entry.id ?? entry.definitionId ?? '';
-      delete next.definitionId;
     }
     onChange(next);
   };
@@ -105,20 +107,23 @@ function CostEntryEditor({
             <option value="currency">currency</option>
             <option value="item">item</option>
             {allowEntity && <option value="entity">entity</option>}
+            {allowOutpostSlots && <option value="outpost_slots">outpost_slots</option>}
           </select>
         </div>
-        <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 180 }}>
-          <span style={labelStyle}>{type === 'entity' ? 'definitionId' : 'id'}</span>
-          <div style={errs.id ? errorWrapperStyle : undefined}>
-            <RefSelect
-              refTable={refTable}
-              value={getRefId(entry)}
-              onChange={v => onChange(setRefId(entry, v))}
-              placeholder={`Select ${refTable}...`}
-            />
+        {hasRef && (
+          <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 180 }}>
+            <span style={labelStyle}>{type === 'entity' ? 'definitionId' : 'id'}</span>
+            <div style={errs.id ? errorWrapperStyle : undefined}>
+              <RefSelect
+                refTable={refTable!}
+                value={getRefId(entry)}
+                onChange={v => onChange(setRefId(entry, v))}
+                placeholder={`Select ${refTable}...`}
+              />
+            </div>
+            {errs.id && <span style={errorTextStyle}>{errs.id}</span>}
           </div>
-          {errs.id && <span style={errorTextStyle}>{errs.id}</span>}
-        </div>
+        )}
         <div style={fieldGroupStyle}>
           <span style={labelStyle}>amount</span>
           <input
@@ -143,7 +148,7 @@ function CostEntryEditor({
   );
 }
 
-export default function CostListEditor({ value, onChange, allowEntity = false }: ListProps) {
+export default function CostListEditor({ value, onChange, allowEntity = false, allowOutpostSlots = false }: ListProps) {
   const items: CostEntry[] = Array.isArray(value) ? value : [];
 
   const update = (idx: number, next: CostEntry) => {
@@ -165,7 +170,7 @@ export default function CostListEditor({ value, onChange, allowEntity = false }:
   const add = (type: CostType) => {
     const entry: CostEntry = { type, amount: 1 };
     if (type === 'entity') entry.definitionId = '';
-    else entry.id = '';
+    else if (type !== 'outpost_slots') entry.id = '';
     onChange([...items, entry]);
   };
 
@@ -182,6 +187,7 @@ export default function CostListEditor({ value, onChange, allowEntity = false }:
           canMoveUp={idx > 0}
           canMoveDown={idx < items.length - 1}
           allowEntity={allowEntity}
+          allowOutpostSlots={allowOutpostSlots}
         />
       ))}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -189,6 +195,9 @@ export default function CostListEditor({ value, onChange, allowEntity = false }:
         <button type="button" style={addButtonStyle} onClick={() => add('item')}>+ item</button>
         {allowEntity && (
           <button type="button" style={addButtonStyle} onClick={() => add('entity')}>+ entity</button>
+        )}
+        {allowOutpostSlots && (
+          <button type="button" style={addButtonStyle} onClick={() => add('outpost_slots')}>+ outpost slots</button>
         )}
       </div>
     </div>

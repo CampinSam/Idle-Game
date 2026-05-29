@@ -30,9 +30,11 @@ export interface CostEntryErrors {
 export function validateCostEntry(entry: any): CostEntryErrors {
   const errs: CostEntryErrors = {};
   const type = entry?.type || 'currency';
-  const refKey = type === 'entity' ? entry?.definitionId : entry?.id;
-  if (isBlank(refKey)) {
-    errs.id = type === 'entity' ? 'definitionId required' : 'id required';
+  if (type !== 'outpost_slots') {
+    const refKey = type === 'entity' ? entry?.definitionId : entry?.id;
+    if (isBlank(refKey)) {
+      errs.id = type === 'entity' ? 'definitionId required' : 'id required';
+    }
   }
   if (isMissingNumber(entry?.amount)) {
     errs.amount = 'amount required';
