@@ -145,6 +145,8 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @SkipThrottle({ auth: true })
+  @Throttle({ forgotPassword: { limit: 3, ttl: 15 * 60_000 } })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.requestPasswordReset(dto.email, dto.appUrl);
   }

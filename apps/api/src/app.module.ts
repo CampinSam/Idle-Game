@@ -127,6 +127,15 @@ const imports: any[] = [
       ttl: 60_000,
       limit: 30,
     },
+    {
+      // Tight per-IP limit on forgot-password to prevent inbox flooding or
+      // email-quota exhaustion. 3 requests per 15 minutes is well above any
+      // legitimate use case (a user forgets their password at most once per
+      // session) while stopping automated spray attacks cold.
+      name: 'forgotPassword',
+      ttl: 15 * 60_000,
+      limit: 3,
+    },
   ]),
   PrismaModule,
   GameRulesModule,
