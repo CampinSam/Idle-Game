@@ -37,6 +37,10 @@ class ApiClient {
       throw new Error(body.message || `Request failed: ${res.status}`);
     }
 
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return undefined as unknown as T;
+    }
+
     return res.json();
   }
 
@@ -472,14 +476,18 @@ class ApiClient {
       headers,
     });
 
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      throw new Error(`Server returned non-JSON response (${res.status})`);
-    }
-
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message || `Request failed: ${res.status}`);
+    }
+
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+      return undefined as unknown as T;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(`Server returned non-JSON response (${res.status})`);
     }
 
     return res.json();
@@ -530,6 +538,13 @@ class ApiClient {
     return this.request<void>('/auth/set-password', {
       method: 'POST',
       body: JSON.stringify({ password }),
+    });
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.request<void>('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
     });
   }
 

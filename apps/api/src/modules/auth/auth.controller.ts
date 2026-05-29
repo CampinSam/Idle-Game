@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
+import { Controller, Post, Patch, Body, UseGuards, Request, HttpCode, HttpStatus, Get } from '@nestjs/common';
 import { ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
@@ -94,6 +94,15 @@ class SetPasswordDto {
   password: string;
 }
 
+class ChangePasswordDto {
+  @IsString()
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(6)
+  newPassword: string;
+}
+
 // Whole controller goes through ThrottlerGuard. We `SkipThrottle` the
 // `commands` named scope so its 120/min budget doesn't apply here, leaving
 // only the stricter `auth` 10/min scope from `app.module.ts` in effect.
@@ -151,5 +160,12 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   setPassword(@Body() dto: SetPasswordDto, @Request() req: any) {
     return this.authService.setPassword(req.user.id, dto.password);
+  }
+
+  @Patch('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.NO_CONTENT)
+  changePassword(@Body() dto: ChangePasswordDto, @Request() req: any) {
+    return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 }

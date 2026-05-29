@@ -99,23 +99,28 @@ function truncateAddress(address: string): string {
 
 function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
   const dispatch = useAppDispatch();
+
+  // Change-password form state (for users who already have a password)
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  if (hasPassword) {
-    return (
-      <div className="pt-4">
-        <span className={SECTION_LABEL}>Password</span>
-        <div className="px-3.5 py-3 bg-[rgba(34,197,94,0.06)] border border-[rgba(34,197,94,0.2)] rounded-[10px] text-[13px] text-[#86efac]">
-          Your account already has a password set. Use the forgot-password flow if you need to change it.
-        </div>
-      </div>
-    );
-  }
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirm) { setMsg({ text: 'New passwords do not match', type: 'error' }); return; }
+    setSaving(true); setMsg(null);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setMsg({ text: 'Password updated successfully', type: 'success' });
+      setCurrentPassword(''); setNewPassword(''); setConfirm('');
+    } catch (err: any) {
+      setMsg({ text: err?.message || 'Failed to change password', type: 'error' });
+    } finally { setSaving(false); }
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirm) { setMsg({ text: 'Passwords do not match', type: 'error' }); return; }
     setSaving(true); setMsg(null);
@@ -129,18 +134,74 @@ function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
     } finally { setSaving(false); }
   };
 
+  const msgBanner = msg && (
+    <div className={`mb-3 px-3.5 py-2.5 rounded-[10px] text-[13px] ${msg.type === 'success' ? 'bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-[#86efac]' : 'bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#f87171]'}`}>
+      {msg.text}
+    </div>
+  );
+
+  if (hasPassword) {
+    return (
+      <div className="pt-4">
+        <span className={SECTION_LABEL}>Change Password</span>
+        {msgBanner}
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>Current password</label>
+            <input
+              type="password"
+              className={INPUT_CLASS + ' w-full'}
+              value={currentPassword}
+              onChange={(e) => { setCurrentPassword(e.target.value); setMsg(null); }}
+              placeholder="Your current password"
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>New password</label>
+            <input
+              type="password"
+              className={INPUT_CLASS + ' w-full'}
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setMsg(null); }}
+              placeholder="At least 6 characters"
+              minLength={6}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>Confirm new password</label>
+            <input
+              type="password"
+              className={INPUT_CLASS + ' w-full'}
+              value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); setMsg(null); }}
+              placeholder="Repeat your new password"
+              minLength={6}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className={ACTION_BTN_PRIMARY}
+            style={{ alignSelf: 'flex-start', padding: '0.55rem 1.2rem', fontSize: '0.85rem' }}
+            disabled={saving || !currentPassword || newPassword.length < 6}
+          >
+            {saving ? 'Saving...' : 'Change password'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="pt-4">
       <span className={SECTION_LABEL}>Set a Password</span>
       <div className="mb-4 px-3.5 py-3 bg-[rgba(234,179,8,0.08)] border border-[rgba(234,179,8,0.25)] rounded-[10px] text-[13px] text-[#fde68a]">
         Your account was created with a wallet and has no password. Set one here so you can also sign in with email + password.
       </div>
-      {msg && (
-        <div className={`mb-3 px-3.5 py-2.5 rounded-[10px] text-[13px] ${msg.type === 'success' ? 'bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-[#86efac]' : 'bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#f87171]'}`}>
-          {msg.text}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      {msgBanner}
+      <form onSubmit={handleSetPassword} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
           <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>Password</label>
           <input

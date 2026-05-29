@@ -526,6 +526,23 @@ export class AuthService {
   }
 
   /**
+   * Lets an authenticated user change their existing password by verifying the
+   * current one first.
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+    if (!user.passwordHash) throw new BadRequestException('No password set on this account');
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
+  /**
    * Admin: generates a signed short-lived reset token for a given user ID
    * without sending any email. Returns the full reset URL for copy/paste.
    */
