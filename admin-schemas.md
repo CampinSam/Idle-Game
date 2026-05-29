@@ -1319,14 +1319,24 @@ Create a new gem pack purchase.
 `amountExpected` is in the smallest token unit (USDC: 6 decimals, ADA: lovelaces).
 Payment window is 30 minutes. On expiry the purchase row status becomes EXPIRED.
 
-**Static crypto pack prices:**
+**Cardano ADA pricing:**
 
-| packId     | USDC (micro) | ADA (lovelaces) |
-|------------|-------------|-----------------|
-| gems_100   | 990,000     | 2,000,000       |
-| gems_500   | 4,990,000   | 10,000,000      |
-| gems_1200  | 9,990,000   | 20,000,000      |
-| gems_2500  | 19,990,000  | 40,000,000      |
+ADA amounts are computed from the live time-weighted average (TWA) rate at purchase creation time. The TWA uses samples collected by the ADA oracle poller over a configurable window (default 1 hour). The snapshot is stored in `Purchase.rateSnapshot`:
+
+```json
+{
+  "ADA/USD": {
+    "lovelacePerUsd": 2040816,
+    "usdPrice": 0.99,
+    "lovelaceAmount": 2020409,
+    "twaWindowSeconds": 3600,
+    "sampleCount": 12,
+    "computedAt": "2026-05-29T10:00:00.000Z"
+  }
+}
+```
+
+EVM/USDC amounts remain fixed at pack-definition price.
 
 ---
 
@@ -1777,6 +1787,35 @@ Supported triggers: `job.completed`, `job.failed`, `job.ready`
 | `image` | `assetKey?`, `caption?` | Full-width image |
 | `divider` | — | Horizontal rule |
 | `key_value_row` | `label`, `value` | Single label/value pair |
+
+---
+
+## ADA Oracle Rate — `/api/admin/crypto/rates`
+
+All endpoints require `X-Admin-Key` header.
+
+### `GET /api/admin/crypto/rates/ada/current`
+
+Returns the current time-weighted average ADA/USD rate and sample statistics.
+
+**Auth:** `X-Admin-Key`
+
+**Response:**
+```json
+{
+  "lovelacePerUsd": 2040816,
+  "usdPerAda": 0.49,
+  "sampleCount": 12,
+  "twaWindowSeconds": 3600,
+  "oldestSampleAt": "2026-05-29T09:00:00.000Z",
+  "newestSampleAt": "2026-05-29T10:00:00.000Z",
+  "usingFallback": false
+}
+```
+
+`usingFallback: true` when no samples exist yet (server just started or oracle is down) — the fallback rate from `CryptoRateConfig.fallbackLovelacePerUsd` is used.
+
+**Admin Records Editor:** `CryptoRateConfig` table is available in the admin panel under the **Payments** group. Fields: `oracleUrl`, `pollIntervalSeconds`, `twaWindowSeconds`, `fallbackLovelacePerUsd`, `enabled`.
 
 ---
 

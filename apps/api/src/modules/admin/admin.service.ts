@@ -713,6 +713,9 @@ export class AdminService {
     if (table === 'currency' && data.cap !== undefined) {
       data.cap = this.safeBigInt(data.cap);
     }
+    if (table === 'cryptoRateConfig' && data.fallbackLovelacePerUsd !== undefined) {
+      data.fallbackLovelacePerUsd = this.safeBigInt(data.fallbackLovelacePerUsd);
+    }
   }
 
   async backfillItemRarity(): Promise<{
@@ -1117,6 +1120,7 @@ export class AdminService {
       synergyRule: (this.prisma as any).synergyRule,
       telemetryDef: (this.prisma as any).telemetryDef,
       gameDefinition: (this.prisma as any).gameDefinition,
+      cryptoRateConfig: (this.prisma as any).cryptoRateConfig,
     };
 
     if (!models[table]) {

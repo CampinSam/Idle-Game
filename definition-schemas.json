@@ -1294,7 +1294,7 @@
         "cost": {
           "type": "array",
           "items": { "type": "object" },
-          "description": "Array of {type, id, amount} cost entries (type: 'currency' | 'item')."
+          "description": "Array of ShopCostEntry objects. Supported types: 'currency' ({type, id, amount}), 'item' ({type, id, amount}), 'usd' ({type, amount, allowAda?}), 'ada' ({type, lovelaceAmount}), 'cnt' ({type, policyId, assetName, amount})."
         },
         "originalCost": {
           "type": "array",

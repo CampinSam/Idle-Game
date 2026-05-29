@@ -1,62 +1,132 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 
-// Default fallback: 1 ADA = $0.50 → 2_000_000 lovelaces per USD
 const FALLBACK_LOVELACE_PER_USD = 2_000_000;
-const CACHE_TTL_MS = 60_000;
-const COINGECKO_URL =
-  'https://api.coingecko.com/api/v3/simple/price?ids=cardano&vs_currencies=usd';
+const DEFAULT_TWA_WINDOW_SECONDS = 3_600;
+
+export interface AdaRateSnapshot {
+  lovelacePerUsd: number;
+  usdPrice: number;
+  lovelaceAmount: number;
+  twaWindowSeconds: number;
+  sampleCount: number;
+  computedAt: string;
+}
 
 @Injectable()
 export class AdaRateService {
   private readonly logger = new Logger(AdaRateService.name);
 
-  private cachedRate: number | null = null;
-  private cacheExpiresAt = 0;
+  constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Returns lovelaces per 1 USD using the live ADA/USD rate.
-   * Falls back to the hardcoded LOVELACE_PER_USD env var (or 2_000_000) if the
-   * external API is unreachable or returns an unexpected payload.
-   * Result is cached for 60 seconds to avoid per-request API calls.
-   */
   async getLovelacePerUsd(): Promise<number> {
-    const now = Date.now();
+    const { rate } = await this.computeTwa();
+    return rate;
+  }
 
-    if (this.cachedRate !== null && now < this.cacheExpiresAt) {
-      return this.cachedRate;
-    }
+  async getRateSnapshot(usdPrice: number): Promise<{ 'ADA/USD': AdaRateSnapshot }> {
+    const { rate, sampleCount, twaWindowSeconds } = await this.computeTwa();
+    const lovelaceAmount = Math.ceil(usdPrice * rate);
+    return {
+      'ADA/USD': {
+        lovelacePerUsd: rate,
+        usdPrice,
+        lovelaceAmount,
+        twaWindowSeconds,
+        sampleCount,
+        computedAt: new Date().toISOString(),
+      },
+    };
+  }
 
+  async getCurrentStatus(): Promise<{
+    lovelacePerUsd: number;
+    usdPerAda: number;
+    sampleCount: number;
+    twaWindowSeconds: number;
+    oldestSampleAt: string | null;
+    newestSampleAt: string | null;
+    usingFallback: boolean;
+  }> {
+    const { rate, sampleCount, twaWindowSeconds, usingFallback } = await this.computeTwa();
+
+    const oldest = await (this.prisma as any).cryptoRateSample.findFirst({
+      where: { currencyCode: 'ADA' },
+      orderBy: { fetchedAt: 'asc' },
+    });
+    const newest = await (this.prisma as any).cryptoRateSample.findFirst({
+      where: { currencyCode: 'ADA' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+
+    return {
+      lovelacePerUsd: rate,
+      usdPerAda: rate > 0 ? +(1_000_000 / rate).toFixed(6) : 0,
+      sampleCount,
+      twaWindowSeconds,
+      oldestSampleAt: oldest?.fetchedAt?.toISOString() ?? null,
+      newestSampleAt: newest?.fetchedAt?.toISOString() ?? null,
+      usingFallback,
+    };
+  }
+
+  private async computeTwa(): Promise<{
+    rate: number;
+    sampleCount: number;
+    twaWindowSeconds: number;
+    usingFallback: boolean;
+  }> {
+    let twaWindowSeconds = DEFAULT_TWA_WINDOW_SECONDS;
     try {
-      const resp = await fetch(COINGECKO_URL, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(5_000),
+      const config = await (this.prisma as any).cryptoRateConfig.findUnique({
+        where: { currencyCode: 'ADA' },
       });
-
-      if (!resp.ok) {
-        throw new Error(`CoinGecko responded with HTTP ${resp.status}`);
-      }
-
-      const data = (await resp.json()) as { cardano?: { usd?: number } };
-      const adaUsd = data?.cardano?.usd;
-
-      if (typeof adaUsd !== 'number' || adaUsd <= 0) {
-        throw new Error(`Unexpected payload: ${JSON.stringify(data)}`);
-      }
-
-      const lovelacePerUsd = Math.round(1_000_000 / adaUsd);
-      this.cachedRate = lovelacePerUsd;
-      this.cacheExpiresAt = now + CACHE_TTL_MS;
-
-      this.logger.log(
-        `ADA/USD rate fetched: $${adaUsd} → ${lovelacePerUsd} lovelaces/USD`,
-      );
-      return lovelacePerUsd;
-    } catch (err) {
-      this.logger.warn(
-        `Failed to fetch live ADA/USD rate — falling back to hardcoded rate: ${err}`,
-      );
-      return this.getFallbackRate();
+      if (config) twaWindowSeconds = config.twaWindowSeconds;
+    } catch {
+      /* table may not exist yet during initial migration */
     }
+
+    const windowCutoff = new Date(Date.now() - twaWindowSeconds * 1_000);
+
+    let samples: Array<{ lovelacePerUsd: bigint; fetchedAt: Date }> = [];
+    try {
+      samples = await (this.prisma as any).cryptoRateSample.findMany({
+        where: { currencyCode: 'ADA', fetchedAt: { gte: windowCutoff } },
+        orderBy: { fetchedAt: 'asc' },
+        select: { lovelacePerUsd: true, fetchedAt: true },
+      });
+    } catch {
+      /* table may not exist yet */
+    }
+
+    if (samples.length === 0) {
+      return {
+        rate: this.getFallbackRate(),
+        sampleCount: 0,
+        twaWindowSeconds,
+        usingFallback: true,
+      };
+    }
+
+    const now = Date.now();
+    let totalWeight = 0;
+    let weightedSum = 0;
+
+    for (let i = 0; i < samples.length; i++) {
+      const sampleTime = samples[i].fetchedAt.getTime();
+      const nextTime =
+        i + 1 < samples.length ? samples[i + 1].fetchedAt.getTime() : now;
+      const weight = nextTime - sampleTime;
+      weightedSum += Number(samples[i].lovelacePerUsd) * weight;
+      totalWeight += weight;
+    }
+
+    const twa =
+      totalWeight > 0
+        ? Math.round(weightedSum / totalWeight)
+        : Number(samples[samples.length - 1].lovelacePerUsd);
+
+    return { rate: twa, sampleCount: samples.length, twaWindowSeconds, usingFallback: false };
   }
 
   private getFallbackRate(): number {

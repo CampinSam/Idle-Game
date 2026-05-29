@@ -1428,6 +1428,8 @@ model Purchase {
   amountExpected      BigInt?
   txHash              String?   @unique
 
+  rateSnapshot    Json?
+
   expiresAt       DateTime?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
@@ -1438,6 +1440,34 @@ model Purchase {
   @@index([status, paymentMethod])
   @@index([stripeSessionId])
   @@map("purchases")
+}
+
+// ═══════════════════════════════════════════════════
+// CRYPTO RATE ORACLE
+// ═══════════════════════════════════════════════════
+
+model CryptoRateConfig {
+  currencyCode           String   @id
+  oracleUrl              String
+  pollIntervalSeconds    Int      @default(300)
+  twaWindowSeconds       Int      @default(3600)
+  fallbackLovelacePerUsd BigInt   @default(2000000)
+  enabled                Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("crypto_rate_configs")
+}
+
+model CryptoRateSample {
+  id             BigInt   @id @default(autoincrement())
+  currencyCode   String
+  usdPrice       Float
+  lovelacePerUsd BigInt
+  fetchedAt      DateTime @default(now())
+
+  @@index([currencyCode, fetchedAt(sort: Desc)])
+  @@map("crypto_rate_samples")
 }
 
 // ═══════════════════════════════════════════════════

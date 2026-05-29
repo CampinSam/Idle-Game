@@ -1,13 +1,14 @@
 export type CurrencyTypeEnum = 'SOFT' | 'HARD' | 'PREMIUM' | 'SEASONAL' | 'EVENT' | 'GUILD' | 'CRYPTO';
 
-export type ShopCostType = 'currency' | 'item';
+export type ShopCostType = 'currency' | 'item' | 'usd' | 'ada' | 'cnt';
 export type ShopContentType = 'currency' | 'item' | 'outpost_slots';
 
-export interface ShopCostEntry {
-  type: ShopCostType;
-  id: string;
-  amount: number;
-}
+export type ShopCostEntry =
+  | { type: 'currency'; id: string; amount: number }
+  | { type: 'item'; id: string; amount: number }
+  | { type: 'usd'; amount: number; allowAda?: boolean }
+  | { type: 'ada'; lovelaceAmount: number }
+  | { type: 'cnt'; policyId: string; assetName: string; amount: number };
 
 export interface ShopContentEntry {
   type: ShopContentType;

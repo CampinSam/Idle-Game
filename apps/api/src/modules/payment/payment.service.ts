@@ -142,11 +142,13 @@ export class PaymentService {
     }
 
     let amountExpected: bigint;
+    let rateSnapshot: object | null = null;
     if (isEvm) {
       amountExpected = evmPrices.usdcAmount;
     } else {
-      const lovelacePerUsd = await this.adaRateService.getLovelacePerUsd();
-      amountExpected = BigInt(Math.ceil(usdPrice * lovelacePerUsd));
+      const snapshot = await this.adaRateService.getRateSnapshot(usdPrice);
+      rateSnapshot = snapshot;
+      amountExpected = BigInt(snapshot['ADA/USD'].lovelaceAmount);
     }
     const chain = isEvm ? 'ETH' : 'CARDANO';
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
@@ -162,6 +164,7 @@ export class PaymentService {
         destinationAddress,
         amountExpected,
         expiresAt,
+        ...(rateSnapshot ? { rateSnapshot } : {}),
       },
     });
 

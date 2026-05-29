@@ -30,6 +30,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   TelemetryDef: 'telemetryDef',
   GemPackDef: 'gemPacks',
   GameDefinition: 'game-definitions',
+  CryptoRateConfig: 'cryptoRateConfig',
 };
 
 export interface FieldDef {
@@ -670,6 +671,18 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       data:     { type: 'json',    default: {},     description: 'Payload JSON. For screen_composition: { screenKey, status, layout, sections, ... }. For content_document: { id, version, blocks: [...], context?: { missionMode, teamMode, rewardMode } }', section: 'data', typeResolver: (record) => record.type === 'content_document' ? 'contentDocumentData' : 'json' },
     },
   },
+  CryptoRateConfig: {
+    color: '#FF9800',
+    group: 'Payments',
+    fields: {
+      currencyCode:           { type: 'string',  required: true,  description: 'Primary key — e.g. ADA. One row per tracked asset.' },
+      oracleUrl:              { type: 'string',  required: true,  description: 'CoinGecko (or compatible) price endpoint URL.' },
+      pollIntervalSeconds:    { type: 'number',  default: 300,    description: 'How often the oracle poller fetches a new sample (seconds). Restart required to take effect.' },
+      twaWindowSeconds:       { type: 'number',  default: 3600,   description: 'Lookback window for the time-weighted average rate calculation (seconds).' },
+      fallbackLovelacePerUsd: { type: 'number',  default: 2000000, description: 'Lovelaces per USD used when no samples exist (e.g. 2000000 = 0.50 USD/ADA).' },
+      enabled:                { type: 'boolean', default: true,   description: 'Disable to pause oracle polling without removing config.' },
+    },
+  },
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
@@ -688,6 +701,7 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   System: ['EventDefinition', 'SystemIconDef'],
   Telemetry: ['TelemetryDef'],
   Screens: ['GameDefinition'],
+  Payments: ['CryptoRateConfig'],
 };
 
 export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];
