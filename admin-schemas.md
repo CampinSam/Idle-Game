@@ -1757,3 +1757,34 @@ List the authenticated player's on-chain deposit history (ledger entries with so
 
 **Query:** `limit` (default 20)
 
+---
+
+## Currencies — Admin Smart Table
+
+`Currency` rows are managed through the generic admin smart-editor at `GET /api/admin/records/currency`.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `soft_arcanium`) |
+| `name` | string | ✓ | Display name |
+| `symbol` | string | | Short symbol or emoji shown next to the balance |
+| `iconKey` | string | | Asset key for the currency icon |
+| `type` | `CurrencyType` | ✓ | `SOFT` \| `HARD` \| `PREMIUM` \| `SEASONAL` \| `EVENT` \| `GUILD` \| `CRYPTO` |
+| `seasonId` | string | | Season this currency belongs to (nullable) |
+| `isTradeable` | boolean | | Default `false` |
+| `isSpendable` | boolean | | Default `true`. When `false`, `spend` calls are rejected. |
+| `decimals` | integer | | Decimal precision. Default `0`. |
+| `cap` | bigint | | Maximum supply cap (nullable = uncapped) |
+| `enabled` | boolean | | Default `true`. When `false`, the currency is fully disabled (balance reads still work, but the currency is excluded from all active game systems). |
+| `showInTopBar` | boolean | | Default `false`. When `true`, this currency is displayed in the player top bar. Toggle off to hide a currency from the bar without disabling it entirely. |
+| `sortOrder` | integer | | Default `0`. Lower numbers appear earlier in the top bar (left-to-right). Ties are broken alphabetically by `id`. |
+
+### Top-bar display rules
+
+- The top bar shows only currencies where `showInTopBar = true`.
+- Within the bar, currencies are sorted by `sortOrder` ascending, then `id` alphabetically.
+- The bar is capped at **6** currencies regardless of how many have `showInTopBar = true`.
+- Changes take effect on the player's next page load (currency definitions are fetched at bootstrap).
+

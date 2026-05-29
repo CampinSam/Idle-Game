@@ -247,19 +247,22 @@ model NftAsset {
 }
 
 model Currency {
-  id          String       @id
-  name        String
-  symbol      String?
-  iconKey     String?
-  type        CurrencyType
-  seasonId    String?
-  isTradeable Boolean      @default(false)
-  isSpendable Boolean      @default(true)
-  decimals    Int          @default(0)
-  cap         BigInt?
+  id           String       @id
+  name         String
+  symbol       String?
+  iconKey      String?
+  type         CurrencyType
+  seasonId     String?
+  isTradeable  Boolean      @default(false)
+  isSpendable  Boolean      @default(true)
+  decimals     Int          @default(0)
+  cap          BigInt?
+  enabled      Boolean      @default(true)
+  showInTopBar Boolean      @default(false)
+  sortOrder    Int          @default(0)
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   balances    UserCurrencyBalance[]
   ledger      CurrencyLedger[]

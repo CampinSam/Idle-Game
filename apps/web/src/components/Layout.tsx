@@ -164,10 +164,10 @@ export default function Layout() {
             <span className="top-bar-name">{profile.username}</span>
             <div className="top-bar-currencies">
               {(() => {
-                // Data-driven currency chips. Pulls every enabled CurrencyDef,
-                // sorts by sortOrder (then id for stability), caps at 6 to
-                // protect the top-bar layout, and falls back to the canonical
-                // trio while definitions are still loading.
+                // Data-driven currency chips. Pulls every currency flagged for
+                // the top bar, sorts by sortOrder (then id for stability), caps
+                // at 6 to protect the layout, and falls back to the canonical
+                // four while definitions are still loading.
                 const FALLBACK = [
                   "soft_arcanium",
                   "hard_essence",
@@ -175,7 +175,7 @@ export default function Layout() {
                   "crypto_derp",
                 ];
                 const visible = (currencyDefs ?? [])
-                  .filter((d: any) => d?.enabled !== false)
+                  .filter((d: any) => d?.showInTopBar === true)
                   .slice()
                   .sort(
                     (a: any, b: any) =>

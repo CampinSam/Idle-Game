@@ -10,7 +10,10 @@
       "isTradeable": false,
       "isSpendable": true,
       "decimals": 0,
-      "cap": null
+      "cap": null,
+      "enabled": true,
+      "showInTopBar": true,
+      "sortOrder": 3
     },
     {
       "id": "hard_essence",
@@ -22,7 +25,10 @@
       "isTradeable": false,
       "isSpendable": true,
       "decimals": 0,
-      "cap": null
+      "cap": null,
+      "enabled": true,
+      "showInTopBar": true,
+      "sortOrder": 1
     },
     {
       "id": "premium_gems",
@@ -34,7 +40,10 @@
       "isTradeable": false,
       "isSpendable": true,
       "decimals": 0,
-      "cap": null
+      "cap": null,
+      "enabled": true,
+      "showInTopBar": true,
+      "sortOrder": 2
     },
     {
       "id": "soft_arcanium",
@@ -46,7 +55,10 @@
       "isTradeable": false,
       "isSpendable": true,
       "decimals": 0,
-      "cap": null
+      "cap": null,
+      "enabled": true,
+      "showInTopBar": true,
+      "sortOrder": 0
     }
   ],
   "entityDefinitions": [

@@ -1370,6 +1370,74 @@
         }
       },
       "additionalProperties": false
+    },
+    "Currency": {
+      "type": "object",
+      "description": "A currency definition. Seeded via definitions.json and managed through the admin smart-editor.",
+      "required": ["id", "name", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (e.g. soft_arcanium, hard_essence)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name shown in UI."
+        },
+        "symbol": {
+          "type": "string",
+          "description": "Short symbol or emoji displayed next to balances (e.g. 🪙, DERP)."
+        },
+        "iconKey": {
+          "type": "string",
+          "description": "Asset key used to resolve the currency icon image."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["SOFT", "HARD", "PREMIUM", "SEASONAL", "EVENT", "GUILD", "CRYPTO"],
+          "description": "Currency category."
+        },
+        "seasonId": {
+          "type": ["string", "null"],
+          "description": "Season this currency belongs to. null for non-seasonal currencies."
+        },
+        "isTradeable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this currency can be traded between players."
+        },
+        "isSpendable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether players can spend this currency. When false, spend calls are rejected."
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Number of decimal places for display and calculation."
+        },
+        "cap": {
+          "type": ["integer", "null"],
+          "description": "Maximum supply cap. null = uncapped."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When false, the currency is fully disabled across all active game systems."
+        },
+        "showInTopBar": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, this currency is shown in the player top bar. Toggle off to hide without fully disabling the currency."
+        },
+        "sortOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Display order within the top bar. Lower numbers appear first (left-to-right). Ties broken alphabetically by id."
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
