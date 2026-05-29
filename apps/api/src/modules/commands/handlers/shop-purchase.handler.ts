@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { PatchBuilder, buildItemPatches, buildCurrencyPatches } from '../patch-builder';
+import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildPlayerPatch } from '../patch-builder';
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
@@ -79,6 +79,12 @@ export class ShopPurchaseHandler implements CommandHandler {
           sourceId: item.id,
         });
         grants.push(`${content.amount}x ${content.id}`);
+      } else if (content.type === 'outpost_slots') {
+        await (ctx.tx as any).user.update({
+          where: { id: ctx.userId },
+          data: { bonusOutpostSlots: { increment: content.amount } },
+        });
+        grants.push(`${content.amount} Outpost Slot${content.amount !== 1 ? 's' : ''}`);
       }
     }
 
@@ -90,6 +96,7 @@ export class ShopPurchaseHandler implements CommandHandler {
     const pb = new PatchBuilder();
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
+    await buildPlayerPatch(pb, ctx.tx, ctx.userId);
 
     const bodyText = grants.length > 0 ? `You received: ${grants.join(', ')}` : 'Purchase complete.';
 

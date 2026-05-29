@@ -1304,7 +1304,7 @@
         "contents": {
           "type": "array",
           "items": { "type": "object" },
-          "description": "Array of {type, id, amount} entries granted to the player on purchase."
+          "description": "Array of content entries granted to the player on purchase. Each entry has {type, id?, amount}. Supported types: 'currency' (id = currencyId, credits the player's balance), 'item' (id = itemDefinitionId, adds to inventory), 'outpost_slots' (no id — permanently increments the player's bonusOutpostSlots)."
         },
         "badge": {
           "type": "string",

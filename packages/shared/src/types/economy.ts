@@ -1,5 +1,20 @@
 export type CurrencyTypeEnum = 'SOFT' | 'HARD' | 'PREMIUM' | 'SEASONAL' | 'EVENT' | 'GUILD' | 'CRYPTO';
 
+export type ShopCostType = 'currency' | 'item';
+export type ShopContentType = 'currency' | 'item' | 'outpost_slots';
+
+export interface ShopCostEntry {
+  type: ShopCostType;
+  id: string;
+  amount: number;
+}
+
+export interface ShopContentEntry {
+  type: ShopContentType;
+  id?: string;
+  amount: number;
+}
+
 export interface CurrencyDef {
   id: string;
   name: string;

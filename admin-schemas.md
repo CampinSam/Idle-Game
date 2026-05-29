@@ -1481,7 +1481,7 @@ Only enabled tabs and enabled items within their active date window are returned
 | `sectionId` | string (FK) | | Optional section within the tab (references `ShopSectionDef.id`). |
 | `cost` | CostEntry[] | | Array of `{type, id, amount}` cost entries (currency or item). |
 | `originalCost` | CostEntry[] | | Original price for strikethrough display. Same format as `cost`. |
-| `contents` | CostEntry[] | | Array of `{type, id, amount}` entries granted on purchase. |
+| `contents` | ContentEntry[] | | Array of `{type, id?, amount}` entries granted on purchase. See **ContentEntry types** below. |
 | `badge` | string | | Badge label shown on the card (e.g. `HOT`, `NEW`, `SALE`). |
 | `badgeColor` | string | | CSS color for the badge background. |
 | `imageUrl` | string | | URL or asset key for the card image. |
@@ -1489,6 +1489,21 @@ Only enabled tabs and enabled items within their active date window are returned
 | `enabled` | boolean | | Hidden from all players when `false`. Default `true`. |
 | `availableFrom` | datetime | | ISO datetime — item is suppressed from the catalog until this time. Leave `null` to make it available immediately. The admin list shows a **scheduled** badge on not-yet-active rows. |
 | `limitedUntil` | datetime | | ISO datetime — item is automatically removed from the catalog after this time. When fewer than 24 h remain the player-facing card shows a live countdown. The admin list shows an **expiring** badge on rows within 24 h of this deadline. |
+
+### ContentEntry types
+
+Each entry in `contents` is an object with `{type, id?, amount}`. The `type` field determines what is granted and whether `id` is required.
+
+| `type` | `id` | `amount` | Description |
+|--------|------|----------|-------------|
+| `currency` | ✓ currencyId | number | Credits the player's balance for the named currency. |
+| `item` | ✓ itemDefinitionId | number | Adds `amount` copies of the item to the player's inventory. |
+| `outpost_slots` | — (omit) | number | Permanently increments `bonusOutpostSlots` on the player's account, unlocking additional outpost territory claims. |
+
+**Example — 1 outpost slot:**
+```json
+{ "type": "outpost_slots", "amount": 1 }
+```
 
 ---
 

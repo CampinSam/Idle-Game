@@ -127,6 +127,27 @@ export class ShopService implements OnApplicationBootstrap {
           contents: [{ type: 'currency', id: 'hard_essence', amount: 20 }],
           displayOrder: 1,
         },
+        {
+          name: 'Outpost Expansion',
+          description: 'Permanently unlocks +1 additional outpost slot, allowing you to claim and manage more territory.',
+          tab: 'items',
+          cost: [{ type: 'currency', id: 'hard_essence', amount: 150 }],
+          contents: [{ type: 'outpost_slots', amount: 1 }],
+          badge: 'EXPAND',
+          badgeColor: '#10b981',
+          displayOrder: 2,
+        },
+        {
+          name: 'Outpost Expansion Pack',
+          description: 'Unlock +3 outpost slots in one go. Ideal for aggressive expansion keepers.',
+          tab: 'bundle',
+          cost: [{ type: 'currency', id: 'hard_essence', amount: 400 }],
+          originalCost: [{ type: 'currency', id: 'hard_essence', amount: 450 }],
+          contents: [{ type: 'outpost_slots', amount: 3 }],
+          badge: 'BEST VALUE',
+          badgeColor: '#8b5cf6',
+          displayOrder: 2,
+        },
       ],
     });
   }
