@@ -588,8 +588,7 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
               </div>
             )}
             {filteredRecords.map(r => {
-              const rowSchema = activeTable ? TABLE_SCHEMAS[activeTable] : null;
-              const rowBadge = rowSchema?.getRowBadge?.(r) ?? null;
+              const rowBadge = schema?.getRowBadge?.(r) ?? null;
               return (
                 <div
                   key={r.id}

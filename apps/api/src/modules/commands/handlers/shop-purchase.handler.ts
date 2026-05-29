@@ -25,7 +25,7 @@ export class ShopPurchaseHandler implements CommandHandler {
     if (item.availableFrom && new Date(item.availableFrom) > new Date()) {
       throw new BadRequestException('This item is not yet available');
     }
-    if (item.limitedUntil && new Date(item.limitedUntil) < new Date()) {
+    if (item.limitedUntil && new Date(item.limitedUntil) <= new Date()) {
       throw new BadRequestException('This offer has expired');
     }
 
