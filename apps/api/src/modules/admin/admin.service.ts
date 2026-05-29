@@ -1134,6 +1134,12 @@ export class AdminService {
       regionId?: string;
       seasonId?: string;
     };
+    eventContext?: {
+      type?: string;
+      key?: string;
+      amount?: number;
+      data?: Record<string, unknown>;
+    };
   }): Promise<{ passed: boolean; resolvedContext: SelectionContext; trace: TraceNode }> {
     // 1. Load user — same as mission.service.ts
     const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
@@ -1194,7 +1200,19 @@ export class AdminService {
       }
     }
 
-    // 6. Evaluate using the same resolver called by checkRequirements.
+    // 6. Overlay admin-supplied event context.
+    //    In the game the event is injected by the quest tracker when a telemetry event fires;
+    //    the tester supplies it explicitly so authors can validate event-scoped rules.
+    if (body.eventContext?.type) {
+      selCtx.event = {
+        type: body.eventContext.type,
+        key: body.eventContext.key,
+        amount: body.eventContext.amount ?? 1,
+        data: body.eventContext.data ?? {},
+      };
+    }
+
+    // 7. Evaluate using the same resolver called by checkRequirements.
     //    Also run the trace variant (full non-short-circuit) for the breakdown.
     const passed = this.selectionResolver.evaluate(body.rule, selCtx);
     const trace = this.selectionResolver.evaluateWithTrace(body.rule, selCtx);

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
+import type { RichSelection, ScopeType, OperatorType } from '@derp/shared';
 import {
   containerStyle,
   entryCardStyle,
@@ -12,6 +13,7 @@ import {
   fieldGroupStyle,
   labelStyle,
 } from './editorStyles';
+import RichSelectionEditor from './RichSelectionEditor';
 
 const PLAYER_EVENT_TYPES = [
   'mission_complete',
@@ -32,6 +34,7 @@ export interface Objective {
   target?: number;
   description?: string;
   key?: string;
+  selector?: RichSelection | null;
   [k: string]: any;
 }
 
@@ -43,6 +46,22 @@ interface ListProps {
 function defaultObjective(): Objective {
   return { eventType: 'mission_complete', target: 1, description: '' };
 }
+
+const collapseToggleStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  background: 'transparent',
+  border: '1px solid #2a2a3e',
+  borderRadius: 4,
+  color: '#7c6aaa',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: '0.04em',
+  cursor: 'pointer',
+  padding: '2px 7px',
+  marginTop: 6,
+};
 
 function ObjectiveEntry({
   entry, onChange, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
@@ -59,6 +78,20 @@ function ObjectiveEntry({
   const valueIsCustom = eventType !== '' && !PLAYER_EVENT_TYPES.includes(eventType);
   const [customMode, setCustomMode] = useState<boolean>(valueIsCustom);
   const showCustomInput = customMode || valueIsCustom;
+
+  const hasSelector = entry.selector != null;
+  const [selectorOpen, setSelectorOpen] = useState<boolean>(hasSelector);
+
+  const handleSelectorToggle = () => {
+    if (selectorOpen) {
+      setSelectorOpen(false);
+    } else {
+      setSelectorOpen(true);
+      if (!entry.selector) {
+        onChange({ ...entry, selector: { op: 'AND', rules: [{ scope: 'event' as ScopeType, field: 'type', operator: 'eq' as OperatorType, value: eventType || '' }] } });
+      }
+    }
+  };
 
   return (
     <div style={entryCardStyle}>
@@ -117,6 +150,48 @@ function ObjectiveEntry({
           style={{ ...inputStyle, width: '100%' }}
         />
       </div>
+
+      <div>
+        <button
+          type="button"
+          style={{ ...collapseToggleStyle, ...(hasSelector ? { color: '#a78bfa', borderColor: '#7c3aed55' } : {}) }}
+          onClick={handleSelectorToggle}
+          title="Build a selector rule to match this objective against specific event fields"
+        >
+          {selectorOpen ? '▾' : '▸'} selector {hasSelector ? '(active)' : '(optional)'}
+        </button>
+        {hasSelector && !selectorOpen && (
+          <button
+            type="button"
+            style={{ ...collapseToggleStyle, marginLeft: 6, color: '#f87171', borderColor: '#7f1d1d55' }}
+            onClick={() => { onChange({ ...entry, selector: null }); setSelectorOpen(false); }}
+            title="Remove selector"
+          >
+            × clear
+          </button>
+        )}
+      </div>
+
+      {selectorOpen && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #1e1e3e' }}>
+          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 6 }}>
+            Selector — build an <code style={{ color: '#a78bfa' }}>event.*</code> rule to filter which events count toward this objective.
+            Example: <code style={{ color: '#a78bfa' }}>event.type eq "mission_complete"</code>.
+            Leave empty to match all events of the chosen eventType above.
+          </div>
+          <RichSelectionEditor
+            value={entry.selector ?? null}
+            onChange={sel => onChange({ ...entry, selector: sel })}
+          />
+          <button
+            type="button"
+            style={{ ...collapseToggleStyle, marginTop: 6, color: '#f87171', borderColor: '#7f1d1d55' }}
+            onClick={() => { onChange({ ...entry, selector: null }); setSelectorOpen(false); }}
+          >
+            × remove selector
+          </button>
+        </div>
+      )}
     </div>
   );
 }

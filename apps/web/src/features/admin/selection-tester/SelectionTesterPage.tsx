@@ -10,6 +10,13 @@ import '../admin.css';
 type Scenario = 'player' | 'mission' | 'crafting';
 type SubTab = 'selection' | 'context' | 'trace';
 
+interface EventContextFields {
+  type: string;
+  key: string;
+  amount: string;
+  data: string;
+}
+
 interface ActivityContextFields {
   activityType: string;
   missionType: string;
@@ -54,6 +61,91 @@ const s: Record<string, React.CSSProperties> = {
   infoBox: { padding: '10px 12px', background: '#0f172a', borderRadius: 8, border: '1px solid #1e293b', color: '#64748b', fontSize: 13 },
   collapseBtn: { display: 'flex', alignItems: 'center', gap: 4, background: 'transparent', border: 'none', color: '#64748b', fontSize: 11, cursor: 'pointer', padding: '2px 0', marginTop: 10 },
 };
+
+function EventContextPanel({
+  value,
+  onChange,
+}: {
+  value: EventContextFields;
+  onChange: (v: EventContextFields) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  const update = (field: keyof EventContextFields, val: string) =>
+    onChange({ ...value, [field]: val });
+
+  const validateData = (raw: string) => {
+    if (!raw.trim()) { setDataError(null); return; }
+    try { JSON.parse(raw); setDataError(null); }
+    catch { setDataError('Invalid JSON'); }
+  };
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button style={s.collapseBtn} onClick={() => setOpen(o => !o)}>
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        Event Context{value.type ? ` — type: "${value.type}"` : ' (optional — required for event.* rules)'}
+      </button>
+      {open && (
+        <div style={{ ...s.fieldGrid, marginTop: 8 }}>
+          <div>
+            <div style={s.fieldLabel}>Event Type <span style={{ color: '#f59e0b' }}>*</span></div>
+            <input
+              style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const }}
+              value={value.type}
+              placeholder='e.g. mission_complete'
+              onChange={e => update('type', e.target.value)}
+              list="event-type-hints"
+            />
+            <datalist id="event-type-hints">
+              <option value="mission_complete" />
+              <option value="currency_earned" />
+              <option value="item_collected" />
+              <option value="location_claimed" />
+              <option value="item_crafted" />
+              <option value="building_built" />
+              <option value="keeper_level_up" />
+              <option value="entity_level_up" />
+              <option value="gift_claimed" />
+              <option value="lootbox_opened" />
+              <option value="checkin_completed" />
+            </datalist>
+          </div>
+          <div>
+            <div style={s.fieldLabel}>Key (optional)</div>
+            <input
+              style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const }}
+              value={value.key}
+              placeholder='e.g. a missionDefId'
+              onChange={e => update('key', e.target.value)}
+            />
+          </div>
+          <div>
+            <div style={s.fieldLabel}>Amount (default 1)</div>
+            <input
+              type="number"
+              style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const }}
+              value={value.amount}
+              placeholder='1'
+              onChange={e => update('amount', e.target.value)}
+            />
+          </div>
+          <div>
+            <div style={s.fieldLabel}>Data (JSON object, optional)</div>
+            <input
+              style={{ ...s.smallInput, width: '100%', boxSizing: 'border-box' as const, ...(dataError ? { borderColor: '#f87171' } : {}) }}
+              value={value.data}
+              placeholder='{"missionType":"dungeon"}'
+              onChange={e => { update('data', e.target.value); validateData(e.target.value); }}
+            />
+            {dataError && <div style={{ color: '#f87171', fontSize: 11, marginTop: 2 }}>{dataError}</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ActivityContextPanel({
   scenario,
@@ -256,6 +348,10 @@ export default function SelectionTesterPage() {
     SCENARIO_DEFAULTS['player'],
   );
 
+  const [eventContext, setEventContext] = useState<EventContextFields>({
+    type: '', key: '', amount: '', data: '',
+  });
+
   const [result, setResult] = useState<{ passed: boolean; resolvedContext: unknown; trace: TraceNode } | null>(null);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -328,12 +424,27 @@ export default function SelectionTesterPage() {
       seasonId: activityContext.seasonId.trim() || undefined,
     } : undefined;
 
+    let evCtxPayload: { type?: string; key?: string; amount?: number; data?: Record<string, unknown> } | undefined;
+    if (eventContext.type.trim()) {
+      let parsedData: Record<string, unknown> = {};
+      if (eventContext.data.trim()) {
+        try { parsedData = JSON.parse(eventContext.data); } catch { /* invalid json — skip */ }
+      }
+      evCtxPayload = {
+        type: eventContext.type.trim(),
+        key: eventContext.key.trim() || undefined,
+        amount: eventContext.amount.trim() ? Number(eventContext.amount) : undefined,
+        data: parsedData,
+      };
+    }
+
     try {
       const res = await adminApi.evaluateSelection({
         rule,
         userId: playerData.id,
         entityIds: selectedEntityIds.length > 0 ? selectedEntityIds : undefined,
         activityContext: actCtxPayload,
+        eventContext: evCtxPayload,
       });
       setResult(res);
       setSubTab('trace');
@@ -342,7 +453,7 @@ export default function SelectionTesterPage() {
     } finally {
       setRunning(false);
     }
-  }, [rule, playerData, selectedEntityIds, activityContext]);
+  }, [rule, playerData, selectedEntityIds, activityContext, eventContext]);
 
   const entities: any[] = playerData?.entities ?? [];
   const normalizedEntities = useMemo(() => entities.map(normalizeAdminEntity), [entities]);
@@ -552,6 +663,11 @@ export default function SelectionTesterPage() {
                 scenario={scenario}
                 value={activityContext}
                 onChange={setActivityContext}
+              />
+
+              <EventContextPanel
+                value={eventContext}
+                onChange={setEventContext}
               />
             </div>
           )}

@@ -326,6 +326,12 @@ export const adminApi = {
       regionId?: string;
       seasonId?: string;
     };
+    eventContext?: {
+      type?: string;
+      key?: string;
+      amount?: number;
+      data?: Record<string, unknown>;
+    };
   }) =>
     adminRequest<{ passed: boolean; resolvedContext: unknown; trace: TraceNode }>('/selection/evaluate', {
       method: 'POST',
