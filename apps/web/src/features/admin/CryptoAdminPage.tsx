@@ -1,5 +1,159 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from './adminApi';
+
+type OracleStatus = {
+  lovelacePerUsd: number;
+  usdPerAda: number;
+  sampleCount: number;
+  twaWindowSeconds: number;
+  oldestSampleAt: string | null;
+  newestSampleAt: string | null;
+  usingFallback: boolean;
+};
+
+type OracleHealth = 'green' | 'yellow' | 'red';
+
+function getOracleHealth(status: OracleStatus): OracleHealth {
+  if (status.usingFallback || !status.newestSampleAt) return 'red';
+  const ageMs = Date.now() - new Date(status.newestSampleAt).getTime();
+  const ageMin = ageMs / 60_000;
+  if (ageMin < 10) return 'green';
+  if (ageMin < 30) return 'yellow';
+  return 'red';
+}
+
+const HEALTH_STYLES: Record<OracleHealth, { dot: string; border: string; label: string; labelColor: string }> = {
+  green:  { dot: '#4caf50', border: 'rgba(76,175,80,0.35)',   label: 'Healthy',  labelColor: '#4caf50' },
+  yellow: { dot: '#fbbf24', border: 'rgba(251,191,36,0.35)', label: 'Lagging',  labelColor: '#fbbf24' },
+  red:    { dot: '#ff6b6b', border: 'rgba(255,107,107,0.35)', label: 'Stale',    labelColor: '#ff6b6b' },
+};
+
+function formatAge(isoString: string | null): string {
+  if (!isoString) return '—';
+  const ageMs = Date.now() - new Date(isoString).getTime();
+  const s = Math.floor(ageMs / 1_000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m ago`;
+}
+
+function AdaOracleWidget() {
+  const [status, setStatus] = useState<OracleStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await adminApi.getAdaOracleStatus();
+      setStatus(data);
+      setError(null);
+    } catch (e: any) {
+      setError(e.message || 'Failed to fetch oracle status');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    intervalRef.current = setInterval(load, 60_000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [load]);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+
+  void now;
+
+  const health: OracleHealth = status ? getOracleHealth(status) : 'red';
+  const hs = HEALTH_STYLES[health];
+
+  return (
+    <div style={{
+      background: '#16213e',
+      border: `1px solid ${status ? hs.border : 'rgba(255,107,107,0.3)'}`,
+      borderRadius: 8,
+      padding: '1rem 1.25rem',
+      marginBottom: '1.5rem',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#b8b8ff', fontWeight: 600 }}>ADA Oracle</h3>
+          {status && (
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '2px 8px', borderRadius: 20,
+              background: `${hs.dot}22`, border: `1px solid ${hs.border}`,
+              fontSize: '0.72rem', fontWeight: 700, color: hs.labelColor, letterSpacing: '0.04em',
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', background: hs.dot, display: 'inline-block',
+                boxShadow: health === 'green' ? `0 0 5px ${hs.dot}` : undefined,
+              }} />
+              {hs.label}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          style={{
+            padding: '0.2rem 0.55rem', fontSize: '0.75rem', border: '1px solid #333',
+            borderRadius: 5, background: 'transparent', color: '#888', cursor: loading ? 'default' : 'pointer',
+          }}
+        >
+          {loading ? '…' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ color: '#ff6b6b', fontSize: '0.85rem' }}>{error}</div>
+      )}
+
+      {!error && status && (
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+          <div>
+            <div style={{ color: '#666', fontSize: '0.72rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rate (USD/ADA)</div>
+            <div style={{ color: '#e0e0ff', fontWeight: 700, fontSize: '1.05rem' }}>
+              ${status.usdPerAda.toFixed(4)}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#666', fontSize: '0.72rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Sample</div>
+            <div style={{ color: health === 'red' ? '#ff6b6b' : health === 'yellow' ? '#fbbf24' : '#e0e0ff', fontWeight: 600 }}>
+              {formatAge(status.newestSampleAt)}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: '#666', fontSize: '0.72rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Samples in Window</div>
+            <div style={{ color: '#e0e0ff', fontWeight: 600 }}>
+              {status.sampleCount}
+              <span style={{ color: '#555', fontSize: '0.78rem', marginLeft: 4 }}>/ {Math.round(status.twaWindowSeconds / 60)}m TWA</span>
+            </div>
+          </div>
+          {status.usingFallback && (
+            <div style={{
+              alignSelf: 'center', padding: '0.2rem 0.65rem', borderRadius: 5, fontSize: '0.78rem',
+              background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff6b6b',
+            }}>
+              Using fallback rate
+            </div>
+          )}
+        </div>
+      )}
+
+      {!error && loading && !status && (
+        <div style={{ color: '#555', fontSize: '0.85rem' }}>Loading oracle status…</div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   PENDING: { bg: 'rgba(251,191,36,0.12)', color: '#fbbf24', border: 'rgba(251,191,36,0.3)' },
@@ -472,6 +626,7 @@ export function CryptoAdminPage() {
 
   return (
     <div>
+      <AdaOracleWidget />
       <div style={{ marginBottom: '1.25rem' }}>
         <h2 style={{ margin: '0 0 1rem', color: '#e0e0ff', fontSize: '1.15rem' }}>DERP Crypto Wallet</h2>
         <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>

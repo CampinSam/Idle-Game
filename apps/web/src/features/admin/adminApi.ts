@@ -358,6 +358,17 @@ export const adminApi = {
     });
   },
 
+  getAdaOracleStatus: () =>
+    adminRequest<{
+      lovelacePerUsd: number;
+      usdPerAda: number;
+      sampleCount: number;
+      twaWindowSeconds: number;
+      oldestSampleAt: string | null;
+      newestSampleAt: string | null;
+      usingFallback: boolean;
+    }>('/crypto/rates/ada/current'),
+
   getCryptoConfig: () => adminRequest<any>('/crypto/config'),
   updateCryptoConfig: (data: {
     hotWalletAddress?: string;
