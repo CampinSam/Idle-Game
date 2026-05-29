@@ -258,7 +258,7 @@ model Currency {
   decimals     Int          @default(0)
   cap          BigInt?
   enabled      Boolean      @default(true)
-  showInTopBar Boolean?
+  showInTopBar Boolean      @default(false)
   sortOrder    Int          @default(0)
 
   createdAt    DateTime     @default(now())

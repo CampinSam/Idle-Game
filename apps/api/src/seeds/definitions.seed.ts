@@ -171,30 +171,16 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.currencies) {
-    // Non-force upsert preserves admin-edited fields on existing rows.
-    await upsertMany(prisma, 'currency', defs.currencies, (r) => {
+    // Force upsert: currency definitions in definitions.json are the source of
+    // truth. upsertManyForce ensures canonical rows (enabled, showInTopBar,
+    // sortOrder) are always in sync with the seed data on every boot.
+    await upsertManyForce(prisma, 'currency', defs.currencies, (r) => {
       const copy = { ...r };
       if (copy.cap !== null && copy.cap !== undefined) {
         copy.cap = BigInt(copy.cap);
       }
       return copy;
     });
-
-    // Migration backfill: showInTopBar is nullable with no schema default, so
-    // when the column is first added to an existing DB (prisma db push), rows
-    // that existed before this field will have NULL. This updateMany runs for
-    // every boot but only writes to rows where showInTopBar IS NULL — meaning
-    // they have never been explicitly set. Once an admin toggles the value
-    // (true or false), it becomes non-null and is never touched again.
-    const topBarSeeds: { id: string; sortOrder: number; showInTopBar: boolean }[] = defs.currencies
-      .map((r: any) => ({ id: r.id, showInTopBar: r.showInTopBar ?? false, sortOrder: r.sortOrder ?? 0 }));
-
-    for (const row of topBarSeeds) {
-      await prisma.currency.updateMany({
-        where: { id: row.id, showInTopBar: null },
-        data: { showInTopBar: row.showInTopBar, sortOrder: row.sortOrder },
-      });
-    }
   }
 
   if (defs.entityDefinitions) {
