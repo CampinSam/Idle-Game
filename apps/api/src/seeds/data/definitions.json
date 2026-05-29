@@ -7276,7 +7276,12 @@
       "sortOrder": 0,
       "objectives": [
         {
-          "eventType": "mission_complete",
+          "selector": {
+            "op": "AND",
+            "rules": [
+              { "scope": "event", "field": "type", "operator": "eq", "value": "mission_complete" }
+            ]
+          },
           "target": 1,
           "label": "Complete 1 mission"
         }
@@ -7300,7 +7305,12 @@
       "sortOrder": 1,
       "objectives": [
         {
-          "eventType": "lootbox_opened",
+          "selector": {
+            "op": "AND",
+            "rules": [
+              { "scope": "event", "field": "type", "operator": "eq", "value": "lootbox_opened" }
+            ]
+          },
           "target": 3,
           "label": "Open 3 lootboxes"
         }
@@ -7324,12 +7334,22 @@
       "sortOrder": 2,
       "objectives": [
         {
-          "eventType": "mission_complete",
+          "selector": {
+            "op": "AND",
+            "rules": [
+              { "scope": "event", "field": "type", "operator": "eq", "value": "mission_complete" }
+            ]
+          },
           "target": 5,
           "label": "Complete 5 missions"
         },
         {
-          "eventType": "checkin_completed",
+          "selector": {
+            "op": "AND",
+            "rules": [
+              { "scope": "event", "field": "type", "operator": "eq", "value": "checkin_completed" }
+            ]
+          },
           "target": 3,
           "label": "Check in 3 days"
         }

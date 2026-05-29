@@ -36,6 +36,13 @@ export interface SelectionMissionContext {
   teamSize?: number;
 }
 
+export interface SelectionEventContext {
+  type: string;
+  key?: string;
+  amount: number;
+  data: Record<string, unknown>;
+}
+
 export interface SelectionContext {
   player: {
     keeperLevel: number;
@@ -50,4 +57,5 @@ export interface SelectionContext {
   currentLocation?: SelectionLocationContext;
   parentBuilding?: SelectionBuildingContext;
   missionContext?: SelectionMissionContext;
+  event?: SelectionEventContext;
 }

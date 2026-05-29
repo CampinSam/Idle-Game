@@ -31,13 +31,6 @@ function freshProgress(objectives: any[]): any[] {
   }));
 }
 
-function shallowMatch(filter: Record<string, unknown>, data: Record<string, unknown>): boolean {
-  for (const [k, v] of Object.entries(filter)) {
-    if (data[k] !== v) return false;
-  }
-  return true;
-}
-
 function makeRng() {
   return {
     chance: (p: number) => Math.random() < p,
@@ -96,12 +89,29 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     // guarantees fresh windows on a player's first event after midnight.
     await this.resetExpiredCadenceQuests(userId, db);
 
-    // Load all enabled defs whose objectives contain the incoming event type.
-    // We pull the full universe so newly-added defs are picked up without a
-    // pre-spawn step — instances materialise here on first hit.
+    // Load all enabled defs. We evaluate each objective's unified selector against
+    // a combined SelectionContext that includes the live telemetry event.
     const allEnabledDefs = await (db as any).questDef.findMany({
       where: { enabled: true },
     });
+
+    // Build the combined context: base player/world context from the event (if
+    // present) extended with the event payload so `event` scope rules work.
+    const baseContext = event.selectionContext ?? {
+      player: { keeperLevel: 0, flags: {} as Record<string, unknown> },
+      entities: [],
+      inventory: { currencies: {}, items: {} },
+      locations: [],
+    };
+    const contextWithEvent = {
+      ...baseContext,
+      event: {
+        type: event.eventType,
+        key: event.key ?? undefined,
+        amount: event.amount,
+        data: event.data ?? {},
+      },
+    };
 
     const matchingDefs: Array<{ def: any; objectiveIdxs: number[] }> = [];
     for (const def of allEnabledDefs) {
@@ -109,21 +119,9 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       const idxs: number[] = [];
       for (let i = 0; i < objectives.length; i++) {
         const obj = objectives[i];
-        if (!obj || obj.eventType !== event.eventType) continue;
-        if (obj.key != null && obj.key !== event.key) continue;
-        if (obj.dataFilter && !shallowMatch(obj.dataFilter, event.data || {})) continue;
-
-        if (obj.selectionRule) {
-          if (event.selectionContext) {
-            const passes = this.selectionResolver.evaluateAll(obj.selectionRule, event.selectionContext);
-            if (!passes) continue;
-          } else {
-            this.logger.warn(
-              `Quest objective has selectionRule but event "${event.eventType}" carries no selectionContext — treating as pass (questDefId=${def.id})`,
-            );
-          }
-        }
-        idxs.push(i);
+        if (!obj?.selector) continue;
+        const passes = this.selectionResolver.evaluateAll(obj.selector, contextWithEvent);
+        if (passes) idxs.push(i);
       }
       if (idxs.length > 0) matchingDefs.push({ def, objectiveIdxs: idxs });
     }

@@ -16,6 +16,7 @@ export const SINGLE_VALUE_SCOPES = new Set<ScopeType>([
   'currentLocation',
   'building',
   'context',
+  'event',
 ]);
 
 export const STUBBED_SCOPES = new Set<ScopeType>([
@@ -25,7 +26,6 @@ export const STUBBED_SCOPES = new Set<ScopeType>([
   'job',
   'room',
   'season',
-  'event',
   'entity_slot',
 ]);
 
@@ -48,6 +48,11 @@ export function classifyField(scope: ScopeType, field: string): FieldType {
 
   if (scope === 'team' && field === 'entities') {
     return FieldType.EntitiesCount;
+  }
+
+  if (scope === 'event') {
+    if (field === 'amount') return FieldType.Numeric;
+    return FieldType.StringId;
   }
 
   if (field.startsWith('flags.')) return FieldType.Flag;

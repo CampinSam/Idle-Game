@@ -8,7 +8,6 @@ const STUB_SCOPES: ScopeType[] = [
   'job',
   'room',
   'season',
-  'event',
   'entity_slot',
 ];
 
@@ -154,6 +153,25 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
       if (field === 'missionType') return [mc.missionType];
       if (field === 'regionId') return [mc.regionId];
       if (field === 'seasonId') return [mc.seasonId];
+      return [undefined];
+    }
+
+    case 'event': {
+      const ev = ctx.event;
+      if (!ev) return [undefined];
+      if (field === 'type') return [ev.type];
+      if (field === 'key') return [ev.key ?? null];
+      if (field === 'amount') return [ev.amount];
+      if (field.startsWith('data.')) {
+        const dotPath = field.substring(5);
+        const parts = dotPath.split('.');
+        let val: unknown = ev.data;
+        for (const part of parts) {
+          if (val == null || typeof val !== 'object') { val = undefined; break; }
+          val = (val as Record<string, unknown>)[part];
+        }
+        return [val];
+      }
       return [undefined];
     }
 

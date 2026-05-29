@@ -457,23 +457,21 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 
 ---
 
-## `selectionRule` — Rich Contextual Conditions on Quest/Achievement Objectives
+## Quest/Achievement Objective `selector` — Unified RichSelection Matching
 
-Quest and achievement objectives support an optional `selectionRule` field in addition to the existing `eventType`, `key`, and `dataFilter` filters. When set, the rule is evaluated against a `SelectionContext` attached in-memory to the telemetry event — progress only increments if the rule **passes**.
+Quest and achievement objectives use a single `selector: RichSelection` field to match telemetry events and filter world state. The `selector` is evaluated against a `SelectionContext` that is extended with the live telemetry event under the `event` scope — so both event matching and contextual filtering live in one block.
 
-> **Note:** Achievements are now unified with quests. Use `category: "achievement"` on a `QuestDef` to mark it as an achievement. The `tier` field (1=bronze, 2=silver, 3=gold) and `permanentEffectSpec` field are available on all `QuestDef` rows.
+> **Note:** Achievements are unified with quests. Use `category: "achievement"` on a `QuestDef` to mark it as an achievement. The `tier` field (1=bronze, 2=silver, 3=gold) and `permanentEffectSpec` field are available on all `QuestDef` rows.
 
 ### Objective shape
 
 ```json
 {
-  "eventType": "mission_complete",
-  "key": "mission_boss_alpha",
-  "target": 3,
-  "dataFilter": { "outcome": "success" },
-  "selectionRule": {
+  "selector": {
     "op": "AND",
     "rules": [
+      { "scope": "event", "field": "type", "operator": "eq", "value": "mission_complete" },
+      { "scope": "event", "field": "key", "operator": "eq", "value": "mission_boss_alpha" },
       {
         "scope": "team",
         "field": "traits.archetype",
@@ -489,6 +487,7 @@ Quest and achievement objectives support an optional `selectionRule` field in ad
       }
     ]
   },
+  "target": 3,
   "label": "Complete the boss 3 times with a Ninja at Keeper Level 5+"
 }
 ```
@@ -497,38 +496,39 @@ Quest and achievement objectives support an optional `selectionRule` field in ad
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `eventType` | string | ✓ | Telemetry event type that increments progress (e.g. `mission_complete`, `crafting_completed`, `checkin_completed`) |
-| `key` | string | | Narrows matches to events whose key equals this value (e.g. a specific `missionDefId`) |
+| `selector` | `RichSelection` | ✓ | Unified condition tree evaluated against the combined SelectionContext (event + world state) |
 | `target` | number | ✓ | Number of qualifying events required to complete this objective |
-| `dataFilter` | object | | Shallow equality filter on the event's `data` payload — all specified keys must match |
-| `selectionRule` | `RichSelection` | | Optional — rich contextual condition tree; see below |
 | `label` | string | | Human-readable label shown in the UI |
 
-### How `selectionRule` is evaluated
+### The `event` scope
 
-1. The `eventType`, `key`, and `dataFilter` checks run first. If any fail, the objective is skipped immediately (no `selectionRule` evaluation).
-2. If `selectionRule` is set and the event carries a `SelectionContext`, `SelectionResolverService.evaluateAll()` is called with the full context. Progress increments only if it returns `true`.
-3. If `selectionRule` is set but the event has **no** `SelectionContext`, a warning is logged and the check is treated as a **pass** — this prevents misconfigured emitters from silently blocking progress on existing objectives.
-4. If `selectionRule` is absent, behaviour is identical to before this feature (fully backward-compatible).
+When evaluating quest objectives, the SelectionContext is extended with an `event` property holding the current telemetry event. Rules using `scope: "event"` read from this payload.
 
-### Events that carry a SelectionContext
+| `field` | Resolves to |
+|---------|------------|
+| `type` | The telemetry event type string (e.g. `"mission_complete"`) |
+| `key` | The event's key value (e.g. a `missionDefId`), or `null` if absent |
+| `amount` | The numeric amount carried by the event (default `1`) |
+| `data.<dotted.path>` | A value nested inside the event's `data` payload |
 
-| Event type | Context includes |
-|------------|-----------------|
-| `mission_complete` | Team entities (traits, stats, level, rarity), mission metadata (missionTags, missionType, regionId, activityType), player (keeperLevel, flags) |
-| `crafting_completed` | Crafting entity (traits, stats, level, rarity), player (keeperLevel, flags) |
-| `checkin_completed` | Player only (keeperLevel, flags) — no entities |
+### How the selector is evaluated
+
+1. `QuestService.processEvent` builds a combined context: the event's `SelectionContext` (player, entities, inventory, locations, mission metadata) merged with the `event` property.
+2. `SelectionResolverService.evaluateAll(obj.selector, contextWithEvent)` is called for each objective. Progress increments only if the selector returns `true`.
+3. If the emitting event carries no `SelectionContext` (rare), a minimal empty context is used — objectives that only use `event`-scope rules still work correctly.
 
 ### Example use cases
 
 | Goal | Rule sketch |
 |------|------------|
-| Complete a mission with a Ninja on the team | `team.traits.archetype eq "Ninja"` with `any` aggregate |
-| Win a mission where all entities are level 5+ | `team.level gte 5` with `all` aggregate |
-| Complete 10 missions in Region A | `missionContext.regionId eq "region_a"` (use `scope: "context"` / `mission` scope) |
-| Craft an item using a Legendary entity | `entity.traits.rarity eq "legendary"` |
+| Match any `mission_complete` event | `event.type eq "mission_complete"` |
+| Match a specific mission | `event.type eq "mission_complete"` AND `event.key eq "mission_boss_alpha"` |
+| Match event with data filter | `event.data.outcome eq "success"` |
+| Complete a mission with a Ninja on the team | AND `event.type eq "mission_complete"` + `team.traits.archetype any eq "Ninja"` |
+| Complete 10 missions in Region A | AND `event.type eq "mission_complete"` + `context.regionId eq "region_a"` |
+| Craft with a Legendary entity | AND `event.type eq "crafting_completed"` + `entity.rarity eq "legendary"` |
 
-`selectionRule` accepts the full `RichSelection` DSL including nested `AND`/`OR`/`NOT` groups and `rule_ref` references to shared `SelectionRuleDef` rows.
+`selector` accepts the full `RichSelection` DSL including nested `AND`/`OR`/`NOT` groups and `rule_ref` references to shared `SelectionRuleDef` rows.
 
 ---
 

@@ -47,7 +47,7 @@ function defaultRuleRef(): RuleRefNode {
 
 const SCOPE_OPTIONS: ScopeType[] = [
   'player', 'entity', 'team', 'team_member', 'location', 'currentLocation', 'building',
-  'context', 'currency_balance', 'item', 'inventory',
+  'context', 'event', 'currency_balance', 'item', 'inventory',
 ];
 
 interface FieldSuggestion { value: string; hint?: string; }
@@ -143,6 +143,12 @@ const SCOPE_FIELD_SUGGESTIONS: Partial<Record<ScopeType, FieldSuggestion[]>> = {
     { value: 'buildingDefId', hint: 'building definition id' },
     { value: 'rooms.<roomDefId>', hint: 'has room (1/0) — replace <roomDefId>' },
     { value: 'tags.<tag>', hint: 'has tag (1/0) — replace <tag>' },
+  ],
+  event: [
+    { value: 'type', hint: 'telemetry event type string (e.g. "mission_complete", "checkin_completed")' },
+    { value: 'key', hint: 'event key — narrows to a specific def id (e.g. a missionDefId), or null if absent' },
+    { value: 'amount', hint: 'numeric amount carried by the event (default 1)' },
+    { value: 'data.<key>', hint: 'value inside the event data payload — replace <key> with the field name (supports dot paths)' },
   ],
   currency_balance: [
     { value: '<currencyId>', hint: 'replace with the currency definition id (e.g. gold)' },

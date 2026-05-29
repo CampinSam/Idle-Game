@@ -2285,27 +2285,20 @@
     },
     "QuestObjective": {
       "type": "object",
-      "description": "A single objective that must be completed as part of a quest",
+      "description": "A single objective that must be completed as part of a quest. Uses a unified RichSelection selector — including event-scope rules — to match telemetry events.",
+      "required": ["selector", "target"],
       "properties": {
-        "eventType": {
-          "type": "string",
-          "description": "PlayerEvent.eventType to match"
-        },
-        "key": {
-          "type": "string",
-          "description": "If set, also matches PlayerEvent.key. Null = any key"
+        "selector": {
+          "$ref": "#/complexTypes/RichSelection",
+          "description": "RichSelection tree evaluated against a SelectionContext that includes the live telemetry event (event.type, event.key, event.amount, event.data.<key>). All event matching and world-state filtering lives here."
         },
         "target": {
           "type": "number",
           "description": "Total amount needed to complete this objective"
         },
-        "description": {
+        "label": {
           "type": "string",
-          "description": "Human-readable objective text"
-        },
-        "dataFilter": {
-          "type": "object",
-          "description": "Optional shallow key-value match against PlayerEvent.data (e.g. {outcome:\"success\"})"
+          "description": "Human-readable objective text shown in the UI"
         }
       }
     },

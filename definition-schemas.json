@@ -1240,34 +1240,21 @@
       }
     },
     "QuestObjective": {
-      "description": "A single objective entry inside QuestDef.objectives. Applies to both quests and achievements (category='achievement' in QuestDef).",
+      "description": "A single objective entry inside QuestDef.objectives. Applies to both quests and achievements (category='achievement' in QuestDef). Uses a unified RichSelection selector — including event-scope rules — to match telemetry events.",
       "type": "object",
       "required": [
-        "eventType",
+        "selector",
         "target"
       ],
       "properties": {
-        "eventType": {
-          "type": "string",
-          "description": "Telemetry event type that increments this objective (e.g. 'mission_complete', 'crafting_completed', 'checkin_completed')."
-        },
-        "key": {
-          "type": "string",
-          "description": "Optional \u2014 narrows matches to events whose key equals this value (e.g. a specific missionDefId)."
+        "selector": {
+          "$ref": "#/definitions/RichSelection",
+          "description": "RichSelection tree evaluated against a SelectionContext that includes the live telemetry event. Use event-scope rules to match on the event itself (event.type, event.key, event.amount, event.data.<path>) and any other scope (player, team, entity, context, etc.) for world-state filtering. All criteria live in this single block."
         },
         "target": {
           "type": "number",
           "minimum": 1,
           "description": "How many qualifying events are required to complete this objective."
-        },
-        "dataFilter": {
-          "type": "object",
-          "description": "Optional shallow equality filter applied to the event's data payload. All specified keys must match for the event to count.",
-          "additionalProperties": true
-        },
-        "selectionRule": {
-          "$ref": "#/definitions/RichSelection",
-          "description": "Optional RichSelection tree evaluated against the event's SelectionContext. When present, progress only increments if this rule passes. Supports entity-level rules (traits, level, rarity, stats), team composition checks, player context, and mission metadata. Requires the emitting event to carry a SelectionContext (mission_complete, crafting_completed, and checkin_completed all do). If the rule is set but the event has no context, the check is treated as a pass with a warning logged."
         },
         "label": {
           "type": "string",
