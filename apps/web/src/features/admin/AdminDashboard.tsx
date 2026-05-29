@@ -1578,13 +1578,24 @@ function ReviewQueuePanel() {
         <div style={{ color: '#555', fontSize: 13, padding: '20px 0', textAlign: 'center' }}>No drafts found.</div>
       )}
 
-      {drafts.map(draft => {
+      {/* Group drafts by table */}
+      {Object.entries(
+        drafts.reduce<Record<string, any[]>>((acc, d) => {
+          (acc[d.tableName] = acc[d.tableName] ?? []).push(d);
+          return acc;
+        }, {}),
+      ).map(([tableName, tableDrafts]) => (
+        <div key={tableName} style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid #1a1a3e' }}>
+            {tableName} <span style={{ color: '#444', fontWeight: 400 }}>({tableDrafts.length})</span>
+          </div>
+      {tableDrafts.map(draft => {
         const isExpanded = !!expanded[draft.id];
         const busy = !!actionLoading[draft.id];
         const detail = detailCache[draft.id];
         const loadingDetail = !!detailLoading[draft.id];
         return (
-          <div key={draft.id} style={{ background: '#0d0d1e', border: '1px solid #1a1a3e', borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
+          <div key={draft.id} style={{ background: '#0d0d1e', border: '1px solid #1a1a3e', borderRadius: 8, marginBottom: 6, overflow: 'hidden' }}>
             {/* Header row */}
             <div
               style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', borderBottom: isExpanded ? '1px solid #1a1a3e' : 'none' }}
@@ -1594,7 +1605,6 @@ function ReviewQueuePanel() {
               <span style={{ fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 3, background: opColor[draft.operation] + '22', color: opColor[draft.operation], textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {draft.operation}
               </span>
-              <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>{draft.tableName}</span>
               <span style={{ fontSize: 11, color: '#666' }}>/{draft.recordId}</span>
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 10, color: '#555' }}>by {draft.author?.username ?? '?'}</span>
@@ -1673,6 +1683,8 @@ function ReviewQueuePanel() {
           </div>
         );
       })}
+        </div>
+      ))}
     </div>
   );
 }

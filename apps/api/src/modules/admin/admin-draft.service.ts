@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminService } from './admin.service';
+import { ScreensService } from '../screens/screens.service';
 import { TABLE_KEY_TO_GROUP } from './admin-permissions';
 
 @Injectable()
@@ -18,10 +19,11 @@ export class AdminDraftService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly adminService: AdminService,
+    private readonly screensService: ScreensService,
   ) {}
 
   async onModuleInit() {
-    // Enforce DB-level uniqueness: only one pending/applying draft per (tableName, recordId)
+    // Enforce DB-level uniqueness: only one pending draft per (tableName, recordId)
     try {
       await this.prisma.$executeRawUnsafe(`
         CREATE UNIQUE INDEX IF NOT EXISTS content_drafts_pending_record_unique
@@ -29,28 +31,83 @@ export class AdminDraftService implements OnModuleInit {
         WHERE status = 'pending'
       `);
     } catch (err) {
-      this.logger.warn(`Pending-draft unique index already exists or could not be created: ${(err as any)?.message}`);
+      this.logger.warn(`Pending-draft unique index: ${(err as any)?.message}`);
     }
 
-    // Boot-time recovery: revert any drafts stuck in 'applying' from a previous crashed approval
+    // Boot-time recovery: verify and finalize drafts stuck in 'applying' state
+    // (process crashed during a previous approval attempt)
     try {
       const stuck = await (this.prisma as any).contentDraft.findMany({
         where: { status: 'applying' },
-        select: { id: true },
       });
       if (stuck.length > 0) {
-        this.logger.warn(`Recovering ${stuck.length} draft(s) stuck in 'applying' state → reverting to 'pending'`);
-        await (this.prisma as any).contentDraft.updateMany({
-          where: { status: 'applying' },
-          data: {
-            status: 'pending',
-            reviewerId: null,
-            reviewComment: 'Recovered: server restarted during approval — please re-review',
-          },
-        });
+        this.logger.warn(`Verifying ${stuck.length} draft(s) stuck in 'applying' state`);
+        for (const draft of stuck) {
+          const applied = await this.checkIfAlreadyApplied(draft);
+          if (applied) {
+            // Mutation landed before the crash — finalize as approved
+            this.logger.log(`Draft ${draft.id} confirmed applied → marking approved`);
+            await (this.prisma as any).contentDraft.update({
+              where: { id: draft.id },
+              data: { status: 'approved' },
+            });
+          } else {
+            // Mutation did not land — revert so reviewer can retry
+            this.logger.warn(`Draft ${draft.id} not applied → reverting to pending`);
+            await (this.prisma as any).contentDraft.update({
+              where: { id: draft.id },
+              data: {
+                status: 'pending',
+                reviewerId: null,
+                reviewComment: 'Recovered: server restarted during approval — please re-review',
+              },
+            });
+          }
+        }
       }
     } catch (err) {
       this.logger.error(`Failed to recover applying drafts on boot: ${(err as any)?.message}`);
+    }
+  }
+
+  // ─── Recovery helper: check if mutation already landed ─────────────────────
+
+  private async checkIfAlreadyApplied(draft: any): Promise<boolean> {
+    try {
+      if (draft.operation === 'create') {
+        // If the record now exists, creation already happened
+        const existing = await this.tryGetRecord(draft.tableName, draft.recordId);
+        return existing !== null;
+      } else if (draft.operation === 'delete') {
+        // If the record is gone, deletion already happened
+        const existing = await this.tryGetRecord(draft.tableName, draft.recordId);
+        return existing === null;
+      } else if (draft.operation === 'update') {
+        // Compare live record to payload — if they match (all payload keys), mutation applied
+        const live = await this.tryGetRecord(draft.tableName, draft.recordId);
+        if (!live) return false;
+        const payload = (draft.payload ?? {}) as Record<string, any>;
+        return Object.entries(payload).every(([k, v]) =>
+          JSON.stringify(live[k]) === JSON.stringify(v),
+        );
+      }
+    } catch {
+      // If we can't determine, be conservative and revert
+    }
+    return false;
+  }
+
+  private async tryGetRecord(tableName: string, recordId: string): Promise<any | null> {
+    try {
+      if (tableName === 'game-definitions') {
+        return await this.screensService.getById(recordId).catch(() => null);
+      }
+      if (tableName === 'gemPacks') {
+        return await this.adminService.getAdminGemPack(recordId).catch(() => null);
+      }
+      return await this.adminService.getRecord(tableName, recordId).catch(() => null);
+    } catch {
+      return null;
     }
   }
 
@@ -94,14 +151,9 @@ export class AdminDraftService implements OnModuleInit {
     });
 
     if (ownExisting) {
-      // Update the author's own pending draft
       return (this.prisma as any).contentDraft.update({
         where: { id: ownExisting.id },
-        data: {
-          operation: opts.operation,
-          payload: opts.payload,
-          updatedAt: new Date(),
-        },
+        data: { operation: opts.operation, payload: opts.payload, updatedAt: new Date() },
         include: {
           author:   { select: { username: true } },
           reviewer: { select: { username: true } },
@@ -109,12 +161,12 @@ export class AdminDraftService implements OnModuleInit {
       });
     }
 
-    // Check if another author already has a pending draft for this record
+    // Block if another author's draft is already pending or in-flight
     const conflicting = await (this.prisma as any).contentDraft.findFirst({
       where: {
-        tableName:  opts.tableName,
-        recordId:   opts.recordId,
-        status:     { in: ['pending', 'applying'] },
+        tableName: opts.tableName,
+        recordId:  opts.recordId,
+        status:    { in: ['pending', 'applying'] },
       },
     });
     if (conflicting) {
@@ -125,12 +177,12 @@ export class AdminDraftService implements OnModuleInit {
 
     return (this.prisma as any).contentDraft.create({
       data: {
-        tableName:  opts.tableName,
-        recordId:   opts.recordId,
-        operation:  opts.operation,
-        payload:    opts.payload,
-        status:     'pending',
-        authorId:   opts.authorId,
+        tableName: opts.tableName,
+        recordId:  opts.recordId,
+        operation: opts.operation,
+        payload:   opts.payload,
+        status:    'pending',
+        authorId:  opts.authorId,
       },
       include: {
         author:   { select: { username: true } },
@@ -177,24 +229,74 @@ export class AdminDraftService implements OnModuleInit {
 
     let liveRecord: any = null;
     if (draft.operation !== 'create') {
-      try {
-        liveRecord = await this.adminService.getRecord(draft.tableName, draft.recordId);
-      } catch {
-        liveRecord = null;
-      }
+      liveRecord = await this.tryGetRecord(draft.tableName, draft.recordId);
     }
 
     const diff = this.computeDiff(liveRecord, draft.payload as Record<string, any>);
     return { ...draft, liveRecord, diff };
   }
 
+  // ─── Idempotent mutation apply ──────────────────────────────────────────────
+  //
+  // Routes mutations to the correct service (custom for gemPacks / game-definitions,
+  // generic adminService for all other tables). Idempotency guards:
+  //   - create: if the record already exists, treat as success (prior crash recovery)
+  //   - delete: if the record is already gone, treat as success
+  //   - update: propagate errors normally (update is safe to re-apply)
+
+  private async applyMutation(draft: any): Promise<void> {
+    const { tableName, recordId, operation } = draft;
+    const payload = (draft.payload ?? {}) as Record<string, any>;
+
+    try {
+      if (tableName === 'game-definitions') {
+        if (operation === 'create') {
+          await this.screensService.create(payload as any);
+        } else if (operation === 'update') {
+          await this.screensService.update(recordId, payload as any);
+        } else if (operation === 'delete') {
+          await this.screensService.archive(recordId);
+        }
+      } else if (tableName === 'gemPacks') {
+        if (operation === 'update') {
+          await this.adminService.updateAdminGemPack(recordId, payload as any);
+        } else {
+          throw new BadRequestException(`GemPacks only supports 'update' drafts`);
+        }
+      } else {
+        if (operation === 'create') {
+          await this.adminService.createRecord(tableName, payload);
+        } else if (operation === 'update') {
+          await this.adminService.updateRecord(tableName, recordId, payload);
+        } else if (operation === 'delete') {
+          await this.adminService.deleteRecord(tableName, recordId);
+        }
+      }
+    } catch (err: any) {
+      // Idempotency: if mutation already landed from a prior attempt, treat as success
+      if (operation === 'create') {
+        const exists = await this.tryGetRecord(tableName, recordId);
+        if (exists) {
+          this.logger.warn(`Draft ${draft.id}: create already applied (idempotent) — treating as success`);
+          return;
+        }
+      }
+      if (operation === 'delete') {
+        const exists = await this.tryGetRecord(tableName, recordId);
+        if (!exists) {
+          this.logger.warn(`Draft ${draft.id}: delete already applied (idempotent) — treating as success`);
+          return;
+        }
+      }
+      throw err;
+    }
+  }
+
   // ─── Approval (3-step state machine: pending → applying → approved) ─────────
   //
-  // Step 1 (tx):  pending → applying   (atomic; prevents race; crash here leaves 'pending')
-  // Step 2:       apply live mutation   (crash here leaves 'applying'; boot recovery reverts to 'pending')
-  // Step 3 (tx):  applying → approved  (crash here leaves 'applying'; boot recovery reverts to 'pending')
-  //
-  // The 'applying' intermediate state is cleaned up on each boot via onModuleInit.
+  // Step 1 (tx):  pending → applying   (atomic; prevents race; crash here → still 'pending')
+  // Step 2:       applyMutation        (crash here → 'applying'; boot recovery verifies & finalizes)
+  // Step 3 (tx):  applying → approved  (crash here → 'applying'; boot recovery detects applied → approves)
 
   async approveDraft(
     id:             string,
@@ -231,19 +333,12 @@ export class AdminDraftService implements OnModuleInit {
       });
     });
 
-    // Step 2: Apply the live mutation (crash here → 'applying' → boot recovery → 'pending')
+    // Step 2: Apply the live mutation (idempotent-aware)
     try {
-      if (draft.operation === 'create') {
-        await this.adminService.createRecord(draft.tableName, { ...(draft.payload as any) });
-      } else if (draft.operation === 'update') {
-        await this.adminService.updateRecord(draft.tableName, draft.recordId, { ...(draft.payload as any) });
-      } else if (draft.operation === 'delete') {
-        await this.adminService.deleteRecord(draft.tableName, draft.recordId);
-      }
+      await this.applyMutation(draft);
     } catch (mutationErr: any) {
-      // Mutation failed: revert applying → pending so reviewer can retry or reject
       this.logger.error(
-        `Draft ${id} mutation failed during approval (reverting to pending): ${mutationErr?.message}`,
+        `Draft ${id} mutation failed (reverting to pending): ${mutationErr?.message}`,
       );
       try {
         await (this.prisma as any).contentDraft.update({

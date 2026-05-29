@@ -218,8 +218,19 @@ export class AdminController {
       data: Record<string, any>;
     },
   ) {
+    if (req.adminUser.role !== 'super_admin') {
+      const recordId = `${body.type}:${body.key}:v${body.version}`;
+      const draft = await this.adminDraftService.createDraft({
+        tableName: 'game-definitions',
+        recordId,
+        operation: 'create',
+        payload: body,
+        authorId: req.adminUser.id,
+      });
+      return { mode: 'draft' as const, draftId: draft.id, tableName: 'game-definitions', recordId, operation: 'create', status: 'pending', authorUsername: (draft as any).author?.username };
+    }
     const result = await this.screensService.create(body);
-    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_create', tableName: 'game_definitions', diff: { key: body.key, version: body.version, type: body.type } });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_create', tableName: 'game_definitions', diff: { key: body.key, version: body.version, type: body.type }, metadata: { bypassReview: true } });
     return result;
   }
 
@@ -234,15 +245,35 @@ export class AdminController {
       data?: Record<string, any>;
     },
   ) {
+    if (req.adminUser.role !== 'super_admin') {
+      const draft = await this.adminDraftService.createDraft({
+        tableName: 'game-definitions',
+        recordId: id,
+        operation: 'update',
+        payload: body,
+        authorId: req.adminUser.id,
+      });
+      return { mode: 'draft' as const, draftId: draft.id, tableName: 'game-definitions', recordId: id, operation: 'update', status: 'pending', authorUsername: (draft as any).author?.username };
+    }
     const result = await this.screensService.update(id, body);
-    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_update', tableName: 'game_definitions', recordId: id });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_update', tableName: 'game_definitions', recordId: id, metadata: { bypassReview: true } });
     return result;
   }
 
   @Delete('game-definitions/:id')
   async archiveGameDefinition(@Req() req: any, @Param('id') id: string) {
+    if (req.adminUser.role !== 'super_admin') {
+      const draft = await this.adminDraftService.createDraft({
+        tableName: 'game-definitions',
+        recordId: id,
+        operation: 'delete',
+        payload: {},
+        authorId: req.adminUser.id,
+      });
+      return { mode: 'draft' as const, draftId: draft.id, tableName: 'game-definitions', recordId: id, operation: 'delete', status: 'pending', authorUsername: (draft as any).author?.username };
+    }
     const result = await this.screensService.archive(id);
-    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_archive', tableName: 'game_definitions', recordId: id });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_archive', tableName: 'game_definitions', recordId: id, metadata: { bypassReview: true } });
     return result;
   }
 
@@ -995,8 +1026,18 @@ export class AdminController {
       iconSize?: number;
     },
   ) {
+    if (req.adminUser.role !== 'super_admin') {
+      const draft = await this.adminDraftService.createDraft({
+        tableName: 'gemPacks',
+        recordId: packId,
+        operation: 'update',
+        payload: body,
+        authorId: req.adminUser.id,
+      });
+      return { mode: 'draft' as const, draftId: draft.id, tableName: 'gemPacks', recordId: packId, operation: 'update', status: 'pending', authorUsername: (draft as any).author?.username };
+    }
     const result = await this.adminService.updateAdminGemPack(packId, body);
-    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'gem_pack_update', recordId: packId, diff: body });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'gem_pack_update', recordId: packId, diff: body, metadata: { bypassReview: true } });
     return result;
   }
 
