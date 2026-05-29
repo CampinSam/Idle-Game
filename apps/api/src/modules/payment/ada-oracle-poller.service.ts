@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-const DEFAULT_POLL_INTERVAL_MS = 300_000;
+const INITIAL_POLL_INTERVAL_MS = 300_000;
 const PRUNE_OLDER_THAN_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_COINGECKO_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=cardano&vs_currencies=usd';
@@ -9,7 +9,8 @@ const DEFAULT_COINGECKO_URL =
 @Injectable()
 export class AdaOraclePoller implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AdaOraclePoller.name);
-  private intervalRef: NodeJS.Timeout | null = null;
+  private timeoutRef: NodeJS.Timeout | null = null;
+  private currentIntervalMs = INITIAL_POLL_INTERVAL_MS;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -31,18 +32,40 @@ export class AdaOraclePoller implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Initial ADA oracle poll failed: ${err}`),
     );
 
-    this.intervalRef = setInterval(() => {
-      this.poll().catch((err) =>
-        this.logger.warn(`ADA oracle poll error: ${err}`),
-      );
-    }, DEFAULT_POLL_INTERVAL_MS);
+    this.scheduleNext(INITIAL_POLL_INTERVAL_MS);
   }
 
   onModuleDestroy() {
-    if (this.intervalRef) {
-      clearInterval(this.intervalRef);
-      this.intervalRef = null;
+    if (this.timeoutRef) {
+      clearTimeout(this.timeoutRef);
+      this.timeoutRef = null;
     }
+  }
+
+  private scheduleNext(intervalMs: number) {
+    if (this.timeoutRef) clearTimeout(this.timeoutRef);
+    this.currentIntervalMs = intervalMs;
+    this.timeoutRef = setTimeout(async () => {
+      try {
+        await this.poll();
+      } catch (err) {
+        this.logger.warn(`ADA oracle poll error: ${err}`);
+      }
+      const nextInterval = await this.getConfiguredIntervalMs();
+      this.scheduleNext(nextInterval);
+    }, intervalMs);
+  }
+
+  private async getConfiguredIntervalMs(): Promise<number> {
+    try {
+      const config = await (this.prisma as any).cryptoRateConfig.findUnique({
+        where: { currencyCode: 'ADA' },
+      });
+      if (config?.pollIntervalSeconds > 0) {
+        return config.pollIntervalSeconds * 1_000;
+      }
+    } catch { /* fall through */ }
+    return INITIAL_POLL_INTERVAL_MS;
   }
 
   async poll(): Promise<void> {
@@ -76,6 +99,13 @@ export class AdaOraclePoller implements OnModuleInit, OnModuleDestroy {
       await (this.prisma as any).cryptoRateSample.deleteMany({
         where: { currencyCode: 'ADA', fetchedAt: { lt: cutoff } },
       });
+
+      const newIntervalMs = config.pollIntervalSeconds * 1_000;
+      if (newIntervalMs !== this.currentIntervalMs) {
+        this.logger.log(
+          `ADA oracle: poll interval changed to ${config.pollIntervalSeconds}s — rescheduling`,
+        );
+      }
 
       this.logger.log(
         `ADA oracle: $${adaUsd} → ${lovelacePerUsd.toLocaleString()} lovelaces/USD`,

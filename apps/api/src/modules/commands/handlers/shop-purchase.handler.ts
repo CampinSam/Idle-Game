@@ -6,6 +6,28 @@ import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 
+const PAYMENT_COST_TYPES = ['usd', 'ada', 'cnt'] as const;
+type PaymentCostType = typeof PAYMENT_COST_TYPES[number];
+
+function isPaymentCostType(type: string): type is PaymentCostType {
+  return (PAYMENT_COST_TYPES as readonly string[]).includes(type);
+}
+
+function describePaymentCostEntry(cost: any): string {
+  switch (cost.type) {
+    case 'usd':
+      return cost.allowAda
+        ? `$${cost.amount} USD (ADA payment supported)`
+        : `$${cost.amount} USD (Stripe)`;
+    case 'ada':
+      return `${(cost.lovelaceAmount / 1_000_000).toFixed(6)} ADA`;
+    case 'cnt':
+      return `${cost.amount} CNT (${cost.assetName ?? cost.policyId})`;
+    default:
+      return cost.type;
+  }
+}
+
 @Injectable()
 export class ShopPurchaseHandler implements CommandHandler {
   constructor(
@@ -29,8 +51,20 @@ export class ShopPurchaseHandler implements CommandHandler {
       throw new BadRequestException('This offer has expired');
     }
 
-    const costEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(item.cost) ? item.cost : [];
+    const costEntries: Array<any> = Array.isArray(item.cost) ? item.cost : [];
     const contentEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(item.contents) ? item.contents : [];
+
+    // Real-money cost types (usd, ada, cnt) require the payment API, not a game command.
+    // Detect them early so we never silently skip the charge.
+    const paymentCosts = costEntries.filter((c) => isPaymentCostType(c.type));
+    if (paymentCosts.length > 0) {
+      const descriptions = paymentCosts.map(describePaymentCostEntry).join(', ');
+      throw new BadRequestException(
+        `"${item.name}" requires payment (${descriptions}). ` +
+          `Use POST /v1/purchases to create a payment session, then submit the ` +
+          `transaction before claiming the item.`,
+      );
+    }
 
     for (const cost of costEntries) {
       if (!cost.amount || cost.amount <= 0) continue;
