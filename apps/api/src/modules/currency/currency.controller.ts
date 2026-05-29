@@ -20,6 +20,10 @@ export class CurrencyController {
       isTradeable: c.isTradeable,
       isSpendable: c.isSpendable,
       decimals: c.decimals,
+      cap: c.cap !== null && c.cap !== undefined ? c.cap.toString() : null,
+      enabled: c.enabled,
+      showInTopBar: c.showInTopBar,
+      sortOrder: c.sortOrder,
     }));
   }
 

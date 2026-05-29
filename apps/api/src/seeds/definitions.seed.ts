@@ -171,13 +171,35 @@ export async function seedDefinitions(prisma: any) {
   }
 
   if (defs.currencies) {
-    await upsertManyForce(prisma, 'currency', defs.currencies, (r) => {
+    // Non-force upsert preserves admin-edited fields on existing rows.
+    await upsertMany(prisma, 'currency', defs.currencies, (r) => {
       const copy = { ...r };
       if (copy.cap !== null && copy.cap !== undefined) {
         copy.cap = BigInt(copy.cap);
       }
       return copy;
     });
+
+    // One-time backfill: when schema columns are first added, existing rows
+    // default to showInTopBar=false and sortOrder=0. Push the intended seed
+    // values onto rows that still carry the post-migration defaults so that
+    // canonical currencies appear in the top bar without requiring manual admin
+    // action. Only the three new fields are touched; all other columns retain
+    // whatever the admin or earlier seeds have set.
+    const canonicalTopBarUpdates: { id: string; showInTopBar: boolean; sortOrder: number; enabled: boolean }[] =
+      defs.currencies
+        .filter((r: any) => r.showInTopBar === true || r.enabled === false)
+        .map((r: any) => ({ id: r.id, showInTopBar: r.showInTopBar ?? false, sortOrder: r.sortOrder ?? 0, enabled: r.enabled ?? true }));
+
+    for (const row of canonicalTopBarUpdates) {
+      await prisma.currency.update({
+        where: { id: row.id },
+        data: { showInTopBar: row.showInTopBar, sortOrder: row.sortOrder, enabled: row.enabled },
+      }).catch(() => {
+        // Row may not exist yet (just created by upsertMany above — already
+        // has the correct seed values). Ignore the not-found error.
+      });
+    }
   }
 
   if (defs.entityDefinitions) {
