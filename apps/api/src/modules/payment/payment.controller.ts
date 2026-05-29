@@ -12,16 +12,32 @@ import {
   Req,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
+import { AdaRateService } from './ada-rate.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreatePurchaseDto } from './create-purchase.dto';
 
 @Controller('v1')
 export class PaymentController {
-  constructor(private paymentService: PaymentService) {}
+  constructor(
+    private paymentService: PaymentService,
+    private adaRateService: AdaRateService,
+  ) {}
 
   @Get('payments/packs')
   async listPacks() {
     return this.paymentService.listGemPacks();
+  }
+
+  @Get('payments/ada-rate')
+  async getAdaRate() {
+    const status = await this.adaRateService.getCurrentStatus();
+    return {
+      ...status,
+      // Use newestSampleAt as the authoritative freshness timestamp so the
+      // frontend accurately reflects when the oracle last recorded a price,
+      // not when this request was served.
+      computedAt: status.newestSampleAt ?? new Date().toISOString(),
+    };
   }
 
   @UseGuards(JwtAuthGuard)

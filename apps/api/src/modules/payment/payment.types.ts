@@ -26,6 +26,13 @@ export interface GemPackDisplayUpdate {
   iconSize?: number;
 }
 
+export interface AdaRateSnapshotMeta {
+  usdPrice: number;
+  lovelacePerUsd: number;
+  usingFallback: boolean;
+  computedAt: string;
+}
+
 export type PurchaseAction =
   | { type: 'redirect'; url: string }
   | { type: 'coming_soon' }
@@ -36,6 +43,7 @@ export type PurchaseAction =
       amountDisplay: string;
       chain: string;
       expiresAt: string;
+      adaRateSnapshot?: AdaRateSnapshotMeta;
     };
 
 export interface CreatePurchaseResult {

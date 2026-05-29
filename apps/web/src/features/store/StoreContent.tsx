@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNow } from '../../hooks/useNow';
+import { serverNow } from '../../services/clockSync';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
 import { useModal } from '../../context/ModalContext';
@@ -226,6 +227,14 @@ interface LinkedWallet {
   isPrimary: boolean;
 }
 
+interface AdaRateStatus {
+  lovelacePerUsd: number;
+  usdPerAda: number;
+  usingFallback: boolean;
+  newestSampleAt: string | null;
+  computedAt: string;
+}
+
 interface CryptoModalState {
   purchaseId: string;
   address: string;
@@ -234,6 +243,9 @@ interface CryptoModalState {
   expiresAt: string;
   paymentMethod: 'crypto_evm' | 'crypto_cardano';
   comingSoon?: boolean;
+  usdEquiv?: number;
+  rateComputedAt?: string;
+  usingFallback?: boolean;
 }
 
 const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
@@ -514,6 +526,17 @@ function ChainLabel({ chain }: { chain: string }) {
   return <>🔷 USDC</>;
 }
 
+function formatRateAge(computedAt: string): string {
+  const ageMs = serverNow() - new Date(computedAt).getTime();
+  if (ageMs < 0) return 'just now';
+  const mins = Math.floor(ageMs / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return hrs === 1 ? '1 hour ago' : `${hrs} hours ago`;
+}
+
 function CryptoPayModal({
   state,
   onClose,
@@ -685,10 +708,28 @@ function CryptoPayModal({
               </div>
             </div>
 
+            {state.usingFallback && (
+              <div className="flex items-center gap-2 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.3)] rounded-[8px] px-3 py-2 text-[11px] text-[#fbbf24]">
+                <span className="text-[14px]">⚠️</span>
+                <span>ADA price oracle is lagging — a fallback rate is being used. The actual rate may differ slightly.</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between bg-black/20 border border-[rgba(139,92,246,0.15)] rounded-[8px] px-3 py-2.5">
               <span className="text-[12px] text-text-secondary">Exact amount</span>
-              <span className="text-[14px] font-black text-white">{state.amountDisplay}</span>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="text-[14px] font-black text-white">{state.amountDisplay}</span>
+                {state.usdEquiv !== undefined && (
+                  <span className="text-[10px] text-text-secondary">≈ ${state.usdEquiv.toFixed(2)} USD</span>
+                )}
+              </div>
             </div>
+
+            {state.rateComputedAt && (
+              <div className="text-[10px] text-text-secondary text-right">
+                Rate updated {formatRateAge(state.rateComputedAt)}
+              </div>
+            )}
 
             {state.comingSoon ? (
               <div className="flex flex-col items-center gap-2 bg-[rgba(251,191,36,0.06)] border border-[rgba(251,191,36,0.2)] rounded-[10px] px-4 py-3 text-center">
@@ -721,18 +762,25 @@ function CryptoPayModal({
   );
 }
 
+function formatAdaAmount(lovelace: number): string {
+  const ada = lovelace / 1_000_000;
+  return ada < 10 ? ada.toFixed(2) : Math.ceil(ada).toLocaleString();
+}
+
 function GemPackCard({
   pack,
   onBuyCard,
   onBuyWallet,
   buying,
   hasWallet,
+  adaRate,
 }: {
   pack: GemPack;
   onBuyCard: (pack: GemPack) => void;
   onBuyWallet: (pack: GemPack) => void;
   buying: boolean;
   hasWallet: boolean;
+  adaRate: AdaRateStatus | null;
 }) {
   return (
     <div
@@ -822,7 +870,9 @@ function GemPackCard({
                 : 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
             }
           >
-            💳 Pay with Wallet
+            {adaRate
+              ? `≈ ${formatAdaAmount(Math.ceil((pack.unitAmount / 100) * adaRate.lovelacePerUsd))} ₳`
+              : '💳 Pay with Wallet'}
           </button>
         )}
       </div>
@@ -850,6 +900,7 @@ export default function StoreContent() {
   const [comingSoonCard, setComingSoonCard] = useState(false);
   const [comingSoonPass, setComingSoonPass] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
+  const [adaRate, setAdaRate] = useState<AdaRateStatus | null>(null);
 
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
   const itemDefs = useAppSelector((s) => s.game.itemDefs);
@@ -898,14 +949,21 @@ export default function StoreContent() {
     if (!isGemPacksTab) return;
     setGemPacksLoading(true);
     setGemPacksError(null);
-    fetch('/api/v1/payments/packs')
+
+    const packsPromise = fetch('/api/v1/payments/packs')
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setGemPacks(data);
         else setGemPacksError('Could not load gem packs.');
       })
-      .catch(() => setGemPacksError('Could not load gem packs.'))
-      .finally(() => setGemPacksLoading(false));
+      .catch(() => setGemPacksError('Could not load gem packs.'));
+
+    const ratePromise = fetch('/api/v1/payments/ada-rate')
+      .then((r) => r.json())
+      .then((data: AdaRateStatus) => { setAdaRate(data); })
+      .catch(() => {});
+
+    Promise.all([packsPromise, ratePromise]).finally(() => setGemPacksLoading(false));
   }, [isGemPacksTab]);
 
   const handleBuyGemPack = useCallback(async (pack: GemPack) => {
@@ -947,6 +1005,7 @@ export default function StoreContent() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
       if (data?.action?.type === 'payment_address') {
+        const snap = data.action.adaRateSnapshot;
         setCryptoModal({
           purchaseId: data.purchaseId,
           address: data.action.address,
@@ -955,6 +1014,9 @@ export default function StoreContent() {
           expiresAt: data.action.expiresAt,
           paymentMethod,
           comingSoon: data.comingSoon ?? false,
+          usdEquiv: snap?.usdPrice,
+          rateComputedAt: snap?.computedAt,
+          usingFallback: snap?.usingFallback,
         });
       }
     } catch (err: any) {
@@ -1283,6 +1345,13 @@ export default function StoreContent() {
                   ))}
                 </div>
 
+                {adaRate?.usingFallback && (
+                  <div className="flex items-center gap-2 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.3)] rounded-[10px] px-3 py-2.5 text-[11px] text-[#fbbf24]">
+                    <span className="text-[16px]">⚠️</span>
+                    <span>ADA price oracle is lagging. Displayed ADA prices use a fallback rate and may not reflect the exact market price.</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-2">
                   {gemPacks.map((pack) => (
                     <GemPackCard
@@ -1292,6 +1361,7 @@ export default function StoreContent() {
                       onBuyWallet={handleBuyWithWallet}
                       buying={buyingPackId === pack.id}
                       hasWallet={hasAnyWallet}
+                      adaRate={adaRate}
                     />
                   ))}
                 </div>

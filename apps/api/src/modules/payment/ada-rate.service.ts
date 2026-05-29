@@ -11,6 +11,7 @@ export interface AdaRateSnapshot {
   twaWindowSeconds: number;
   sampleCount: number;
   computedAt: string;
+  usingFallback: boolean;
 }
 
 @Injectable()
@@ -25,7 +26,7 @@ export class AdaRateService {
   }
 
   async getRateSnapshot(usdPrice: number): Promise<{ 'ADA/USD': AdaRateSnapshot }> {
-    const { rate, sampleCount, twaWindowSeconds } = await this.computeTwa();
+    const { rate, sampleCount, twaWindowSeconds, usingFallback, newestSampleAt } = await this.computeTwa();
     const lovelaceAmount = Math.ceil(usdPrice * rate);
     return {
       'ADA/USD': {
@@ -34,7 +35,11 @@ export class AdaRateService {
         lovelaceAmount,
         twaWindowSeconds,
         sampleCount,
-        computedAt: new Date().toISOString(),
+        // Use the actual oracle sample timestamp so callers (purchase responses,
+        // checkout UI) accurately reflect when the price data was last fetched,
+        // not when this snapshot was computed for this request.
+        computedAt: newestSampleAt ?? new Date().toISOString(),
+        usingFallback,
       },
     };
   }
@@ -48,24 +53,16 @@ export class AdaRateService {
     newestSampleAt: string | null;
     usingFallback: boolean;
   }> {
-    const { rate, sampleCount, twaWindowSeconds, usingFallback } = await this.computeTwa();
-
-    const oldest = await (this.prisma as any).cryptoRateSample.findFirst({
-      where: { currencyCode: 'ADA' },
-      orderBy: { fetchedAt: 'asc' },
-    });
-    const newest = await (this.prisma as any).cryptoRateSample.findFirst({
-      where: { currencyCode: 'ADA' },
-      orderBy: { fetchedAt: 'desc' },
-    });
+    const { rate, sampleCount, twaWindowSeconds, usingFallback, newestSampleAt, oldestSampleAt } =
+      await this.computeTwa();
 
     return {
       lovelacePerUsd: rate,
       usdPerAda: rate > 0 ? +(1_000_000 / rate).toFixed(6) : 0,
       sampleCount,
       twaWindowSeconds,
-      oldestSampleAt: oldest?.fetchedAt?.toISOString() ?? null,
-      newestSampleAt: newest?.fetchedAt?.toISOString() ?? null,
+      oldestSampleAt,
+      newestSampleAt,
       usingFallback,
     };
   }
@@ -75,6 +72,8 @@ export class AdaRateService {
     sampleCount: number;
     twaWindowSeconds: number;
     usingFallback: boolean;
+    newestSampleAt: string | null;
+    oldestSampleAt: string | null;
   }> {
     let twaWindowSeconds = DEFAULT_TWA_WINDOW_SECONDS;
     let configFallback: number | null = null;
@@ -119,7 +118,14 @@ export class AdaRateService {
     }
 
     if (inWindowSamples.length === 0 && !priorSample) {
-      return { rate: fallbackRate, sampleCount: 0, twaWindowSeconds, usingFallback: true };
+      return {
+        rate: fallbackRate,
+        sampleCount: 0,
+        twaWindowSeconds,
+        usingFallback: true,
+        newestSampleAt: null,
+        oldestSampleAt: null,
+      };
     }
 
     // Build the ordered sample list for TWA computation.
@@ -127,6 +133,13 @@ export class AdaRateService {
     const samples = inWindowSamples;
     const now = Date.now();
     const windowCutoffMs = windowCutoff.getTime();
+
+    // Track the oldest and newest sample timestamps from the data we already have.
+    const allSamples = priorSample ? [priorSample, ...samples] : samples;
+    const oldestSampleAt =
+      allSamples.length > 0 ? allSamples[0].fetchedAt.toISOString() : null;
+    const newestSampleAt =
+      allSamples.length > 0 ? allSamples[allSamples.length - 1].fetchedAt.toISOString() : null;
 
     let totalWeight = 0;
     let weightedSum = 0;
@@ -163,6 +176,8 @@ export class AdaRateService {
         sampleCount: samples.length,
         twaWindowSeconds,
         usingFallback: false,
+        newestSampleAt,
+        oldestSampleAt,
       };
     }
 
@@ -172,6 +187,8 @@ export class AdaRateService {
       sampleCount: samples.length + (priorSample ? 1 : 0),
       twaWindowSeconds,
       usingFallback: false,
+      newestSampleAt,
+      oldestSampleAt,
     };
   }
 

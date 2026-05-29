@@ -286,6 +286,12 @@ export class PaymentService {
         amountDisplay,
         chain: 'CARDANO',
         expiresAt: expiresAt.toISOString(),
+        adaRateSnapshot: {
+          usdPrice: snapshot['ADA/USD'].usdPrice,
+          lovelacePerUsd: snapshot['ADA/USD'].lovelacePerUsd,
+          usingFallback: snapshot['ADA/USD'].usingFallback,
+          computedAt: snapshot['ADA/USD'].computedAt,
+        },
       } as any,
     };
   }
@@ -413,6 +419,16 @@ export class PaymentService {
       ? `${(Number(amountExpected) / 1_000_000).toFixed(6)} USDC`
       : `${(Number(amountExpected) / 1_000_000).toFixed(6)} ADA`;
 
+    const adaRateSnapshot =
+      !isEvm && rateSnapshot
+        ? {
+            usdPrice: (rateSnapshot as any)['ADA/USD']?.usdPrice,
+            lovelacePerUsd: (rateSnapshot as any)['ADA/USD']?.lovelacePerUsd,
+            usingFallback: (rateSnapshot as any)['ADA/USD']?.usingFallback ?? false,
+            computedAt: (rateSnapshot as any)['ADA/USD']?.computedAt,
+          }
+        : undefined;
+
     return {
       purchaseId: purchase.id,
       comingSoon: comingSoon || undefined,
@@ -423,6 +439,7 @@ export class PaymentService {
         amountDisplay,
         chain,
         expiresAt: expiresAt.toISOString(),
+        ...(adaRateSnapshot ? { adaRateSnapshot } : {}),
       } as any,
     };
   }
