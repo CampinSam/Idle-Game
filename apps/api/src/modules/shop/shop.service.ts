@@ -142,7 +142,13 @@ export class ShopService implements OnApplicationBootstrap {
         orderBy: [{ tabId: 'asc' }, { sortOrder: 'asc' }],
       }),
       this.prisma.shopItemDef.findMany({
-        where: { enabled: true },
+        where: {
+          enabled: true,
+          AND: [
+            { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
+            { OR: [{ limitedUntil: null }, { limitedUntil: { gt: now } }] },
+          ],
+        },
         orderBy: [{ tab: 'asc' }, { displayOrder: 'asc' }],
       }),
       this.prisma.shopHeroDef.findMany({

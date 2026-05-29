@@ -587,28 +587,44 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
                 {search ? 'No matches' : 'No records yet'}
               </div>
             )}
-            {filteredRecords.map(r => (
-              <div
-                key={r.id}
-                onClick={() => handleSelectRecord(r)}
-                style={{
-                  padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
-                  background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
-                  borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
-                }}
-                onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-                onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {r.id}
-                </div>
-                {r.name && (
-                  <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.name}
+            {filteredRecords.map(r => {
+              const rowSchema = activeTable ? TABLE_SCHEMAS[activeTable] : null;
+              const rowBadge = rowSchema?.getRowBadge?.(r) ?? null;
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => handleSelectRecord(r)}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
+                    background: selectedId === r.id ? 'rgba(167,139,250,0.12)' : 'transparent',
+                    borderLeft: selectedId === r.id ? '3px solid #a78bfa' : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                  onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? '#a78bfa' : '#e0e0ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                      {r.id}
+                    </div>
+                    {rowBadge && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                        padding: '1px 5px', borderRadius: 3,
+                        background: rowBadge.color, color: '#fff',
+                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                      }}>
+                        {rowBadge.label}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  {r.name && (
+                    <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.name}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {activeTable && !recordsLoading && (
             <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11 }}>

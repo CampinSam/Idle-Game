@@ -22,6 +22,9 @@ export class ShopPurchaseHandler implements CommandHandler {
     const item = await (ctx.tx as any).shopItemDef.findUnique({ where: { id: shopItemDefId } });
     if (!item) throw new NotFoundException(`Shop item "${shopItemDefId}" not found`);
     if (!item.enabled) throw new BadRequestException('This item is currently unavailable');
+    if (item.availableFrom && new Date(item.availableFrom) > new Date()) {
+      throw new BadRequestException('This item is not yet available');
+    }
     if (item.limitedUntil && new Date(item.limitedUntil) < new Date()) {
       throw new BadRequestException('This offer has expired');
     }

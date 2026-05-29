@@ -50,6 +50,7 @@ interface ShopItem {
   badgeColor?: string;
   imageUrl?: string;
   displayOrder: number;
+  availableFrom?: string;
   limitedUntil?: string;
 }
 
@@ -264,10 +265,9 @@ function useCountdown(limitedUntil?: string) {
   if (!limitedUntil) return '';
   const diff = new Date(limitedUntil).getTime() - now;
   if (diff <= 0) return 'Expired';
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  if (d > 0) return `${d}d ${h}h left`;
+  if (diff > 24 * 3_600_000) return '';
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
   if (h > 0) return `${h}h ${m}m left`;
   return `${m}m left`;
 }

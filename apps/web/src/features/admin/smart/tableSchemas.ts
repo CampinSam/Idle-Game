@@ -66,6 +66,8 @@ export interface TableSchema {
   /** When provided, the editor renders a tab strip at the top of the form
    *  and groups fields by `field.section`. */
   sections?: SectionDef[];
+  /** Optional — returns a badge to overlay on the record list row (e.g. "scheduled", "expiring"). */
+  getRowBadge?: (record: Record<string, any>) => { label: string; color: string } | null;
 }
 
 export const TABLE_SCHEMAS: Record<string, TableSchema> = {
@@ -409,7 +411,21 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       imageUrl: { type: 'assetKey', description: 'URL or asset key for the card image' },
       displayOrder: { type: 'number', default: 0, description: 'Sort order within the tab/section (lower = first)' },
       enabled: { type: 'boolean', default: true, description: 'Whether the item appears in the store' },
-      limitedUntil: { type: 'string', description: 'ISO datetime — item shows countdown and hides after this time' },
+      availableFrom: { type: 'string', description: 'ISO datetime — item is hidden from players until this time. Leave blank to make it available immediately.' },
+      limitedUntil: { type: 'string', description: 'ISO datetime — item shows a countdown timer (when within 24 h) and is automatically hidden after this time' },
+    },
+    getRowBadge: (r) => {
+      const now = Date.now();
+      if (r.availableFrom && new Date(r.availableFrom).getTime() > now) {
+        return { label: 'scheduled', color: '#6366f1' };
+      }
+      if (r.limitedUntil) {
+        const diff = new Date(r.limitedUntil).getTime() - now;
+        if (diff > 0 && diff < 24 * 3_600_000) {
+          return { label: 'expiring', color: '#f59e0b' };
+        }
+      }
+      return null;
     },
   },
   ShopTabDef: {

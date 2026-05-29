@@ -1261,6 +1261,84 @@
           "description": "Optional human-readable label shown in the UI for this objective."
         }
       }
+    },
+    "ShopItemDef": {
+      "type": "object",
+      "description": "A purchasable item in the player-facing store. Managed via the admin smart-editor at GET /api/admin/shopItemDef. Items outside their active date window are suppressed from the catalog automatically.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (e.g. gems_100). Auto-generated CUID when left blank."
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name shown on the store card."
+        },
+        "description": {
+          "type": "string",
+          "default": "",
+          "description": "Short description shown on the card."
+        },
+        "tab": {
+          "type": "string",
+          "default": "featured",
+          "description": "Store tab ID (references ShopTabDef.id)."
+        },
+        "sectionId": {
+          "type": "string",
+          "description": "Optional section within the tab (references ShopSectionDef.id). Items with no sectionId appear before sections."
+        },
+        "cost": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Array of {type, id, amount} cost entries (type: 'currency' | 'item')."
+        },
+        "originalCost": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Original price shown with strikethrough. Same format as cost."
+        },
+        "contents": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Array of {type, id, amount} entries granted to the player on purchase."
+        },
+        "badge": {
+          "type": "string",
+          "description": "Badge label shown on the card (e.g. HOT, NEW, SALE)."
+        },
+        "badgeColor": {
+          "type": "string",
+          "description": "CSS color for the badge background."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL or asset key for the card image."
+        },
+        "displayOrder": {
+          "type": "integer",
+          "default": 0,
+          "description": "Sort order within the tab/section. Lower = first."
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hidden from all players when false."
+        },
+        "availableFrom": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO datetime — item is suppressed from the catalog until this time. Null = available immediately. The admin list shows a 'scheduled' badge on not-yet-active rows."
+        },
+        "limitedUntil": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO datetime — item is automatically removed from the catalog after this time. When fewer than 24 h remain the player-facing card shows a live countdown. The admin list shows an 'expiring' badge on rows within 24 h of this deadline."
+        }
+      }
     }
   },
   "files": {

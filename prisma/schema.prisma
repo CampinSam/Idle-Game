@@ -1292,9 +1292,10 @@ model ShopItemDef {
   badgeColor   String?
   imageUrl     String?
   displayOrder Int       @default(0)
-  enabled      Boolean   @default(true)
-  limitedUntil DateTime?
-  createdAt    DateTime  @default(now())
+  enabled       Boolean   @default(true)
+  availableFrom DateTime?
+  limitedUntil  DateTime?
+  createdAt     DateTime  @default(now())
 
   @@map("shop_item_defs")
 }

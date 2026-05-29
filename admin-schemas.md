@@ -1461,13 +1461,34 @@ Returns the full store catalog for the authenticated player.
       "badgeColor": "#ef4444",
       "displayOrder": 0,
       "enabled": true,
+      "availableFrom": null,
       "limitedUntil": null
     }
   ]
 }
 ```
 
-Only enabled tabs and enabled items are returned. All sections (including those with no items) are returned — the frontend hides sections with no visible items.
+Only enabled tabs and enabled items within their active date window are returned. An item with `availableFrom` in the future is suppressed until that time arrives; an item whose `limitedUntil` has passed is suppressed immediately. All sections (including those with no items) are returned — the frontend hides sections with no visible items.
+
+### ShopItemDef fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `gems_100`). |
+| `name` | string | ✓ | Display name shown on the card. |
+| `description` | string | | Short description. Default `""`. |
+| `tab` | string (FK) | | Store tab ID (references `ShopTabDef.id`). Default `featured`. |
+| `sectionId` | string (FK) | | Optional section within the tab (references `ShopSectionDef.id`). |
+| `cost` | CostEntry[] | | Array of `{type, id, amount}` cost entries (currency or item). |
+| `originalCost` | CostEntry[] | | Original price for strikethrough display. Same format as `cost`. |
+| `contents` | CostEntry[] | | Array of `{type, id, amount}` entries granted on purchase. |
+| `badge` | string | | Badge label shown on the card (e.g. `HOT`, `NEW`, `SALE`). |
+| `badgeColor` | string | | CSS color for the badge background. |
+| `imageUrl` | string | | URL or asset key for the card image. |
+| `displayOrder` | number | | Sort order within the tab/section. Lower = first. Default `0`. |
+| `enabled` | boolean | | Hidden from all players when `false`. Default `true`. |
+| `availableFrom` | datetime | | ISO datetime — item is suppressed from the catalog until this time. Leave `null` to make it available immediately. The admin list shows a **scheduled** badge on not-yet-active rows. |
+| `limitedUntil` | datetime | | ISO datetime — item is automatically removed from the catalog after this time. When fewer than 24 h remain the player-facing card shows a live countdown. The admin list shows an **expiring** badge on rows within 24 h of this deadline. |
 
 ---
 
