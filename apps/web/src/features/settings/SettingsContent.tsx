@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useAppSelector } from '../../store';
+import { useAppSelector, useAppDispatch } from '../../store';
+import { restoreSession } from '../../store/authSlice';
 import { audioEngine, AudioBusName } from '../../services/AudioEngine';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
@@ -97,10 +98,22 @@ function truncateAddress(address: string): string {
 }
 
 function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
+  const dispatch = useAppDispatch();
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  if (hasPassword) {
+    return (
+      <div className="pt-4">
+        <span className={SECTION_LABEL}>Password</span>
+        <div className="px-3.5 py-3 bg-[rgba(34,197,94,0.06)] border border-[rgba(34,197,94,0.2)] rounded-[10px] text-[13px] text-[#86efac]">
+          Your account already has a password set. Use the forgot-password flow if you need to change it.
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,21 +121,20 @@ function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
     setSaving(true); setMsg(null);
     try {
       await api.setPassword(newPassword);
-      setMsg({ text: hasPassword ? 'Password updated' : 'Password set — you can now sign in with email + password', type: 'success' });
+      setMsg({ text: 'Password set — you can now sign in with email + password', type: 'success' });
       setNewPassword(''); setConfirm('');
+      dispatch(restoreSession());
     } catch (err: any) {
-      setMsg({ text: err?.message || 'Failed to update password', type: 'error' });
+      setMsg({ text: err?.message || 'Failed to set password', type: 'error' });
     } finally { setSaving(false); }
   };
 
   return (
     <div className="pt-4">
-      <span className={SECTION_LABEL}>{hasPassword ? 'Change Password' : 'Set a Password'}</span>
-      {!hasPassword && (
-        <div className="mb-4 px-3.5 py-3 bg-[rgba(234,179,8,0.08)] border border-[rgba(234,179,8,0.25)] rounded-[10px] text-[13px] text-[#fde68a]">
-          Your account was created with a wallet and has no password. Set one here so you can also sign in with email + password.
-        </div>
-      )}
+      <span className={SECTION_LABEL}>Set a Password</span>
+      <div className="mb-4 px-3.5 py-3 bg-[rgba(234,179,8,0.08)] border border-[rgba(234,179,8,0.25)] rounded-[10px] text-[13px] text-[#fde68a]">
+        Your account was created with a wallet and has no password. Set one here so you can also sign in with email + password.
+      </div>
       {msg && (
         <div className={`mb-3 px-3.5 py-2.5 rounded-[10px] text-[13px] ${msg.type === 'success' ? 'bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.25)] text-[#86efac]' : 'bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#f87171]'}`}>
           {msg.text}
@@ -130,7 +142,7 @@ function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
       )}
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>{hasPassword ? 'New password' : 'Password'}</label>
+          <label className={SECTION_LABEL} style={{ marginBottom: 0 }}>Password</label>
           <input
             type="password"
             className={INPUT_CLASS + ' w-full'}
@@ -159,7 +171,7 @@ function SecurityTab({ hasPassword }: { hasPassword: boolean }) {
           style={{ alignSelf: 'flex-start', padding: '0.55rem 1.2rem', fontSize: '0.85rem' }}
           disabled={saving || newPassword.length < 6}
         >
-          {saving ? 'Saving...' : hasPassword ? 'Update password' : 'Set password'}
+          {saving ? 'Saving...' : 'Set password'}
         </button>
       </form>
     </div>
