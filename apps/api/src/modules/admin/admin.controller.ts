@@ -185,7 +185,8 @@ export class AdminController {
     ];
 
     if (!canRead) return [];
-    if (isSuperAdmin || scopes.length === 0) return ALL_TABLES;
+    if (isSuperAdmin) return ALL_TABLES;
+    if (scopes.length === 0) return [];
     return ALL_TABLES.filter((t) => scopes.includes(t.group));
   }
 
@@ -202,7 +203,8 @@ export class AdminController {
   }
 
   @Post('game-definitions')
-  createGameDefinition(
+  async createGameDefinition(
+    @Req() req: any,
     @Body() body: {
       type: string;
       key: string;
@@ -213,11 +215,14 @@ export class AdminController {
       data: Record<string, any>;
     },
   ) {
-    return this.screensService.create(body);
+    const result = await this.screensService.create(body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_create', tableName: 'game_definitions', diff: { key: body.key, version: body.version, type: body.type } });
+    return result;
   }
 
   @Put('game-definitions/:id')
-  updateGameDefinition(
+  async updateGameDefinition(
+    @Req() req: any,
     @Param('id') id: string,
     @Body() body: {
       isActive?: boolean;
@@ -226,30 +231,40 @@ export class AdminController {
       data?: Record<string, any>;
     },
   ) {
-    return this.screensService.update(id, body);
+    const result = await this.screensService.update(id, body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_update', tableName: 'game_definitions', recordId: id });
+    return result;
   }
 
   @Delete('game-definitions/:id')
-  archiveGameDefinition(@Param('id') id: string) {
-    return this.screensService.archive(id);
+  async archiveGameDefinition(@Req() req: any, @Param('id') id: string) {
+    const result = await this.screensService.archive(id);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_archive', tableName: 'game_definitions', recordId: id });
+    return result;
   }
 
   @Post('game-definitions/:key/:version/publish')
-  publishGameDefinition(
+  async publishGameDefinition(
+    @Req() req: any,
     @Param('key') key: string,
     @Param('version', ParseIntPipe) version: number,
     @Query('type') type?: string,
   ) {
-    return this.screensService.publish(key, version, type);
+    const result = await this.screensService.publish(key, version, type);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_publish', tableName: 'game_definitions', diff: { key, version, type } });
+    return result;
   }
 
   @Post('game-definitions/:key/:version/rollback')
-  rollbackGameDefinition(
+  async rollbackGameDefinition(
+    @Req() req: any,
     @Param('key') key: string,
     @Param('version', ParseIntPipe) version: number,
     @Query('type') type?: string,
   ) {
-    return this.screensService.rollback(key, version, type);
+    const result = await this.screensService.rollback(key, version, type);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_rollback', tableName: 'game_definitions', diff: { key, version, type } });
+    return result;
   }
 
   @Get('entities')
@@ -435,6 +450,7 @@ export class AdminController {
   @Post('media/upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadMedia(
+    @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
     @Query('targetDir') targetDir?: string,
   ) {
@@ -453,6 +469,7 @@ export class AdminController {
     const gcsFile = bucket.file(objectName);
     await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
     const assetKey = `/${dir}/${safeFilename}`;
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'media_upload', diff: { assetKey, contentType: file.mimetype } });
     return { assetKey, url: `/media${assetKey}` };
   }
 
@@ -514,21 +531,25 @@ export class AdminController {
   }
 
   @Post('media/system-icons')
-  async createSystemIconDef(@Body() body: { id: string; name: string }) {
+  async createSystemIconDef(@Req() req: any, @Body() body: { id: string; name: string }) {
     if (!body.id || typeof body.id !== 'string' || !/^[a-z0-9_]+$/.test(body.id)) {
       throw new BadRequestException('id must be a lowercase snake_case string');
     }
     if (!body.name || typeof body.name !== 'string') {
       throw new BadRequestException('name is required');
     }
-    return (this.prisma as any).systemIconDef.create({ data: { id: body.id, name: body.name } });
+    const result = await (this.prisma as any).systemIconDef.create({ data: { id: body.id, name: body.name } });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'system_icon_create', recordId: body.id, diff: body });
+    return result;
   }
 
   @Delete('media/system-icons/:key')
-  async deleteSystemIconDef(@Param('key') key: string) {
+  async deleteSystemIconDef(@Req() req: any, @Param('key') key: string) {
     const existing = await (this.prisma as any).systemIconDef.findUnique({ where: { id: key } });
     if (!existing) throw new BadRequestException(`System icon key '${key}' not found`);
-    return (this.prisma as any).systemIconDef.delete({ where: { id: key } });
+    const result = await (this.prisma as any).systemIconDef.delete({ where: { id: key } });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'system_icon_delete', recordId: key });
+    return result;
   }
 
   @Get('media/icons')
@@ -777,18 +798,24 @@ export class AdminController {
   }
 
   @Post('audio/sounds')
-  createSoundDef(@Body() body: { key: string; name: string; bus: AudioBus; fileKey?: string; description?: string }) {
-    return this.prisma.soundDef.create({ data: body });
+  async createSoundDef(@Req() req: any, @Body() body: { key: string; name: string; bus: AudioBus; fileKey?: string; description?: string }) {
+    const result = await this.prisma.soundDef.create({ data: body });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_create', recordId: result.id, diff: { key: body.key, bus: body.bus } });
+    return result;
   }
 
   @Put('audio/sounds/:id')
-  updateSoundDef(@Param('id') id: string, @Body() body: { key?: string; name?: string; bus?: AudioBus; fileKey?: string; description?: string; enabled?: boolean }) {
-    return this.prisma.soundDef.update({ where: { id }, data: body });
+  async updateSoundDef(@Req() req: any, @Param('id') id: string, @Body() body: { key?: string; name?: string; bus?: AudioBus; fileKey?: string; description?: string; enabled?: boolean }) {
+    const result = await this.prisma.soundDef.update({ where: { id }, data: body });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_update', recordId: id, diff: body });
+    return result;
   }
 
   @Delete('audio/sounds/:id')
-  deleteSoundDef(@Param('id') id: string) {
-    return this.prisma.soundDef.delete({ where: { id } });
+  async deleteSoundDef(@Req() req: any, @Param('id') id: string) {
+    const result = await this.prisma.soundDef.delete({ where: { id } });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_delete', recordId: id });
+    return result;
   }
 
   // ── Audio: SoundMapping CRUD ─────────────────────────────────────────────
@@ -802,23 +829,30 @@ export class AdminController {
   }
 
   @Post('audio/mappings')
-  createSoundMapping(@Body() body: { actionKey: string; soundDefId: string; weight?: number }) {
-    return this.prisma.soundMapping.create({ data: body });
+  async createSoundMapping(@Req() req: any, @Body() body: { actionKey: string; soundDefId: string; weight?: number }) {
+    const result = await this.prisma.soundMapping.create({ data: body });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_mapping_create', recordId: result.id, diff: { actionKey: body.actionKey, soundDefId: body.soundDefId } });
+    return result;
   }
 
   @Put('audio/mappings/:id')
-  updateSoundMapping(@Param('id') id: string, @Body() body: { actionKey?: string; soundDefId?: string; weight?: number; enabled?: boolean }) {
-    return this.prisma.soundMapping.update({ where: { id }, data: body });
+  async updateSoundMapping(@Req() req: any, @Param('id') id: string, @Body() body: { actionKey?: string; soundDefId?: string; weight?: number; enabled?: boolean }) {
+    const result = await this.prisma.soundMapping.update({ where: { id }, data: body });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_mapping_update', recordId: id, diff: body });
+    return result;
   }
 
   @Delete('audio/mappings/:id')
-  deleteSoundMapping(@Param('id') id: string) {
-    return this.prisma.soundMapping.delete({ where: { id } });
+  async deleteSoundMapping(@Req() req: any, @Param('id') id: string) {
+    const result = await this.prisma.soundMapping.delete({ where: { id } });
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_mapping_delete', recordId: id });
+    return result;
   }
 
   @Post('audio/upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAudio(
+    @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file provided');
@@ -839,6 +873,7 @@ export class AdminController {
     const gcsFile = bucket.file(objectName);
     await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
     const fileKey = `/audio/${safeFilename}`;
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_upload', diff: { fileKey, contentType: file.mimetype } });
     return { fileKey, url: `/media${fileKey}` };
   }
 
@@ -942,7 +977,8 @@ export class AdminController {
   }
 
   @Put('gemPacks/:packId')
-  updateGemPack(
+  async updateGemPack(
+    @Req() req: any,
     @Param('packId') packId: string,
     @Body() body: {
       displayName?: string;
@@ -954,7 +990,9 @@ export class AdminController {
       iconSize?: number;
     },
   ) {
-    return this.adminService.updateAdminGemPack(packId, body);
+    const result = await this.adminService.updateAdminGemPack(packId, body);
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'gem_pack_update', recordId: packId, diff: body });
+    return result;
   }
 
   // ─── Crypto Wallet Admin ─────────────────────────────────────────────────────
