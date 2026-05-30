@@ -265,6 +265,13 @@ export class BootstrapService implements OnModuleInit {
       payouts_enabled: false, details_submitted: false, created: now,
     }));
 
+    // Baseline: HANDFUL (100 gems / $0.99). Used to compute honest bonus % labels.
+    const baselineGemsPerDollar = 100 / (99 / 100);
+    const extraLabel = (gemAmount: number, unitAmount: number): string => {
+      const pct = Math.round((gemAmount / (unitAmount / 100) / baselineGemsPerDollar - 1) * 100);
+      return `${pct}% EXTRA`;
+    };
+
     const packs = [
       {
         id: 'prod_gems_100',  name: '100 Gems',   packId: 'gems_100',  gemAmount: 100,  unitAmount: 99,    priceId: 'price_gems_100',
@@ -280,15 +287,15 @@ export class BootstrapService implements OnModuleInit {
       },
       {
         id: 'prod_gems_2000', name: '2,000 Gems', packId: 'gems_2000', gemAmount: 2000, unitAmount: 1499,  priceId: 'price_gems_2000',
-        displayName: 'MOUNTAIN', accentColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: '10% EXTRA', iconSize: 44,
+        displayName: 'MOUNTAIN', accentColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: extraLabel(2000, 1499), iconSize: 44,
       },
       {
         id: 'prod_gems_2500', name: '2,500 Gems', packId: 'gems_2500', gemAmount: 2500, unitAmount: 1999,  priceId: 'price_gems_2500',
-        displayName: 'VAULT', accentColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: '20% EXTRA', iconSize: 44,
+        displayName: 'VAULT', accentColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)', glowColor: 'transparent', badgeType: 'extra', badgeLabel: extraLabel(2500, 1999), iconSize: 44,
       },
       {
         id: 'prod_gems_5000', name: '5,000 Gems', packId: 'gems_5000', gemAmount: 5000, unitAmount: 2999,  priceId: 'price_gems_5000',
-        displayName: 'TROVE', accentColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)', glowColor: 'rgba(251,191,36,0.12)', badgeType: 'extra', badgeLabel: '35% EXTRA', iconSize: 50,
+        displayName: 'TROVE', accentColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)', glowColor: 'rgba(251,191,36,0.12)', badgeType: 'extra', badgeLabel: extraLabel(5000, 2999), iconSize: 50,
       },
     ];
 

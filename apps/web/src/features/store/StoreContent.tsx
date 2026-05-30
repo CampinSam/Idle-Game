@@ -796,19 +796,18 @@ function GemPackCard({
           : 'inset 0 1px 0 rgba(255,255,255,0.05)',
       }}
     >
-      {pack.badgeType === 'best_value' && (
-        <span
-          className="absolute top-1.5 right-1.5 z-10 px-1.5 py-0.5 rounded-[5px] text-[7px] font-black tracking-[0.8px] text-white uppercase whitespace-nowrap leading-none"
-          style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}
-        >
-          BEST VALUE
-        </span>
-      )}
-
-      <div className="px-2 pt-2 pb-0 text-center">
+      <div className="px-2 pt-2 pb-0 text-center flex flex-col items-center gap-0.5">
         <div className="text-[9px] font-black tracking-[1.4px] uppercase leading-none" style={{ color: pack.accentColor }}>
           {pack.displayName}
         </div>
+        {pack.badgeType === 'best_value' && (
+          <span
+            className="px-1.5 py-0.5 rounded-[5px] text-[7px] font-black tracking-[0.8px] text-white uppercase whitespace-nowrap leading-none"
+            style={{ background: 'linear-gradient(135deg,#f59e0b,#d97706)' }}
+          >
+            BEST VALUE
+          </span>
+        )}
       </div>
 
       <div
