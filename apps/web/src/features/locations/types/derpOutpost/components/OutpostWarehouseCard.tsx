@@ -49,7 +49,7 @@ export function OutpostWarehouseCard({
   const [cmdError, setCmdError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const warehouseDefId: string = warehouseDef?.id ?? '';
+  const warehouseDefId: string = warehouseDef?.id ?? warehouseBuilding?.buildingDefId ?? '';
   const { preview, loading: previewLoading } = useJobPreview({
     jobType: 'building',
     defId: warehouseDefId,
