@@ -176,9 +176,13 @@ export class LocationSettlementService {
     }
 
     if (!location.enabled) {
+      const existingStorageDisabled = (location.storage as any) || {};
       await (tx as any).locationInstance.update({
         where: { id: locationId },
-        data: { lastCollectionTick: currentTick },
+        data: {
+          lastCollectionTick: currentTick,
+          storage: { ...existingStorageDisabled, lastSettledAt: new Date().toISOString() },
+        },
       });
       return {
         locationId,
@@ -201,7 +205,10 @@ export class LocationSettlementService {
     if (!hasAnyBundleActivity && Object.keys(mergedOutputs).length === 0) {
       await (tx as any).locationInstance.update({
         where: { id: locationId },
-        data: { lastCollectionTick: currentTick },
+        data: {
+          lastCollectionTick: currentTick,
+          storage: { ...existingStorage, lastSettledAt: new Date().toISOString() },
+        },
       });
       return {
         locationId,

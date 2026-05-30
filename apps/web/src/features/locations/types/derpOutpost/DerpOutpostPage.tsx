@@ -83,11 +83,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
   const timerData = locationTimerMap.get(id);
   const resourceSummaries = timerData?.resourceSummaries || [];
 
-  const effectiveRatePerHour = resourceSummaries.reduce((s, r) => {
-    const isFull = r.capacity > 0 && r.currentAmount / r.capacity >= 0.995;
-    return isFull ? s : s + r.netRatePerHour;
-  }, 0);
-
   const hasActivity = resourceSummaries.some(
     (r) => r.totalRatePerHour !== 0 || r.netRatePerHour < 0,
   );
@@ -127,8 +122,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
       ),
     [allActiveJobs, id],
   );
-
-  const storedResources = Object.values((outpost.storage?.stored as Record<string, number>) || {});
 
   const allWarehouseStorageItems = useMemo(() => {
     const capacityMap = (outpost?.storage?.capacity as Record<string, number>) || {};
@@ -219,30 +212,33 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
 
           <OutpostDetailsCard outpost={outpost} />
 
+        <div className="grid grid-cols-2 gap-3.5 items-stretch">
         <OutpostProductionCard
-        outpost={outpost}
-        resourceSummaries={resourceSummaries}
-        hasActivity={hasActivity}
-        effectiveRatePerHour={effectiveRatePerHour}
-        constructingBuildings={constructingBuildings}
-        locationJobs={locationJobs}
-        storedResources={storedResources}
-        onCompleteBuilding={handleCompleteBuilding}
-      />
+          outpost={outpost}
+          resourceSummaries={resourceSummaries}
+          hasActivity={hasActivity}
+          constructingBuildings={constructingBuildings}
+          locationJobs={locationJobs}
+          onCompleteBuilding={handleCompleteBuilding}
+        />
+
+        <OutpostWarehouseCard
+          outpost={outpost}
+          hasWarehouse={hasWarehouse}
+          storageItems={allWarehouseStorageItems}
+          resourceSummaries={resourceSummaries}
+          warehouseDef={warehouseDef}
+          warehouseBuilding={warehouseBuildings[0] ?? null}
+          slotsBlocked={availableData?.slotsAvailable === false}
+          onBuild={openBuildModal}
+          onUpgrade={openUpgradeModal}
+        />
+      </div>
 
       <OutpostWorkersCard
         outpost={outpost}
         entities={entities}
         workersData={workersData}
-      />
-
-      <OutpostWarehouseCard
-        hasWarehouse={hasWarehouse}
-        storageItems={allWarehouseStorageItems}
-        resourceSummaries={resourceSummaries}
-        warehouseDef={warehouseDef}
-        slotsBlocked={availableData?.slotsAvailable === false}
-        onBuild={openBuildModal}
       />
 
       {sortedBuildings.map((b: any) => (
