@@ -922,9 +922,25 @@ export class LocationService {
 
     if (externalTx) {
       await this.settlementService.recalculateLocationMeta(locationId, externalTx);
+      const locAfter = await (externalTx as any).locationInstance.findFirst({ where: { id: locationId } });
+      if (locAfter) {
+        const stoAfter = (locAfter.storage as any) || {};
+        await (externalTx as any).locationInstance.update({
+          where: { id: locationId },
+          data: { storage: { ...stoAfter, lastSettledAt: new Date().toISOString() } },
+        });
+      }
     } else {
       try {
         await this.settlementService.recalculateLocationMeta(locationId);
+        const locAfter = await (this.prisma as any).locationInstance.findFirst({ where: { id: locationId } });
+        if (locAfter) {
+          const stoAfter = (locAfter.storage as any) || {};
+          await (this.prisma as any).locationInstance.update({
+            where: { id: locationId },
+            data: { storage: { ...stoAfter, lastSettledAt: new Date().toISOString() } },
+          });
+        }
       } catch (err) {
         this.logger.warn(
           `Failed to recalculate location meta for ${locationId}: ${err}`,

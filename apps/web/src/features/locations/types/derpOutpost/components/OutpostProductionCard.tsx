@@ -32,53 +32,45 @@ export function OutpostProductionCard({
   const lastSettledAt: string | null = (outpost as any)?.storage?.lastSettledAt ?? null;
   const elapsedSecs = lastSettledAt ? Math.max(0, (now - Date.parse(lastSettledAt)) / 1000) : 0;
 
-  const productionSummaries = resourceSummaries.filter((r) => r.totalRatePerHour > 0);
-  const consumptionOnlySummaries = resourceSummaries.filter(
+  const productionGroups = resourceSummaries.filter((r) => r.totalRatePerHour > 0);
+  const consumptionOnly = resourceSummaries.filter(
     (r) => r.totalRatePerHour === 0 && r.netRatePerHour < 0,
   );
-  const allRows = [...productionSummaries, ...consumptionOnlySummaries];
+
+  const allGroups = [
+    ...productionGroups.map((r) => ({ type: 'production' as const, summary: r })),
+    ...consumptionOnly.map((r) => ({ type: 'consumption' as const, summary: r })),
+  ];
 
   return (
     <OutpostCard accent="production" className="flex flex-col">
       <OutpostCardTitle accent="production">PRODUCTION</OutpostCardTitle>
 
-      {allRows.length === 0 && !hasActivity && (
+      {allGroups.length === 0 && !hasActivity && (
         <EmptyState message="No active generators." />
       )}
 
-      {allRows.length > 0 && (
+      {allGroups.length > 0 && (
         <div className="flex flex-col mb-3">
-          {allRows.map((res, idx) => {
-            const isProduction = res.totalRatePerHour > 0;
-            const isDepleting = res.netRatePerHour < 0;
-            const cycleSeconds = isProduction && res.totalRatePerHour > 0
-              ? 3600 / res.totalRatePerHour
-              : 0;
-            const barPct = cycleSeconds > 0
-              ? ((elapsedSecs % cycleSeconds) / cycleSeconds) * 100
-              : 0;
-
-            let depletionLabel = '';
-            if (isDepleting) {
-              const invAmount = computeInventoryAmount(
-                res.outputType,
-                res.outputRefId,
-                syncItems,
-                currencyBalances,
-              );
-              const totalAvailable = res.currentAmount + invAmount;
-              const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
-              depletionLabel = formatTimeRemaining(hoursLeft);
-            }
-
+          {allGroups.map((group, idx) => {
+            const res = group.summary;
             const icon = resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs);
             const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
 
-            return (
-              <div key={res.key}>
-                {idx > 0 && <Divider className="my-2" />}
+            if (group.type === 'production') {
+              const grossRate = res.totalRatePerHour;
+              const consumed = grossRate - res.netRatePerHour;
+              const hasConsumptionSubRow = consumed > 0;
 
-                {isProduction ? (
+              const cycleSeconds = grossRate > 0 ? 3600 / grossRate : 0;
+              const barPct = cycleSeconds > 0
+                ? ((elapsedSecs % cycleSeconds) / cycleSeconds) * 100
+                : 0;
+
+              return (
+                <div key={res.key}>
+                  {idx > 0 && <Divider className="my-2" />}
+
                   <div className="px-0.5 py-1">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="flex-shrink-0">
@@ -87,13 +79,8 @@ export function OutpostProductionCard({
                       <span className="flex-1 min-w-0 text-[12px] font-semibold text-text-primary truncate">
                         {name}
                       </span>
-                      <span
-                        className={`text-[10px] font-bold whitespace-nowrap ${
-                          isDepleting ? 'text-[#f87171]' : 'text-[#86efac]'
-                        }`}
-                      >
-                        {isDepleting ? '' : '+'}
-                        {formatRate(res.netRatePerHour)}/h
+                      <span className="text-[10px] font-bold whitespace-nowrap text-[#86efac]">
+                        +{formatRate(grossRate)}/h
                       </span>
                     </div>
                     <div className="h-1 rounded-full bg-black/40 overflow-hidden">
@@ -102,30 +89,54 @@ export function OutpostProductionCard({
                         style={{ width: `${Math.min(barPct, 100)}%` }}
                       />
                     </div>
-                    {isDepleting && depletionLabel && (
-                      <div className="text-[10px] text-[#fbbf24] mt-1 font-bold">
-                        ⚠ {depletionLabel} left
-                      </div>
-                    )}
                   </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 px-0.5 py-1">
-                    <span className="flex-shrink-0">
-                      <GameIcon src={icon} size={14} />
-                    </span>
-                    <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#f87171] truncate">
-                      {name}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#f87171] whitespace-nowrap">
-                      {formatRate(res.netRatePerHour)}/h
-                    </span>
-                    {depletionLabel && (
-                      <span className="text-[10px] font-bold text-[#fbbf24] ml-1">
-                        ⚠ {depletionLabel}
+
+                  {hasConsumptionSubRow && (
+                    <div className="flex items-center gap-1.5 px-0.5 pb-1 pt-0.5 ml-1 opacity-80">
+                      <span className="flex-shrink-0">
+                        <GameIcon src={icon} size={12} />
                       </span>
-                    )}
-                  </div>
-                )}
+                      <span className="flex-1 min-w-0 text-[10px] font-medium text-[#f87171] truncate">
+                        {name}
+                      </span>
+                      <span className="text-[10px] font-bold whitespace-nowrap text-[#f87171]">
+                        -{formatRate(consumed)}/h
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const invAmount = computeInventoryAmount(
+              res.outputType,
+              res.outputRefId,
+              syncItems,
+              currencyBalances,
+            );
+            const totalAvailable = res.currentAmount + invAmount;
+            const hoursLeft = totalAvailable / Math.abs(res.netRatePerHour);
+            const depletionLabel = formatTimeRemaining(hoursLeft);
+
+            return (
+              <div key={res.key}>
+                {idx > 0 && <Divider className="my-2" />}
+                <div className="flex items-center gap-1.5 px-0.5 py-1">
+                  <span className="flex-shrink-0">
+                    <GameIcon src={icon} size={14} />
+                  </span>
+                  <span className="flex-1 min-w-0 text-[12px] font-semibold text-[#f87171] truncate">
+                    {name}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#f87171] whitespace-nowrap">
+                    {formatRate(res.netRatePerHour)}/h
+                  </span>
+                  {depletionLabel && (
+                    <span className="text-[10px] font-bold text-[#fbbf24] ml-1">
+                      ⚠ {depletionLabel}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
