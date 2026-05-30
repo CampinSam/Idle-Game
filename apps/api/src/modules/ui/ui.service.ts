@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
-import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
+import { calcXpForLevel, diffLocationLevelUnlocks, resolveLevelConfig, resolveConstructionCosts, type LocationLevelUnlocks, type LevelRules } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 import { RARITY_ORDER as SHARED_RARITY_ORDER } from '@derp/shared';
@@ -638,10 +638,11 @@ export class UiService {
     const maxLevel = 50;
     const isMaxLevel = currentLevel >= maxLevel;
 
-    const levelMap = def.rules?.level || {};
-    const nextLevelConfig = levelMap[String(nextLevel)] || levelMap[String(currentLevel)] || {};
-    const upgradeCosts: any[] = nextLevelConfig.constructionCost || nextLevelConfig.upgradeCost || [];
-    const timerDuration: number = nextLevelConfig.timer?.duration ?? 0;
+    const defRules = (def.rules as LevelRules) || {};
+    const nextLevelConfig = resolveLevelConfig(defRules, nextLevel);
+    const upgradeCosts = resolveConstructionCosts(nextLevelConfig.constructionCost, nextLevel);
+    const rawTimer = (nextLevelConfig.timer as any) || null;
+    const timerDuration: number = rawTimer?.duration ?? 0;
 
     const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [
       { label: 'Current Level', value: String(currentLevel) },
