@@ -401,11 +401,20 @@ A data-driven swipeable banner carousel. Banners are sourced from the sync store
 
 #### `ResourceSummaryBar`
 
-A horizontal scrollable row of currency balance pills. Shows the player's current balances for up to `maxItems` currencies.
+A horizontal scrollable row of resource balance pills. Displays a curated mix of currencies and/or items defined by the `resources` prop.
 
-| Prop | Type | Default | Description |
+| Prop | Type | Required | Description |
 |---|---|---|---|
-| `maxItems` | `number` | `4` | Maximum number of currencies to display. |
+| `resources` | `Array<{ type: "currency" \| "item", defId: string }>` | ✓ | Ordered list of resources to display. Each entry specifies a type (`"currency"` or `"item"`) and the definition ID. Hidden entirely when the array is empty. |
+
+**Example:**
+```json
+"resources": [
+  { "type": "currency", "defId": "gold" },
+  { "type": "currency", "defId": "gems" },
+  { "type": "item", "defId": "potion_health" }
+]
+```
 
 ---
 

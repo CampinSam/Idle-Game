@@ -52,32 +52,49 @@ function SeasonBannerComp(_: ScreenComponentProps) {
 function ResourceSummaryBarComp({ section }: ScreenComponentProps) {
   const balances = useSyncCurrencyBalances();
   const currencyDefs: any[] = useAppSelector((s) => s.game.currencyDefs) ?? [];
-  const maxShow = Number((section.props?.maxItems as any) ?? 4);
+  const itemDefs: any[] = useAppSelector((s) => s.game.itemDefs) ?? [];
+  const items = useSyncItems() as any[];
 
-  const entries = Object.entries(balances).slice(0, maxShow);
+  const resources: Array<{ type: string; defId: string }> =
+    Array.isArray(section.props?.resources) ? (section.props.resources as any[]) : [];
+
+  if (resources.length === 0) return null;
+
+  const entries = resources
+    .map(({ type, defId }) => {
+      if (type === 'currency') {
+        const def = currencyDefs.find((c: any) => c.id === defId);
+        return { key: `currency:${defId}`, icon: def?.icon, name: def?.name ?? defId, amount: balances[defId] ?? 0 };
+      }
+      if (type === 'item') {
+        const def = itemDefs.find((d: any) => d.id === defId);
+        const count = items
+          .filter((i: any) => (i.itemDefId ?? i.definitionId) === defId)
+          .reduce((sum: number, i: any) => sum + (typeof i.quantity === 'number' ? i.quantity : 1), 0);
+        return { key: `item:${defId}`, icon: def?.icon, name: def?.name ?? defId, amount: count };
+      }
+      return null;
+    })
+    .filter((e): e is { key: string; icon?: string; name: string; amount: number } => e !== null);
+
   if (entries.length === 0) return null;
 
   return (
     <div className="flex gap-2 overflow-x-auto mb-4 pb-1 [-webkit-overflow-scrolling:touch]">
-      {entries.map(([id, amount]) => {
-        const def = currencyDefs.find((c: any) => c.id === id);
-        return (
-          <div
-            key={id}
-            className="flex items-center gap-1.5 bg-bg-card rounded-lg px-3 py-2 border border-white/10 flex-shrink-0"
-          >
-            {def?.icon && <span className="text-sm">{def.icon}</span>}
-            <div>
-              <div className="text-[11px] text-text-secondary leading-none mb-0.5">
-                {def?.name ?? id}
-              </div>
-              <div className="text-[13px] font-bold text-text-primary leading-none">
-                {typeof amount === 'number' ? amount.toLocaleString() : String(amount)}
-              </div>
+      {entries.map(({ key, icon, name, amount }) => (
+        <div
+          key={key}
+          className="flex items-center gap-1.5 bg-bg-card rounded-lg px-3 py-2 border border-white/10 flex-shrink-0"
+        >
+          {icon && <span className="text-sm">{icon}</span>}
+          <div>
+            <div className="text-[11px] text-text-secondary leading-none mb-0.5">{name}</div>
+            <div className="text-[13px] font-bold text-text-primary leading-none">
+              {typeof amount === 'number' ? amount.toLocaleString() : String(amount)}
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

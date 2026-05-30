@@ -65,7 +65,11 @@ interface PropHint {
 
 const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
   ResourceSummaryBar: {
-    maxItems: { type: 'number', description: 'Max currencies shown (default: 4)' },
+    resources: {
+      type: 'array',
+      description: 'Curated list of resources to display. Each entry: { type: "currency" | "item", defId: string }',
+      required: true,
+    },
   },
   MissionFeaturedCard: {
     missionDefId: { type: 'missionDefPicker', description: 'Pin a specific mission definition ID to feature. Leave blank to auto-show a summary of all active mission jobs.' },

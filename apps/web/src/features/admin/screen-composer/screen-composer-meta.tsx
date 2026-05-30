@@ -69,7 +69,7 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
 
   ResourceSummaryBar: {
     friendlyName: 'Resource Summary Bar',
-    description: 'Scrollable row of player currencies with icons and values. Appears at the top of most screens.',
+    description: 'Scrollable row of curated resources (currencies or items) with icons and values. Configure via the resources prop as an array of { type, defId } pairs.',
     group: 'Core HUD',
     color: '#818cf8',
     preview: () => P.wrap(
