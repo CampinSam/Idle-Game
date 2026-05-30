@@ -5,7 +5,7 @@ import { audioEngine } from '../../../../../services/AudioEngine';
 import { resolveIcon, resolveName } from '../../../../../utils/iconResolver';
 import GameIcon from '../../../../../components/GameIcon';
 import LootPop, { type LootPopItem } from '../../../../../components/LootPop';
-import { Divider, EmptyState, OutpostCard } from '../../../../../components/ui';
+import { Divider, OutpostCard } from '../../../../../components/ui';
 import { formatAmount } from '../../../../../utils/locationProduction';
 
 interface StorageItem {
@@ -124,63 +124,55 @@ export function OutpostWarehouseCard({
         )}
       </div>
 
-      {hasWarehouse ? (
-        storageItems.length > 0 ? (
-          <div className="flex flex-col flex-1">
-            {storageItems.map((res, idx) => {
-              const pct = res.capacity > 0 ? Math.min((res.current / res.capacity) * 100, 100) : 0;
-              const isFull = pct >= 99.5;
-              const isNearFull = pct >= 90;
+      {storageItems.length > 0 && (
+        <div className="flex flex-col flex-1">
+          {storageItems.map((res, idx) => {
+            const pct = res.capacity > 0 ? Math.min((res.current / res.capacity) * 100, 100) : 0;
+            const isFull = pct >= 99.5;
+            const isNearFull = pct >= 90;
 
-              const barClass = isFull
-                ? 'bg-gradient-to-r from-[#ef4444] to-[#dc2626]'
-                : isNearFull
-                  ? 'bg-gradient-to-r from-[#f59e0b] to-[#d97706]'
-                  : 'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]';
+            const barClass = isFull
+              ? 'bg-gradient-to-r from-[#ef4444] to-[#dc2626]'
+              : isNearFull
+                ? 'bg-gradient-to-r from-[#f59e0b] to-[#d97706]'
+                : 'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]';
 
-              const icon = resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs);
-              const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
+            const icon = resolveIcon(res.outputType, res.outputRefId, currencyDefs, itemDefs);
+            const name = resolveName(res.outputType, res.outputRefId, currencyDefs, itemDefs);
 
-              const indicator = isFull ? '🔴' : isNearFull ? '⚠️' : null;
+            const indicator = isFull ? '🔴' : isNearFull ? '⚠️' : null;
 
-              return (
-                <div key={res.key}>
-                  {idx > 0 && <Divider className="my-2" />}
-                  <div className="flex items-center gap-2 px-0.5 py-1">
-                    <span className="flex-shrink-0">
-                      <GameIcon src={icon} size={14} />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1 mb-1.5">
-                        {indicator && (
-                          <span className="text-[11px] leading-none">{indicator}</span>
-                        )}
-                        <span className="text-[11px] font-semibold text-[#f1f5f9] truncate">
-                          {name}
-                        </span>
-                      </div>
-                      <div className="h-1 rounded-full bg-black/45 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-[width] duration-[400ms] ${barClass}`}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
+            return (
+              <div key={res.key}>
+                {idx > 0 && <Divider className="my-2" />}
+                <div className="flex items-center gap-2 px-0.5 py-1">
+                  <span className="flex-shrink-0">
+                    <GameIcon src={icon} size={14} />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 mb-1.5">
+                      {indicator && (
+                        <span className="text-[11px] leading-none">{indicator}</span>
+                      )}
+                      <span className="text-[11px] font-semibold text-[#f1f5f9] truncate">
+                        {name}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold text-[#fcd34d] whitespace-nowrap ml-1">
-                      {formatAmount(res.current)}/{formatAmount(res.capacity)}
-                    </span>
+                    <div className="h-1 rounded-full bg-black/45 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-[400ms] ${barClass}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
                   </div>
+                  <span className="text-[10px] font-bold text-[#fcd34d] whitespace-nowrap ml-1">
+                    {formatAmount(res.current)}/{formatAmount(res.capacity)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <EmptyState message="No resources stored yet." />
-        )
-      ) : (
-        <EmptyState
-          message="No warehouse on this outpost. Build one to unlock storage capacity."
-        />
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <div className="relative mt-auto pt-3">
