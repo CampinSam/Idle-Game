@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
-import { calcXpForLevel, diffLocationLevelUnlocks, resolveLevelConfig, resolveConstructionCosts, type LocationLevelUnlocks, type LevelRules } from '../game-rules/level-config.util';
+import { calcXpForLevel, calcGrowth, diffLocationLevelUnlocks, resolveLevelConfig, resolveConstructionCosts, type LocationLevelUnlocks, type LevelRules } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 import { RARITY_ORDER as SHARED_RARITY_ORDER } from '@derp/shared';
@@ -642,7 +642,9 @@ export class UiService {
     const nextLevelConfig = resolveLevelConfig(defRules, nextLevel);
     const upgradeCosts = resolveConstructionCosts(nextLevelConfig.constructionCost, nextLevel);
     const rawTimer = (nextLevelConfig.timer as any) || null;
-    const timerDuration: number = rawTimer?.duration ?? 0;
+    const timerDuration: number = rawTimer
+      ? calcGrowth(rawTimer.duration ?? 0, rawTimer.growthRate, rawTimer.growthScalar, nextLevel)
+      : 0;
 
     const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [
       { label: 'Current Level', value: String(currentLevel) },
