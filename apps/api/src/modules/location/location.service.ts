@@ -345,6 +345,25 @@ export class LocationService {
     }
   }
 
+  /**
+   * Returns true if a new location assigned to `userId` should be automatically
+   * activated (i.e. the player is still below their active-slot cap).
+   * Use this when creating or transferring a location to decide the initial `enabled` value.
+   */
+  async shouldAutoActivate(userId: string, tx?: any): Promise<boolean> {
+    const client = tx ?? this.prisma;
+    const user = await (client as any).user.findUnique({
+      where: { id: userId },
+      select: { keeperLevel: true, bonusOutpostSlots: true },
+    });
+    if (!user) return false;
+    const activeCount = await (client as any).locationInstance.count({
+      where: { ownerUserId: userId, enabled: true },
+    });
+    const maxOutposts = ANTI_WHALE_CAPS.maxActiveOutposts(user.keeperLevel, user.bonusOutpostSlots ?? 0);
+    return activeCount < maxOutposts;
+  }
+
   private async getCurrencyIds(externalTx?: any): Promise<Set<string>> {
     const client = externalTx || this.prisma;
     const currencies = await client.currency.findMany({

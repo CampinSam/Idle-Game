@@ -7,10 +7,11 @@ import { NftCollectionController } from './nft-collection.controller';
 import { NftImageImportService } from './nft-image-import.service';
 import { NftAssetCacheService } from './nft-asset-cache.service';
 import { InfrastructureModule } from '../infrastructure/infrastructure.module';
+import { LocationModule } from '../location/location.module';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
-  imports: [InfrastructureModule],
+  imports: [InfrastructureModule, LocationModule],
   providers: [CardanoOwnershipProvider, EvmOwnershipProvider, NftOwnershipService, NftCollectionService, NftImageImportService, NftAssetCacheService],
   controllers: [NftCollectionController],
   exports: [NftOwnershipService, NftCollectionService, CardanoOwnershipProvider, NftImageImportService, NftAssetCacheService],

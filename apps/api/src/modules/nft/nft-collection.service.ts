@@ -7,6 +7,7 @@ import { buildEntityDataFromNftMetadata } from './nft-entity-builder';
 import { buildLocationDataFromNftMetadata } from './nft-location-builder';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { NftImageImportService } from './nft-image-import.service';
+import { LocationService } from '../location/location.service';
 import {
   PatchBuilder,
   fetchFullLocation,
@@ -83,6 +84,7 @@ export class NftCollectionService {
     private nftAssetCache: NftAssetCacheService,
     private pubsub: PubSubService,
     private nftImageImport: NftImageImportService,
+    private locationService: LocationService,
   ) {}
 
   async listCollections() {
@@ -331,10 +333,12 @@ export class NftCollectionService {
                 const meta = nftAssetRowToMetadata(cachedAsset);
 
                 const locationData = buildLocationDataFromNftMetadata(collection, meta, nftAssetId);
+                const autoActivate = await this.locationService.shouldAutoActivate(userId);
                 const created = await (this.prisma as any).locationInstance.create({
                   data: {
                     ...locationData,
                     ownerUserId: userId,
+                    enabled: autoActivate,
                   },
                 });
                 this.nftImageImport.prewarmThumbnail(meta.imageUrl);
@@ -361,9 +365,10 @@ export class NftCollectionService {
             // Transfer ownership to current wallet holder.
             const previousOwnerId = existingLocation.ownerUserId;
             try {
+              const autoActivate = await this.locationService.shouldAutoActivate(userId);
               await (this.prisma as any).locationInstance.update({
                 where: { id: existingLocation.id },
-                data: { ownerUserId: userId },
+                data: { ownerUserId: userId, enabled: autoActivate },
               });
               claimed++;
               claimedLocationIds.push(existingLocation.id);

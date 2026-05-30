@@ -106,12 +106,14 @@ export default function LocationsContent() {
           </div>
         )}
 
-        {(nonPrimaryLocations.length > 0 || activeCount < slotBudget) && (
+        {(nonPrimaryLocations.length > 0 || activeCount < slotBudget || keeperLevel < 80 || bonusSlots < 3) && (
           <OutpostList
             locations={nonPrimaryLocations}
             primaryLocationId={primaryLocationId}
             activeCount={activeCount}
             slotBudget={slotBudget}
+            keeperLevel={keeperLevel}
+            bonusSlots={bonusSlots}
           />
         )}
       </div>

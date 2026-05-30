@@ -15,6 +15,9 @@ const REGION_OPTIONS = [
   ...OUTPOST_REGIONS.map((r) => ({ key: r, label: getRegionDisplay(r).displayName })),
 ];
 
+const LEVEL_THRESHOLDS = [20, 40, 60, 80] as const;
+const HARD_CAP = 7;
+
 type OutpostStatus = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
 interface OutpostListProps {
@@ -22,6 +25,8 @@ interface OutpostListProps {
   primaryLocationId: string | null;
   activeCount: number;
   slotBudget: number;
+  keeperLevel: number;
+  bonusSlots: number;
 }
 
 function EmptySlotCard() {
@@ -41,11 +46,61 @@ function EmptySlotCard() {
   );
 }
 
+function LevelLockedSlotCard({ unlockLevel }: { unlockLevel: number }) {
+  return (
+    <div
+      className="rounded-xl p-4 flex flex-col items-center gap-2 text-center min-h-[140px] justify-center"
+      style={{
+        background: 'rgba(15,12,40,0.7)',
+        border: '1px dashed rgba(139,92,246,0.25)',
+      }}
+    >
+      <div className="text-xl opacity-40">🔐</div>
+      <div className="text-[9px] font-black tracking-[1px] text-text-secondary uppercase leading-none">
+        Outpost Slot
+      </div>
+      <div
+        className="text-[10px] font-extrabold tracking-[0.3px] leading-snug"
+        style={{ color: 'rgba(167,139,250,0.7)' }}
+      >
+        Unlock at Level {unlockLevel}
+      </div>
+    </div>
+  );
+}
+
+function BonusSlotCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl p-4 flex flex-col items-center gap-2 text-center min-h-[140px] justify-center w-full cursor-pointer transition-colors duration-150 group"
+      style={{
+        background: 'rgba(15,12,40,0.7)',
+        border: '1px dashed rgba(251,191,36,0.3)',
+      }}
+    >
+      <div className="text-xl opacity-50 group-hover:opacity-80 transition-opacity">⭐</div>
+      <div className="text-[9px] font-black tracking-[1px] uppercase leading-none" style={{ color: 'rgba(251,191,36,0.6)' }}>
+        Bonus Slot
+      </div>
+      <div
+        className="text-[10px] font-extrabold tracking-[0.3px] leading-snug group-hover:opacity-100 transition-opacity"
+        style={{ color: 'rgba(251,191,36,0.7)' }}
+      >
+        Available in Store
+      </div>
+    </button>
+  );
+}
+
 export function OutpostList({
   locations,
   primaryLocationId,
   activeCount,
   slotBudget,
+  keeperLevel,
+  bonusSlots,
 }: OutpostListProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -88,8 +143,20 @@ export function OutpostList({
   const isFiltered = search.trim().length > 0 || regionFilter !== 'ALL';
   const emptySlots = showingActive && !isFiltered ? Math.max(0, slotBudget - activeCount) : 0;
 
+  // Locked-slot cards: shown between active and inactive, only when not filtered
+  const { lockedLevelThresholds, purchasableBonusCount } = useMemo(() => {
+    if (isFiltered || !showingActive) return { lockedLevelThresholds: [] as number[], purchasableBonusCount: 0 };
+    const remaining = Math.max(0, HARD_CAP - slotBudget);
+    const levelThresholds = LEVEL_THRESHOLDS.filter((t) => t > keeperLevel).slice(0, remaining);
+    const bonusCapacity = Math.max(0, remaining - levelThresholds.length);
+    const purchasable = Math.min(Math.max(0, 3 - bonusSlots), bonusCapacity);
+    return { lockedLevelThresholds: levelThresholds as number[], purchasableBonusCount: purchasable };
+  }, [isFiltered, showingActive, slotBudget, keeperLevel, bonusSlots]);
+
+  const hasLockedSlots = lockedLevelThresholds.length > 0 || purchasableBonusCount > 0;
+
   const hasContent =
-    (showingActive && (filteredActive.length > 0 || emptySlots > 0)) ||
+    (showingActive && (filteredActive.length > 0 || emptySlots > 0 || hasLockedSlots)) ||
     (showingInactive && filteredInactive.length > 0);
 
   return (
@@ -121,7 +188,7 @@ export function OutpostList({
         </div>
       )}
 
-      {showingActive && (filteredActive.length > 0 || emptySlots > 0) && (
+      {showingActive && (filteredActive.length > 0 || emptySlots > 0 || hasLockedSlots) && (
         <div className="flex flex-col gap-2">
           {status === 'ALL' && (
             <div className="text-[10px] font-black tracking-[1px] text-text-secondary uppercase">
@@ -146,6 +213,22 @@ export function OutpostList({
             })}
             {Array.from({ length: emptySlots }).map((_, i) => (
               <EmptySlotCard key={`empty-${i}`} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasLockedSlots && (
+        <div className="flex flex-col gap-2">
+          <div className="text-[10px] font-black tracking-[1px] uppercase" style={{ color: 'rgba(139,92,246,0.5)' }}>
+            Locked Slots
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {lockedLevelThresholds.map((lvl) => (
+              <LevelLockedSlotCard key={`level-${lvl}`} unlockLevel={lvl} />
+            ))}
+            {Array.from({ length: purchasableBonusCount }).map((_, i) => (
+              <BonusSlotCard key={`bonus-${i}`} onClick={() => navigate('/store')} />
             ))}
           </div>
         </div>
