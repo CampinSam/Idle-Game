@@ -980,7 +980,7 @@ export default function StoreContent() {
         pushModal({
           key: 'coming-soon-stripe',
           title: 'Card Payments Coming Soon',
-          body: [{ type: 'richText', content: '🚧 Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.' }],
+          body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '🚧 Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.' }] }] }],
           buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
         } as ModalSpecV1);
         return;
@@ -1044,7 +1044,7 @@ export default function StoreContent() {
         pushModal({
           key: 'coming-soon-pass',
           title: 'Derp Pass Coming Soon',
-          body: [{ type: 'richText', content: '👑 Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!' }],
+          body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '👑 Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!' }] }] }],
           buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
         } as ModalSpecV1);
         return;
@@ -1076,7 +1076,10 @@ export default function StoreContent() {
     pushModal({
       key: 'connect-cardano-wallet',
       title: 'Connect Cardano Wallet',
-      body: [{ type: 'richText', content: '🔵 To pay with ADA, link a Cardano wallet first.\n\nGo to Profile → Wallets to connect your wallet, then return here to complete your purchase.' }],
+      body: [{ type: 'richText', doc: [
+        { t: 'p', c: [{ t: 'text', v: '🔵 To pay with ADA, link a Cardano wallet first.' }] },
+        { t: 'p', c: [{ t: 'text', v: 'Go to Profile → Wallets to connect your wallet, then return here to complete your purchase.' }] },
+      ] }],
       buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
     } as ModalSpecV1);
   }, [pushModal]);
