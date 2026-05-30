@@ -978,11 +978,14 @@ export default function StoreContent() {
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {
         pushModal({
-          key: 'coming-soon-stripe',
-          title: 'Card Payments Coming Soon',
-          body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '🚧 Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.' }] }] }],
+          version: 1,
+          id: 'coming-soon-stripe',
+          kind: 'info',
+          dismiss: { backdrop: true, x: true, escape: true },
+          header: { title: 'Card Payments Coming Soon' },
+          pages: [{ body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '🚧 Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.' }] }] }] }],
           buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
-        } as ModalSpecV1);
+        });
         return;
       }
       if (data?.action?.type === 'redirect' && data.action.url) {
@@ -1042,11 +1045,14 @@ export default function StoreContent() {
       if (!resp.ok) throw new Error(data?.message ?? 'Request failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {
         pushModal({
-          key: 'coming-soon-pass',
-          title: 'Derp Pass Coming Soon',
-          body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '👑 Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!' }] }] }],
+          version: 1,
+          id: 'coming-soon-pass',
+          kind: 'info',
+          dismiss: { backdrop: true, x: true, escape: true },
+          header: { title: 'Derp Pass Coming Soon' },
+          pages: [{ body: [{ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: '👑 Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!' }] }] }] }],
           buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
-        } as ModalSpecV1);
+        });
         return;
       }
       if (data?.action?.type === 'redirect' && data.action.url) {
@@ -1074,14 +1080,17 @@ export default function StoreContent() {
 
   const handlePromptConnectWallet = useCallback(() => {
     pushModal({
-      key: 'connect-cardano-wallet',
-      title: 'Connect Cardano Wallet',
-      body: [{ type: 'richText', doc: [
+      version: 1,
+      id: 'connect-cardano-wallet',
+      kind: 'info',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: { title: 'Connect Cardano Wallet' },
+      pages: [{ body: [{ type: 'richText', doc: [
         { t: 'p', c: [{ t: 'text', v: '🔵 To pay with ADA, link a Cardano wallet first.' }] },
         { t: 'p', c: [{ t: 'text', v: 'Go to Profile → Wallets to connect your wallet, then return here to complete your purchase.' }] },
-      ] }],
+      ] }] }],
       buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
-    } as ModalSpecV1);
+    });
   }, [pushModal]);
 
   const handleCryptoConfirmed = useCallback((gemAmount: number) => {
