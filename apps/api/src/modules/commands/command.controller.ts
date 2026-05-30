@@ -32,7 +32,7 @@ export class CommandController {
 
   @Post('commands')
   @UseGuards(UserThrottlerGuard, JwtAuthGuard)
-  @SkipThrottle({ auth: true, synergyPreview: true })
+  @SkipThrottle({ auth: true, synergyPreview: true, clientErrors: true, forgotPassword: true })
   async executeCommand(@Request() req: any, @Body() body: CommandDto) {
     const input: CommandInput = {
       type: body.type,
