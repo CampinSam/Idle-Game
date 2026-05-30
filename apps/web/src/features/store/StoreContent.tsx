@@ -770,16 +770,18 @@ function formatAdaAmount(lovelace: number): string {
 function GemPackCard({
   pack,
   onBuyCard,
-  onBuyWallet,
+  onBuyCardano,
+  onPromptWallet,
   buying,
-  hasWallet,
+  hasCardanoWallet,
   adaRate,
 }: {
   pack: GemPack;
   onBuyCard: (pack: GemPack) => void;
-  onBuyWallet: (pack: GemPack) => void;
+  onBuyCardano: (pack: GemPack) => void;
+  onPromptWallet: () => void;
   buying: boolean;
-  hasWallet: boolean;
+  hasCardanoWallet: boolean;
   adaRate: AdaRateStatus | null;
 }) {
   return (
@@ -857,24 +859,24 @@ function GemPackCard({
         >
           {buying ? '…' : formatUsd(pack.unitAmount)}
         </button>
-        {hasWallet && (
-          <button
-            disabled={buying}
-            onClick={() => onBuyWallet(pack)}
-            data-sfx="ui.button_primary"
-            className={
-              `w-full py-1 rounded-[6px] text-[9px] font-bold tracking-[0.2px] border cursor-pointer ` +
-              `transition-colors duration-150 bg-transparent ` +
-              (buying
-                ? 'opacity-40 cursor-not-allowed border-[rgba(139,92,246,0.15)] text-text-secondary'
-                : 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]')
-            }
-          >
-            {adaRate
-              ? `≈ ${formatAdaAmount(Math.ceil((pack.unitAmount / 100) * adaRate.lovelacePerUsd))} ₳`
-              : '💳 Pay with Wallet'}
-          </button>
-        )}
+        <button
+          disabled={buying}
+          onClick={() => hasCardanoWallet ? onBuyCardano(pack) : onPromptWallet()}
+          data-sfx="ui.button_primary"
+          className={
+            `w-full py-1 rounded-[6px] text-[9px] font-bold tracking-[0.2px] border cursor-pointer ` +
+            `transition-colors duration-150 bg-transparent ` +
+            (buying
+              ? 'opacity-40 cursor-not-allowed border-[rgba(139,92,246,0.15)] text-text-secondary'
+              : hasCardanoWallet
+                ? 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]'
+                : 'border-[rgba(99,102,241,0.2)] text-[rgba(167,139,250,0.5)] hover:border-[rgba(99,102,241,0.4)] hover:text-[#a78bfa]')
+          }
+        >
+          {adaRate
+            ? `≈ ${formatAdaAmount(Math.ceil((pack.unitAmount / 100) * adaRate.lovelacePerUsd))} ₳`
+            : hasCardanoWallet ? '💳 Pay with Wallet' : '₳ Pay with ADA'}
+        </button>
       </div>
     </div>
   );
@@ -897,8 +899,6 @@ export default function StoreContent() {
   const [cryptoModal, setCryptoModal] = useState<CryptoModalState | null>(null);
   const [chainSelectPack, setChainSelectPack] = useState<GemPack | null>(null);
   const [successGems, setSuccessGems] = useState<number | null>(null);
-  const [comingSoonCard, setComingSoonCard] = useState(false);
-  const [comingSoonPass, setComingSoonPass] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
   const [adaRate, setAdaRate] = useState<AdaRateStatus | null>(null);
 
@@ -977,7 +977,12 @@ export default function StoreContent() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Purchase failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {
-        setComingSoonCard(true);
+        pushModal({
+          key: 'coming-soon-stripe',
+          title: 'Card Payments Coming Soon',
+          body: [{ type: 'richText', content: '🚧 Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.' }],
+          buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
+        } as ModalSpecV1);
         return;
       }
       if (data?.action?.type === 'redirect' && data.action.url) {
@@ -988,7 +993,7 @@ export default function StoreContent() {
     } finally {
       setBuyingPackId(null);
     }
-  }, []);
+  }, [pushModal]);
 
   const initiateCryptoPurchase = useCallback(async (
     pack: GemPack,
@@ -1036,7 +1041,12 @@ export default function StoreContent() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.message ?? 'Request failed');
       if (data?.comingSoon || data?.action?.type === 'coming_soon') {
-        setComingSoonPass(true);
+        pushModal({
+          key: 'coming-soon-pass',
+          title: 'Derp Pass Coming Soon',
+          body: [{ type: 'richText', content: '👑 Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!' }],
+          buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
+        } as ModalSpecV1);
         return;
       }
       if (data?.action?.type === 'redirect' && data.action.url) {
@@ -1047,7 +1057,7 @@ export default function StoreContent() {
     } finally {
       setPassLoading(false);
     }
-  }, []);
+  }, [pushModal]);
 
   const handleBuyWithWallet = useCallback((pack: GemPack) => {
     if (hasBothChains) {
@@ -1057,6 +1067,19 @@ export default function StoreContent() {
       initiateCryptoPurchase(pack, method);
     }
   }, [hasBothChains, hasCardanoWallet, initiateCryptoPurchase]);
+
+  const handleBuyWithCardano = useCallback((pack: GemPack) => {
+    initiateCryptoPurchase(pack, 'crypto_cardano');
+  }, [initiateCryptoPurchase]);
+
+  const handlePromptConnectWallet = useCallback(() => {
+    pushModal({
+      key: 'connect-cardano-wallet',
+      title: 'Connect Cardano Wallet',
+      body: [{ type: 'richText', content: '🔵 To pay with ADA, link a Cardano wallet first.\n\nGo to Profile → Wallets to connect your wallet, then return here to complete your purchase.' }],
+      buttons: [{ id: 'close', label: 'Got it', variant: 'primary', action: { type: 'CLOSE_MODAL' } }],
+    } as ModalSpecV1);
+  }, [pushModal]);
 
   const handleCryptoConfirmed = useCallback((gemAmount: number) => {
     setCryptoModal(null);
@@ -1235,47 +1258,6 @@ export default function StoreContent() {
         />
       )}
 
-      {comingSoonPass && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setComingSoonPass(false); }}
-        >
-          <div className="w-full max-w-xs mx-3 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(251,191,36,0.3)] rounded-t-[20px] sm:rounded-[20px] p-6 flex flex-col items-center gap-4 shadow-[0_0_40px_rgba(251,191,36,0.1)] text-center">
-            <span className="text-[40px]">👑</span>
-            <div className="text-[16px] font-black text-[#fbbf24]">Derp Pass Coming Soon</div>
-            <div className="text-[12px] text-text-secondary leading-relaxed">
-              Subscriptions are not yet live. Stay tuned — the Derp Pass will be available soon!
-            </div>
-            <button
-              onClick={() => setComingSoonPass(false)}
-              className="w-full py-2.5 rounded-[10px] text-[13px] font-bold bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.35)] text-[#fbbf24] hover:bg-[rgba(251,191,36,0.25)] cursor-pointer transition-colors"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
-
-      {comingSoonCard && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setComingSoonCard(false); }}
-        >
-          <div className="w-full max-w-xs mx-3 [background:linear-gradient(160deg,#12103a_0%,#1a1550_100%)] border border-[rgba(139,92,246,0.3)] rounded-t-[20px] sm:rounded-[20px] p-6 flex flex-col items-center gap-4 shadow-[0_0_40px_rgba(139,92,246,0.2)] text-center">
-            <span className="text-[40px]">🚧</span>
-            <div className="text-[16px] font-black text-white">Card Payments Coming Soon</div>
-            <div className="text-[12px] text-text-secondary leading-relaxed">
-              Stripe card payments are not yet live. Connect the Stripe integration to enable real purchases.
-            </div>
-            <button
-              onClick={() => setComingSoonCard(false)}
-              className="w-full py-2.5 rounded-[10px] text-[13px] font-bold bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.3)] cursor-pointer transition-colors"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="overflow-hidden flex flex-col flex-1 min-h-0">
 
@@ -1358,9 +1340,10 @@ export default function StoreContent() {
                       key={pack.id}
                       pack={pack}
                       onBuyCard={handleBuyGemPack}
-                      onBuyWallet={handleBuyWithWallet}
+                      onBuyCardano={handleBuyWithCardano}
+                      onPromptWallet={handlePromptConnectWallet}
                       buying={buyingPackId === pack.id}
-                      hasWallet={hasAnyWallet}
+                      hasCardanoWallet={hasCardanoWallet}
                       adaRate={adaRate}
                     />
                   ))}
