@@ -1,9 +1,12 @@
 import { useRef, useState } from 'react';
 import { useAppSelector } from '../../../../../store';
 import { useCommand } from '../../../../../hooks/useCommand';
+import { useJobPreview } from '../../../../jobs/useJobPreview';
 import { audioEngine } from '../../../../../services/AudioEngine';
 import { resolveIcon, resolveName } from '../../../../../utils/iconResolver';
+import { formatDuration } from '../../../../../utils/formatDuration';
 import GameIcon from '../../../../../components/GameIcon';
+import ItemQty from '../../../../../components/ItemQty';
 import LootPop, { type LootPopItem } from '../../../../../components/LootPop';
 import { Divider, OutpostCard } from '../../../../../components/ui';
 import { formatAmount } from '../../../../../utils/locationProduction';
@@ -24,8 +27,6 @@ interface OutpostWarehouseCardProps {
   warehouseDef: any;
   warehouseBuilding: any | null;
   slotsBlocked: boolean;
-  onBuild: (def: any) => void;
-  onUpgrade: (building: any) => void;
 }
 
 export function OutpostWarehouseCard({
@@ -36,8 +37,6 @@ export function OutpostWarehouseCard({
   warehouseDef,
   warehouseBuilding,
   slotsBlocked,
-  onBuild,
-  onUpgrade,
 }: OutpostWarehouseCardProps) {
   const { execute } = useCommand();
   const currencyDefs = useAppSelector((s) => s.game.currencyDefs);
@@ -46,6 +45,17 @@ export function OutpostWarehouseCard({
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
   const lootPopKey = useRef(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [cmdError, setCmdError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const warehouseDefId: string = warehouseDef?.id ?? '';
+  const { preview, loading: previewLoading } = useJobPreview({
+    jobType: 'building',
+    defId: warehouseDefId,
+    locationId: outpost.id,
+    debounceMs: 0,
+  });
 
   const hasClaimable =
     storageItems.some((item) => Math.floor(item.current) >= 1) ||
@@ -91,17 +101,52 @@ export function OutpostWarehouseCard({
 
   const showMaxPill = !isMaxLevel;
 
-  const handleMaxPill = () => {
-    if (hasWarehouse && warehouseBuilding) {
-      onUpgrade(warehouseBuilding);
-    } else if (warehouseDef) {
-      onBuild(warehouseDef);
-    }
-  };
-
   const pillDisabled = hasWarehouse
     ? !warehouseBuilding
     : !warehouseDef || slotsBlocked;
+
+  const handleMaxPill = () => {
+    if (pillDisabled) return;
+    setCmdError(null);
+    setShowPreview((v) => !v);
+  };
+
+  const handleBuildWarehouse = async () => {
+    if (!warehouseDefId) return;
+    setCmdError(null);
+    setBusy(true);
+    try {
+      await execute('BuildBuilding', { locationId: outpost.id, buildingDefId: warehouseDefId });
+      setShowPreview(false);
+    } catch (err: any) {
+      setCmdError(err?.message ?? 'Build failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpgradeWarehouse = async () => {
+    if (!warehouseBuilding?.id) return;
+    setCmdError(null);
+    setBusy(true);
+    try {
+      await execute('UpgradeBuilding', { locationId: outpost.id, buildingId: warehouseBuilding.id });
+      setShowPreview(false);
+    } catch (err: any) {
+      setCmdError(err?.message ?? 'Upgrade failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const upgrade = preview?.building?.upgrade ?? null;
+  const isUpgradeMode = hasWarehouse && !!warehouseBuilding;
+  const costToShow = isUpgradeMode ? (upgrade?.cost ?? []) : (preview?.cost ?? []);
+  const canAffordToShow = isUpgradeMode ? (upgrade?.canAfford ?? false) : (preview?.canAfford ?? false);
+  const durationToShow = isUpgradeMode ? (upgrade?.durationSeconds ?? 0) : (preview?.durationSeconds ?? 0);
+  const canAct = isUpgradeMode
+    ? (upgrade?.canAfford ?? false) && (preview?.allRequirementsMet ?? false)
+    : (preview?.canAfford ?? false) && (preview?.allRequirementsMet ?? false) && !slotsBlocked;
 
   return (
     <OutpostCard accent="warehouse" className="flex flex-col">
@@ -119,10 +164,88 @@ export function OutpostWarehouseCard({
             className="text-[10px] font-extrabold tracking-wide text-[#1f1206] px-2 py-0.5 rounded-full border border-[rgba(252,211,77,0.5)] transition-[filter] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
           >
-            + Max
+            {showPreview ? '✕ Close' : '+ Max'}
           </button>
         )}
       </div>
+
+      {showPreview && warehouseDefId && (
+        <div className="mb-3 flex flex-col gap-2 rounded-xl border border-[rgba(252,211,77,0.25)] bg-[rgba(245,158,11,0.06)] p-3">
+          <span className="text-[10px] font-extrabold tracking-[0.08em] uppercase text-[#fcd34d]">
+            {isUpgradeMode ? `Upgrade Warehouse → Lv ${(upgrade?.toLevel ?? 0)}` : 'Build Warehouse'}
+          </span>
+
+          {previewLoading && (
+            <div className="flex flex-col gap-1.5 animate-pulse">
+              <div className="h-3 rounded bg-white/10 w-2/3" />
+              <div className="h-3 rounded bg-white/10 w-1/2" />
+            </div>
+          )}
+
+          {!previewLoading && preview && (
+            <>
+              {preview.requirements.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {preview.requirements.map((req, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                      <span className={req.met ? 'text-[#34d399]' : 'text-[#f87171]'}>
+                        {req.met ? '✓' : '✗'}
+                      </span>
+                      <span className={req.met ? 'text-text-secondary' : 'text-[#f87171]'}>
+                        {req.label ?? (req.met ? 'Requirement met' : 'Requirement not met')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {costToShow.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {costToShow.map((c: any, i: number) => (
+                    <span
+                      key={i}
+                      className={`inline-flex items-center gap-1 text-[12px] font-bold ${
+                        canAffordToShow ? 'text-[#34d399]' : 'text-[#f87171]'
+                      }`}
+                    >
+                      <ItemQty src={c.id} amount={c.amount} size={14} className="text-[12px] font-bold" />
+                      <span className={canAffordToShow ? 'text-[#34d399]' : 'text-[#f87171]'}>
+                        {canAffordToShow ? '✓' : '✗'}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {durationToShow > 0 && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <span className="text-text-secondary">⏱ Time</span>
+                  <span className="font-bold text-[#f5f3ff]">{formatDuration(durationToShow)}</span>
+                </div>
+              )}
+
+              {cmdError && (
+                <div className="text-[11px] text-[#f87171] bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-lg px-3 py-1.5">
+                  {cmdError}
+                </div>
+              )}
+
+              <button
+                onClick={isUpgradeMode ? handleUpgradeWarehouse : handleBuildWarehouse}
+                disabled={!canAct || busy}
+                className="self-start px-4 py-1.5 rounded-full text-[11px] font-extrabold tracking-[0.08em] uppercase cursor-pointer hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  color: '#1f1206',
+                  border: '1px solid rgba(252,211,77,0.5)',
+                }}
+              >
+                {busy ? 'Working…' : isUpgradeMode ? 'CONFIRM UPGRADE' : 'BUILD'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {storageItems.length > 0 && (
         <div className="flex flex-col flex-1">

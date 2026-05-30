@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EmptyState, OutpostCard, OutpostCardTitle } from '../../../../../components/ui';
-import { useJobPreview, type BuildingPreviewData, type BuildingUpgradePreview, type CostEntry } from '../../../../jobs/useJobPreview';
+import { useJobPreview, type BuildingPreviewData, type BuildingUpgradePreview } from '../../../../jobs/useJobPreview';
+import { useCommand } from '../../../../../hooks/useCommand';
 import { formatDuration } from '../../../../../utils/formatDuration';
 import ItemQty from '../../../../../components/ItemQty';
 
@@ -10,20 +11,21 @@ interface AddBuildingCardProps {
   hasWarehouse: boolean;
   warehouseDefId: string;
   locationId: string;
-  onBuild: (def: any) => void;
-  onUpgrade: (buildingDefId: string) => void;
+  buildings: any[];
 }
 
 interface BuildingPreviewProps {
   defId: string;
   locationId: string;
+  buildingId?: string;
   slotBlocked: boolean;
-  onBuild: () => void;
-  onUpgrade: () => void;
 }
 
-function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgrade }: BuildingPreviewProps) {
+function BuildingPreviewPanel({ defId, locationId, buildingId, slotBlocked }: BuildingPreviewProps) {
+  const { execute } = useCommand();
   const { preview, loading, error } = useJobPreview({ jobType: 'building', defId, locationId });
+  const [cmdError, setCmdError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (loading) {
     return (
@@ -51,9 +53,30 @@ function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgra
   const canBuild = preview.canAfford && preview.allRequirementsMet && !slotBlocked;
   const canUpgrade = upgrade ? upgrade.canAfford && preview.allRequirementsMet : false;
 
-  const effectiveSecs: number = buildInfo?.effectiveDurationTicks ?? preview.durationSeconds;
-  const baseAndEffectiveDiffer =
-    preview.durationSeconds > 0 && Math.abs(effectiveSecs - preview.durationSeconds) > 1;
+  const handleBuild = async () => {
+    setCmdError(null);
+    setBusy(true);
+    try {
+      await execute('BuildBuilding', { locationId, buildingDefId: defId });
+    } catch (err: any) {
+      setCmdError(err?.message ?? 'Build failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    if (!buildingId) return;
+    setCmdError(null);
+    setBusy(true);
+    try {
+      await execute('UpgradeBuilding', { locationId, buildingId });
+    } catch (err: any) {
+      setCmdError(err?.message ?? 'Upgrade failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="mt-2.5 flex flex-col gap-2.5">
@@ -106,17 +129,18 @@ function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgra
 
       <div className="flex items-center gap-2 text-[12px]">
         <span className="text-text-secondary">⏱ Build Time</span>
-        <span className="font-bold text-[#f5f3ff]">{formatDuration(effectiveSecs)}</span>
-        {baseAndEffectiveDiffer && (
-          <span className="text-[10px] text-text-secondary line-through">
-            {formatDuration(preview.durationSeconds)}
-          </span>
-        )}
+        <span className="font-bold text-[#f5f3ff]">{formatDuration(preview.durationSeconds)}</span>
       </div>
 
+      {cmdError && (
+        <div className="text-[11px] text-[#f87171] bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-lg px-3 py-1.5">
+          {cmdError}
+        </div>
+      )}
+
       <button
-        onClick={onBuild}
-        disabled={!canBuild}
+        onClick={handleBuild}
+        disabled={!canBuild || busy}
         title={
           slotBlocked
             ? 'No building slots available'
@@ -128,7 +152,7 @@ function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgra
         }
         className="self-start px-4 py-1.5 rounded-full border border-[rgba(94,234,212,0.45)] bg-[rgba(20,184,166,0.16)] text-[#5eead4] text-[11px] font-extrabold tracking-[0.08em] uppercase cursor-pointer hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
       >
-        BUILD
+        {busy ? 'Building…' : 'BUILD'}
       </button>
 
       {upgrade && (
@@ -159,13 +183,13 @@ function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgra
           <div className="flex items-center gap-2 text-[12px]">
             <span className="text-text-secondary">⏱ Upgrade Time</span>
             <span className="font-bold text-[#f5f3ff]">
-              {formatDuration(upgrade.effectiveDurationTicks ?? upgrade.durationSeconds)}
+              {formatDuration(upgrade.durationSeconds)}
             </span>
           </div>
 
           <button
-            onClick={onUpgrade}
-            disabled={!canUpgrade}
+            onClick={handleUpgrade}
+            disabled={!canUpgrade || !buildingId || busy}
             title={
               !preview.allRequirementsMet
                 ? 'Requirements not met'
@@ -175,7 +199,7 @@ function BuildingPreviewPanel({ defId, locationId, slotBlocked, onBuild, onUpgra
             }
             className="self-start px-4 py-1.5 rounded-full border border-[rgba(167,139,250,0.45)] bg-[rgba(139,92,246,0.18)] text-[#c4b5fd] text-[11px] font-extrabold tracking-[0.08em] uppercase cursor-pointer hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
           >
-            UPGRADE
+            {busy ? 'Upgrading…' : 'UPGRADE'}
           </button>
         </>
       )}
@@ -189,8 +213,7 @@ export function AddBuildingCard({
   hasWarehouse,
   warehouseDefId,
   locationId,
-  onBuild,
-  onUpgrade,
+  buildings,
 }: AddBuildingCardProps) {
   const [selectedDefId, setSelectedDefId] = useState<string | null>(null);
 
@@ -201,6 +224,13 @@ export function AddBuildingCard({
 
   function toggleSelected(defId: string) {
     setSelectedDefId((prev) => (prev === defId ? null : defId));
+  }
+
+  function findBuildingId(defId: string): string | undefined {
+    const found = buildings.find(
+      (b: any) => (b.buildingDefId || b.defId || b.definitionId) === defId,
+    );
+    return found?.id;
   }
 
   return (
@@ -254,9 +284,8 @@ export function AddBuildingCard({
                   <BuildingPreviewPanel
                     defId={def.id}
                     locationId={locationId}
+                    buildingId={findBuildingId(def.id)}
                     slotBlocked={slotBlocked}
-                    onBuild={() => onBuild(def)}
-                    onUpgrade={() => onUpgrade(def.id)}
                   />
                 )}
               </div>

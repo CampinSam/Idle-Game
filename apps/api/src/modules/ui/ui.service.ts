@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { resolveSpec } from './modal-def-resolver.util';
-import { calcXpForLevel, calcGrowth, diffLocationLevelUnlocks, resolveLevelConfig, resolveConstructionCosts, type LocationLevelUnlocks, type LevelRules } from '../game-rules/level-config.util';
+import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 import { RARITY_ORDER as SHARED_RARITY_ORDER } from '@derp/shared';
@@ -32,14 +32,6 @@ interface GiftContext {
   presentation: Record<string, unknown>;
 }
 
-interface BuildingContext {
-  building: { id: string; name: string; description: string };
-  def: Record<string, unknown>;
-  costs: Array<{ id?: string; amount?: number; baseAmount?: number }>;
-  currentLevel: number;
-  nextLevel: number;
-  timerDuration: number;
-}
 
 interface LocationContext {
   location: { id: string; name: string; level: number; xp: number; xpToNext: number; maxLevel: number };
@@ -523,178 +515,6 @@ export class UiService {
     };
   }
 
-  async buildModalForBuildBuilding(userId: string, locationId: string, buildingDefId: string): Promise<any> {
-    const [def, user, location, allLocations] = await Promise.all([
-      (this.prisma as any).buildingDef.findFirst({ where: { id: buildingDefId } }),
-      this.prisma.user.findUnique({ where: { id: userId } }),
-      (this.prisma as any).locationInstance.findFirst({
-        where: { id: locationId, ownerUserId: userId },
-        include: {
-          definition: true,
-          buildings: { include: { rooms: true } },
-        },
-      }),
-      (this.prisma as any).locationInstance.findMany({
-        where: { ownerUserId: userId },
-        include: {
-          definition: true,
-          buildings: { include: { rooms: true } },
-        },
-      }),
-    ]);
-    if (!def) throw new NotFoundException('Building definition not found');
-    if (!location) throw new NotFoundException('Location not found');
-
-    const levelMap = def.rules?.level || {};
-    const level1 = levelMap['1'] || {};
-    const constructionCost: any[] = level1.constructionCost || [];
-    const timerDuration: number = level1.timer?.duration ?? 0;
-    const requirements: any[] = def.requirements || [];
-
-    const allPlayerLocations = (allLocations as any[]).map((loc: any) => ({
-      buildings: (loc.buildings ?? []).map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
-      })),
-      regionId: loc.definition?.regionId ?? null,
-    }));
-    const currentLocationCtx = {
-      buildings: (location.buildings ?? []).map((b: any) => ({
-        buildingDefId: b.buildingDefId,
-        rooms: (b.rooms ?? []).map((r: any) => ({ roomDefId: r.roomDefId })),
-      })),
-      regionId: location.definition?.regionId ?? null,
-    };
-    const reqContext = this.gameRulesService.buildRequirementContext(user as any, {
-      allPlayerLocations,
-      currentLocation: currentLocationCtx,
-    });
-
-    const allReqsMet = this.gameRulesService.checkRequirements(requirements, reqContext);
-
-    const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [];
-    if (timerDuration > 0) {
-      metaRows.push({ label: 'Build Time', value: this.formatDuration(timerDuration) });
-    }
-    for (const cost of constructionCost) {
-      const amt = cost.amount ?? cost.baseAmount ?? 0;
-      metaRows.push({
-        label: 'Cost',
-        value: `${amt}× ${cost.id}`,
-        valueItems: [{ assetKey: cost.id, amount: amt }],
-      });
-    }
-    if (requirements) {
-      const met = this.gameRulesService.checkRequirements(requirements, reqContext);
-      metaRows.push({ label: 'Requirements', value: met ? '✓ Met' : '✗ Not met' });
-    }
-
-    const body: any[] = [];
-    if (def.description) {
-      body.push({ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: def.description }] }] });
-    }
-    if (metaRows.length > 0) {
-      body.push({ type: 'metaRows', rows: metaRows });
-    }
-
-    const generated: any = {
-      version: 1,
-      id: `build_confirm_${buildingDefId}`,
-      kind: 'build_confirm',
-      dismiss: { backdrop: true, x: true, escape: true },
-      header: { title: `Build ${def.name}`, subtitle: 'Construction' },
-      pages: [{ body }],
-      buttons: [
-        {
-          id: 'build',
-          label: 'Build',
-          variant: 'primary',
-          disabled: !allReqsMet,
-          action: { type: 'BUILD_BUILDING', locationId, buildingDefId },
-        },
-        { id: 'cancel', label: 'Cancel', variant: 'ghost', action: { type: 'CLOSE_MODAL' } },
-      ],
-    };
-
-    const ctx = this.buildBuildingContext(def, constructionCost, 0, 1, timerDuration);
-    const spec = await this.resolveModalDef('modal_build_confirm');
-    if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
-    return generated;
-  }
-
-  async buildModalForUpgradeBuilding(userId: string, locationId: string, buildingId: string, buildingDefId: string): Promise<any> {
-    const [def, location] = await Promise.all([
-      (this.prisma as any).buildingDef.findFirst({ where: { id: buildingDefId } }),
-      this.prisma.locationInstance.findFirst({
-        where: { id: locationId, ownerUserId: userId },
-        include: { buildings: { where: { id: buildingId } } },
-      }),
-    ]);
-    if (!def) throw new NotFoundException('Building definition not found');
-
-    const buildingInstance = location?.buildings?.[0];
-    const currentLevel = buildingInstance?.level ?? 1;
-    const nextLevel = currentLevel + 1;
-    const maxLevel = 50;
-    const isMaxLevel = currentLevel >= maxLevel;
-
-    const defRules = (def.rules as LevelRules) || {};
-    const nextLevelConfig = resolveLevelConfig(defRules, nextLevel);
-    const upgradeCosts = resolveConstructionCosts(nextLevelConfig.constructionCost, nextLevel);
-    const rawTimer = (nextLevelConfig.timer as any) || null;
-    const timerDuration: number = rawTimer
-      ? calcGrowth(rawTimer.duration ?? 0, rawTimer.growthRate, rawTimer.growthScalar, nextLevel)
-      : 0;
-
-    const metaRows: { label: string; value: string; valueItems?: { assetKey: string; amount: number }[] }[] = [
-      { label: 'Current Level', value: String(currentLevel) },
-      { label: 'Upgrading To', value: String(nextLevel) },
-    ];
-    if (timerDuration > 0) {
-      metaRows.push({ label: 'Build Time', value: this.formatDuration(timerDuration) });
-    }
-    for (const cost of upgradeCosts) {
-      const amt = cost.amount ?? cost.baseAmount ?? 0;
-      metaRows.push({
-        label: 'Cost',
-        value: `${amt}× ${cost.id}`,
-        valueItems: [{ assetKey: cost.id, amount: amt }],
-      });
-    }
-
-    const body: any[] = [];
-    if (isMaxLevel) {
-      body.push({ type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: `This building is already at the maximum level (${maxLevel}).` }] }] });
-    } else {
-      if (metaRows.length > 0) body.push({ type: 'metaRows', rows: metaRows });
-    }
-
-    const generated: any = {
-      version: 1,
-      id: `upgrade_confirm_${buildingId}`,
-      kind: 'upgrade_confirm',
-      dismiss: { backdrop: true, x: true, escape: true },
-      header: { title: `Upgrade ${def.name}`, subtitle: isMaxLevel ? 'Max Level Reached' : `Level ${currentLevel} → ${nextLevel}` },
-      pages: [{ body }],
-      buttons: isMaxLevel
-        ? [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }]
-        : [
-            {
-              id: 'upgrade',
-              label: 'Upgrade',
-              variant: 'primary',
-              action: { type: 'UPGRADE_BUILDING', locationId, buildingId },
-            },
-            { id: 'cancel', label: 'Cancel', variant: 'ghost', action: { type: 'CLOSE_MODAL' } },
-          ],
-    };
-
-    const ctx = this.buildBuildingContext(def, upgradeCosts, currentLevel, nextLevel, timerDuration);
-    const spec = await this.resolveModalDef('modal_upgrade_confirm');
-    if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
-    return generated;
-  }
-
   private formatDuration(seconds: number): string {
     if (seconds < 60) return `${seconds}s`;
     const m = Math.floor(seconds / 60);
@@ -785,7 +605,7 @@ export class UiService {
     return null;
   }
 
-  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | BuildingContext | LocationContext): any {
+  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | LocationContext): any {
     if (!spec || typeof spec !== 'object') return generated;
 
     const resolved = ctx ? resolveSpec(spec, ctx as Record<string, any>) : spec;
@@ -898,21 +718,6 @@ export class UiService {
       },
       snapshot: snapshot || {},
       presentation: snapshot?.presentation || {},
-    };
-  }
-
-  private buildBuildingContext(def: any, costs: Array<{ id?: string; amount?: number; baseAmount?: number }>, currentLevel: number, nextLevel: number, timerDuration: number): BuildingContext {
-    return {
-      building: {
-        id: def.id,
-        name: def.name,
-        description: def.description,
-      },
-      def: def || {},
-      costs,
-      currentLevel,
-      nextLevel,
-      timerDuration,
     };
   }
 

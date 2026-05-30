@@ -172,29 +172,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     }
   };
 
-  const openBuildModal = async (def: any) => {
-    try {
-      const spec = await api.getModalSpec({ buildingDefId: def.id, locationId: id });
-      if (spec?.version === 1) {
-        pushModal(spec);
-      } else {
-        alert('Could not load build details. Please try again.');
-      }
-    } catch (err: any) {
-      alert(err.message || 'Could not load build details. Please try again.');
-    }
-  };
-
-  const openUpgradeModal = async (building: any) => {
-    try {
-      const buildingDefId = building.buildingDefId || building.defId || building.definitionId;
-      const spec = await api.getModalSpec({ buildingDefId, locationId: id, buildingId: building.id });
-      if (spec?.version === 1) pushModal(spec);
-    } catch (err: any) {
-      console.error('[DerpOutpostPage] Failed to load upgrade modal:', err);
-    }
-  };
-
   const warehouseDef = useMemo(
     () => (availableData?.available || []).find((def: any) => def.id === WAREHOUSE_DEF_ID),
     [availableData],
@@ -230,8 +207,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           warehouseDef={warehouseDef}
           warehouseBuilding={warehouseBuildings[0] ?? null}
           slotsBlocked={availableData?.slotsAvailable === false}
-          onBuild={openBuildModal}
-          onUpgrade={openUpgradeModal}
         />
       </div>
 
@@ -250,7 +225,6 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
           currencyDefs={currencyDefs}
           itemDefs={itemDefs}
           onCompleteBuilding={handleCompleteBuilding}
-          onUpgradeClick={openUpgradeModal}
         />
       ))}
 
@@ -260,13 +234,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
         hasWarehouse={hasWarehouse}
         warehouseDefId={WAREHOUSE_DEF_ID}
         locationId={id}
-        onBuild={openBuildModal}
-        onUpgrade={(buildingDefId) => {
-          const building = buildingsData.find(
-            (b: any) => (b.buildingDefId || b.defId || b.definitionId) === buildingDefId,
-          );
-          if (building) openUpgradeModal(building);
-        }}
+        buildings={buildingsData}
       />
         </div>
       </div>
