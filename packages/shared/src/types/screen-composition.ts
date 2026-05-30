@@ -1,3 +1,5 @@
+import type { RichSelection } from './rich-selection';
+
 // ─── Platform ────────────────────────────────────────────────────────────────
 
 export type PlatformKey = 'ios' | 'android' | 'web' | 'desktop';
@@ -343,6 +345,7 @@ export interface ScreenSectionDefinition {
   slot?: string;
   priority: number;
   visibility?: VisibilityRuleGroup;
+  richRequirements?: RichSelection;
   props?: Record<string, unknown>;
   actions?: Record<string, ActionDefinition>;
   analytics?: SectionAnalyticsConfig;

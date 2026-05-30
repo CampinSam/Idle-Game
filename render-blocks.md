@@ -387,6 +387,42 @@ Screen sections are defined in a `ScreenCompositionDefinition` as entries in the
 }
 ```
 
+### Section-level visibility
+
+Each section supports two independent server-side visibility mechanisms. Both must pass for the section to be included in the response.
+
+#### `visibility` (VisibilityRuleGroup)
+
+A lightweight path/operator/value evaluator over a minimal context (`user.keeperLevel`, `user.id`, `wallet.isConnected`, `platform`). Suitable for simple level gates and platform targeting.
+
+```json
+{
+  "visibility": {
+    "all": [{ "path": "user.keeperLevel", "operator": "greater_than_or_equal", "value": 5 }]
+  }
+}
+```
+
+#### `richRequirements` (RichSelection)
+
+A full `RichSelection` tree evaluated via `SelectionResolverService` using a `SelectionContext` built for the requesting user (player flags, currency balances, inventory, entities). Use this for requirements that go beyond basic level/platform checks — currency thresholds, flag conditions, or item ownership.
+
+The context is built lazily: a DB round-trip only occurs when at least one section in the screen has a `richRequirements` field. If there is no authenticated user, any section with `richRequirements` is hidden.
+
+```json
+{
+  "richRequirements": {
+    "op": "and",
+    "rules": [
+      { "type": "player_flag", "flag": "tutorial_complete", "value": true },
+      { "type": "currency_gte", "currencyDefId": "gem", "amount": 100 }
+    ]
+  }
+}
+```
+
+Use the Screen Composer admin panel to add a `richRequirements` block to any section (expand the section → "+ Add" button in the `richRequirements` row).
+
 ### Fully Implemented Components
 
 ---

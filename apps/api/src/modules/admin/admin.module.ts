@@ -15,6 +15,8 @@ import { CommandsModule } from '../commands/commands.module';
 import { PlayerModule } from '../player/player.module';
 import { AuthModule } from '../auth/auth.module';
 import { ScreensModule } from '../screens/screens.module';
+import { SelectionModule } from '../selection/selection.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 import { PaymentModule } from '../payment/payment.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -43,6 +45,8 @@ import { AdminGuard } from './admin.guard';
     PlayerModule,
     AuthModule,
     ScreensModule,
+    SelectionModule,
+    TelemetryModule,
     PaymentModule,
   ],
   controllers: [AdminController, AdminAuthController],

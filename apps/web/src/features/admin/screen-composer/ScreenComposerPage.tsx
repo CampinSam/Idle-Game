@@ -1420,6 +1420,52 @@ function newSection(idx: number) {
   return { id: `section_${idx + 1}`, component: 'HelpTipCard', priority: (idx + 1) * 10, props: {} };
 }
 
+function RichRequirementsJsonEditor({
+  value,
+  onChange,
+}: {
+  value: any;
+  onChange: (v: any) => void;
+}) {
+  const [text, setText] = useState(() => JSON.stringify(value, null, 2));
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleChange = (raw: string) => {
+    setText(raw);
+    try {
+      onChange(JSON.parse(raw));
+      setErr(null);
+    } catch (e: any) {
+      setErr(e.message);
+    }
+  };
+
+  return (
+    <div>
+      <textarea
+        value={text}
+        onChange={e => handleChange(e.target.value)}
+        spellCheck={false}
+        style={{
+          ...inputStyle,
+          width: '100%',
+          fontFamily: 'monospace',
+          fontSize: 10,
+          minHeight: 80,
+          resize: 'vertical' as const,
+          boxSizing: 'border-box' as const,
+          color: err ? '#f87171' : undefined,
+        }}
+      />
+      {err && (
+        <span style={{ fontSize: 9, color: '#f87171', marginTop: 2, display: 'block' }}>
+          ⚠ {err}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SectionEditor({
   sections,
   onChange,
@@ -1673,6 +1719,38 @@ function SectionEditor({
                     componentKey={section.component}
                     highlightKeys={missingProps}
                   />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={labelStyle}>richRequirements</span>
+                    <span style={{ fontSize: 9, color: '#666', flex: 1 }}>
+                      RichSelection evaluated server-side; section is hidden when it fails
+                    </span>
+                    {section.richRequirements === undefined ? (
+                      <button
+                        type="button"
+                        style={{ ...iconButtonStyle, fontSize: 9, padding: '1px 6px', width: 'auto', color: '#a78bfa', borderColor: 'rgba(167,139,250,0.4)' }}
+                        onClick={() => update(idx, { richRequirements: { op: 'and', rules: [] } })}
+                      >+ Add</button>
+                    ) : (
+                      <button
+                        type="button"
+                        style={{ ...dangerIconButtonStyle, fontSize: 9, padding: '1px 6px', width: 'auto' }}
+                        onClick={() => {
+                          const n = { ...section };
+                          delete n.richRequirements;
+                          onChange(sections.map((s, i) => i === idx ? n : s));
+                        }}
+                      >× Remove</button>
+                    )}
+                  </div>
+                  {section.richRequirements !== undefined && (
+                    <RichRequirementsJsonEditor
+                      value={section.richRequirements}
+                      onChange={v => update(idx, { richRequirements: v })}
+                    />
+                  )}
                 </div>
               </div>
             )}

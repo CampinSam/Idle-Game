@@ -1,5 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SelectionResolverService } from '../selection/selection-resolver.service';
+import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
+import type { SelectionContext } from '../selection/selection.types';
 import type {
   ScreenCompositionDefinition,
   ScreenResolutionContext,
@@ -26,7 +29,11 @@ export interface ResolvedScreenDefinition {
 export class ScreensService {
   private readonly logger = new Logger(ScreensService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly selectionResolver: SelectionResolverService,
+    private readonly telemetryContextBuilder: TelemetryContextBuilderService,
+  ) {}
 
   // ─── Public resolution (full pipeline) ────────────────────────────────────
 
@@ -108,10 +115,32 @@ export class ScreensService {
       this.evaluateAudience(screenKey, def.audience, context);
     }
 
-    // 5. Filter sections by visibility and sort by priority
+    // 5. Filter sections by visibility + richRequirements, then sort by priority
     const visCtx = this.buildVisibilityContext(context);
+
+    // Lazily build a full SelectionContext only when at least one section needs it
+    const needsSelCtx = (def.sections ?? []).some(s => s.richRequirements);
+    let selCtx: SelectionContext | null = null;
+    if (needsSelCtx && context.user?.id) {
+      selCtx = await this.telemetryContextBuilder.buildContext(context.user.id);
+    }
+
     const filteredSections = (def.sections ?? [])
-      .filter(s => this.evaluateVisibilityGroup(s.visibility, visCtx))
+      .filter(s => {
+        if (!this.evaluateVisibilityGroup(s.visibility, visCtx)) return false;
+        if (s.richRequirements) {
+          if (!selCtx) return false;
+          try {
+            return this.selectionResolver.evaluate(s.richRequirements, selCtx);
+          } catch (err) {
+            this.logger.warn(
+              `richRequirements evaluation error for section "${s.id}": ${(err as Error)?.message ?? err}`,
+            );
+            return false;
+          }
+        }
+        return true;
+      })
       .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
     return this.serialize({
