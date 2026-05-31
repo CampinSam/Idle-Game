@@ -189,16 +189,18 @@ function ModalStackLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex flex-col items-center justify-start flex-1 min-h-0 overflow-y-auto p-4 gap-3 bg-black/40 backdrop-blur-sm [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
-      {sections.map((section) => (
-        <div key={section.id} className="w-full max-w-md">
-          <SectionRenderer
-            section={section}
-            actionCtx={actionCtx}
-            visibilityCtx={visibilityCtx}
-          />
-        </div>
-      ))}
+    <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-black/40 backdrop-blur-sm [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div className="flex flex-col items-center gap-3">
+        {sections.map((section) => (
+          <div key={section.id} className="w-full max-w-md">
+            <SectionRenderer
+              section={section}
+              actionCtx={actionCtx}
+              visibilityCtx={visibilityCtx}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
