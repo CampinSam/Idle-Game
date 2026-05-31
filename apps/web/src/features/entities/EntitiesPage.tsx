@@ -9,7 +9,7 @@ import { ScreenCompositionRenderer } from "../screens/ScreenCompositionRenderer"
 function EntitiesPageSkeleton() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         <div className="entity-list__controls">
           <div
             className="skeleton"
@@ -115,7 +115,7 @@ export default function EntitiesPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         <EntityList
           entities={entities}
           mode="display"

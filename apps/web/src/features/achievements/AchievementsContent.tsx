@@ -3,8 +3,8 @@ import { useSyncAchievements } from '../../hooks/useSyncSelectors';
 import { AchievementCard } from './AchievementCard';
 
 const PAGE_CLASS =
-  'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
-  '[-webkit-overflow-scrolling:touch] overscroll-contain p-3.5 gap-4';
+  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  '[-webkit-overflow-scrolling:touch] overscroll-contain p-3.5 space-y-4';
 
 export default function AchievementsContent() {
   const achievements = useSyncAchievements() as any[];

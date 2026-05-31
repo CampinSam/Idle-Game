@@ -9,7 +9,7 @@ import { outpostSlotBudget } from '@derp/shared';
 import { OutpostList } from './components/OutpostList';
 
 const PAGE_CLASS =
-  'flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
   '[-webkit-overflow-scrolling:touch] overscroll-contain';
 
 function LocationsPageSkeleton() {
