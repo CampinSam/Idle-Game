@@ -48,14 +48,14 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   }, [perms.approve]);
 
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (perms.read || perms.write || isSuperAdmin) {
       setLoadingAudit(true);
       adminApi.listAuditLog({ limit: 5 })
         .then(setAuditLog)
         .catch(() => {})
         .finally(() => setLoadingAudit(false));
     }
-  }, [isSuperAdmin]);
+  }, [perms.read, perms.write, isSuperAdmin]);
 
   useEffect(() => {
     setLoadingSeason(true);
@@ -75,6 +75,10 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
     return 'Good evening';
   })();
 
+  const recentDefs = auditLog.filter(e =>
+    e.tableName && !['AdminAccount', 'AdminRole'].includes(e.tableName)
+  );
+
   return (
     <div style={{ padding: 20 }}>
       <div style={{ marginBottom: 20 }}>
@@ -88,6 +92,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
 
       <div className="av2-dashboard-grid" style={{ padding: 0 }}>
 
+        {/* Season */}
         {season && (
           <StatCard
             title="Current Season"
@@ -100,6 +105,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           <StatCard title="Current Season" value="…" />
         )}
 
+        {/* Pending Approvals */}
         {perms.approve && (
           <div
             className="av2-card"
@@ -116,8 +122,70 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
+        {/* Active Players (placeholder — no aggregate count endpoint) */}
+        {perms.player_read && (
+          <div
+            className="av2-card"
+            style={{ cursor: 'pointer' }}
+            onClick={() => onNavigate('players')}
+          >
+            <div className="av2-card-title">Player Management</div>
+            <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
+              Search players, inspect profiles, manage currencies and items, view active missions, wallets, and recent events.
+            </div>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6c63ff' }}>Search players →</div>
+          </div>
+        )}
+
+        {/* System Status */}
+        {perms.system_tools && (
+          <InfoCard title="System Status">
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">API</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Online</span>
+            </div>
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">Session</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Active</span>
+            </div>
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">Tick Engine</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Running</span>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: '#6c63ff', cursor: 'pointer' }}
+              onClick={() => onNavigate('system', 'icons')}>
+              Open System Tools →
+            </div>
+          </InfoCard>
+        )}
+
+        {/* Recent Definitions (from audit log, visible to anyone with read/write) */}
+        {(perms.read || perms.write) && (
+          <InfoCard title="Recent Definitions">
+            {loadingAudit && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
+            {!loadingAudit && recentDefs.length === 0 && (
+              <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>No recent definition changes</div>
+            )}
+            {recentDefs.slice(0, 5).map((entry: any, i) => (
+              <div key={i} className="av2-stat-row">
+                <span className="av2-stat-key" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entry.tableName}
+                </span>
+                <span className="av2-stat-val" style={{ fontSize: 11, color: '#6060a0' }}>
+                  {entry.action} · {entry.admin?.username ?? '?'}
+                </span>
+              </div>
+            ))}
+            <div style={{ marginTop: 10, fontSize: 12, color: '#6c63ff', cursor: 'pointer' }}
+              onClick={() => onNavigate('content')}>
+              Open Content Editor →
+            </div>
+          </InfoCard>
+        )}
+
+        {/* Audit Log (super admin only) */}
         {isSuperAdmin && (
-          <InfoCard title="Recent Audit Log">
+          <InfoCard title="Full Audit Log">
             {loadingAudit && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
             {!loadingAudit && auditLog.length === 0 && (
               <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>No recent actions</div>
@@ -133,6 +201,18 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </InfoCard>
         )}
 
+        {/* Economy shortcut */}
+        {perms.system_tools && (
+          <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('economy')}>
+            <div className="av2-card-title">Balance Simulator</div>
+            <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
+              Monte-Carlo simulation of entity power score progression.
+            </div>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6c63ff' }}>Open simulator →</div>
+          </div>
+        )}
+
+        {/* Content editor shortcut (read/write without system_tools) */}
         {(perms.read || perms.write) && (
           <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('content')}>
             <div className="av2-card-title">Content Editor</div>
@@ -143,36 +223,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {perms.player_read && (
-          <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('players')}>
-            <div className="av2-card-title">Player Management</div>
-            <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
-              Search players, inspect profiles, manage currencies and items, view active missions.
-            </div>
-            <div style={{ marginTop: 12, fontSize: 12, color: '#6c63ff' }}>Search players →</div>
-          </div>
-        )}
-
-        {perms.system_tools && (
-          <>
-            <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('economy')}>
-              <div className="av2-card-title">Balance Simulator</div>
-              <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
-                Monte-Carlo simulation of entity power score progression.
-              </div>
-              <div style={{ marginTop: 12, fontSize: 12, color: '#6c63ff' }}>Open simulator →</div>
-            </div>
-
-            <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('system', 'icons')}>
-              <div className="av2-card-title">System Tools</div>
-              <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
-                Icons, audio, visual tags, telemetry, god mode, selection testing, and crypto.
-              </div>
-              <div style={{ marginTop: 12, fontSize: 12, color: '#6c63ff' }}>Open tools →</div>
-            </div>
-          </>
-        )}
-
+        {/* Permissions */}
         <InfoCard title="Your Permissions">
           {Object.entries(perms).map(([key, val]) => (
             <div key={key} className="av2-stat-row">

@@ -251,12 +251,10 @@ export default function TelemetryAdminPage({ embedded }: TelemetryAdminPageProps
               Data-driven aggregate event counters with RichSelection filters
             </p>
           </div>
-          {!embedded && (
-            <button
-              onClick={() => navigate('/admin/def/TelemetryDef/new')}
-              style={{ ...btnStyle, background: GREEN, color: '#fff', borderColor: GREEN, fontSize: 12, padding: '6px 14px' }}
-            >+ New Definition</button>
-          )}
+          <button
+            onClick={() => navigate('/admin/def/TelemetryDef/new')}
+            style={{ ...btnStyle, background: GREEN, color: '#fff', borderColor: GREEN, fontSize: 12, padding: '6px 14px' }}
+          >+ New Definition</button>
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -305,7 +303,7 @@ export default function TelemetryAdminPage({ embedded }: TelemetryAdminPageProps
               key={def.id}
               def={def}
               onResetCounts={handleResetCounts}
-              onEdit={embedded ? undefined : (id) => navigate(`/admin/def/TelemetryDef/${id}`)}
+              onEdit={(id) => navigate(`/admin/def/TelemetryDef/${id}`)}
               onDelete={handleDelete}
             />
           ))}
