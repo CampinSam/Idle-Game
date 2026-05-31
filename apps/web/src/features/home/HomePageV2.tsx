@@ -163,7 +163,7 @@ export default function HomePageV2() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <BannerCarousel />
       {globalPowers.length > 0 && <GlobalBuffsSection />}
 

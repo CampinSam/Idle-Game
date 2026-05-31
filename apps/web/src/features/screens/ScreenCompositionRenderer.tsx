@@ -101,7 +101,7 @@ function VerticalFeedLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}
@@ -165,7 +165,7 @@ function TabbedFeedLayout({
           ))}
         </div>
       )}
-      <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         {activeSections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -239,9 +239,9 @@ function FixedStructureLayout({
   );
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {renderSlot('header')}
-      <div className="flex-1">{renderSlot('main')}</div>
+      <div>{renderSlot('main')}</div>
       {extraSlots.map((slot) => (
         <React.Fragment key={slot}>{renderSlot(slot)}</React.Fragment>
       ))}
@@ -266,9 +266,9 @@ function HeroStackLayout({
   const bgImage = (layout as any).backgroundImage as string | undefined;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <div
-        className="relative min-h-[40vh] overflow-hidden flex-shrink-0"
+        className="relative min-h-[40vh] overflow-hidden"
         style={bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         {heroSections.map((section) => (
@@ -307,7 +307,7 @@ function GridFeedLayout({
   const gridSections = sections.filter((s) => s.slot !== 'header' && s.slot !== 'footer');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {headerSections.map((s) => (
         <SectionRenderer key={s.id} section={s} actionCtx={actionCtx} visibilityCtx={visibilityCtx} />
       ))}
@@ -338,7 +338,7 @@ function CarouselFeedLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => {
         if (!evaluateVisibilityGroup(section.visibility, visibilityCtx)) return null;
         return (
@@ -377,7 +377,7 @@ function PassThroughLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}
