@@ -152,7 +152,7 @@ export default function EntityPickerModal({
           </div>
         </div>
 
-        <div className="epm-body flex-1 min-h-[200px] flex flex-col px-3 pt-1 pb-0 overflow-y-auto">
+        <div className="epm-body flex-1 min-h-0 flex flex-col px-3 pt-1 pb-0 overflow-y-auto">
           {noEntities ? (
             <div className="py-8 px-4 text-slate-400 text-[13px] text-center leading-[1.4]">
               You don't own any entities yet. Earn one to use entity-targeted potions.

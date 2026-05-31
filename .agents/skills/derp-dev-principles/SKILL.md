@@ -275,3 +275,64 @@ When showing a currency or item quantity anywhere in the UI (costs, rewards, bal
 - `apps/web/src/features/missions/components/MissionDetailFooter.tsx` — cost rows inside mission planning footer
 - `apps/web/src/features/missions/components/MissionsList.tsx` — cost chips in the mission list
 - `apps/web/src/features/locations/types/derpOutpost/components/BuildingCard.tsx` — production cost/output rows
+
+---
+
+## 18. Flex Scroll Containers — Always Add `min-h-0`
+
+Any element that is **both** a flex child (`flex-1`) **and** a scroll region (`overflow-y-auto`, `overflow-x-auto`, or `overflow-hidden` used to clip a scrollable child) **must** also carry `min-h-0` (or `min-w-0` for horizontal scroll).
+
+Without it, flexbox refuses to shrink the element below its natural content height, so the container overflows its parent instead of scrolling — the "scroll-squishing" bug.
+
+### The rule
+
+| Role of the element | Required classes |
+|---|---|
+| Scrollable column that grows to fill space | `flex-1 min-h-0 overflow-y-auto` |
+| Scrollable wrapper with a flex child that scrolls | `flex flex-col flex-1 min-h-0 overflow-hidden` |
+| Horizontal text truncation span | `flex-1 min-w-0 overflow-hidden text-ellipsis` |
+| Fixed-size progress bar or decorative clip | `h-N overflow-hidden` (no `flex-1`, no `min-h-0` needed) |
+
+### What NOT to do
+
+```tsx
+// Wrong — flex-1 scroll container without min-h-0; content pushes past the parent
+<div className="flex-1 overflow-y-auto">…</div>
+
+// Wrong — min-h-[200px] does not fix the bug; a pixel floor still lets the
+// element grow past its allocated space when content is taller than 200px
+<div className="flex-1 min-h-[200px] overflow-y-auto">…</div>
+```
+
+### Correct patterns
+
+```tsx
+// Page / panel scroll region
+<div className="flex-1 min-h-0 overflow-y-auto">…</div>
+
+// Wrapper that delegates scrolling to a child
+<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+  <div className="flex-1 min-h-0 overflow-y-auto">…</div>
+</div>
+
+// Full pattern with mobile scroll helpers
+<div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+  …
+</div>
+```
+
+### Applies everywhere
+
+This rule applies identically to:
+- Top-level page content areas
+- Split-pane panel roots
+- Nested sub-components (lists, builders, pickers)
+- Modal body regions (`.modal-box` is `display:flex; flex-direction:column; max-height:85vh` — its children follow the same rule)
+
+### Quick audit command
+
+```bash
+grep -rn "flex-1" apps/web/src/ | grep "overflow" | grep -v "min-h-0" | grep -v "min-w-0" | grep -v "h-[0-9]" | grep -v "text-ellipsis"
+```
+
+Any line this returns (outside progress bars and text-truncation spans) is a bug.

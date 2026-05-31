@@ -181,7 +181,7 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     <div className="flex flex-col flex-1 min-h-0">
       <OutpostHeader outpost={outpost} />
 
-      <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain">
+      <div className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain">
         <div className="flex flex-col gap-3.5 px-3 pt-3 pb-6">
           <OutpostHeroSection outpost={outpost} />
 

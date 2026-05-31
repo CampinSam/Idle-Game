@@ -184,7 +184,7 @@ export default function UsePotionFlowModal({
           {subtitle && <p className="text-xs text-slate-400 m-0">{subtitle}</p>}
         </div>
 
-        <div className="flex-1 min-h-[80px] px-5 pt-2 pb-4 overflow-y-auto">
+        <div className="flex-1 min-h-0 px-5 pt-2 pb-4 overflow-y-auto">
           {phase === 'confirm' && (
             <>
               {potionDesc && (
