@@ -16,6 +16,7 @@ import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs, fetchCraftingRecipes } from '../../store/gameSlice';
 import { isNftEntity } from '../entities/types/derp_bird/isNftEntity';
 import { Card, SectionHeader, EmptyState, StatPill } from '../../components/ui';
+import { resolveDisplay, bgImageCss, displayCssVars, DEFAULT_DISPLAY, DEFAULT_OVERLAY, renderTags } from '../missions/components/missionUtils';
 import { BannerCarousel } from '../home/BannerCarousel';
 import { GlobalBuffsSection } from '../home/GlobalBuffsSection';
 import { api } from '../../services/api';
@@ -213,13 +214,17 @@ function MissionFeaturedCardComp({ section }: ScreenComponentProps) {
   const dispatch = useAppDispatch();
   const allJobs = useAllActiveJobs();
   const missionDefs: any[] = useAppSelector((s) => s.game.missionDefs) ?? [];
+  const missionCategoryDefs: any[] = useAppSelector((s) => s.game.missionCategoryDefs) ?? [];
   const missionJobs = allJobs.filter((j: any) => j.type === 'MissionJob');
 
   useEffect(() => {
     if (missionDefs.length === 0) {
       dispatch(fetchMissionDefs());
     }
-  }, [dispatch, missionDefs.length]);
+    if (missionCategoryDefs.length === 0) {
+      dispatch(fetchMissionCategoryDefs() as any);
+    }
+  }, [dispatch, missionDefs.length, missionCategoryDefs.length]);
 
   const pinnedId = section.props?.missionDefId as string | undefined;
 
@@ -229,50 +234,110 @@ function MissionFeaturedCardComp({ section }: ScreenComponentProps) {
       ? missionDefs.find((d: any) => d.id === missionJobs[0].missionDefId)
       : null;
 
+  const display = featuredDef
+    ? resolveDisplay(featuredDef, missionCategoryDefs)
+    : { backgroundImage: DEFAULT_DISPLAY.backgroundImage, cardBackground: DEFAULT_DISPLAY.cardBackground, borderColor: DEFAULT_DISPLAY.borderColor, style: {} };
+
+  const { vars, overlay, titleStyle } = displayCssVars(display);
+  const bgImg = bgImageCss(display.backgroundImage);
+
+  const heroCardClass = 'relative overflow-hidden rounded-xl border-2 mb-4 transition-all duration-200';
+
   if (!featuredDef && missionJobs.length === 0) {
     return (
-      <Card className="mb-4 p-4">
-        <SectionHeader title="🗺️ MISSIONS" />
-        <div className="mt-3 text-[12px] text-text-secondary text-center py-2">No active missions</div>
-        <button
-          className="mt-3 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
-          onClick={() => navigate('/missions')}
-        >
-          VIEW MISSIONS
-        </button>
-      </Card>
+      <div
+        className={heroCardClass}
+        style={{
+          backgroundColor: DEFAULT_DISPLAY.cardBackground,
+          borderColor: DEFAULT_DISPLAY.borderColor,
+        } as React.CSSProperties}
+      >
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: bgImageCss(DEFAULT_DISPLAY.backgroundImage),
+            backgroundPosition: 'center',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0 pointer-events-none"
+          style={{ background: DEFAULT_OVERLAY }}
+        />
+        <div className="relative z-10 p-3 flex flex-col gap-2">
+          <div className="text-[9px] font-black tracking-[1px] text-white/50 uppercase">🗺️ Missions</div>
+          <div className="text-[12px] text-white/60 py-1">No active missions</div>
+          <button
+            className="w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
+            onClick={() => navigate('/missions')}
+          >
+            VIEW MISSIONS
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="mb-4 p-4 border-purple-500/20">
-      <SectionHeader title="🗺️ FEATURED MISSION" />
-      {featuredDef && (
-        <div className="mt-3 space-y-1">
-          <div className="text-[14px] font-bold text-text-primary leading-tight">{featuredDef.name}</div>
-          {featuredDef.description && (
-            <div className="text-[11px] text-text-secondary leading-relaxed line-clamp-2">{featuredDef.description}</div>
-          )}
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {featuredDef.tier != null && (
-              <StatPill icon="⭐" value={`Tier ${featuredDef.tier}`} />
+    <div
+      className={heroCardClass}
+      style={{
+        backgroundColor: display.cardBackground || DEFAULT_DISPLAY.cardBackground,
+        borderColor: display.borderColor,
+        ...vars,
+      } as React.CSSProperties}
+    >
+      {bgImg && bgImg !== 'none' && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: bgImg,
+            backgroundPosition: 'var(--card-bg-position, center)',
+            backgroundSize: 'var(--card-bg-size, cover)',
+            backgroundRepeat: 'var(--card-bg-repeat, no-repeat)',
+          }}
+        />
+      )}
+      <div
+        aria-hidden
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{ background: overlay ?? DEFAULT_OVERLAY }}
+      />
+      <div className="relative z-10 p-3 flex flex-col gap-2">
+        <div className="text-[9px] font-black tracking-[1px] text-white/50 uppercase">🗺️ Featured Mission</div>
+        {featuredDef && (
+          <>
+            <h3
+              className="m-0 font-cinzel text-[15px] font-extrabold text-white tracking-[0.02em] leading-tight"
+              style={titleStyle}
+            >
+              {featuredDef.name}
+            </h3>
+            {featuredDef.description && (
+              <div className="text-[11px] text-white/70 leading-relaxed line-clamp-2">
+                {featuredDef.description}
+              </div>
             )}
-            <StatPill icon="⏳" value={`${missionJobs.length} Active`} />
-          </div>
-        </div>
-      )}
-      {!featuredDef && (
-        <div className="mt-3 flex gap-2 flex-wrap">
-          <StatPill icon="⏳" value={`${missionJobs.length} Active`} />
-        </div>
-      )}
-      <button
-        className="mt-3 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
-        onClick={() => navigate('/missions')}
-      >
-        GO TO MISSIONS
-      </button>
-    </Card>
+            {Array.isArray(featuredDef.tags) && featuredDef.tags.length > 0 && renderTags(featuredDef.tags)}
+            {featuredDef.tier != null && (
+              <div className="flex gap-2 flex-wrap">
+                <StatPill icon="⭐" value={`Tier ${featuredDef.tier}`} />
+              </div>
+            )}
+          </>
+        )}
+        <button
+          className="mt-1 w-full bg-gradient-to-br from-derp-purple to-[#7c3aed] text-white rounded-lg p-2.5 text-sm font-extrabold tracking-wide cursor-pointer transition-all hover:-translate-y-px"
+          onClick={() => navigate('/missions')}
+        >
+          GO TO MISSIONS
+        </button>
+      </div>
+    </div>
   );
 }
 
