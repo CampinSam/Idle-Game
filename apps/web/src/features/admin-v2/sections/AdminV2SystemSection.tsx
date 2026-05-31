@@ -1,15 +1,15 @@
-import { useState } from 'react';
 import { IconManagerContent } from '../../admin/icons/IconManagerPage';
 import { AudioManagerContent } from '../../admin/audio/AudioManagerPage';
 import TagEditorPage from '../../admin/tag-editor/TagEditorPage';
 import TelemetryAdminPage from '../../admin/telemetry/TelemetryAdminPage';
 import SelectionTesterPage from '../../admin/selection-tester/SelectionTesterPage';
 import { CryptoAdminPage } from '../../admin/CryptoAdminPage';
+import AdminV2PlayersSection from './AdminV2PlayersSection';
 import type { AdminMe } from '../../admin/adminApi';
 
-type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto';
+export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto';
 
-const TOOLS: { key: SystemTool; label: string }[] = [
+export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'icons', label: 'Icons' },
   { key: 'audio', label: 'Audio' },
   { key: 'tags', label: 'Tags & Effects' },
@@ -21,20 +21,19 @@ const TOOLS: { key: SystemTool; label: string }[] = [
 
 interface Props {
   me: AdminMe;
-  initialTool?: SystemTool;
+  activeTool: SystemTool;
+  onToolChange: (tool: SystemTool) => void;
 }
 
-export default function AdminV2SystemSection({ me: _, initialTool = 'icons' }: Props) {
-  const [activeTool, setActiveTool] = useState<SystemTool>(initialTool);
-
+export default function AdminV2SystemSection({ me, activeTool, onToolChange }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="av2-system-tabs">
-        {TOOLS.map(t => (
+        {SYSTEM_TOOLS.map(t => (
           <button
             key={t.key}
             className={`av2-system-tab${activeTool === t.key ? ' active' : ''}`}
-            onClick={() => setActiveTool(t.key)}
+            onClick={() => onToolChange(t.key)}
           >
             {t.label}
           </button>
@@ -58,19 +57,17 @@ export default function AdminV2SystemSection({ me: _, initialTool = 'icons' }: P
         )}
         {activeTool === 'telemetry' && (
           <div className="av2-tool-wrap">
-            <TelemetryAdminPage />
+            <TelemetryAdminPage embedded />
           </div>
         )}
         {activeTool === 'god-mode' && (
-          <div className="av2-tool-wrap" style={{ padding: 20 }}>
-            <p style={{ color: '#4a4a7a', fontSize: 13 }}>
-              God Mode requires selecting a player first. Go to the <strong style={{ color: '#8080a8' }}>Players</strong> section, search for a player, then use the God Mode tools from there.
-            </p>
+          <div className="av2-tool-wrap" style={{ height: '100%', overflow: 'auto' }}>
+            <AdminV2PlayersSection me={me} />
           </div>
         )}
         {activeTool === 'selection-tester' && (
           <div className="av2-tool-wrap">
-            <SelectionTesterPage />
+            <SelectionTesterPage embedded />
           </div>
         )}
         {activeTool === 'crypto' && (

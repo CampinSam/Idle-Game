@@ -40,8 +40,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   useEffect(() => {
     if (perms.approve) {
       setLoadingDrafts(true);
-      adminApi.listDrafts({ status: 'pending', limit: 1 })
-        .then(d => setPendingDrafts(d.length >= 1 ? d.length : 0))
+      adminApi.listDrafts({ status: 'pending', limit: 100 })
+        .then(d => setPendingDrafts(d.length))
         .catch(() => setPendingDrafts(null))
         .finally(() => setLoadingDrafts(false));
     }

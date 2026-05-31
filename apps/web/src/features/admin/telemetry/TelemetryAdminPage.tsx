@@ -84,7 +84,7 @@ function CounterRow({ subEventKey, eventType, count, lastIncrementedAt }: Counte
 interface DefCardProps {
   def: TelemetryDefWithCountsDto;
   onResetCounts: (id: string) => void;
-  onEdit: (id: string) => void;
+  onEdit?: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -116,7 +116,7 @@ function DefCard({ def, onResetCounts, onEdit, onDelete }: DefCardProps) {
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           <button
-            onClick={(e) => { e.stopPropagation(); onEdit(def.id); }}
+            onClick={(e) => { e.stopPropagation(); onEdit?.(def.id); }}
             style={{ ...btnStyle, background: '#1a2a4a', color: '#93c5fd', borderColor: '#234' }}
           >Edit</button>
           <button
@@ -181,7 +181,11 @@ async function fetchTelemetryDefs(): Promise<TelemetryDefWithCountsDto[]> {
   return withCounts;
 }
 
-export default function TelemetryAdminPage() {
+interface TelemetryAdminPageProps {
+  embedded?: boolean;
+}
+
+export default function TelemetryAdminPage({ embedded }: TelemetryAdminPageProps = {}) {
   const navigate = useNavigate();
   const [defs, setDefs] = useState<TelemetryDefWithCountsDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,10 +237,12 @@ export default function TelemetryAdminPage() {
     }}>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <button
-            onClick={() => navigate('/admin')}
-            style={{ ...btnStyle, background: 'transparent', color: '#6b7280', borderColor: '#1e2a3a', fontSize: 13 }}
-          >← Admin</button>
+          {!embedded && (
+            <button
+              onClick={() => navigate('/admin')}
+              style={{ ...btnStyle, background: 'transparent', color: '#6b7280', borderColor: '#1e2a3a', fontSize: 13 }}
+            >← Admin</button>
+          )}
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f0f4ff', margin: 0 }}>
               Telemetry Definitions
@@ -245,10 +251,12 @@ export default function TelemetryAdminPage() {
               Data-driven aggregate event counters with RichSelection filters
             </p>
           </div>
-          <button
-            onClick={() => navigate('/admin/def/TelemetryDef/new')}
-            style={{ ...btnStyle, background: GREEN, color: '#fff', borderColor: GREEN, fontSize: 12, padding: '6px 14px' }}
-          >+ New Definition</button>
+          {!embedded && (
+            <button
+              onClick={() => navigate('/admin/def/TelemetryDef/new')}
+              style={{ ...btnStyle, background: GREEN, color: '#fff', borderColor: GREEN, fontSize: 12, padding: '6px 14px' }}
+            >+ New Definition</button>
+          )}
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -297,7 +305,7 @@ export default function TelemetryAdminPage() {
               key={def.id}
               def={def}
               onResetCounts={handleResetCounts}
-              onEdit={(id) => navigate(`/admin/def/TelemetryDef/${id}`)}
+              onEdit={embedded ? undefined : (id) => navigate(`/admin/def/TelemetryDef/${id}`)}
               onDelete={handleDelete}
             />
           ))}

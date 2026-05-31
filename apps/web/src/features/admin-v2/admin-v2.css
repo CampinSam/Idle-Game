@@ -666,8 +666,18 @@
   min-height: 0;
 }
 
+.av2-nav-subs {
+  overflow: hidden;
+}
+
 .av2-tool-wrap {
   min-height: 100%;
+}
+
+.av2-tool-wrap .balance-back-link,
+.av2-tool-wrap .tag-editor-back,
+.av2-tool-wrap .icon-manager-back {
+  display: none !important;
 }
 
 .av2-inline-msg {

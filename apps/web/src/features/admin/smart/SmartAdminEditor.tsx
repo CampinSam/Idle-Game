@@ -74,6 +74,7 @@ function buildNewRecord(tableName: string): Record<string, any> {
 
 interface Props {
   adminKey: string;
+  initialGroup?: string;
 }
 
 function SectionedFormBody({
@@ -202,9 +203,10 @@ function SectionedFormBody({
   );
 }
 
-export default function SmartAdminEditor({ adminKey: _ }: Props) {
+export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   const [tables, setTables] = useState<TableEntry[]>([]);
   const [activeTable, setActiveTable] = useState<string>('');
+  const initialGroupApplied = React.useRef(false);
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -234,6 +236,21 @@ export default function SmartAdminEditor({ adminKey: _ }: Props) {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    if (!initialGroup || !tables.length || initialGroupApplied.current) return;
+    const schemaNames = TABLE_GROUPS[initialGroup];
+    if (!schemaNames) return;
+    for (const sn of schemaNames) {
+      const apiKey = TABLE_API_KEYS[sn];
+      const match = tables.find(t => t.key === apiKey);
+      if (match) {
+        setActiveTable(match.key);
+        initialGroupApplied.current = true;
+        break;
+      }
+    }
+  }, [initialGroup, tables]);
 
   const loadPendingDrafts = useCallback(async (tableKey: string, myId?: string) => {
     if (!tableKey) { setPendingDrafts({}); return; }

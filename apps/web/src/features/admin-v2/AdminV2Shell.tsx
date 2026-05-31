@@ -2,18 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
-  ChevronRight, LogOut, Layers,
+  ChevronRight, LogOut, Layers, ChevronDown,
 } from 'lucide-react';
 import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
   type AdminMe,
 } from '../admin/adminApi';
+import { TABLE_GROUPS } from '../admin/smart/tableSchemas';
 import AdminV2Dashboard from './sections/AdminV2Dashboard';
 import AdminV2ContentSection from './sections/AdminV2ContentSection';
 import AdminV2ApprovalsSection from './sections/AdminV2ApprovalsSection';
 import AdminV2PlayersSection from './sections/AdminV2PlayersSection';
 import AdminV2EconomySection from './sections/AdminV2EconomySection';
-import AdminV2SystemSection from './sections/AdminV2SystemSection';
+import AdminV2SystemSection, { SYSTEM_TOOLS, type SystemTool } from './sections/AdminV2SystemSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
 import './admin-v2.css';
 
@@ -28,6 +29,13 @@ type Section =
   | 'support'
   | 'moderation';
 
+const CONTENT_SUBS = Object.keys(TABLE_GROUPS);
+
+interface NavSub {
+  key: string;
+  label: string;
+}
+
 interface NavItem {
   key: Section;
   label: string;
@@ -35,15 +43,28 @@ interface NavItem {
   stub?: boolean;
   requirePerm?: keyof AdminMe['role']['permissionFlags'];
   requireSuperAdmin?: boolean;
+  subs?: NavSub[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={15} /> },
-  { key: 'content', label: 'Content', icon: <FileText size={15} />, requirePerm: 'read' },
+  {
+    key: 'content',
+    label: 'Content',
+    icon: <FileText size={15} />,
+    requirePerm: 'read',
+    subs: CONTENT_SUBS.map(g => ({ key: g, label: g })),
+  },
   { key: 'approvals', label: 'Approvals', icon: <CheckSquare size={15} />, requirePerm: 'approve' },
   { key: 'players', label: 'Players', icon: <Users size={15} />, requirePerm: 'player_read' },
   { key: 'economy', label: 'Economy', icon: <Coins size={15} />, requirePerm: 'system_tools' },
-  { key: 'system', label: 'System', icon: <Settings size={15} />, requirePerm: 'system_tools' },
+  {
+    key: 'system',
+    label: 'System',
+    icon: <Settings size={15} />,
+    requirePerm: 'system_tools',
+    subs: SYSTEM_TOOLS.map(t => ({ key: t.key, label: t.label })),
+  },
   { key: 'live-ops', label: 'Live Ops', icon: <Radio size={15} />, stub: true },
   { key: 'support', label: 'Support', icon: <HeadphonesIcon size={15} />, stub: true },
   { key: 'moderation', label: 'Moderation', icon: <Shield size={15} />, stub: true },
@@ -134,6 +155,7 @@ function Sidebar({
   me,
   collapsed,
   activeSection,
+  activeSub,
   onCollapse,
   onNavigate,
   onLogout,
@@ -141,8 +163,9 @@ function Sidebar({
   me: AdminMe;
   collapsed: boolean;
   activeSection: Section;
+  activeSub: string | null;
   onCollapse: () => void;
-  onNavigate: (s: Section) => void;
+  onNavigate: (s: Section, sub?: string) => void;
   onLogout: () => void;
 }) {
   const visibleItems = NAV_ITEMS.filter(item => isVisible(item, me));
@@ -157,24 +180,55 @@ function Sidebar({
       </div>
 
       <nav className="av2-nav">
-        {visibleItems.map(item => (
-          <button
-            key={item.key}
-            className={`av2-nav-item${activeSection === item.key ? ' active' : ''}`}
-            onClick={() => onNavigate(item.key)}
-            title={collapsed ? item.label : undefined}
-          >
-            <span className="av2-nav-icon">{item.icon}</span>
-            {!collapsed && (
-              <>
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.label}
-                </span>
-                {item.stub && <span className="av2-stub-badge">SOON</span>}
-              </>
-            )}
-          </button>
-        ))}
+        {visibleItems.map(item => {
+          const isActive = activeSection === item.key;
+          const hasSubs = !collapsed && !item.stub && isActive && item.subs && item.subs.length > 0;
+
+          return (
+            <div key={item.key} className="av2-nav-section">
+              <button
+                className={`av2-nav-item${isActive ? ' active' : ''}`}
+                onClick={() => onNavigate(item.key)}
+                title={collapsed ? item.label : undefined}
+              >
+                <span className="av2-nav-icon">{item.icon}</span>
+                {!collapsed && (
+                  <>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.label}
+                    </span>
+                    {item.stub && <span className="av2-stub-badge">SOON</span>}
+                    {item.subs && !item.stub && (
+                      <ChevronDown
+                        size={11}
+                        style={{
+                          flexShrink: 0,
+                          opacity: 0.5,
+                          transform: isActive ? 'rotate(180deg)' : 'none',
+                          transition: 'transform 0.15s',
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+              </button>
+
+              {hasSubs && (
+                <div className="av2-nav-subs">
+                  {item.subs!.map(sub => (
+                    <button
+                      key={sub.key}
+                      className={`av2-nav-item sub${activeSub === sub.key ? ' active' : ''}`}
+                      onClick={() => onNavigate(item.key, sub.key)}
+                    >
+                      {sub.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="av2-sidebar-footer">
@@ -191,7 +245,15 @@ function Sidebar({
   );
 }
 
-function TopBar({ me, activeSection }: { me: AdminMe; activeSection: Section }) {
+function TopBar({
+  me,
+  activeSection,
+  activeSub,
+}: {
+  me: AdminMe;
+  activeSection: Section;
+  activeSub: string | null;
+}) {
   const labels: Record<Section, string> = {
     dashboard: 'Dashboard',
     content: 'Content Editor',
@@ -207,6 +269,9 @@ function TopBar({ me, activeSection }: { me: AdminMe; activeSection: Section }) 
   return (
     <div className="av2-topbar">
       <span className="av2-topbar-title">{labels[activeSection]}</span>
+      {activeSub && (
+        <span className="av2-topbar-sub">/ {activeSub}</span>
+      )}
       <div className="av2-topbar-user">
         <span className="av2-topbar-user-name">{me.username}</span>
         <span className="av2-topbar-role">{me.role.name}</span>
@@ -219,6 +284,7 @@ export default function AdminV2Shell() {
   const [me, setMe] = useState<AdminMe | null>(null);
   const [checking, setChecking] = useState(true);
   const [activeSection, setActiveSection] = useState<Section>('dashboard');
+  const [activeSub, setActiveSub] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -238,16 +304,20 @@ export default function AdminV2Shell() {
   const handleLogin = useCallback((account: AdminMe) => {
     setMe(account);
     setActiveSection('dashboard');
+    setActiveSub(null);
   }, []);
 
   const handleLogout = useCallback(() => {
     clearAdminToken();
     setMe(null);
     setActiveSection('dashboard');
+    setActiveSub(null);
   }, []);
 
-  const handleNavigate = useCallback((section: string, _sub?: string) => {
-    setActiveSection(section as Section);
+  const handleNavigate = useCallback((section: string, sub?: string) => {
+    const s = section as Section;
+    setActiveSection(s);
+    setActiveSub(sub || null);
   }, []);
 
   if (checking) {
@@ -267,7 +337,7 @@ export default function AdminV2Shell() {
       case 'dashboard':
         return <AdminV2Dashboard me={me} onNavigate={handleNavigate} />;
       case 'content':
-        return <AdminV2ContentSection me={me} />;
+        return <AdminV2ContentSection me={me} activeGroup={activeSub || undefined} />;
       case 'approvals':
         return <AdminV2ApprovalsSection me={me} />;
       case 'players':
@@ -275,7 +345,13 @@ export default function AdminV2Shell() {
       case 'economy':
         return <AdminV2EconomySection me={me} />;
       case 'system':
-        return <AdminV2SystemSection me={me} />;
+        return (
+          <AdminV2SystemSection
+            me={me}
+            activeTool={(activeSub as SystemTool) || 'icons'}
+            onToolChange={tool => setActiveSub(tool)}
+          />
+        );
       case 'live-ops':
         return (
           <AdminV2StubSection
@@ -332,12 +408,13 @@ export default function AdminV2Shell() {
         me={me}
         collapsed={collapsed}
         activeSection={activeSection}
+        activeSub={activeSub}
         onCollapse={() => setCollapsed(c => !c)}
-        onNavigate={s => setActiveSection(s)}
+        onNavigate={handleNavigate}
         onLogout={handleLogout}
       />
       <div className="av2-main">
-        <TopBar me={me} activeSection={activeSection} />
+        <TopBar me={me} activeSection={activeSection} activeSub={activeSub} />
         <div className="av2-content">
           {renderSection()}
         </div>

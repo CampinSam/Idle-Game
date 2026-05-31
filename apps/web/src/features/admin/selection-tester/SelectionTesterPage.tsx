@@ -303,7 +303,7 @@ function TraceNodeRow({ node, depth = 0 }: { node: TraceNode; depth?: number }) 
   );
 }
 
-export default function SelectionTesterPage() {
+export default function SelectionTesterPage({ embedded }: { embedded?: boolean } = {}) {
   const [authed, setAuthed] = useState(!!(getAdminToken() || import.meta.env.DEV));
   const autoSubmitted = useRef(false);
 
@@ -467,9 +467,11 @@ export default function SelectionTesterPage() {
   return (
     <div style={s.page}>
       <div style={s.header}>
-        <button style={s.backBtn} onClick={() => { window.location.href = '/admin'; }}>
-          <ArrowLeft size={14} /> Admin
-        </button>
+        {!embedded && (
+          <button style={s.backBtn} onClick={() => { window.location.href = '/admin'; }}>
+            <ArrowLeft size={14} /> Admin
+          </button>
+        )}
         <h1 style={s.title}>Rich Selection Tester</h1>
         {result && (
           <div style={{ marginLeft: 'auto' }}>
