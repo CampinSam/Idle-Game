@@ -27,6 +27,7 @@ const MissionsPage = lazy(() => import('./features/missions/MissionsPage'));
 const CraftingRedirect = lazy(() => import('./features/crafting/CraftingRedirect'));
 const ForgePage = lazy(() => import('./features/forge/ForgePage'));
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
+const AdminV2Shell = lazy(() => import('./features/admin-v2/AdminV2Shell'));
 const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
 const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
 const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
@@ -101,6 +102,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
+  if (location.pathname.startsWith('/admin-v2')) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <AdminV2Shell />
+      </Suspense>
+    );
+  }
   if (location.pathname.startsWith('/admin/screens')) {
     return (
       <Suspense fallback={<PageLoader />}>

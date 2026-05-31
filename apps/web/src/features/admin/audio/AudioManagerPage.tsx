@@ -665,7 +665,7 @@ function ActionMappingsTab() {
   );
 }
 
-function AudioManagerContent() {
+export function AudioManagerContent() {
   const [tab, setTab] = useState<'library' | 'mappings'>('library');
 
   return (

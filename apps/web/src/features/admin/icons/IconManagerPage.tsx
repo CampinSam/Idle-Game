@@ -171,7 +171,7 @@ function AddSystemIconForm({ onAdded }: { onAdded: () => void }) {
   );
 }
 
-function IconManagerContent() {
+export function IconManagerContent() {
   const [systemIcons, setSystemIcons] = useState<IconEntry[]>([]);
   const [regularIcons, setRegularIcons] = useState<IconEntry[]>([]);
   const [loading, setLoading] = useState(false);
