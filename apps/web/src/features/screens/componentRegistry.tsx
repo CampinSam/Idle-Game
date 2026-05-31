@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNow } from '../../hooks/useNow';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ScreenSectionDefinition } from '@derp/shared';
@@ -11,7 +11,11 @@ import {
   useSyncItems,
   useSyncActiveCraftingJobs,
   useSyncPlayer,
+  useSyncCheckIns,
+  useSyncGifts,
 } from '../../hooks/useSyncSelectors';
+import { useCommand } from '../../hooks/useCommand';
+import { audioEngine } from '../../services/AudioEngine';
 import { useAppSelector, useAppDispatch } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs, fetchCraftingRecipes } from '../../store/gameSlice';
 import { isNftEntity } from '../entities/types/derp_bird/isNftEntity';
@@ -431,25 +435,80 @@ function SkeletonCardComp({ section }: ScreenComponentProps) {
 function DailyCheckInCardComp({ section, onAction }: ScreenComponentProps) {
   const props = section.props ?? {};
   const actionKey = props.actionKey as string | undefined;
+
+  const checkins = useSyncCheckIns() as any[];
+  const gifts = useSyncGifts() as any[];
+  const { execute } = useCommand();
+  const [claiming, setClaiming] = useState(false);
+
+  const instance = checkins[0] ?? null;
+  const def = instance?.checkInDef ?? null;
+  const streak = instance?.streak ?? 0;
+  const cycleLength = def?.cycleLength ?? 7;
+
+  const claimableGift = useMemo(() => {
+    if (!def) return null;
+    return (gifts as any[]).find(
+      (g) => g.sourceType === 'checkin' && g.sourceId === def.id && g.status === 'UNCLAIMED',
+    ) ?? null;
+  }, [def, gifts]);
+
+  const claimedToday = useMemo(() => {
+    if (!instance?.lastClaimedAt || claimableGift) return false;
+    const lastClaimed = new Date(instance.lastClaimedAt);
+    const windowStart = new Date();
+    windowStart.setUTCHours(0, 0, 0, 0);
+    return lastClaimed >= windowStart;
+  }, [instance, claimableGift]);
+
+  const handleClaim = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!claimableGift || claiming) return;
+    setClaiming(true);
+    try {
+      await execute('ClaimGift', { giftId: (claimableGift as any).id });
+      audioEngine.play('sfx.reward.checkin');
+    } catch (err) {
+      console.error('[DailyCheckInCard] Claim failed:', err);
+    } finally {
+      setClaiming(false);
+    }
+  }, [claimableGift, claiming, execute]);
+
+  const subtitle = def
+    ? `Day ${(streak % cycleLength) + 1} of ${cycleLength}`
+    : String(props.subtitle ?? 'Come back each day for rewards!');
+
   return (
-    <Card className="mb-4 p-4 flex items-center gap-3 border-amber-500/25 cursor-pointer hover:-translate-y-0.5 transition-all"
+    <Card
+      className="mb-4 p-4 flex items-center gap-3 border-amber-500/25 cursor-pointer hover:-translate-y-0.5 transition-all"
       onClick={actionKey ? () => onAction(actionKey) : undefined}
     >
       <span className="text-3xl flex-shrink-0">🎁</span>
-      <div>
+      <div className="flex-1 min-w-0">
         <div className="text-[13px] font-bold text-text-primary">Daily Check-In</div>
-        <div className="text-[11px] text-text-secondary mt-0.5">
-          {String(props.subtitle ?? 'Come back each day for rewards!')}
-        </div>
+        <div className="text-[11px] text-text-secondary mt-0.5 truncate">{subtitle}</div>
       </div>
-      {actionKey && (
+      {claimableGift ? (
         <button
-          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide"
+          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide disabled:opacity-60 shrink-0"
+          onClick={handleClaim}
+          disabled={claiming}
+        >
+          {claiming ? '…' : String(props.actionLabel ?? 'CLAIM')}
+        </button>
+      ) : claimedToday ? (
+        <div className="ml-auto shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-[#4ade80] bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)]">
+          ✓ Claimed
+        </div>
+      ) : actionKey ? (
+        <button
+          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide shrink-0"
           onClick={(e) => { e.stopPropagation(); onAction(actionKey); }}
         >
-          {String(props.actionLabel ?? 'CLAIM')}
+          {String(props.actionLabel ?? 'VIEW')}
         </button>
-      )}
+      ) : null}
     </Card>
   );
 }
