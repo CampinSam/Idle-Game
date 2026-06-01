@@ -32,6 +32,19 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
   private readonly processedEntityIds = new Map<string, DedupEntry>();
   private readonly processedJobIds = new Map<string, DedupEntry>();
 
+  private _bootTime: number | null = null;
+  private _bootTick: number | null = null;
+  private _lastProcessedTick: number | null = null;
+
+  getBootInfo(): { bootTime: number; bootTick: number } | null {
+    if (this._bootTime === null || this._bootTick === null) return null;
+    return { bootTime: this._bootTime, bootTick: this._bootTick };
+  }
+
+  getLastProcessedTick(): number | null {
+    return this._lastProcessedTick;
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tickService: TickService,
@@ -42,6 +55,13 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
   ) {}
 
   onModuleInit() {
+    this._bootTime = Date.now();
+    this.tickService.getCurrentTick().then((tick) => {
+      this._bootTick = tick;
+    }).catch((err) => {
+      this.logger.warn(`Failed to record boot tick: ${err}`);
+    });
+
     this.pollInterval = setInterval(() => {
       if (!this.running) {
         this.running = true;
@@ -104,6 +124,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
   private async processTick(): Promise<void> {
     this.evictExpiredDedup();
     const currentTick = await this.tickService.getCurrentTick();
+    this._lastProcessedTick = currentTick;
     await Promise.all([
       this.processInjuryRecovery(currentTick),
       this.processJobReadiness(currentTick),

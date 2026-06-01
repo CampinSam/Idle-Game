@@ -43,7 +43,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   const [season, setSeason] = useState<any>(null);
   const [playerCount, setPlayerCount] = useState<{ total: number; active: number } | null>(null);
   const [recentJobs, setRecentJobs] = useState<any[] | null>(null);
-  const [systemHealth, setSystemHealth] = useState<{ api: string; currentTick: number; tickRate: number; jobCounts: Record<string, number> } | null>(null);
+  const [systemHealth, setSystemHealth] = useState<{ api: string; currentTick: number; tickRate: number; tickDrift: number; jobCounts: Record<string, number> } | null>(null);
 
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
@@ -125,6 +125,18 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   );
 
   const totalActiveJobs = systemHealth?.jobCounts?.active ?? null;
+  const tickDrift = systemHealth?.tickDrift ?? null;
+  const tickDriftColor = tickDrift === null ? '#6060a0'
+    : tickDrift > 5 ? '#f87171'
+    : tickDrift > 2 ? '#f59e0b'
+    : '#34d399';
+  const tickEngineStatus = loadingHealth
+    ? '…'
+    : systemHealth === null
+    ? '—'
+    : tickDrift !== null && tickDrift > 2
+    ? `⚠ ${tickDrift} tick${tickDrift !== 1 ? 's' : ''} behind`
+    : '● Running';
 
   return (
     <div style={{ padding: 20 }}>
@@ -251,6 +263,12 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
             <div className="av2-stat-row">
               <span className="av2-stat-key">Session</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Active</span>
+            </div>
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">Tick Engine</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: tickDriftColor }}>
+                {tickEngineStatus}
+              </span>
             </div>
             <div className="av2-stat-row">
               <span className="av2-stat-key">Current Tick</span>

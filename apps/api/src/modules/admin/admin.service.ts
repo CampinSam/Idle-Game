@@ -20,6 +20,7 @@ import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
+import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -60,6 +61,7 @@ export class AdminService {
     private pubsub: PubSubService,
     private selectionResolver: SelectionResolverService,
     private commandService: CommandService,
+    private tickProcessor: TickEventProcessorService,
   ) {}
 
   /**
@@ -1089,10 +1091,20 @@ export class AdminService {
     api: string;
     currentTick: number;
     tickRate: number;
+    tickDrift: number;
     jobCounts: Record<string, number>;
   }> {
     const currentTick = await this.tickService.getCurrentTick();
     const currentRate = await this.tickService.getCurrentRate();
+
+    const bootInfo = this.tickProcessor.getBootInfo();
+    const lastProcessedTick = this.tickProcessor.getLastProcessedTick();
+    let tickDrift = 0;
+    if (bootInfo !== null && lastProcessedTick !== null) {
+      const elapsedSeconds = (Date.now() - bootInfo.bootTime) / 1000;
+      const expectedTick = bootInfo.bootTick + elapsedSeconds * currentRate;
+      tickDrift = Math.abs(expectedTick - lastProcessedTick);
+    }
 
     const statusGroups = await (this.prisma as any).job.groupBy({
       by: ['status'],
@@ -1107,6 +1119,7 @@ export class AdminService {
       api: 'online',
       currentTick,
       tickRate: currentRate,
+      tickDrift,
       jobCounts,
     };
   }

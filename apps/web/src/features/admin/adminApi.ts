@@ -162,6 +162,7 @@ export const adminApi = {
     api: string;
     currentTick: number;
     tickRate: number;
+    tickDrift: number;
     jobCounts: Record<string, number>;
   }>('/system/health'),
 
