@@ -22,13 +22,27 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
     case 'divider':
       return <div className="gm-divider" />;
 
-    case 'image':
+    case 'image': {
+      const d = block.display;
+      const align = d?.align ?? 'center';
+      const sizing = d?.sizing ?? 'stretch';
+      const rawWidth = d?.width;
+      const borderRadius = d?.borderRadius ?? 12;
+      const imgWidth =
+        sizing === 'percent' && rawWidth ? `${rawWidth}%`
+        : sizing === 'px' && rawWidth ? `${rawWidth}px`
+        : '100%';
+      const justifyContent =
+        align === 'left' ? 'flex-start'
+        : align === 'right' ? 'flex-end'
+        : 'center';
       return (
-        <div className="gm-image-block">
-          <AssetImage asset={block.image} style={{ width: '100%', borderRadius: 12 }} />
-          {block.caption && <div className="gm-image-caption">{block.caption}</div>}
+        <div className="gm-image-block" style={{ display: 'flex', flexDirection: 'column', alignItems: justifyContent === 'flex-start' ? 'flex-start' : justifyContent === 'flex-end' ? 'flex-end' : 'center' }}>
+          <AssetImage asset={block.image} style={{ width: imgWidth, borderRadius, display: 'block' }} />
+          {block.caption && <div className="gm-image-caption" style={{ textAlign: align }}>{block.caption}</div>}
         </div>
       );
+    }
 
     case 'metaRows':
       return <MetaRowsBlock rows={block.rows} />;

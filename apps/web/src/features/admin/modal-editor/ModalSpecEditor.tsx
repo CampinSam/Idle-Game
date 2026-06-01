@@ -728,7 +728,10 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
     case 'divider':
       return <div style={{ color: '#555', fontSize: 12, fontStyle: 'italic' }}>No fields — renders a horizontal rule.</div>;
 
-    case 'image':
+    case 'image': {
+      const disp = (block as any).display ?? {};
+      const setDisp = (patch: Record<string, unknown>) => set({ display: { ...disp, ...patch } });
+      const sizing = disp.sizing ?? 'stretch';
       return (
         <>
           <Field label="Asset Key">
@@ -736,8 +739,49 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
           </Field>
           <Field label="Alt text"><input style={inp} value={(block as any).image?.alt || ''} onChange={e => set({ image: { ...(block as any).image, alt: e.target.value } })} /></Field>
           <Field label="Caption" hint="Optional caption rendered below the image. Supports ${token} substitution from payload."><input style={inp} value={(block as any).caption || ''} onChange={e => set({ caption: e.target.value })} /></Field>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Field label="Alignment">
+              <select style={{ ...inp, width: 'auto' }} value={disp.align ?? 'center'} onChange={e => setDisp({ align: e.target.value })}>
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </Field>
+            <Field label="Sizing">
+              <select style={{ ...inp, width: 'auto' }} value={sizing} onChange={e => setDisp({ sizing: e.target.value, width: undefined })}>
+                <option value="stretch">Stretch (full width)</option>
+                <option value="percent">Percent width</option>
+                <option value="px">Fixed px width</option>
+              </select>
+            </Field>
+            {(sizing === 'percent' || sizing === 'px') && (
+              <Field label={`Width (${sizing === 'percent' ? '%' : 'px'})`}>
+                <input
+                  style={{ ...inp, width: 80 }}
+                  type="number"
+                  min={1}
+                  max={sizing === 'percent' ? 100 : 2000}
+                  value={disp.width ?? ''}
+                  placeholder={sizing === 'percent' ? '50' : '200'}
+                  onChange={e => setDisp({ width: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </Field>
+            )}
+            <Field label="Border radius (px)">
+              <input
+                style={{ ...inp, width: 70 }}
+                type="number"
+                min={0}
+                max={200}
+                value={disp.borderRadius ?? ''}
+                placeholder="12"
+                onChange={e => setDisp({ borderRadius: e.target.value ? Number(e.target.value) : undefined })}
+              />
+            </Field>
+          </div>
         </>
       );
+    }
 
     case 'metaRows': {
       const rows = (block as any).rows || [];

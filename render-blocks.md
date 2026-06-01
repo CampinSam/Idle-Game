@@ -51,13 +51,19 @@ A horizontal visual separator line. No configuration.
 
 ### `image`
 
-A full-width image block with an optional caption below it.
+An image block with optional caption and display controls for alignment, sizing, and corner rounding.
 
 ```json
 {
   "type": "image",
   "image": { "assetKey": "banner_season_3", "alt": "Season 3" },
   "caption": "The new era begins.",
+  "display": {
+    "align": "center",
+    "sizing": "percent",
+    "width": 75,
+    "borderRadius": 12
+  },
   "from": "optional-source-hint"
 }
 ```
@@ -66,7 +72,17 @@ A full-width image block with an optional caption below it.
 |---|---|---|---|
 | `image` | `AssetRef` | ✅ | Asset key to resolve. See [AssetRef](#assetref). |
 | `caption` | `string` | — | Small caption text rendered below the image. |
+| `display` | `ImageDisplay` | — | Layout controls. See table below. |
 | `from` | `string` | — | Source metadata hint for tooling. |
+
+**`ImageDisplay` properties:**
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `align` | `'left' \| 'center' \| 'right'` | `'center'` | Horizontal alignment of the image within its container. |
+| `sizing` | `'stretch' \| 'percent' \| 'px'` | `'stretch'` | How the image width is determined. `stretch` fills the full container; `percent` and `px` use the `width` value. |
+| `width` | `number` | — | Numeric width used when `sizing` is `'percent'` (e.g. `50` = 50%) or `'px'` (e.g. `200` = 200 px). Ignored for `'stretch'`. |
+| `borderRadius` | `number` | `12` | Corner rounding in pixels. |
 
 ---
 
@@ -763,13 +779,14 @@ Plain text content that renders as a paragraph. Internally converted to a `richT
 
 #### `image`
 
-An asset image with an optional caption. Delegates to the modal `image` block renderer.
+An asset image with optional caption and display controls. Delegates to the modal `image` block renderer (shares the same `ImageDisplay` schema).
 
 ```json
 {
   "type": "image",
   "assetKey": "banner_mission_ruins",
-  "caption": "The Forgotten Ruins"
+  "caption": "The Forgotten Ruins",
+  "display": { "align": "left", "sizing": "percent", "width": 60 }
 }
 ```
 
@@ -777,6 +794,7 @@ An asset image with an optional caption. Delegates to the modal `image` block re
 |---|---|---|
 | `assetKey` | `string` | Asset key for the image. Block renders nothing if omitted. |
 | `caption` | `string` | Optional caption below the image. |
+| `display` | `ImageDisplay` | Layout controls — see the modal `image` block for the full `ImageDisplay` schema. |
 
 ---
 

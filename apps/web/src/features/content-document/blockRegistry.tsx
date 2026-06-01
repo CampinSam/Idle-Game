@@ -197,12 +197,13 @@ function RichTextBlock({ block }: BlockComponentProps) {
 }
 
 function ImageBlock({ block }: BlockComponentProps) {
-  const b = block as { type: 'image'; assetKey?: string; caption?: string };
+  const b = block as { type: 'image'; assetKey?: string; caption?: string; display?: import('@derp/shared').ImageDisplay };
   if (!b.assetKey) return null;
   const asModal: ModalBlock = {
     type: 'image',
     image: { assetKey: b.assetKey },
     caption: b.caption,
+    display: b.display,
   };
   return <BlockRenderer block={asModal} />;
 }

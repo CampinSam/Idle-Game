@@ -120,27 +120,84 @@ function RichTextFields({ block, onChange }: { block: Block; onChange: (b: Block
 }
 
 function ImageFields({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+  const disp = (block.display as Record<string, unknown> | undefined) ?? {};
+  const setDisp = (patch: Record<string, unknown>) => onChange({ ...block, display: { ...disp, ...patch } });
+  const sizing = String(disp.sizing ?? 'stretch');
   return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      <div style={{ ...fieldGroupStyle, flex: 2 }}>
-        <span style={labelStyle}>assetKey <span style={{ color: '#f87171' }}>*</span></span>
-        <input
-          type="text"
-          value={String(block.assetKey ?? '')}
-          onChange={e => onChange({ ...block, assetKey: e.target.value })}
-          placeholder="banner_mission_ruins"
-          style={{ ...inputStyle, width: '100%' }}
-        />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ ...fieldGroupStyle, flex: 2 }}>
+          <span style={labelStyle}>assetKey <span style={{ color: '#f87171' }}>*</span></span>
+          <input
+            type="text"
+            value={String(block.assetKey ?? '')}
+            onChange={e => onChange({ ...block, assetKey: e.target.value })}
+            placeholder="banner_mission_ruins"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <div style={{ ...fieldGroupStyle, flex: 1 }}>
+          <span style={labelStyle}>caption</span>
+          <input
+            type="text"
+            value={String(block.caption ?? '')}
+            onChange={e => onChange({ ...block, caption: e.target.value })}
+            placeholder="Optional caption"
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
       </div>
-      <div style={{ ...fieldGroupStyle, flex: 1 }}>
-        <span style={labelStyle}>caption</span>
-        <input
-          type="text"
-          value={String(block.caption ?? '')}
-          onChange={e => onChange({ ...block, caption: e.target.value })}
-          placeholder="Optional caption"
-          style={{ ...inputStyle, width: '100%' }}
-        />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={fieldGroupStyle}>
+          <span style={labelStyle}>align</span>
+          <select
+            value={String(disp.align ?? 'center')}
+            onChange={e => setDisp({ align: e.target.value })}
+            style={{ ...inputStyle, width: 90 }}
+          >
+            <option value="left">Left</option>
+            <option value="center">Center</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div style={fieldGroupStyle}>
+          <span style={labelStyle}>sizing</span>
+          <select
+            value={sizing}
+            onChange={e => setDisp({ sizing: e.target.value, width: undefined })}
+            style={{ ...inputStyle, width: 140 }}
+          >
+            <option value="stretch">Stretch (full width)</option>
+            <option value="percent">Percent width</option>
+            <option value="px">Fixed px</option>
+          </select>
+        </div>
+        {(sizing === 'percent' || sizing === 'px') && (
+          <div style={fieldGroupStyle}>
+            <span style={labelStyle}>width ({sizing === 'percent' ? '%' : 'px'})</span>
+            <input
+              type="number"
+              min={1}
+              max={sizing === 'percent' ? 100 : 2000}
+              value={disp.width !== undefined ? Number(disp.width) : ''}
+              placeholder={sizing === 'percent' ? '50' : '200'}
+              onChange={e => setDisp({ width: e.target.value ? Number(e.target.value) : undefined })}
+              style={{ ...inputStyle, width: 70 }}
+            />
+          </div>
+        )}
+        <div style={fieldGroupStyle}>
+          <span style={labelStyle}>border radius (px)</span>
+          <input
+            type="number"
+            min={0}
+            max={200}
+            value={disp.borderRadius !== undefined ? Number(disp.borderRadius) : ''}
+            placeholder="12"
+            onChange={e => setDisp({ borderRadius: e.target.value ? Number(e.target.value) : undefined })}
+            style={{ ...inputStyle, width: 70 }}
+          />
+        </div>
       </div>
     </div>
   );

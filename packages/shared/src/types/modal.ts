@@ -100,10 +100,27 @@ export interface ModalBlockDivider {
   type: 'divider';
 }
 
+export interface ImageDisplay {
+  /** Horizontal alignment of the image within its container. Default: 'center'. */
+  align?: 'left' | 'center' | 'right';
+  /**
+   * How the image width is determined.
+   * - 'stretch' — fills the full container width (default)
+   * - 'percent' — uses `width` as a percentage of the container
+   * - 'px'      — uses `width` as an absolute pixel value
+   */
+  sizing?: 'stretch' | 'percent' | 'px';
+  /** Numeric value used when sizing is 'percent' or 'px'. */
+  width?: number;
+  /** Corner rounding in pixels. Default: 12. */
+  borderRadius?: number;
+}
+
 export interface ModalBlockImage {
   type: 'image';
   image: AssetRef;
   caption?: string;
+  display?: ImageDisplay;
   from?: string;
 }
 

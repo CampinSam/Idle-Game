@@ -84,6 +84,7 @@ export interface ContentBlockImage {
   type: 'image';
   assetKey?: string;
   caption?: string;
+  display?: import('./modal').ImageDisplay;
 }
 
 export interface ContentBlockDivider {
