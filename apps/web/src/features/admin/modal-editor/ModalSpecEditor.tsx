@@ -1790,12 +1790,12 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
           <Row>
             <div style={{ flex: 1 }}>
               <Field label="Icon asset key">
-                <input style={inp} value={spec.header.icon?.assetKey || ''} onChange={e => updateHeader({ icon: e.target.value ? { assetKey: e.target.value } : undefined })} placeholder="e.g. media/icon.png" />
+                <AssetKeyInput fieldName="spec.header.icon.assetKey" value={spec.header.icon?.assetKey || ''} onChange={v => updateHeader({ icon: v ? { assetKey: v } : undefined })} placeholder="icons/header_icon.png" />
               </Field>
             </div>
             <div style={{ flex: 1 }}>
               <Field label="Banner asset key">
-                <input style={inp} value={spec.header.banner?.assetKey || ''} onChange={e => updateHeader({ banner: e.target.value ? { assetKey: e.target.value } : undefined })} placeholder="e.g. media/banner.jpg" />
+                <AssetKeyInput fieldName="spec.header.banner.assetKey" value={spec.header.banner?.assetKey || ''} onChange={v => updateHeader({ banner: v ? { assetKey: v } : undefined })} placeholder="images/banner.jpg" />
               </Field>
             </div>
           </Row>
