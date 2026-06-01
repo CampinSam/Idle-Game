@@ -216,8 +216,6 @@ export class MissionService {
       description: def.description,
       difficulty: def.difficulty,
       timer: def.timer,
-      success: def.success,
-      failure: def.failure,
       requirements: def.requirements,
       launchRequirements: def.launchRequirements ?? null,
       visibilityRequirements: def.visibilityRequirements,
@@ -796,10 +794,9 @@ export class MissionService {
     const success = rng.chance(successChance);
 
     // ── Quality tier selection ──────────────────────────────────────────────
-    // When the mission definition carries a populated `tiers` JSON block, use
-    // a Gaussian quality roll (identical to the crafting pipeline) with the
-    // team's effective Mission Power as the CL axis. Falls back to the legacy
-    // binary success/failure block when `tiers` is absent or empty.
+    // Mission outcomes are driven entirely by the `tiers` JSON block.
+    // A Gaussian quality roll uses the team's effective Mission Power as the
+    // CL axis. When `tiers` is absent or empty, the mission yields no rewards.
     const missionTiersRaw: Record<string, any> =
       def.tiers && typeof def.tiers === 'object' && !Array.isArray(def.tiers)
         ? (def.tiers as Record<string, any>)
@@ -826,24 +823,17 @@ export class MissionService {
       if (!success) {
         quality = 'failure';
         qualityLabel = 'Failure';
-        const tierRewards = missionTiers.failure.rewards;
-        outcomeItems = tierRewards.length > 0
-          ? tierRewards
-          : normaliseMissionTierRewards((def.failure as any)?.rewards);
+        outcomeItems = missionTiers.failure.rewards;
       } else {
         const rolled = rollQualityFromCl(teamMP, rng, centerOverrides, missionSigma);
         quality = rolled.key;
         qualityLabel = rolled.label;
-        const tierRewards = (missionTiers[quality] ?? EMPTY_MISSION_TIER).rewards;
-        outcomeItems = tierRewards.length > 0
-          ? tierRewards
-          : normaliseMissionTierRewards((def.success as any)?.rewards);
+        outcomeItems = (missionTiers[quality] ?? EMPTY_MISSION_TIER).rewards;
       }
     } else {
-      quality = success ? 'success' : 'failure';
+      quality = success ? 'common' : 'failure';
       qualityLabel = success ? 'Success' : 'Failure';
-      const outcome = success ? (def.success as any) : (def.failure as any);
-      outcomeItems = normaliseMissionTierRewards(outcome?.rewards);
+      outcomeItems = [];
     }
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];

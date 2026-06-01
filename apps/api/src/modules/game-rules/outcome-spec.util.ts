@@ -184,7 +184,7 @@ export function migrateGiftRewardSpec(value: any): NormalizeResult {
  *        - checkInDef.rewards       → checkInDays array (gift: GiftSpec entries)
  */
 export const OUTCOME_SPEC_FIELDS_BY_MODEL: Record<string, string[]> = {
-  missionDef: ['success', 'failure'],
+  missionDef: ['tiers'],
   recipeDef: ['rewards'],
   giftDef: ['rewardSpec'],
   lootboxDef: ['outcomes'],

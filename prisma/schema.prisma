@@ -520,8 +520,9 @@ model MissionDef {
   injuryRate             Float?              @default(0)
   injuryRecoveryTicks    Int?                @default(0)
   timer                  Json                @default("{\"duration\": 0, \"skipable\": false, \"boostable\": true, \"skip_cost\": [], \"skip_type\": \"absolute\"}")
-  success                Json                @default("{\"text\": [], \"effects\": [], \"rewards\": []}")
-  failure                Json                @default("{\"text\": [], \"effects\": [], \"rewards\": []}")
+  tiers                  Json                @default("{}")
+  success                Json?
+  failure                Json?
   requirements           Json                @default("[]")
   visibilityRequirements Json                @default("[]")
   tags                   Json                @default("[]")

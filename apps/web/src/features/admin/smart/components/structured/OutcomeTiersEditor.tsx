@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import OutcomeListEditor from './OutcomeListEditor';
+import RefSelect from '../RefSelect';
 import { RarityCurveChart } from '../../../../forge/components/RarityCurveChart';
 import { qualityProbabilities, collapseQualityProbabilities } from '@derp/math';
 import {
@@ -70,6 +71,17 @@ export default function OutcomeTiersEditor({ value, onChange }: OutcomeTiersEdit
 
   const setTier = (key: string, block: TierBlock) => {
     onChange({ ...tiers, [key]: block });
+  };
+
+  const setTierModal = (key: string, modalDefId: string | null) => {
+    const existing: TierBlock = tiers[key] ?? { rewards: [] };
+    const next = { ...existing } as any;
+    if (modalDefId) {
+      next.modalDefId = modalDefId;
+    } else {
+      delete next.modalDefId;
+    }
+    onChange({ ...tiers, [key]: next });
   };
 
   const setSigma = (raw: string) => {
@@ -180,6 +192,22 @@ export default function OutcomeTiersEditor({ value, onChange }: OutcomeTiersEdit
               <OutcomeListEditor
                 value={rewards}
                 onChange={(newRewards) => setTier(meta.key, { ...block, rewards: newRewards })}
+              />
+            </div>
+            <div style={{ ...fieldGroupStyle, marginTop: 6 }}>
+              <span style={labelStyle}>
+                Modal Override
+                {meta.isSuccess && (
+                  <span style={{ opacity: 0.55, fontWeight: 400, marginLeft: 4 }}>
+                    — falls back to next lower tier with a modal
+                  </span>
+                )}
+              </span>
+              <RefSelect
+                refTable="ModalDef"
+                value={(block as any).modalDefId ?? null}
+                onChange={(v) => setTierModal(meta.key, v ?? null)}
+                placeholder="none"
               />
             </div>
           </div>

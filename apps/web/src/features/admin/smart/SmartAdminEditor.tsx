@@ -4,7 +4,7 @@ import { TABLE_SCHEMAS, TABLE_API_KEYS, TABLE_GROUPS, TableSchema } from './tabl
 import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
-import { migrateMissionOutcomes } from './migrateMissionOutcomes';
+import { migrateMissionOutcomes, needsMissionMigration } from './migrateMissionOutcomes';
 import TelemetryCardPreviewPanel from '../telemetry/TelemetryCardPreviewPanel';
 
 interface TableEntry {
@@ -227,6 +227,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   const [rejectedDrafts, setRejectedDrafts] = useState<Record<string, any>>({});
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [needsMigration, setNeedsMigration] = useState(false);
 
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
@@ -317,6 +318,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setIsNew(false);
     setSearch('');
     setActiveSectionId(null);
+    setNeedsMigration(false);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
     loadPendingDrafts(key, me?.id);
@@ -348,11 +350,14 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
         typeof pendingDraft.payload === 'object' && pendingDraft.payload !== null
           ? pendingDraft.payload
           : rec;
+      setNeedsMigration(false);
       dispatch({ type: 'LOAD_AS_DRAFT', record: draftPayload as Record<string, any>, draftId: pendingDraft.id, operation: pendingDraft.operation });
     } else if (activeTable === TABLE_API_KEYS.MissionDef) {
-      const { record: migrated, migrated: wasMigrated } = migrateMissionOutcomes(rec);
-      dispatch({ type: wasMigrated ? 'LOAD_DIRTY' : 'LOAD', record: migrated });
+      const hasMigration = needsMissionMigration(rec);
+      setNeedsMigration(hasMigration);
+      dispatch({ type: 'LOAD', record: rec });
     } else {
+      setNeedsMigration(false);
       dispatch({ type: 'LOAD', record: rec });
     }
   };
@@ -365,6 +370,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setSelectedId(null);
     setIsNew(true);
     setDeleteConfirm(false);
+    setNeedsMigration(false);
     dispatch({ type: 'LOAD', record: blank });
   };
 
@@ -381,6 +387,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setSelectedId(null);
     setIsNew(true);
     setDeleteConfirm(false);
+    setNeedsMigration(false);
     dispatch({ type: 'LOAD_DIRTY', record: duplicated });
   };
 
@@ -889,6 +896,49 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
                   <span style={{ fontSize: 11, color: '#d97706', flex: 1 }}>
                     Changes are queued for approval and are not live yet.
                   </span>
+                </div>
+              )}
+              {/* LEGACY MIGRATION banner — MissionDef records with old success/failure/modal fields */}
+              {needsMigration && activeTable === TABLE_API_KEYS.MissionDef && !editorState.isDraftMode && (
+                <div style={{
+                  padding: '8px 20px',
+                  background: 'rgba(30, 58, 138, 0.35)',
+                  borderBottom: '1px solid rgba(96, 165, 250, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#93c5fd', textTransform: 'uppercase' }}>
+                    ⟳ Legacy Format
+                  </span>
+                  <span style={{ fontSize: 11, color: '#bfdbfe', flex: 1 }}>
+                    This record uses old <code style={{ background: 'rgba(96,165,250,0.1)', borderRadius: 3, padding: '0 3px' }}>success</code> / <code style={{ background: 'rgba(96,165,250,0.1)', borderRadius: 3, padding: '0 3px' }}>failure</code> fields. Migrate to <code style={{ background: 'rgba(96,165,250,0.1)', borderRadius: 3, padding: '0 3px' }}>tiers</code> before saving.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!editorState.record) return;
+                      const { record: migrated } = migrateMissionOutcomes(editorState.record);
+                      setNeedsMigration(false);
+                      dispatch({ type: 'LOAD_DIRTY', record: migrated });
+                    }}
+                    style={{
+                      padding: '5px 12px',
+                      background: 'rgba(96, 165, 250, 0.15)',
+                      border: '1px solid rgba(96, 165, 250, 0.4)',
+                      borderRadius: 6,
+                      color: '#93c5fd',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.25)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(96,165,250,0.15)'; }}
+                  >
+                    Migrate to Tiers
+                  </button>
                 </div>
               )}
               {/* REJECTED DRAFT banner — show when the current record has a rejected draft from this author */}

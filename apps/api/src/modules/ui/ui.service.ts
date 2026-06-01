@@ -8,6 +8,27 @@ import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
 import type { ModalSpecV1 } from '@derp/shared';
 import { RARITY_ORDER as SHARED_RARITY_ORDER } from '@derp/shared';
 
+// Tier fallback order for modal resolution: if the rolled tier has no modal,
+// walk down to the next lower tier that does.
+const MISSION_TIER_FALLBACK = ['legendary', 'mythic', 'epic', 'rare', 'scare', 'uncommon', 'common'] as const;
+
+function resolveMissionTierModal(
+  tiers: Record<string, any> | null | undefined,
+  quality: string,
+): string | null {
+  if (!tiers || typeof tiers !== 'object') return null;
+  if (quality === 'failure') {
+    return (tiers['failure']?.modalDefId as string) ?? null;
+  }
+  const startIdx = MISSION_TIER_FALLBACK.indexOf(quality as any);
+  const start = startIdx >= 0 ? startIdx : MISSION_TIER_FALLBACK.length - 1;
+  for (let i = start; i < MISSION_TIER_FALLBACK.length; i++) {
+    const block = tiers[MISSION_TIER_FALLBACK[i]];
+    if (block?.modalDefId) return block.modalDefId as string;
+  }
+  return null;
+}
+
 interface TeamEntitySnapshot {
   id: string;
   name: string;
@@ -81,17 +102,31 @@ export class UiService {
         break;
       case 'completed':
         generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
-        modalDefId = def?.completedModalDefId ?? null;
+        if (job.type === 'MissionJob') {
+          const quality = (results?.quality ?? 'common') as string;
+          modalDefId = resolveMissionTierModal((def as any)?.tiers, quality);
+        } else {
+          modalDefId = def?.completedModalDefId ?? null;
+        }
         break;
       case 'failed':
         generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
-        modalDefId = def?.failedModalDefId ?? def?.completedModalDefId ?? null;
+        if (job.type === 'MissionJob') {
+          modalDefId = resolveMissionTierModal((def as any)?.tiers, 'failure');
+        } else {
+          modalDefId = def?.failedModalDefId ?? def?.completedModalDefId ?? null;
+        }
         break;
       default:
         generated = job.status === 'collected'
           ? await this.buildCompletedJobModal(job, defName, typeLabel, results)
           : this.buildGenericJobModal(job, defName, typeLabel);
-        modalDefId = def?.completedModalDefId ?? null;
+        if (job.type === 'MissionJob') {
+          const quality = (results?.quality ?? 'common') as string;
+          modalDefId = resolveMissionTierModal((def as any)?.tiers, quality);
+        } else {
+          modalDefId = def?.completedModalDefId ?? null;
+        }
     }
 
     const ctx = await this.buildJobContext(job, def);
