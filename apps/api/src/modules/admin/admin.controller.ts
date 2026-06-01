@@ -67,6 +67,15 @@ export class AdminController {
     return this.adminAuthService.getMe(adminUser.id);
   }
 
+  @Post('me/password')
+  async changeOwnPassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
+    if (req.adminUser.isBootstrap) {
+      throw new BadRequestException('Bootstrap account password cannot be changed via the panel');
+    }
+    await this.adminAuthService.changeOwnPassword(req.adminUser.id, body.currentPassword, body.newPassword);
+    return { success: true };
+  }
+
   // ─── Roles ───────────────────────────────────────────────────────────────────
 
   @Get('roles')

@@ -131,6 +131,11 @@ export function resolveRequiredPermission(
     return { allowed: false, reason: "Requires 'super_admin' or 'senior_support' role" };
   }
 
+  // Self password change — any authenticated non-bootstrap admin
+  if (adminPath === '/me/password') {
+    return { allowed: true };
+  }
+
   // Always allowed for any authenticated admin
   if (
     adminPath === '/me' ||

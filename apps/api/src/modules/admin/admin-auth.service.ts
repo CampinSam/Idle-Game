@@ -185,6 +185,16 @@ export class AdminAuthService {
     return this.toDto(updated);
   }
 
+  async changeOwnPassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+    const account = await this.prisma.adminAccount.findUnique({ where: { id } });
+    if (!account) throw new NotFoundException('Account not found');
+    const valid = await bcrypt.compare(currentPassword, account.passwordHash);
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+    if (newPassword.length < 8) throw new BadRequestException('New password must be at least 8 characters');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.adminAccount.update({ where: { id }, data: { passwordHash } });
+  }
+
   async deleteAccount(id: string, requestingAdminId: string): Promise<void> {
     if (id === requestingAdminId) {
       throw new BadRequestException('Cannot delete your own account');

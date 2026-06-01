@@ -113,6 +113,12 @@ export const adminApi = {
 
   getMe: () => adminRequest<AdminMe>('/me'),
 
+  changeOwnPassword: (currentPassword: string, newPassword: string) =>
+    adminRequest<{ success: boolean }>('/me/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
   // ─── Account Management (Super Admin only) ────────────────────────────────
 
   listRoles: () => adminRequest<any[]>('/roles'),

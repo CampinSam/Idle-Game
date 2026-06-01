@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
-  ChevronRight, LogOut, Layers, ChevronDown,
+  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X,
 } from 'lucide-react';
 import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
@@ -15,6 +15,7 @@ import AdminV2ApprovalsSection from './sections/AdminV2ApprovalsSection';
 import AdminV2PlayersSection from './sections/AdminV2PlayersSection';
 import AdminV2EconomySection from './sections/AdminV2EconomySection';
 import AdminV2SystemSection, { SYSTEM_TOOLS, type SystemTool } from './sections/AdminV2SystemSection';
+import AdminV2AccountsSection from './sections/AdminV2AccountsSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
 import './admin-v2.css';
 
@@ -26,6 +27,7 @@ type Section =
   | 'live-ops'
   | 'economy'
   | 'system'
+  | 'accounts'
   | 'support'
   | 'moderation';
 
@@ -65,6 +67,7 @@ const NAV_ITEMS: NavItem[] = [
     requirePerm: 'system_tools',
     subs: SYSTEM_TOOLS.map(t => ({ key: t.key, label: t.label })),
   },
+  { key: 'accounts', label: 'Accounts', icon: <UserCog size={15} />, requireSuperAdmin: true },
   { key: 'live-ops', label: 'Live Ops', icon: <Radio size={15} />, stub: true },
   { key: 'support', label: 'Support', icon: <HeadphonesIcon size={15} />, stub: true },
   { key: 'moderation', label: 'Moderation', icon: <Shield size={15} />, stub: true },
@@ -79,6 +82,94 @@ function isVisible(item: NavItem, me: AdminMe): boolean {
     return me.role.permissionFlags[item.requirePerm] === true;
   }
   return true;
+}
+
+function ChangePasswordModal({ me, onClose }: { me: AdminMe; onClose: () => void }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (next !== confirm) { setError('Passwords do not match'); return; }
+    if (next.length < 8) { setError('New password must be at least 8 characters'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await adminApi.changeOwnPassword(current, next);
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="av2-modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="av2-modal">
+        <div className="av2-modal-header">
+          <span>Change Password</span>
+          <button className="av2-modal-close" onClick={onClose}><X size={14} /></button>
+        </div>
+        {success ? (
+          <div style={{ padding: '24px 0 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
+            <div style={{ color: '#34d399', fontWeight: 700, marginBottom: 4 }}>Password changed successfully</div>
+            <div style={{ color: '#4a4a7a', fontSize: 12, marginBottom: 20 }}>Your new password is active.</div>
+            <button className="av2-btn-primary" onClick={onClose}>Close</button>
+          </div>
+        ) : (
+          <form onSubmit={submit}>
+            {me.isBootstrap && (
+              <div className="av2-inline-msg error" style={{ marginBottom: 16 }}>
+                Bootstrap accounts cannot change their password via the panel.
+              </div>
+            )}
+            <label className="av2-form-label">Current password</label>
+            <input
+              className="av2-form-input"
+              type="password"
+              value={current}
+              onChange={e => setCurrent(e.target.value)}
+              autoFocus
+              disabled={me.isBootstrap}
+            />
+            <label className="av2-form-label">New password</label>
+            <input
+              className="av2-form-input"
+              type="password"
+              value={next}
+              onChange={e => setNext(e.target.value)}
+              disabled={me.isBootstrap}
+            />
+            <label className="av2-form-label">Confirm new password</label>
+            <input
+              className="av2-form-input"
+              type="password"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              disabled={me.isBootstrap}
+            />
+            {error && <div className="av2-inline-msg error" style={{ marginTop: 8 }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button
+                type="submit"
+                className="av2-btn-primary"
+                disabled={saving || me.isBootstrap || !current || !next || !confirm}
+              >
+                {saving ? 'Saving…' : 'Change Password'}
+              </button>
+              <button type="button" className="av2-btn-ghost" onClick={onClose}>Cancel</button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
@@ -177,6 +268,13 @@ function Sidebar({
           <Layers size={14} />
         </div>
         {!collapsed && <span className="av2-sidebar-logo-text">Admin v2</span>}
+        <button
+          className="av2-sidebar-collapse-btn av2-sidebar-collapse-top"
+          onClick={onCollapse}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </button>
       </div>
 
       <nav className="av2-nav">
@@ -236,10 +334,6 @@ function Sidebar({
           <LogOut size={13} style={{ flexShrink: 0 }} />
           {!collapsed && <span>Sign out</span>}
         </button>
-        <button className="av2-sidebar-collapse-btn" onClick={onCollapse} title={collapsed ? 'Expand' : 'Collapse'}>
-          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-          {!collapsed && <span>Collapse</span>}
-        </button>
       </div>
     </div>
   );
@@ -249,10 +343,12 @@ function TopBar({
   me,
   activeSection,
   activeSub,
+  onPasswordChange,
 }: {
   me: AdminMe;
   activeSection: Section;
   activeSub: string | null;
+  onPasswordChange: () => void;
 }) {
   const labels: Record<Section, string> = {
     dashboard: 'Dashboard',
@@ -262,6 +358,7 @@ function TopBar({
     'live-ops': 'Live Ops',
     economy: 'Balance Simulator',
     system: 'System Tools',
+    accounts: 'Account Management',
     support: 'Support',
     moderation: 'Moderation',
   };
@@ -275,6 +372,15 @@ function TopBar({
       <div className="av2-topbar-user">
         <span className="av2-topbar-user-name">{me.username}</span>
         <span className="av2-topbar-role">{me.role.name}</span>
+        {!me.isBootstrap && (
+          <button
+            className="av2-topbar-icon-btn"
+            onClick={onPasswordChange}
+            title="Change password"
+          >
+            <KeyRound size={13} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -286,6 +392,7 @@ export default function AdminV2Shell() {
   const [activeSection, setActiveSection] = useState<Section>('dashboard');
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     const token = getAdminToken();
@@ -352,6 +459,8 @@ export default function AdminV2Shell() {
             onToolChange={tool => setActiveSub(tool)}
           />
         );
+      case 'accounts':
+        return <AdminV2AccountsSection me={me} />;
       case 'live-ops':
         return (
           <AdminV2StubSection
@@ -414,11 +523,19 @@ export default function AdminV2Shell() {
         onLogout={handleLogout}
       />
       <div className="av2-main">
-        <TopBar me={me} activeSection={activeSection} activeSub={activeSub} />
+        <TopBar
+          me={me}
+          activeSection={activeSection}
+          activeSub={activeSub}
+          onPasswordChange={() => setShowPasswordModal(true)}
+        />
         <div className="av2-content">
           {renderSection()}
         </div>
       </div>
+      {showPasswordModal && me && (
+        <ChangePasswordModal me={me} onClose={() => setShowPasswordModal(false)} />
+      )}
     </div>
   );
 }
