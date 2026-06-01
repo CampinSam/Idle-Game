@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '../../admin/adminApi';
 import type { AdminMe } from '../../admin/adminApi';
 
@@ -26,6 +26,14 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
+const JOB_STATUS_COLOR: Record<string, string> = {
+  pending: '#f59e0b',
+  active: '#6c63ff',
+  completed: '#34d399',
+  failed: '#f87171',
+  cancelled: '#6060a0',
+};
+
 export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   const perms = me.role.permissionFlags;
   const isSuperAdmin = me.role.slug === 'super_admin' || me.isBootstrap;
@@ -33,9 +41,46 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   const [pendingDrafts, setPendingDrafts] = useState<number | null>(null);
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [season, setSeason] = useState<any>(null);
+  const [playerCount, setPlayerCount] = useState<number | null>(null);
+  const [recentJobs, setRecentJobs] = useState<any[] | null>(null);
+  const [systemHealth, setSystemHealth] = useState<{ api: string; currentTick: number; tickRate: number; jobCounts: Record<string, number> } | null>(null);
+
   const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [loadingSeason, setLoadingSeason] = useState(false);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingHealth, setLoadingHealth] = useState(false);
+
+  const fetchQuickStats = useCallback(() => {
+    if (perms.player_read) {
+      setLoadingPlayers(true);
+      adminApi.getPlayerCount()
+        .then(d => setPlayerCount(d.total))
+        .catch(() => setPlayerCount(null))
+        .finally(() => setLoadingPlayers(false));
+    }
+
+    if (perms.system_tools) {
+      setLoadingJobs(true);
+      adminApi.listRecentJobs(10)
+        .then(jobs => setRecentJobs(jobs))
+        .catch(() => setRecentJobs(null))
+        .finally(() => setLoadingJobs(false));
+
+      setLoadingHealth(true);
+      adminApi.getSystemHealth()
+        .then(h => setSystemHealth(h))
+        .catch(() => setSystemHealth(null))
+        .finally(() => setLoadingHealth(false));
+    }
+  }, [perms.player_read, perms.system_tools]);
+
+  useEffect(() => {
+    fetchQuickStats();
+    const interval = setInterval(fetchQuickStats, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchQuickStats]);
 
   useEffect(() => {
     if (perms.approve) {
@@ -79,6 +124,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
     e.tableName && !['AdminAccount', 'AdminRole'].includes(e.tableName)
   );
 
+  const totalActiveJobs = systemHealth?.jobCounts?.active ?? null;
+
   return (
     <div style={{ padding: 20 }}>
       <div style={{ marginBottom: 20 }}>
@@ -105,6 +152,21 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           <StatCard title="Current Season" value="…" />
         )}
 
+        {/* Total Players */}
+        {perms.player_read && (
+          <div
+            className="av2-card"
+            style={{ borderTop: '2px solid #6c63ff', cursor: 'pointer' }}
+            onClick={() => onNavigate('players')}
+          >
+            <div className="av2-card-title">Total Players</div>
+            <div className="av2-card-value" style={{ color: '#d4d4f0' }}>
+              {loadingPlayers ? '…' : (playerCount !== null ? playerCount.toLocaleString() : '—')}
+            </div>
+            <div className="av2-card-sub">Registered accounts · refreshes every 60s</div>
+          </div>
+        )}
+
         {/* Pending Approvals */}
         {perms.approve && (
           <div
@@ -122,8 +184,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {/* Active Players (placeholder — no aggregate count endpoint) */}
-        {perms.player_read && (
+        {/* Player Management shortcut (for admins without system_tools) */}
+        {perms.player_read && !perms.system_tools && (
           <div
             className="av2-card"
             style={{ cursor: 'pointer' }}
@@ -137,9 +199,40 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {/* System Status */}
+        {/* Recent Jobs */}
         {perms.system_tools && (
-          <InfoCard title="System Status">
+          <InfoCard title="Recent Jobs">
+            {loadingJobs && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
+            {!loadingJobs && recentJobs !== null && recentJobs.length === 0 && (
+              <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>No recent jobs</div>
+            )}
+            {!loadingJobs && recentJobs !== null && recentJobs.slice(0, 10).map((job: any, i: number) => {
+              const label = job.def?.name ?? job.defId ?? job.type;
+              const statusColor = JOB_STATUS_COLOR[job.status] ?? '#6060a0';
+              return (
+                <div key={i} className="av2-stat-row">
+                  <span className="av2-stat-key" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {label}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: statusColor }}>
+                    {job.status}
+                  </span>
+                </div>
+              );
+            })}
+            {recentJobs === null && !loadingJobs && (
+              <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>Unavailable</div>
+            )}
+            <div style={{ marginTop: 10, fontSize: 12, color: '#6c63ff', cursor: 'pointer' }}
+              onClick={() => onNavigate('players')}>
+              View player jobs →
+            </div>
+          </InfoCard>
+        )}
+
+        {/* System Health */}
+        {perms.system_tools && (
+          <InfoCard title="System Health">
             <div className="av2-stat-row">
               <span className="av2-stat-key">API</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Online</span>
@@ -149,8 +242,22 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
               <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Active</span>
             </div>
             <div className="av2-stat-row">
-              <span className="av2-stat-key">Tick Engine</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Running</span>
+              <span className="av2-stat-key">Current Tick</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4f0' }}>
+                {loadingHealth ? '…' : (systemHealth ? `#${systemHealth.currentTick.toLocaleString()}` : '—')}
+              </span>
+            </div>
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">Tick Rate</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4f0' }}>
+                {loadingHealth ? '…' : (systemHealth ? `${systemHealth.tickRate}/s` : '—')}
+              </span>
+            </div>
+            <div className="av2-stat-row">
+              <span className="av2-stat-key">Active Jobs</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: totalActiveJobs !== null && totalActiveJobs > 0 ? '#6c63ff' : '#34d399' }}>
+                {loadingHealth ? '…' : (totalActiveJobs !== null ? totalActiveJobs.toLocaleString() : '—')}
+              </span>
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: '#6c63ff', cursor: 'pointer' }}
               onClick={() => onNavigate('system', 'icons')}>

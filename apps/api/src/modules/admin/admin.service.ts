@@ -1076,6 +1076,37 @@ export class AdminService {
     return serializeBigInts(enriched);
   }
 
+  async getPlayerCount(): Promise<{ total: number }> {
+    const total = await this.prisma.user.count();
+    return { total };
+  }
+
+  async getSystemHealth(): Promise<{
+    api: string;
+    currentTick: number;
+    tickRate: number;
+    jobCounts: Record<string, number>;
+  }> {
+    const currentTick = await this.tickService.getCurrentTick();
+    const currentRate = await this.tickService.getCurrentRate();
+
+    const statusGroups = await (this.prisma as any).job.groupBy({
+      by: ['status'],
+      _count: { status: true },
+    });
+    const jobCounts: Record<string, number> = {};
+    for (const g of statusGroups) {
+      jobCounts[g.status] = g._count.status;
+    }
+
+    return {
+      api: 'online',
+      currentTick,
+      tickRate: currentRate,
+      jobCounts,
+    };
+  }
+
   private jobTypeToModel(type: string): string | null {
     switch (type) {
       case 'MissionJob': return 'missionDef';

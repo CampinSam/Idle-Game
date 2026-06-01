@@ -176,6 +176,11 @@ export function resolveRequiredPermission(
     return requirePerm(user, 'system_tools');
   }
 
+  // System health — any authenticated admin can read
+  if (adminPath === '/system/health') {
+    return { allowed: true };
+  }
+
   // Crypto: reads = any admin, writes = system_tools
   if (adminPath.startsWith('/crypto')) {
     if (isWrite) return requirePerm(user, 'system_tools');

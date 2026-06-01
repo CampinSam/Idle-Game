@@ -336,6 +336,16 @@ export class AdminController {
     });
   }
 
+  @Get('players/count')
+  getPlayerCount() {
+    return this.adminService.getPlayerCount();
+  }
+
+  @Get('system/health')
+  getSystemHealth() {
+    return this.adminService.getSystemHealth();
+  }
+
   @Get('players/search')
   searchPlayers(@Query('q') query: string) {
     return this.adminService.searchPlayers(query || '');

@@ -150,6 +150,15 @@ export const adminApi = {
 
   // ─── Players ─────────────────────────────────────────────────────────────
 
+  getPlayerCount: () => adminRequest<{ total: number }>('/players/count'),
+
+  getSystemHealth: () => adminRequest<{
+    api: string;
+    currentTick: number;
+    tickRate: number;
+    jobCounts: Record<string, number>;
+  }>('/system/health'),
+
   searchPlayers: (q: string) => adminRequest<any[]>(`/players/search?q=${encodeURIComponent(q)}`),
   getPlayer: (id: string) => adminRequest<any>(`/players/${id}`),
   updatePlayer: (id: string, data: any) =>
