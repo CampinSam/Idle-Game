@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { adminApi, getAdminToken } from '../../adminApi';
+import { getAdminToken } from '../../adminApi';
 import { resolveAssetUrl } from '../../../../utils/iconResolver';
 
 interface MediaAsset {
@@ -23,19 +23,15 @@ function adminAuthHeader(): Record<string, string> {
   return {};
 }
 
-async function uploadMedia(file: File): Promise<{ assetKey: string; url: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await fetch('/api/admin/media/upload', {
-    method: 'POST',
-    headers: adminAuthHeader(),
-    body: formData,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Upload failed: ${res.status}`);
-  }
-  return res.json();
+function getFileBaseName(filename: string): string {
+  const parts = filename.split('.');
+  if (parts.length > 1) parts.pop();
+  return parts.join('.');
+}
+
+function getFileExtension(filename: string): string {
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts[parts.length - 1] : '';
 }
 
 async function listMedia(): Promise<MediaAsset[]> {
@@ -58,12 +54,13 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ assetKey: string; url: string } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [assetsLoading, setAssetsLoading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [destFolder, setDestFolder] = useState('images');
+  const [customFilename, setCustomFilename] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCssField = fieldName === 'cardBackground';
@@ -83,10 +80,12 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
-    setUploadResult(null);
     setUploadError(null);
     const url = URL.createObjectURL(file);
     setPreview(url);
+    const base = getFileBaseName(file.name);
+    const ext = getFileExtension(file.name);
+    setCustomFilename(base + (ext ? '.' + ext : ''));
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -101,9 +100,26 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await uploadMedia(selectedFile);
-      setUploadResult(result);
-      setSelectedAsset({ assetKey: result.assetKey, name: selectedFile.name, url: result.url, contentType: selectedFile.type, size: selectedFile.size });
+      const targetDir = destFolder.trim() || 'images';
+      const filename = customFilename.trim() || selectedFile.name;
+      const fileToUpload = filename !== selectedFile.name
+        ? new File([selectedFile], filename, { type: selectedFile.type })
+        : selectedFile;
+      const formData = new FormData();
+      formData.append('file', fileToUpload);
+      const res = await fetch(`/api/admin/media/upload?targetDir=${encodeURIComponent(targetDir)}`, {
+        method: 'POST',
+        headers: adminAuthHeader(),
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Upload failed: ${res.status}`);
+      }
+      const result = await res.json();
+      const val = isCssField ? `url('${resolveAssetUrl(result.assetKey)}')` : result.assetKey;
+      onInsert(val);
+      onClose();
     } catch (e: any) {
       setUploadError(e.message);
     } finally {
@@ -206,15 +222,41 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
                 />
               </div>
 
-              {uploadError && (
-                <div style={{ color: '#ef4444', fontSize: 12, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)' }}>
-                  {uploadError}
+              {selectedFile && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 4 }}>
+                      Destination folder
+                    </label>
+                    <input
+                      style={{ width: '100%', padding: '6px 10px', background: '#0f0f2e', border: '1px solid #2a2a4e', borderRadius: 6, color: '#e0e0ff', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+                      value={destFolder}
+                      onChange={e => setDestFolder(e.target.value)}
+                      placeholder="images"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <div style={{ color: '#555', fontSize: 10, marginTop: 3 }}>
+                      Asset key: <code style={{ color: '#7c6aad', fontFamily: 'monospace' }}>/{destFolder.trim() || 'images'}/{customFilename.trim() || selectedFile.name}</code>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 4 }}>
+                      Filename
+                    </label>
+                    <input
+                      style={{ width: '100%', padding: '6px 10px', background: '#0f0f2e', border: '1px solid #2a2a4e', borderRadius: 6, color: '#e0e0ff', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box' as const }}
+                      value={customFilename}
+                      onChange={e => setCustomFilename(e.target.value)}
+                      placeholder={selectedFile.name}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </div>
                 </div>
               )}
 
-              {uploadResult && (
-                <div style={{ color: '#4ade80', fontSize: 12, padding: '8px 12px', background: 'rgba(74,222,128,0.1)', borderRadius: 6, border: '1px solid rgba(74,222,128,0.3)' }}>
-                  ✓ Uploaded: <code style={{ fontFamily: 'monospace', color: '#a78bfa' }}>{uploadResult.assetKey}</code>
+              {uploadError && (
+                <div style={{ color: '#ef4444', fontSize: 12, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)' }}>
+                  {uploadError}
                 </div>
               )}
 
@@ -230,7 +272,7 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
                   opacity: uploading ? 0.7 : 1,
                 }}
               >
-                {uploading ? 'Uploading...' : 'Upload File'}
+                {uploading ? 'Uploading…' : 'Upload & Insert'}
               </button>
             </>
           )}
@@ -284,31 +326,33 @@ export default function MediaUploader({ fieldName, onInsert, onClose }: Props) {
           )}
         </div>
 
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #2a2a3e', display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ flex: 1, padding: '10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 13 }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!selectedAsset}
-            onClick={handleInsert}
-            style={{
-              flex: 2, padding: '10px',
-              background: selectedAsset ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
-              border: 'none', borderRadius: 8, color: '#fff',
-              cursor: selectedAsset ? 'pointer' : 'not-allowed',
-              fontSize: 13, fontWeight: 600,
-            }}
-          >
-            {selectedAsset
-              ? `Insert: ${selectedAsset.name}`
-              : 'Select an asset to insert'}
-          </button>
-        </div>
+        {tab === 'browse' && (
+          <div style={{ padding: '12px 16px', borderTop: '1px solid #2a2a3e', display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ flex: 1, padding: '10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 8, color: '#888', cursor: 'pointer', fontSize: 13 }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!selectedAsset}
+              onClick={handleInsert}
+              style={{
+                flex: 2, padding: '10px',
+                background: selectedAsset ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : '#333',
+                border: 'none', borderRadius: 8, color: '#fff',
+                cursor: selectedAsset ? 'pointer' : 'not-allowed',
+                fontSize: 13, fontWeight: 600,
+              }}
+            >
+              {selectedAsset
+                ? `Insert: ${selectedAsset.name}`
+                : 'Select an asset to insert'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

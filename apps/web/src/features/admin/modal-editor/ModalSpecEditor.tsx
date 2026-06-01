@@ -10,6 +10,7 @@ import type {
   ModalHeader,
 } from '@derp/shared';
 import { adminApi } from '../adminApi';
+import MediaUploader from '../smart/components/MediaUploader';
 import BlockRenderer from '../../../components/modal/blocks/BlockRenderer';
 import RichTextEditor from './RichTextEditor';
 import BlockPicker from './BlockPicker';
@@ -645,6 +646,44 @@ function TagValueMapEditor({
   );
 }
 
+// ─── Asset key field with built-in media picker ───────────────────────────────
+
+const pickerBtnStyle: React.CSSProperties = {
+  padding: '0 8px', background: '#1a1a2e', border: '1px solid #2a2a4e',
+  borderRadius: 6, cursor: 'pointer', fontSize: 15, color: '#a78bfa',
+  flexShrink: 0, lineHeight: 1, display: 'flex', alignItems: 'center',
+};
+
+function AssetKeyInput({ value, onChange, placeholder, fieldName, style }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  fieldName: string;
+  style?: React.CSSProperties;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center', ...style }}>
+      <input
+        style={{ ...inp, flex: 1 }}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder ?? 'images/example.png'}
+      />
+      <button type="button" onClick={() => setPickerOpen(true)} style={pickerBtnStyle} title="Browse or upload media">
+        🖼
+      </button>
+      {pickerOpen && (
+        <MediaUploader
+          fieldName={fieldName}
+          onInsert={v => { onChange(v); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Block Editor ─────────────────────────────────────────────────────────────
 
 function RewardItemsEditor({ items, onChange }: { items: any[]; onChange: (v: any[]) => void }) {
@@ -661,7 +700,7 @@ function RewardItemsEditor({ items, onChange }: { items: any[]; onChange: (v: an
         <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
           <input style={{ ...inp, flex: 2 }} placeholder="name" value={item.name || ''} onChange={e => set(i, 'name', e.target.value)} />
           <input style={{ ...inp, flex: 1, width: 60 }} placeholder="qty" type="number" value={item.qty ?? 1} onChange={e => set(i, 'qty', Number(e.target.value))} />
-          <input style={{ ...inp, flex: 1 }} placeholder="assetKey" value={item.assetKey || ''} onChange={e => set(i, 'assetKey', e.target.value)} />
+          <AssetKeyInput style={{ flex: 1 }} fieldName="rewardAssetKey" placeholder="assetKey" value={item.assetKey || ''} onChange={v => set(i, 'assetKey', v)} />
           <input style={{ ...inp, flex: 1 }} placeholder="rarity" value={item.rarity || ''} onChange={e => set(i, 'rarity', e.target.value)} />
           <button type="button" onClick={() => remove(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
         </div>
@@ -692,7 +731,9 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
     case 'image':
       return (
         <>
-          <Field label="Asset Key"><input style={inp} value={(block as any).image?.assetKey || ''} onChange={e => set({ image: { ...(block as any).image, assetKey: e.target.value } })} /></Field>
+          <Field label="Asset Key">
+            <AssetKeyInput fieldName="image.assetKey" value={(block as any).image?.assetKey || ''} onChange={v => set({ image: { ...(block as any).image, assetKey: v } })} />
+          </Field>
           <Field label="Alt text"><input style={inp} value={(block as any).image?.alt || ''} onChange={e => set({ image: { ...(block as any).image, alt: e.target.value } })} /></Field>
           <Field label="Caption" hint="Optional caption rendered below the image. Supports ${token} substitution from payload."><input style={inp} value={(block as any).caption || ''} onChange={e => set({ caption: e.target.value })} /></Field>
         </>
@@ -787,7 +828,7 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
             <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
               <input style={{ ...inp, flex: 2 }} placeholder="name" value={it.name || ''} onChange={e => setItem(i, 'name', e.target.value)} />
               <input type="number" style={{ ...inp, flex: 1, width: 70 }} placeholder="qty delta" value={it.qtyDelta ?? 1} onChange={e => setItem(i, 'qtyDelta', Number(e.target.value))} />
-              <input style={{ ...inp, flex: 1 }} placeholder="assetKey" value={it.assetKey || ''} onChange={e => setItem(i, 'assetKey', e.target.value)} />
+              <AssetKeyInput style={{ flex: 1 }} fieldName="inventoryDelta.assetKey" placeholder="assetKey" value={it.assetKey || ''} onChange={v => setItem(i, 'assetKey', v)} />
               <button type="button" onClick={() => removeItem(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
             </div>
           ))}
@@ -853,9 +894,12 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
           <Row>
             <div style={{ flex: 1 }}>
               <Field label="Cover image asset (optional)" hint="If set, the cover renders this image instead of the label text.">
-                <input style={inp} value={(block as any).coverImage?.assetKey || ''}
-                  onChange={e => set({ coverImage: e.target.value ? { assetKey: e.target.value, alt: (block as any).coverImage?.alt || '' } : undefined })}
-                  placeholder="icons/mystery_box" />
+                <AssetKeyInput
+                  fieldName="clickReveal.coverImage.assetKey"
+                  value={(block as any).coverImage?.assetKey || ''}
+                  onChange={v => set({ coverImage: v ? { assetKey: v, alt: (block as any).coverImage?.alt || '' } : undefined })}
+                  placeholder="icons/mystery_box"
+                />
               </Field>
             </div>
           </Row>
@@ -1286,10 +1330,14 @@ function HeaderOverrideEditor({
           </Row>
           <Row>
             <div style={{ flex: 1 }}>
-              <Field label="Icon asset key"><input style={inp} value={header?.icon?.assetKey ?? ''} onChange={e => set({ icon: e.target.value ? { assetKey: e.target.value } : undefined })} /></Field>
+              <Field label="Icon asset key">
+                <AssetKeyInput fieldName="header.icon.assetKey" value={header?.icon?.assetKey ?? ''} onChange={v => set({ icon: v ? { assetKey: v } : undefined })} placeholder="icons/header_icon.png" />
+              </Field>
             </div>
             <div style={{ flex: 1 }}>
-              <Field label="Banner asset key"><input style={inp} value={header?.banner?.assetKey ?? ''} onChange={e => set({ banner: e.target.value ? { assetKey: e.target.value } : undefined })} /></Field>
+              <Field label="Banner asset key">
+                <AssetKeyInput fieldName="header.banner.assetKey" value={header?.banner?.assetKey ?? ''} onChange={v => set({ banner: v ? { assetKey: v } : undefined })} placeholder="images/banner.png" />
+              </Field>
             </div>
           </Row>
         </div>
