@@ -156,7 +156,7 @@ export const adminApi = {
 
   // ─── Players ─────────────────────────────────────────────────────────────
 
-  getPlayerCount: () => adminRequest<{ total: number }>('/players/count'),
+  getPlayerCount: () => adminRequest<{ total: number; active: number }>('/players/count'),
 
   getSystemHealth: () => adminRequest<{
     api: string;

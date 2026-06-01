@@ -1076,9 +1076,13 @@ export class AdminService {
     return serializeBigInts(enriched);
   }
 
-  async getPlayerCount(): Promise<{ total: number }> {
-    const total = await this.prisma.user.count();
-    return { total };
+  async getPlayerCount(): Promise<{ total: number; active: number }> {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [total, active] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { updatedAt: { gte: since } } }),
+    ]);
+    return { total, active };
   }
 
   async getSystemHealth(): Promise<{

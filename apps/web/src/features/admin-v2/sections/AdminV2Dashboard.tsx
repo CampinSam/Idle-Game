@@ -41,7 +41,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
   const [pendingDrafts, setPendingDrafts] = useState<number | null>(null);
   const [auditLog, setAuditLog] = useState<any[]>([]);
   const [season, setSeason] = useState<any>(null);
-  const [playerCount, setPlayerCount] = useState<number | null>(null);
+  const [playerCount, setPlayerCount] = useState<{ total: number; active: number } | null>(null);
   const [recentJobs, setRecentJobs] = useState<any[] | null>(null);
   const [systemHealth, setSystemHealth] = useState<{ api: string; currentTick: number; tickRate: number; jobCounts: Record<string, number> } | null>(null);
 
@@ -56,7 +56,7 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
     if (perms.player_read) {
       setLoadingPlayers(true);
       adminApi.getPlayerCount()
-        .then(d => setPlayerCount(d.total))
+        .then(d => setPlayerCount(d))
         .catch(() => setPlayerCount(null))
         .finally(() => setLoadingPlayers(false));
     }
@@ -152,16 +152,27 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           <StatCard title="Current Season" value="…" />
         )}
 
-        {/* Total Players */}
+        {/* Total Players / Active Players */}
         {perms.player_read && (
           <div
             className="av2-card"
             style={{ borderTop: '2px solid #6c63ff', cursor: 'pointer' }}
             onClick={() => onNavigate('players')}
           >
-            <div className="av2-card-title">Total Players</div>
-            <div className="av2-card-value" style={{ color: '#d4d4f0' }}>
-              {loadingPlayers ? '…' : (playerCount !== null ? playerCount.toLocaleString() : '—')}
+            <div className="av2-card-title">Players</div>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 2 }}>Total</div>
+                <div className="av2-card-value" style={{ color: '#d4d4f0' }}>
+                  {loadingPlayers ? '…' : (playerCount !== null ? playerCount.total.toLocaleString() : '—')}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 2 }}>Active (24h)</div>
+                <div className="av2-card-value" style={{ color: '#34d399' }}>
+                  {loadingPlayers ? '…' : (playerCount !== null ? playerCount.active.toLocaleString() : '—')}
+                </div>
+              </div>
             </div>
             <div className="av2-card-sub">Registered accounts · refreshes every 60s</div>
           </div>
