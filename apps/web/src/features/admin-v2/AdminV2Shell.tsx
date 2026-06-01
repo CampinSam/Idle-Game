@@ -33,6 +33,47 @@ type Section =
 
 const CONTENT_SUBS = Object.keys(TABLE_GROUPS);
 
+const SESSION_KEY = 'adminV2Section';
+
+function readPersistedNav(): { section: Section; sub: string | null } | null {
+  try {
+    // URL hash takes priority (enables browser back/forward)
+    const hash = window.location.hash.slice(1); // e.g. "content/Entities" or "system"
+    if (hash) {
+      const [section, sub = null] = hash.split('/');
+      const valid: Section[] = ['dashboard','content','approvals','players','live-ops','economy','system','support','moderation'];
+      if (valid.includes(section as Section)) {
+        return { section: section as Section, sub };
+      }
+    }
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (raw) return JSON.parse(raw) as { section: Section; sub: string | null };
+  } catch {
+    // ignore corrupt storage
+  }
+  return null;
+}
+
+function persistNav(section: Section, sub: string | null) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ section, sub }));
+    const hash = sub ? `${section}/${sub}` : section;
+    history.replaceState(null, '', `#${hash}`);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function clearPersistedNav() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    history.replaceState(null, '', window.location.pathname);
+  } catch {
+    // ignore
+  }
+}
+
+
 interface NavSub {
   key: string;
   label: string;
@@ -401,9 +442,18 @@ export default function AdminV2Shell() {
       return;
     }
     adminApi.getMe()
-      .then(account => setMe(account))
+      .then(account => {
+        setMe(account);
+        const saved = readPersistedNav();
+        if (saved) {
+          setActiveSection(saved.section);
+          setActiveSub(saved.sub);
+          persistNav(saved.section, saved.sub);
+        }
+      })
       .catch(() => {
         clearAdminToken();
+        clearPersistedNav();
       })
       .finally(() => setChecking(false));
   }, []);
@@ -412,10 +462,12 @@ export default function AdminV2Shell() {
     setMe(account);
     setActiveSection('dashboard');
     setActiveSub(null);
+    persistNav('dashboard', null);
   }, []);
 
   const handleLogout = useCallback(() => {
     clearAdminToken();
+    clearPersistedNav();
     setMe(null);
     setActiveSection('dashboard');
     setActiveSub(null);
@@ -423,8 +475,10 @@ export default function AdminV2Shell() {
 
   const handleNavigate = useCallback((section: string, sub?: string) => {
     const s = section as Section;
+    const sub_ = sub || null;
     setActiveSection(s);
-    setActiveSub(sub || null);
+    setActiveSub(sub_);
+    persistNav(s, sub_);
   }, []);
 
   if (checking) {
