@@ -92,4 +92,30 @@ export class CryptoWalletController {
     if (!body.signedTxCborHex?.trim()) throw new BadRequestException('signedTxCborHex is required');
     return this.cryptoWalletService.submitDepositTx(body.signedTxCborHex.trim());
   }
+
+  @Post('build-purchase-tx')
+  async buildPurchaseTx(
+    @Request() req: any,
+    @Body() body: { purchaseId: string; utxosCborHex: string[] },
+  ) {
+    if (!body.purchaseId?.trim()) throw new BadRequestException('purchaseId is required');
+    if (!Array.isArray(body.utxosCborHex) || body.utxosCborHex.length === 0) {
+      throw new BadRequestException('utxosCborHex must be a non-empty array of CBOR hex strings');
+    }
+    return this.cryptoWalletService.buildPurchaseTx(req.user.id, body.purchaseId.trim(), body.utxosCborHex);
+  }
+
+  @Post('submit-purchase-tx')
+  async submitPurchaseTx(
+    @Request() req: any,
+    @Body() body: { purchaseId: string; signedTxCborHex: string },
+  ) {
+    if (!body.purchaseId?.trim()) throw new BadRequestException('purchaseId is required');
+    if (!body.signedTxCborHex?.trim()) throw new BadRequestException('signedTxCborHex is required');
+    return this.cryptoWalletService.submitPurchaseTx(
+      req.user.id,
+      body.purchaseId.trim(),
+      body.signedTxCborHex.trim(),
+    );
+  }
 }

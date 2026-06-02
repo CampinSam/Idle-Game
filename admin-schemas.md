@@ -1976,6 +1976,52 @@ List the authenticated player's on-chain deposit history (ledger entries with so
 
 ---
 
+### `POST /api/crypto/build-deposit-tx`
+Build an unsigned Cardano CNT deposit transaction using UTXOs from the player's CIP-30 wallet.
+
+**Body:**
+```json
+{ "amount": 100, "utxosCborHex": ["<cbor-hex>", ...] }
+```
+- `amount` — CNT units to deposit (integer, same unit as DERP)
+- `utxosCborHex` — array of UTXO CBOR hex strings from `wallet.getUtxos()`
+
+**Response:** `{ "unsignedTxCborHex": "<hex>" }` — pass to `wallet.signTx()`
+
+---
+
+### `POST /api/crypto/submit-deposit-tx`
+Submit a player-signed deposit transaction to Blockfrost.  Credit is applied only after the existing deposit poller detects on-chain confirmation.
+
+**Body:** `{ "signedTxCborHex": "<hex>" }`
+
+**Response:** `{ "txHash": "<hex>" }`
+
+---
+
+### `POST /api/crypto/build-purchase-tx`
+Build an unsigned Cardano CNT payment transaction for an existing PENDING purchase.  Token identity and destination address come from the purchase record's `rateSnapshot.CNT` field.
+
+**Body:**
+```json
+{ "purchaseId": "<uuid>", "utxosCborHex": ["<cbor-hex>", ...] }
+```
+
+**Response:** `{ "unsignedTxCborHex": "<hex>" }` — pass to `wallet.signTx(true)`
+
+Errors if the purchase is not PENDING, does not belong to the authenticated user, or lacks CNT token metadata.
+
+---
+
+### `POST /api/crypto/submit-purchase-tx`
+Submit a player-signed purchase transaction to Blockfrost.  Gems are only credited after `CryptoPollerService` detects the confirmed tx on-chain — this endpoint does NOT credit directly.
+
+**Body:** `{ "purchaseId": "<uuid>", "signedTxCborHex": "<hex>" }`
+
+**Response:** `{ "txHash": "<hex>" }`
+
+---
+
 ## Currencies — Admin Smart Table
 
 `Currency` rows are managed through the generic admin smart-editor at `GET /api/admin/records/currency`.

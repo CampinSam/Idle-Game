@@ -537,6 +537,20 @@ function formatRateAge(computedAt: string): string {
   return hrs === 1 ? '1 hour ago' : `${hrs} hours ago`;
 }
 
+const CIP30_KNOWN_WALLETS = ['nami', 'eternl', 'vespr', 'begin', 'flint', 'nufi', 'lace', 'yoroi'];
+
+type GuidedPayStep = 'idle' | 'fetching-utxos' | 'building' | 'signing' | 'submitting' | 'submitted' | 'error';
+
+const GUIDED_STEP_LABEL: Record<GuidedPayStep, string> = {
+  idle: 'Sign & Pay',
+  'fetching-utxos': 'Reading wallet…',
+  building: 'Building transaction…',
+  signing: 'Waiting for signature…',
+  submitting: 'Submitting…',
+  submitted: 'Submitted',
+  error: 'Sign & Pay',
+};
+
 function CryptoPayModal({
   state,
   onClose,
@@ -552,6 +566,23 @@ function CryptoPayModal({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeft = useExpiryCountdown(state.expiresAt);
 
+  // Guided CIP-30 state (Cardano only)
+  const [injectedWalletKey, setInjectedWalletKey] = useState<string | null>(null);
+  const [guidedStep, setGuidedStep] = useState<GuidedPayStep>('idle');
+  const [guidedError, setGuidedError] = useState('');
+
+  const canUseGuided =
+    state.paymentMethod === 'crypto_cardano' &&
+    !state.comingSoon &&
+    !!injectedWalletKey;
+
+  useEffect(() => {
+    const w = (window as any).cardano ?? {};
+    const found = CIP30_KNOWN_WALLETS.find((k) => w[k]?.enable);
+    setInjectedWalletKey(found ?? null);
+  }, []);
+
+  // SSE listener — always active so confirmation fires regardless of guided/manual path
   useEffect(() => {
     if (state.comingSoon) return;
     const token = localStorage.getItem('derp_token') || '';
@@ -573,9 +604,12 @@ function CryptoPayModal({
     return () => es.close();
   }, [state.purchaseId, state.comingSoon]);
 
+  // Poll fallback — only for non-guided OR after guided submission
   useEffect(() => {
     if (state.comingSoon) return;
     if (status !== 'pending') return;
+    // Don't start polling until we're actually waiting on-chain
+    if (canUseGuided && guidedStep !== 'submitted') return;
 
     const poll = async () => {
       try {
@@ -598,7 +632,7 @@ function CryptoPayModal({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [state.purchaseId, state.comingSoon, status]);
+  }, [state.purchaseId, state.comingSoon, status, canUseGuided, guidedStep]);
 
   useEffect(() => {
     if (status === 'confirmed') {
@@ -614,6 +648,44 @@ function CryptoPayModal({
     }
   }, [timeLeft, status]);
 
+  const handleGuidedPay = useCallback(async () => {
+    if (!injectedWalletKey) return;
+    setGuidedError('');
+
+    try {
+      setGuidedStep('fetching-utxos');
+      const walletApi = await (window as any).cardano[injectedWalletKey].enable();
+      const rawUtxos: string[] = await walletApi.getUtxos();
+      if (!rawUtxos?.length) throw new Error('No UTXOs found in your wallet');
+
+      setGuidedStep('building');
+      const buildResp = await fetch('/api/v1/crypto/build-purchase-tx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ purchaseId: state.purchaseId, utxosCborHex: rawUtxos }),
+      });
+      const buildData = await buildResp.json();
+      if (!buildResp.ok) throw new Error(buildData?.message ?? 'Failed to build transaction');
+
+      setGuidedStep('signing');
+      const signedTxCborHex: string = await walletApi.signTx(buildData.unsignedTxCborHex, true);
+
+      setGuidedStep('submitting');
+      const submitResp = await fetch('/api/v1/crypto/submit-purchase-tx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ purchaseId: state.purchaseId, signedTxCborHex }),
+      });
+      const submitData = await submitResp.json();
+      if (!submitResp.ok) throw new Error(submitData?.message ?? 'Failed to submit transaction');
+
+      setGuidedStep('submitted');
+    } catch (e: any) {
+      setGuidedError(e?.message ?? 'Something went wrong');
+      setGuidedStep('error');
+    }
+  }, [injectedWalletKey, state.purchaseId]);
+
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(state.address).then(() => {
       setCopied(true);
@@ -622,6 +694,9 @@ function CryptoPayModal({
   }, [state.address]);
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(state.address)}&bgcolor=1a1640&color=c4b5fd&margin=6`;
+
+  const guidedIsBusy = ['fetching-utxos', 'building', 'signing', 'submitting'].includes(guidedStep);
+  const isAwaitingConfirmation = !canUseGuided || guidedStep === 'submitted';
 
   return (
     <div
@@ -682,39 +757,7 @@ function CryptoPayModal({
               <span className="font-bold text-[#c4b5fd]"><ChainLabel chain={state.chain} /></span>
             </div>
 
-            <div className="flex flex-col items-center gap-3 py-2">
-              <div className="border-2 border-[rgba(139,92,246,0.4)] rounded-[12px] p-1.5 bg-[#0e0c2a]">
-                <img
-                  src={qrUrl}
-                  alt="Payment QR code"
-                  width={160}
-                  height={160}
-                  className="rounded-[8px]"
-                />
-              </div>
-              <div className="text-[11px] text-text-secondary">Scan or copy the address below</div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="text-[11px] text-text-secondary uppercase tracking-wide font-semibold">Send to address</div>
-              <div className="flex items-center gap-2 bg-black/30 border border-[rgba(139,92,246,0.2)] rounded-[8px] px-3 py-2">
-                <div className="flex-1 text-[11px] text-[#c4b5fd] font-mono break-all leading-snug">{state.address}</div>
-                <button
-                  onClick={handleCopy}
-                  className="flex-shrink-0 px-2 py-1 text-[11px] font-bold rounded-[5px] border cursor-pointer transition-colors duration-150 border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.15)]"
-                >
-                  {copied ? '✓' : 'Copy'}
-                </button>
-              </div>
-            </div>
-
-            {state.usingFallback && (
-              <div className="flex items-center gap-2 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.3)] rounded-[8px] px-3 py-2 text-[11px] text-[#fbbf24]">
-                <span className="text-[14px]">⚠️</span>
-                <span>ADA price oracle is lagging — a fallback rate is being used. The actual rate may differ slightly.</span>
-              </div>
-            )}
-
+            {/* Amount row — always visible */}
             <div className="flex items-center justify-between bg-black/20 border border-[rgba(139,92,246,0.15)] rounded-[8px] px-3 py-2.5">
               <span className="text-[12px] text-text-secondary">Exact amount</span>
               <div className="flex flex-col items-end gap-0.5">
@@ -724,6 +767,13 @@ function CryptoPayModal({
                 )}
               </div>
             </div>
+
+            {state.usingFallback && (
+              <div className="flex items-center gap-2 bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.3)] rounded-[8px] px-3 py-2 text-[11px] text-[#fbbf24]">
+                <span className="text-[14px]">⚠️</span>
+                <span>ADA price oracle is lagging — a fallback rate is being used. The actual rate may differ slightly.</span>
+              </div>
+            )}
 
             {state.rateComputedAt && (
               <div className="text-[10px] text-text-secondary text-right">
@@ -739,17 +789,89 @@ function CryptoPayModal({
                   On-chain payments are not yet live. This preview shows what the payment flow will look like.
                 </div>
               </div>
-            ) : (
+            ) : canUseGuided ? (
+              /* ── Guided CIP-30 flow ── */
               <>
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="flex items-center gap-1.5 text-text-secondary">
-                    <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
-                    Waiting for payment…
-                  </span>
-                  <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
-                    {timeLeft}
-                  </span>
+                {guidedStep !== 'submitted' ? (
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={handleGuidedPay}
+                      disabled={guidedIsBusy}
+                      className={`w-full py-3 rounded-[10px] text-[14px] font-black text-white border-none cursor-pointer transition-colors ${guidedIsBusy ? 'bg-[rgba(99,102,241,0.35)]' : 'bg-[rgba(99,102,241,0.8)] hover:bg-[rgba(99,102,241,0.95)]'}`}
+                    >
+                      {GUIDED_STEP_LABEL[guidedStep]}
+                    </button>
+
+                    {guidedIsBusy && (
+                      <div className="flex items-center gap-2 text-[11px] text-[#a78bfa]">
+                        <span className="inline-block w-2 h-2 rounded-full bg-[#a78bfa] animate-pulse" />
+                        {GUIDED_STEP_LABEL[guidedStep]}
+                      </div>
+                    )}
+
+                    {guidedStep === 'error' && guidedError && (
+                      <div className="px-3 py-2 rounded-[8px] bg-[rgba(255,107,107,0.12)] border border-[rgba(255,107,107,0.3)] text-[11px] text-[#ff6b6b]">
+                        {guidedError}
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-text-secondary text-center leading-snug px-2">
+                      Your wallet extension will prompt you to review and sign. No funds leave your wallet until you approve.
+                    </div>
+                  </div>
+                ) : (
+                  /* After submission — same "waiting" state as manual flow */
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="flex items-center gap-1.5 text-text-secondary">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                      Awaiting confirmation…
+                    </span>
+                    <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
+                      {timeLeft}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── Manual / fallback flow ── */
+              <>
+                <div className="flex flex-col items-center gap-3 py-2">
+                  <div className="border-2 border-[rgba(139,92,246,0.4)] rounded-[12px] p-1.5 bg-[#0e0c2a]">
+                    <img
+                      src={qrUrl}
+                      alt="Payment QR code"
+                      width={160}
+                      height={160}
+                      className="rounded-[8px]"
+                    />
+                  </div>
+                  <div className="text-[11px] text-text-secondary">Scan or copy the address below</div>
                 </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-[11px] text-text-secondary uppercase tracking-wide font-semibold">Send to address</div>
+                  <div className="flex items-center gap-2 bg-black/30 border border-[rgba(139,92,246,0.2)] rounded-[8px] px-3 py-2">
+                    <div className="flex-1 text-[11px] text-[#c4b5fd] font-mono break-all leading-snug">{state.address}</div>
+                    <button
+                      onClick={handleCopy}
+                      className="flex-shrink-0 px-2 py-1 text-[11px] font-bold rounded-[5px] border cursor-pointer transition-colors duration-150 border-[rgba(139,92,246,0.4)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.15)]"
+                    >
+                      {copied ? '✓' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {isAwaitingConfirmation && (
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="flex items-center gap-1.5 text-text-secondary">
+                      <span className="inline-block w-2 h-2 rounded-full bg-[#f59e0b] animate-pulse" />
+                      Waiting for payment…
+                    </span>
+                    <span className={`font-mono font-bold ${timeLeft === 'Expired' ? 'text-red-400' : 'text-[#fbbf24]'}`}>
+                      {timeLeft}
+                    </span>
+                  </div>
+                )}
                 <div className="text-[10px] text-text-secondary text-center leading-snug px-2">
                   Send the exact amount shown. Payments are detected automatically and gems are credited instantly.
                 </div>
