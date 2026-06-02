@@ -246,6 +246,8 @@ interface CryptoModalState {
   usdEquiv?: number;
   rateComputedAt?: string;
   usingFallback?: boolean;
+  /** True only for CNT purchases that have policyId/assetName in rateSnapshot. ADA-priced purchases must NOT set this. */
+  cntGuidedAvailable?: boolean;
 }
 
 const CARD_BG = '[background:linear-gradient(160deg,#1a1640_0%,#221a50_100%)]';
@@ -570,11 +572,16 @@ function CryptoPayModal({
   const [injectedWalletKey, setInjectedWalletKey] = useState<string | null>(null);
   const [guidedStep, setGuidedStep] = useState<GuidedPayStep>('idle');
   const [guidedError, setGuidedError] = useState('');
+  // Set to true at runtime if the server rejects the guided build (e.g. ADA-priced purchase
+  // opened without cntGuidedAvailable flag) — falls back to manual address/QR UI.
+  const [guidedBlocked, setGuidedBlocked] = useState(false);
 
   const canUseGuided =
     state.paymentMethod === 'crypto_cardano' &&
     !state.comingSoon &&
-    !!injectedWalletKey;
+    !!state.cntGuidedAvailable &&
+    !!injectedWalletKey &&
+    !guidedBlocked;
 
   useEffect(() => {
     const w = (window as any).cardano ?? {};
@@ -665,7 +672,19 @@ function CryptoPayModal({
         body: JSON.stringify({ purchaseId: state.purchaseId, utxosCborHex: rawUtxos }),
       });
       const buildData = await buildResp.json();
-      if (!buildResp.ok) throw new Error(buildData?.message ?? 'Failed to build transaction');
+      if (!buildResp.ok) {
+        // If the server says this purchase can't use the guided flow (e.g. ADA-priced
+        // purchase opened before the cntGuidedAvailable flag was checked), fall back
+        // to the manual address/QR UI automatically instead of showing a dead end.
+        const msg: string = buildData?.message ?? 'Failed to build transaction';
+        const isCntError = msg.toLowerCase().includes('cnt') || msg.toLowerCase().includes('token metadata');
+        if (isCntError) {
+          setGuidedBlocked(true);
+          setGuidedStep('idle');
+          return;
+        }
+        throw new Error(msg);
+      }
 
       setGuidedStep('signing');
       const signedTxCborHex: string = await walletApi.signTx(buildData.unsignedTxCborHex, true);
@@ -1146,6 +1165,7 @@ export default function StoreContent() {
           usdEquiv: snap?.usdPrice,
           rateComputedAt: snap?.computedAt,
           usingFallback: snap?.usingFallback,
+          cntGuidedAvailable: data.action.cntGuidedAvailable === true,
         });
       }
     } catch (err: any) {

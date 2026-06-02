@@ -355,6 +355,9 @@ export class PaymentService {
         amountDisplay,
         chain: 'CARDANO',
         expiresAt: expiresAt.toISOString(),
+        // Signal to the frontend that this purchase has CNT token metadata and
+        // can use the guided CIP-30 signing flow. ADA-priced purchases omit this.
+        cntGuidedAvailable: denomination === 'CNT' && !!cntMeta ? true : undefined,
       } as any,
     };
   }
