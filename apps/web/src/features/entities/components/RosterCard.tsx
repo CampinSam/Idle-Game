@@ -103,37 +103,39 @@ export default function RosterCard({
 
       {showInlinePicker && (
         <>
-          <div className="flex items-center justify-between gap-2 px-1">
-            <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
-              Tap to toggle · {selectedIds.length}/{maxSlots} chosen
-            </span>
-            <button
-              type="button"
-              onClick={() => onPickerOpenChange(false)}
-              className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
-            >
-              ▲ Close
-            </button>
+          <div className="sticky top-0 z-10 -mx-3 -mt-3 px-3 pt-3 pb-2 rounded-t-xl flex flex-col gap-2" style={{ background: 'linear-gradient(180deg,rgba(20,16,56,0.98) 80%,rgba(20,16,56,0) 100%)' }}>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
+                Tap to toggle · {selectedIds.length}/{maxSlots} chosen
+              </span>
+              <button
+                type="button"
+                onClick={() => onPickerOpenChange(false)}
+                className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
+              >
+                ▲ Close
+              </button>
+            </div>
+            <ListControls
+              search={{ value: pickerSearch, onChange: setPickerSearch, placeholder: 'Search...' }}
+              selects={[
+                {
+                  label: 'Filter by collection',
+                  value: pickerFilter,
+                  onChange: (v) => setPickerFilter(v as EntityFilter),
+                  options: collectionOptions,
+                  width: 90,
+                },
+                {
+                  label: 'Sort by',
+                  value: pickerSort,
+                  onChange: (v) => setPickerSort(v as EntitySortBy),
+                  options: SORT_OPTIONS,
+                  width: 108,
+                },
+              ]}
+            />
           </div>
-          <ListControls
-            search={{ value: pickerSearch, onChange: setPickerSearch, placeholder: 'Search...' }}
-            selects={[
-              {
-                label: 'Filter by collection',
-                value: pickerFilter,
-                onChange: (v) => setPickerFilter(v as EntityFilter),
-                options: collectionOptions,
-                width: 90,
-              },
-              {
-                label: 'Sort by',
-                value: pickerSort,
-                onChange: (v) => setPickerSort(v as EntitySortBy),
-                options: SORT_OPTIONS,
-                width: 108,
-              },
-            ]}
-          />
           <EntityList
             entities={entities}
             mode="picker"

@@ -207,7 +207,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
           />
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col flex-shrink-0">
           {planningError && (
             <div className="px-3 pt-2 mx-3">
               <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
