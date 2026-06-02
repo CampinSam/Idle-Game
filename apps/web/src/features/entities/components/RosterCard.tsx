@@ -103,7 +103,6 @@ export default function RosterCard({
 
       {showInlinePicker && (
         <>
-          {/* Header + controls — always visible, never scrolls */}
           <div className="flex items-center justify-between gap-2 px-1">
             <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
               Tap to toggle · {selectedIds.length}/{maxSlots} chosen
@@ -135,25 +134,22 @@ export default function RosterCard({
               },
             ]}
           />
-          {/* Entity grid — scrolls within its own capped area */}
-          <div className="overflow-y-auto max-h-[50vh]">
-            <EntityList
-              entities={entities}
-              mode="picker"
-              useCase={useCase}
-              showControls={false}
-              search={pickerSearch}
-              onSearchChange={setPickerSearch}
-              activeFilter={pickerFilter}
-              onFilterChange={setPickerFilter}
-              sortBy={pickerSort}
-              onSortChange={setPickerSort}
-              selectedIds={selectedIds}
-              disabledIds={pickerDisabledIds}
-              busyDisabledTooltip={busyDisabledTooltip}
-              onSelect={(entity) => onAdd?.(entity.id)}
-            />
-          </div>
+          <EntityList
+            entities={entities}
+            mode="picker"
+            useCase={useCase}
+            showControls={false}
+            search={pickerSearch}
+            onSearchChange={setPickerSearch}
+            activeFilter={pickerFilter}
+            onFilterChange={setPickerFilter}
+            sortBy={pickerSort}
+            onSortChange={setPickerSort}
+            selectedIds={selectedIds}
+            disabledIds={pickerDisabledIds}
+            busyDisabledTooltip={busyDisabledTooltip}
+            onSelect={(entity) => onAdd?.(entity.id)}
+          />
         </>
       )}
     </div>

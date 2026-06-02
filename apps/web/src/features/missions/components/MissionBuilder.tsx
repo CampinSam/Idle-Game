@@ -199,66 +199,70 @@ export function MissionBuilder(props: MissionBuilderProps) {
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <ContentDocumentRenderer
-            documentId="mission_planning_document"
-            baseContext={{ missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }}
-            data={blockData}
-            className="flex flex-col gap-3 px-4 pt-3 pb-4"
-          />
-        </div>
+          {/* min-h-full wrapper forces footer to bottom even when content is short */}
+          <div className="flex flex-col min-h-full">
+            <ContentDocumentRenderer
+              documentId="mission_planning_document"
+              baseContext={{ missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }}
+              data={blockData}
+              className="flex flex-col gap-3 px-4 pt-3 pb-2 flex-1"
+            />
 
-        <div className="flex flex-col flex-shrink-0">
-          {planningError && (
-            <div className="px-3 pt-2 mx-3">
-              <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
-                {planningError}
-              </div>
-            </div>
-          )}
-          <div className="flex flex-col gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
-            <div className="grid grid-cols-2 gap-2">
-              {idleEntities.length === 0 && selectedEntities.length === 0 ? (
-                <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
-                  No entities available
+            {/* sticky bottom-0 — sticks to the bottom of the scroll viewport regardless of flex chain */}
+            <div className="sticky bottom-0 z-10 flex flex-col flex-shrink-0">
+              {planningError && (
+                <div className="px-3 pt-2 mx-3">
+                  <div className="px-3 py-2 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.4)] text-[#fecaca] text-xs">
+                    {planningError}
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <button
-                    onClick={handleAutoAssign}
-                    disabled={idleEntities.length === 0}
-                    className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-                  >
-                    AUTO BUILD TEAM
-                  </button>
-                  {selectedEntities.length > 0 && (
-                    <button
-                      disabled={!canStart}
-                      onClick={handleStart}
-                      className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
-                        START MISSION ⚡
-                      </span>
-                      <span className="flex items-center gap-1.5 mt-0.5">
-                        {missionDuration > 0 && (
-                          <span className="text-[10px] font-semibold opacity-60">
-                            ⏱ {formatDuration(missionDuration)}
-                          </span>
-                        )}
-                        {missionCost.length > 0 && (
-                          <span
-                            className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
-                          >
-                            {missionCost.map((c, i) => (
-                              <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
-                            ))}
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  )}
-                </>
               )}
+              <div className="flex flex-col gap-2 p-2 border-t border-[rgba(139,92,246,0.18)]" style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}>
+                <div className="grid grid-cols-2 gap-2">
+                  {idleEntities.length === 0 && selectedEntities.length === 0 ? (
+                    <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
+                      No entities available
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleAutoAssign}
+                        disabled={idleEntities.length === 0}
+                        className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+                      >
+                        AUTO BUILD TEAM
+                      </button>
+                      {selectedEntities.length > 0 && (
+                        <button
+                          disabled={!canStart}
+                          onClick={handleStart}
+                          className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
+                            START MISSION ⚡
+                          </span>
+                          <span className="flex items-center gap-1.5 mt-0.5">
+                            {missionDuration > 0 && (
+                              <span className="text-[10px] font-semibold opacity-60">
+                                ⏱ {formatDuration(missionDuration)}
+                              </span>
+                            )}
+                            {missionCost.length > 0 && (
+                              <span
+                                className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
+                              >
+                                {missionCost.map((c, i) => (
+                                  <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                                ))}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
