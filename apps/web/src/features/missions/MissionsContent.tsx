@@ -127,19 +127,21 @@ export default function MissionsContent() {
 
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     return (
-      <MissionBuilder
-        selectedDef={selectedDef}
-        currentCat={currentCat}
-        missionCategoryDefs={missionCategoryDefs}
-        entities={entities}
-        idleEntities={idleEntities}
-        initialSelectedEntities={selectedEntities}
-        currencyBalances={currencyBalances}
-        inventoryItems={inventoryItems}
-        error={error}
-        onBack={handleBackFromMissionDetail}
-        onMissionStarted={backToCategories}
-      />
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <MissionBuilder
+          selectedDef={selectedDef}
+          currentCat={currentCat}
+          missionCategoryDefs={missionCategoryDefs}
+          entities={entities}
+          idleEntities={idleEntities}
+          initialSelectedEntities={selectedEntities}
+          currencyBalances={currencyBalances}
+          inventoryItems={inventoryItems}
+          error={error}
+          onBack={handleBackFromMissionDetail}
+          onMissionStarted={backToCategories}
+        />
+      </div>
     );
   }
 

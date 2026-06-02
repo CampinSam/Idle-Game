@@ -193,7 +193,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
   const missionDuration = rawActiveDef?.timer?.duration ?? 0;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]">
       <div
         className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}

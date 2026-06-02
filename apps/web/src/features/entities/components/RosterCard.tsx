@@ -103,17 +103,19 @@ export default function RosterCard({
 
       {showInlinePicker && (
         <>
-          <div className="flex items-center justify-between gap-2 px-1">
-            <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
-              Tap to toggle · {selectedIds.length}/{maxSlots} chosen
-            </span>
-            <button
-              type="button"
-              onClick={() => onPickerOpenChange(false)}
-              className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
-            >
-              ▲ Close
-            </button>
+          <div className="sticky top-0 z-10 -mx-3 -mt-3 px-3 pt-3 pb-2 rounded-t-xl flex flex-col gap-2" style={{ background: 'linear-gradient(180deg,#1a1640 85%,rgba(26,22,64,0) 100%)' }}>
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
+                Tap to toggle · {selectedIds.length}/{maxSlots} chosen
+              </span>
+              <button
+                type="button"
+                onClick={() => onPickerOpenChange(false)}
+                className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
+              >
+                ▲ Close
+              </button>
+            </div>
           </div>
           <ListControls
             search={{ value: pickerSearch, onChange: setPickerSearch, placeholder: 'Search...' }}
