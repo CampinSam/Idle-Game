@@ -1932,7 +1932,7 @@ Update a withdrawal request (set status, attach tx hash, add admin note).
 All endpoints require `Authorization: Bearer <jwt>`.
 
 ### `GET /api/crypto/deposit-info`
-Get the hot wallet deposit address.
+Get the hot wallet deposit address and all configured CNT currencies.
 
 **Response:**
 ```json
@@ -1940,14 +1940,22 @@ Get the hot wallet deposit address.
   "hotWalletAddress": "addr1...",
   "currencyId": "crypto_derp",
   "cntAssetId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f645045525020434f494e",
-  "note": "Send DERP COIN to the deposit address..."
+  "note": "Send DERP COIN to the deposit address...",
+  "minWithdrawalType": "QUANTITY",
+  "minWithdrawalAmount": 1,
+  "withdrawalFee": "0",
+  "autoApprovalThreshold": "0",
+  "cntCurrencies": [
+    { "id": "crypto_derp", "label": "DERP COIN", "policyId": "<hex>", "assetName": "<hex>" }
+  ]
 }
 ```
+`cntCurrencies` lists all configured CNT tokens. Currently always contains one entry (the default DERP COIN). Future expansion may add more entries — the deposit UI renders a chip selector when `cntCurrencies.length > 1`.
 
 ---
 
 ### `POST /api/crypto/withdraw`
-Request an on-chain withdrawal. Deducts from balance immediately; creates a withdrawal record.
+Request an on-chain withdrawal. Deducts from balance immediately; creates a withdrawal record. If the withdrawal is auto-approved (amount ≤ `autoApprovalThreshold`), `processApprovedWithdrawals()` is triggered in the background so the on-chain send happens within seconds rather than waiting for the next 30 s scheduler tick.
 
 **Body:**
 ```json
@@ -1958,7 +1966,7 @@ Request an on-chain withdrawal. Deducts from balance immediately; creates a with
 ```
 `destinationAddress` is optional — defaults to the user's primary linked Cardano wallet.
 
-**Response:** `CryptoWithdrawal` object
+**Response:** `CryptoWithdrawal` object (includes `id` field; frontend subscribes to `withdrawal_sent` / `withdrawal_failed` notifications matching `sourceId === id` for live status updates)
 
 ---
 
@@ -1976,15 +1984,27 @@ List the authenticated player's on-chain deposit history (ledger entries with so
 
 ---
 
+### `POST /api/crypto/decode-address`
+Decode a CIP-30 hex-encoded Cardano address (as returned by `wallet.getChangeAddress()`) into a bech32 string.
+
+**Body:** `{ "hexAddress": "<cbor-hex>" }`
+
+**Response:** `{ "bech32": "addr1..." }`
+
+Used by the withdrawal tab to silently autofill the destination address from the injected browser wallet.
+
+---
+
 ### `POST /api/crypto/build-deposit-tx`
 Build an unsigned Cardano CNT deposit transaction using UTXOs from the player's CIP-30 wallet.
 
 **Body:**
 ```json
-{ "amount": 100, "utxosCborHex": ["<cbor-hex>", ...] }
+{ "amount": 100, "utxosCborHex": ["<cbor-hex>", ...], "policyId": "<hex>", "assetName": "<hex>" }
 ```
 - `amount` — CNT units to deposit (integer, same unit as DERP)
 - `utxosCborHex` — array of UTXO CBOR hex strings from `wallet.getUtxos()`
+- `policyId` / `assetName` — optional token override; when omitted the configured default CNT is used
 
 **Response:** `{ "unsignedTxCborHex": "<hex>" }` — pass to `wallet.signTx()`
 

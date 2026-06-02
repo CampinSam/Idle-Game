@@ -323,6 +323,15 @@ export class CryptoWalletService {
     });
 
     await this.emitCurrencyDelta(userId);
+
+    // If the withdrawal was auto-approved, trigger processing immediately
+    // (fire-and-forget — the boolean flag prevents concurrent runs).
+    if (isAutoApproved) {
+      this.processApprovedWithdrawals().catch((err) => {
+        this.logger.warn(`Background withdrawal processor error (post-request): ${err}`);
+      });
+    }
+
     return serializeBigInts(withdrawal);
   }
 
@@ -786,7 +795,12 @@ export class CryptoWalletService {
    * wallet.  Returns the CBOR hex for the client to sign with wallet.signTx().
    * Credit is only applied after Blockfrost confirms the tx via the deposit poller.
    */
-  async buildDepositTx(userId: string, amount: bigint, utxosCborHex: string[]): Promise<{ unsignedTxCborHex: string }> {
+  async buildDepositTx(
+    userId: string,
+    amount: bigint,
+    utxosCborHex: string[],
+    tokenOverride?: { policyId: string; assetName: string },
+  ): Promise<{ unsignedTxCborHex: string }> {
     const config = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
     if (!config?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
 
@@ -809,13 +823,33 @@ export class CryptoWalletService {
       senderAddress: linkedWallet.address,
       recipientAddress: config.hotWalletAddress,
       cntAmount: amount,
-      policyIdHex: config.cntPolicyId ?? CNT_POLICY_ID_DEFAULT,
-      assetNameHex: config.cntAssetName ?? CNT_ASSET_NAME_DEFAULT,
+      policyIdHex: tokenOverride?.policyId ?? config.cntPolicyId ?? CNT_POLICY_ID_DEFAULT,
+      assetNameHex: tokenOverride?.assetName ?? config.cntAssetName ?? CNT_ASSET_NAME_DEFAULT,
       apiKey,
       CSL,
     });
 
     return { unsignedTxCborHex };
+  }
+
+  /**
+   * Decodes a hex-encoded Cardano address (as returned by CIP-30 `getChangeAddress()`)
+   * into a bech32 string (addr1... for mainnet, addr_test1... for testnet).
+   */
+  async decodeCardanoAddressHex(hexAddr: string): Promise<{ bech32: string }> {
+    try {
+      const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+      const bytes = Buffer.from(hexAddr, 'hex');
+      if (bytes.length === 0) throw new Error('Empty address bytes');
+      // Network tag is in the low nibble of the first header byte: 0 = testnet, 1 = mainnet
+      const networkId = bytes[0] & 0x0f;
+      const prefix = networkId === 1 ? 'addr' : 'addr_test';
+      const addr = CSL.Address.from_bytes(bytes);
+      const bech32 = addr.to_bech32(prefix);
+      return { bech32 };
+    } catch {
+      throw new BadRequestException('Invalid Cardano address hex');
+    }
   }
 
   /**

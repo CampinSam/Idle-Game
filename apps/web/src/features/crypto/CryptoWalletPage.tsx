@@ -79,9 +79,14 @@ function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWa
   const [step, setStep] = useState<DepositStep>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>('crypto_derp');
 
   const cardanoLinked = linkedWallets.filter((w) => w.chain === 'CARDANO');
   const hasLinkedWallet = cardanoLinked.length > 0;
+
+  const cntCurrencies: Array<{ id: string; label: string; policyId: string; assetName: string }> =
+    depositInfo?.cntCurrencies ?? [];
+  const selectedCurrency = cntCurrencies.find((c) => c.id === selectedCurrencyId) ?? cntCurrencies[0];
 
   // Detect which injected CIP-30 wallets are present in the browser
   const [injectedWalletKey, setInjectedWalletKey] = useState<string | null>(null);
@@ -109,11 +114,16 @@ function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWa
       const rawUtxos: string[] = await walletApi.getUtxos();
       if (!rawUtxos?.length) throw new Error('No UTXOs found in your wallet');
 
-      // 3. Build unsigned tx on server
+      // 3. Build unsigned tx on server (pass selected token override if not the default)
       setStep('building');
+      const buildBody: any = { amount: amt, utxosCborHex: rawUtxos };
+      if (selectedCurrency && selectedCurrency.id !== 'crypto_derp') {
+        buildBody.policyId = selectedCurrency.policyId;
+        buildBody.assetName = selectedCurrency.assetName;
+      }
       const { unsignedTxCborHex } = await apiPost<{ unsignedTxCborHex: string }>(
         '/crypto/build-deposit-tx',
-        { amount: amt, utxosCborHex: rawUtxos },
+        buildBody,
       );
 
       // 4. Prompt player to sign via CIP-30
@@ -147,13 +157,13 @@ function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWa
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(depositInfo.hotWalletAddress)}&bgcolor=1a1640&color=c4b5fd&margin=8`;
 
   const stepLabel: Record<DepositStep, string> = {
-    idle: 'Deposit DERP',
+    idle: 'Deposit',
     'fetching-utxos': 'Reading wallet…',
     building: 'Building transaction…',
     signing: 'Waiting for signature…',
     submitting: 'Submitting…',
     done: '✓ Submitted',
-    error: 'Deposit DERP',
+    error: 'Deposit',
   };
   const isBusy = ['fetching-utxos', 'building', 'signing', 'submitting'].includes(step);
 
@@ -169,13 +179,36 @@ function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWa
           <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.75rem' }}>
             Quick Deposit — Sign with Wallet
           </div>
+
+          {/* Currency selector — shown only when multiple tokens are available */}
+          {cntCurrencies.length > 1 && (
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              {cntCurrencies.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCurrencyId(c.id)}
+                  disabled={isBusy}
+                  style={{
+                    padding: '0.3rem 0.65rem', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600,
+                    border: `1px solid ${selectedCurrencyId === c.id ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.15)'}`,
+                    background: selectedCurrencyId === c.id ? 'rgba(167,139,250,0.18)' : 'transparent',
+                    color: selectedCurrencyId === c.id ? '#c4b5fd' : '#888',
+                    cursor: isBusy ? 'default' : 'pointer',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <input
               type="number"
               min={1}
               value={amount}
               onChange={(e) => { setAmount(e.target.value); if (step === 'error') setStep('idle'); }}
-              placeholder="Amount (DERP)"
+              placeholder={`Amount (${selectedCurrency?.label ?? 'DERP'})`}
               disabled={isBusy}
               style={{
                 flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
@@ -292,6 +325,12 @@ function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWa
   );
 }
 
+type WithdrawStatus =
+  | { state: 'idle' }
+  | { state: 'pending'; withdrawalId: string }
+  | { state: 'sent'; txHash: string; cardanoscanUrl: string }
+  | { state: 'failed' };
+
 function WithdrawTab({
   balance,
   linkedWallets,
@@ -307,12 +346,70 @@ function WithdrawTab({
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [withdrawStatus, setWithdrawStatus] = useState<WithdrawStatus>({ state: 'idle' });
 
   const cardanoWallets = linkedWallets.filter((w) => w.chain === 'CARDANO');
   const primaryCardano = cardanoWallets.find((w) => w.isPrimary) ?? cardanoWallets[0];
 
+  // Watch Redux notifications for withdrawal_sent / withdrawal_failed events
+  const notifications = useAppSelector((s: any) => s.sync?.notifications ?? {});
   useEffect(() => {
-    if (primaryCardano) setAddress(primaryCardano.address);
+    if (withdrawStatus.state !== 'pending') return;
+    const { withdrawalId } = withdrawStatus;
+    const notifList: any[] = Object.values(notifications);
+    const match = notifList.find(
+      (n: any) =>
+        (n.type === 'withdrawal_sent' || n.type === 'withdrawal_failed') &&
+        n.sourceId === withdrawalId,
+    );
+    if (!match) return;
+    if (match.type === 'withdrawal_sent') {
+      const cardanoscanUrl = match.meta?.cardanoscanUrl ?? `https://cardanoscan.io/transaction/${match.meta?.txHash}`;
+      setWithdrawStatus({ state: 'sent', txHash: match.meta?.txHash ?? '', cardanoscanUrl });
+      loadHistory();
+    } else {
+      setWithdrawStatus({ state: 'failed' });
+      loadHistory();
+    }
+  }, [notifications, withdrawStatus]);
+
+  // Autofill address: try CIP-30 injected wallet first, fall back to primary linked wallet
+  useEffect(() => {
+    let cancelled = false;
+    const KNOWN = ['nami', 'eternl', 'vespr', 'begin', 'flint', 'nufi', 'lace', 'yoroi'];
+    const cardano = (window as any).cardano ?? {};
+
+    (async () => {
+      for (const key of KNOWN) {
+        if (!cardano[key]?.enable) continue;
+        try {
+          const walletApi = await cardano[key].enable();
+          const hexAddr: string = await walletApi.getChangeAddress();
+          if (cancelled || !hexAddr) break;
+
+          // If already bech32, use it directly; otherwise decode via API
+          if (hexAddr.startsWith('addr')) {
+            setAddress(hexAddr);
+          } else {
+            try {
+              const { bech32 } = await apiPost<{ bech32: string }>('/crypto/decode-address', { hexAddress: hexAddr });
+              if (!cancelled && bech32) setAddress(bech32);
+            } catch {
+              // decode failed — fall through to linked wallet fallback below
+            }
+          }
+          return;
+        } catch {
+          // wallet.enable() denied or failed — try next wallet
+        }
+      }
+      // Fallback: primary linked Cardano wallet
+      if (!cancelled && primaryCardano) {
+        setAddress(primaryCardano.address);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [primaryCardano?.address]);
 
   const loadHistory = useCallback(async () => {
@@ -341,10 +438,17 @@ function WithdrawTab({
     }
     setSubmitting(true);
     setMsg(null);
+    setWithdrawStatus({ state: 'idle' });
     try {
-      await apiPost('/crypto/withdraw', { amount: amt, destinationAddress: address });
-      setMsg({ text: 'Withdrawal request submitted! It will be processed shortly.', type: 'success' });
+      const result = await apiPost<any>('/crypto/withdraw', { amount: amt, destinationAddress: address });
+      const withdrawalId: string = result.id ?? '';
       setAmount('');
+      if (withdrawalId) {
+        setMsg({ text: 'Withdrawal submitted — waiting for on-chain send…', type: 'success' });
+        setWithdrawStatus({ state: 'pending', withdrawalId });
+      } else {
+        setMsg({ text: 'Withdrawal request submitted! It will be processed shortly.', type: 'success' });
+      }
       loadHistory();
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -447,7 +551,7 @@ function WithdrawTab({
 
         <button
           onClick={submit}
-          disabled={submitting || !amount || !address}
+          disabled={submitting || !amount || !address || withdrawStatus.state === 'pending'}
           style={{
             width: '100%', padding: '0.65rem', borderRadius: 8, border: 'none',
             background: submitting ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.7)',
@@ -457,7 +561,8 @@ function WithdrawTab({
           {submitting ? 'Submitting…' : 'Request Withdrawal'}
         </button>
 
-        {msg && (
+        {/* Static message (errors, initial success) */}
+        {msg && withdrawStatus.state !== 'sent' && withdrawStatus.state !== 'failed' && (
           <div style={{
             marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: 6,
             background: msg.type === 'success' ? 'rgba(76,175,80,0.15)' : 'rgba(255,107,107,0.15)',
@@ -466,6 +571,42 @@ function WithdrawTab({
             fontSize: '0.88rem',
           }}>
             {msg.text}
+            {withdrawStatus.state === 'pending' && (
+              <span style={{ marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#4caf50', animation: 'pulse 1s infinite' }} />
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>Awaiting confirmation…</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Live SSE feedback — withdrawal sent */}
+        {withdrawStatus.state === 'sent' && (
+          <div style={{
+            marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: 6,
+            background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.3)',
+            fontSize: '0.88rem', color: '#4caf50',
+          }}>
+            ✓ Withdrawal sent on-chain!{' '}
+            <a
+              href={withdrawStatus.cardanoscanUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: '#60a5fa', textDecoration: 'none' }}
+            >
+              View on Cardanoscan ↗
+            </a>
+          </div>
+        )}
+
+        {/* Live SSE feedback — withdrawal failed */}
+        {withdrawStatus.state === 'failed' && (
+          <div style={{
+            marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: 6,
+            background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.3)',
+            fontSize: '0.88rem', color: '#ff6b6b',
+          }}>
+            Withdrawal could not be sent automatically. Please contact support.
           </div>
         )}
       </div>

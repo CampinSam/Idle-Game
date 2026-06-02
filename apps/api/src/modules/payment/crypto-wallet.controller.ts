@@ -3,6 +3,9 @@ import { AuthGuard } from '@nestjs/passport';
 import { CryptoWalletService } from './crypto-wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const CNT_POLICY_ID_DEFAULT = 'd9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6';
+const CNT_ASSET_NAME_DEFAULT = '45525020434f494e';
+
 @Controller('crypto')
 @UseGuards(AuthGuard('jwt'))
 export class CryptoWalletController {
@@ -14,16 +17,25 @@ export class CryptoWalletController {
   @Get('deposit-info')
   async getDepositInfo() {
     const config = await this.cryptoWalletService.getConfig();
+    const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
+    const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
     return {
       hotWalletAddress: config.hotWalletAddress || null,
       currencyId: 'crypto_derp',
-      cntAssetId: `${config.cntPolicyId}${config.cntAssetName}`,
+      cntAssetId: `${policyId}${assetName}`,
       note: 'Send DERP COIN to the deposit address from your linked Cardano wallet to receive in-game DERP.',
-      // Withdrawal policy fields for player UI display
       minWithdrawalType: config.minWithdrawalType,
       minWithdrawalAmount: config.minWithdrawalAmount,
       withdrawalFee: config.withdrawalFee.toString(),
       autoApprovalThreshold: config.autoApprovalThreshold.toString(),
+      cntCurrencies: [
+        {
+          id: 'crypto_derp',
+          label: 'DERP COIN',
+          policyId,
+          assetName,
+        },
+      ],
     };
   }
 
@@ -75,13 +87,21 @@ export class CryptoWalletController {
   @Post('build-deposit-tx')
   async buildDepositTx(
     @Request() req: any,
-    @Body() body: { amount: number; utxosCborHex: string[] },
+    @Body() body: { amount: number; utxosCborHex: string[]; policyId?: string; assetName?: string },
   ) {
     if (!body.amount || body.amount <= 0) throw new BadRequestException('amount must be a positive integer');
     if (!Array.isArray(body.utxosCborHex) || body.utxosCborHex.length === 0) {
       throw new BadRequestException('utxosCborHex must be a non-empty array of CBOR hex strings');
     }
-    return this.cryptoWalletService.buildDepositTx(req.user.id, BigInt(Math.floor(body.amount)), body.utxosCborHex);
+    const tokenOverride = (body.policyId && body.assetName)
+      ? { policyId: body.policyId.trim(), assetName: body.assetName.trim() }
+      : undefined;
+    return this.cryptoWalletService.buildDepositTx(
+      req.user.id,
+      BigInt(Math.floor(body.amount)),
+      body.utxosCborHex,
+      tokenOverride,
+    );
   }
 
   @Post('submit-deposit-tx')
@@ -91,6 +111,14 @@ export class CryptoWalletController {
   ) {
     if (!body.signedTxCborHex?.trim()) throw new BadRequestException('signedTxCborHex is required');
     return this.cryptoWalletService.submitDepositTx(body.signedTxCborHex.trim());
+  }
+
+  @Post('decode-address')
+  async decodeAddress(
+    @Body() body: { hexAddress: string },
+  ) {
+    if (!body.hexAddress?.trim()) throw new BadRequestException('hexAddress is required');
+    return this.cryptoWalletService.decodeCardanoAddressHex(body.hexAddress.trim());
   }
 
   @Post('build-purchase-tx')
