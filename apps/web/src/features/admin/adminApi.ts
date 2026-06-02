@@ -16,6 +16,7 @@ export interface AdminPermissionFlags {
   player_read: boolean;
   player_write: boolean;
   system_tools: boolean;
+  metrics_read: boolean;
 }
 
 export interface AdminMe {
@@ -466,6 +467,33 @@ export const adminApi = {
 
   rejectDraft: (id: string, reviewComment?: string) =>
     adminRequest<any>(`/drafts/${id}/reject`, { method: 'POST', body: JSON.stringify({ reviewComment }) }),
+
+  // ─── Game Metrics ─────────────────────────────────────────────────────────
+
+  getGameHealthMetrics: () => adminRequest<{
+    computedAt: string;
+    metrics: Array<{
+      name: string;
+      value: number | null;
+      unit: string;
+      label: string;
+      description: string;
+      status: 'green' | 'yellow' | 'red' | 'neutral';
+      benchmark: string;
+    }>;
+  }>('/metrics/game-health'),
+
+  getMetricHistory: (metricNames: string[], days: number) => {
+    const params = new URLSearchParams();
+    params.set('metrics', metricNames.join(','));
+    params.set('days', String(days));
+    return adminRequest<Record<string, Array<{ date: string; value: number }>>>(
+      `/metrics/history?${params.toString()}`,
+    );
+  },
+
+  recordMetricSnapshot: () =>
+    adminRequest<{ success: boolean }>('/metrics/record-snapshot', { method: 'POST', body: JSON.stringify({}) }),
 
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();

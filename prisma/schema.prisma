@@ -1450,6 +1450,20 @@ model ContentDraft {
   @@map("content_drafts")
 }
 
+model MetricSnapshot {
+  id         String   @id @default(uuid())
+  metricName String   @map("metric_name")
+  date       DateTime
+  value      Float
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([metricName, date])
+  @@index([metricName, date(sort: Desc)])
+  @@map("metric_snapshots")
+}
+
 enum StackMode {
   additive
   best_only

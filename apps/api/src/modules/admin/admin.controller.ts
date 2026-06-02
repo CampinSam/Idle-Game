@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, ParseIntPipe, DefaultValuePipe, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, ParseIntPipe, DefaultValuePipe, Req, ParseArrayPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
@@ -19,6 +19,7 @@ import { CryptoWalletService } from '../payment/crypto-wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
+import { GameMetricsService } from './game-metrics.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -41,6 +42,7 @@ export class AdminController {
     private cryptoWalletService: CryptoWalletService,
     private prisma: PrismaService,
     private authService: AuthService,
+    private gameMetricsService: GameMetricsService,
   ) {}
 
   // ─── Identity ────────────────────────────────────────────────────────────────
@@ -1233,6 +1235,32 @@ export class AdminController {
     return result;
   }
 
+  // ─── Game Metrics ────────────────────────────────────────────────────────────
+
+  @Get('metrics/game-health')
+  getGameHealthMetrics() {
+    return this.gameMetricsService.getGameHealthMetrics();
+  }
+
+  @Post('metrics/record-snapshot')
+  async recordMetricSnapshot() {
+    await this.gameMetricsService.recordDailySnapshot();
+    return { success: true };
+  }
+
+  @Get('metrics/history')
+  getMetricHistory(
+    @Query('metrics') metricsParam: string | string[] | undefined,
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+  ) {
+    const metricNames = Array.isArray(metricsParam)
+      ? metricsParam
+      : metricsParam
+        ? metricsParam.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+    return this.gameMetricsService.getMetricHistory(metricNames, days);
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   @Get(':table')
@@ -1351,4 +1379,5 @@ export class AdminController {
     });
     return result;
   }
+
 }

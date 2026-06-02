@@ -5,6 +5,7 @@ export interface PermissionFlags {
   player_read: boolean;
   player_write: boolean;
   system_tools: boolean;
+  metrics_read: boolean;
 }
 
 export interface AdminAccountUser {
@@ -179,6 +180,11 @@ export function resolveRequiredPermission(
     adminPath.startsWith('/seeds')
   ) {
     return requirePerm(user, 'system_tools');
+  }
+
+  // Metrics dashboard
+  if (adminPath.startsWith('/metrics')) {
+    return requirePerm(user, 'metrics_read');
   }
 
   // System health — any authenticated admin can read

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
-  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X,
+  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X, BarChart2,
 } from 'lucide-react';
 import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
@@ -16,11 +16,13 @@ import AdminV2PlayersSection from './sections/AdminV2PlayersSection';
 import AdminV2EconomySection from './sections/AdminV2EconomySection';
 import AdminV2SystemSection, { SYSTEM_TOOLS, type SystemTool } from './sections/AdminV2SystemSection';
 import AdminV2AccountsSection from './sections/AdminV2AccountsSection';
+import AdminV2MetricsSection from './sections/AdminV2MetricsSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
 import './admin-v2.css';
 
 type Section =
   | 'dashboard'
+  | 'metrics'
   | 'content'
   | 'approvals'
   | 'players'
@@ -41,7 +43,7 @@ function readPersistedNav(): { section: Section; sub: string | null } | null {
     const hash = window.location.hash.slice(1); // e.g. "content/Entities" or "system"
     if (hash) {
       const [section, sub = null] = hash.split('/');
-      const valid: Section[] = ['dashboard','content','approvals','players','live-ops','economy','system','support','moderation'];
+      const valid: Section[] = ['dashboard','metrics','content','approvals','players','live-ops','economy','system','support','moderation'];
       if (valid.includes(section as Section)) {
         return { section: section as Section, sub };
       }
@@ -91,6 +93,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={15} /> },
+  { key: 'metrics', label: 'Metrics', icon: <BarChart2 size={15} />, requirePerm: 'metrics_read' },
   {
     key: 'content',
     label: 'Content',
@@ -120,7 +123,8 @@ function isVisible(item: NavItem, me: AdminMe): boolean {
     return me.role.slug === 'super_admin' || !!me.isBootstrap;
   }
   if (item.requirePerm) {
-    return me.role.permissionFlags[item.requirePerm] === true;
+    const isSuperAdmin = me.role.slug === 'super_admin' || !!me.isBootstrap;
+    return isSuperAdmin || me.role.permissionFlags[item.requirePerm] === true;
   }
   return true;
 }
@@ -393,6 +397,7 @@ function TopBar({
 }) {
   const labels: Record<Section, string> = {
     dashboard: 'Dashboard',
+    metrics: 'Game Health Metrics',
     content: 'Content Editor',
     approvals: 'Approvals',
     players: 'Player Management',
@@ -460,9 +465,12 @@ export default function AdminV2Shell() {
 
   const handleLogin = useCallback((account: AdminMe) => {
     setMe(account);
-    setActiveSection('dashboard');
+    const isSuperAdmin = account.role.slug === 'super_admin' || !!account.isBootstrap;
+    const defaultSection: Section =
+      isSuperAdmin || account.role.permissionFlags.metrics_read ? 'metrics' : 'dashboard';
+    setActiveSection(defaultSection);
     setActiveSub(null);
-    persistNav('dashboard', null);
+    persistNav(defaultSection, null);
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -497,6 +505,8 @@ export default function AdminV2Shell() {
     switch (activeSection) {
       case 'dashboard':
         return <AdminV2Dashboard me={me} onNavigate={handleNavigate} />;
+      case 'metrics':
+        return <AdminV2MetricsSection me={me} />;
       case 'content':
         return <AdminV2ContentSection me={me} activeGroup={activeSub || undefined} />;
       case 'approvals':

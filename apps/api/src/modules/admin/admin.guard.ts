@@ -16,6 +16,7 @@ const BOOTSTRAP_PERMS: PermissionFlags = {
   player_read: true,
   player_write: true,
   system_tools: true,
+  metrics_read: true,
 };
 
 @Injectable()

@@ -2059,3 +2059,142 @@ Reject a draft. Requires `approve` permission.
 ```json
 { "reviewComment": "optional reason" }
 ```
+
+---
+
+## Game Health Metrics — `/api/admin/metrics`
+
+All endpoints require `metrics_read` permission (or Super Admin role).
+Current-value metrics are cached in-memory for 5 minutes.
+
+---
+
+### `GET /api/admin/metrics/game-health`
+
+Returns the current snapshot of all 15 game health metrics, computed live from the database.
+
+**Auth:** Admin (`metrics_read` permission or `super_admin`)
+
+**Response:**
+```json
+{
+  "computedAt": "2026-06-02T15:00:00.000Z",
+  "metrics": [
+    {
+      "name": "dau",
+      "value": 142,
+      "unit": "players",
+      "label": "Daily Active Users",
+      "description": "Players active in the last 24 hours",
+      "status": "green",
+      "benchmark": "≥50 green, ≥10 yellow"
+    }
+  ]
+}
+```
+
+**Metric names and sources:**
+
+| Name | Label | Source | Unit |
+|------|-------|--------|------|
+| `dau` | Daily Active Users | `users.updatedAt` within 24h | players |
+| `wau` | Weekly Active Users | `users.updatedAt` within 7d | players |
+| `mau` | Monthly Active Users | `users.updatedAt` within 30d | players |
+| `dau_mau_ratio` | DAU/MAU Ratio | Derived: DAU / MAU × 100 | % |
+| `d1_retention` | D1 Retention | Cohort registered ~1d ago, returned within 1d | % |
+| `d7_retention` | D7 Retention | Cohort registered ~7d ago, returned within 1d | % |
+| `d30_retention` | D30 Retention | Cohort registered ~30d ago, returned within 1d | % |
+| `sessions_per_day` | Sessions Per Day | Completed jobs in 24h ÷ DAU | jobs/player |
+| `mission_participation_rate` | Mission Participation | Players with ≥1 mission in 24h ÷ DAU | % |
+| `total_players` | Total Registered | `users` count | accounts |
+| `completed_missions_24h` | Missions Completed (24h) | Mission jobs completed in 24h | missions |
+| `arcanium_generated` | Arcanium Generated (7d) | `currency_ledger` positive deltas for `soft_arcanium` | arc |
+| `arcanium_spent` | Arcanium Spent (7d) | `currency_ledger` negative deltas for `soft_arcanium` | arc |
+| `essence_earned` | Essence Earned (7d) | `currency_ledger` positive deltas for `hard_essence` | ess |
+| `essence_spent` | Essence Spent (7d) | `currency_ledger` negative deltas for `hard_essence` | ess |
+
+**Status thresholds:**
+
+| Metric | Green | Yellow | Red |
+|--------|-------|--------|-----|
+| DAU | ≥50 | ≥10 | <10 |
+| WAU | ≥200 | ≥50 | <50 |
+| MAU | ≥500 | ≥100 | <100 |
+| DAU/MAU ratio | ≥20% | ≥10% | <10% |
+| D1 Retention | ≥40% | ≥20% | <20% |
+| D7 Retention | ≥20% | ≥10% | <10% |
+| D30 Retention | ≥10% | ≥5% | <5% |
+| Sessions/day | ≥5 | ≥2 | <2 |
+| Mission participation | ≥50% | ≥20% | <20% |
+| Missions completed 24h | ≥100 | ≥20 | <20 |
+| Economy metrics | `neutral` — informational only | — | — |
+
+---
+
+### `GET /api/admin/metrics/history`
+
+Returns time-series history for one or more metrics from the `MetricSnapshot` table (up to 90 days).
+
+**Auth:** Admin (`metrics_read` permission or `super_admin`)
+
+**Query params:**
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `metrics` | required | Comma-separated metric names (e.g. `dau,wau,mau`) |
+| `days` | `30` | Number of days to return (max 90) |
+
+**Response:**
+```json
+{
+  "dau": [
+    { "date": "2026-06-01", "value": 142 },
+    { "date": "2026-06-02", "value": 158 }
+  ],
+  "wau": [
+    { "date": "2026-06-01", "value": 620 }
+  ]
+}
+```
+
+Time-series metrics available: `dau`, `wau`, `mau`, `d1_retention`, `d7_retention`, `d30_retention`, `arcanium_generated`, `arcanium_spent`, `essence_earned`, `essence_spent`.
+
+---
+
+### `POST /api/admin/metrics/record-snapshot`
+
+Records today's metric snapshot into the `MetricSnapshot` table (upsert by metric name + UTC midnight date). Use this to seed historical data on demand or trigger from a daily cron job.
+
+**Auth:** Admin (`metrics_read` permission or `super_admin`)
+
+**Response:**
+```json
+{ "success": true }
+```
+
+---
+
+### MetricSnapshot Table
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | String (UUID) | Primary key |
+| `metricName` | String | Metric identifier (e.g. `dau`, `d7_retention`) |
+| `date` | DateTime | UTC midnight of the snapshot day |
+| `value` | Float | Metric value at time of recording |
+| `metadata` | Json? | Reserved for future context |
+| `createdAt` | DateTime | Row creation timestamp |
+| `updatedAt` | DateTime | Row last-updated timestamp |
+
+Unique constraint: `(metricName, date)` — upserts are safe.
+
+---
+
+### `metrics_read` Permission Flag
+
+A new `metrics_read` boolean field added to `PermissionFlags` / `AdminRole.permissionFlags`. When true:
+- The admin sees a **Metrics** section in the sidebar.
+- The admin has access to `GET /admin/metrics/game-health` and `GET /admin/metrics/history`.
+- Super Admins (`super_admin` role or bootstrap key) always have this access regardless of the flag.
+
+Super Admins default-land on the Metrics section after login. Other admins with `metrics_read` also land on Metrics.
