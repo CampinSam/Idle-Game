@@ -28,6 +28,7 @@ export interface AdminAccountDto {
   };
   contentScopes: string[];
   permissionFlagsOverride: Partial<PermissionFlags>;
+  effectivePermissions: PermissionFlags;
   enabled: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -213,7 +214,17 @@ export class AdminAuthService {
     this.logger.log(`Admin account deleted: ${account.username}`);
   }
 
+  private mergePerms(rolePerms: PermissionFlags, override: Partial<PermissionFlags>): PermissionFlags {
+    const merged: PermissionFlags = { ...rolePerms };
+    for (const key of Object.keys(override) as Array<keyof PermissionFlags>) {
+      if (override[key] === true) merged[key] = true;
+    }
+    return merged;
+  }
+
   private toDto(account: any): AdminAccountDto {
+    const rolePerms = account.role.permissionFlags as unknown as PermissionFlags;
+    const override = (account.permissionFlagsOverride ?? {}) as unknown as Partial<PermissionFlags>;
     return {
       id: account.id,
       username: account.username,
@@ -222,10 +233,11 @@ export class AdminAuthService {
         id: account.role.id,
         name: account.role.name,
         slug: account.role.slug,
-        permissionFlags: account.role.permissionFlags as unknown as PermissionFlags,
+        permissionFlags: rolePerms,
       },
       contentScopes: account.contentScopes,
-      permissionFlagsOverride: (account.permissionFlagsOverride ?? {}) as unknown as Partial<PermissionFlags>,
+      permissionFlagsOverride: override,
+      effectivePermissions: this.mergePerms(rolePerms, override),
       enabled: account.enabled,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,

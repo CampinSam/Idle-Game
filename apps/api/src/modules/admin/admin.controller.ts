@@ -62,6 +62,8 @@ export class AdminController {
           permissionFlags: adminUser.perms,
         },
         contentScopes: [],
+        permissionFlagsOverride: {},
+        effectivePermissions: adminUser.perms,
         enabled: true,
         isBootstrap: true,
       };

@@ -117,6 +117,10 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'moderation', label: 'Moderation', icon: <Shield size={15} />, stub: true },
 ];
 
+function effectivePerms(me: AdminMe): AdminMe['role']['permissionFlags'] {
+  return me.effectivePermissions ?? me.role.permissionFlags;
+}
+
 function isVisible(item: NavItem, me: AdminMe): boolean {
   if (item.stub) return true;
   if (item.requireSuperAdmin) {
@@ -124,7 +128,7 @@ function isVisible(item: NavItem, me: AdminMe): boolean {
   }
   if (item.requirePerm) {
     const isSuperAdmin = me.role.slug === 'super_admin' || !!me.isBootstrap;
-    return isSuperAdmin || me.role.permissionFlags[item.requirePerm] === true;
+    return isSuperAdmin || effectivePerms(me)[item.requirePerm] === true;
   }
   return true;
 }
@@ -467,7 +471,7 @@ export default function AdminV2Shell() {
     setMe(account);
     const isSuperAdmin = account.role.slug === 'super_admin' || !!account.isBootstrap;
     const defaultSection: Section =
-      isSuperAdmin || account.role.permissionFlags.metrics_read ? 'metrics' : 'dashboard';
+      isSuperAdmin || effectivePerms(account).metrics_read ? 'metrics' : 'dashboard';
     setActiveSection(defaultSection);
     setActiveSub(null);
     persistNav(defaultSection, null);

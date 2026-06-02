@@ -30,6 +30,8 @@ export interface AdminMe {
     permissionFlags: AdminPermissionFlags;
   };
   contentScopes: string[];
+  permissionFlagsOverride?: Partial<AdminPermissionFlags>;
+  effectivePermissions?: AdminPermissionFlags;
   enabled: boolean;
   createdAt: string;
   updatedAt: string;

@@ -29,9 +29,10 @@ export interface MetricHistoryResult {
 const TIME_SERIES_METRICS = new Set([
   'dau', 'wau', 'mau',
   'd1_retention', 'd7_retention', 'd30_retention',
-  'avg_session_length', 'mission_participation_rate',
+  'sessions_per_day', 'avg_session_length', 'mission_participation_rate',
   'outpost_collection_rate', 'battle_pass_completion_rate',
-  'arcanium_spent', 'essence_spent',
+  'arcanium_generated', 'arcanium_spent',
+  'essence_earned', 'essence_spent',
   'revenue_per_active_user', 'time_to_first_ascension',
 ]);
 
@@ -86,17 +87,21 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     const ago7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const ago30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Core engagement / retention
+    // Core engagement
     const [
+      totalPlayers,
       dau,
       wau,
       mau,
+      totalJobs24h,
       completedMissionJobs24h,
       playersWithMissions24h,
     ] = await Promise.all([
+      this.prisma.user.count(),
       this.prisma.user.count({ where: { updatedAt: { gte: ago24h } } }),
       this.prisma.user.count({ where: { updatedAt: { gte: ago7d } } }),
       this.prisma.user.count({ where: { updatedAt: { gte: ago30d } } }),
+      this.prisma.job.count({ where: { status: 'completed', updatedAt: { gte: ago24h } } }),
       this.prisma.job.count({ where: { type: JobType.MissionJob, status: 'completed', updatedAt: { gte: ago24h } } }),
       this.prisma.job.groupBy({
         by: ['userId'],
@@ -105,9 +110,17 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     ]);
 
     // Economy
-    const [arcaniumSpent7d, essenceSpent7d] = await Promise.all([
+    const [arcaniumGenerated7d, arcaniumSpent7d, essenceEarned7d, essenceSpent7d] = await Promise.all([
+      this.prisma.currencyLedger.aggregate({
+        where: { currencyId: 'soft_arcanium', delta: { gt: 0 }, createdAt: { gte: ago7d } },
+        _sum: { delta: true },
+      }),
       this.prisma.currencyLedger.aggregate({
         where: { currencyId: 'soft_arcanium', delta: { lt: 0 }, createdAt: { gte: ago7d } },
+        _sum: { delta: true },
+      }),
+      this.prisma.currencyLedger.aggregate({
+        where: { currencyId: 'hard_essence', delta: { gt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
       this.prisma.currencyLedger.aggregate({
@@ -121,7 +134,7 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     const d7Retention = await this.computeRetention(7);
     const d30Retention = await this.computeRetention(30);
 
-    // Game-specific metrics
+    // Game-specific executive metrics
     const [
       avgSessionLength,
       battlePassCompletionRate,
@@ -137,11 +150,15 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     ]);
 
     const dauMauRatio = mau > 0 ? Math.round((dau / mau) * 1000) / 10 : null;
+    const sessionsPerDay = dau > 0 ? Math.round((totalJobs24h / dau) * 10) / 10 : null;
     const missionParticipationRate = dau > 0 ? Math.round((playersWithMissions24h / dau) * 1000) / 10 : null;
+    const arcGen = Number(arcaniumGenerated7d._sum.delta ?? 0);
     const arcSpent = Math.abs(Number(arcaniumSpent7d._sum.delta ?? 0));
+    const essEarned = Number(essenceEarned7d._sum.delta ?? 0);
     const essSpent = Math.abs(Number(essenceSpent7d._sum.delta ?? 0));
 
     const metrics: MetricValue[] = [
+      // ── Core Engagement ────────────────────────────────────────────────────
       {
         name: 'dau',
         value: dau,
@@ -179,6 +196,16 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         benchmark: '≥20% green, ≥10% yellow',
       },
       {
+        name: 'total_players',
+        value: totalPlayers,
+        unit: 'accounts',
+        label: 'Total Registered',
+        description: 'All registered player accounts',
+        status: 'neutral',
+        benchmark: 'No threshold',
+      },
+      // ── Retention ─────────────────────────────────────────────────────────
+      {
         name: 'd1_retention',
         value: d1Retention,
         unit: '%',
@@ -205,6 +232,16 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         status: d30Retention === null ? 'neutral' : this.statusThreshold(d30Retention, 10, 5),
         benchmark: '≥10% green, ≥5% yellow',
       },
+      // ── Activity & Participation ───────────────────────────────────────────
+      {
+        name: 'sessions_per_day',
+        value: sessionsPerDay,
+        unit: 'jobs/player',
+        label: 'Sessions Per Day',
+        description: 'Approximate activity depth — completed jobs per active player in 24h',
+        status: sessionsPerDay === null ? 'neutral' : this.statusThreshold(sessionsPerDay, 5, 2),
+        benchmark: '≥5 green, ≥2 yellow',
+      },
       {
         name: 'avg_session_length',
         value: avgSessionLength,
@@ -224,6 +261,16 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         benchmark: '≥50% green, ≥20% yellow',
       },
       {
+        name: 'completed_missions_24h',
+        value: completedMissionJobs24h,
+        unit: 'missions',
+        label: 'Missions Completed (24h)',
+        description: 'Total mission jobs completed in the last 24 hours',
+        status: this.statusThreshold(completedMissionJobs24h, 100, 20),
+        benchmark: '≥100 green, ≥20 yellow',
+      },
+      // ── Game-Specific Executive Metrics ───────────────────────────────────
+      {
         name: 'outpost_collection_rate',
         value: outpostCollectionRate,
         unit: '%',
@@ -237,7 +284,7 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         value: timeToFirstAscension,
         unit: 'days',
         label: 'Time to First Ascension',
-        description: 'Median days from registration to first entity level-up (proxy for ascension)',
+        description: 'Median days from registration to first entity (proxy for ascension engagement)',
         status: timeToFirstAscension === null ? 'neutral' : this.statusThresholdLower(timeToFirstAscension, 3, 7),
         benchmark: '≤3d green, ≤7d yellow (lower is better)',
       },
@@ -251,6 +298,25 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         benchmark: '≥50% green, ≥20% yellow',
       },
       {
+        name: 'revenue_per_active_user',
+        value: revenuePerActiveUser,
+        unit: 'gem txn/100',
+        label: 'Revenue per Active User',
+        description: 'Confirmed gem purchases per 100 monthly active users (7-day window)',
+        status: revenuePerActiveUser === null ? 'neutral' : this.statusThreshold(revenuePerActiveUser, 5, 1),
+        benchmark: '≥5 green, ≥1 yellow',
+      },
+      // ── Economy ───────────────────────────────────────────────────────────
+      {
+        name: 'arcanium_generated',
+        value: arcGen,
+        unit: 'arc',
+        label: 'Arcanium Generated (7d)',
+        description: 'Total Arcanium credited across all wallets in last 7 days',
+        status: 'neutral',
+        benchmark: 'Informational',
+      },
+      {
         name: 'arcanium_spent',
         value: arcSpent,
         unit: 'arc',
@@ -260,13 +326,13 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
         benchmark: 'Informational',
       },
       {
-        name: 'revenue_per_active_user',
-        value: revenuePerActiveUser,
-        unit: 'gems/100',
-        label: 'Revenue per Active User',
-        description: 'Gem purchases completed per 100 monthly active users (7-day window)',
-        status: revenuePerActiveUser === null ? 'neutral' : this.statusThreshold(revenuePerActiveUser, 5, 1),
-        benchmark: '≥5 green, ≥1 yellow',
+        name: 'essence_earned',
+        value: essEarned,
+        unit: 'ess',
+        label: 'Essence Earned (7d)',
+        description: 'Total Essence credited across all wallets in last 7 days',
+        status: 'neutral',
+        benchmark: 'Informational',
       },
       {
         name: 'essence_spent',
@@ -433,10 +499,9 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Median days from user.createdAt to their first entity's createdAt (proxy for "time to first ascension"). */
+  /** Median days from user.createdAt to their first entity's createdAt (proxy for engagement depth). */
   private async computeTimeToFirstAscension(): Promise<number | null> {
     try {
-      // Get the earliest entity createdAt per user, joined with their user createdAt.
       const entityRows = await this.prisma.entity.groupBy({
         by: ['ownerUserId'],
         where: { ownerUserId: { not: null } },
@@ -472,7 +537,7 @@ export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Completed gem purchases per 100 MAU in the last 7 days. */
+  /** Confirmed gem purchases per 100 MAU in the last 7 days. */
   private async computeRevenuePerActiveUser(since: Date, mau: number): Promise<number | null> {
     if (mau === 0) return null;
     try {

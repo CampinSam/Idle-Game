@@ -42,19 +42,23 @@ type DayRange = typeof DAY_OPTIONS[number];
 const METRIC_GROUPS = [
   {
     label: 'Engagement',
-    names: ['dau', 'wau', 'mau', 'dau_mau_ratio'],
+    names: ['dau', 'wau', 'mau', 'dau_mau_ratio', 'total_players'],
   },
   {
     label: 'Retention',
     names: ['d1_retention', 'd7_retention', 'd30_retention'],
   },
   {
-    label: 'Participation',
-    names: ['avg_session_length', 'mission_participation_rate', 'outpost_collection_rate', 'time_to_first_ascension', 'battle_pass_completion_rate'],
+    label: 'Activity',
+    names: ['sessions_per_day', 'avg_session_length', 'mission_participation_rate', 'completed_missions_24h'],
+  },
+  {
+    label: 'Game Health',
+    names: ['outpost_collection_rate', 'time_to_first_ascension', 'battle_pass_completion_rate', 'revenue_per_active_user'],
   },
   {
     label: 'Economy',
-    names: ['arcanium_spent', 'essence_spent', 'revenue_per_active_user'],
+    names: ['arcanium_generated', 'arcanium_spent', 'essence_earned', 'essence_spent'],
   },
 ];
 
@@ -70,14 +74,14 @@ const CHARTS: Array<{ title: string; metrics: string[]; labels: Record<string, s
     labels: { d1_retention: 'D1', d7_retention: 'D7', d30_retention: 'D30' },
   },
   {
-    title: 'Engagement (%)',
-    metrics: ['mission_participation_rate', 'battle_pass_completion_rate', 'outpost_collection_rate'],
-    labels: { mission_participation_rate: 'Missions', battle_pass_completion_rate: 'Check-In', outpost_collection_rate: 'Outposts' },
+    title: 'Arcanium (7-day)',
+    metrics: ['arcanium_generated', 'arcanium_spent'],
+    labels: { arcanium_generated: 'Generated', arcanium_spent: 'Spent' },
   },
   {
-    title: 'Economy (7-day)',
-    metrics: ['arcanium_spent', 'essence_spent'],
-    labels: { arcanium_spent: 'Arc Spent', essence_spent: 'Ess Spent' },
+    title: 'Essence (7-day)',
+    metrics: ['essence_earned', 'essence_spent'],
+    labels: { essence_earned: 'Earned', essence_spent: 'Spent' },
   },
 ];
 
