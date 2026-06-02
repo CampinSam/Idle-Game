@@ -96,7 +96,7 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
         <>
             {header.banner ? (
               <div className="gm-banner">
-                <AssetImage asset={header.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <AssetImage asset={header.banner} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxWidth: 'none', maxHeight: 'none' }} />
                 <div className="gm-banner-title-overlay">
                   <h2 className="gm-title">{header.title}</h2>
                   {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}

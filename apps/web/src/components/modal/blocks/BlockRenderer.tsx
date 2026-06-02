@@ -42,7 +42,7 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
           className={`gm-image-block${isStretch ? ' gm-image-block--stretch' : ''}`}
           style={{ display: 'flex', flexDirection: 'column', alignItems: isStretch ? 'stretch' : justifyContent === 'flex-start' ? 'flex-start' : justifyContent === 'flex-end' ? 'flex-end' : 'center' }}
         >
-          <AssetImage asset={block.image} style={{ width: imgWidth, borderRadius: isStretch ? 0 : borderRadius, display: 'block' }} />
+          <AssetImage asset={block.image} style={{ width: imgWidth, borderRadius: isStretch ? 0 : borderRadius, display: 'block', maxWidth: 'none', maxHeight: 'none' }} />
           {block.caption && <div className="gm-image-caption" style={{ textAlign: align }}>{block.caption}</div>}
         </div>
       );
