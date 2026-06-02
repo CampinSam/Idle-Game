@@ -1077,13 +1077,6 @@ export class AdminController {
     @Body() body: {
       hotWalletAddress?: string;
       blockfrostProjectId?: string;
-      cntPolicyId?: string;
-      cntAssetName?: string;
-      cntPriceAda?: number;
-      minWithdrawalType?: string;
-      minWithdrawalAmount?: number;
-      withdrawalFee?: number;
-      autoApprovalThreshold?: number;
       hotWalletSkeyHex?: string;
     },
   ) {

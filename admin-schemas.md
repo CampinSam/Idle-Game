@@ -1872,7 +1872,7 @@ Get the current hot wallet system configuration.
 Update hot wallet system configuration.
 
 Per-token fields (policyId, assetName, price, withdrawal rules) are now on the Currency row —
-update them via `PUT /api/admin/definitions/currencies/:id`.
+update them via `PUT /api/admin/definitions/currencies/:id` using the fields documented below.
 
 **Body (all fields optional):**
 ```json
@@ -1882,6 +1882,25 @@ update them via `PUT /api/admin/definitions/currencies/:id`.
   "hotWalletSkeyHex": "hex-encoded-extended-skey"
 }
 ```
+
+---
+
+### Currency crypto fields (CRYPTO type only)
+
+When editing a `Currency` row with `type: CRYPTO` via the standard Currency admin CRUD,
+the following extra fields are available:
+
+| Field | Type | Description |
+|---|---|---|
+| `cntEcosystem` | `string?` | Blockchain ecosystem, e.g. `"CARDANO"` |
+| `cntWalletType` | `string?` | Wallet standard, e.g. `"CIP30"` |
+| `cntPolicyId` | `string?` | On-chain policy ID hex |
+| `cntAssetName` | `string?` | On-chain asset name hex |
+| `cntPriceAda` | `float?` | Admin-set ADA price per 1 token unit (used for ADA_VALUE / USD_VALUE minimum checks) |
+| `cntMinWithdrawalType` | `"QUANTITY"\|"ADA_VALUE"\|"USD_VALUE"\|null` | How the minimum withdrawal is evaluated |
+| `cntMinWithdrawalAmount` | `float?` | Minimum amount interpreted per `cntMinWithdrawalType` |
+| `cntWithdrawalFee` | `bigint?` | Flat fee (in token units) deducted at withdrawal creation |
+| `cntAutoApprovalThreshold` | `bigint?` | Withdrawals ≤ this amount are auto-approved and processed immediately; `0` disables |
 
 ---
 
