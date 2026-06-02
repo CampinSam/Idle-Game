@@ -203,6 +203,16 @@ export function MissionBuilder(props: MissionBuilderProps) {
             data={blockData}
             className="flex flex-col gap-3 px-4 pt-3 pb-4"
           />
+          {hasLeadIn && (
+            <div className="px-4 pb-3">
+              <button
+                onClick={openLeadIn}
+                className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
+              >
+                📖 Open Narrative
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col">
@@ -214,14 +224,6 @@ export function MissionBuilder(props: MissionBuilderProps) {
             </div>
           )}
           <div className="flex flex-col gap-2 p-2 border-t border-[rgba(139,92,246,0.18)] bg-black/20">
-            {hasLeadIn && (
-              <button
-                onClick={openLeadIn}
-                className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
-              >
-                📖 Open Narrative
-              </button>
-            )}
             <div className="grid grid-cols-2 gap-2">
               {idleEntities.length === 0 && selectedEntities.length === 0 ? (
                 <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
