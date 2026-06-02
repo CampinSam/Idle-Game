@@ -4,10 +4,13 @@ import TagEditorPage from '../../admin/tag-editor/TagEditorPage';
 import TelemetryAdminPage from '../../admin/telemetry/TelemetryAdminPage';
 import SelectionTesterPage from '../../admin/selection-tester/SelectionTesterPage';
 import { CryptoAdminPage } from '../../admin/CryptoAdminPage';
+import ScreenComposerPage from '../../admin/screen-composer/ScreenComposerPage';
+import ModalEditorPage from '../../admin/modal-editor/ModalEditorPage';
+import PlayerEventsAdminPage from '../../admin/player-events/PlayerEventsAdminPage';
 import AdminV2PlayersSection from './AdminV2PlayersSection';
 import type { AdminMe } from '../../admin/adminApi';
 
-export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto';
+export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events';
 
 export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'icons', label: 'Icons' },
@@ -17,6 +20,9 @@ export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'god-mode', label: 'God Mode' },
   { key: 'selection-tester', label: 'Selection Tester' },
   { key: 'crypto', label: 'Crypto' },
+  { key: 'screens', label: 'Screen Composer' },
+  { key: 'modal-editor', label: 'Modal Editor' },
+  { key: 'player-events', label: 'Player Events' },
 ];
 
 interface Props {
@@ -73,6 +79,21 @@ export default function AdminV2SystemSection({ me, activeTool, onToolChange }: P
         {activeTool === 'crypto' && (
           <div className="av2-tool-wrap">
             <CryptoAdminPage />
+          </div>
+        )}
+        {activeTool === 'screens' && (
+          <div className="av2-tool-wrap" style={{ height: '100%', overflow: 'auto' }}>
+            <ScreenComposerPage />
+          </div>
+        )}
+        {activeTool === 'modal-editor' && (
+          <div className="av2-tool-wrap" style={{ height: '100%', overflow: 'auto' }}>
+            <ModalEditorPage />
+          </div>
+        )}
+        {activeTool === 'player-events' && (
+          <div className="av2-tool-wrap" style={{ height: '100%', overflow: 'auto' }}>
+            <PlayerEventsAdminPage />
           </div>
         )}
       </div>

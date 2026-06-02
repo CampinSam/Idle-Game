@@ -28,17 +28,6 @@ const CraftingRedirect = lazy(() => import('./features/crafting/CraftingRedirect
 const ForgePage = lazy(() => import('./features/forge/ForgePage'));
 const InventoryPage = lazy(() => import('./features/inventory/InventoryPage'));
 const AdminV2Shell = lazy(() => import('./features/admin-v2/AdminV2Shell'));
-const AdminDashboard = lazy(() => import('./features/admin/AdminDashboard'));
-const SmartAdminPage = lazy(() => import('./features/admin/smart/SmartAdminPage'));
-const ModalEditorPage = lazy(() => import('./features/admin/modal-editor/ModalEditorPage'));
-const ScreenComposerPage = lazy(() => import('./features/admin/screen-composer/ScreenComposerPage'));
-const IconManagerPage = lazy(() => import('./features/admin/icons/IconManagerPage'));
-const AudioManagerPage = lazy(() => import('./features/admin/audio/AudioManagerPage'));
-const BalancePage = lazy(() => import('./features/admin/balance/BalancePage'));
-const TagEditorPage = lazy(() => import('./features/admin/tag-editor/TagEditorPage'));
-const SelectionTesterPage = lazy(() => import('./features/admin/selection-tester/SelectionTesterPage'));
-const TelemetryAdminPage = lazy(() => import('./features/admin/telemetry/TelemetryAdminPage'));
-const PlayerEventsAdminPage = lazy(() => import('./features/admin/player-events/PlayerEventsAdminPage'));
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage'));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
@@ -102,87 +91,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function App() {
   const location = useLocation();
 
-  if (location.pathname.startsWith('/admin-v2')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <AdminV2Shell />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/screens')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <ScreenComposerPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/modal-editor')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <ModalEditorPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/def')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <SmartAdminPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/icons')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <IconManagerPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/audio')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <AudioManagerPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/balance')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <BalancePage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/tag-editor')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <TagEditorPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/selection-tester')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <SelectionTesterPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/telemetry')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <TelemetryAdminPage />
-      </Suspense>
-    );
-  }
-  if (location.pathname.startsWith('/admin/player-events')) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <PlayerEventsAdminPage />
-      </Suspense>
-    );
-  }
   if (location.pathname.startsWith('/admin')) {
     return (
       <Suspense fallback={<PageLoader />}>
-        <AdminDashboard />
+        <AdminV2Shell />
       </Suspense>
     );
   }
