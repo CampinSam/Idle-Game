@@ -4,6 +4,7 @@ import { restoreSession } from '../../store/authSlice';
 import { audioEngine, AudioBusName } from '../../services/AudioEngine';
 import { useWalletConnect } from '../../hooks/useWalletConnect';
 import { api } from '../../services/api';
+import { OnChainWallet } from './OnChainWallet';
 
 type Tab = 'audio' | 'wallet' | 'security';
 
@@ -534,6 +535,7 @@ export default function SettingsContent() {
                       </div>
                     </div>
                   )}
+                  <OnChainWallet linkedWallets={wallets} />
                 </>
               )}
             </div>

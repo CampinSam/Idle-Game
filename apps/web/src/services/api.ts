@@ -592,6 +592,47 @@ class ApiClient {
   getNftEntities() {
     return this.request<any[]>('/nft/collections/entities');
   }
+
+  // On-chain wallet
+  getDepositInfo() {
+    return this.request<any>('/crypto/deposit-info');
+  }
+
+  buildDepositTx(body: { amount: number; utxosCborHex: string[]; policyId?: string; assetName?: string }) {
+    return this.request<{ unsignedTxCborHex: string }>('/crypto/build-deposit-tx', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  submitDepositTx(signedTxCborHex: string) {
+    return this.request<{ txHash: string }>('/crypto/submit-deposit-tx', {
+      method: 'POST',
+      body: JSON.stringify({ signedTxCborHex }),
+    });
+  }
+
+  decodeAddress(hexAddress: string) {
+    return this.request<{ bech32: string }>('/crypto/decode-address', {
+      method: 'POST',
+      body: JSON.stringify({ hexAddress }),
+    });
+  }
+
+  requestWithdrawal(amount: number, destinationAddress: string) {
+    return this.request<{ id: string }>('/crypto/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount, destinationAddress }),
+    });
+  }
+
+  getWithdrawals(limit = 10) {
+    return this.request<any[]>(`/crypto/withdrawals?limit=${limit}`);
+  }
+
+  getDeposits(limit = 20) {
+    return this.request<any[]>(`/crypto/deposits?limit=${limit}`);
+  }
 }
 
 export interface ActivePowerSummary {

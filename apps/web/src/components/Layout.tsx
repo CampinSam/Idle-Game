@@ -146,11 +146,11 @@ export default function Layout() {
                   <button
                     className="top-bar-menu-profile"
                     onClick={() => {
-                      navigate("/crypto");
+                      navigate("/settings");
                       setShowMenu(false);
                     }}
                   >
-                    DERP Wallet
+                    Wallet
                   </button>
                   <button
                     className="top-bar-menu-logout"
