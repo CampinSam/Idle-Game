@@ -174,10 +174,12 @@ export function MissionBuilder(props: MissionBuilderProps) {
     teamMax,
     onToggle: toggleEntity,
     rewards: (preview as any)?.rewards ?? [],
+    hasLeadIn,
+    openLeadIn,
   }), [
     rawActiveDef, currentCat, missionCategoryDefs, onBack, missionPower, difficulty,
     successChance, injuryChance, injuryRate, powerRatio, liveSynergy, previewLoading,
-    preview, previewRequirements, entities, selectedEntities, teamMax,
+    preview, previewRequirements, entities, selectedEntities, teamMax, hasLeadIn, openLeadIn,
   ]);
 
   if (!rawActiveDef || !currentCat) {
@@ -203,16 +205,6 @@ export function MissionBuilder(props: MissionBuilderProps) {
             data={blockData}
             className="flex flex-col gap-3 px-4 pt-3 pb-4"
           />
-          {hasLeadIn && (
-            <div className="px-4 pb-3">
-              <button
-                onClick={openLeadIn}
-                className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
-              >
-                📖 Open Narrative
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="flex flex-col">

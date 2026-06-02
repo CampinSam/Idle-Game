@@ -23,7 +23,7 @@ const PANEL_TITLE_CLASS = 'text-[11px] font-extrabold tracking-[0.08em] uppercas
 
 function MissionHeroBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
-  const { def, currentCat, missionCategoryDefs = [], onBack } = data;
+  const { def, currentCat, missionCategoryDefs = [], onBack, hasLeadIn, openLeadIn } = data;
   if (!def) return null;
   return (
     <div className="-mx-4 -mt-3">
@@ -33,6 +33,16 @@ function MissionHeroBlock(_: BlockComponentProps) {
         missionCategoryDefs={missionCategoryDefs}
         onBack={onBack}
       />
+      {hasLeadIn && (
+        <div className="px-4 pt-2">
+          <button
+            onClick={openLeadIn}
+            className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
+          >
+            📖 Open Narrative
+          </button>
+        </div>
+      )}
     </div>
   );
 }
