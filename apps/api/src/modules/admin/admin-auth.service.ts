@@ -27,6 +27,7 @@ export interface AdminAccountDto {
     permissionFlags: PermissionFlags;
   };
   contentScopes: string[];
+  permissionFlagsOverride: Partial<PermissionFlags>;
   enabled: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -56,7 +57,12 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const perms = account.role.permissionFlags as unknown as PermissionFlags;
+    const rolePerms = account.role.permissionFlags as unknown as PermissionFlags;
+    const override = (account.permissionFlagsOverride ?? {}) as unknown as Partial<PermissionFlags>;
+    const perms: PermissionFlags = { ...rolePerms };
+    for (const key of Object.keys(override) as Array<keyof PermissionFlags>) {
+      if (override[key] === true) perms[key] = true;
+    }
     const token = this.jwt.sign(
       {
         sub: account.id,
@@ -146,6 +152,7 @@ export class AdminAuthService {
       roleId?: string;
       contentScopes?: string[];
       enabled?: boolean;
+      permissionFlagsOverride?: Partial<PermissionFlags>;
     },
     requestingAdminId: string,
   ): Promise<AdminAccountDto> {
@@ -175,6 +182,7 @@ export class AdminAuthService {
 
     if (data.contentScopes !== undefined) updates.contentScopes = data.contentScopes;
     if (data.enabled !== undefined) updates.enabled = data.enabled;
+    if (data.permissionFlagsOverride !== undefined) updates.permissionFlagsOverride = data.permissionFlagsOverride;
 
     const updated = await this.prisma.adminAccount.update({
       where: { id },
@@ -217,6 +225,7 @@ export class AdminAuthService {
         permissionFlags: account.role.permissionFlags as unknown as PermissionFlags,
       },
       contentScopes: account.contentScopes,
+      permissionFlagsOverride: (account.permissionFlagsOverride ?? {}) as unknown as Partial<PermissionFlags>,
       enabled: account.enabled,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,

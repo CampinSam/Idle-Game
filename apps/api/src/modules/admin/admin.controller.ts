@@ -111,7 +111,7 @@ export class AdminController {
   async updateAccount(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean },
+    @Body() body: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean; permissionFlagsOverride?: Record<string, boolean> },
   ) {
     const account = await this.adminAuthService.updateAccount(id, body, req.adminUser.id);
     const { password: _pw, ...logBody } = body;

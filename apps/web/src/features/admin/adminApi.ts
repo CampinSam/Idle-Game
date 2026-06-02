@@ -126,7 +126,7 @@ export const adminApi = {
   listAccounts: () => adminRequest<any[]>('/accounts'),
   createAccount: (data: { username: string; password: string; roleId: string; contentScopes?: string[] }) =>
     adminRequest<any>('/accounts', { method: 'POST', body: JSON.stringify(data) }),
-  updateAccount: (id: string, data: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean }) =>
+  updateAccount: (id: string, data: { username?: string; password?: string; roleId?: string; contentScopes?: string[]; enabled?: boolean; permissionFlagsOverride?: Partial<AdminPermissionFlags> }) =>
     adminRequest<any>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAccount: (id: string) =>
     adminRequest<any>(`/accounts/${id}`, { method: 'DELETE' }),

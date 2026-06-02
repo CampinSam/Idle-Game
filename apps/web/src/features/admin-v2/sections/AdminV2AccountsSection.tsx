@@ -12,6 +12,7 @@ interface Account {
   enabled: boolean;
   role: { id: string; name: string; slug: string };
   contentScopes: string[];
+  permissionFlagsOverride: { metrics_read?: boolean };
   createdAt: string;
 }
 
@@ -142,6 +143,7 @@ function EditForm({
   const [roleId, setRoleId] = useState(account.role.id);
   const [scopes, setScopes] = useState<string[]>(account.contentScopes);
   const [enabled, setEnabled] = useState(account.enabled);
+  const [metricsRead, setMetricsRead] = useState<boolean>(account.permissionFlagsOverride?.metrics_read ?? false);
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +156,12 @@ function EditForm({
     setSaving(true);
     setError(null);
     try {
-      const updates: any = { roleId, contentScopes: isSuperAdmin ? [] : scopes, enabled };
+      const updates: any = {
+        roleId,
+        contentScopes: isSuperAdmin ? [] : scopes,
+        enabled,
+        permissionFlagsOverride: { metrics_read: metricsRead },
+      };
       if (newPassword) updates.password = newPassword;
       await adminApi.updateAccount(account.id, updates);
       onSave();
@@ -216,6 +223,24 @@ function EditForm({
         <>
           <label className="av2-form-label" style={{ marginTop: 12 }}>Content Scopes</label>
           <ScopeSelect scopes={scopes} onChange={setScopes} />
+        </>
+      )}
+
+      {!isSuperAdmin && (
+        <>
+          <label className="av2-form-label" style={{ marginTop: 14 }}>Permission Overrides</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+            <input
+              type="checkbox"
+              id="metrics_read_toggle"
+              checked={metricsRead}
+              onChange={e => setMetricsRead(e.target.checked)}
+              style={{ accentColor: '#6c63ff', width: 14, height: 14 }}
+            />
+            <label htmlFor="metrics_read_toggle" style={{ fontSize: 12, color: '#a89fff', cursor: 'pointer', margin: 0 }}>
+              metrics_read — grant access to the Game Health dashboard
+            </label>
+          </div>
         </>
       )}
 

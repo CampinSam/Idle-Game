@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { JobType } from '@prisma/client';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { JobType, PurchaseStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface MetricValue {
@@ -29,16 +29,52 @@ export interface MetricHistoryResult {
 const TIME_SERIES_METRICS = new Set([
   'dau', 'wau', 'mau',
   'd1_retention', 'd7_retention', 'd30_retention',
-  'arcanium_generated', 'arcanium_spent',
-  'essence_earned', 'essence_spent',
+  'avg_session_length', 'mission_participation_rate',
+  'outpost_collection_rate', 'battle_pass_completion_rate',
+  'arcanium_spent', 'essence_spent',
+  'revenue_per_active_user', 'time_to_first_ascension',
 ]);
 
 @Injectable()
-export class GameMetricsService {
+export class GameMetricsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(GameMetricsService.name);
   private cache: { data: GameHealthMetrics; expiresAt: number } | null = null;
+  private snapshotTimeoutRef: NodeJS.Timeout | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
+
+  onModuleInit() {
+    this.scheduleNextSnapshot();
+  }
+
+  onModuleDestroy() {
+    if (this.snapshotTimeoutRef) {
+      clearTimeout(this.snapshotTimeoutRef);
+      this.snapshotTimeoutRef = null;
+    }
+  }
+
+  private scheduleNextSnapshot() {
+    const now = new Date();
+    const nextMidnight = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1,
+    ));
+    const msUntilMidnight = nextMidnight.getTime() - Date.now();
+
+    this.snapshotTimeoutRef = setTimeout(async () => {
+      try {
+        await this.recordDailySnapshot();
+        this.logger.log('Daily metric snapshot recorded automatically');
+      } catch (err) {
+        this.logger.warn(`Daily snapshot failed: ${err}`);
+      }
+      this.scheduleNextSnapshot();
+    }, msUntilMidnight);
+
+    this.logger.log(
+      `Next daily snapshot scheduled in ${Math.round(msUntilMidnight / 1000 / 60)}m (${nextMidnight.toISOString()})`,
+    );
+  }
 
   async getGameHealthMetrics(): Promise<GameHealthMetrics> {
     if (this.cache && this.cache.expiresAt > Date.now()) {
@@ -50,53 +86,28 @@ export class GameMetricsService {
     const ago7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const ago30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    // Core engagement / retention
     const [
-      totalPlayers,
       dau,
       wau,
       mau,
-      totalJobs24h,
       completedMissionJobs24h,
       playersWithMissions24h,
-      arcaniumLedger7d,
-      essenceLedger7d,
     ] = await Promise.all([
-      this.prisma.user.count(),
       this.prisma.user.count({ where: { updatedAt: { gte: ago24h } } }),
       this.prisma.user.count({ where: { updatedAt: { gte: ago7d } } }),
       this.prisma.user.count({ where: { updatedAt: { gte: ago30d } } }),
-      this.prisma.job.count({ where: { status: 'completed', updatedAt: { gte: ago24h } } }),
       this.prisma.job.count({ where: { type: JobType.MissionJob, status: 'completed', updatedAt: { gte: ago24h } } }),
       this.prisma.job.groupBy({
         by: ['userId'],
         where: { type: JobType.MissionJob, updatedAt: { gte: ago24h } },
       }).then(r => r.length),
-      this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'soft_arcanium', createdAt: { gte: ago7d } },
-        _sum: { delta: true },
-      }),
-      this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'hard_essence', createdAt: { gte: ago7d } },
-        _sum: { delta: true },
-      }),
     ]);
 
-    const [
-      arcaniumGenerated7d,
-      arcaniumSpent7d,
-      essenceEarned7d,
-      essenceSpent7d,
-    ] = await Promise.all([
-      this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'soft_arcanium', delta: { gt: 0 }, createdAt: { gte: ago7d } },
-        _sum: { delta: true },
-      }),
+    // Economy
+    const [arcaniumSpent7d, essenceSpent7d] = await Promise.all([
       this.prisma.currencyLedger.aggregate({
         where: { currencyId: 'soft_arcanium', delta: { lt: 0 }, createdAt: { gte: ago7d } },
-        _sum: { delta: true },
-      }),
-      this.prisma.currencyLedger.aggregate({
-        where: { currencyId: 'hard_essence', delta: { gt: 0 }, createdAt: { gte: ago7d } },
         _sum: { delta: true },
       }),
       this.prisma.currencyLedger.aggregate({
@@ -105,17 +116,29 @@ export class GameMetricsService {
       }),
     ]);
 
+    // Retention
     const d1Retention = await this.computeRetention(1);
     const d7Retention = await this.computeRetention(7);
     const d30Retention = await this.computeRetention(30);
 
+    // Game-specific metrics
+    const [
+      avgSessionLength,
+      battlePassCompletionRate,
+      outpostCollectionRate,
+      timeToFirstAscension,
+      revenuePerActiveUser,
+    ] = await Promise.all([
+      this.computeAvgSessionLength(ago24h),
+      this.computeBattlePassCompletionRate(ago24h, dau),
+      this.computeOutpostCollectionRate(ago24h, dau),
+      this.computeTimeToFirstAscension(),
+      this.computeRevenuePerActiveUser(ago7d, mau),
+    ]);
+
     const dauMauRatio = mau > 0 ? Math.round((dau / mau) * 1000) / 10 : null;
     const missionParticipationRate = dau > 0 ? Math.round((playersWithMissions24h / dau) * 1000) / 10 : null;
-    const sessionsPerDay = dau > 0 ? Math.round((totalJobs24h / dau) * 10) / 10 : null;
-
-    const arcGen = Number(arcaniumGenerated7d._sum.delta ?? 0);
     const arcSpent = Math.abs(Number(arcaniumSpent7d._sum.delta ?? 0));
-    const essEarned = Number(essenceEarned7d._sum.delta ?? 0);
     const essSpent = Math.abs(Number(essenceSpent7d._sum.delta ?? 0));
 
     const metrics: MetricValue[] = [
@@ -183,13 +206,13 @@ export class GameMetricsService {
         benchmark: '≥10% green, ≥5% yellow',
       },
       {
-        name: 'sessions_per_day',
-        value: sessionsPerDay,
-        unit: 'jobs/player',
-        label: 'Sessions Per Day',
-        description: 'Approximate activity depth — completed jobs per active player in 24h',
-        status: sessionsPerDay === null ? 'neutral' : this.statusThreshold(sessionsPerDay, 5, 2),
-        benchmark: '≥5 green, ≥2 yellow',
+        name: 'avg_session_length',
+        value: avgSessionLength,
+        unit: 'min',
+        label: 'Avg Session Length',
+        description: 'Average active window per player in the last 24 h (first job created → last job updated)',
+        status: avgSessionLength === null ? 'neutral' : this.statusThreshold(avgSessionLength, 30, 10),
+        benchmark: '≥30 min green, ≥10 min yellow',
       },
       {
         name: 'mission_participation_rate',
@@ -201,31 +224,31 @@ export class GameMetricsService {
         benchmark: '≥50% green, ≥20% yellow',
       },
       {
-        name: 'total_players',
-        value: totalPlayers,
-        unit: 'accounts',
-        label: 'Total Registered',
-        description: 'All registered player accounts',
-        status: 'neutral',
-        benchmark: 'No threshold',
+        name: 'outpost_collection_rate',
+        value: outpostCollectionRate,
+        unit: '%',
+        label: 'Outpost Collection Rate',
+        description: 'Share of daily active players who interacted with an outpost in the last 24 h',
+        status: outpostCollectionRate === null ? 'neutral' : this.statusThreshold(outpostCollectionRate, 60, 30),
+        benchmark: '≥60% green, ≥30% yellow',
       },
       {
-        name: 'completed_missions_24h',
-        value: completedMissionJobs24h,
-        unit: 'missions',
-        label: 'Missions Completed (24h)',
-        description: 'Total mission jobs completed in the last 24 hours',
-        status: this.statusThreshold(completedMissionJobs24h, 100, 20),
-        benchmark: '≥100 green, ≥20 yellow',
+        name: 'time_to_first_ascension',
+        value: timeToFirstAscension,
+        unit: 'days',
+        label: 'Time to First Ascension',
+        description: 'Median days from registration to first entity level-up (proxy for ascension)',
+        status: timeToFirstAscension === null ? 'neutral' : this.statusThresholdLower(timeToFirstAscension, 3, 7),
+        benchmark: '≤3d green, ≤7d yellow (lower is better)',
       },
       {
-        name: 'arcanium_generated',
-        value: arcGen,
-        unit: 'arc',
-        label: 'Arcanium Generated (7d)',
-        description: 'Total Arcanium credited across all wallets in last 7 days',
-        status: 'neutral',
-        benchmark: 'Informational',
+        name: 'battle_pass_completion_rate',
+        value: battlePassCompletionRate,
+        unit: '%',
+        label: 'Daily Check-In Rate',
+        description: 'Share of daily active players who completed their daily check-in',
+        status: battlePassCompletionRate === null ? 'neutral' : this.statusThreshold(battlePassCompletionRate, 50, 20),
+        benchmark: '≥50% green, ≥20% yellow',
       },
       {
         name: 'arcanium_spent',
@@ -237,13 +260,13 @@ export class GameMetricsService {
         benchmark: 'Informational',
       },
       {
-        name: 'essence_earned',
-        value: essEarned,
-        unit: 'ess',
-        label: 'Essence Earned (7d)',
-        description: 'Total Essence credited across all wallets in last 7 days',
-        status: 'neutral',
-        benchmark: 'Informational',
+        name: 'revenue_per_active_user',
+        value: revenuePerActiveUser,
+        unit: 'gems/100',
+        label: 'Revenue per Active User',
+        description: 'Gem purchases completed per 100 monthly active users (7-day window)',
+        status: revenuePerActiveUser === null ? 'neutral' : this.statusThreshold(revenuePerActiveUser, 5, 1),
+        benchmark: '≥5 green, ≥1 yellow',
       },
       {
         name: 'essence_spent',
@@ -310,9 +333,22 @@ export class GameMetricsService {
     return result;
   }
 
+  invalidateCache(): void {
+    this.cache = null;
+  }
+
+  // ─── Private helpers ─────────────────────────────────────────────────────────
+
   private statusThreshold(value: number, green: number, yellow: number): 'green' | 'yellow' | 'red' {
     if (value >= green) return 'green';
     if (value >= yellow) return 'yellow';
+    return 'red';
+  }
+
+  /** Lower-is-better threshold (e.g. time to first ascension). */
+  private statusThresholdLower(value: number, green: number, yellow: number): 'green' | 'yellow' | 'red' {
+    if (value <= green) return 'green';
+    if (value <= yellow) return 'yellow';
     return 'red';
   }
 
@@ -341,7 +377,111 @@ export class GameMetricsService {
     return Math.round((returned / cohortSize) * 1000) / 10;
   }
 
-  invalidateCache(): void {
-    this.cache = null;
+  /** Average session window (minutes) per DAU player in the last 24 h.
+   *  Approximated as: mean of (max(job.updatedAt) - min(job.createdAt)) per userId. */
+  private async computeAvgSessionLength(since: Date): Promise<number | null> {
+    try {
+      const rows = await this.prisma.job.groupBy({
+        by: ['userId'],
+        where: { updatedAt: { gte: since } },
+        _max: { updatedAt: true },
+        _min: { createdAt: true },
+      });
+      if (rows.length === 0) return null;
+      const durations = rows
+        .map(r => {
+          const start = r._min.createdAt?.getTime() ?? 0;
+          const end = r._max.updatedAt?.getTime() ?? 0;
+          return (end - start) / 60_000;
+        })
+        .filter(d => d >= 0);
+      if (durations.length === 0) return null;
+      return Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 10) / 10;
+    } catch {
+      return null;
+    }
+  }
+
+  /** % of DAU players who checked in today. */
+  private async computeBattlePassCompletionRate(since: Date, dau: number): Promise<number | null> {
+    if (dau === 0) return null;
+    try {
+      const checkedInCount = await this.prisma.checkInInstance.groupBy({
+        by: ['userId'],
+        where: { lastClaimedAt: { gte: since } },
+      }).then(r => r.length);
+      return Math.round((checkedInCount / dau) * 1000) / 10;
+    } catch {
+      return null;
+    }
+  }
+
+  /** % of DAU players who interacted with a location/outpost today. */
+  private async computeOutpostCollectionRate(since: Date, dau: number): Promise<number | null> {
+    if (dau === 0) return null;
+    try {
+      const activeOwners = await this.prisma.locationInstance.groupBy({
+        by: ['ownerUserId'],
+        where: {
+          ownerUserId: { not: null },
+          updatedAt: { gte: since },
+        },
+      }).then(r => r.filter(x => x.ownerUserId !== null).length);
+      return Math.round((activeOwners / dau) * 1000) / 10;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Median days from user.createdAt to their first entity's createdAt (proxy for "time to first ascension"). */
+  private async computeTimeToFirstAscension(): Promise<number | null> {
+    try {
+      // Get the earliest entity createdAt per user, joined with their user createdAt.
+      const entityRows = await this.prisma.entity.groupBy({
+        by: ['ownerUserId'],
+        where: { ownerUserId: { not: null } },
+        _min: { createdAt: true },
+      });
+      if (entityRows.length === 0) return null;
+
+      const userIds = entityRows.map(r => r.ownerUserId!).filter(Boolean);
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, createdAt: true },
+      });
+      const userMap = new Map(users.map(u => [u.id, u.createdAt]));
+
+      const diffs = entityRows
+        .filter(r => r.ownerUserId && userMap.has(r.ownerUserId))
+        .map(r => {
+          const userCreated = userMap.get(r.ownerUserId!)!.getTime();
+          const entityCreated = r._min.createdAt?.getTime() ?? userCreated;
+          return (entityCreated - userCreated) / (24 * 60 * 60 * 1000);
+        })
+        .filter(d => d >= 0)
+        .sort((a, b) => a - b);
+
+      if (diffs.length === 0) return null;
+      const mid = Math.floor(diffs.length / 2);
+      const median = diffs.length % 2 === 0
+        ? (diffs[mid - 1] + diffs[mid]) / 2
+        : diffs[mid];
+      return Math.round(median * 10) / 10;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Completed gem purchases per 100 MAU in the last 7 days. */
+  private async computeRevenuePerActiveUser(since: Date, mau: number): Promise<number | null> {
+    if (mau === 0) return null;
+    try {
+      const purchaseCount = await this.prisma.purchase.count({
+        where: { status: PurchaseStatus.CONFIRMED, createdAt: { gte: since } },
+      });
+      return Math.round((purchaseCount / mau) * 100 * 10) / 10;
+    } catch {
+      return null;
+    }
   }
 }

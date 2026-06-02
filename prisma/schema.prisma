@@ -1379,18 +1379,19 @@ model AdminRole {
 }
 
 model AdminAccount {
-  id             String          @id @default(uuid())
-  username       String          @unique
-  passwordHash   String          @map("password_hash")
-  roleId         String          @map("role_id")
-  contentScopes  String[]        @map("content_scopes")
-  enabled        Boolean         @default(true)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-  role           AdminRole       @relation(fields: [roleId], references: [id])
-  auditLogs      AdminAuditLog[]
-  authoredDrafts ContentDraft[]  @relation("DraftAuthor")
-  reviewedDrafts ContentDraft[]  @relation("DraftReviewer")
+  id                     String          @id @default(uuid())
+  username               String          @unique
+  passwordHash           String          @map("password_hash")
+  roleId                 String          @map("role_id")
+  contentScopes          String[]        @map("content_scopes")
+  permissionFlagsOverride Json           @default("{}") @map("permission_flags_override")
+  enabled                Boolean         @default(true)
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  role                   AdminRole       @relation(fields: [roleId], references: [id])
+  auditLogs              AdminAuditLog[]
+  authoredDrafts         ContentDraft[]  @relation("DraftAuthor")
+  reviewedDrafts         ContentDraft[]  @relation("DraftReviewer")
 
   @@index([roleId])
   @@map("admin_accounts")
