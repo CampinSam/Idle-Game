@@ -71,4 +71,25 @@ export class CryptoWalletController {
   ) {
     return this.cryptoWalletService.getPlayerDepositHistory(req.user.id, parseInt(limit || '20', 10));
   }
+
+  @Post('build-deposit-tx')
+  async buildDepositTx(
+    @Request() req: any,
+    @Body() body: { amount: number; utxosCborHex: string[] },
+  ) {
+    if (!body.amount || body.amount <= 0) throw new BadRequestException('amount must be a positive integer');
+    if (!Array.isArray(body.utxosCborHex) || body.utxosCborHex.length === 0) {
+      throw new BadRequestException('utxosCborHex must be a non-empty array of CBOR hex strings');
+    }
+    return this.cryptoWalletService.buildDepositTx(req.user.id, BigInt(Math.floor(body.amount)), body.utxosCborHex);
+  }
+
+  @Post('submit-deposit-tx')
+  async submitDepositTx(
+    @Request() req: any,
+    @Body() body: { signedTxCborHex: string },
+  ) {
+    if (!body.signedTxCborHex?.trim()) throw new BadRequestException('signedTxCborHex is required');
+    return this.cryptoWalletService.submitDepositTx(body.signedTxCborHex.trim());
+  }
 }

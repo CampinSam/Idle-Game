@@ -72,7 +72,70 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function DepositTab({ depositInfo }: { depositInfo: any }) {
+type DepositStep = 'idle' | 'fetching-utxos' | 'building' | 'signing' | 'submitting' | 'done' | 'error';
+
+function DepositTab({ depositInfo, linkedWallets }: { depositInfo: any; linkedWallets: any[] }) {
+  const [amount, setAmount] = useState('');
+  const [step, setStep] = useState<DepositStep>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const [txHash, setTxHash] = useState('');
+
+  const cardanoLinked = linkedWallets.filter((w) => w.chain === 'CARDANO');
+  const hasLinkedWallet = cardanoLinked.length > 0;
+
+  // Detect which injected CIP-30 wallets are present in the browser
+  const [injectedWalletKey, setInjectedWalletKey] = useState<string | null>(null);
+  useEffect(() => {
+    const KNOWN = ['nami', 'eternl', 'vespr', 'begin', 'flint', 'nufi', 'lace', 'yoroi'];
+    const w = (window as any).cardano ?? {};
+    const found = KNOWN.find((k) => w[k]?.enable);
+    setInjectedWalletKey(found ?? null);
+  }, []);
+
+  const canUseGuidedDeposit = hasLinkedWallet && !!injectedWalletKey && !!depositInfo?.hotWalletAddress;
+
+  const handleGuidedDeposit = async () => {
+    const amt = parseInt(amount, 10);
+    if (!amt || amt <= 0) { setErrorMsg('Enter a valid amount'); return; }
+    setErrorMsg('');
+    setTxHash('');
+
+    try {
+      // 1. Enable the wallet
+      setStep('fetching-utxos');
+      const walletApi = await (window as any).cardano[injectedWalletKey!].enable();
+
+      // 2. Get player UTXOs from CIP-30
+      const rawUtxos: string[] = await walletApi.getUtxos();
+      if (!rawUtxos?.length) throw new Error('No UTXOs found in your wallet');
+
+      // 3. Build unsigned tx on server
+      setStep('building');
+      const { unsignedTxCborHex } = await apiPost<{ unsignedTxCborHex: string }>(
+        '/crypto/build-deposit-tx',
+        { amount: amt, utxosCborHex: rawUtxos },
+      );
+
+      // 4. Prompt player to sign via CIP-30
+      setStep('signing');
+      const signedTxCborHex: string = await walletApi.signTx(unsignedTxCborHex, true);
+
+      // 5. Submit signed tx via server
+      setStep('submitting');
+      const { txHash: hash } = await apiPost<{ txHash: string }>(
+        '/crypto/submit-deposit-tx',
+        { signedTxCborHex },
+      );
+
+      setTxHash(hash);
+      setStep('done');
+      setAmount('');
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? 'Something went wrong');
+      setStep('error');
+    }
+  };
+
   if (!depositInfo?.hotWalletAddress) {
     return (
       <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
@@ -83,15 +146,108 @@ function DepositTab({ depositInfo }: { depositInfo: any }) {
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(depositInfo.hotWalletAddress)}&bgcolor=1a1640&color=c4b5fd&margin=8`;
 
+  const stepLabel: Record<DepositStep, string> = {
+    idle: 'Deposit DERP',
+    'fetching-utxos': 'Reading wallet…',
+    building: 'Building transaction…',
+    signing: 'Waiting for signature…',
+    submitting: 'Submitting…',
+    done: '✓ Submitted',
+    error: 'Deposit DERP',
+  };
+  const isBusy = ['fetching-utxos', 'building', 'signing', 'submitting'].includes(step);
+
   return (
     <div>
+      {/* Guided deposit — shown when wallet is connected + injected */}
+      {canUseGuidedDeposit && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.14), rgba(139,92,246,0.09))',
+          border: '1px solid rgba(167,139,250,0.3)', borderRadius: 12, padding: '1.25rem',
+          marginBottom: '1.25rem',
+        }}>
+          <div style={{ fontSize: '0.8rem', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: '0.75rem' }}>
+            Quick Deposit — Sign with Wallet
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <input
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => { setAmount(e.target.value); if (step === 'error') setStep('idle'); }}
+              placeholder="Amount (DERP)"
+              disabled={isBusy}
+              style={{
+                flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 6, color: '#e0e0ff', padding: '0.5rem 0.7rem', fontSize: '1rem',
+              }}
+            />
+            <button
+              onClick={handleGuidedDeposit}
+              disabled={isBusy || !amount || step === 'done'}
+              style={{
+                padding: '0.5rem 1.1rem', borderRadius: 8, border: 'none', fontWeight: 700,
+                fontSize: '0.9rem', cursor: isBusy ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                background: step === 'done'
+                  ? 'rgba(76,175,80,0.3)'
+                  : isBusy
+                    ? 'rgba(99,102,241,0.3)'
+                    : 'rgba(99,102,241,0.75)',
+                color: '#fff',
+              }}
+            >
+              {stepLabel[step]}
+            </button>
+          </div>
+
+          {/* Progress indicator */}
+          {isBusy && (
+            <div style={{ fontSize: '0.82rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', animation: 'pulse 1s infinite' }} />
+              {stepLabel[step]}
+            </div>
+          )}
+
+          {step === 'done' && txHash && (
+            <div style={{
+              padding: '0.6rem 0.75rem', borderRadius: 6, marginTop: '0.5rem',
+              background: 'rgba(76,175,80,0.12)', border: '1px solid rgba(76,175,80,0.3)',
+              fontSize: '0.82rem', color: '#4caf50',
+            }}>
+              Transaction submitted!{' '}
+              <a
+                href={`https://cardanoscan.io/transaction/${txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#60a5fa', textDecoration: 'none' }}
+              >
+                View on Cardanoscan ↗
+              </a>
+              <br />
+              <span style={{ color: '#888', fontSize: '0.78rem' }}>Your balance updates in ~20 seconds.</span>
+            </div>
+          )}
+
+          {step === 'error' && errorMsg && (
+            <div style={{
+              padding: '0.6rem 0.75rem', borderRadius: 6, marginTop: '0.5rem',
+              background: 'rgba(255,107,107,0.12)', border: '1px solid rgba(255,107,107,0.3)',
+              fontSize: '0.82rem', color: '#ff6b6b',
+            }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manual fallback — always shown */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))',
-        border: '1px solid rgba(167,139,250,0.2)', borderRadius: 12, padding: '1.25rem',
+        background: canUseGuidedDeposit ? 'rgba(255,255,255,0.02)' : 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08))',
+        border: '1px solid rgba(167,139,250,0.15)', borderRadius: 12, padding: '1.25rem',
         marginBottom: '1.25rem',
       }}>
         <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Deposit Address
+          {canUseGuidedDeposit ? 'Or send manually' : 'Deposit Address'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <code style={{
@@ -104,30 +260,34 @@ function DepositTab({ depositInfo }: { depositInfo: any }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div>
-          <img
-            src={qrUrl}
-            alt="Deposit address QR code"
-            style={{ width: 160, height: 160, borderRadius: 8, border: '2px solid rgba(167,139,250,0.3)' }}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', fontSize: '0.95rem' }}>How to Deposit</h4>
-          <ol style={{ margin: 0, paddingLeft: '1.2rem', color: '#a0a0c0', fontSize: '0.88rem', lineHeight: 1.7 }}>
-            <li>Connect your Cardano wallet in <strong style={{ color: '#c4b5fd' }}>Settings → Wallets</strong></li>
-            <li>Send DERP COIN (CNT) to the deposit address above</li>
-            <li>Your in-game DERP balance updates automatically (up to ~20 sec)</li>
-          </ol>
-          <div style={{
-            marginTop: '0.75rem', padding: '0.6rem 0.8rem', borderRadius: 6,
-            background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)',
-            fontSize: '0.82rem', color: '#fbbf24',
-          }}>
-            ⚠️ Only send from your <strong>linked</strong> Cardano wallet. Deposits from unlinked wallets cannot be credited.
+      {!canUseGuidedDeposit && (
+        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div>
+            <img
+              src={qrUrl}
+              alt="Deposit address QR code"
+              style={{ width: 160, height: 160, borderRadius: 8, border: '2px solid rgba(167,139,250,0.3)' }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <h4 style={{ margin: '0 0 0.75rem', color: '#b8b8ff', fontSize: '0.95rem' }}>How to Deposit</h4>
+            <ol style={{ margin: 0, paddingLeft: '1.2rem', color: '#a0a0c0', fontSize: '0.88rem', lineHeight: 1.7 }}>
+              {!hasLinkedWallet && <li>Connect your Cardano wallet in <strong style={{ color: '#c4b5fd' }}>Settings → Wallets</strong></li>}
+              <li>Send DERP COIN (CNT) to the deposit address above</li>
+              <li>Your in-game DERP balance updates automatically (up to ~20 sec)</li>
+            </ol>
+            {!hasLinkedWallet && (
+              <div style={{
+                marginTop: '0.75rem', padding: '0.6rem 0.8rem', borderRadius: 6,
+                background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)',
+                fontSize: '0.82rem', color: '#fbbf24',
+              }}>
+                ⚠️ Only send from your <strong>linked</strong> Cardano wallet. Deposits from unlinked wallets cannot be credited.
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -481,7 +641,7 @@ export default function CryptoWalletPage() {
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 12, padding: '1.25rem',
         }}>
-          {tab === 'deposit' && <DepositTab depositInfo={depositInfo} />}
+          {tab === 'deposit' && <DepositTab depositInfo={depositInfo} linkedWallets={linkedWallets} />}
           {tab === 'withdraw' && <WithdrawTab balance={derpBalance} linkedWallets={linkedWallets} depositInfo={depositInfo} />}
           {tab === 'history' && <DepositHistoryTab />}
         </div>

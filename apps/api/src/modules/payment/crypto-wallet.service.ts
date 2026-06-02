@@ -603,6 +603,205 @@ export class CryptoWalletService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Guided deposit: build unsigned tx for player to sign via CIP-30
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Builds an **unsigned** Cardano CNT deposit transaction using UTXOs
+   * supplied by the player's browser (via CIP-30 getUtxos()).
+   *
+   * The player's wallet address is resolved from their linked wallet in the DB.
+   * The unsigned tx body CBOR is returned to the client, which then calls
+   * wallet.signTx() and submits the signed CBOR back via submitDepositTx().
+   *
+   * @param userId        Authenticated player's DB user ID
+   * @param amount        CNT amount to send (in smallest unit, same as DERP)
+   * @param utxosCborHex  Array of UTXO CBORs from CIP-30 getUtxos() (hex strings)
+   */
+  async buildDepositTx(userId: string, amount: bigint, utxosCborHex: string[]): Promise<{ unsignedTxCborHex: string }> {
+    const config = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
+    if (!config?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
+
+    const apiKey = this.getBlockfrostApiKey(config);
+    if (!apiKey) throw new BadRequestException('Blockfrost API key not configured');
+
+    const policyIdHex: string = config.cntPolicyId ?? CNT_POLICY_ID_DEFAULT;
+    const assetNameHex: string = config.cntAssetName ?? CNT_ASSET_NAME_DEFAULT;
+    const assetUnit = `${policyIdHex}${assetNameHex}`;
+
+    const linkedWallet = await (this.prisma as any).linkedWallet.findFirst({
+      where: { userId, chain: 'CARDANO', isPrimary: true },
+    }) ?? await (this.prisma as any).linkedWallet.findFirst({
+      where: { userId, chain: 'CARDANO' },
+    });
+    if (!linkedWallet) throw new BadRequestException('No linked Cardano wallet found');
+
+    const playerAddress: string = linkedWallet.address;
+
+    const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+
+    // Decode player UTXOs from CIP-30 CBOR hex array
+    const utxos: any[] = [];
+    for (const cbor of utxosCborHex) {
+      try {
+        const txUnspentOut = CSL.TransactionUnspentOutput.from_bytes(Buffer.from(cbor, 'hex'));
+        const input = txUnspentOut.input();
+        const output = txUnspentOut.output();
+        const amount = output.amount();
+
+        // Normalise to Blockfrost-style { tx_hash, tx_index, amount: [{ unit, quantity }] }
+        const amountArr: Array<{ unit: string; quantity: string }> = [];
+        amountArr.push({ unit: 'lovelace', quantity: amount.coin().to_str() });
+
+        const ma = amount.multiasset();
+        if (ma) {
+          const policies = ma.keys();
+          for (let pi = 0; pi < policies.len(); pi++) {
+            const pid = policies.get(pi);
+            const assets = ma.get(pid)!;
+            const assetNames = assets.keys();
+            for (let ai = 0; ai < assetNames.len(); ai++) {
+              const an = assetNames.get(ai);
+              const qty = assets.get(an)!;
+              amountArr.push({
+                unit: `${Buffer.from(pid.to_bytes()).toString('hex')}${Buffer.from(an.name()).toString('hex')}`,
+                quantity: qty.to_str(),
+              });
+            }
+          }
+        }
+
+        utxos.push({
+          tx_hash: Buffer.from(input.transaction_id().to_bytes()).toString('hex'),
+          tx_index: input.index(),
+          amount: amountArr,
+        });
+      } catch (err) {
+        this.logger.warn(`Could not decode UTXO CBOR (skipping): ${err}`);
+      }
+    }
+
+    if (utxos.length === 0) throw new BadRequestException('No usable UTXOs supplied');
+
+    // Verify player has enough CNT
+    const totalCnt = utxos.reduce((acc, u) => {
+      const entry = (u.amount as Array<{ unit: string; quantity: string }>).find((a) => a.unit === assetUnit);
+      return acc + BigInt(entry?.quantity ?? 0);
+    }, 0n);
+    if (totalCnt < amount) {
+      throw new BadRequestException(`Insufficient CNT: need ${amount}, wallet has ${totalCnt}`);
+    }
+
+    // Fetch protocol params for accurate fee calculation
+    const pp = await this.fetchProtocolParams(apiKey);
+
+    const linearFee = CSL.LinearFee.new(
+      CSL.BigNum.from_str(String(pp.min_fee_a ?? 44)),
+      CSL.BigNum.from_str(String(pp.min_fee_b ?? 155381)),
+    );
+    const txBuilderCfg = CSL.TransactionBuilderConfigBuilder.new()
+      .fee_algo(linearFee)
+      .pool_deposit(CSL.BigNum.from_str(String(pp.pool_deposit ?? 500000000)))
+      .key_deposit(CSL.BigNum.from_str(String(pp.key_deposit ?? 2000000)))
+      .max_value_size(pp.max_val_size ?? 5000)
+      .max_tx_size(pp.max_tx_size ?? 16384)
+      .coins_per_utxo_byte(CSL.BigNum.from_str(String(pp.coins_per_utxo_size ?? pp.coins_per_utxo_word ?? 4310)))
+      .build();
+
+    const txBuilder = CSL.TransactionBuilder.new(txBuilderCfg);
+
+    const playerAddr = CSL.Address.from_bech32(playerAddress);
+    const hotAddr = CSL.Address.from_bech32(config.hotWalletAddress);
+    const policyId = CSL.ScriptHash.from_bytes(Buffer.from(policyIdHex, 'hex'));
+    const assetName = CSL.AssetName.new(Buffer.from(assetNameHex, 'hex'));
+    const cntAmountCSL = CSL.BigNum.from_str(String(amount));
+
+    // UTXO selection: prefer UTXOs carrying CNT, then by ADA descending
+    const neededLovelace = MIN_ADA_LOVELACE + ESTIMATED_FEE_LOVELACE;
+    let selectedLovelace = 0n;
+    let selectedCnt = 0n;
+    const selectedInputs: any[] = [];
+
+    const sorted = [...utxos].sort((a, b) => {
+      const aHasCnt = (a.amount ?? []).some((e: any) => e.unit === assetUnit);
+      const bHasCnt = (b.amount ?? []).some((e: any) => e.unit === assetUnit);
+      if (aHasCnt && !bHasCnt) return -1;
+      if (!aHasCnt && bHasCnt) return 1;
+      const aAda = BigInt((a.amount ?? []).find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      const bAda = BigInt((b.amount ?? []).find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      return bAda > aAda ? 1 : -1;
+    });
+
+    for (const utxo of sorted) {
+      if (selectedCnt >= amount && selectedLovelace >= neededLovelace) break;
+      const amounts: Array<{ unit: string; quantity: string }> = utxo.amount ?? [];
+      const lovelace = BigInt(amounts.find((a) => a.unit === 'lovelace')?.quantity ?? 0);
+      const cnt = BigInt(amounts.find((a) => a.unit === assetUnit)?.quantity ?? 0);
+      selectedLovelace += lovelace;
+      selectedCnt += cnt;
+      selectedInputs.push(utxo);
+    }
+
+    if (selectedCnt < amount) throw new BadRequestException(`Insufficient CNT after selection: need ${amount}, selected ${selectedCnt}`);
+    if (selectedLovelace < neededLovelace) throw new BadRequestException('Insufficient ADA to cover fee and min-ADA output');
+
+    // Add selected inputs
+    for (const utxo of selectedInputs) {
+      const txInput = CSL.TransactionInput.new(
+        CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, 'hex')),
+        utxo.tx_index,
+      );
+      const inputAmounts: Array<{ unit: string; quantity: string }> = utxo.amount ?? [];
+      const inputLovelace = BigInt(inputAmounts.find((a) => a.unit === 'lovelace')?.quantity ?? 0);
+      const inputValue = CSL.Value.new(CSL.BigNum.from_str(String(inputLovelace)));
+      const utxoMa = CSL.MultiAsset.new();
+      for (const entry of inputAmounts) {
+        if (entry.unit === 'lovelace') continue;
+        const ep = CSL.ScriptHash.from_bytes(Buffer.from(entry.unit.slice(0, 56), 'hex'));
+        const ea = CSL.AssetName.new(Buffer.from(entry.unit.slice(56), 'hex'));
+        const eAssets = CSL.Assets.new();
+        eAssets.insert(ea, CSL.BigNum.from_str(entry.quantity));
+        utxoMa.insert(ep, eAssets);
+      }
+      if (utxoMa.len() > 0) inputValue.set_multiasset(utxoMa);
+      txBuilder.add_regular_input(playerAddr, txInput, inputValue);
+    }
+
+    // Output: send CNT + min-ADA to hot wallet
+    const outputMa = CSL.MultiAsset.new();
+    const outputAssets = CSL.Assets.new();
+    outputAssets.insert(assetName, cntAmountCSL);
+    outputMa.insert(policyId, outputAssets);
+    const outputValue = CSL.Value.new(CSL.BigNum.from_str(String(MIN_ADA_LOVELACE)));
+    outputValue.set_multiasset(outputMa);
+    txBuilder.add_output(CSL.TransactionOutput.new(hotAddr, outputValue));
+
+    // Change back to player
+    txBuilder.add_change_if_needed(playerAddr);
+
+    const txBody = txBuilder.build();
+    const unsignedTx = CSL.Transaction.new(txBody, CSL.TransactionWitnessSet.new(), undefined);
+    const unsignedTxCborHex = Buffer.from(unsignedTx.to_bytes()).toString('hex');
+
+    return { unsignedTxCborHex };
+  }
+
+  /**
+   * Submits a player-signed deposit transaction to Blockfrost.
+   * Returns the on-chain tx hash. The existing deposit poller will pick up
+   * the deposit and credit the player's balance automatically.
+   */
+  async submitDepositTx(signedTxCborHex: string): Promise<{ txHash: string }> {
+    const config = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
+    if (!config?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
+    const apiKey = this.getBlockfrostApiKey(config);
+    if (!apiKey) throw new BadRequestException('Blockfrost API key not configured');
+
+    const txHash = await this.submitTransaction(signedTxCborHex, apiKey);
+    return { txHash };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Cardano transaction construction helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
