@@ -28,6 +28,7 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
       const sizing = d?.sizing ?? 'stretch';
       const rawWidth = d?.width;
       const borderRadius = d?.borderRadius ?? 12;
+      const isStretch = sizing === 'stretch';
       const imgWidth =
         sizing === 'percent' && rawWidth ? `${rawWidth}%`
         : sizing === 'px' && rawWidth ? `${rawWidth}px`
@@ -37,8 +38,11 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
         : align === 'right' ? 'flex-end'
         : 'center';
       return (
-        <div className="gm-image-block" style={{ display: 'flex', flexDirection: 'column', alignItems: justifyContent === 'flex-start' ? 'flex-start' : justifyContent === 'flex-end' ? 'flex-end' : 'center' }}>
-          <AssetImage asset={block.image} style={{ width: imgWidth, borderRadius, display: 'block' }} />
+        <div
+          className={`gm-image-block${isStretch ? ' gm-image-block--stretch' : ''}`}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: isStretch ? 'stretch' : justifyContent === 'flex-start' ? 'flex-start' : justifyContent === 'flex-end' ? 'flex-end' : 'center' }}
+        >
+          <AssetImage asset={block.image} style={{ width: imgWidth, borderRadius: isStretch ? 0 : borderRadius, display: 'block' }} />
           {block.caption && <div className="gm-image-caption" style={{ textAlign: align }}>{block.caption}</div>}
         </div>
       );

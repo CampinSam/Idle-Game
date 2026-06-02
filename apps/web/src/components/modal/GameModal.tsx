@@ -94,9 +94,23 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
     <div className="gm-overlay" onMouseDown={onBackdropClick} role="presentation">
       <div className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <>
-            {header.banner && (
+            {header.banner ? (
               <div className="gm-banner">
                 <AssetImage asset={header.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div className="gm-banner-title-overlay">
+                  <h2 className="gm-title">{header.title}</h2>
+                  {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
+                </div>
+              </div>
+            ) : (
+              <div className="gm-header">
+                {header.icon && (
+                  <div className="gm-header-icon">
+                    <AssetImage asset={header.icon} style={{ width: 48, height: 48, borderRadius: 12 }} />
+                  </div>
+                )}
+                <h2 className="gm-title">{header.title}</h2>
+                {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
               </div>
             )}
 
@@ -109,16 +123,6 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
                 {pageIndex + 1} / {totalPages}
               </div>
             )}
-
-            <div className="gm-header">
-              {header.icon && (
-                <div className="gm-header-icon">
-                  <AssetImage asset={header.icon} style={{ width: 48, height: 48, borderRadius: 12 }} />
-                </div>
-              )}
-              <h2 className="gm-title">{header.title}</h2>
-              {header.subtitle && <p className="gm-subtitle">{header.subtitle}</p>}
-            </div>
 
             <div className="gm-body">
               {body.map((block, idx) => (

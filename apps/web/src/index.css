@@ -2133,10 +2133,20 @@ input:focus {
   to { transform: translateY(0); opacity: 1; }
 }
 .gm-banner {
+  position: relative;
   width: 100%;
-  height: 120px;
+  height: 180px;
   overflow: hidden;
   flex-shrink: 0;
+}
+.gm-banner-title-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 40px 20px 16px;
+  background: linear-gradient(to top, rgba(10, 5, 25, 0.92) 0%, rgba(10, 5, 25, 0.4) 60%, transparent 100%);
+  text-align: center;
 }
 .gm-close-btn {
   position: absolute;
@@ -2278,6 +2288,11 @@ input:focus {
 }
 .gm-image-block {
   margin: 12px 0;
+}
+.gm-image-block--stretch {
+  margin-left: -24px;
+  margin-right: -24px;
+  width: calc(100% + 48px);
 }
 .gm-image-caption {
   color: #64748b;
