@@ -1513,6 +1513,43 @@
           "type": "integer",
           "default": 0,
           "description": "Display order within the top bar. Lower numbers appear first (left-to-right). Ties broken alphabetically by id."
+        },
+        "cntEcosystem": {
+          "type": ["string", "null"],
+          "description": "Blockchain ecosystem for CRYPTO currencies (e.g. 'CARDANO'). Null for non-crypto currencies."
+        },
+        "cntWalletType": {
+          "type": ["string", "null"],
+          "description": "Wallet integration standard for CRYPTO currencies (e.g. 'CIP30'). Null for non-crypto currencies."
+        },
+        "cntPolicyId": {
+          "type": ["string", "null"],
+          "description": "On-chain policy ID hex for CRYPTO currencies. Null for non-crypto currencies."
+        },
+        "cntAssetName": {
+          "type": ["string", "null"],
+          "description": "On-chain asset name hex for CRYPTO currencies. Null for non-crypto currencies."
+        },
+        "cntPriceAda": {
+          "type": ["number", "null"],
+          "description": "Admin-set ADA price per 1 CNT unit (e.g. 0.001). Used for ADA_VALUE / USD_VALUE minimum withdrawal checks. Set to 0 to disable value-based minimums."
+        },
+        "cntMinWithdrawalType": {
+          "type": ["string", "null"],
+          "enum": ["QUANTITY", "ADA_VALUE", "USD_VALUE", null],
+          "description": "Minimum withdrawal check mode: QUANTITY (plain unit count), ADA_VALUE (ADA equivalent), USD_VALUE (USD equivalent via live rate)."
+        },
+        "cntMinWithdrawalAmount": {
+          "type": ["number", "null"],
+          "description": "Minimum withdrawal amount interpreted per cntMinWithdrawalType."
+        },
+        "cntWithdrawalFee": {
+          "type": ["integer", "null"],
+          "description": "Flat withdrawal fee in CNT units deducted at withdrawal creation time."
+        },
+        "cntAutoApprovalThreshold": {
+          "type": ["integer", "null"],
+          "description": "Withdrawals at or below this CNT amount are auto-approved and processed immediately. 0 disables auto-approval."
         }
       },
       "additionalProperties": false

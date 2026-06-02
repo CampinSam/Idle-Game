@@ -3,9 +3,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { CryptoWalletService } from './crypto-wallet.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
-const CNT_POLICY_ID_DEFAULT = 'd9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6';
-const CNT_ASSET_NAME_DEFAULT = '45525020434f494e';
-
 @Controller('crypto')
 @UseGuards(AuthGuard('jwt'))
 export class CryptoWalletController {
@@ -16,26 +13,33 @@ export class CryptoWalletController {
 
   @Get('deposit-info')
   async getDepositInfo() {
-    const config = await this.cryptoWalletService.getConfig();
-    const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
-    const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
+    const [config, cryptoCurrencies] = await Promise.all([
+      this.cryptoWalletService.getConfig(),
+      this.prisma.currency.findMany({
+        where: { type: 'CRYPTO' as any, enabled: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+    ]);
+
+    const primary = cryptoCurrencies[0] as any;
+
     return {
       hotWalletAddress: config.hotWalletAddress || null,
-      currencyId: 'crypto_derp',
-      cntAssetId: `${policyId}${assetName}`,
+      currencyId: primary?.id ?? 'crypto_derp',
+      cntAssetId: primary ? `${primary.cntPolicyId ?? ''}${primary.cntAssetName ?? ''}` : '',
       note: 'Send DERP COIN to the deposit address from your linked Cardano wallet to receive in-game DERP.',
-      minWithdrawalType: config.minWithdrawalType,
-      minWithdrawalAmount: config.minWithdrawalAmount,
-      withdrawalFee: config.withdrawalFee.toString(),
-      autoApprovalThreshold: config.autoApprovalThreshold.toString(),
-      cntCurrencies: [
-        {
-          id: 'crypto_derp',
-          label: 'DERP COIN',
-          policyId,
-          assetName,
-        },
-      ],
+      minWithdrawalType: primary?.cntMinWithdrawalType ?? 'QUANTITY',
+      minWithdrawalAmount: primary?.cntMinWithdrawalAmount ?? 1,
+      withdrawalFee: (primary?.cntWithdrawalFee ?? 0n).toString(),
+      autoApprovalThreshold: (primary?.cntAutoApprovalThreshold ?? 0n).toString(),
+      cntCurrencies: cryptoCurrencies.map((c: any) => ({
+        id: c.id,
+        label: c.name,
+        policyId: c.cntPolicyId,
+        assetName: c.cntAssetName,
+        ecosystem: c.cntEcosystem,
+        walletType: c.cntWalletType,
+      })),
     };
   }
 

@@ -173,11 +173,17 @@ export async function seedDefinitions(prisma: any) {
   if (defs.currencies) {
     // Force upsert: currency definitions in definitions.json are the source of
     // truth. upsertManyForce ensures canonical rows (enabled, showInTopBar,
-    // sortOrder) are always in sync with the seed data on every boot.
+    // sortOrder, and crypto metadata) are always in sync with the seed data on every boot.
     await upsertManyForce(prisma, 'currency', defs.currencies, (r) => {
       const copy = { ...r };
       if (copy.cap !== null && copy.cap !== undefined) {
         copy.cap = BigInt(copy.cap);
+      }
+      if (copy.cntWithdrawalFee !== null && copy.cntWithdrawalFee !== undefined) {
+        copy.cntWithdrawalFee = BigInt(copy.cntWithdrawalFee);
+      }
+      if (copy.cntAutoApprovalThreshold !== null && copy.cntAutoApprovalThreshold !== undefined) {
+        copy.cntAutoApprovalThreshold = BigInt(copy.cntAutoApprovalThreshold);
       }
       return copy;
     });

@@ -178,10 +178,19 @@ model Currency {
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
   enabled      Boolean               @default(true)
-  showInTopBar Boolean               @default(false)
-  sortOrder    Int                   @default(0)
-  ledger       CurrencyLedger[]
-  balances     UserCurrencyBalance[]
+  showInTopBar             Boolean               @default(false)
+  sortOrder                Int                   @default(0)
+  cntEcosystem             String?
+  cntWalletType            String?
+  cntPolicyId              String?
+  cntAssetName             String?
+  cntPriceAda              Float?
+  cntMinWithdrawalType     WithdrawalMinType?
+  cntMinWithdrawalAmount   Float?
+  cntWithdrawalFee         BigInt?
+  cntAutoApprovalThreshold BigInt?
+  ledger                   CurrencyLedger[]
+  balances                 UserCurrencyBalance[]
 
   @@map("currencies")
 }
@@ -1073,20 +1082,13 @@ model ProcessedCryptoTx {
 }
 
 model CryptoWalletConfig {
-  id                     String            @id @default("default")
-  hotWalletAddress       String            @default("")
-  cntPolicyId            String            @default("")
-  cntAssetName           String            @default("")
-  blockfrostProjectId    String            @default("")
-  cntPriceAda            Float             @default(0)
-  minWithdrawalType      WithdrawalMinType @default(QUANTITY)
-  minWithdrawalAmount    Float             @default(1)
-  withdrawalFee          BigInt            @default(0)
-  autoApprovalThreshold  BigInt            @default(0)
-  depositScanPage        Int               @default(0)
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
-  hotWalletSkeyEncrypted String            @default("")
+  id                     String   @id @default("default")
+  hotWalletAddress       String   @default("")
+  blockfrostProjectId    String   @default("")
+  depositScanPage        Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  hotWalletSkeyEncrypted String   @default("")
 
   @@map("crypto_wallet_configs")
 }

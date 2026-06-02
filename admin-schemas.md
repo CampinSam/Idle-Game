@@ -1848,7 +1848,10 @@ Samples older than 24 h are automatically pruned by the oracle poller.
 All endpoints require `X-Admin-Key` header.
 
 ### `GET /api/admin/crypto/config`
-Get the current hot wallet configuration.
+Get the current hot wallet system configuration.
+
+> **Note:** Per-token fields (policyId, assetName, price, withdrawal rules) are now stored on
+> the `Currency` row (type: `CRYPTO`) and managed via the standard Currency admin CRUD.
 
 **Response:**
 ```json
@@ -1856,14 +1859,8 @@ Get the current hot wallet configuration.
   "id": "default",
   "hotWalletAddress": "addr1...",
   "blockfrostProjectId": "mainnetXXXXXXXXXX",
-  "cntPolicyId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6",
-  "cntAssetName": "45525020434f494e",
-  "cntPriceAda": 0.001,
-  "minWithdrawalType": "QUANTITY",
-  "minWithdrawalAmount": 1,
-  "withdrawalFee": "0",
-  "autoApprovalThreshold": "0",
-  "processedTxHashes": [],
+  "depositScanPage": 0,
+  "hasStoredSigningKey": false,
   "createdAt": "...",
   "updatedAt": "..."
 }
@@ -1872,24 +1869,19 @@ Get the current hot wallet configuration.
 ---
 
 ### `PUT /api/admin/crypto/config`
-Update hot wallet configuration.
+Update hot wallet system configuration.
+
+Per-token fields (policyId, assetName, price, withdrawal rules) are now on the Currency row —
+update them via `PUT /api/admin/definitions/currencies/:id`.
 
 **Body (all fields optional):**
 ```json
 {
   "hotWalletAddress": "addr1...",
   "blockfrostProjectId": "mainnetXXXXXXXXXX",
-  "cntPolicyId": "hex56chars",
-  "cntAssetName": "hexAssetName",
-  "cntPriceAda": 0.001,
-  "minWithdrawalType": "QUANTITY",
-  "minWithdrawalAmount": 100,
-  "withdrawalFee": 10,
-  "autoApprovalThreshold": 1000
+  "hotWalletSkeyHex": "hex-encoded-extended-skey"
 }
 ```
-- `minWithdrawalType`: `"QUANTITY"` | `"ADA_VALUE"` | `"USD_VALUE"`
-- `cntPriceAda`: Admin-set ADA price per 1 CNT unit (e.g. `0.001`). Required for `ADA_VALUE` / `USD_VALUE` minimum checks — the service fetches live ADA/USD via CoinGecko to convert to USD. Set to `0` to disable value-based minimums (falls back to quantity check).
 
 ---
 

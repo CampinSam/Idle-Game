@@ -13,7 +13,16 @@
       "cap": null,
       "enabled": true,
       "showInTopBar": true,
-      "sortOrder": 3
+      "sortOrder": 3,
+      "cntEcosystem": "CARDANO",
+      "cntWalletType": "CIP30",
+      "cntPolicyId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6",
+      "cntAssetName": "45525020434f494e",
+      "cntPriceAda": 0,
+      "cntMinWithdrawalType": "QUANTITY",
+      "cntMinWithdrawalAmount": 1,
+      "cntWithdrawalFee": 0,
+      "cntAutoApprovalThreshold": 0
     },
     {
       "id": "hard_essence",

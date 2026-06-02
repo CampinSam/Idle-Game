@@ -7,8 +7,6 @@ import { NotificationService } from '../notification/notification.service';
 import { PatchBuilder, buildCurrencyPatches } from '../commands/patch-builder';
 import * as nodeCrypto from 'crypto';
 
-const CNT_POLICY_ID_DEFAULT = 'd9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f6';
-const CNT_ASSET_NAME_DEFAULT = '45525020434f494e';
 const CURRENCY_ID = 'crypto_derp';
 const BLOCKFROST_BASE = 'https://cardano-mainnet.blockfrost.io/api/v0';
 const POLL_INTERVAL_MS = 20_000;
@@ -135,11 +133,7 @@ export class CryptoWalletService {
     });
     if (!config) {
       const created = await (this.prisma as any).cryptoWalletConfig.create({
-        data: {
-          id: 'default',
-          cntPolicyId: CNT_POLICY_ID_DEFAULT,
-          cntAssetName: CNT_ASSET_NAME_DEFAULT,
-        },
+        data: { id: 'default' },
       });
       return this.sanitizeConfig(serializeBigInts(created));
     }
@@ -155,27 +149,19 @@ export class CryptoWalletService {
     };
   }
 
+  /**
+   * Updates system-level wallet configuration (hotWalletAddress, blockfrostProjectId,
+   * signing key). Per-currency token settings (policyId, assetName, price, withdrawal
+   * rules) are now stored on the Currency row and managed via the Currency admin CRUD.
+   */
   async updateConfig(data: {
     hotWalletAddress?: string;
-    cntPolicyId?: string;
-    cntAssetName?: string;
-    cntPriceAda?: number;
-    minWithdrawalType?: string;
-    minWithdrawalAmount?: number;
-    withdrawalFee?: number;
-    autoApprovalThreshold?: number;
+    blockfrostProjectId?: string;
     hotWalletSkeyHex?: string;
   }) {
     const updateData: any = {};
     if (data.hotWalletAddress !== undefined) updateData.hotWalletAddress = data.hotWalletAddress;
-    if (data.cntPolicyId !== undefined) updateData.cntPolicyId = data.cntPolicyId;
-    if (data.cntAssetName !== undefined) updateData.cntAssetName = data.cntAssetName;
-    if ((data as any).blockfrostProjectId !== undefined) updateData.blockfrostProjectId = (data as any).blockfrostProjectId;
-    if (data.cntPriceAda !== undefined) updateData.cntPriceAda = data.cntPriceAda;
-    if (data.minWithdrawalType !== undefined) updateData.minWithdrawalType = data.minWithdrawalType;
-    if (data.minWithdrawalAmount !== undefined) updateData.minWithdrawalAmount = data.minWithdrawalAmount;
-    if (data.withdrawalFee !== undefined) updateData.withdrawalFee = BigInt(Math.round(data.withdrawalFee));
-    if (data.autoApprovalThreshold !== undefined) updateData.autoApprovalThreshold = BigInt(Math.round(data.autoApprovalThreshold));
+    if (data.blockfrostProjectId !== undefined) updateData.blockfrostProjectId = data.blockfrostProjectId;
     if (data.hotWalletSkeyHex !== undefined && data.hotWalletSkeyHex.trim() !== '') {
       updateData.hotWalletSkeyEncrypted = encryptSkey(data.hotWalletSkeyHex.trim());
     }
@@ -186,6 +172,21 @@ export class CryptoWalletService {
       update: updateData,
     });
     return this.sanitizeConfig(serializeBigInts(saved));
+  }
+
+  /**
+   * Loads the Currency row for the given currencyId and asserts it is CRYPTO-typed.
+   * Throws InternalServerErrorException if the row is missing or not CRYPTO type.
+   */
+  private async getCryptoCurrencyRow(currencyId: string): Promise<any> {
+    const row = await this.prisma.currency.findUnique({ where: { id: currencyId } });
+    if (!row) {
+      throw new InternalServerErrorException(`Currency "${currencyId}" not found`);
+    }
+    if ((row as any).type !== 'CRYPTO') {
+      throw new InternalServerErrorException(`Currency "${currencyId}" is not a CRYPTO-type currency`);
+    }
+    return row;
   }
 
   /**
@@ -241,9 +242,8 @@ export class CryptoWalletService {
       const lovelace = amounts.find((a) => a.unit === 'lovelace');
       const adaNum = lovelace ? (Number(lovelace.quantity) / 1_000_000).toFixed(6) : '0.000000';
 
-      const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
-      const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
-      const unit = `${policyId}${assetName}`;
+      const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+      const unit = `${cryptoRow.cntPolicyId}${cryptoRow.cntAssetName}`;
       const cntEntry = amounts.find((a) => a.unit === unit);
       const cnt = cntEntry ? cntEntry.quantity : '0';
 
@@ -266,17 +266,17 @@ export class CryptoWalletService {
       throw new BadRequestException('amount must be a whole number (no decimals)');
     }
 
-    const config = await this.getConfig();
-    const fee = Number(config.withdrawalFee ?? 0);
+    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+    const fee = Number(cryptoRow.cntWithdrawalFee ?? 0);
     const net = amount - fee;
 
     if (net <= 0) {
       throw new BadRequestException(`Amount must be greater than the fee (${fee})`);
     }
 
-    await this.validateMinWithdrawal(config, amount);
+    await this.validateMinWithdrawal(cryptoRow, amount);
 
-    const autoApprovalThreshold = Number(config.autoApprovalThreshold ?? 0);
+    const autoApprovalThreshold = Number(cryptoRow.cntAutoApprovalThreshold ?? 0);
     const isAutoApproved = autoApprovalThreshold > 0 && amount <= autoApprovalThreshold;
 
     // Atomic: deduct balance + create withdrawal record in a single transaction
@@ -473,7 +473,7 @@ export class CryptoWalletService {
       }
 
       for (const withdrawal of approved) {
-        await this.sendWithdrawalOnChain(withdrawal, config, apiKey, hotWalletAddress, skeyHex);
+        await this.sendWithdrawalOnChain(withdrawal, apiKey, hotWalletAddress, skeyHex);
       }
     } finally {
       this.withdrawalProcessing = false;
@@ -492,14 +492,12 @@ export class CryptoWalletService {
    * 5. On success → SENT + txHash.  On failure → FAILED + adminNote with error.
    *
    * @param withdrawal  Raw Prisma `CryptoWithdrawal` record
-   * @param config      Wallet config (policyId, assetName, etc.)
    * @param apiKey      Blockfrost project ID
    * @param hotWalletAddress  Bech32 hot wallet address
    * @param skeyHex     Hot wallet extended spending key as hex CBOR (enterprise or base addr)
    */
   private async sendWithdrawalOnChain(
     withdrawal: any,
-    config: any,
     apiKey: string,
     hotWalletAddress: string,
     skeyHex: string,
@@ -525,8 +523,9 @@ export class CryptoWalletService {
         throw new Error('Hot wallet has no UTXOs — cannot build transaction');
       }
 
-      const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
-      const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
+      const cryptoRow = await this.getCryptoCurrencyRow(withdrawal.currencyId);
+      const policyId = cryptoRow.cntPolicyId as string;
+      const assetName = cryptoRow.cntAssetName as string;
       const unit = `${policyId}${assetName}`;
 
       // ── Step 3: select UTXOs and build the transaction ────────────────────
@@ -801,11 +800,16 @@ export class CryptoWalletService {
     utxosCborHex: string[],
     tokenOverride?: { policyId: string; assetName: string },
   ): Promise<{ unsignedTxCborHex: string }> {
-    const config = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
-    if (!config?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
+    const walletConfig = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
+    if (!walletConfig?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
 
-    const apiKey = this.getBlockfrostApiKey(config);
+    const apiKey = this.getBlockfrostApiKey(walletConfig);
     if (!apiKey) throw new BadRequestException('Blockfrost API key not configured');
+
+    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+    if (!tokenOverride && (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName)) {
+      throw new BadRequestException('Token policy/asset not configured for this currency');
+    }
 
     const linkedWallet = await (this.prisma as any).linkedWallet.findFirst({
       where: { userId, chain: 'CARDANO', isPrimary: true },
@@ -821,10 +825,10 @@ export class CryptoWalletService {
     const unsignedTxCborHex = await this.buildUnsignedPlayerCntTx({
       utxos,
       senderAddress: linkedWallet.address,
-      recipientAddress: config.hotWalletAddress,
+      recipientAddress: walletConfig.hotWalletAddress,
       cntAmount: amount,
-      policyIdHex: tokenOverride?.policyId ?? config.cntPolicyId ?? CNT_POLICY_ID_DEFAULT,
-      assetNameHex: tokenOverride?.assetName ?? config.cntAssetName ?? CNT_ASSET_NAME_DEFAULT,
+      policyIdHex: tokenOverride?.policyId ?? cryptoRow.cntPolicyId,
+      assetNameHex: tokenOverride?.assetName ?? cryptoRow.cntAssetName,
       apiKey,
       CSL,
     });
@@ -1187,9 +1191,9 @@ export class CryptoWalletService {
    * - ADA_VALUE:  converts CNT → ADA using admin-set cntPriceAda; checks ADA value
    * - USD_VALUE:  converts CNT → ADA → USD using cntPriceAda + live AdaRateService
    */
-  private async validateMinWithdrawal(config: any, amount: number): Promise<void> {
-    const minType = config.minWithdrawalType as string;
-    const minAmount = Number(config.minWithdrawalAmount ?? 1);
+  private async validateMinWithdrawal(currencyRow: any, amount: number): Promise<void> {
+    const minType = (currencyRow.cntMinWithdrawalType ?? 'QUANTITY') as string;
+    const minAmount = Number(currencyRow.cntMinWithdrawalAmount ?? 1);
 
     if (minType === 'QUANTITY') {
       if (amount < minAmount) {
@@ -1199,7 +1203,7 @@ export class CryptoWalletService {
     }
 
     if (minType === 'ADA_VALUE') {
-      const cntPriceAda = Number(config.cntPriceAda ?? 0);
+      const cntPriceAda = Number(currencyRow.cntPriceAda ?? 0);
       if (cntPriceAda <= 0) {
         if (amount < minAmount) {
           throw new BadRequestException(`Minimum withdrawal is ${minAmount} DERP (ADA price not configured)`);
@@ -1216,7 +1220,7 @@ export class CryptoWalletService {
     }
 
     if (minType === 'USD_VALUE') {
-      const cntPriceAda = Number(config.cntPriceAda ?? 0);
+      const cntPriceAda = Number(currencyRow.cntPriceAda ?? 0);
       if (cntPriceAda <= 0) {
         if (amount < minAmount) {
           throw new BadRequestException(`Minimum withdrawal is $${minAmount} USD (ADA price not configured)`);
@@ -1262,9 +1266,12 @@ export class CryptoWalletService {
 
     if (!apiKey || !config.hotWalletAddress) return;
 
-    const policyId = config.cntPolicyId || CNT_POLICY_ID_DEFAULT;
-    const assetName = config.cntAssetName || CNT_ASSET_NAME_DEFAULT;
-    const unit = `${policyId}${assetName}`;
+    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+    if (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName) {
+      this.logger.warn('pollDeposits: crypto_derp Currency missing cntPolicyId/cntAssetName — skipping');
+      return;
+    }
+    const unit = `${cryptoRow.cntPolicyId}${cryptoRow.cntAssetName}`;
     const PAGE_SIZE = 50;
 
     try {
