@@ -33,6 +33,11 @@ function MissionHeroBlock(_: BlockComponentProps) {
         missionCategoryDefs={missionCategoryDefs}
         onBack={onBack}
       />
+      {def.description && (
+        <p className="m-0 px-4 pt-2.5 text-[13px] leading-relaxed text-text-secondary">
+          {def.description}
+        </p>
+      )}
       {hasLeadIn && (
         <div className="px-4 pt-2">
           <button
