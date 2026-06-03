@@ -15,35 +15,43 @@ ALTER TABLE "recipe_defs" ADD COLUMN IF NOT EXISTS "multicraft" JSONB;
 --   (c) { items: [...] }              → extract .items
 --   (d) { type: 'bundle', entries: [...] } → extract .entries
 --   (e) anything else                 → [] (safe fallback, data was not array-based)
+--
+-- NOTE: The UPDATE uses EXECUTE (dynamic SQL) so that PL/pgSQL only parses
+-- the "rewards" column reference at runtime — inside the IF branch — rather
+-- than at DO-block compile time. Without EXECUTE, PostgreSQL validates all
+-- SQL statements in a DO block up front and throws "column does not exist"
+-- even when the IF condition would prevent the branch from running.
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'recipe_defs' AND column_name = 'rewards'
   ) THEN
-    UPDATE "recipe_defs"
-    SET "tiers" = jsonb_build_object(
-      'common', jsonb_build_object(
-        'rewards',
-        CASE
-          WHEN jsonb_typeof("rewards"::jsonb) = 'array'
-            THEN "rewards"::jsonb
-          WHEN jsonb_typeof("rewards"::jsonb) = 'object'
-               AND jsonb_typeof(("rewards"::jsonb)->'rewards') = 'array'
-            THEN ("rewards"::jsonb)->'rewards'
-          WHEN jsonb_typeof("rewards"::jsonb) = 'object'
-               AND jsonb_typeof(("rewards"::jsonb)->'items') = 'array'
-            THEN ("rewards"::jsonb)->'items'
-          WHEN jsonb_typeof("rewards"::jsonb) = 'object'
-               AND ("rewards"::jsonb)->>'type' = 'bundle'
-               AND jsonb_typeof(("rewards"::jsonb)->'entries') = 'array'
-            THEN ("rewards"::jsonb)->'entries'
-          ELSE '[]'::jsonb
-        END
+    EXECUTE $exec$
+      UPDATE "recipe_defs"
+      SET "tiers" = jsonb_build_object(
+        'common', jsonb_build_object(
+          'rewards',
+          CASE
+            WHEN jsonb_typeof("rewards"::jsonb) = 'array'
+              THEN "rewards"::jsonb
+            WHEN jsonb_typeof("rewards"::jsonb) = 'object'
+                 AND jsonb_typeof(("rewards"::jsonb)->'rewards') = 'array'
+              THEN ("rewards"::jsonb)->'rewards'
+            WHEN jsonb_typeof("rewards"::jsonb) = 'object'
+                 AND jsonb_typeof(("rewards"::jsonb)->'items') = 'array'
+              THEN ("rewards"::jsonb)->'items'
+            WHEN jsonb_typeof("rewards"::jsonb) = 'object'
+                 AND ("rewards"::jsonb)->>'type' = 'bundle'
+                 AND jsonb_typeof(("rewards"::jsonb)->'entries') = 'array'
+              THEN ("rewards"::jsonb)->'entries'
+            ELSE '[]'::jsonb
+          END
+        )
       )
-    )
-    WHERE ("tiers" = '{}'::jsonb OR "tiers" IS NULL)
-      AND "rewards" IS NOT NULL;
+      WHERE ("tiers" = '{}'::jsonb OR "tiers" IS NULL)
+        AND "rewards" IS NOT NULL
+    $exec$;
 
     ALTER TABLE "recipe_defs" DROP COLUMN "rewards";
   END IF;
