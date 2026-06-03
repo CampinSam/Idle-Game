@@ -148,6 +148,19 @@ async function allCreationsConflict(client, creations) {
   return true;
 }
 
+async function anyCreationsConflict(client, creations) {
+  for (const t of creations.types) {
+    if (await typeExists(client, t)) return true;
+  }
+  for (const t of creations.tables) {
+    if (await tableExists(client, t)) return true;
+  }
+  for (const c of creations.columns) {
+    if (await columnExists(client, c.table, c.column)) return true;
+  }
+  return false;
+}
+
 function resolveAsApplied(name) {
   console.log(`[prisma-deploy] Baselining ${name} (DDL already present in DB)`);
   execSync(`npx prisma migrate resolve --applied ${name} --schema=${SCHEMA_PATH}`, {
@@ -221,6 +234,7 @@ async function main() {
       const applied = await appliedMigrations(client);
       const all = listMigrations();
       const unapplied = all.filter((m) => !applied.has(m));
+      const dbIsNonEmpty = await hasAnyUserTables(client);
 
       if (unapplied.length === 0) {
         console.log('[prisma-deploy] No unapplied migrations — nothing to baseline');
@@ -243,6 +257,16 @@ async function main() {
           }
 
           if (await allCreationsConflict(client, creations)) {
+            resolveAsApplied(name);
+          } else if (dbIsNonEmpty && (await anyCreationsConflict(client, creations))) {
+            // Partial conflict: some but not all DDL already exists in the DB.
+            // This happens when the schema was partially copied out-of-band (e.g.
+            // via Replit's "copy dev schema to production" flow). Baselining avoids
+            // the "type already exists" error while still letting subsequent
+            // migrations apply any schema that is genuinely missing.
+            console.log(
+              `[prisma-deploy] ${name}: partially present in DB — baselining to avoid conflicts`,
+            );
             resolveAsApplied(name);
           } else {
             console.log(
