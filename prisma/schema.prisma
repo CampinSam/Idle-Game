@@ -1569,7 +1569,7 @@ enum ContentDraftOperation {
 
 enum ContentDraftStatus {
   pending
+  applying
   approved
   rejected
-  applying
 }
