@@ -56,6 +56,7 @@ function extractConflictingCreations(sql) {
   const types = [];
   const tables = [];
   const columns = [];
+  const constraints = [];
 
   const typeRe = /CREATE\s+TYPE\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/gi;
   let m;
@@ -73,10 +74,17 @@ function extractConflictingCreations(sql) {
     if (!/IF\s+NOT\s+EXISTS/i.test(m[0])) columns.push({ table: m[1], column: m[2] });
   }
 
-  if (types.length === 0 && tables.length === 0 && columns.length === 0) {
+  // ALTER TABLE ... ADD CONSTRAINT has no IF NOT EXISTS guard in PostgreSQL —
+  // every such statement is non-idempotent.
+  const constraintRe = /ADD\s+CONSTRAINT\s+"([^"]+)"/gi;
+  while ((m = constraintRe.exec(stripped)) !== null) {
+    constraints.push(m[1]);
+  }
+
+  if (types.length === 0 && tables.length === 0 && columns.length === 0 && constraints.length === 0) {
     return null;
   }
-  return { types, tables, columns };
+  return { types, tables, columns, constraints };
 }
 
 async function ensureMigrationsTable(client) {
@@ -135,6 +143,14 @@ async function columnExists(client, table, column) {
   return r.rowCount > 0;
 }
 
+async function constraintExists(client, name) {
+  const r = await client.query(
+    'SELECT 1 FROM pg_constraint WHERE conname = $1 LIMIT 1',
+    [name],
+  );
+  return r.rowCount > 0;
+}
+
 async function allCreationsConflict(client, creations) {
   for (const t of creations.types) {
     if (!(await typeExists(client, t))) return false;
@@ -144,6 +160,9 @@ async function allCreationsConflict(client, creations) {
   }
   for (const c of creations.columns) {
     if (!(await columnExists(client, c.table, c.column))) return false;
+  }
+  for (const c of creations.constraints) {
+    if (!(await constraintExists(client, c))) return false;
   }
   return true;
 }
@@ -157,6 +176,9 @@ async function anyCreationsConflict(client, creations) {
   }
   for (const c of creations.columns) {
     if (await columnExists(client, c.table, c.column)) return true;
+  }
+  for (const c of creations.constraints) {
+    if (await constraintExists(client, c)) return true;
   }
   return false;
 }
