@@ -746,7 +746,7 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
               value={safe.maxLevel ?? ''}
               onChange={e => set('maxLevel', e.target.value === '' ? undefined : Number(e.target.value))}
               style={{ ...numberInputStyle, width: '100%' }}
-              placeholder="e.g. 10"
+              placeholder="default: 50"
             />
           </div>
           <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
@@ -937,7 +937,9 @@ export function locationLevelRulesErrorCount(value: unknown): number {
     : {};
   let n = 0;
 
-  if (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1) n++;
+  // maxLevel is optional — server defaults to 50 when absent. Only flag it
+  // as an error if it is explicitly set to a non-positive value.
+  if (safe.maxLevel !== undefined && safe.maxLevel !== null && (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1)) n++;
 
   n += xpDepositCostsErrorCount(safe.xpDepositCosts);
 
@@ -970,7 +972,9 @@ export function locationLevelRulesErrorMessages(value: unknown, fieldName: strin
     : {};
   const msgs: string[] = [];
 
-  if (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1) {
+  // maxLevel is optional — server defaults to 50 when absent. Only flag it
+  // if it is explicitly set to a non-positive value.
+  if (safe.maxLevel !== undefined && safe.maxLevel !== null && (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1)) {
     msgs.push(`${fieldName}.maxLevel: must be a positive integer`);
   }
 
