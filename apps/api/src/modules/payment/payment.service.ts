@@ -42,57 +42,28 @@ export class PaymentService {
     private adaRateService: AdaRateService,
   ) {}
 
-  // Sentinel account ID used by the bootstrap seed — never a real Stripe account.
-  private static readonly DEMO_ACCOUNT_ID = 'acct_derp_demo';
-
   async listGemPacks(): Promise<GemPack[]> {
-    // DISTINCT ON deduplicates by packId and always prefers live Stripe rows
-    // (non-demo account) over the bootstrap-seeded demo rows. The outer query
-    // then re-sorts by unit_amount for consistent display order.
-    const rows = await this.prisma.$queryRawUnsafe<any[]>(`
-      SELECT product_id, product_name, product_description, product_metadata,
-             price_id, unit_amount, currency
-      FROM (
-        SELECT DISTINCT ON (p.metadata->>'packId')
-          p.id               AS product_id,
-          p.name             AS product_name,
-          p.description      AS product_description,
-          p.metadata         AS product_metadata,
-          pr.id              AS price_id,
-          pr.unit_amount,
-          pr.currency
-        FROM stripe.products p
-        JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        WHERE p.active = true
-          AND p.metadata->>'game' = 'derp-universe'
-        ORDER BY
-          p.metadata->>'packId',
-          CASE WHEN p._account_id = $1 THEN 1 ELSE 0 END ASC,
-          pr.unit_amount ASC
-      ) deduped
-      ORDER BY unit_amount ASC
-    `, PaymentService.DEMO_ACCOUNT_ID);
+    // Hardcoded gem pack catalogue. When Stripe is connected (STRIPE_SECRET_KEY set),
+    // real checkout sessions are created against these packs. When Stripe is not
+    // connected the frontend receives the pack list for display and falls back to
+    // the "coming soon" flow on purchase. stripe-replit-sync and its stripe.products
+    // / stripe.prices schema are not required.
+    const baselineGemsPerDollar = 100 / 0.99;
+    const extraLabel = (gems: number, cents: number) => {
+      const pct = Math.round((gems / (cents / 100) / baselineGemsPerDollar - 1) * 100);
+      return `${pct}% EXTRA`;
+    };
 
-    return rows.map((row, idx) => {
-      const meta = row.product_metadata ?? {};
-      return {
-        id: meta.packId ?? row.product_id,
-        name: row.product_name,
-        description: row.product_description ?? '',
-        gemAmount: Number(meta.gemAmount ?? 0),
-        priceId: row.price_id,
-        unitAmount: Number(row.unit_amount),
-        currency: row.currency ?? 'usd',
-        displayOrder: idx,
-        displayName: meta.displayName ?? row.product_name,
-        accentColor: meta.accentColor ?? '#c4b5fd',
-        borderColor: meta.borderColor ?? 'rgba(139,92,246,0.35)',
-        glowColor: meta.glowColor ?? 'transparent',
-        badgeType: (meta.badgeType as 'best_value' | 'extra' | null) ?? null,
-        badgeLabel: meta.badgeLabel ?? null,
-        iconSize: meta.iconSize ? Number(meta.iconSize) : 40,
-      };
-    });
+    const packs: GemPack[] = [
+      { id: 'gems_100',  priceId: 'price_gems_100',  name: '100 Gems',   description: '100 gems of premium in-game currency.',   gemAmount: 100,  unitAmount: 99,   currency: 'usd', displayOrder: 0, displayName: 'HANDFUL',  accentColor: '#f59e0b', borderColor: 'rgba(245,158,11,0.35)',  glowColor: 'transparent',             badgeType: null,         badgeLabel: null,                iconSize: 32 },
+      { id: 'gems_500',  priceId: 'price_gems_500',  name: '500 Gems',   description: '500 gems of premium in-game currency.',   gemAmount: 500,  unitAmount: 499,  currency: 'usd', displayOrder: 1, displayName: 'SATCHEL',  accentColor: '#fb923c', borderColor: 'rgba(251,146,60,0.35)',  glowColor: 'transparent',             badgeType: null,         badgeLabel: null,                iconSize: 36 },
+      { id: 'gems_1200', priceId: 'price_gems_1200', name: '1,200 Gems', description: '1200 gems of premium in-game currency.',  gemAmount: 1200, unitAmount: 999,  currency: 'usd', displayOrder: 2, displayName: 'CHEST',    accentColor: '#c4b5fd', borderColor: 'rgba(139,92,246,0.55)',  glowColor: 'rgba(139,92,246,0.18)',   badgeType: 'best_value', badgeLabel: null,                iconSize: 42 },
+      { id: 'gems_2000', priceId: 'price_gems_2000', name: '2,000 Gems', description: '2000 gems of premium in-game currency.',  gemAmount: 2000, unitAmount: 1499, currency: 'usd', displayOrder: 3, displayName: 'MOUNTAIN', accentColor: '#60a5fa', borderColor: 'rgba(96,165,250,0.35)',  glowColor: 'transparent',             badgeType: 'extra',      badgeLabel: extraLabel(2000, 1499),  iconSize: 44 },
+      { id: 'gems_2500', priceId: 'price_gems_2500', name: '2,500 Gems', description: '2500 gems of premium in-game currency.',  gemAmount: 2500, unitAmount: 1999, currency: 'usd', displayOrder: 4, displayName: 'VAULT',    accentColor: '#34d399', borderColor: 'rgba(52,211,153,0.35)', glowColor: 'transparent',             badgeType: 'extra',      badgeLabel: extraLabel(2500, 1999),  iconSize: 44 },
+      { id: 'gems_5000', priceId: 'price_gems_5000', name: '5,000 Gems', description: '5000 gems of premium in-game currency.',  gemAmount: 5000, unitAmount: 2999, currency: 'usd', displayOrder: 5, displayName: 'TROVE',    accentColor: '#fbbf24', borderColor: 'rgba(251,191,36,0.5)',  glowColor: 'rgba(251,191,36,0.12)',   badgeType: 'extra',      badgeLabel: extraLabel(5000, 2999),  iconSize: 50 },
+    ];
+
+    return packs;
   }
 
   async createPurchase(
@@ -633,15 +604,6 @@ export class PaymentService {
     const stripe = await getUncachableStripeClient();
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Forward payload to stripe-replit-sync for table hydration (non-fatal).
-    try {
-      const { getStripeSync } = await import('../../stripe/stripe-client');
-      const sync = await getStripeSync();
-      await sync.processWebhook(payload, signature);
-    } catch (err) {
-      this.logger.warn(`stripe-replit-sync processWebhook error (non-fatal): ${err}`);
-    }
-
     // Verify signature and construct the event.
     // In production we ALWAYS require a webhook secret; without it we reject
     // the request to prevent forged events from crediting gems.
@@ -748,23 +710,6 @@ export class PaymentService {
   }
 
   private async getWebhookSecret(): Promise<string | undefined> {
-    try {
-      const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-      const xReplitToken = process.env.REPL_IDENTITY
-        ? 'repl ' + process.env.REPL_IDENTITY
-        : process.env.WEB_REPL_RENEWAL
-          ? 'depl ' + process.env.WEB_REPL_RENEWAL
-          : null;
-      if (!hostname || !xReplitToken) return undefined;
-      const resp = await fetch(
-        `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=stripe`,
-        { headers: { Accept: 'application/json', X_REPLIT_TOKEN: xReplitToken }, signal: AbortSignal.timeout(5_000) },
-      );
-      if (!resp.ok) return undefined;
-      const data = await resp.json() as any;
-      return data.items?.[0]?.settings?.webhook_secret ?? undefined;
-    } catch {
-      return undefined;
-    }
+    return process.env.STRIPE_WEBHOOK_SECRET ?? undefined;
   }
 }
