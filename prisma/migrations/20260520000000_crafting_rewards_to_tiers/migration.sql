@@ -25,7 +25,9 @@ DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'recipe_defs' AND column_name = 'rewards'
+    WHERE table_schema = 'public'
+      AND table_name = 'recipe_defs'
+      AND column_name = 'rewards'
   ) THEN
     EXECUTE $exec$
       UPDATE "recipe_defs"
