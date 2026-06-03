@@ -80,7 +80,7 @@ function ResourceSummaryBarComp({ section }: ScreenComponentProps) {
       }
       return null;
     })
-    .filter((e): e is { key: string; icon?: string; name: string; amount: number } => e !== null);
+    .filter((e) => e !== null) as Array<{ key: string; icon?: string; name: string; amount: number }>;
 
   if (entries.length === 0) return null;
 

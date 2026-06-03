@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Play, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import type { RichSelection } from '@derp/shared';
-import { adminApi, getAdminToken, type TraceNode } from '../adminApi';
+import { adminApi, getAdminToken, setAdminToken, type TraceNode } from '../adminApi';
 import RichSelectionEditor from '../smart/components/structured/RichSelectionEditor';
 import EntityList from '../../entities/components/EntityList';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
@@ -305,7 +305,18 @@ function TraceNodeRow({ node, depth = 0 }: { node: TraceNode; depth?: number }) 
 
 export default function SelectionTesterPage({ embedded }: { embedded?: boolean } = {}) {
   const [authed, setAuthed] = useState(!!(getAdminToken() || import.meta.env.DEV));
+  const [authKey, setAuthKeyState] = useState('');
   const autoSubmitted = useRef(false);
+
+  const doAuth = useCallback(async (key: string) => {
+    setAdminToken(key);
+    try {
+      await adminApi.getTables();
+      setAuthed(true);
+    } catch {
+      setAdminToken('');
+    }
+  }, []);
 
   useEffect(() => {
     if (!authed && !autoSubmitted.current) {

@@ -1,9 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi, getAdminToken } from '../adminApi';
 import ModalSpecEditor, { DEFAULT_SPEC } from './ModalSpecEditor';
 import type { ModalSpecV1 } from '@derp/shared';
 import '../admin.css';
 import './ModalEditorPage.css';
+
+function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const autoSubmitted = useRef(false);
+  useEffect(() => {
+    if (!autoSubmitted.current) {
+      autoSubmitted.current = true;
+      adminApi.getTables().then(() => onLogin()).catch(() => {});
+    }
+  }, [onLogin]);
+  return (
+    <div className="admin-login">
+      <div className="admin-login-card" style={{ textAlign: 'center' }}>
+        <h1>Derp Universe Admin</h1>
+        <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>
+          Please <a href="/admin" style={{ color: '#7c3aed' }}>sign in</a> to access this page.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const DEFAULT_DB = { id: '', name: '', description: '', enabled: true, version: 1 };
 
