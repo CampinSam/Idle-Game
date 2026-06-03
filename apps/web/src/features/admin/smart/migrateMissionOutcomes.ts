@@ -61,7 +61,18 @@ export function migrateMissionOutcomes(record: Record<string, any>): {
 
   const { success: _s, failure: _f, completedModalDefId: _c, failedModalDefId: _fd, ...rest } = record;
   return {
-    record: { ...rest, tiers: existingTiers },
+    // Explicitly null out the legacy columns so the admin save sends null to
+    // the API and Prisma writes NULL to the DB. Merely omitting these keys
+    // would leave the old values in the DB, causing the migration prompt to
+    // reappear on every reload.
+    record: {
+      ...rest,
+      tiers: existingTiers,
+      success: null,
+      failure: null,
+      completedModalDefId: null,
+      failedModalDefId: null,
+    },
     migrated: true,
   };
 }
