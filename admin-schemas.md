@@ -2300,7 +2300,8 @@ Item dusting lets players break down items into resources. Items must have `dust
 - Consumes `quantity` of the item from the player's inventory.
 - If `dustingData.instant = true`, the job is created, resolved, and collected in the same transaction. The command response `meta.instantRewards` contains the granted rewards.
 - If `dustingData.instant = false`, a `DustingJob` is created. The player must call `CollectDusting` once the job is ready.
-- `quantityScaling = "LINEAR"` multiplies `durationTicks` by `quantity`; `"ALL_AT_ONCE"` keeps a fixed duration regardless of quantity.
+- `timerScaling = "per_unit"` multiplies `dustingData.timer.duration` by `quantity`; `"flat"` keeps a fixed duration regardless of quantity.
+- To skip a dusting job, use the generic `POST /jobs/:id/skip` endpoint. Skip eligibility and cost are configured via `dustingData.timer.skipable` and `dustingData.timer.skip_cost`.
 
 **Response patches:** `job`, `item` balances, `currencyBalance`.
 
@@ -2332,9 +2333,11 @@ Item dusting lets players break down items into resources. Items must have `dust
 | Field | Type | Description |
 |-------|------|-------------|
 | `instant` | boolean | If true, the job resolves immediately with no timer |
-| `durationTicks` | integer | Base tick duration for the job (ignored when instant) |
-| `quantityScaling` | `"ALL_AT_ONCE"` \| `"LINEAR"` | Whether duration scales with quantity |
+| `timer` | Timer | Standard Timer object — `duration` (seconds), `boostable`, `skipable`, `skip_cost` (array of `{type,id,amount}`), `skip_type`. Ignored when instant=true. |
+| `timerScaling` | `"flat"` \| `"per_unit"` | `flat`: fixed duration regardless of quantity. `per_unit`: `timer.duration * quantity`. |
 | `difficulty` | number | Pass/fail threshold (0 = always pass, higher = harder) |
 | `tiers` | OutcomeTiers | Reward tiers keyed by quality: `failure`, `common`, `uncommon`, `scare`, `rare`, `epic`, `mythic`, `legendary` |
 
 Each tier block: `{ rewards: OutcomeEntry[], clRequirement?: number }`. Rewards follow the same outcome-entry schema as mission tiers.
+
+Skip cost is configured in `dustingData.timer.skip_cost` (same format as crafting/mission timers). The generic `POST /jobs/:id/skip` endpoint handles all skip logic.

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAppSelector } from '../../../store';
 import { useCommand } from '../../../hooks/useCommand';
 import { useModal } from '../../../context/ModalContext';
+import { api } from '../../../services/api';
 import GameIcon from '../../../components/GameIcon';
 import ItemQty from '../../../components/ItemQty';
 
@@ -30,9 +31,8 @@ function getFirstSuccessTier(tiers: Record<string, any>): { tierKey: string; rew
   return null;
 }
 
-function formatTickDuration(ticks: number): string {
-  if (ticks <= 0) return 'Instantaneous';
-  const seconds = ticks;
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return 'Instantaneous';
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -123,10 +123,11 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
   const maxQty: number = item?.quantity ?? item?.definition?.quantity ?? 1;
   const isStackable: boolean = item?.stackable ?? item?.definition?.stackable ?? false;
 
-  const scaling: string = dustingData?.quantityScaling ?? 'ALL_AT_ONCE';
+  const timerCfg = dustingData?.timer ?? null;
+  const timerScaling: string = dustingData?.timerScaling ?? 'flat';
   const isInstant: boolean = dustingData?.instant === true;
-  const baseDuration: number = isInstant ? 0 : (dustingData?.durationTicks ?? 0);
-  const totalDuration: number = (scaling === 'LINEAR' && !isInstant)
+  const baseDuration: number = isInstant ? 0 : (timerCfg?.duration ?? 0);
+  const totalDuration: number = (timerScaling === 'per_unit' && !isInstant)
     ? baseDuration * quantity
     : baseDuration;
 
@@ -135,8 +136,10 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
     return getFirstSuccessTier(dustingData.tiers);
   }, [dustingData]);
 
-  const skipCost = dustingData?.skipCost ?? null;
-  const canSkip = !!activeJob && !!skipCost;
+  const skipCostEntries: Array<{ type: string; id: string; amount: number }> =
+    Array.isArray(timerCfg?.skip_cost) ? timerCfg.skip_cost : [];
+  const canSkip = !!activeJob && !!timerCfg?.skipable && skipCostEntries.length > 0;
+  const primarySkipCost = skipCostEntries[0] ?? null;
 
   useEffect(() => {
     if (!isOpen) {
@@ -187,7 +190,7 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
     setError(null);
     setPhase('skipping');
     try {
-      await execute('SkipDusting', { jobId: activeJob.id });
+      await api.skipJob(activeJob.id);
       onClose();
     } catch (err: any) {
       const message =
@@ -197,7 +200,7 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
       setError(typeof message === 'string' ? message : 'Could not skip dusting.');
       setPhase('error');
     }
-  }, [activeJob, phase, execute, onClose]);
+  }, [activeJob, phase, onClose]);
 
   if (!isOpen || !item || !dustingData) return null;
 
@@ -244,10 +247,12 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
                   <p className="text-[12px] text-slate-300 m-0">
                     A dusting job is in progress. Pay to finish it instantly.
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] text-slate-400">Skip cost:</span>
-                    <SkipCostDisplay skipCost={skipCost} />
-                  </div>
+                  {primarySkipCost && (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-slate-400">Skip cost:</span>
+                      <SkipCostDisplay skipCost={primarySkipCost} />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -286,9 +291,9 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
                   <div className="flex flex-col gap-1">
                     <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">Duration</p>
                     <div className="px-3 py-2 rounded-[8px] bg-slate-700/30 border border-slate-600/30 text-[13px] font-semibold text-[#e2e8f0]">
-                      {isInstant ? 'Instantaneous' : formatTickDuration(totalDuration)}
-                      {!isInstant && scaling === 'LINEAR' && quantity > 1 && (
-                        <span className="text-[11px] text-slate-400 ml-2">({formatTickDuration(baseDuration)} × {quantity})</span>
+                      {isInstant ? 'Instantaneous' : formatDuration(totalDuration)}
+                      {!isInstant && timerScaling === 'per_unit' && quantity > 1 && (
+                        <span className="text-[11px] text-slate-400 ml-2">({formatDuration(baseDuration)} × {quantity})</span>
                       )}
                     </div>
                   </div>

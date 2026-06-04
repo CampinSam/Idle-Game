@@ -56,6 +56,13 @@ export class JobController {
     return (this.prisma as any)[config.defTable].findFirst({ where: { id: job.defId } });
   }
 
+  private getDefTimer(job: any, def: any): any {
+    if (job.type === 'DustingJob') {
+      return (def?.dustingData as any)?.timer ?? null;
+    }
+    return def?.timer ?? null;
+  }
+
   private extractSkipInfo(defTimer: any) {
     if (!defTimer || !defTimer.skipable) return null;
     return {
@@ -78,7 +85,7 @@ export class JobController {
 
     const def = await this.getDefForJob(job);
     const defName = def?.name || 'Unknown';
-    const skipInfo = this.extractSkipInfo(def?.timer);
+    const skipInfo = this.extractSkipInfo(this.getDefTimer(job, def));
 
     const tickInfo = await this.tickService.getTickInfo();
 
@@ -127,7 +134,7 @@ export class JobController {
     const def = await this.getDefForJob(job);
     if (!def) throw new NotFoundException('Definition not found');
 
-    const defTimer = def.timer as any;
+    const defTimer = this.getDefTimer(job, def) as any;
     if (!defTimer?.skipable) throw new BadRequestException('This job cannot be skipped');
 
     const skipCostEntries: Array<{ type: string; id: string; amount: number }> = Array.isArray(defTimer.skip_cost) ? defTimer.skip_cost : [];

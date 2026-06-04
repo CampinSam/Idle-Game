@@ -1,6 +1,6 @@
 import type { RewardOrBundle, EffectOrBundle } from './mission';
 import type { Requirements } from './rich-selection';
-import type { SkipCostEntry } from './timer';
+import type { Timer, SkipCostEntry } from './timer';
 
 export type CraftingRecipeId = string;
 
@@ -11,7 +11,7 @@ export interface CraftingRecipe {
   name: string;
   description: string;
   cost: CostEntry[];
-  timer: import('./timer').Timer;
+  timer: Timer;
   rewards?: RewardOrBundle[];
   requirements?: Requirements;
   effects?: EffectOrBundle[];
@@ -41,7 +41,7 @@ export interface StartCraftingDto {
   entityId: string;
 }
 
-export type DustingQuantityScaling = 'ALL_AT_ONCE' | 'LINEAR';
+export type DustingTimerScaling = 'flat' | 'per_unit';
 
 export interface DustingTierBlock {
   rewards: any[];
@@ -50,11 +50,10 @@ export interface DustingTierBlock {
 
 export interface DustingData {
   instant: boolean;
-  durationTicks: number;
-  quantityScaling: DustingQuantityScaling;
+  timer: Timer;
+  timerScaling: DustingTimerScaling;
   difficulty: number;
   tiers: Record<string, DustingTierBlock>;
-  skipCost?: SkipCostEntry;
 }
 
 export interface StartDustingPayload {
