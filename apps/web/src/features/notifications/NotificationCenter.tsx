@@ -7,9 +7,10 @@ import { useCollectJob } from '../../hooks/useCollectJob';
 import { api } from '../../services/api';
 
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
-import { useGlobalPowers } from '../../hooks/useSyncSelectors';
+import { useGlobalPowers, useAllActiveJobs } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
 import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
+import { ActiveJobsList } from '../jobs/ActiveJobsList';
 
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
@@ -65,6 +66,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const { pushModal } = useModal();
   const { collectJob } = useCollectJob();
   const globalPowers = useGlobalPowers();
+  const allActiveJobs = useAllActiveJobs();
   const [filter, setFilter] = useState<string>('All');
   const nowMs = useNow(60_000);
 
@@ -182,7 +184,28 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
           {(filter === 'All' || filter === 'System') && globalPowers.map((p) => (
             <GlobalPowerRow key={p.id} power={p} />
           ))}
-          {filtered.length === 0 && globalPowers.length === 0 && (
+
+          {filter === 'All' && allActiveJobs.length > 0 && (
+            <div className="nc-section">
+              <div className="nc-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Active Jobs</span>
+                <button
+                  style={{ background: 'none', border: 'none', color: 'rgba(196,181,253,0.7)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                  onClick={() => { navigate('/jobs'); onClose(); }}
+                >
+                  See all →
+                </button>
+              </div>
+              <ActiveJobsList
+                limit={3}
+                compact
+                showEmpty={false}
+                onBeforeNavigate={onClose}
+              />
+            </div>
+          )}
+
+          {filtered.length === 0 && globalPowers.length === 0 && allActiveJobs.length === 0 && (
             <div className="nc-empty">No notifications</div>
           )}
           {(['New', 'Today', 'Earlier'] as const).map((section) => {

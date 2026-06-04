@@ -146,6 +146,15 @@ export default function Layout() {
                   <button
                     className="top-bar-menu-profile"
                     onClick={() => {
+                      navigate("/jobs");
+                      setShowMenu(false);
+                    }}
+                  >
+                    Active Jobs
+                  </button>
+                  <button
+                    className="top-bar-menu-profile"
+                    onClick={() => {
                       navigate("/settings");
                       setShowMenu(false);
                     }}

@@ -68,7 +68,11 @@ export function useAllActiveJobs() {
   return useMemo(() => {
     const activeStatuses = new Set(['active', 'ready_notified']);
     const missionAndCraftingJobs = jobs
-      .filter((j: any) => activeStatuses.has(j.status) && (j.type === 'MissionJob' || j.type === 'CraftingJob'))
+      .filter(
+        (j: any) =>
+          activeStatuses.has(j.status) &&
+          (j.type === 'MissionJob' || j.type === 'CraftingJob' || j.type === 'DustingJob'),
+      )
       .map((j: any) => ({
         ...j,
         name: (j.defId || '').replace(/_/g, ' '),

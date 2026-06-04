@@ -33,6 +33,7 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage'));
 const StorePage = lazy(() => import('./features/store/StorePage'));
 const RewardsPage = lazy(() => import('./features/rewards/RewardsPage'));
 const AchievementsPage = lazy(() => import('./features/achievements/AchievementsPage'));
+const ActiveJobsPage = lazy(() => import('./features/jobs/ActiveJobsPage'));
 
 function PageLoader() {
   return (
@@ -122,6 +123,7 @@ export default function App() {
           <Route path="store" element={<ErrorBoundary fallbackTitle="Store page error"><StorePage /></ErrorBoundary>} />
           <Route path="rewards" element={<ErrorBoundary fallbackTitle="Rewards page error"><RewardsPage /></ErrorBoundary>} />
           <Route path="achievements" element={<ErrorBoundary fallbackTitle="Achievements page error"><Suspense fallback={<PageLoader />}><AchievementsPage /></Suspense></ErrorBoundary>} />
+          <Route path="jobs" element={<ErrorBoundary fallbackTitle="Active jobs error"><ActiveJobsPage /></ErrorBoundary>} />
           <Route path="crypto" element={<Navigate to="/settings" replace />} />
         </Route>
       </Routes>
