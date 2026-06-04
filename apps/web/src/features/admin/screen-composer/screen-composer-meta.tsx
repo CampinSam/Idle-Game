@@ -311,6 +311,24 @@ export const COMPONENT_META: Record<string, ComponentMeta> = {
     ),
   },
 
+  ActiveJobsCard: {
+    friendlyName: 'Active Jobs Card',
+    description: 'Shows all active jobs (missions, crafting, building, dusting) with progress bars. Optional limit and compact props.',
+    group: 'Missions',
+    color: '#a78bfa',
+    preview: () => P.wrap(
+      <>
+        {P.label('⏱️ Active Jobs', '#a78bfa')}
+        {[['🗺️ Raid the Outpost', '#a78bfa', '70%'], ['⚒️ Craft Iron Sword', '#f97316', '45%'], ['🌪️ Dust Run', '#06b6d4', '90%']].map(([name, color, w], i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+            <span style={{ fontSize: 9 }}>{String(name).split(' ')[0]}</span>
+            {P.bar(w, String(color))}
+          </div>
+        ))}
+      </>
+    ),
+  },
+
   MissionBrowser: {
     friendlyName: 'Mission Browser',
     description: 'Full missions screen — category grid, mission list, activity panel, and mission builder flow. All data from sync store and game slice. Use with pass_through layout on the /missions screen.',

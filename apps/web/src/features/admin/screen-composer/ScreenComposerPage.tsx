@@ -23,7 +23,7 @@ import '../admin.css';
 const SCREEN_COMPONENT_KEYS = [
   'ResourceSummaryBar', 'SeasonBanner', 'BannerCarousel', 'QuickStatusCards',
   'DailyQuestPanel', 'GlobalBuffsSection', 'CraftingWorkshopsCard',
-  'MissionFeaturedCard', 'ActiveMissionList', 'EmptyStateCard', 'HelpTipCard',
+  'MissionFeaturedCard', 'ActiveMissionList', 'ActiveJobsCard', 'EmptyStateCard', 'HelpTipCard',
   'CTAButtonGroup', 'SkeletonCard', 'DailyCheckInCard', 'FeaturedBirdCard',
   'StoreOfferCard', 'StoreOfferCarousel', 'StoreItemGrid', 'StoreItemRail',
   'FeaturedShopRail', 'GemPackGrid', 'BattlePassProgress', 'BattlePassTierList',

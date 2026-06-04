@@ -33,6 +33,7 @@ import MissionsContent from '../missions/MissionsContent';
 import LocationsContent from '../locations/LocationsContent';
 import LocationDetailContent from '../locations/LocationDetailContent';
 import ForgeContent from '../forge/ForgeContent';
+import { ActiveJobsList } from '../jobs/ActiveJobsList';
 import StoreContent from '../store/StoreContent';
 import AchievementsContent from '../achievements/AchievementsContent';
 import ProfileContent from '../profile/ProfileContent';
@@ -549,6 +550,38 @@ function ActiveMissionListComp({ section, onAction }: ScreenComponentProps) {
           )}
         </div>
       </div>
+    </Card>
+  );
+}
+
+function ActiveJobsCardComp({ section, onAction }: ScreenComponentProps) {
+  const navigate = useNavigate();
+  const allActiveJobs = useAllActiveJobs();
+  const rawLimit = section.props?.limit;
+  const limit = rawLimit != null && rawLimit !== '' ? Math.max(1, Number(rawLimit)) : undefined;
+  const compact = section.props?.compact !== false;
+
+  if (allActiveJobs.length === 0) {
+    return (
+      <EmptyStateCardComp
+        section={{ ...section, props: { message: 'No active jobs', actionKey: 'go_jobs', actionLabel: 'VIEW JOBS' } }}
+        onAction={(key) => {
+          if (key === 'go_jobs') navigate('/jobs');
+        }}
+      />
+    );
+  }
+
+  return (
+    <Card className="mb-4 overflow-hidden">
+      <div className="px-4 pt-3 pb-1">
+        <SectionHeader title="⏱️ ACTIVE JOBS" />
+      </div>
+      <ActiveJobsList
+        limit={limit}
+        compact={compact}
+        showEmpty={false}
+      />
     </Card>
   );
 }
@@ -2422,6 +2455,7 @@ export const COMPONENT_REGISTRY: Record<string, ScreenComponentType> = {
   DailyQuestPanel: DailyQuestPanelComp,
   MissionFeaturedCard: MissionFeaturedCardComp,
   ActiveMissionList: ActiveMissionListComp,
+  ActiveJobsCard: ActiveJobsCardComp,
   EmptyStateCard: EmptyStateCardComp,
   HelpTipCard: HelpTipCardComp,
   CTAButtonGroup: CTAButtonGroupComp,
