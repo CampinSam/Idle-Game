@@ -1,2 +1,3 @@
 - [Dev DB migration divergence](dev-migration-divergence.md) — dev DB is managed via prisma db push; many old migration files are not in dev's _prisma_migrations. This is expected and doesn't block production deploys.
 - [Enum reorder pattern](enum-reorder-pattern.md) — reordering a PostgreSQL enum with an active partial index requires: drop partial index first, then convert column→text→new enum, recreate index.
+- [Nested flex percentage flex-basis pitfall](flex-nested-percentage-basis.md) — page-root wrappers inside <Outlet /> should use h-full not flex-1; bottom-pinned panels belong inside the card (flex-shrink-0), not outside it.

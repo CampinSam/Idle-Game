@@ -19,7 +19,7 @@ import {
   BUSY_CONSUMABLE_TOOLTIP,
 } from './utils/statChangeHelpers';
 
-const PAGE_WRAPPER_CLASS = 'flex flex-col flex-1 min-h-0';
+const PAGE_WRAPPER_CLASS = 'flex flex-col h-full';
 const CARD_CLASS = 'flex flex-col flex-1 min-h-0 relative';
 
 const BTN_BASE =
@@ -439,16 +439,16 @@ export default function InventoryContent() {
           selectedId={selectedId}
           onSelect={handleSelect}
         />
+        {selectedItem && (
+          <div className="flex-shrink-0">
+            <ItemDetailPanel
+              key={selectedItem.instanceId ?? selectedItem.id}
+              item={selectedItem}
+              actions={renderActions(selectedItem)}
+            />
+          </div>
+        )}
       </div>
-      {selectedItem && (
-        <div className="flex-shrink-0">
-          <ItemDetailPanel
-            key={selectedItem.instanceId ?? selectedItem.id}
-            item={selectedItem}
-            actions={renderActions(selectedItem)}
-          />
-        </div>
-      )}
 
       <EntityPickerModal
         isOpen={!!entityPickerPotion}
