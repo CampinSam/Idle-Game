@@ -60,6 +60,8 @@ function GlobalPowerRow({ power }: { power: GlobalPowerSnapshot }) {
   );
 }
 
+const ACTIVE_JOBS_DRAWER_LIMIT = 3;
+
 export default function NotificationCenter({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
   const { notifications, markRead, markAllRead, clearRead, dismissNotification, unreadCount } = useNotifications();
@@ -68,6 +70,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const globalPowers = useGlobalPowers();
   const allActiveJobs = useAllActiveJobs();
   const [filter, setFilter] = useState<string>('All');
+  const [jobsExpanded, setJobsExpanded] = useState(true);
   const nowMs = useNow(60_000);
 
   const filtered = useMemo(() => {
@@ -188,20 +191,30 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
           {filter === 'All' && allActiveJobs.length > 0 && (
             <div className="nc-section">
               <div className="nc-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span>Active Jobs</span>
                 <button
-                  style={{ background: 'none', border: 'none', color: 'rgba(196,181,253,0.7)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
-                  onClick={() => { navigate('/jobs'); onClose(); }}
+                  style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                  onClick={() => setJobsExpanded((v) => !v)}
                 >
-                  See all →
+                  Active Jobs
+                  <span style={{ fontSize: '10px', opacity: 0.6 }}>{jobsExpanded ? '▲' : '▼'}</span>
                 </button>
+                {allActiveJobs.length > ACTIVE_JOBS_DRAWER_LIMIT && (
+                  <button
+                    style={{ background: 'none', border: 'none', color: 'rgba(196,181,253,0.7)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    onClick={() => { navigate('/jobs'); onClose(); }}
+                  >
+                    See all →
+                  </button>
+                )}
               </div>
-              <ActiveJobsList
-                limit={3}
-                compact
-                showEmpty={false}
-                onBeforeNavigate={onClose}
-              />
+              {jobsExpanded && (
+                <ActiveJobsList
+                  limit={ACTIVE_JOBS_DRAWER_LIMIT}
+                  compact
+                  showEmpty={false}
+                  onBeforeNavigate={onClose}
+                />
+              )}
             </div>
           )}
 

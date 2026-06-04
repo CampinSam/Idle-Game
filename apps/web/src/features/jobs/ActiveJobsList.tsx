@@ -168,12 +168,6 @@ export function ActiveJobsList({
 
   const handleJobClick = useCallback(
     async (j: any) => {
-      if (j.type === 'CraftingJob') {
-        const craftLoc = j.data?.locationId || j.locationId;
-        onBeforeNavigate?.();
-        navigate(craftLoc ? `/locations/${craftLoc}/workshop` : '/crafting');
-        return;
-      }
       try {
         const spec = await api.getModalSpec({ jobId: j.id });
         if (spec?.version === 1) {
@@ -184,9 +178,13 @@ export function ActiveJobsList({
       } catch {
         // fall through to screen navigation
       }
-      const screen = JOB_SCREEN[j.type] ?? '/';
       onBeforeNavigate?.();
-      navigate(screen);
+      if (j.type === 'CraftingJob') {
+        const craftLoc = j.data?.locationId || j.locationId;
+        navigate(craftLoc ? `/locations/${craftLoc}/workshop` : '/crafting');
+      } else {
+        navigate(JOB_SCREEN[j.type] ?? '/');
+      }
     },
     [pushModal, navigate, onBeforeNavigate],
   );
