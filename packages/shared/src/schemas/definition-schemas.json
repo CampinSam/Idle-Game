@@ -2412,6 +2412,12 @@
           "required": true,
           "default": {},
           "description": "Outcome tier blocks keyed by quality name. Supported keys: failure, common, uncommon, scare, rare, epic, mythic, legendary. Each block: { rewards: OutcomeEntry[], clRequirement?: number }."
+        },
+        "skipCost": {
+          "type": "object",
+          "required": false,
+          "nullable": true,
+          "description": "Optional instant-finish cost. When present, players can pay to mark the active dusting job ready immediately. Shape: { type: 'currency' | 'item', id: string, amount: number }. Only used when instant=false."
         }
       }
     },

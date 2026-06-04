@@ -181,6 +181,62 @@ export class DustingService {
       : await this.prisma.$transaction(doWrites, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
   }
 
+  async skipDusting(userId: string, payload: { jobId: string }, externalTx?: any) {
+    const { jobId } = payload;
+
+    const job = await (this.prisma as any).job.findFirst({
+      where: { id: jobId, userId, type: 'DustingJob', status: 'active' },
+    });
+    if (!job) throw new NotFoundException('Active dusting job not found');
+
+    const def = await (this.prisma as any).itemDefinition.findUnique({ where: { id: job.defId } });
+    if (!def) throw new NotFoundException('Item definition not found');
+
+    const dustingData = def.dustingData as DustingData | null;
+    if (!dustingData) throw new BadRequestException('Dusting data missing from definition');
+    if (!dustingData.skipCost) throw new BadRequestException('This dusting job cannot be skipped');
+
+    const { type: costType, id: costId, amount: costAmount } = dustingData.skipCost;
+    if (!costType || !costId || !costAmount || costAmount <= 0) {
+      throw new BadRequestException('Invalid skip cost configuration');
+    }
+
+    const now = new Date();
+    const currentTick = await this.tickService.getCurrentTick(now);
+
+    const doWrites = async (tx: any) => {
+      if (costType === 'currency') {
+        await this.currencyService.spendTx(tx as any, {
+          userId,
+          currencyId: costId,
+          amount: costAmount,
+          reason: `Skip Dusting: ${def.name}`,
+          sourceType: 'job_skip',
+          sourceId: jobId,
+        });
+      } else {
+        throw new BadRequestException(`Skip cost type "${costType}" is not supported`);
+      }
+
+      const timer = job.timer as any;
+      const startTick = timer?.startTick ?? 0;
+
+      const updated = await (tx as any).job.update({
+        where: { id: jobId },
+        data: {
+          timer: { startTick, durationTicks: Math.max(0, Math.floor(currentTick) - startTick) },
+          readyAtTick: Math.floor(currentTick),
+        },
+      });
+
+      return { job: updated };
+    };
+
+    return externalTx
+      ? await doWrites(externalTx)
+      : await this.prisma.$transaction(doWrites, { maxWait: 10000, timeout: 60000, isolationLevel: 'ReadCommitted' });
+  }
+
   async collectDusting(userId: string, payload: CollectDustingPayload, externalTx?: any) {
     const { jobId } = payload;
 

@@ -32,6 +32,7 @@ import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.h
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
+import { SkipDustingHandler } from './handlers/skip-dusting.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -96,6 +97,7 @@ import { DustingModule } from '../dusting/dusting.module';
     TriggerEntityPowerHandler,
     StartDustingHandler,
     CollectDustingHandler,
+    SkipDustingHandler,
   ],
   exports: [CommandService],
 })

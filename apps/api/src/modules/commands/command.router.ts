@@ -30,6 +30,7 @@ import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.h
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
+import { SkipDustingHandler } from './handlers/skip-dusting.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -66,6 +67,7 @@ export class CommandRouter {
     private triggerEntityPower: TriggerEntityPowerHandler,
     private startDusting: StartDustingHandler,
     private collectDusting: CollectDustingHandler,
+    private skipDusting: SkipDustingHandler,
   ) {
     this.handlers.set('StartMission', this.startMission);
     this.handlers.set('CompleteMission', this.completeMission);
@@ -97,6 +99,7 @@ export class CommandRouter {
     this.handlers.set('TriggerEntityPower', this.triggerEntityPower);
     this.handlers.set('StartDusting', this.startDusting);
     this.handlers.set('CollectDusting', this.collectDusting);
+    this.handlers.set('SkipDusting', this.skipDusting);
   }
 
   resolve(commandType: string): CommandHandler {

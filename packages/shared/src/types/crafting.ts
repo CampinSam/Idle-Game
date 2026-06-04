@@ -54,6 +54,7 @@ export interface DustingData {
   quantityScaling: DustingQuantityScaling;
   difficulty: number;
   tiers: Record<string, DustingTierBlock>;
+  skipCost?: SkipCostEntry;
 }
 
 export interface StartDustingPayload {

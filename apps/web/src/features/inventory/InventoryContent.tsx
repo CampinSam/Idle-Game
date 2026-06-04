@@ -154,6 +154,15 @@ export default function InventoryContent() {
   const [equipGear, setEquipGear] = useState<any | null>(null);
   const [equipBusy, setEquipBusy] = useState(false);
   const [dustItem, setDustItem] = useState<any | null>(null);
+  const allJobs = useAppSelector((s) => s.sync.jobs);
+
+  const activeDustingJob = useMemo(() => {
+    if (!dustItem) return null;
+    const defId = dustItem.id;
+    return Object.values(allJobs).find(
+      (j: any) => j.type === 'DustingJob' && j.defId === defId && j.status === 'active',
+    ) ?? null;
+  }, [dustItem, allJobs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -550,6 +559,7 @@ export default function InventoryContent() {
       <DustFlowModal
         isOpen={!!dustItem}
         item={dustItem}
+        activeJob={activeDustingJob}
         onClose={() => setDustItem(null)}
       />
     </div>

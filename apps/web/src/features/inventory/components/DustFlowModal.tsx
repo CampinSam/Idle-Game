@@ -3,14 +3,16 @@ import { useAppSelector } from '../../../store';
 import { useCommand } from '../../../hooks/useCommand';
 import { useModal } from '../../../context/ModalContext';
 import GameIcon from '../../../components/GameIcon';
+import ItemQty from '../../../components/ItemQty';
 
 export interface DustFlowModalProps {
   isOpen: boolean;
   item: any | null;
+  activeJob?: any | null;
   onClose: () => void;
 }
 
-type Phase = 'confirm' | 'submitting' | 'done' | 'error';
+type Phase = 'confirm' | 'submitting' | 'skipping' | 'done' | 'error';
 
 const TIERS_IN_ORDER = ['common', 'uncommon', 'scare', 'rare', 'epic', 'mythic', 'legendary'];
 
@@ -79,7 +81,31 @@ function RewardPreviewLine({ reward }: { reward: any }) {
   );
 }
 
-export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalProps) {
+function SkipCostDisplay({ skipCost }: { skipCost: { type: string; id: string; amount: number } }) {
+  const currencyDefs = useAppSelector((s) => (s.game as any).currencyDefs ?? []);
+  const itemDefs = useAppSelector((s) => (s.game as any).itemDefs ?? []);
+
+  const { iconKey, name } = useMemo(() => {
+    if (skipCost.type === 'currency') {
+      const def = currencyDefs.find((d: any) => d.id === skipCost.id);
+      return { iconKey: def?.iconKey ?? skipCost.id, name: def?.name ?? skipCost.id };
+    }
+    if (skipCost.type === 'item') {
+      const def = itemDefs.find((d: any) => d.id === skipCost.id);
+      return { iconKey: def?.iconKey ?? skipCost.id, name: def?.name ?? skipCost.id };
+    }
+    return { iconKey: skipCost.id, name: skipCost.id };
+  }, [skipCost, currencyDefs, itemDefs]);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <ItemQty src={iconKey} amount={skipCost.amount} size={14} />
+      <span className="text-[12px] text-slate-300">{name}</span>
+    </div>
+  );
+}
+
+export default function DustFlowModal({ isOpen, item, activeJob, onClose }: DustFlowModalProps) {
   const { pushModal } = useModal();
   const { execute } = useCommand({
     onUiIntent: (intent) => {
@@ -109,6 +135,9 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
     return getFirstSuccessTier(dustingData.tiers);
   }, [dustingData]);
 
+  const skipCost = dustingData?.skipCost ?? null;
+  const canSkip = !!activeJob && !!skipCost;
+
   useEffect(() => {
     if (!isOpen) {
       setPhase('confirm');
@@ -121,7 +150,7 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && phase !== 'submitting') onClose();
+      if (e.key === 'Escape' && phase !== 'submitting' && phase !== 'skipping') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -153,16 +182,34 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
     }
   }, [item, phase, quantity, execute, onClose]);
 
+  const handleSkip = useCallback(async () => {
+    if (!activeJob || phase === 'skipping') return;
+    setError(null);
+    setPhase('skipping');
+    try {
+      await execute('SkipDusting', { jobId: activeJob.id });
+      onClose();
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Could not skip dusting. Please try again.';
+      setError(typeof message === 'string' ? message : 'Could not skip dusting.');
+      setPhase('error');
+    }
+  }, [activeJob, phase, execute, onClose]);
+
   if (!isOpen || !item || !dustingData) return null;
 
   const itemName: string = item.name ?? item.definition?.name ?? 'Item';
   const itemIcon: string | null = item.iconKey ?? item.definition?.iconKey ?? null;
   const isResultOrError = phase === 'done' || phase === 'error';
+  const isBusy = phase === 'submitting' || phase === 'skipping';
 
   return (
     <div
       className="modal-overlay"
-      onMouseDown={() => phase !== 'submitting' && onClose()}
+      onMouseDown={() => !isBusy && onClose()}
       role="presentation"
     >
       <div
@@ -172,7 +219,7 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
         aria-modal="true"
         aria-label={phase === 'done' ? 'Dusting Started' : 'Dust Item'}
       >
-        {phase !== 'submitting' && (
+        {!isBusy && (
           <button className="modal-close-btn" onClick={onClose} aria-label="Close">✕</button>
         )}
 
@@ -191,67 +238,84 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
         <div className="flex-1 min-h-0 px-5 pt-1 pb-4 overflow-y-auto">
           {phase === 'confirm' && (
             <div className="flex flex-col gap-3">
-              {isStackable && maxQty > 1 && (
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">Quantity</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600/50 text-slate-300 text-lg font-bold flex items-center justify-center hover:bg-slate-600/50 transition-colors"
-                      onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    >−</button>
-                    <input
-                      type="number"
-                      min={1}
-                      max={maxQty}
-                      value={quantity}
-                      onChange={(e) => {
-                        const v = Math.min(maxQty, Math.max(1, Math.floor(Number(e.target.value) || 1)));
-                        setQuantity(v);
-                      }}
-                      className="w-16 text-center bg-[#0f0f2e] border border-slate-600/50 rounded-lg text-[#e2e8f0] text-sm py-1 outline-none"
-                    />
-                    <button
-                      type="button"
-                      className="w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600/50 text-slate-300 text-lg font-bold flex items-center justify-center hover:bg-slate-600/50 transition-colors"
-                      onClick={() => setQuantity(q => Math.min(maxQty, q + 1))}
-                    >+</button>
-                    <span className="text-[11px] text-slate-400 ml-1">/ {maxQty}</span>
+              {canSkip && (
+                <div className="flex flex-col gap-1.5 px-3 py-3 rounded-[10px] bg-amber-500/[0.10] border border-amber-500/30">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-amber-400 m-0">Active Job</p>
+                  <p className="text-[12px] text-slate-300 m-0">
+                    A dusting job is in progress. Pay to finish it instantly.
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-slate-400">Skip cost:</span>
+                    <SkipCostDisplay skipCost={skipCost} />
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">Duration</p>
-                <div className="px-3 py-2 rounded-[8px] bg-slate-700/30 border border-slate-600/30 text-[13px] font-semibold text-[#e2e8f0]">
-                  {isInstant ? 'Instantaneous' : formatTickDuration(totalDuration)}
-                  {!isInstant && scaling === 'LINEAR' && quantity > 1 && (
-                    <span className="text-[11px] text-slate-400 ml-2">({formatTickDuration(baseDuration)} × {quantity})</span>
+              {!canSkip && (
+                <>
+                  {isStackable && maxQty > 1 && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">Quantity</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600/50 text-slate-300 text-lg font-bold flex items-center justify-center hover:bg-slate-600/50 transition-colors"
+                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        >−</button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={maxQty}
+                          value={quantity}
+                          onChange={(e) => {
+                            const v = Math.min(maxQty, Math.max(1, Math.floor(Number(e.target.value) || 1)));
+                            setQuantity(v);
+                          }}
+                          className="w-16 text-center bg-[#0f0f2e] border border-slate-600/50 rounded-lg text-[#e2e8f0] text-sm py-1 outline-none"
+                        />
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-lg bg-slate-700/50 border border-slate-600/50 text-slate-300 text-lg font-bold flex items-center justify-center hover:bg-slate-600/50 transition-colors"
+                          onClick={() => setQuantity(q => Math.min(maxQty, q + 1))}
+                        >+</button>
+                        <span className="text-[11px] text-slate-400 ml-1">/ {maxQty}</span>
+                      </div>
+                    </div>
                   )}
-                </div>
-              </div>
 
-              {firstSuccessTier && firstSuccessTier.rewards.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">
-                    You'll receive (at minimum)
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">Duration</p>
+                    <div className="px-3 py-2 rounded-[8px] bg-slate-700/30 border border-slate-600/30 text-[13px] font-semibold text-[#e2e8f0]">
+                      {isInstant ? 'Instantaneous' : formatTickDuration(totalDuration)}
+                      {!isInstant && scaling === 'LINEAR' && quantity > 1 && (
+                        <span className="text-[11px] text-slate-400 ml-2">({formatTickDuration(baseDuration)} × {quantity})</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {firstSuccessTier && firstSuccessTier.rewards.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.6px] text-slate-400 m-0">
+                        You'll receive (at minimum)
+                      </p>
+                      {firstSuccessTier.rewards.slice(0, 5).map((r: any, i: number) => (
+                        <RewardPreviewLine key={i} reward={r} />
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-slate-500 text-center m-0 mt-1">
+                    {quantity} × <strong className="text-slate-400">{itemName}</strong> will be consumed.
                   </p>
-                  {firstSuccessTier.rewards.slice(0, 5).map((r: any, i: number) => (
-                    <RewardPreviewLine key={i} reward={r} />
-                  ))}
-                </div>
+                </>
               )}
-
-              <p className="text-[11px] text-slate-500 text-center m-0 mt-1">
-                {quantity} × <strong className="text-slate-400">{itemName}</strong> will be consumed.
-              </p>
             </div>
           )}
 
-          {phase === 'submitting' && (
+          {(phase === 'submitting' || phase === 'skipping') && (
             <div className="flex flex-col items-center justify-center py-6 gap-3 text-slate-400 text-[13px]">
               <div className="w-8 h-8 rounded-full border-[3px] border-orange-500/20 border-t-orange-400 animate-spin" />
-              <p>Starting dusting…</p>
+              <p>{phase === 'skipping' ? 'Skipping dusting…' : 'Starting dusting…'}</p>
             </div>
           )}
 
@@ -287,7 +351,17 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
         </div>
 
         <div className="modal-footer">
-          {phase === 'confirm' && (
+          {phase === 'confirm' && canSkip && (
+            <>
+              <button type="button" className="modal-btn modal-btn--cancel" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="button" className="modal-btn modal-btn--apply" onClick={handleSkip}>
+                Skip (Instant Finish)
+              </button>
+            </>
+          )}
+          {phase === 'confirm' && !canSkip && (
             <>
               <button type="button" className="modal-btn modal-btn--cancel" onClick={onClose}>
                 Cancel
@@ -297,9 +371,9 @@ export default function DustFlowModal({ isOpen, item, onClose }: DustFlowModalPr
               </button>
             </>
           )}
-          {phase === 'submitting' && (
+          {isBusy && (
             <button type="button" className="modal-btn modal-btn--apply" disabled>
-              Starting…
+              {phase === 'skipping' ? 'Skipping…' : 'Starting…'}
             </button>
           )}
           {isResultOrError && (

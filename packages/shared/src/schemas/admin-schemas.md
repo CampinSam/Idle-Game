@@ -534,3 +534,43 @@ If this env var is absent the scheduler silently skips, and admins retain full m
 ### Net Amount
 
 The amount sent on-chain is `amount - fee`. The `amount` field is the gross DERP deducted from the player's balance at request time; `fee` is the configured flat fee.
+
+---
+
+## ItemDefinition — `dustingData` field
+
+The `dustingData` JSON column on `ItemDefinition` configures the Dust action that appears when a player views the item in inventory.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `instant` | boolean | Yes | If `true`, rewards are resolved immediately in the same transaction (no timer). |
+| `durationTicks` | number | Yes | Base tick duration for the timed job. Ignored when `instant=true`. |
+| `quantityScaling` | `"ALL_AT_ONCE"` \| `"LINEAR"` | Yes | `ALL_AT_ONCE`: fixed duration regardless of quantity. `LINEAR`: `durationTicks × quantity`. |
+| `difficulty` | number | Yes | Pass/fail roll difficulty. `0` = always pass. |
+| `tiers` | object | Yes | Outcome tier blocks keyed by quality name (`failure`, `common`, `uncommon`, `scare`, `rare`, `epic`, `mythic`, `legendary`). Each block: `{ rewards: OutcomeEntry[], clRequirement?: number }`. |
+| `skipCost` | object | No | Optional instant-finish cost. When set, players can pay to mark an active timed dusting job ready immediately. Only relevant when `instant=false`. |
+
+### `skipCost` shape
+
+```json
+{
+  "type": "currency",
+  "id": "gem",
+  "amount": 10
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | `"currency"` \| `"item"` | Resource type to deduct. Currently only `"currency"` is supported at runtime. |
+| `id` | string | Currency or item definition ID. |
+| `amount` | number | Fixed amount to deduct (not scaled by remaining time). |
+
+### `SkipDusting` command
+
+Players send `{ type: "SkipDusting", payload: { jobId } }` to `POST /v1/commands`. The handler:
+1. Verifies the job is `active` and owned by the player.
+2. Deducts `skipCost` from the player's balance.
+3. Sets `readyAtTick = currentTick`, making the job immediately collectable.
+
+The UI shows a **Skip (Instant Finish)** button in the DustFlowModal when the item has an active dusting job and `dustingData.skipCost` is configured.
