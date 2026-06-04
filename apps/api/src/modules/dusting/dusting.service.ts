@@ -132,8 +132,13 @@ export class DustingService {
     const currentTick = await this.tickService.getCurrentTick(now);
 
     const timerCfg = dustingData.timer as any;
-    const baseDuration = dustingData.instant ? 0 : (timerCfg?.duration ?? 0);
-    const timerScaling = dustingData.timerScaling ?? 'flat';
+    const legacyData = dustingData as any;
+    const baseDuration = dustingData.instant
+      ? 0
+      : (timerCfg?.duration ?? legacyData.durationTicks ?? 0);
+    const rawScaling: string = legacyData.timerScaling ?? legacyData.quantityScaling ?? 'flat';
+    const timerScaling: string =
+      rawScaling === 'LINEAR' ? 'per_unit' : rawScaling === 'ALL_AT_ONCE' ? 'flat' : rawScaling;
     const totalDurationTicks = (timerScaling === 'per_unit' && !dustingData.instant)
       ? Math.max(0, baseDuration * qty)
       : baseDuration;
