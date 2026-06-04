@@ -426,8 +426,8 @@ function LevelBlockEditor({
         </div>
       )}
 
-      {/* timer — building + room only */}
-      {!isLocation && hasTimer && (
+      {/* timer — all modes */}
+      {hasTimer && (
         <div style={sectionStyle}>
           <SubSectionHeader label="timer" onRemove={() => removeField('timer')} />
           <TimerEditor value={safe.timer ?? {}} onChange={v => setField('timer', v)} />
@@ -637,7 +637,7 @@ function LevelBlockEditor({
         {isLocation && xpCurve === 'custom' && !hasXpThreshold && (
           <button type="button" style={addButtonStyle} onClick={() => setField('xpThreshold', 0)}>+ xpThreshold</button>
         )}
-        {!isLocation && !hasTimer && (
+        {!hasTimer && (
           <button type="button" style={addButtonStyle} onClick={() => setField('timer', { duration: 0, boostable: true, skipable: false })}>+ timer</button>
         )}
         {!hasWorkers && (
@@ -1004,7 +1004,7 @@ export function entityLevelRulesErrorCount(value: unknown, mode: EntityLevelRule
   for (const block of Object.values(level)) {
     if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
 
-    if (mode !== 'location' && 'timer' in block && block.timer && typeof block.timer === 'object') {
+    if ('timer' in block && block.timer && typeof block.timer === 'object') {
       const d = (block.timer as any).duration;
       if (d === undefined || d === null || isNaN(Number(d)) || Number(d) < 0) n++;
     }
@@ -1055,7 +1055,7 @@ export function entityLevelRulesErrorMessages(value: unknown, mode: EntityLevelR
   for (const [levelKey, block] of Object.entries(level)) {
     if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
 
-    if (mode !== 'location' && 'timer' in block && block.timer && typeof block.timer === 'object') {
+    if ('timer' in block && block.timer && typeof block.timer === 'object') {
       const d = (block.timer as any).duration;
       if (d === undefined || d === null || isNaN(Number(d)) || Number(d) < 0) {
         msgs.push(`${fieldName}.level[${levelKey}].timer.duration: must be a non-negative number`);
