@@ -270,6 +270,9 @@ export class InventoryService {
         description: s.definition.description,
         quantity: s.quantity,
         data: s.definition.data,
+        dustingData: s.definition.dustingData ?? null,
+        equipData: s.definition.equipData ?? null,
+        consumableData: s.definition.consumableData ?? null,
       })),
       gear: gear.map((g) => ({
         instanceId: g.id,

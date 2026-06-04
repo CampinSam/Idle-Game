@@ -146,7 +146,6 @@ export default function InventoryContent() {
   const [sortBy, setSortBy] = useState<ItemSortBy>(readSort);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
-  const [forgeLocationId, setForgeLocationId] = useState<string | null>(null);
   const { pushModal } = useModal();
 
   const [entityPickerPotion, setEntityPickerPotion] = useState<any | null>(null);
@@ -164,17 +163,6 @@ export default function InventoryContent() {
     ) ?? null;
   }, [dustItem, allJobs]);
 
-  useEffect(() => {
-    let cancelled = false;
-    api.getCraftingWorkshops()
-      .then((list) => {
-        if (cancelled) return;
-        const enabled = list.find((w) => w.enabled) ?? list[0];
-        setForgeLocationId(enabled?.locationId ?? null);
-      })
-      .catch(() => { if (!cancelled) setForgeLocationId(null); });
-    return () => { cancelled = true; };
-  }, []);
 
   const { execute } = useCommand({
     onUiIntent: (intent) => {
@@ -409,24 +397,6 @@ export default function InventoryContent() {
         </button>
       );
     }
-    if (item.type === 'MATERIAL') {
-      const hasWorkshop = !!forgeLocationId;
-      return (
-        <button
-          className={manageBtn('green')}
-          disabled={!hasWorkshop}
-          onClick={() => {
-            if (!hasWorkshop) return;
-            const matId = (item.itemDefId || item.id) as string;
-            const q = `?material=${encodeURIComponent(matId)}`;
-            navigate(`/locations/${forgeLocationId}/workshop${q}`);
-          }}
-          title={hasWorkshop ? 'Open The Forge with recipes filtered to this material' : 'Build a Workshop in your Outpost first'}
-        >
-          ⚒️  Craft with this
-        </button>
-      );
-    }
     const hasDustingData =
       !!(item.dustingData ?? item.definition?.dustingData);
     if (hasDustingData) {
@@ -442,7 +412,7 @@ export default function InventoryContent() {
       );
     }
     return <button className={manageBtn('green')}>Manage</button>;
-  }, [opening, entities, effectDefsById, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
+  }, [opening, entities, effectDefsById, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
 
   const equipDisabledIds = useMemo(() => {
     if (!equipGear) return [];
@@ -471,16 +441,16 @@ export default function InventoryContent() {
           selectedId={selectedId}
           onSelect={handleSelect}
         />
-        {selectedItem && (
-          <div className="flex-shrink-0">
-            <ItemDetailPanel
-              key={selectedItem.instanceId ?? selectedItem.id}
-              item={selectedItem}
-              actions={renderActions(selectedItem)}
-            />
-          </div>
-        )}
       </div>
+      {selectedItem && (
+        <div className="flex-shrink-0">
+          <ItemDetailPanel
+            key={selectedItem.instanceId ?? selectedItem.id}
+            item={selectedItem}
+            actions={renderActions(selectedItem)}
+          />
+        </div>
+      )}
 
       <EntityPickerModal
         isOpen={!!entityPickerPotion}
