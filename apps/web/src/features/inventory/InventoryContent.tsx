@@ -20,9 +20,7 @@ import {
 } from './utils/statChangeHelpers';
 
 const PAGE_WRAPPER_CLASS = 'flex flex-col flex-1 min-h-0';
-const CARD_CLASS =
-  'flex flex-col flex-1 min-h-0 overflow-hidden overscroll-contain ' +
-  '[-webkit-overflow-scrolling:touch] relative';
+const CARD_CLASS = 'flex flex-col flex-1 min-h-0 relative';
 
 const BTN_BASE =
   'px-3.5 py-1.5 text-[11px] font-bold rounded-lg text-white border-0 cursor-pointer ' +
