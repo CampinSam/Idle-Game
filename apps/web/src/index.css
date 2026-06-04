@@ -1887,11 +1887,19 @@ input:focus {
   font-size: 18px;
   color: #e2d9ff;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .top-bar-currencies {
   display: flex;
   gap: 8px;
-  margin-left: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-left: 0;
+}
+.top-bar-currencies::-webkit-scrollbar {
+  display: none;
 }
 .top-bar-currency {
   display: flex;
