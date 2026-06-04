@@ -4,8 +4,7 @@ import { giftClaimRulesErrorCount, giftClaimRulesErrorMessages } from './GiftCla
 import { itemEquipDataErrorCount, itemEquipDataErrorMessages } from './ItemEquipDataEditor';
 import { homeBannerConfigErrorCount, homeBannerConfigErrorMessages } from './HomeBannerConfigEditor';
 import { eventSecurityErrorCount, eventSecurityErrorMessages } from './EventSecurityEditor';
-import { levelRulesErrorCount, levelRulesErrorMessages } from './LevelRulesEditor';
-import { locationLevelRulesErrorCount, locationLevelRulesErrorMessages } from './LocationLevelRulesEditor';
+import { entityLevelRulesErrorCount, entityLevelRulesErrorMessages } from './EntityLevelRulesEditor';
 import { productionProfileErrorCount, productionProfileErrorMessages } from './ProductionProfileEditor';
 
 // Re-export shared contract types so existing editor imports keep working.
@@ -398,10 +397,12 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
       return homeBannerConfigErrorCount(value);
     case 'eventSecurity':
       return eventSecurityErrorCount(value);
-    case 'levelRules':
-      return levelRulesErrorCount(value);
+    case 'buildingLevelRules':
+      return entityLevelRulesErrorCount(value, 'building');
+    case 'roomLevelRules':
+      return entityLevelRulesErrorCount(value, 'room');
     case 'locationLevelRules':
-      return locationLevelRulesErrorCount(value);
+      return entityLevelRulesErrorCount(value, 'location');
     case 'productionProfile':
       return productionProfileErrorCount(value);
     case 'contentDocumentData': {
@@ -549,10 +550,12 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
       return homeBannerConfigErrorMessages(value, fieldName);
     case 'eventSecurity':
       return eventSecurityErrorMessages(value, fieldName);
-    case 'levelRules':
-      return levelRulesErrorMessages(value, fieldName);
+    case 'buildingLevelRules':
+      return entityLevelRulesErrorMessages(value, 'building', fieldName);
+    case 'roomLevelRules':
+      return entityLevelRulesErrorMessages(value, 'room', fieldName);
     case 'locationLevelRules':
-      return locationLevelRulesErrorMessages(value, fieldName);
+      return entityLevelRulesErrorMessages(value, 'location', fieldName);
     case 'productionProfile':
       return productionProfileErrorMessages(value, fieldName);
     case 'contentDocumentData': {

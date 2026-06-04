@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CollapsibleObject from '../CollapsibleObject';
 import RefSelect from '../RefSelect';
+import TimerEditor from './TimerEditor';
 import ResourceEntryListEditor, { resourceEntryListErrorCount, resourceEntryListErrorMessages } from './ResourceEntryListEditor';
 import type { ResourceEntry } from './ResourceEntryListEditor';
 import {
@@ -16,7 +17,9 @@ import {
 } from './editorStyles';
 import { errorTextStyle, errorWrapperStyle } from './validation';
 
-// ─── Local types (mirrors level-config.util.ts shapes) ────────────────────────
+export type EntityLevelRulesMode = 'location' | 'building' | 'room';
+
+// ─── Local types ──────────────────────────────────────────────────────────────
 
 type XpCurve = 'linear' | 'exp' | 'custom';
 type OnStarve = 'starved' | 'paused';
@@ -40,7 +43,7 @@ interface AllowedRoom {
   minCount?: number;
 }
 
-interface LocationLevelBlock {
+interface LevelBlock {
   xpThreshold?: number;
   workers?: { slots: number };
   buildings?: { slots: number; allowed?: AllowedBuilding[] };
@@ -51,33 +54,36 @@ interface LocationLevelBlock {
   constructionCost?: ResourceEntry[];
   effects?: Record<string, unknown>;
   onStarve?: OnStarve;
+  timer?: Record<string, any>;
   [key: string]: unknown;
 }
 
-interface LocationLevelRules {
+interface EntityLevelRules {
   maxLevel?: number;
   xpCurve?: XpCurve;
   baseXP?: number;
   xpRate?: number;
   xpDepositCosts?: XpDepositCost[];
-  level?: Record<string, LocationLevelBlock>;
+  level?: Record<string, LevelBlock>;
   uniques?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Known field sets (used to preserve unknown fields) ───────────────────────
 
-const KNOWN_ROOT_FIELDS = new Set([
+const KNOWN_ROOT_FIELDS_LOCATION = new Set([
   'maxLevel', 'xpCurve', 'baseXP', 'xpRate', 'xpDepositCosts', 'level', 'uniques',
 ]);
+
+const KNOWN_ROOT_FIELDS_ENTITY = new Set(['maxLevel', 'level']);
 
 const KNOWN_BLOCK_FIELDS = new Set([
   'xpThreshold', 'workers', 'buildings', 'rooms',
   'storage', 'production', 'consumption', 'constructionCost',
-  'effects', 'onStarve',
+  'effects', 'onStarve', 'timer',
 ]);
 
-// ─── Level-map helpers ────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getSortedLevelKeys(level: Record<string, unknown>): string[] {
   return Object.keys(level).sort((a, b) => Number(a) - Number(b));
@@ -96,7 +102,33 @@ function isValidLevelKey(input: string): boolean {
   return Number.isInteger(n) && n >= 1;
 }
 
-// ─── XpDepositCosts editor ────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const SUBSECTION_LABEL: React.CSSProperties = {
+  fontSize: 10,
+  color: '#60a5fa',
+  fontWeight: 700,
+  letterSpacing: '0.07em',
+  textTransform: 'uppercase',
+};
+
+function SubSectionHeader({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+      <span style={SUBSECTION_LABEL}>{label}</span>
+      <button
+        type="button"
+        style={{ ...dangerIconButtonStyle, fontSize: 10 }}
+        onClick={onRemove}
+        title={`Remove ${label}`}
+      >
+        × remove
+      </button>
+    </div>
+  );
+}
+
+// ─── XP Deposit Costs editor ──────────────────────────────────────────────────
 
 function validateDepositCost(c: XpDepositCost): { id?: string; amount?: string; xpPerCharge?: string } {
   const errs: { id?: string; amount?: string; xpPerCharge?: string } = {};
@@ -106,7 +138,7 @@ function validateDepositCost(c: XpDepositCost): { id?: string; amount?: string; 
   return errs;
 }
 
-function xpDepositCostsErrorCount(value: unknown): number {
+export function xpDepositCostsErrorCount(value: unknown): number {
   if (!Array.isArray(value)) return 0;
   return (value as XpDepositCost[]).reduce(
     (n, c) => n + Object.keys(validateDepositCost(c)).length,
@@ -114,11 +146,7 @@ function xpDepositCostsErrorCount(value: unknown): number {
   );
 }
 
-function XpDepositCostRow({
-  cost,
-  onChange,
-  onRemove,
-}: {
+function XpDepositCostRow({ cost, onChange, onRemove }: {
   cost: XpDepositCost;
   onChange: (c: XpDepositCost) => void;
   onRemove: () => void;
@@ -158,8 +186,7 @@ function XpDepositCostRow({
             value={cost.amount ?? ''}
             onChange={e => onChange({ ...cost, amount: e.target.value === '' ? 0 : Number(e.target.value) })}
             style={{
-              ...numberInputStyle,
-              width: '100%',
+              ...numberInputStyle, width: '100%',
               borderColor: errs.amount ? '#ef4444' : (numberInputStyle.borderColor as string | undefined),
             }}
           />
@@ -173,8 +200,7 @@ function XpDepositCostRow({
             value={cost.xpPerCharge ?? ''}
             onChange={e => onChange({ ...cost, xpPerCharge: e.target.value === '' ? 0 : Number(e.target.value) })}
             style={{
-              ...numberInputStyle,
-              width: '100%',
+              ...numberInputStyle, width: '100%',
               borderColor: errs.xpPerCharge ? '#ef4444' : (numberInputStyle.borderColor as string | undefined),
             }}
           />
@@ -188,21 +214,16 @@ function XpDepositCostRow({
   );
 }
 
-function XpDepositCostsEditor({
-  value,
-  onChange,
-}: {
+function XpDepositCostsEditor({ value, onChange }: {
   value: unknown;
   onChange: (v: XpDepositCost[]) => void;
 }) {
   const items: XpDepositCost[] = Array.isArray(value) ? (value as XpDepositCost[]) : [];
-
   const update = (idx: number, next: XpDepositCost) => {
     const arr = items.slice();
     arr[idx] = next;
     onChange(arr);
   };
-
   return (
     <div style={containerStyle}>
       {items.map((cost, idx) => (
@@ -224,13 +245,9 @@ function XpDepositCostsEditor({
   );
 }
 
-// ─── Allowed buildings / rooms inline editors ─────────────────────────────────
+// ─── Allowed buildings / rooms editors ───────────────────────────────────────
 
-function AllowedBuildingRow({
-  entry,
-  onChange,
-  onRemove,
-}: {
+function AllowedBuildingRow({ entry, onChange, onRemove }: {
   entry: AllowedBuilding;
   onChange: (e: AllowedBuilding) => void;
   onRemove: () => void;
@@ -279,11 +296,7 @@ function AllowedBuildingRow({
   );
 }
 
-function AllowedRoomRow({
-  entry,
-  onChange,
-  onRemove,
-}: {
+function AllowedRoomRow({ entry, onChange, onRemove }: {
   entry: AllowedRoom;
   onChange: (e: AllowedRoom) => void;
   onRemove: () => void;
@@ -332,55 +345,34 @@ function AllowedRoomRow({
   );
 }
 
-// ─── Sub-section header ───────────────────────────────────────────────────────
+// ─── Level block editor ───────────────────────────────────────────────────────
 
-const SUBSECTION_LABEL: React.CSSProperties = {
-  fontSize: 10,
-  color: '#60a5fa',
-  fontWeight: 700,
-  letterSpacing: '0.07em',
-  textTransform: 'uppercase',
-};
-
-function SubSectionHeader({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-      <span style={SUBSECTION_LABEL}>{label}</span>
-      <button
-        type="button"
-        style={{ ...dangerIconButtonStyle, fontSize: 10 }}
-        onClick={onRemove}
-        title={`Remove ${label}`}
-      >
-        × remove
-      </button>
-    </div>
-  );
-}
-
-// ─── Per-level block editor ───────────────────────────────────────────────────
-
-function LocationLevelBlockEditor({
+function LevelBlockEditor({
   levelKey,
   block,
+  mode,
   xpCurve,
   onChange,
   onRemove,
 }: {
   levelKey: string;
-  block: LocationLevelBlock;
+  block: LevelBlock;
+  mode: EntityLevelRulesMode;
   xpCurve: XpCurve | undefined;
-  onChange: (b: LocationLevelBlock) => void;
+  onChange: (b: LevelBlock) => void;
   onRemove: () => void;
 }) {
-  const safe: LocationLevelBlock = (block && typeof block === 'object' && !Array.isArray(block)) ? block : {};
+  const safe: LevelBlock = (block && typeof block === 'object' && !Array.isArray(block)) ? block : {};
   const safeMap = safe as Record<string, unknown>;
+
+  const isLocation = mode === 'location';
+  const isRoom = mode === 'room';
 
   const setField = (key: string, val: unknown) => onChange({ ...safe, [key]: val });
   const removeField = (key: string) => {
     const next = { ...safeMap };
     delete next[key];
-    onChange(next as LocationLevelBlock);
+    onChange(next as LevelBlock);
   };
 
   const unknownFields: Record<string, unknown> = {};
@@ -389,6 +381,7 @@ function LocationLevelBlockEditor({
   }
 
   const hasXpThreshold = 'xpThreshold' in safe;
+  const hasTimer = 'timer' in safe;
   const hasWorkers = 'workers' in safe;
   const hasBuildings = 'buildings' in safe;
   const hasRooms = 'rooms' in safe;
@@ -418,7 +411,8 @@ function LocationLevelBlockEditor({
         <button type="button" style={dangerIconButtonStyle} onClick={onRemove} title="Remove level">×</button>
       </div>
 
-      {xpCurve === 'custom' && hasXpThreshold && (
+      {/* xpThreshold — location only, custom curve */}
+      {isLocation && xpCurve === 'custom' && hasXpThreshold && (
         <div style={sectionStyle}>
           <SubSectionHeader label="xpThreshold" onRemove={() => removeField('xpThreshold')} />
           <input
@@ -432,6 +426,15 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* timer — building + room only */}
+      {!isLocation && hasTimer && (
+        <div style={sectionStyle}>
+          <SubSectionHeader label="timer" onRemove={() => removeField('timer')} />
+          <TimerEditor value={safe.timer ?? {}} onChange={v => setField('timer', v)} />
+        </div>
+      )}
+
+      {/* workers */}
       {hasWorkers && (
         <div style={sectionStyle}>
           <SubSectionHeader label="workers" onRemove={() => removeField('workers')} />
@@ -448,7 +451,8 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
-      {hasBuildings && (
+      {/* buildings — location only */}
+      {isLocation && hasBuildings && (
         <div style={sectionStyle}>
           <SubSectionHeader label="buildings" onRemove={() => removeField('buildings')} />
           <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
@@ -497,7 +501,8 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
-      {hasRooms && (
+      {/* rooms.allowed — location + building (not room) */}
+      {!isRoom && hasRooms && (
         <div style={sectionStyle}>
           <SubSectionHeader label="rooms" onRemove={() => removeField('rooms')} />
           <div>
@@ -533,6 +538,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* storage */}
       {hasStorage && (
         <div style={sectionStyle}>
           <SubSectionHeader label="storage" onRemove={() => removeField('storage')} />
@@ -544,6 +550,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* production */}
       {hasProduction && (
         <div style={sectionStyle}>
           <SubSectionHeader label="production" onRemove={() => removeField('production')} />
@@ -555,6 +562,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* consumption */}
       {hasConsumption && (
         <div style={sectionStyle}>
           <SubSectionHeader label="consumption" onRemove={() => removeField('consumption')} />
@@ -566,6 +574,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* constructionCost */}
       {hasConstructionCost && (
         <div style={sectionStyle}>
           <SubSectionHeader label="constructionCost" onRemove={() => removeField('constructionCost')} />
@@ -577,6 +586,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* onStarve */}
       {hasOnStarve && (
         <div style={sectionStyle}>
           <SubSectionHeader label="onStarve" onRemove={() => removeField('onStarve')} />
@@ -591,6 +601,7 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
+      {/* effects */}
       {hasEffects && (
         <div style={sectionStyle}>
           <SubSectionHeader label="effects" onRemove={() => removeField('effects')} />
@@ -602,33 +613,40 @@ function LocationLevelBlockEditor({
         </div>
       )}
 
-      <div style={sectionStyle}>
-        <span style={{ ...labelStyle, textTransform: 'uppercase', letterSpacing: '0.06em' }}>other fields</span>
-        <CollapsibleObject
-          value={unknownFields}
-          onChange={newUnknown => {
-            const next: Record<string, unknown> = {};
-            for (const k of KNOWN_BLOCK_FIELDS) {
-              if (k in safeMap) next[k] = safeMap[k];
-            }
-            Object.assign(next, newUnknown);
-            onChange(next as LocationLevelBlock);
-          }}
-          path={`level.${levelKey}`}
-        />
-      </div>
+      {/* unknown fields catch-all */}
+      {Object.keys(unknownFields).length > 0 && (
+        <div style={sectionStyle}>
+          <span style={{ ...labelStyle, textTransform: 'uppercase', letterSpacing: '0.06em' }}>other fields</span>
+          <CollapsibleObject
+            value={unknownFields}
+            onChange={newUnknown => {
+              const next: Record<string, unknown> = {};
+              for (const k of KNOWN_BLOCK_FIELDS) {
+                if (k in safeMap) next[k] = safeMap[k];
+              }
+              Object.assign(next, newUnknown);
+              onChange(next as LevelBlock);
+            }}
+            path={`level.${levelKey}`}
+          />
+        </div>
+      )}
 
+      {/* Add-field buttons */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {xpCurve === 'custom' && !hasXpThreshold && (
+        {isLocation && xpCurve === 'custom' && !hasXpThreshold && (
           <button type="button" style={addButtonStyle} onClick={() => setField('xpThreshold', 0)}>+ xpThreshold</button>
+        )}
+        {!isLocation && !hasTimer && (
+          <button type="button" style={addButtonStyle} onClick={() => setField('timer', { duration: 0, boostable: true, skipable: false })}>+ timer</button>
         )}
         {!hasWorkers && (
           <button type="button" style={addButtonStyle} onClick={() => setField('workers', { slots: 0 })}>+ workers</button>
         )}
-        {!hasBuildings && (
+        {isLocation && !hasBuildings && (
           <button type="button" style={addButtonStyle} onClick={() => setField('buildings', { slots: 0, allowed: [] })}>+ buildings</button>
         )}
-        {!hasRooms && (
+        {!isRoom && !hasRooms && (
           <button type="button" style={addButtonStyle} onClick={() => setField('rooms', { allowed: [] })}>+ rooms</button>
         )}
         {!hasStorage && (
@@ -654,42 +672,47 @@ function LocationLevelBlockEditor({
   );
 }
 
-// ─── Top-level editor ─────────────────────────────────────────────────────────
+// ─── Main editor ──────────────────────────────────────────────────────────────
 
 interface Props {
-  value: unknown;
-  onChange: (v: unknown) => void;
+  value: any;
+  onChange: (v: any) => void;
+  mode: EntityLevelRulesMode;
 }
 
-export default function LocationLevelRulesEditor({ value, onChange }: Props) {
+export default function EntityLevelRulesEditor({ value, onChange, mode }: Props) {
   const [renamingKey, setRenamingKey] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState('');
   const [renameError, setRenameError] = useState<string | null>(null);
 
-  const safe: LocationLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
-    ? value as LocationLevelRules
+  const isLocation = mode === 'location';
+  const maxLevelPlaceholder = isLocation ? 'default: 50' : 'default: 10';
+
+  const safe: EntityLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
+    ? value as EntityLevelRules
     : {};
   const safeMap = safe as Record<string, unknown>;
 
-  const level: Record<string, LocationLevelBlock> = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level))
-    ? safe.level as Record<string, LocationLevelBlock>
+  const level: Record<string, LevelBlock> = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level))
+    ? safe.level as Record<string, LevelBlock>
     : {};
   const sortedKeys = getSortedLevelKeys(level);
   const xpCurve = safe.xpCurve as XpCurve | undefined;
 
+  const knownRoots = isLocation ? KNOWN_ROOT_FIELDS_LOCATION : KNOWN_ROOT_FIELDS_ENTITY;
   const unknownRootFields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(safeMap)) {
-    if (!KNOWN_ROOT_FIELDS.has(k)) unknownRootFields[k] = v;
+    if (!knownRoots.has(k)) unknownRootFields[k] = v;
   }
 
   const set = (key: string, val: unknown) => onChange({ ...safe, [key]: val });
   const remove = (key: string) => {
     const next = { ...safeMap };
     delete next[key];
-    onChange(next as LocationLevelRules);
+    onChange(next);
   };
 
-  const setLevelEntry = (key: string, block: LocationLevelBlock) =>
+  const setLevelEntry = (key: string, block: LevelBlock) =>
     onChange({ ...safe, level: { ...level, [key]: block } });
 
   const removeLevelEntry = (key: string) => {
@@ -720,7 +743,7 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
       setRenameError(`Level ${newKey} already exists`);
       return;
     }
-    const next: Record<string, LocationLevelBlock> = {};
+    const next: Record<string, LevelBlock> = {};
     for (const k of sortedKeys) {
       if (k === oldKey) next[newKey] = level[k];
       else next[k] = level[k];
@@ -732,13 +755,78 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
 
   return (
     <div style={containerStyle}>
-      {/* XP Curve Settings */}
-      <div style={sectionStyle}>
-        <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-          XP Curve Settings
+
+      {/* ── XP Curve Settings (location only) ── */}
+      {isLocation && (
+        <div style={sectionStyle}>
+          <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+            XP Curve Settings
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
+              <span style={labelStyle}>maxLevel</span>
+              <input
+                type="number"
+                min={1}
+                value={safe.maxLevel ?? ''}
+                onChange={e => set('maxLevel', e.target.value === '' ? undefined : Number(e.target.value))}
+                style={{ ...numberInputStyle, width: '100%' }}
+                placeholder={maxLevelPlaceholder}
+              />
+            </div>
+            <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
+              <span style={labelStyle}>xpCurve</span>
+              <select
+                value={safe.xpCurve || ''}
+                onChange={e => set('xpCurve', e.target.value || undefined)}
+                style={{ ...selectStyle, width: '100%' }}
+              >
+                <option value="">— none —</option>
+                <option value="linear">linear</option>
+                <option value="exp">exp</option>
+                <option value="custom">custom</option>
+              </select>
+            </div>
+            {xpCurve !== 'custom' && (
+              <>
+                <div style={{ ...fieldGroupStyle, maxWidth: 100 }}>
+                  <span style={labelStyle}>baseXP</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={safe.baseXP ?? ''}
+                    onChange={e => set('baseXP', e.target.value === '' ? undefined : Number(e.target.value))}
+                    style={{ ...numberInputStyle, width: '100%' }}
+                    placeholder="e.g. 100"
+                  />
+                </div>
+                <div style={{ ...fieldGroupStyle, maxWidth: 100 }}>
+                  <span style={labelStyle}>xpRate</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={safe.xpRate ?? ''}
+                    onChange={e => set('xpRate', e.target.value === '' ? undefined : Number(e.target.value))}
+                    style={{ ...numberInputStyle, width: '100%' }}
+                    placeholder="e.g. 1.5"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {xpCurve === 'custom' && (
+            <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+              Custom curve — set xpThreshold on each level block below.
+            </div>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
+      )}
+
+      {/* ── maxLevel (building/room) ── */}
+      {!isLocation && (
+        <div style={{ ...sectionStyle, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <div style={{ ...fieldGroupStyle, maxWidth: 160 }}>
             <span style={labelStyle}>maxLevel</span>
             <input
               type="number"
@@ -746,84 +834,47 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
               value={safe.maxLevel ?? ''}
               onChange={e => set('maxLevel', e.target.value === '' ? undefined : Number(e.target.value))}
               style={{ ...numberInputStyle, width: '100%' }}
-              placeholder="default: 50"
+              placeholder={maxLevelPlaceholder}
             />
           </div>
-          <div style={{ ...fieldGroupStyle, maxWidth: 120 }}>
-            <span style={labelStyle}>xpCurve</span>
-            <select
-              value={safe.xpCurve || ''}
-              onChange={e => set('xpCurve', e.target.value || undefined)}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              <option value="">— none —</option>
-              <option value="linear">linear</option>
-              <option value="exp">exp</option>
-              <option value="custom">custom</option>
-            </select>
+          <div style={{ flex: 1, fontSize: 11, color: '#666' }}>
+            {sortedKeys.length} level{sortedKeys.length !== 1 ? 's' : ''} defined
           </div>
-          {xpCurve !== 'custom' && (
-            <>
-              <div style={{ ...fieldGroupStyle, maxWidth: 100 }}>
-                <span style={labelStyle}>baseXP</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={safe.baseXP ?? ''}
-                  onChange={e => set('baseXP', e.target.value === '' ? undefined : Number(e.target.value))}
-                  style={{ ...numberInputStyle, width: '100%' }}
-                  placeholder="e.g. 100"
-                />
-              </div>
-              <div style={{ ...fieldGroupStyle, maxWidth: 100 }}>
-                <span style={labelStyle}>xpRate</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.1}
-                  value={safe.xpRate ?? ''}
-                  onChange={e => set('xpRate', e.target.value === '' ? undefined : Number(e.target.value))}
-                  style={{ ...numberInputStyle, width: '100%' }}
-                  placeholder="e.g. 1.5"
-                />
-              </div>
-            </>
-          )}
         </div>
-        {xpCurve === 'custom' && (
-          <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-            Custom curve — set xpThreshold on each level block below.
+      )}
+
+      {/* ── XP Deposit Costs (location only) ── */}
+      {isLocation && (
+        <div style={sectionStyle}>
+          <div style={{ fontSize: 11, color: '#fb923c', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+            XP Deposit Costs
           </div>
-        )}
-      </div>
-
-      {/* XP Deposit Costs */}
-      <div style={sectionStyle}>
-        <div style={{ fontSize: 11, color: '#fb923c', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>
-          XP Deposit Costs
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
+            Options players can spend to deposit XP. Leave empty to use the game default.
+          </div>
+          <XpDepositCostsEditor
+            value={safe.xpDepositCosts}
+            onChange={v => {
+              if (v.length > 0) set('xpDepositCosts', v);
+              else remove('xpDepositCosts');
+            }}
+          />
         </div>
-        <div style={{ fontSize: 11, color: '#666', marginBottom: 6 }}>
-          Options players can spend to deposit XP. Leave empty to use the game default.
+      )}
+
+      {/* ── Level map header (location) ── */}
+      {isLocation && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            Levels
+          </span>
+          <span style={{ fontSize: 11, color: '#555' }}>
+            {sortedKeys.length} defined
+          </span>
         </div>
-        <XpDepositCostsEditor
-          value={safe.xpDepositCosts}
-          onChange={v => {
-            if (v.length > 0) set('xpDepositCosts', v);
-            else remove('xpDepositCosts');
-          }}
-        />
-      </div>
+      )}
 
-      {/* Level map header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Levels
-        </span>
-        <span style={{ fontSize: 11, color: '#555' }}>
-          {sortedKeys.length} defined
-        </span>
-      </div>
-
+      {/* ── Level entries ── */}
       {sortedKeys.map((key) => {
         const isRenaming = renamingKey === key;
         return (
@@ -876,9 +927,10 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
                 >
                   rename key
                 </button>
-                <LocationLevelBlockEditor
+                <LevelBlockEditor
                   levelKey={key}
                   block={level[key] ?? {}}
+                  mode={mode}
                   xpCurve={xpCurve}
                   onChange={v => setLevelEntry(key, v)}
                   onRemove={() => removeLevelEntry(key)}
@@ -893,22 +945,24 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
         + Add Level
       </button>
 
-      {/* Unique NFT Powers */}
-      <div style={sectionStyle}>
-        <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
-          Unique NFT Powers (uniques)
+      {/* ── Unique NFT Powers (location only) ── */}
+      {isLocation && (
+        <div style={sectionStyle}>
+          <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Unique NFT Powers (uniques)
+          </div>
+          <CollapsibleObject
+            value={safe.uniques ?? {}}
+            onChange={v => {
+              if (!v || Object.keys(v as object).length === 0) remove('uniques');
+              else set('uniques', v);
+            }}
+            path="uniques"
+          />
         </div>
-        <CollapsibleObject
-          value={safe.uniques ?? {}}
-          onChange={v => {
-            if (!v || Object.keys(v as object).length === 0) remove('uniques');
-            else set('uniques', v);
-          }}
-          path="uniques"
-        />
-      </div>
+      )}
 
-      {/* Unknown root fields (catch-all) */}
+      {/* ── Unknown root fields catch-all ── */}
       {Object.keys(unknownRootFields).length > 0 && (
         <div style={sectionStyle}>
           <span style={{ ...labelStyle, textTransform: 'uppercase', letterSpacing: '0.06em' }}>other root fields</span>
@@ -916,11 +970,11 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
             value={unknownRootFields}
             onChange={newUnknown => {
               const next: Record<string, unknown> = {};
-              for (const k of KNOWN_ROOT_FIELDS) {
+              for (const k of knownRoots) {
                 if (k in safeMap) next[k] = safeMap[k];
               }
               Object.assign(next, newUnknown);
-              onChange(next as LocationLevelRules);
+              onChange(next);
             }}
           />
         </div>
@@ -929,56 +983,63 @@ export default function LocationLevelRulesEditor({ value, onChange }: Props) {
   );
 }
 
-// ─── Error count ──────────────────────────────────────────────────────────────
+// ─── Validation ───────────────────────────────────────────────────────────────
 
-export function locationLevelRulesErrorCount(value: unknown): number {
-  const safe: LocationLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
-    ? value as LocationLevelRules
+export function entityLevelRulesErrorCount(value: unknown, mode: EntityLevelRulesMode): number {
+  const safe: EntityLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
+    ? value as EntityLevelRules
     : {};
   let n = 0;
 
-  // maxLevel is optional — server defaults to 50 when absent. Only flag it
-  // as an error if it is explicitly set to a non-positive value.
   if (safe.maxLevel !== undefined && safe.maxLevel !== null && (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1)) n++;
 
-  n += xpDepositCostsErrorCount(safe.xpDepositCosts);
+  if (mode === 'location') {
+    n += xpDepositCostsErrorCount(safe.xpDepositCosts);
+  }
 
   const level = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level))
-    ? safe.level as Record<string, LocationLevelBlock>
+    ? safe.level as Record<string, LevelBlock>
     : {};
 
   for (const block of Object.values(level)) {
     if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
+
+    if (mode !== 'location' && 'timer' in block && block.timer && typeof block.timer === 'object') {
+      const d = (block.timer as any).duration;
+      if (d === undefined || d === null || isNaN(Number(d)) || Number(d) < 0) n++;
+    }
 
     n += resourceEntryListErrorCount(block.storage, 'baseCapacity');
     n += resourceEntryListErrorCount(block.production, 'ratePerHour');
     n += resourceEntryListErrorCount(block.consumption, 'ratePerHour');
     n += resourceEntryListErrorCount(block.constructionCost, 'amount');
 
-    for (const ab of (block.buildings?.allowed ?? [])) {
-      if (!ab.buildingDefId || ab.buildingDefId.trim() === '') n++;
+    if (mode === 'location') {
+      for (const ab of (block.buildings?.allowed ?? [])) {
+        if (!ab.buildingDefId || ab.buildingDefId.trim() === '') n++;
+      }
     }
-    for (const ar of (block.rooms?.allowed ?? [])) {
-      if (!ar.roomDefId || ar.roomDefId.trim() === '') n++;
+    if (mode !== 'room') {
+      for (const ar of (block.rooms?.allowed ?? [])) {
+        if (!ar.roomDefId || ar.roomDefId.trim() === '') n++;
+      }
     }
   }
 
   return n;
 }
 
-export function locationLevelRulesErrorMessages(value: unknown, fieldName: string): string[] {
-  const safe: LocationLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
-    ? value as LocationLevelRules
+export function entityLevelRulesErrorMessages(value: unknown, mode: EntityLevelRulesMode, fieldName: string): string[] {
+  const safe: EntityLevelRules = (value && typeof value === 'object' && !Array.isArray(value))
+    ? value as EntityLevelRules
     : {};
   const msgs: string[] = [];
 
-  // maxLevel is optional — server defaults to 50 when absent. Only flag it
-  // if it is explicitly set to a non-positive value.
   if (safe.maxLevel !== undefined && safe.maxLevel !== null && (typeof safe.maxLevel !== 'number' || safe.maxLevel < 1)) {
     msgs.push(`${fieldName}.maxLevel: must be a positive integer`);
   }
 
-  if (Array.isArray(safe.xpDepositCosts)) {
+  if (mode === 'location' && Array.isArray(safe.xpDepositCosts)) {
     (safe.xpDepositCosts as XpDepositCost[]).forEach((c, i) => {
       const errs = validateDepositCost(c);
       Object.entries(errs).forEach(([key, msg]) => {
@@ -988,27 +1049,38 @@ export function locationLevelRulesErrorMessages(value: unknown, fieldName: strin
   }
 
   const level = (safe.level && typeof safe.level === 'object' && !Array.isArray(safe.level))
-    ? safe.level as Record<string, LocationLevelBlock>
+    ? safe.level as Record<string, LevelBlock>
     : {};
 
   for (const [levelKey, block] of Object.entries(level)) {
     if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
+
+    if (mode !== 'location' && 'timer' in block && block.timer && typeof block.timer === 'object') {
+      const d = (block.timer as any).duration;
+      if (d === undefined || d === null || isNaN(Number(d)) || Number(d) < 0) {
+        msgs.push(`${fieldName}.level[${levelKey}].timer.duration: must be a non-negative number`);
+      }
+    }
 
     msgs.push(...resourceEntryListErrorMessages(block.storage, 'baseCapacity', `${fieldName}.level[${levelKey}].storage`));
     msgs.push(...resourceEntryListErrorMessages(block.production, 'ratePerHour', `${fieldName}.level[${levelKey}].production`));
     msgs.push(...resourceEntryListErrorMessages(block.consumption, 'ratePerHour', `${fieldName}.level[${levelKey}].consumption`));
     msgs.push(...resourceEntryListErrorMessages(block.constructionCost, 'amount', `${fieldName}.level[${levelKey}].constructionCost`));
 
-    (block.buildings?.allowed ?? []).forEach((ab, idx) => {
-      if (!ab.buildingDefId || ab.buildingDefId.trim() === '') {
-        msgs.push(`${fieldName}.level[${levelKey}].buildings.allowed[${idx}]: buildingDefId required`);
-      }
-    });
-    (block.rooms?.allowed ?? []).forEach((ar, idx) => {
-      if (!ar.roomDefId || ar.roomDefId.trim() === '') {
-        msgs.push(`${fieldName}.level[${levelKey}].rooms.allowed[${idx}]: roomDefId required`);
-      }
-    });
+    if (mode === 'location') {
+      (block.buildings?.allowed ?? []).forEach((ab, idx) => {
+        if (!ab.buildingDefId || ab.buildingDefId.trim() === '') {
+          msgs.push(`${fieldName}.level[${levelKey}].buildings.allowed[${idx}]: buildingDefId required`);
+        }
+      });
+    }
+    if (mode !== 'room') {
+      (block.rooms?.allowed ?? []).forEach((ar, idx) => {
+        if (!ar.roomDefId || ar.roomDefId.trim() === '') {
+          msgs.push(`${fieldName}.level[${levelKey}].rooms.allowed[${idx}]: roomDefId required`);
+        }
+      });
+    }
   }
 
   return msgs;

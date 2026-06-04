@@ -7,6 +7,7 @@ import {
   labelStyle,
   fieldRowStyle,
   ghostButtonStyle,
+  numberInputStyle,
 } from './editorStyles';
 import {
   validateTimer,
@@ -20,6 +21,8 @@ interface TimerSpec {
   skipable?: boolean;
   skip_type?: string;
   skip_cost?: any[];
+  growthRate?: 'flat' | 'linear' | 'exp';
+  growthScalar?: number;
   [k: string]: any;
 }
 
@@ -29,6 +32,7 @@ interface Props {
 }
 
 const SKIP_TYPES = ['absolute', 'relative', 'percent'];
+const GROWTH_RATES = ['flat', 'linear', 'exp'];
 
 const DEFAULTS: TimerSpec = {
   duration: 0,
@@ -66,6 +70,7 @@ export default function TimerEditor({ value, onChange }: Props) {
 
   const update = (patch: Partial<TimerSpec>) => onChange({ ...spec, ...patch });
   const errs = validateTimer(spec);
+  const showScalar = spec.growthRate === 'linear' || spec.growthRate === 'exp';
 
   if (isEmpty) {
     return (
@@ -110,6 +115,41 @@ export default function TimerEditor({ value, onChange }: Props) {
             {SKIP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
+      </div>
+
+      <div style={fieldRowStyle}>
+        <div style={{ ...fieldGroupStyle, minWidth: 110 }}>
+          <span style={labelStyle}>growthRate</span>
+          <select
+            value={spec.growthRate ?? ''}
+            onChange={e => {
+              const v = e.target.value as 'flat' | 'linear' | 'exp' | '';
+              if (!v) {
+                const { growthRate, growthScalar, ...rest } = spec;
+                onChange(rest);
+              } else {
+                update({ growthRate: v });
+              }
+            }}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            <option value="">— none —</option>
+            {GROWTH_RATES.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        {showScalar && (
+          <div style={{ ...fieldGroupStyle, maxWidth: 110 }}>
+            <span style={labelStyle}>growthScalar</span>
+            <input
+              type="number"
+              step={0.01}
+              value={spec.growthScalar ?? ''}
+              onChange={e => update({ growthScalar: e.target.value === '' ? undefined : Number(e.target.value) })}
+              style={{ ...numberInputStyle, width: '100%' }}
+              placeholder="e.g. 1.5"
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ ...fieldRowStyle, gap: 16 }}>

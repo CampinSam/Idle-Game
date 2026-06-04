@@ -29,8 +29,7 @@ import GiftClaimRulesEditor from './structured/GiftClaimRulesEditor';
 import ItemEquipDataEditor from './structured/ItemEquipDataEditor';
 import HomeBannerConfigEditor from './structured/HomeBannerConfigEditor';
 import EventSecurityEditor from './structured/EventSecurityEditor';
-import LevelRulesEditor from './structured/LevelRulesEditor';
-import LocationLevelRulesEditor from './structured/LocationLevelRulesEditor';
+import EntityLevelRulesEditor from './structured/EntityLevelRulesEditor';
 import ProductionProfileEditor from './structured/ProductionProfileEditor';
 import { TelemetrySubEventListEditor } from './structured/TelemetrySubEventListEditor';
 import OutcomeTiersEditor from './structured/OutcomeTiersEditor';
@@ -69,8 +68,9 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   itemEquipData:     { Component: ItemEquipDataEditor,     safe: 'object' },
   homeBannerConfig:  { Component: HomeBannerConfigEditor,  safe: 'object' },
   eventSecurity:     { Component: EventSecurityEditor,     safe: 'object' },
-  levelRules:           { Component: LevelRulesEditor,            safe: 'passthrough' },
-  locationLevelRules:      { Component: LocationLevelRulesEditor,       safe: 'passthrough' },
+  buildingLevelRules:      { Component: (p: any) => <EntityLevelRulesEditor {...p} mode="building" />, safe: 'passthrough' },
+  roomLevelRules:          { Component: (p: any) => <EntityLevelRulesEditor {...p} mode="room" />,     safe: 'passthrough' },
+  locationLevelRules:      { Component: (p: any) => <EntityLevelRulesEditor {...p} mode="location" />, safe: 'passthrough' },
   productionProfile:       { Component: ProductionProfileEditor,        safe: 'passthrough' },
   telemetrySubEventsArray: { Component: TelemetrySubEventListEditor,    safe: 'array' },
   outcomeTiers:            { Component: OutcomeTiersEditor,             safe: 'passthrough' },
