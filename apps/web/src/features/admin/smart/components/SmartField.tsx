@@ -34,6 +34,7 @@ import ProductionProfileEditor from './structured/ProductionProfileEditor';
 import { TelemetrySubEventListEditor } from './structured/TelemetrySubEventListEditor';
 import OutcomeTiersEditor from './structured/OutcomeTiersEditor';
 import ContentDocumentDataEditor from './structured/ContentDocumentDataEditor';
+import DustingDataEditor from './structured/DustingDataEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -75,6 +76,7 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   telemetrySubEventsArray: { Component: TelemetrySubEventListEditor,    safe: 'array' },
   outcomeTiers:            { Component: OutcomeTiersEditor,             safe: 'passthrough' },
   contentDocumentData:     { Component: ContentDocumentDataEditor,      safe: 'passthrough' },
+  dustingData:             { Component: DustingDataEditor,              safe: 'passthrough' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {

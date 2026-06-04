@@ -40,3 +40,27 @@ export interface StartCraftingDto {
   recipeId: CraftingRecipeId;
   entityId: string;
 }
+
+export type DustingQuantityScaling = 'ALL_AT_ONCE' | 'LINEAR';
+
+export interface DustingTierBlock {
+  rewards: any[];
+  clRequirement?: number;
+}
+
+export interface DustingData {
+  instant: boolean;
+  durationTicks: number;
+  quantityScaling: DustingQuantityScaling;
+  difficulty: number;
+  tiers: Record<string, DustingTierBlock>;
+}
+
+export interface StartDustingPayload {
+  itemInstanceId: string;
+  quantity: number;
+}
+
+export interface CollectDustingPayload {
+  jobId: string;
+}

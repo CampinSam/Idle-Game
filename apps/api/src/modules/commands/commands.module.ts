@@ -30,6 +30,8 @@ import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
 import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
+import { StartDustingHandler } from './handlers/start-dusting.handler';
+import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -42,6 +44,7 @@ import { EntityModule } from '../entity/entity.module';
 import { GiftModule } from '../gift/gift.module';
 import { TickModule } from '../tick/tick.module';
 import { GlobalPowerModule } from '../global-power/global-power.module';
+import { DustingModule } from '../dusting/dusting.module';
 
 @Module({
   imports: [
@@ -57,6 +60,7 @@ import { GlobalPowerModule } from '../global-power/global-power.module';
     GiftModule,
     TickModule,
     GlobalPowerModule,
+    DustingModule,
   ],
   controllers: [CommandController],
   providers: [
@@ -90,6 +94,8 @@ import { GlobalPowerModule } from '../global-power/global-power.module';
     SetPrimaryOutpostHandler,
     TriggerLocationPowerHandler,
     TriggerEntityPowerHandler,
+    StartDustingHandler,
+    CollectDustingHandler,
   ],
   exports: [CommandService],
 })

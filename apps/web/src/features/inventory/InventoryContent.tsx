@@ -8,6 +8,7 @@ import { audioEngine } from '../../services/AudioEngine';
 import { api } from '../../services/api';
 import { ItemList, EntityPickerModal, UsePotionFlowModal, type ItemCategoryTab, type ItemSortBy, type ItemRarityFilter } from './components';
 import ItemDetailPanel from './components/ItemDetailPanel';
+import DustFlowModal from './components/DustFlowModal';
 import EntityList from '../entities/components/EntityList';
 import { getConsumableTargetType } from './utils/getConsumableTargetType';
 import {
@@ -152,6 +153,7 @@ export default function InventoryContent() {
   const [usePotionState, setUsePotionState] = useState<{ potion: any; targetEntityId?: string; targetEntityName?: string } | null>(null);
   const [equipGear, setEquipGear] = useState<any | null>(null);
   const [equipBusy, setEquipBusy] = useState(false);
+  const [dustItem, setDustItem] = useState<any | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -416,6 +418,20 @@ export default function InventoryContent() {
         </button>
       );
     }
+    const hasDustingData =
+      !!(item.dustingData ?? item.definition?.dustingData);
+    if (hasDustingData) {
+      const BTN_ORANGE =
+        'bg-gradient-to-br from-[#f97316] to-[#ea580c] enabled:hover:shadow-[0_0_10px_rgba(249,115,22,0.5)]';
+      return (
+        <button
+          className={`${BTN_BASE} ${BTN_ORANGE}`}
+          onClick={() => setDustItem(item)}
+        >
+          Dust
+        </button>
+      );
+    }
     return <button className={manageBtn('green')}>Manage</button>;
   }, [opening, entities, effectDefsById, forgeLocationId, handleOpen, handleUse, handleEquip, handleUnequip, equipBusy, navigate]);
 
@@ -529,6 +545,12 @@ export default function InventoryContent() {
         targetEntityId={usePotionState?.targetEntityId ?? null}
         targetEntityName={usePotionState?.targetEntityName ?? null}
         onClose={closeUsePotion}
+      />
+
+      <DustFlowModal
+        isOpen={!!dustItem}
+        item={dustItem}
+        onClose={() => setDustItem(null)}
       />
     </div>
   );

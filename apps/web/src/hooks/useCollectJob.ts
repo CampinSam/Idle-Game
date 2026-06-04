@@ -44,6 +44,10 @@ export function useCollectJob() {
         } else {
           console.warn('[useCollectJob] BuildingJob missing locationId or buildingId', jobId);
         }
+      } else if (type === 'DustingJob') {
+        await execute('CollectDusting', { jobId });
+        audioEngine.play('sfx.craft.complete');
+        completed = true;
       } else {
         console.warn('[useCollectJob] Unknown job type:', type, jobId);
       }

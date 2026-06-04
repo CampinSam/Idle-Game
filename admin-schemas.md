@@ -2275,3 +2275,66 @@ A new `metrics_read` boolean field added to `PermissionFlags` / `AdminRole.permi
 - Super Admins (`super_admin` role or bootstrap key) always have this access regardless of the flag.
 
 Super Admins default-land on the Metrics section after login. Other admins with `metrics_read` also land on Metrics.
+
+---
+
+## Item Dusting — Commands
+
+Item dusting lets players break down items into resources. Items must have `dustingData` configured on their `ItemDefinition`.
+
+### `StartDusting`
+
+**Auth:** Player JWT
+
+**Payload:**
+```json
+{
+  "type": "StartDusting",
+  "payload": {
+    "itemInstanceId": "<uuid>",
+    "quantity": 1
+  }
+}
+```
+
+- Consumes `quantity` of the item from the player's inventory.
+- If `dustingData.instant = true`, the job is created, resolved, and collected in the same transaction. The command response `meta.instantRewards` contains the granted rewards.
+- If `dustingData.instant = false`, a `DustingJob` is created. The player must call `CollectDusting` once the job is ready.
+- `quantityScaling = "LINEAR"` multiplies `durationTicks` by `quantity`; `"ALL_AT_ONCE"` keeps a fixed duration regardless of quantity.
+
+**Response patches:** `job`, `item` balances, `currencyBalance`.
+
+---
+
+### `CollectDusting`
+
+**Auth:** Player JWT
+
+**Payload:**
+```json
+{
+  "type": "CollectDusting",
+  "payload": {
+    "jobId": "<uuid>"
+  }
+}
+```
+
+- Resolves the `DustingJob` and grants rewards to the player.
+- Returns `BadRequest` if the job is not yet ready (tick check).
+
+**Response patches:** `job`, `player`, `item` balances, `currencyBalance`, optional `notification`.
+
+---
+
+### `dustingData` field on `ItemDefinition`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `instant` | boolean | If true, the job resolves immediately with no timer |
+| `durationTicks` | integer | Base tick duration for the job (ignored when instant) |
+| `quantityScaling` | `"ALL_AT_ONCE"` \| `"LINEAR"` | Whether duration scales with quantity |
+| `difficulty` | number | Pass/fail threshold (0 = always pass, higher = harder) |
+| `tiers` | OutcomeTiers | Reward tiers keyed by quality: `failure`, `common`, `uncommon`, `scare`, `rare`, `epic`, `mythic`, `legendary` |
+
+Each tier block: `{ rewards: OutcomeEntry[], clRequirement?: number }`. Rewards follow the same outcome-entry schema as mission tiers.

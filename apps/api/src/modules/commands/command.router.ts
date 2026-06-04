@@ -28,6 +28,8 @@ import { RenameEntityHandler } from './handlers/rename-entity.handler';
 import { SetPrimaryOutpostHandler } from './handlers/set-primary-outpost.handler';
 import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.handler';
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
+import { StartDustingHandler } from './handlers/start-dusting.handler';
+import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -62,6 +64,8 @@ export class CommandRouter {
     private setPrimaryOutpost: SetPrimaryOutpostHandler,
     private triggerLocationPower: TriggerLocationPowerHandler,
     private triggerEntityPower: TriggerEntityPowerHandler,
+    private startDusting: StartDustingHandler,
+    private collectDusting: CollectDustingHandler,
   ) {
     this.handlers.set('StartMission', this.startMission);
     this.handlers.set('CompleteMission', this.completeMission);
@@ -91,6 +95,8 @@ export class CommandRouter {
     this.handlers.set('SetPrimaryOutpost', this.setPrimaryOutpost);
     this.handlers.set('TriggerLocationPower', this.triggerLocationPower);
     this.handlers.set('TriggerEntityPower', this.triggerEntityPower);
+    this.handlers.set('StartDusting', this.startDusting);
+    this.handlers.set('CollectDusting', this.collectDusting);
   }
 
   resolve(commandType: string): CommandHandler {

@@ -1677,6 +1677,52 @@
         }
       },
       "additionalProperties": false
+    },
+    "DustingData": {
+      "type": "object",
+      "description": "Dusting configuration for an ItemDefinition. When present, a 'Dust' action appears on the item in inventory. The player consumes the item and receives randomised rewards via the job/outcome-tier pipeline.",
+      "required": ["instant", "durationTicks", "quantityScaling", "difficulty", "tiers"],
+      "properties": {
+        "instant": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the job resolves in the same transaction with no timer. The command response includes instantRewards in meta."
+        },
+        "durationTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 60,
+          "description": "Base tick duration for the dusting job. Ignored when instant=true."
+        },
+        "quantityScaling": {
+          "type": "string",
+          "enum": ["ALL_AT_ONCE", "LINEAR"],
+          "default": "ALL_AT_ONCE",
+          "description": "ALL_AT_ONCE: fixed duration regardless of quantity. LINEAR: durationTicks * quantity."
+        },
+        "difficulty": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Pass/fail difficulty. 0 = always pass. Higher = harder. Uses rollPassFail(cl=0, difficulty)."
+        },
+        "tiers": {
+          "type": "object",
+          "description": "Outcome tier blocks keyed by quality name. Supported keys: failure, common, uncommon, scare, rare, epic, mythic, legendary. Each block has { rewards: OutcomeEntry[], clRequirement?: number }.",
+          "properties": {
+            "failure":   { "type": "object", "additionalProperties": true },
+            "common":    { "type": "object", "additionalProperties": true },
+            "uncommon":  { "type": "object", "additionalProperties": true },
+            "scare":     { "type": "object", "additionalProperties": true },
+            "rare":      { "type": "object", "additionalProperties": true },
+            "epic":      { "type": "object", "additionalProperties": true },
+            "mythic":    { "type": "object", "additionalProperties": true },
+            "legendary": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

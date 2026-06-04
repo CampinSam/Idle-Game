@@ -137,6 +137,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       equipData: { type: 'itemEquipData', description: 'Equipment slot and stat bonuses ({ slot, stats })' },
       passiveEffects: { type: 'effectsArray', description: 'Passive effects applied while item is equipped (array of { effectDefId, targetType })' },
       consumableData: { type: 'consumableData', description: 'Consumable behavior ({ effects: [{ effectDefId, targetType }] })' },
+      dustingData: { type: 'dustingData', description: 'Dusting behavior — if present, a Dust action appears on this item. Fields: instant (bool), durationTicks (int), quantityScaling ("ALL_AT_ONCE" | "LINEAR"), difficulty (number), tiers (OutcomeTiers)' },
       data: { type: 'json', default: {}, description: 'Extra data' },
       seasonId: { type: 'string', description: 'Season ID' },
     },
