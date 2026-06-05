@@ -14,6 +14,7 @@ import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-r
 import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
 import type { RichSelection, TraitPrimitive } from '@derp/shared';
+import { validateEntityTraitsShape } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
@@ -543,7 +544,7 @@ export class AdminService {
     return this.inventoryService.listItemDefs();
   }
 
-  async updatePlayerEntity(userId: string, entityId: string, data: { stats?: any; level?: number; name?: string }) {
+  async updatePlayerEntity(userId: string, entityId: string, data: { stats?: any; level?: number; name?: string; traits?: unknown }) {
     const entity = await (this.prisma as any).entity.findFirst({ where: { id: entityId, ownerUserId: userId } });
     if (!entity) throw new NotFoundException(`Entity ${entityId} not found for player`);
 
@@ -553,6 +554,13 @@ export class AdminService {
     if (data.name !== undefined) {
       const display = (entity.display as any) || {};
       updateData.display = { ...display, name: data.name };
+    }
+    if (data.traits !== undefined) {
+      const traitError = validateEntityTraitsShape(data.traits);
+      if (traitError !== null) {
+        throw new BadRequestException(`Invalid traits — ${traitError}`);
+      }
+      updateData.traits = data.traits;
     }
 
     const updated = await (this.prisma as any).entity.update({ where: { id: entityId }, data: updateData });

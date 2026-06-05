@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import type { GameRulesService, RequirementContext } from '../game-rules/game-rules.service';
+import { validateEntityTraitsShape } from '@derp/shared';
 
 function makeRng() {
   return {
@@ -80,8 +81,12 @@ async function resolveEntityGrant(prisma: any, userId: string, spec: any): Promi
     if (overrides.stats) {
       entityData.stats = { ...(entityData.stats as any ?? {}), ...overrides.stats };
     }
-    if (overrides.traits && typeof overrides.traits === 'object') {
-      entityData.traits = { ...(entityData.traits as any ?? {}), ...overrides.traits };
+    if (overrides.traits !== undefined) {
+      const traitError = validateEntityTraitsShape(overrides.traits);
+      if (traitError !== null) {
+        throw new BadRequestException(`Invalid entity reward trait override — ${traitError}`);
+      }
+      entityData.traits = { ...(entityData.traits as any ?? {}), ...(overrides.traits as Record<string, unknown>) };
     }
   }
 

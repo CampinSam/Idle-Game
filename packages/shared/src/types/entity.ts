@@ -107,10 +107,31 @@ export function isEntityStats(value: unknown): value is EntityStats {
  * and is not validated here.
  */
 export function isEntityTraits(value: unknown): value is EntityTraits {
-  if (!value || typeof value !== 'object') return false;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   return Object.values(value as Record<string, unknown>).every(
     (v) => v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean',
   );
+}
+
+/**
+ * Validates an EntityTraits candidate and returns a human-readable error
+ * message describing the first violation found, or `null` when the value is
+ * valid.  Callers that need to surface errors to the user (e.g. admin API)
+ * should prefer this over `isEntityTraits` so they can report exactly which
+ * key is problematic.
+ *
+ * Allowed value types: `string | number | boolean | null`
+ */
+export function validateEntityTraitsShape(value: unknown): string | null {
+  if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
+    return 'traits must be a plain object (e.g. { "slot": "value" })';
+  }
+  for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+    if (v !== null && typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') {
+      return `trait "${key}" has invalid type "${typeof v}" — allowed types are string, number, boolean, or null`;
+    }
+  }
+  return null;
 }
 
 /** Parses and validates EntityStats from a raw JSON field value. Throws if invalid. */
@@ -123,8 +144,9 @@ export function parseEntityStats(value: unknown): EntityStats {
 
 /** Parses and validates EntityTraits from a raw JSON field value. Throws if invalid. */
 export function parseEntityTraits(value: unknown): EntityTraits {
-  if (!isEntityTraits(value)) {
-    throw new Error(`Invalid EntityTraits: ${JSON.stringify(value)}`);
+  const error = validateEntityTraitsShape(value);
+  if (error !== null) {
+    throw new Error(`Invalid EntityTraits — ${error}`);
   }
-  return value;
+  return value as EntityTraits;
 }

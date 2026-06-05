@@ -725,7 +725,7 @@ export class AdminController {
     @Req() req: any,
     @Param('id') id: string,
     @Param('entityId') entityId: string,
-    @Body() body: { stats?: any; level?: number; name?: string },
+    @Body() body: { stats?: any; level?: number; name?: string; traits?: unknown },
   ) {
     const result = await this.adminService.updatePlayerEntity(id, entityId, body);
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'player_update_entity', recordId: entityId, diff: body, metadata: { userId: id } });
