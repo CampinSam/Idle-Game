@@ -523,7 +523,7 @@ export default function ForgeContent() {
   // ── Page ────────────────────────────────────────────────────────────────
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
+      className={`flex flex-col flex-1 min-h-0 overflow-hidden${!(location.state as LocationState | null)?.slideDir ? ' motion-safe:animate-[detail-enter_0.28s_ease-out_both]' : ''}`}
       ref={cardRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
