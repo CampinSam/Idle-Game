@@ -537,6 +537,60 @@ The amount sent on-chain is `amount - fee`. The `amount` field is the gross DERP
 
 ---
 
+## Hot Wallet Auto-Generation and Cycling
+
+### Auto-generation on startup
+
+On every server start, `CryptoWalletService.onModuleInit()` checks whether a signing key is stored in `CryptoWalletConfig`. If none is found, a fresh Cardano **enterprise mainnet wallet** is generated automatically using `@emurgo/cardano-serialization-lib-nodejs`:
+
+1. A random Ed25519 **extended** private key (64 bytes) is generated.
+2. The corresponding enterprise address is derived (`addr1v...`).
+3. The encrypted key is stored in `hotWalletSkeyEncrypted`, the address in `hotWalletAddress`, and `hotWalletKeyPendingDownload` is set to `true`.
+4. A `WARN` log is emitted telling the admin to download the key from the panel.
+
+The plaintext key is **never persisted** — it is only returned to the caller of `generateHotWallet()` and is available for download once via the claim endpoint.
+
+### GET /admin/crypto/config
+
+The sanitized config response now includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `hotWalletKeyPendingDownload` | boolean | `true` when a freshly generated key is waiting to be claimed. Once claimed, permanently `false`. |
+
+### POST /admin/crypto/wallet/generate
+
+Generates a brand-new Cardano enterprise wallet and replaces the existing key. Used for "Cycle Wallet" flows.
+
+**Body:**
+```json
+{ "confirm": true }
+```
+
+**Guards:**
+- Returns `400 Bad Request` if `confirm` is not `true`.
+- Returns `400 Bad Request` if any withdrawals are in `APPROVED` or `PROCESSING` state — resolve them first.
+
+**Response:**
+```json
+{ "address": "addr1v...", "pendingDownload": true }
+```
+
+The plaintext key is **not** in this response. Retrieve it via `POST /admin/crypto/wallet/claim-key`.
+
+### POST /admin/crypto/wallet/claim-key
+
+**One-time** endpoint that decrypts and returns the pending private key, then clears `hotWalletKeyPendingDownload`. Subsequent calls return `400 Bad Request`.
+
+**Response:**
+```json
+{ "skeyHex": "aabbccdd...128-hex-chars" }
+```
+
+The key is the raw 64-byte Ed25519 extended private key in hex (128 characters). It is accepted by the existing signing logic as-is (no CBOR wrapping required).
+
+---
+
 ## ItemDefinition — `dustingData` field
 
 The `dustingData` JSON column on `ItemDefinition` configures the Dust action that appears when a player views the item in inventory.

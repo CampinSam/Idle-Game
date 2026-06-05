@@ -1086,6 +1086,37 @@ export class AdminController {
     return result;
   }
 
+  @Post('crypto/wallet/generate')
+  async generateHotWallet(
+    @Req() req: any,
+    @Body() body: { confirm?: boolean },
+  ) {
+    if (!body.confirm) {
+      throw new BadRequestException('Must pass { confirm: true } to generate a new wallet');
+    }
+
+    const pendingWithdrawals = await (this.prisma as any).cryptoWithdrawal.count({
+      where: { status: { in: ['APPROVED', 'PROCESSING'] } },
+    });
+    if (pendingWithdrawals > 0) {
+      throw new BadRequestException(
+        `Cannot cycle wallet: ${pendingWithdrawals} withdrawal(s) are in APPROVED or PROCESSING state. ` +
+        'Resolve all pending withdrawals before cycling the wallet.',
+      );
+    }
+
+    const { address } = await this.cryptoWalletService.generateHotWallet();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'crypto_wallet_generate', diff: { address } });
+    return { address, pendingDownload: true };
+  }
+
+  @Post('crypto/wallet/claim-key')
+  async claimHotWalletKey(@Req() req: any) {
+    const result = await this.cryptoWalletService.claimPendingKeyDownload();
+    await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'crypto_wallet_key_claimed' });
+    return result;
+  }
+
   @Get('crypto/balance')
   getCryptoBalance() {
     return this.cryptoWalletService.getHotWalletBalance();

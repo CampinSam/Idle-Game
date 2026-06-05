@@ -402,6 +402,13 @@ export const adminApi = {
     autoApprovalThreshold?: number;
     hotWalletSkeyHex?: string;
   }) => adminRequest<any>('/crypto/config', { method: 'PUT', body: JSON.stringify(data) }),
+  generateHotWallet: (confirm: true) =>
+    adminRequest<{ address: string; pendingDownload: true }>('/crypto/wallet/generate', {
+      method: 'POST',
+      body: JSON.stringify({ confirm }),
+    }),
+  claimPendingKeyDownload: () =>
+    adminRequest<{ skeyHex: string }>('/crypto/wallet/claim-key', { method: 'POST', body: JSON.stringify({}) }),
   getCryptoBalance: () => adminRequest<{ ada: string; cnt: string; totalApprovedCnt: string } | null>('/crypto/balance'),
   getCryptoWithdrawals: (status?: string, limit?: number) => {
     const params = new URLSearchParams();

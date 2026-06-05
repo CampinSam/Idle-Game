@@ -108,6 +108,37 @@ export class CryptoWalletService {
         this.logger.error(`Withdrawal processor error: ${err}`);
       });
     }, WITHDRAWAL_POLL_INTERVAL_MS);
+
+    this.autoGenerateHotWalletIfNeeded().catch((err) => {
+      this.logger.error(`Hot wallet auto-generation check failed: ${err}`);
+    });
+  }
+
+  /**
+   * On startup, if no signing key exists, auto-generate a hot wallet.
+   * The plaintext key is NOT stored — the admin must retrieve it via the
+   * claim endpoint in the admin panel. A clear warning is logged.
+   */
+  private async autoGenerateHotWalletIfNeeded(): Promise<void> {
+    const config = await (this.prisma as any).cryptoWalletConfig.findUnique({
+      where: { id: 'default' },
+      select: { hotWalletSkeyEncrypted: true },
+    });
+
+    const hasKey = config?.hotWalletSkeyEncrypted && config.hotWalletSkeyEncrypted.length > 0;
+    if (hasKey) return;
+
+    this.logger.warn(
+      '[HotWallet] No signing key found — auto-generating a new Cardano enterprise wallet. ' +
+      'The admin MUST download the private key from the admin panel (Crypto → Config → Download Private Key) immediately.',
+    );
+
+    await this.generateHotWallet();
+
+    this.logger.warn(
+      '[HotWallet] Auto-generated wallet is ready. ' +
+      'Navigate to Admin → Crypto → Config and download the private key before it is lost.',
+    );
   }
 
   onModuleDestroy() {
@@ -147,6 +178,100 @@ export class CryptoWalletService {
       ...rest,
       hasStoredSigningKey: !!(hotWalletSkeyEncrypted && hotWalletSkeyEncrypted.length > 0),
     };
+  }
+
+  /**
+   * Generates a fresh Cardano enterprise wallet (mainnet).
+   * Stores the encrypted key + derived address, marks `hotWalletKeyPendingDownload: true`.
+   * Returns the plaintext skey hex and address to the caller — this is the ONLY moment
+   * the plaintext is available outside of `claimPendingKeyDownload`.
+   */
+  async generateHotWallet(): Promise<{ skeyHex: string; address: string }> {
+    const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+
+    const privateKey = CSL.PrivateKey.generate_ed25519extended();
+    const skeyHex: string = Buffer.from(privateKey.as_bytes()).toString('hex');
+
+    const pubKey = privateKey.to_public();
+    const pubKeyHash = pubKey.hash();
+
+    // CSL v12+ renamed StakeCredential → Credential; fall back for older builds
+    const CredClass = CSL.Credential ?? CSL.StakeCredential;
+    const credential = CredClass.from_keyhash(pubKeyHash);
+
+    const enterpriseAddress = CSL.EnterpriseAddress.new(
+      1, // mainnet network id
+      credential,
+    );
+    const address: string = enterpriseAddress.to_address().to_bech32();
+
+    const encryptedKey = encryptSkey(skeyHex);
+
+    await (this.prisma as any).cryptoWalletConfig.upsert({
+      where: { id: 'default' },
+      create: {
+        id: 'default',
+        hotWalletSkeyEncrypted: encryptedKey,
+        hotWalletAddress: address,
+        hotWalletKeyPendingDownload: true,
+      },
+      update: {
+        hotWalletSkeyEncrypted: encryptedKey,
+        hotWalletAddress: address,
+        hotWalletKeyPendingDownload: true,
+      },
+    });
+
+    return { skeyHex, address };
+  }
+
+  /**
+   * One-time atomic claim: reads and decrypts the key, then conditionally clears
+   * `hotWalletKeyPendingDownload` — all inside a single Prisma transaction.
+   *
+   * Safety guarantees:
+   * 1. `decryptSkey` is called *before* the conditional `updateMany`. If decryption
+   *    fails for any reason (e.g. bad encryption secret), the transaction is thrown
+   *    and rolls back, leaving `hotWalletKeyPendingDownload = true` so the admin
+   *    can retry after fixing the configuration.
+   * 2. `updateMany({ where: { hotWalletKeyPendingDownload: true } })` is a
+   *    conditional DB-level UPDATE. Of any number of concurrent callers that reach
+   *    this point simultaneously, exactly one will get `count === 1`; the rest will
+   *    get `count === 0` and receive `BadRequestException`.
+   */
+  async claimPendingKeyDownload(): Promise<{ skeyHex: string }> {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const config = await (tx as any).cryptoWalletConfig.findUnique({
+        where: { id: 'default' },
+        select: { hotWalletSkeyEncrypted: true, hotWalletKeyPendingDownload: true },
+      });
+
+      if (!config?.hotWalletKeyPendingDownload) {
+        return null;
+      }
+
+      // Decrypt BEFORE committing the flag change — a decrypt failure rolls back.
+      const skeyHex = decryptSkey(config.hotWalletSkeyEncrypted);
+
+      // Conditional update: only succeeds if flag is still true (races lose here).
+      const updated = await (tx as any).cryptoWalletConfig.updateMany({
+        where: { id: 'default', hotWalletKeyPendingDownload: true },
+        data: { hotWalletKeyPendingDownload: false },
+      });
+
+      if (updated.count === 0) {
+        // Another concurrent caller claimed it between findUnique and updateMany.
+        return null;
+      }
+
+      return { skeyHex };
+    });
+
+    if (!result) {
+      throw new BadRequestException('Key has already been claimed or no pending key exists');
+    }
+
+    return result;
   }
 
   /**

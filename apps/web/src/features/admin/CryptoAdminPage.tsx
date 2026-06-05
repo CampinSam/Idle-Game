@@ -189,6 +189,231 @@ function StatusMsg({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 const ADA_WARNING_THRESHOLD = 5;
 
+function KeyDownloadModal({
+  skeyHex,
+  address,
+  onDone,
+}: {
+  skeyHex: string;
+  address: string;
+  onDone: () => void;
+}) {
+  const [confirmed, setConfirmed] = useState(false);
+
+  const handleSaveFile = () => {
+    const prefix = address ? address.slice(0, 16) : 'wallet';
+    const filename = `hot-wallet-skey-${prefix}.txt`;
+    const blob = new Blob([skeyHex], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1rem',
+    }}>
+      <div style={{
+        background: '#0f1629', border: '1px solid rgba(251,191,36,0.4)',
+        borderRadius: 12, padding: '1.5rem', maxWidth: 560, width: '100%',
+        maxHeight: '90vh', overflowY: 'auto',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <span style={{ fontSize: '1.2rem' }}>🔑</span>
+          <h3 style={{ margin: 0, color: '#fbbf24', fontSize: '1rem', fontWeight: 700 }}>
+            Private Key — One-Time Download
+          </h3>
+        </div>
+        <p style={{ fontSize: '0.82rem', color: '#a0a0c0', marginBottom: '1rem', lineHeight: 1.5 }}>
+          This key will <strong style={{ color: '#ff6b6b' }}>never be shown again</strong>.
+          Save it in a secure location (password manager, encrypted storage) before closing this dialog.
+        </p>
+
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ fontSize: '0.75rem', color: '#888', display: 'block', marginBottom: 4 }}>
+            WALLET ADDRESS (auto-populated in config)
+          </label>
+          <div style={{
+            fontFamily: 'monospace', fontSize: '0.78rem', color: '#60a5fa',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 6, padding: '0.5rem 0.65rem', wordBreak: 'break-all',
+          }}>
+            {address}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ fontSize: '0.75rem', color: '#888', display: 'block', marginBottom: 4 }}>
+            PRIVATE SIGNING KEY (Ed25519 extended, hex)
+          </label>
+          <textarea
+            readOnly
+            value={skeyHex}
+            rows={4}
+            style={{
+              width: '100%', fontFamily: 'monospace', fontSize: '0.75rem',
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 6, color: '#e0e0ff', padding: '0.5rem 0.65rem',
+              resize: 'vertical', boxSizing: 'border-box', wordBreak: 'break-all',
+            }}
+            onFocus={(e) => e.target.select()}
+          />
+        </div>
+
+        <button
+          onClick={handleSaveFile}
+          style={{
+            width: '100%', padding: '0.6rem', borderRadius: 6, border: 'none',
+            background: 'rgba(99,102,241,0.7)', color: '#fff', cursor: 'pointer',
+            fontWeight: 600, fontSize: '0.9rem', marginBottom: '1rem',
+          }}
+        >
+          ↓ Save as File
+        </button>
+
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <span style={{ fontSize: '0.82rem', color: '#a0a0c0', lineHeight: 1.4 }}>
+            I have saved the private key in a secure location and understand it cannot be retrieved again.
+          </span>
+        </label>
+
+        <button
+          onClick={onDone}
+          disabled={!confirmed}
+          style={{
+            width: '100%', padding: '0.6rem', borderRadius: 6, border: 'none',
+            background: confirmed ? 'rgba(76,175,80,0.7)' : 'rgba(76,175,80,0.2)',
+            color: confirmed ? '#fff' : '#666', cursor: confirmed ? 'pointer' : 'default',
+            fontWeight: 600, fontSize: '0.9rem',
+          }}
+        >
+          Done — I've Saved the Key
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CycleWalletDialog({ onCancel, onSuccess }: { onCancel: () => void; onSuccess: () => void }) {
+  const [confirmText, setConfirmText] = useState('');
+  const [cycling, setCycling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canConfirm = confirmText === 'CYCLE';
+
+  const handleCycle = async () => {
+    setCycling(true); setError(null);
+    try {
+      await adminApi.generateHotWallet(true);
+      onSuccess();
+    } catch (e: any) {
+      setError(e.message || 'Failed to cycle wallet');
+    } finally {
+      setCycling(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '1rem',
+    }}>
+      <div style={{
+        background: '#0f1629', border: '1px solid rgba(239,68,68,0.4)',
+        borderRadius: 12, padding: '1.5rem', maxWidth: 480, width: '100%',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+          <h3 style={{ margin: 0, color: '#f87171', fontSize: '1rem', fontWeight: 700 }}>
+            Cycle Hot Wallet
+          </h3>
+        </div>
+
+        <div style={{
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#fca5a5', lineHeight: 1.6,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: '0.4rem' }}>Before cycling:</div>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+            <li>Drain all ADA and CNT from the current hot wallet address.</li>
+            <li>All APPROVED or PROCESSING withdrawals must be resolved first.</li>
+            <li>The old wallet key will be permanently replaced — save a copy if needed.</li>
+            <li>A new one-time key download will be required after cycling.</li>
+          </ul>
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ fontSize: '0.82rem', color: '#a0a0c0', display: 'block', marginBottom: 6 }}>
+            Type <strong style={{ color: '#f87171' }}>CYCLE</strong> to confirm:
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="CYCLE"
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.06)',
+              border: `1px solid ${canConfirm ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.15)'}`,
+              borderRadius: 6, color: '#e0e0ff', padding: '0.5rem 0.65rem',
+              fontSize: '0.9rem', fontFamily: 'monospace', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {error && (
+          <div style={{
+            padding: '0.5rem 0.75rem', borderRadius: 6, marginBottom: '1rem', fontSize: '0.82rem',
+            background: 'rgba(255,107,107,0.15)', color: '#ff6b6b',
+            border: '1px solid rgba(255,107,107,0.3)',
+          }}>{error}</div>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={handleCycle}
+            disabled={!canConfirm || cycling}
+            style={{
+              flex: 1, padding: '0.55rem', borderRadius: 6, border: 'none',
+              background: canConfirm && !cycling ? 'rgba(239,68,68,0.7)' : 'rgba(239,68,68,0.2)',
+              color: canConfirm && !cycling ? '#fff' : '#666',
+              cursor: canConfirm && !cycling ? 'pointer' : 'default',
+              fontWeight: 600, fontSize: '0.9rem',
+            }}
+          >
+            {cycling ? 'Cycling…' : 'Cycle Wallet'}
+          </button>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '0.55rem', borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.2)', background: 'transparent',
+              color: '#aaa', cursor: 'pointer', fontSize: '0.9rem',
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ConfigTab() {
   const [config, setConfig] = useState<any>(null);
   const [balance, setBalance] = useState<{ ada: string; cnt: string; totalApprovedCnt: string } | null>(null);
@@ -196,6 +421,9 @@ function ConfigTab() {
   const [skeyInput, setSkeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [claimingKey, setClaimingKey] = useState(false);
+  const [pendingKeyData, setPendingKeyData] = useState<{ skeyHex: string; address: string } | null>(null);
+  const [showCycleDialog, setShowCycleDialog] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -222,6 +450,24 @@ function ConfigTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleClaimKey = async () => {
+    setClaimingKey(true); setMsg(null);
+    try {
+      const { skeyHex } = await adminApi.claimPendingKeyDownload();
+      const currentAddress = config?.hotWalletAddress ?? '';
+      setPendingKeyData({ skeyHex, address: currentAddress });
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setClaimingKey(false);
+    }
+  };
+
+  const handleKeyDownloadDone = () => {
+    setPendingKeyData(null);
+    load();
+  };
 
   const save = async () => {
     setSaving(true); setMsg(null);
@@ -270,7 +516,52 @@ function ConfigTab() {
 
   return (
     <div style={{ maxWidth: 640 }}>
+      {pendingKeyData && (
+        <KeyDownloadModal
+          skeyHex={pendingKeyData.skeyHex}
+          address={pendingKeyData.address}
+          onDone={handleKeyDownloadDone}
+        />
+      )}
+
+      {showCycleDialog && (
+        <CycleWalletDialog
+          onCancel={() => setShowCycleDialog(false)}
+          onSuccess={() => { setShowCycleDialog(false); load(); }}
+        />
+      )}
+
       <h3 style={{ marginBottom: '1.25rem', color: '#b8b8ff', fontSize: '1rem' }}>Wallet Configuration</h3>
+
+      {config?.hotWalletKeyPendingDownload && (
+        <div style={{
+          marginBottom: '1.25rem', padding: '0.85rem 1rem', borderRadius: 8,
+          background: 'rgba(251,191,36,0.1)', border: '2px solid rgba(251,191,36,0.5)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+            <span style={{ fontSize: '1rem' }}>🔑</span>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fbbf24' }}>
+              Private Key Ready to Download
+            </span>
+          </div>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: '#fde68a', lineHeight: 1.5 }}>
+            A new hot wallet was generated. The private key is available for one-time download only — after
+            you confirm you have saved it, it will no longer be accessible through this panel.
+          </p>
+          <button
+            onClick={handleClaimKey}
+            disabled={claimingKey}
+            style={{
+              padding: '0.5rem 1.1rem', borderRadius: 6, border: 'none',
+              background: claimingKey ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.8)',
+              color: '#000', cursor: claimingKey ? 'default' : 'pointer',
+              fontWeight: 700, fontSize: '0.88rem',
+            }}
+          >
+            {claimingKey ? 'Loading…' : '⬇ Download Private Key (one time only)'}
+          </button>
+        </div>
+      )}
 
       {balance && (() => {
         const adaBalance = parseFloat(balance.ada);
@@ -403,17 +694,31 @@ function ConfigTab() {
         </div>
       </div>
 
-      <button
-        onClick={save}
-        disabled={saving}
-        style={{
-          marginTop: 4, padding: '0.55rem 1.25rem', borderRadius: 6, border: 'none',
-          background: saving ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.7)',
-          color: '#fff', cursor: saving ? 'default' : 'pointer', fontWeight: 600,
-        }}
-      >
-        {saving ? 'Saving…' : 'Save Config'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: 4 }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            padding: '0.55rem 1.25rem', borderRadius: 6, border: 'none',
+            background: saving ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.7)',
+            color: '#fff', cursor: saving ? 'default' : 'pointer', fontWeight: 600,
+          }}
+        >
+          {saving ? 'Saving…' : 'Save Config'}
+        </button>
+
+        <button
+          onClick={() => setShowCycleDialog(true)}
+          style={{
+            padding: '0.55rem 1.1rem', borderRadius: 6,
+            border: '1px solid rgba(239,68,68,0.4)',
+            background: 'rgba(239,68,68,0.1)',
+            color: '#f87171', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem',
+          }}
+        >
+          ↺ Cycle Wallet
+        </button>
+      </div>
       {msg && <StatusMsg msg={msg.text} type={msg.type} />}
     </div>
   );

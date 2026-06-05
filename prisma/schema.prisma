@@ -1083,13 +1083,14 @@ model ProcessedCryptoTx {
 }
 
 model CryptoWalletConfig {
-  id                     String   @id @default("default")
-  hotWalletAddress       String   @default("")
-  blockfrostProjectId    String   @default("")
-  depositScanPage        Int      @default(0)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  hotWalletSkeyEncrypted String   @default("")
+  id                           String   @id @default("default")
+  hotWalletAddress             String   @default("")
+  blockfrostProjectId          String   @default("")
+  depositScanPage              Int      @default(0)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  hotWalletSkeyEncrypted       String   @default("")
+  hotWalletKeyPendingDownload  Boolean  @default(false)
 
   @@map("crypto_wallet_configs")
 }
