@@ -278,6 +278,35 @@ When showing a currency or item quantity anywhere in the UI (costs, rewards, bal
 
 ---
 
+## 19. Schema Changes — Always Use `prisma migrate dev`, Never `db push`
+
+**`prisma db push` is forbidden for schema changes.** It updates the local database without creating a migration file, which means production never sees the change and the build fails when the seed tries to reference the missing column.
+
+The canonical workflow for any Prisma schema change:
+
+```bash
+# 1. Edit prisma/schema.prisma
+# 2. Create the migration (updates dev DB AND writes the migration file)
+pnpm prisma migrate dev --name <short-description>
+# e.g. pnpm prisma migrate dev --name add_item_defs_dusting_data
+
+# 3. Commit both schema.prisma AND the new migration file together
+```
+
+### Rules
+
+- **Every schema change must have a migration file.** `prisma migrate dev` creates it automatically. The migration file is what `prisma migrate deploy` runs in production during the build step.
+- **Migration files ship with the schema change** — they live in `prisma/migrations/` and must be committed in the same change as the `schema.prisma` edit. A schema edit without a migration file will always break production.
+- **`db push` is only for discarding experiments** — if you used `db push` to try something out and are about to throw it away, that's fine. If you are keeping the change, you must run `migrate dev` to produce the migration before committing.
+- **Migrations must be idempotent where possible.** Use `ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, etc., so a migration that somehow runs twice on a partially-migrated DB doesn't error.
+- **Never edit or delete an existing migration file.** If a migration had a mistake, create a new migration that corrects it — don't mutate committed history.
+
+### Why this matters
+
+Production uses `prisma migrate deploy`, which only applies migrations that exist in `prisma/migrations/`. Changes made via `db push` never appear there. The pattern of using `db push` in dev caused the `item_defs.dustingData` column to be missing in production, breaking every subsequent publish attempt with `P2022: column does not exist`.
+
+---
+
 ## 18. Flex Scroll Containers — Always Add `min-h-0`
 
 Any element that is **both** a flex child (`flex-1`) **and** a scroll region (`overflow-y-auto`, `overflow-x-auto`, or `overflow-hidden` used to clip a scrollable child) **must** also carry `min-h-0` (or `min-w-0` for horizontal scroll).

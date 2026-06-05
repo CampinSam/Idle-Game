@@ -7,7 +7,7 @@ A season-based idle strategy RPG offering strategic gameplay in a persistent wor
 - `pnpm build`: Build all packages.
 - `pnpm typecheck`: Run TypeScript checks.
 - `pnpm prisma generate`: Generate Prisma client.
-- `pnpm prisma db push`: Apply schema changes to the database.
+- `pnpm prisma migrate dev --name <description>`: Apply schema changes in development (always use this — never `db push`).
 
 **Required Environment Variables:**
 - `JWT_SECRET`

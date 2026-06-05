@@ -1,13 +1,14 @@
 ---
-name: Dev DB migration divergence
-description: Why dev shows many old migrations as "not yet applied" — expected, pre-existing condition.
+name: Schema migration policy
+description: prisma migrate dev is mandatory for all schema changes; db push is forbidden.
 ---
 
-The dev database has been built up over time using `prisma db push` (and occasional raw SQL) rather than `prisma migrate dev`. As a result, many historical migration files in `prisma/migrations/` are not recorded in dev's `_prisma_migrations` table.
+**Rule:** Always use `prisma migrate dev --name <description>` for schema changes. Never use `prisma db push`.
 
-**The rule:** This is expected and does not affect production. `prisma migrate deploy` in production only looks at production's `_prisma_migrations` table to decide what to apply.
+**Why:** Production runs `prisma migrate deploy`, which only applies files in `prisma/migrations/`. `db push` updates the local dev DB without writing a migration file, so production never sees the change. This caused the `item_defs.dustingData` column to be missing in production, breaking every publish attempt with `P2022: column does not exist`.
 
-**When adding a new migration that was already applied to dev via raw SQL:**
-Use `prisma migrate resolve --applied <migration_name>` to mark it as applied in dev without re-running the SQL.
+**How to apply:** For every `schema.prisma` edit, run `prisma migrate dev` before committing. The migration file and schema change must ship together.
 
-**Why:** Avoids false "pending" status and keeps dev status from growing more confusing.
+**`db push` exception:** Only acceptable for throwaway experiments you are about to discard. If you keep the change, you must follow up with `migrate dev`.
+
+**Historical note:** Many old migration files were created after the fact to patch columns that were originally added via `db push`. Those gaps are closed. Going forward, every schema change must have a migration file from the start.
