@@ -1758,7 +1758,7 @@ input:focus {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  padding: 9px;
+  padding: 4px;
   max-width: 520px;
   width: 100%;
   background: #1a1640;
@@ -1780,6 +1780,7 @@ input:focus {
   align-items: center;
   gap: 8px;
   width: 100%;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(139, 92, 246, 0.25);
 }
 .top-bar-avatar-wrap {
