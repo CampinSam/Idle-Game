@@ -41,15 +41,7 @@ export class CompleteMissionHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'toast' as const,
-          tone: success ? 'success' as const : 'info' as const,
-          message: success
-            ? `Mission complete! ${missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || ''}`
-            : 'Mission failed — better luck next time',
-        },
-      ],
+      ui: [{ type: 'local_toast' as const, tone: success ? 'success' as const : 'info' as const, title: success ? 'Mission Complete!' : 'Mission Failed', body: success ? (missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || 'Rewards collected.') : 'Better luck next time.' }],
     };
   }
 }

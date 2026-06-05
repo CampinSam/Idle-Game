@@ -23,7 +23,7 @@ export class StartCraftingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Crafting started!' }],
+      ui: [{ type: 'local_toast' as const, tone: 'info' as const, title: 'Crafting Started', body: 'Crafting job has begun.' }],
     };
   }
 }

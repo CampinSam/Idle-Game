@@ -45,6 +45,7 @@ import { GiftModule } from '../gift/gift.module';
 import { TickModule } from '../tick/tick.module';
 import { GlobalPowerModule } from '../global-power/global-power.module';
 import { DustingModule } from '../dusting/dusting.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { DustingModule } from '../dusting/dusting.module';
     TickModule,
     GlobalPowerModule,
     DustingModule,
+    NotificationModule,
   ],
   controllers: [CommandController],
   providers: [

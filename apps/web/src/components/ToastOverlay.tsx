@@ -160,17 +160,47 @@ function ToastBanner({ notification, onDismiss, onHide }: { notification: AppNot
   );
 }
 
-function TransientToastBanner({ toast, onDismiss }: { toast: import('../context/NotificationContext').TransientToast; onDismiss: () => void }) {
+function LocalToastBanner({ toast, onDismiss }: { toast: import('../context/NotificationContext').LocalToast; onDismiss: () => void }) {
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+
+  const borderColor = toast.accentColor ?? '#8B5CF6';
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+    setOffsetX(touchDeltaX.current);
+  };
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDeltaX.current) > 100) {
+      setDismissed(true);
+      setOffsetX(touchDeltaX.current > 0 ? 400 : -400);
+      setTimeout(onDismiss, 200);
+    } else {
+      setOffsetX(0);
+    }
+  };
+
   return (
     <div
       className={[
         'pointer-events-auto flex items-center w-full py-3 px-[14px] rounded-xl border-l-4',
         'bg-gradient-to-br from-[#1e1b3a] to-[#2a1f4e]',
         'shadow-[0_8px_24px_rgba(0,0,0,0.5),0_0_0_1px_rgba(139,92,246,0.2)]',
-        'text-left gap-2.5 [animation:toast-slide-in_0.3s_ease-out]',
-      ].join(' ')}
-      style={{ borderLeftColor: toast.accentColor ?? '#8B5CF6' }}
+        'text-left gap-2.5 touch-pan-y [animation:toast-slide-in_0.3s_ease-out]',
+        'transition-[transform,opacity] duration-200',
+        dismissed ? 'pointer-events-none' : '',
+      ].filter(Boolean).join(' ')}
+      style={{ borderLeftColor: borderColor, transform: `translateX(${offsetX}px)`, opacity: dismissed ? 0 : 1 }}
       role="status"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {toast.icon && <span className="text-xl shrink-0">{toast.icon}</span>}
       <div className="flex-1 flex flex-col gap-0.5 min-w-0">
@@ -188,17 +218,17 @@ function TransientToastBanner({ toast, onDismiss }: { toast: import('../context/
 }
 
 export default function ToastOverlay() {
-  const { toasts, dismissToast, hideToast, transientToasts, dismissTransientToast } = useNotifications();
+  const { toasts, dismissToast, hideToast, localToasts, dismissLocalToast } = useNotifications();
 
-  if (toasts.length === 0 && transientToasts.length === 0) return null;
+  if (toasts.length === 0 && localToasts.length === 0) return null;
 
   return (
     <div className="fixed top-2 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-1.5 w-full max-w-[500px] px-3 pointer-events-none">
-      {transientToasts.map((t) => (
-        <TransientToastBanner
+      {localToasts.map((t) => (
+        <LocalToastBanner
           key={t.id}
           toast={t}
-          onDismiss={() => dismissTransientToast(t.id)}
+          onDismiss={() => dismissLocalToast(t.id)}
         />
       ))}
       {toasts.map((t) => (

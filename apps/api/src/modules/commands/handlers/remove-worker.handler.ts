@@ -18,7 +18,7 @@ export class RemoveWorkerHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message: 'Worker removed' }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Worker Removed', body: 'Worker removed from the location.' }],
     };
   }
 }

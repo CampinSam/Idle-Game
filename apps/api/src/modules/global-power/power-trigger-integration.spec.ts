@@ -26,6 +26,7 @@ import { PowerDefService } from './power-def.service';
 jest.mock('../commands/patch-builder', () => {
   const mockPb = {
     upsert: jest.fn().mockReturnThis(),
+    upsertNotification: jest.fn().mockReturnThis(),
     build: jest.fn().mockReturnValue([]),
   };
   return {
@@ -270,7 +271,10 @@ describe('TriggerEntityPowerHandler — integration (real PowerDefService + Glob
     const prisma = makeInMemoryPrisma();
     const powerDefService = new PowerDefService(prisma as any);
     const globalPowerService = new GlobalPowerService(prisma as any, stubPubSub);
-    const handler = new TriggerEntityPowerHandler(prisma as any, globalPowerService, powerDefService);
+    const notificationService: any = {
+      createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
+    };
+    const handler = new TriggerEntityPowerHandler(prisma as any, globalPowerService, powerDefService, notificationService);
 
     const entity = entityWithPowerRef(powerRefs);
     const tx = makeTxForEntity(entity);
@@ -309,7 +313,7 @@ describe('TriggerEntityPowerHandler — integration (real PowerDefService + Glob
     );
 
     expect(result.ui).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'toast', tone: 'success' })]),
+      expect.arrayContaining([expect.objectContaining({ type: 'notification' })]),
     );
   });
 
@@ -406,7 +410,10 @@ describe('TriggerLocationPowerHandler — integration (real PowerDefService + Gl
     const prisma = makeInMemoryPrisma();
     const powerDefService = new PowerDefService(prisma as any);
     const globalPowerService = new GlobalPowerService(prisma as any, stubPubSub);
-    const handler = new TriggerLocationPowerHandler(prisma as any, globalPowerService, powerDefService);
+    const notificationService: any = {
+      createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
+    };
+    const handler = new TriggerLocationPowerHandler(prisma as any, globalPowerService, powerDefService, notificationService);
 
     const location = locationWithPowerRef(powerRefs);
     const tx = makeTxForLocation(location);
@@ -442,7 +449,7 @@ describe('TriggerLocationPowerHandler — integration (real PowerDefService + Gl
     );
 
     expect(result.ui).toEqual(
-      expect.arrayContaining([expect.objectContaining({ type: 'toast', tone: 'success' })]),
+      expect.arrayContaining([expect.objectContaining({ type: 'notification' })]),
     );
   });
 

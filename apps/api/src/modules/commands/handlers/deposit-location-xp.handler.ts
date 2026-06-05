@@ -53,13 +53,13 @@ export class DepositLocationXpHandler implements CommandHandler {
       pb.upsertNotification(result.notification);
     }
 
-    const message = result.leveledUp
+    const body = result.leveledUp
       ? `Outpost reached Level ${result.newLevel}!`
       : `+${result.xpGained} XP deposited`;
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: result.leveledUp ? 'success' : 'info', message }],
+      ui: [{ type: 'local_toast' as const, tone: result.leveledUp ? 'success' as const : 'info' as const, title: result.leveledUp ? 'Level Up!' : 'XP Deposited', body }],
     };
   }
 }

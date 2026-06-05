@@ -4,6 +4,7 @@ import { PatchBuilder, buildLocationPatches } from '../patch-builder';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
 import { PowerDefService } from '../../global-power/power-def.service';
+import { NotificationService } from '../../notification/notification.service';
 
 function getUtcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -15,6 +16,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     private prisma: PrismaService,
     private globalPowerService: GlobalPowerService,
     private powerDefService: PowerDefService,
+    private notificationService: NotificationService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -196,13 +198,23 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     pb.upsert('locationPowerUsage', locationId, usageMap);
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
 
-    const toastMessage = isTickBoost
-      ? `⚡ ${resolved.name} activated! +${resolved.value}% world tick speed for ${resolved.durationMinutes} minutes!`
+    const powerTitle = isTickBoost ? 'Tick Boost Activated!' : 'Power Activated!';
+    const powerBody = isTickBoost
+      ? `⚡ ${resolved.name}: +${resolved.value}% world tick speed for ${resolved.durationMinutes} min!`
       : `${resolved.name} activated for ${resolved.durationMinutes} minutes!`;
+
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'power_activated',
+      category: 'system',
+      title: powerTitle,
+      body: powerBody,
+    }, ctx.tx);
+    pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success', message: toastMessage }],
+      ui: [{ type: 'notification' as const, notificationId: notification.id }],
     };
   }
 }

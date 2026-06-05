@@ -4,7 +4,7 @@ import { syncEngine } from '../services/syncEngineSingleton';
 import type { GlobalPowerChangeHandler } from '../services/SyncEngine';
 
 export function useGlobalPowerToasts() {
-  const { addTransientToast } = useNotifications();
+  const { addLocalToast } = useNotifications();
 
   useEffect(() => {
     const handler: GlobalPowerChangeHandler = (event, change) => {
@@ -13,7 +13,7 @@ export function useGlobalPowerToasts() {
         const durationStr = diffMin >= 60
           ? `${Math.round(diffMin / 60)}h`
           : `${diffMin}m`;
-        addTransientToast({
+        addLocalToast({
           title: 'Global Power Activated',
           body: `${change.label} — active for ${durationStr}`,
           icon: '⚡',
@@ -21,7 +21,7 @@ export function useGlobalPowerToasts() {
           durationMs: 10000,
         });
       } else if (event === 'ended') {
-        addTransientToast({
+        addLocalToast({
           title: 'Global Power Ended',
           body: `${change.label} has ended`,
           icon: '⏰',
@@ -32,5 +32,5 @@ export function useGlobalPowerToasts() {
     };
 
     return syncEngine.onGlobalPowerChange(handler);
-  }, [addTransientToast]);
+  }, [addLocalToast]);
 }

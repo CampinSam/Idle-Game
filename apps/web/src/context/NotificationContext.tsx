@@ -4,8 +4,9 @@ import { useAppSelector, useAppDispatch } from '../store';
 import { applyPatches } from '../store/syncSlice';
 import { useSyncNotifications } from '../hooks/useSyncSelectors';
 import { audioEngine } from '../services/AudioEngine';
+import { serverNow } from '../services/clockSync';
 
-export interface TransientToast {
+export interface LocalToast {
   id: string;
   title: string;
   body: string;
@@ -13,6 +14,9 @@ export interface TransientToast {
   accentColor?: string;
   durationMs?: number;
 }
+
+/** @deprecated Use LocalToast */
+export type TransientToast = LocalToast;
 
 export interface AppNotification {
   id: string;
@@ -40,7 +44,7 @@ interface NotificationContextValue {
   notifications: AppNotification[];
   unreadCount: number;
   toasts: ToastItem[];
-  transientToasts: TransientToast[];
+  localToasts: LocalToast[];
   loading: boolean;
   markRead: (ids: string[]) => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -48,15 +52,21 @@ interface NotificationContextValue {
   dismissNotification: (id: string) => void;
   dismissToast: (toastId: string) => void;
   hideToast: (toastId: string) => void;
-  addTransientToast: (toast: Omit<TransientToast, 'id'>) => void;
+  addLocalToast: (toast: Omit<LocalToast, 'id'>) => void;
+  dismissLocalToast: (id: string) => void;
+  /** @deprecated Use addLocalToast */
+  addTransientToast: (toast: Omit<LocalToast, 'id'>) => void;
+  /** @deprecated Use dismissLocalToast */
   dismissTransientToast: (id: string) => void;
+  /** @deprecated Use localToasts */
+  transientToasts: LocalToast[];
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
   notifications: [],
   unreadCount: 0,
   toasts: [],
-  transientToasts: [],
+  localToasts: [],
   loading: false,
   markRead: async () => {},
   markAllRead: async () => {},
@@ -64,8 +74,11 @@ const NotificationContext = createContext<NotificationContextValue>({
   dismissNotification: () => {},
   dismissToast: () => {},
   hideToast: () => {},
+  addLocalToast: () => {},
+  dismissLocalToast: () => {},
   addTransientToast: () => {},
   dismissTransientToast: () => {},
+  transientToasts: [],
 });
 
 export function useNotifications() {
@@ -108,8 +121,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const userId = useAppSelector((s) => s.auth.player?.id as string | undefined);
   const syncNotifs = useSyncNotifications();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [transientToasts, setTransientToasts] = useState<TransientToast[]>([]);
-  const transientTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const [localToasts, setLocalToasts] = useState<LocalToast[]>([]);
+  const localToastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const seenIds = useRef<Set<string>>(new Set());
   const toastTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   // Tracks the last known userId so the logout effect can still reference it
@@ -154,7 +167,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       dirty = true;
       if (n.readAt || n.dismissedAt) continue;
       audioEngine.play('ui.notification');
-      if (n.priority === 'critical' || n.priority === 'high') {
+      const age = serverNow() - new Date(n.createdAt).getTime();
+      if (n.priority === 'critical' || n.priority === 'high' || (n.priority === 'normal' && age < 15000)) {
         setToasts((prev) => {
           const combined = [...prev, { notification: n, id: n.id }];
           return combined.slice(0, MAX_VISIBLE_TOASTS + 5);
@@ -228,22 +242,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }));
   }, [dispatch, notifications]);
 
-  const addTransientToast = useCallback((toast: Omit<TransientToast, 'id'>) => {
-    const id = `t-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const full: TransientToast = { ...toast, id };
-    setTransientToasts((prev) => [...prev, full].slice(-5));
+  const addLocalToast = useCallback((toast: Omit<LocalToast, 'id'>) => {
+    const id = `lt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const full: LocalToast = { ...toast, id };
+    setLocalToasts((prev) => [...prev, full].slice(-5));
     const duration = toast.durationMs ?? 8000;
     const timer = setTimeout(() => {
-      setTransientToasts((prev) => prev.filter((t) => t.id !== id));
-      transientTimers.current.delete(id);
+      setLocalToasts((prev) => prev.filter((t) => t.id !== id));
+      localToastTimers.current.delete(id);
     }, duration);
-    transientTimers.current.set(id, timer);
+    localToastTimers.current.set(id, timer);
   }, []);
 
-  const dismissTransientToast = useCallback((id: string) => {
-    setTransientToasts((prev) => prev.filter((t) => t.id !== id));
-    const timer = transientTimers.current.get(id);
-    if (timer) { clearTimeout(timer); transientTimers.current.delete(id); }
+  const dismissLocalToast = useCallback((id: string) => {
+    setLocalToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = localToastTimers.current.get(id);
+    if (timer) { clearTimeout(timer); localToastTimers.current.delete(id); }
   }, []);
 
   const dismissNotification = useCallback((id: string) => {
@@ -259,7 +273,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         notifications,
         unreadCount,
         toasts: toasts.slice(0, MAX_VISIBLE_TOASTS),
-        transientToasts,
+        localToasts,
         loading: false,
         markRead,
         markAllRead,
@@ -267,8 +281,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         dismissNotification,
         dismissToast,
         hideToast,
-        addTransientToast,
-        dismissTransientToast,
+        addLocalToast,
+        dismissLocalToast,
+        addTransientToast: addLocalToast,
+        dismissTransientToast: dismissLocalToast,
+        transientToasts: localToasts,
       }}
     >
       {children}

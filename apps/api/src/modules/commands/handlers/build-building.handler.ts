@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildLocationPatches, buildCurrencyPatches, buildActiveJobPatches } from '../patch-builder';
 import { LocationService } from '../../location/location.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class BuildBuildingHandler implements CommandHandler {
-  constructor(private locationService: LocationService) {}
+  constructor(
+    private locationService: LocationService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, buildingDefId } = payload;
@@ -17,9 +21,18 @@ export class BuildBuildingHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildActiveJobPatches(pb, ctx.tx, ctx.userId);
 
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'construction_started',
+      category: 'locations',
+      title: 'Construction Started',
+      body: 'Building construction has begun.',
+    }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'info' as const, message: 'Construction started!' }],
+      ui: [{ type: 'notification' as const, notificationId: notification.id }],
     };
   }
 }

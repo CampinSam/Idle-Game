@@ -4,6 +4,7 @@ import { TriggerEntityPowerHandler } from '../commands/handlers/trigger-entity-p
 jest.mock('../commands/patch-builder', () => {
   const mockPb = {
     upsert: jest.fn().mockReturnThis(),
+    upsertNotification: jest.fn().mockReturnThis(),
     build: jest.fn().mockReturnValue([]),
   };
   return {
@@ -95,7 +96,10 @@ function makeFakes(options: {
     resolve: jest.fn().mockResolvedValue(resolved),
   };
 
-  const handler = new TriggerEntityPowerHandler(prisma, globalPowerService, powerDefService);
+  const notificationService: any = {
+    createForCommand: jest.fn().mockResolvedValue({ id: 'notif-1', type: 'power_activated', category: 'system', priority: 'normal', title: '', body: '', readAt: null, dismissedAt: null, createdAt: new Date().toISOString() }),
+  };
+  const handler = new TriggerEntityPowerHandler(prisma, globalPowerService, powerDefService, notificationService);
   const ctx = { userId: 'user-1', tx };
 
   return { handler, ctx, tx, prisma, globalPowerService, powerDefService, resolved };
@@ -191,7 +195,7 @@ describe('TriggerEntityPowerHandler — happy path (PowerRef key format)', () =>
 
     expect(result.ui).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: 'toast', tone: 'success' }),
+        expect.objectContaining({ type: 'notification' }),
       ]),
     );
     expect(result.patches).toBeDefined();

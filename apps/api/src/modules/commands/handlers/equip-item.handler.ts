@@ -152,13 +152,13 @@ export class EquipItemHandler implements CommandHandler {
     }
 
     const itemName = item.definition.name;
-    const message = evictedItemIds.length > 0
+    const body = evictedItemIds.length > 0
       ? `Equipped ${itemName} (replaced previous ${slot})`
       : `Equipped ${itemName}`;
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Gear Equipped', body }],
     };
   }
 }

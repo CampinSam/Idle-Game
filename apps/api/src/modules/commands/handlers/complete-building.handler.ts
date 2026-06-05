@@ -26,7 +26,7 @@ export class CompleteBuildingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message: 'Construction complete!' }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Construction Complete', body: 'Building construction is complete!' }],
     };
   }
 }

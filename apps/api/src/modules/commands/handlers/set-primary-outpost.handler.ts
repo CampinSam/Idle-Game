@@ -29,7 +29,7 @@ export class SetPrimaryOutpostHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message: 'Primary outpost updated' }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Primary Outpost Updated', body: 'Primary outpost has been updated.' }],
     };
   }
 }

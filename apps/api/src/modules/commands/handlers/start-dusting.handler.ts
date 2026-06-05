@@ -30,7 +30,7 @@ export class StartDustingHandler implements CommandHandler {
       patches: pb.build(),
       ui: instantRewards
         ? []
-        : [{ type: 'toast' as const, tone: 'info' as const, message: 'Dusting started!' }],
+        : [{ type: 'local_toast' as const, tone: 'info' as const, title: 'Dusting Started', body: 'Dusting job has begun.' }],
       meta: instantRewards ? { instantRewards, jobId: result.job.id } : undefined,
     };
   }

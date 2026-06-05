@@ -55,7 +55,7 @@ function UniquePowerPanel({
   onClick?: () => void;
 }) {
   const { execute } = useCommand();
-  const { addTransientToast } = useNotifications();
+  const { addLocalToast } = useNotifications();
   const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[locationId] ?? {});
   const [triggering, setTriggering] = useState<string | null>(null);
   const now = useNow(1000);
@@ -80,21 +80,11 @@ function UniquePowerPanel({
       if (triggering) return;
       setTriggering(key);
       try {
-        const res = await execute('TriggerLocationPower', { locationId, powerKey: key });
-        const toast = (res.ui as any[]).find((u) => u.type === 'toast');
-        if (toast) {
-          addTransientToast({
-            title: toast.tone === 'success' ? 'Power Triggered!' : 'Error',
-            body: toast.message,
-            icon: toast.tone === 'success' ? '⚡' : '❌',
-            accentColor: toast.tone === 'success' ? '#F59E0B' : '#EF4444',
-            durationMs: 8000,
-          });
-        }
+        await execute('TriggerLocationPower', { locationId, powerKey: key });
       } catch (err: any) {
         const msg = err?.message || 'Failed to trigger power';
         const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
-        addTransientToast({
+        addLocalToast({
           title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
           body: msg,
           icon: '❌',
@@ -105,7 +95,7 @@ function UniquePowerPanel({
         setTriggering(null);
       }
     },
-    [locationId, execute, addTransientToast, triggering],
+    [locationId, execute, addLocalToast, triggering],
   );
 
   if (powers.length === 0) return null;

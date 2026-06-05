@@ -1,9 +1,12 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
-import { Patch, UiIntent } from '../command.types';
+import { Patch } from '../command.types';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class ClaimRewardHandler implements CommandHandler {
+  constructor(private notificationService: NotificationService) {}
+
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { jobId } = payload;
 
@@ -53,14 +56,15 @@ export class ClaimRewardHandler implements CommandHandler {
       },
     ];
 
-    const ui: UiIntent[] = [
-      {
-        type: 'toast',
-        tone: 'success',
-        message: 'Reward claimed!',
-      },
-    ];
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'reward_claimed',
+      category: 'general',
+      title: 'Reward Claimed',
+      body: 'Your reward has been collected.',
+    }, ctx.tx);
+    patches.push({ op: 'upsert', entity: 'notification', id: notification.id, data: notification });
 
-    return { patches, ui };
+    return { patches, ui: [{ type: 'notification' as const, notificationId: notification.id }] };
   }
 }

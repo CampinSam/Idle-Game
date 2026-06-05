@@ -717,7 +717,8 @@ export type Patch =
 
 export type UiIntent =
   | { type: 'modal'; spec: import('@derp/shared').ModalSpecV1 }
-  | { type: 'toast'; tone: 'success' | 'error' | 'info'; message: string }
+  | { type: 'notification'; notificationId: string }
+  | { type: 'local_toast'; tone: 'success' | 'error' | 'info'; title: string; body: string; durationMs?: number }
   | { type: 'navigate'; deepLink: string }
   | { type: 'full_reset' };
 

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
+import { NotificationService } from '../../notification/notification.service';
 import {
   PatchBuilder,
   buildItemPatches,
@@ -31,6 +32,7 @@ export class UseConsumableHandler implements CommandHandler {
     private effectService: EffectService,
     private entityService: EntityService,
     private currencyService: CurrencyService,
+    private notificationService: NotificationService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -195,15 +197,18 @@ export class UseConsumableHandler implements CommandHandler {
         }))).join(', ')
       : item.definition.name;
 
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'consumable_used',
+      category: 'general',
+      title: `Used ${item.definition.name}`,
+      body: effectNames,
+    }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'toast' as const,
-          tone: 'success' as const,
-          message: `Used ${item.definition.name}: ${effectNames}`,
-        },
-      ],
+      ui: [{ type: 'notification' as const, notificationId: notification.id }],
     };
   }
 

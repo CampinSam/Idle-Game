@@ -6,7 +6,7 @@ import { useNotifications } from '../../../../../context/NotificationContext';
 import { Card } from '../../../../../components/ui';
 import { getUniqueEntry } from '../getUniqueEntry';
 import type { PowerRef } from '@derp/shared';
-import type { UiIntent } from '../../../../../services/api';
+
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../../features/powers/powerUtils';
 
 /** Stable key for a PowerRef — prefers p.key, then p.powerType, then p.effectDefId (full legacy compat). */
@@ -94,7 +94,7 @@ interface OutpostUniquePowersCardProps {
 
 export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProps) {
   const { execute } = useCommand();
-  const { addTransientToast } = useNotifications();
+  const { addLocalToast } = useNotifications();
   const storedUsages = useAppSelector((s) => s.sync.locationPowerUsages[outpost.id] ?? {});
   const [triggering, setTriggering] = useState<string | null>(null);
   const now = useNow(1000);
@@ -119,27 +119,16 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
     return result;
   }, [storedUsages, powers, today]);
 
-
   const handleTrigger = useCallback(
     async (key: string) => {
       if (triggering) return;
       setTriggering(key);
       try {
-        const res = await execute('TriggerLocationPower', { locationId: outpost.id, powerKey: key });
-        const toast = res.ui.find((u: UiIntent) => u.type === 'toast') as Extract<UiIntent, { type: 'toast' }> | undefined;
-        if (toast) {
-          addTransientToast({
-            title: toast.tone === 'success' ? 'Power Activated!' : 'Error',
-            body: toast.message,
-            icon: toast.tone === 'success' ? '⚡' : '❌',
-            accentColor: toast.tone === 'success' ? '#F59E0B' : '#EF4444',
-            durationMs: 8000,
-          });
-        }
+        await execute('TriggerLocationPower', { locationId: outpost.id, powerKey: key });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to activate power';
         const isLimit = msg.includes('Daily limit') || msg.includes('limit reached');
-        addTransientToast({
+        addLocalToast({
           title: isLimit ? 'Daily Limit Reached' : 'Power Failed',
           body: msg,
           icon: '❌',
@@ -150,7 +139,7 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
         setTriggering(null);
       }
     },
-    [outpost.id, execute, addTransientToast, triggering],
+    [outpost.id, execute, addLocalToast, triggering],
   );
 
   if (powers.length === 0) return null;

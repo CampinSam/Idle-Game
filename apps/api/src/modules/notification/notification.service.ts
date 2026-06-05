@@ -349,6 +349,39 @@ export class NotificationService {
     return created;
   }
 
+  /**
+   * Creates a notification as direct feedback for a player command.
+   * Unlike createNotification, this never groups, deduplicates, or aggregates —
+   * every call produces a distinct record. Always normal priority.
+   * Pass `ctx.tx` so the record is committed atomically with the command.
+   */
+  async createForCommand(data: {
+    userId: string;
+    type: string;
+    category: string;
+    title: string;
+    body: string;
+    deepLink?: any;
+    meta?: any;
+  }, tx?: any) {
+    const notif = tx ? (tx as any).notification : this.notification;
+    return notif.create({
+      data: {
+        userId: data.userId,
+        type: data.type,
+        category: data.category,
+        priority: 'normal',
+        title: data.title,
+        body: data.body,
+        deepLink: data.deepLink ?? {},
+        meta: data.meta ?? { count: 1 },
+        groupKey: null,
+        sourceType: null,
+        sourceId: null,
+      },
+    });
+  }
+
   async updateBySource(data: {
     userId: string;
     sourceType: string;

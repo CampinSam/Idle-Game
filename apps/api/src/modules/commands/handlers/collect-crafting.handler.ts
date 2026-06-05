@@ -29,7 +29,7 @@ export class CollectCraftingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message: 'Crafting complete!' }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Crafting Complete', body: 'Crafted item collected successfully.' }],
     };
   }
 }

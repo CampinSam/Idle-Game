@@ -91,9 +91,10 @@ export class UnequipItemHandler implements CommandHandler {
       patches: pb.build(),
       ui: [
         {
-          type: 'toast' as const,
+          type: 'local_toast' as const,
           tone: 'success' as const,
-          message: `Unequipped ${item.definition?.name ?? 'item'}`,
+          title: 'Gear Unequipped',
+          body: `Unequipped ${item.definition?.name ?? 'item'}`,
         },
       ],
     };

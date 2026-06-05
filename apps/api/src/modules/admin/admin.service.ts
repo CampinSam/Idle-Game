@@ -526,9 +526,10 @@ export class AdminService {
     const pb = new PatchBuilder();
     await buildItemPatches(pb, this.prisma, userId);
     await this.emitAdminDelta(userId, pb.build(), [{
-      type: 'toast',
+      type: 'local_toast',
       tone: 'success',
-      message: `Admin granted ${quantity}x ${itemDef.name}`,
+      title: 'Admin Grant',
+      body: `Admin granted ${quantity}x ${itemDef.name}`,
     }]);
 
     return result;

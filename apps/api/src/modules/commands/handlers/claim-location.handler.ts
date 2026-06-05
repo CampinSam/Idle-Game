@@ -19,7 +19,7 @@ export class ClaimLocationHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'toast' as const, tone: 'success' as const, message: 'Resources claimed!' }],
+      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Resources Claimed', body: 'Location resources have been collected.' }],
     };
   }
 }

@@ -72,7 +72,7 @@ describe('useCommand', () => {
     expect(calls[2].idempotencyKey).toBe('explicit-key-123');
   });
 
-  it('forwards UI intents to the onUiIntent callback', async () => {
+  it('forwards modal UI intents to onUiIntent; auto-handles local_toast without forwarding', async () => {
     const store = makeTestStore({ sync: { status: 'connected' } } as any);
     const intents: any[] = [];
 
@@ -82,7 +82,7 @@ describe('useCommand', () => {
     };
     (api.sendCommand as any).mockResolvedValue({
       patches: [],
-      ui: [modalIntent, { type: 'toast', tone: 'success', message: 'ok' }],
+      ui: [modalIntent, { type: 'local_toast', tone: 'success', title: 'Done', body: 'ok' }],
       cursor: { delta: 'c2' },
     });
 
@@ -95,9 +95,8 @@ describe('useCommand', () => {
       await result.current.execute('Foo');
     });
 
-    expect(intents).toHaveLength(2);
+    expect(intents).toHaveLength(1);
     expect(intents[0].type).toBe('modal');
-    expect(intents[1].type).toBe('toast');
   });
 
   it('rejects concurrent executes with an in-progress error', async () => {
