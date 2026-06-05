@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { ScreensService } from '../screens/screens.service';
 import { TABLE_KEY_TO_GROUP } from './admin-permissions';
+import { validateEntityDefinitionTraitsShape } from '@derp/shared';
 
 @Injectable()
 export class AdminDraftService implements OnModuleInit {
@@ -269,6 +270,14 @@ export class AdminDraftService implements OnModuleInit {
         });
       }
     } else {
+      // Table-specific pre-write validation
+      if (tableName === 'entityDefinition' && 'traits' in payload) {
+        const traitsError = validateEntityDefinitionTraitsShape(payload.traits);
+        if (traitsError !== null) {
+          throw new BadRequestException(`Invalid EntityDefinition traits: ${traitsError}`);
+        }
+      }
+
       // Generic path: tableName IS the Prisma camelCase model name
       const model = (tx as any)[tableName];
       if (!model) throw new BadRequestException(`Unknown table: ${tableName}`);

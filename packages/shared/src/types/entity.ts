@@ -150,3 +150,69 @@ export function parseEntityTraits(value: unknown): EntityTraits {
   }
   return value as EntityTraits;
 }
+
+/**
+ * Validates the `traits` JSON field on an `EntityDefinition` record.
+ *
+ * `EntityDefinition.traits` is a nested map:
+ *   Record<archetypeName, traitDef>
+ * where each `traitDef` is a plain object optionally containing:
+ *   - `slotStats`        — Record<slotName, Record<statKey, number | number[]>>
+ *   - `scaling`          — Record<statKey, number>
+ *   - `rarityMultiplier` — number
+ *
+ * Returns a human-readable error string on the first violation found,
+ * or `null` when the value is valid.
+ */
+export function validateEntityDefinitionTraitsShape(value: unknown): string | null {
+  if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
+    return 'traits must be a plain object mapping archetype names to trait definitions';
+  }
+
+  for (const [archetype, traitDef] of Object.entries(value as Record<string, unknown>)) {
+    if (traitDef === null || typeof traitDef !== 'object' || Array.isArray(traitDef)) {
+      return `trait definition for archetype "${archetype}" must be a plain object`;
+    }
+    const def = traitDef as Record<string, unknown>;
+
+    if ('rarityMultiplier' in def && def.rarityMultiplier !== undefined) {
+      if (typeof def.rarityMultiplier !== 'number') {
+        return `trait definition for archetype "${archetype}": rarityMultiplier must be a number`;
+      }
+    }
+
+    if ('scaling' in def && def.scaling !== undefined) {
+      if (def.scaling === null || typeof def.scaling !== 'object' || Array.isArray(def.scaling)) {
+        return `trait definition for archetype "${archetype}": scaling must be a plain object`;
+      }
+      for (const [statKey, statVal] of Object.entries(def.scaling as Record<string, unknown>)) {
+        if (typeof statVal !== 'number') {
+          return `trait definition for archetype "${archetype}": scaling["${statKey}"] must be a number`;
+        }
+      }
+    }
+
+    if ('slotStats' in def && def.slotStats !== undefined) {
+      if (def.slotStats === null || typeof def.slotStats !== 'object' || Array.isArray(def.slotStats)) {
+        return `trait definition for archetype "${archetype}": slotStats must be a plain object`;
+      }
+      for (const [slotName, slotVal] of Object.entries(def.slotStats as Record<string, unknown>)) {
+        if (slotVal === null || typeof slotVal !== 'object' || Array.isArray(slotVal)) {
+          return `trait definition for archetype "${archetype}": slotStats["${slotName}"] must be a plain object`;
+        }
+        for (const [statKey, statVal] of Object.entries(slotVal as Record<string, unknown>)) {
+          if (typeof statVal === 'number') continue;
+          if (
+            Array.isArray(statVal) &&
+            (statVal as unknown[]).every((v) => typeof v === 'number')
+          ) {
+            continue;
+          }
+          return `trait definition for archetype "${archetype}": slotStats["${slotName}"]["${statKey}"] must be a number or array of numbers`;
+        }
+      }
+    }
+  }
+
+  return null;
+}
