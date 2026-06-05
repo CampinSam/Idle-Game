@@ -250,7 +250,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
   const collapsedEvents = useMemo(() => collapseEvents(entityEvents), [entityEvents]);
 
   return (
-    <div className="flex flex-col gap-[10px] flex-1 p-[10px]">
+    <div className="flex flex-col gap-[10px] flex-1 min-h-full p-[10px]">
 
       {/* ── Top section: portrait card + power/radar ── */}
       <div className="grid grid-cols-2 gap-[10px] items-stretch shrink-0">
