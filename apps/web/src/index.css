@@ -1914,7 +1914,6 @@ input:focus {
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-top: 2px;
 }
 .top-bar-currencies::-webkit-scrollbar {
   display: none;
@@ -1930,8 +1929,8 @@ input:focus {
   border: none;
   color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  padding: 4px 2px;
-  margin-left: 2px;
+  padding: 0;
+  margin-left: 0;
   flex-shrink: 0;
   transition: color 0.15s;
   display: flex;
@@ -2099,7 +2098,7 @@ input:focus {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 2px 0;
+  padding: 0;
   margin-left: 0;
   flex-shrink: 0;
   font-size: 18px;
