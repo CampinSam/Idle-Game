@@ -1,4 +1,4 @@
-import { Component, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Component, useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from 'react';
 import { adminApi, getAdminToken } from '../adminApi';
 import { api } from '../../../services/api';
 import { ScreenCompositionRenderer } from '../../screens/ScreenCompositionRenderer';
@@ -1369,6 +1369,12 @@ function QuestDefPicker({
   );
 }
 
+// ─── Section actions context ──────────────────────────────────────────────────
+// Provides the action keys defined on the current section so ActionKeyPicker
+// can surface them in its datalist without prop-drilling through every layer.
+
+const SectionActionsContext = createContext<string[]>([]);
+
 // ─── Action key picker ────────────────────────────────────────────────────────
 
 const KNOWN_ACTION_KEYS = [
@@ -1399,6 +1405,15 @@ function ActionKeyPicker({
   onChange: (v: string) => void;
 }) {
   const listId = useRef(`akp-${Math.random().toString(36).slice(2)}`).current;
+  const sectionActionKeys = useContext(SectionActionsContext);
+  const allKeys = useMemo(() => {
+    const merged = [...KNOWN_ACTION_KEYS];
+    for (const k of sectionActionKeys) {
+      if (!merged.includes(k)) merged.push(k);
+    }
+    return merged;
+  }, [sectionActionKeys]);
+  const isKnown = allKeys.includes(value);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <input
@@ -1411,11 +1426,11 @@ function ActionKeyPicker({
         autoComplete="off"
       />
       <datalist id={listId}>
-        {KNOWN_ACTION_KEYS.map(k => <option key={k} value={k} />)}
+        {allKeys.map(k => <option key={k} value={k} />)}
       </datalist>
-      {value && !KNOWN_ACTION_KEYS.includes(value) && (
+      {value && !isKnown && (
         <div style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic', paddingLeft: 2 }}>
-          Custom key — make sure it's defined in this section's actions
+          Custom key — make sure it&apos;s defined in this section&apos;s actions
         </div>
       )}
     </div>
@@ -2136,6 +2151,256 @@ function RichRequirementsJsonEditor({
   );
 }
 
+// ─── Section actions editor ───────────────────────────────────────────────────
+
+const EDITABLE_ACTION_TYPES = ['navigate', 'open_modal', 'close_modal', 'noop', 'api'] as const;
+type EditableActionType = typeof EDITABLE_ACTION_TYPES[number];
+
+function newActionForType(type: EditableActionType): Record<string, unknown> {
+  switch (type) {
+    case 'navigate':   return { type: 'navigate', target: '' };
+    case 'open_modal': return { type: 'open_modal', modalKey: '' };
+    case 'close_modal': return { type: 'close_modal' };
+    case 'noop':       return { type: 'noop' };
+    case 'api':        return { type: 'api', method: 'POST', endpoint: '' };
+  }
+}
+
+function ActionEntryEditor({
+  actionKey,
+  action,
+  onChangeKey,
+  onChangeAction,
+  onRemove,
+}: {
+  actionKey: string;
+  action: Record<string, unknown>;
+  onChangeKey: (oldKey: string, newKey: string) => void;
+  onChangeAction: (a: Record<string, unknown>) => void;
+  onRemove: () => void;
+}) {
+  const [draftKey, setDraftKey] = useState(actionKey);
+  const currentType = (action.type as string) ?? 'noop';
+  const isEditable = (EDITABLE_ACTION_TYPES as readonly string[]).includes(currentType);
+
+  const commitKey = () => {
+    const trimmed = draftKey.trim();
+    if (trimmed && trimmed !== actionKey) onChangeKey(actionKey, trimmed);
+    else setDraftKey(actionKey);
+  };
+
+  return (
+    <div style={{ ...entryCardStyle }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' as const }}>
+        <div style={{ ...fieldGroupStyle, flex: '2 1 110px' }}>
+          <span style={labelStyle}>key *</span>
+          <input
+            type="text"
+            value={draftKey}
+            onChange={e => setDraftKey(e.target.value)}
+            onBlur={commitKey}
+            onKeyDown={e => { if (e.key === 'Enter') commitKey(); }}
+            style={{ ...inputStyle, width: '100%', fontFamily: 'monospace', color: '#a78bfa' }}
+            placeholder="action key"
+          />
+        </div>
+        <div style={{ ...fieldGroupStyle, flex: '1 1 90px' }}>
+          <span style={labelStyle}>type *</span>
+          <select
+            value={isEditable ? currentType : '__raw__'}
+            onChange={e => {
+              if (e.target.value === '__raw__') return;
+              onChangeAction(newActionForType(e.target.value as EditableActionType));
+            }}
+            style={{ ...selectStyle, width: '100%' }}
+          >
+            {EDITABLE_ACTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            {!isEditable && <option value="__raw__">{currentType} (raw)</option>}
+          </select>
+        </div>
+        <button
+          type="button"
+          style={{ ...dangerIconButtonStyle, alignSelf: 'flex-end' as const, flexShrink: 0 }}
+          onClick={onRemove}
+          title="Remove action"
+        >×</button>
+      </div>
+
+      {currentType === 'navigate' && (
+        <div style={fieldGroupStyle}>
+          <span style={labelStyle}>target (path) *</span>
+          <input
+            type="text"
+            value={String(action.target ?? '')}
+            onChange={e => onChangeAction({ ...action, target: e.target.value })}
+            style={{ ...inputStyle, width: '100%' }}
+            placeholder="/home, /entities, /store…"
+          />
+        </div>
+      )}
+
+      {currentType === 'open_modal' && (
+        <div style={fieldGroupStyle}>
+          <span style={labelStyle}>modalKey *</span>
+          <input
+            type="text"
+            value={String(action.modalKey ?? '')}
+            onChange={e => onChangeAction({ ...action, modalKey: e.target.value })}
+            style={{ ...inputStyle, width: '100%' }}
+            placeholder="e.g. checkin, daily_rewards"
+          />
+        </div>
+      )}
+
+      {currentType === 'api' && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          <div style={{ ...fieldGroupStyle, flex: '0 0 80px' }}>
+            <span style={labelStyle}>method *</span>
+            <select
+              value={String(action.method ?? 'POST')}
+              onChange={e => onChangeAction({ ...action, method: e.target.value })}
+              style={{ ...selectStyle, width: '100%' }}
+            >
+              {['POST', 'PUT', 'PATCH', 'DELETE'].map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{ ...fieldGroupStyle, flex: '2 1 180px' }}>
+            <span style={labelStyle}>endpoint *</span>
+            <input
+              type="text"
+              value={String(action.endpoint ?? '')}
+              onChange={e => onChangeAction({ ...action, endpoint: e.target.value })}
+              style={{ ...inputStyle, width: '100%' }}
+              placeholder="/v1/commands"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionActionsEditor({
+  actions,
+  onChange,
+}: {
+  actions: Record<string, Record<string, unknown>>;
+  onChange: (a: Record<string, Record<string, unknown>>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [newKey, setNewKey] = useState('');
+  const [newType, setNewType] = useState<EditableActionType>('navigate');
+  const [addError, setAddError] = useState('');
+
+  const entries = Object.entries(actions);
+
+  const updateAction = (key: string, a: Record<string, unknown>) =>
+    onChange({ ...actions, [key]: a });
+
+  const removeAction = (key: string) => {
+    const next = { ...actions };
+    delete next[key];
+    onChange(next);
+  };
+
+  const renameAction = (oldKey: string, nextKey: string) => {
+    const trimmed = nextKey.trim();
+    if (!trimmed || trimmed === oldKey || actions[trimmed]) return;
+    const next: Record<string, Record<string, unknown>> = {};
+    for (const [k, v] of entries) next[k === oldKey ? trimmed : k] = v;
+    onChange(next);
+  };
+
+  const addAction = () => {
+    const trimmed = newKey.trim();
+    if (!trimmed) { setAddError('Key is required'); return; }
+    if (actions[trimmed]) { setAddError('Key already exists'); return; }
+    onChange({ ...actions, [trimmed]: newActionForType(newType) });
+    setNewKey('');
+    setAddError('');
+    setOpen(true);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setOpen(o => !o)}>
+        <button
+          type="button"
+          style={{ background: 'none', border: 'none', color: entries.length > 0 ? '#a78bfa' : '#555', cursor: 'pointer', fontSize: 10, padding: '0 2px', flexShrink: 0 }}
+        >
+          {open ? '▼' : '▶'}
+        </button>
+        <span style={{ ...labelStyle, color: entries.length > 0 ? '#a78bfa' : '#666' }}>
+          actions {entries.length > 0 ? `(${entries.length})` : ''}
+        </span>
+        {entries.length > 0 && !open && (
+          <span style={{ fontSize: 9, color: '#555', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1 }}>
+            {entries.map(([k]) => k).join(', ')}
+          </span>
+        )}
+      </div>
+
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 14, marginTop: 6 }}>
+          {entries.length === 0 && (
+            <div style={{ fontSize: 10, color: '#555', fontStyle: 'italic', padding: '2px 0' }}>
+              No actions defined — add one below
+            </div>
+          )}
+
+          {entries.map(([key, action]) => (
+            <ActionEntryEditor
+              key={key}
+              actionKey={key}
+              action={action}
+              onChangeKey={renameAction}
+              onChangeAction={a => updateAction(key, a)}
+              onRemove={() => removeAction(key)}
+            />
+          ))}
+
+          <div style={{ ...entryCardStyle, border: '1px dashed #2a2a4e' }}>
+            <div style={{ fontSize: 9, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 5 }}>
+              Add Action
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, alignItems: 'flex-end' }}>
+              <div style={{ ...fieldGroupStyle, flex: '2 1 120px' }}>
+                <span style={labelStyle}>key *</span>
+                <input
+                  type="text"
+                  value={newKey}
+                  onChange={e => { setNewKey(e.target.value); setAddError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') addAction(); }}
+                  style={{ ...inputStyle, width: '100%' }}
+                  placeholder="e.g. primary_cta"
+                />
+              </div>
+              <div style={{ ...fieldGroupStyle, flex: '1 1 100px' }}>
+                <span style={labelStyle}>type *</span>
+                <select
+                  value={newType}
+                  onChange={e => setNewType(e.target.value as EditableActionType)}
+                  style={{ ...selectStyle, width: '100%' }}
+                >
+                  {EDITABLE_ACTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <button
+                type="button"
+                style={{ ...addButtonStyle, alignSelf: 'flex-end' as const, flexShrink: 0 }}
+                onClick={addAction}
+              >+ Add</button>
+            </div>
+            {addError && (
+              <span style={{ fontSize: 9, color: '#f87171', marginTop: 3, display: 'block' }}>{addError}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SectionEditor({
   sections,
   onChange,
@@ -2258,8 +2523,11 @@ function SectionEditor({
         const missingProps = sectionErrors.get(idx) ?? [];
         const hasError = missingProps.length > 0;
 
+        const sectionActionKeys = Object.keys(section.actions ?? {});
+
         return (
-          <div key={idx} style={{
+          <SectionActionsContext.Provider key={idx} value={sectionActionKeys}>
+          <div style={{
             ...entryCardStyle,
             opacity: hidden ? 0.55 : 1,
             border: hasError
@@ -2391,6 +2659,11 @@ function SectionEditor({
                   />
                 </div>
 
+                <SectionActionsEditor
+                  actions={section.actions ?? {}}
+                  onChange={a => update(idx, { actions: Object.keys(a).length > 0 ? a : undefined })}
+                />
+
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={labelStyle}>richRequirements</span>
@@ -2425,6 +2698,7 @@ function SectionEditor({
               </div>
             )}
           </div>
+          </SectionActionsContext.Provider>
         );
       })}
       <button type="button" style={addButtonStyle} onClick={add}>+ Add Section</button>
