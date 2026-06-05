@@ -9,9 +9,9 @@ import type { PowerRef } from '@derp/shared';
 import type { UiIntent } from '../../../../../services/api';
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../../features/powers/powerUtils';
 
-/** Stable key for a PowerRef — prefers p.key, falls back to p.powerType (legacy inline). */
+/** Stable key for a PowerRef — prefers p.key, then p.powerType, then p.effectDefId (full legacy compat). */
 function powerKey(p: PowerRef): string {
-  return p.key ?? p.powerType ?? 'unknown';
+  return p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
 }
 
 function powerValueLabel(p: PowerRef): string {

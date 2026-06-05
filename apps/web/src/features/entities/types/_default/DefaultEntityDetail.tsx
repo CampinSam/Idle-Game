@@ -584,7 +584,7 @@ function EntityUniquePowerPanel({
   const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
     const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
     for (const p of powers) {
-      const k = p.key ?? p.powerType ?? 'unknown';
+      const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
       const entry = storedUsages[k];
       if (entry && entry.lastUsedUtcDay === today) {
         result[k] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
@@ -632,7 +632,7 @@ function EntityUniquePowerPanel({
     <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col gap-[6px] shrink-0">
       <div className="text-[9px] font-black tracking-[0.8px] text-[#fde68a]/70 uppercase">Unique NFT Powers</div>
       {powers.map((p) => {
-        const k = p.key ?? p.powerType ?? 'unknown';
+        const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
         const usage = usageState[k];
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
@@ -677,7 +677,7 @@ function EntityUniquePowerPanel({
                   <button
                     type="button"
                     disabled={!!triggering}
-                    onClick={() => handleTrigger(p.key ?? p.powerType ?? 'unknown')}
+                    onClick={() => handleTrigger(p.key ?? p.powerType ?? p.effectDefId ?? 'unknown')}
                     className="px-2 py-[2px] rounded text-[8px] font-extrabold tracking-[0.04em] cursor-pointer transition-[filter] hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F59E0B]/50"
                     style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.7), rgba(245,158,11,0.5))', color: '#fde68a' }}
                   >

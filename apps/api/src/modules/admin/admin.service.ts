@@ -1177,6 +1177,7 @@ export class AdminService {
       telemetryDef: (this.prisma as any).telemetryDef,
       gameDefinition: (this.prisma as any).gameDefinition,
       cryptoRateConfig: (this.prisma as any).cryptoRateConfig,
+      powerDef: (this.prisma as any).powerDef,
     };
 
     if (!models[table]) {

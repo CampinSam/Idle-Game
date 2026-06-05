@@ -65,7 +65,7 @@ function UniquePowerPanel({
   const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
     const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
     for (const p of powers) {
-      const k = p.key ?? p.powerType ?? 'unknown';
+      const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
       const entry = storedUsages[k];
       if (entry && entry.lastUsedUtcDay === today) {
         result[k] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
@@ -117,7 +117,7 @@ function UniquePowerPanel({
     >
       <div className="text-[9px] font-black tracking-[0.8px] text-[#fde68a]/70 uppercase">Unique Powers</div>
       {powers.map((p) => {
-        const k = p.key ?? p.powerType ?? 'unknown';
+        const k = p.key ?? p.powerType ?? p.effectDefId ?? 'unknown';
         const usage = usageState[k];
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
@@ -142,7 +142,7 @@ function UniquePowerPanel({
               <button
                 className="w-full flex flex-col gap-[2px] bg-gradient-to-r from-[#7C3AED]/30 to-[#F59E0B]/20 hover:from-[#7C3AED]/50 hover:to-[#F59E0B]/35 border border-[#F59E0B]/30 rounded px-2 py-1 cursor-pointer transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!!triggering}
-                onClick={(e) => handleTrigger(e, p.key ?? p.powerType ?? 'unknown')}
+                onClick={(e) => handleTrigger(e, p.key ?? p.powerType ?? p.effectDefId ?? 'unknown')}
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-[9px] font-bold text-[#fde68a] truncate">{label}</span>
