@@ -52,6 +52,7 @@ export class BootstrapService implements OnModuleInit {
   async onModuleInit() {
     if (process.env.NODE_ENV !== 'production') {
       await this.runStep('seedDevAdmin', () => this.seedDevAdmin());
+      await this.runStep('seedDevTestPlayer', () => this.seedDevTestPlayer());
     }
     await this.runStep('seedTickRateIntervals', () => this.seedTickRateIntervals());
     await this.runStep('seedNftCollections', () => this.seedNftCollections());
@@ -375,6 +376,25 @@ export class BootstrapService implements OnModuleInit {
       },
     });
     this.logger.log(`Dev admin account created: ${DEV_USERNAME}`);
+  }
+
+  private async seedDevTestPlayer() {
+    const DEV_EMAIL = 'test@derp.dev';
+    const DEV_PASSWORD = 'Derp1234!';
+    const DEV_USERNAME = 'testplayer';
+
+    const existing = await this.prisma.user.findUnique({ where: { email: DEV_EMAIL } });
+    if (existing) return;
+
+    const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
+    await this.prisma.user.create({
+      data: {
+        email: DEV_EMAIL,
+        username: DEV_USERNAME,
+        passwordHash,
+      },
+    });
+    this.logger.log(`Dev test player account created: ${DEV_EMAIL}`);
   }
 
   private async seedTickRateIntervals() {
