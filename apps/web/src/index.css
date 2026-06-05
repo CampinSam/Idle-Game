@@ -1756,7 +1756,7 @@ input:focus {
 .top-bar {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   gap: 6px;
   padding: 9px;
   max-width: 520px;
@@ -1773,7 +1773,7 @@ input:focus {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
 }
 .top-bar-main-row {
   display: flex;
