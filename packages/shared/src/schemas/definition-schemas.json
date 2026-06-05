@@ -4465,17 +4465,20 @@
     }
   },
   "powerRefSchema": {
-    "description": "PowerRef is embedded in entity/location definition rules.uniques powers arrays. References a PowerDef by powerDefId with optional per-ref overrides.",
+    "description": "PowerRef is embedded in entity/location definition rules.uniques powers arrays. Can reference a PowerDef (preferred) or define an inline power (legacy fallback). powerDefId is optional; inline powers must carry powerType directly.",
     "schema": {
-      "powerDefId": { "type": "string", "description": "FK → PowerDef.id" },
-      "name": { "type": "string", "description": "Display name (copied from PowerDef at seed time, shown in UI)" },
-      "key": { "type": "string", "description": "Stable key for usage tracking in LocationPowerUsage/EntityPowerUsage (e.g. tick_boost)" },
-      "value": { "type": "number", "optional": true, "description": "Overrides PowerDef.defaultValue" },
+      "powerDefId": { "type": "string", "optional": true, "description": "FK → PowerDef.id. When present, the PowerDef supplies defaults for all other fields. Preferred form." },
+      "name": { "type": "string", "description": "Display name shown to players (copied from PowerDef at seed time for powerDefId refs)" },
+      "key": { "type": "string", "optional": true, "description": "Stable key for usage tracking in LocationPowerUsage/EntityPowerUsage (e.g. tick_boost). Used for powerDefId-backed refs." },
+      "powerType": { "type": "string", "optional": true, "description": "Inline-only: power type when no powerDefId is provided (e.g. tick_speed_boost, tick_boost). Omit for powerDefId refs — resolved from the PowerDef." },
+      "effectDefId": { "type": "string", "optional": true, "description": "Inline-only: FK → EffectDef.id for effect_backed inline powers." },
+      "effectOverrides": { "type": "object", "optional": true, "description": "Inline-only: EffectDef override map passed directly to the effect resolver." },
+      "value": { "type": "number", "optional": true, "description": "Overrides PowerDef.defaultValue (or the inline value for legacy powers)" },
       "valueMode": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultValueMode" },
       "durationMinutes": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDurationMinutes" },
       "dailyLimit": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDailyLimit" },
-      "scope": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultScope" },
-      "selection": { "type": "object", "optional": true, "description": "Overrides PowerDef.selection" }
+      "scope": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultScope. Derived into EffectSelection.scope when no explicit selection is provided." },
+      "selection": { "type": "object", "optional": true, "description": "Full EffectSelection override { scope, agg, filter? }. When absent, derived from scope field." }
     }
   },
   "locationDefinitionUniques": {

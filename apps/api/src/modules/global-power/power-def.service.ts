@@ -113,9 +113,12 @@ export class PowerDefService {
     if (powerRef.powerDefId) {
       def = await this.prisma.powerDef.findUnique({ where: { id: powerRef.powerDefId } });
       if (!def) throw new NotFoundException(`PowerDef "${powerRef.powerDefId}" not found`);
+      if (!def.enabled) throw new BadRequestException(`PowerDef "${powerRef.powerDefId}" is disabled`);
     }
 
-    const powerType: string = def?.powerType ?? powerRef.powerType ?? 'tick_speed_boost';
+    // Normalise tick_boost → tick_speed_boost for backward compatibility
+    const rawType: string = def?.powerType ?? powerRef.powerType ?? 'tick_speed_boost';
+    const powerType: string = rawType === 'tick_boost' ? 'tick_speed_boost' : rawType;
     const effectDefId: string | null = powerRef.effectDefId !== undefined
       ? (powerRef.effectDefId ?? null)
       : (def?.effectDefId ?? null);

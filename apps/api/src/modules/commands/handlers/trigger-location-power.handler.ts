@@ -64,7 +64,12 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     }
 
     const powers: any[] = uniqueEntry.powers || [];
-    const powerRef = powers.find((p: any) => p.key === powerKey);
+    // Support both new PowerRef format (key field) and legacy inline format (powerType field)
+    const powerRef = powers.find((p: any) =>
+      p.key === powerKey ||
+      p.powerType === powerKey ||
+      (powerKey === 'tick_boost' && (p.key === 'tick_speed_boost' || p.powerType === 'tick_speed_boost')),
+    );
 
     if (!powerRef) {
       throw new BadRequestException(`Power "${powerKey}" not found for this location`);
@@ -100,13 +105,18 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       throw new BadRequestException(`Power "${powerKey}" has no effectDefId defined. Non-tick powers must provide effectDefId.`);
     }
 
+    // Derive a selection from resolved scope when no explicit selection is provided.
+    // This ensures scope:'player' / 'entity' / 'location' flows into GlobalActivePower
+    // rather than silently defaulting to global inside createPower().
+    const selection = resolved.selection ?? { scope: resolved.scope, agg: 'any' };
+
     await this.globalPowerService.triggerPower({
       label: `${locationName} — ${resolved.name}`,
       effectDefId: isTickBoost ? null : resolved.effectDefId,
       effectOverrides: isTickBoost
         ? { value: resolved.value, valueMode: resolved.valueMode }
         : resolved.effectOverrides,
-      selection: resolved.selection,
+      selection,
       durationMinutes: resolved.durationMinutes,
       triggeredByUserId: ctx.userId,
     });
