@@ -1902,7 +1902,7 @@ input:focus {
 }
 .top-bar-name {
   font-weight: 700;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   color: #e2d9ff;
   white-space: nowrap;
@@ -1923,6 +1923,7 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 2px;
+  line-height: 1;
 }
 .top-bar-bell {
   position: relative;
