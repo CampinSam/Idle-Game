@@ -167,12 +167,20 @@ export interface EffectTargetContext {
   rarity?: string;
   traits?: string[];
   /**
-   * The concrete target ID (entityId or locationId) for the current resolution.
-   * Used by matchesSelection() to enforce filter.entityId and filter.locationId
-   * identity constraints from PowerRef/PowerDef-scoped selections.
-   * Populated automatically by resolveForTarget(); never persisted.
+   * Explicit entity identity for the current resolution target.
+   * Populated by resolveForTarget() when targetType=ENTITY.
+   * Enables matchesSelection() to enforce filter.entityId constraints.
    */
-  targetId?: string;
+  entityId?: string;
+  /**
+   * LocationInstance ID the entity is currently assigned to.
+   * Populated by resolveForTarget() for ENTITY targets (via LocationWorkerAssignment lookup)
+   * and directly for LOCATION targets (targetId IS the locationId).
+   * Enables matchesSelection() to enforce filter.locationId constraints so that
+   * location-scoped powers (stored as scope:'entity'+filter.locationId) correctly
+   * apply only to entities at the specified location.
+   */
+  locationId?: string;
 }
 
 export interface EffectDefData {

@@ -60,15 +60,15 @@ export function matchesSelection(
     return false;
   }
 
-  // Identity filter: filter.userId is checked against the resolution userId (always available).
-  // filter.entityId / filter.locationId are checked against context.targetId when context is present;
-  // when context is absent the check is skipped (safe default — effect applies).
+  // Identity filter: filter.userId is always checked against the resolution userId.
+  // filter.entityId / filter.locationId are checked against context.entityId / context.locationId
+  // when context is present; absent context skips the check (safe default — effect applies).
   if (filter) {
     if (filter.userId && filter.userId !== userId) return false;
 
     if (context) {
-      if (filter.entityId && context.targetId !== filter.entityId) return false;
-      if (filter.locationId && context.targetId !== filter.locationId) return false;
+      if (filter.entityId && context.entityId !== filter.entityId) return false;
+      if (filter.locationId && context.locationId !== filter.locationId) return false;
     }
 
     if (context) {

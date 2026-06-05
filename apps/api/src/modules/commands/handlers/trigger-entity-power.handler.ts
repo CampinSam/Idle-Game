@@ -119,21 +119,30 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     } else if (resolved.selection) {
       selection = resolved.selection;
     } else {
+      // All non-global scoped powers ultimately target entities (the effect resolver evaluates
+      // against entity rows). Map scope semantics accordingly:
       switch (resolved.scope) {
         case 'player':
-          // 'player' scope from an entity trigger means "apply to entities owned by this user".
-          // Use entity scope + userId filter so matchesSelection() gates on entity targetType
-          // (not player targetType) while still restricting to the triggering user's entities.
+          // Apply to all entities owned by the triggering user.
           selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId } };
           break;
         case 'entity':
-          // Constrain to the exact triggering entity via entityId identity filter.
+          // Apply to only the exact triggering entity.
           selection = { scope: 'entity', agg: 'any', filter: { entityId } };
           break;
-        case 'location':
-          // Location context not available in the entity handler; fall back to global.
-          selection = { scope: 'global', agg: 'any' };
+        case 'location': {
+          // Apply to entities at the location this entity is currently assigned to.
+          // resolveForTarget() populates context.locationId from LocationWorkerAssignment
+          // so matchesSelection() can gate on it.
+          const assignment = await (this.prisma as any).locationWorkerAssignment.findFirst({
+            where: { entityId },
+            select: { locationId: true },
+          });
+          selection = assignment?.locationId
+            ? { scope: 'entity', agg: 'any', filter: { locationId: assignment.locationId } }
+            : { scope: 'global', agg: 'any' }; // entity has no location — fall back to global
           break;
+        }
         default:
           selection = { scope: 'global', agg: 'any' };
       }

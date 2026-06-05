@@ -123,16 +123,23 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     } else if (resolved.selection) {
       selection = resolved.selection;
     } else {
+      // All non-global scoped powers ultimately target entities (the effect resolver evaluates
+      // against entity rows). Map scope semantics accordingly:
       switch (resolved.scope) {
         case 'player':
-          selection = { scope: 'player', agg: 'any', filter: { userId: ctx.userId } };
+          // Apply to all entities owned by the triggering user.
+          selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId } };
           break;
         case 'entity':
-          // Entity context not available in the location handler; use player filter.
-          selection = { scope: 'player', agg: 'any', filter: { userId: ctx.userId } };
+          // Apply to entities at this location owned by the triggering user (best-contextual
+          // derivation from location trigger — no specific entityId is known at trigger time).
+          selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId, locationId } };
           break;
         case 'location':
-          selection = { scope: 'location', agg: 'any', filter: { locationId } };
+          // Apply to all entities currently assigned to this location.
+          // resolveForTarget() populates context.locationId from LocationWorkerAssignment
+          // so matchesSelection() can gate on filter.locationId correctly.
+          selection = { scope: 'entity', agg: 'any', filter: { locationId } };
           break;
         default:
           selection = { scope: 'global', agg: 'any' };

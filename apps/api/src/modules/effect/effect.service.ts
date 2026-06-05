@@ -361,11 +361,29 @@ export class EffectService {
       : [];
 
     const passiveRows = await this.getPassiveEffectsFromEquipment(userId, targetType, targetId, tx);
-    // Merge targetId into context so matchesSelection() can enforce filter.entityId /
-    // filter.locationId identity constraints from PowerRef-scoped selections.
-    const contextWithId: EffectTargetContext = targetContext
-      ? { ...targetContext, targetId }
-      : { targetId };
+
+    // Build a context that includes explicit entityId/locationId so matchesSelection()
+    // can enforce filter.entityId / filter.locationId constraints from scoped PowerRefs.
+    // For ENTITY targets: fetch the entity's currently assigned LocationInstance so that
+    // location-scoped powers (stored as scope:'entity' + filter.locationId) correctly gate
+    // on whether the entity is at the target location.
+    let entityId: string | undefined;
+    let resolvedLocationId: string | undefined;
+    if (targetType === EffectTargetType.ENTITY) {
+      entityId = targetId;
+      const assignment = await (this.prisma as any).locationWorkerAssignment.findFirst({
+        where: { entityId: targetId },
+        select: { locationId: true },
+      });
+      resolvedLocationId = assignment?.locationId ?? undefined;
+    } else if (targetType === EffectTargetType.LOCATION) {
+      resolvedLocationId = targetId;
+    }
+    const contextWithId: EffectTargetContext = {
+      ...targetContext,
+      entityId,
+      locationId: resolvedLocationId,
+    };
     const globalRows = await this.resolveGlobalPowerRows(category, userId, targetType, contextWithId);
     // Note: resolveGlobalPowerRows calls getGlobalPowerRows(userId, targetType) internally,
     // so scope + agg:'self' filtering is applied at the base layer.
