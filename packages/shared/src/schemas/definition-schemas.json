@@ -4447,8 +4447,39 @@
       }
     }
   },
+  "powerDefSchema": {
+    "description": "Reusable power blueprint stored in the power_defs table. Referenced by PowerRef objects in entity/location definition rules.uniques maps.",
+    "schema": {
+      "id": { "type": "string", "description": "Stable slug primary key (e.g. global_tick_boost). Lowercase snake_case." },
+      "name": { "type": "string", "description": "Human-readable display name shown to players" },
+      "description": { "type": "string", "optional": true, "description": "What this power does" },
+      "powerType": { "type": "string", "description": "tick_speed_boost | effect_backed" },
+      "effectDefId": { "type": "string", "optional": true, "description": "FK → EffectDef.id. Required for effect_backed powers." },
+      "defaultValue": { "type": "number", "default": 50, "description": "Default numeric modifier value" },
+      "defaultValueMode": { "type": "string", "default": "percent_add", "description": "flat_add | percent_add | multiplier | flat_set | bps | flat_grant" },
+      "defaultDurationMinutes": { "type": "integer", "default": 60, "description": "Default duration in minutes" },
+      "defaultDailyLimit": { "type": "integer", "default": 1, "description": "Default max activations per UTC day" },
+      "defaultScope": { "type": "string", "default": "global", "description": "global | player | entity | location" },
+      "selection": { "type": "object", "optional": true, "description": "Default EffectSelection JSON { scope, agg, filter? }" },
+      "enabled": { "type": "boolean", "default": true, "description": "Whether this power can be activated" }
+    }
+  },
+  "powerRefSchema": {
+    "description": "PowerRef is embedded in entity/location definition rules.uniques powers arrays. References a PowerDef by powerDefId with optional per-ref overrides.",
+    "schema": {
+      "powerDefId": { "type": "string", "description": "FK → PowerDef.id" },
+      "name": { "type": "string", "description": "Display name (copied from PowerDef at seed time, shown in UI)" },
+      "key": { "type": "string", "description": "Stable key for usage tracking in LocationPowerUsage/EntityPowerUsage (e.g. tick_boost)" },
+      "value": { "type": "number", "optional": true, "description": "Overrides PowerDef.defaultValue" },
+      "valueMode": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultValueMode" },
+      "durationMinutes": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDurationMinutes" },
+      "dailyLimit": { "type": "integer", "optional": true, "description": "Overrides PowerDef.defaultDailyLimit" },
+      "scope": { "type": "string", "optional": true, "description": "Overrides PowerDef.defaultScope" },
+      "selection": { "type": "object", "optional": true, "description": "Overrides PowerDef.selection" }
+    }
+  },
   "locationDefinitionUniques": {
-    "description": "The rules JSON on LocationDefinition supports an optional uniques map keyed by NFT asset ID string. Each entry defines per-NFT custom powers that the owner can trigger once per UTC day.",
+    "description": "The rules JSON on LocationDefinition supports an optional uniques map keyed by NFT asset ID string. Each entry defines per-NFT custom powers using the PowerRef format.",
     "schema": {
       "uniques": {
         "type": "object",
@@ -4456,23 +4487,15 @@
         "values": {
           "powers": {
             "type": "array",
+            "description": "Array of PowerRef objects. See powerRefSchema for field reference.",
             "items": {
-              "powerType": {
-                "type": "string",
-                "description": "tick_speed_boost | keeper_xp_boost | entity_xp_boost | mission_power_boost | mission_duration_reduction | crafting_duration_reduction | building_build_duration_reduction | building_upgrade_duration_reduction | injury_recovery_boost. Legacy tick_boost is remapped to tick_speed_boost at trigger time."
-              },
-              "value": {
-                "type": "number",
-                "description": "For tick_speed_boost: additive percent (50 = +50%). For others: same as GlobalActivePower value."
-              },
-              "durationMinutes": {
-                "type": "integer",
-                "description": "Duration in whole minutes"
-              },
-              "dailyLimit": {
-                "type": "integer",
-                "description": "Maximum triggers per UTC day (typically 1)"
-              }
+              "powerDefId": { "type": "string", "description": "FK → PowerDef.id" },
+              "name": { "type": "string", "description": "Display name" },
+              "key": { "type": "string", "description": "Stable key for usage tracking" },
+              "value": { "type": "number", "optional": true },
+              "durationMinutes": { "type": "integer", "optional": true },
+              "dailyLimit": { "type": "integer", "optional": true },
+              "scope": { "type": "string", "optional": true }
             }
           }
         }
@@ -4504,7 +4527,8 @@
     "SoundMapping",
     "HomeBannerDef",
     "GlobalActivePower",
-    "LocationPowerUsage"
+    "LocationPowerUsage",
+    "PowerDef"
   ],
   "crossReferences": {
     "description": "Foreign key relationships between definition tables",
@@ -4528,6 +4552,10 @@
       {
         "from": "MissionDef.missionCategoryDefId",
         "to": "MissionCategoryDef.id"
+      },
+      {
+        "from": "PowerDef.effectDefId",
+        "to": "EffectDef.id"
       },
       {
         "from": "ActiveEffect.effectDefId",

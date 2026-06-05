@@ -3,6 +3,7 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildLocationPatches } from '../patch-builder';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
+import { PowerDefService } from '../../global-power/power-def.service';
 
 function getUtcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -13,6 +14,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
   constructor(
     private prisma: PrismaService,
     private globalPowerService: GlobalPowerService,
+    private powerDefService: PowerDefService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -62,16 +64,16 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     }
 
     const powers: any[] = uniqueEntry.powers || [];
-    const power = powers.find((p: any) => p.powerType === powerKey || p.effectDefId === powerKey);
+    const powerRef = powers.find((p: any) => p.key === powerKey);
 
-    if (!power) {
+    if (!powerRef) {
       throw new BadRequestException(`Power "${powerKey}" not found for this location`);
     }
 
+    const resolved = await this.powerDefService.resolve(powerRef);
+
     const today = getUtcDay(new Date());
-    const dailyLimit: number = typeof power.dailyLimit === 'number' && power.dailyLimit > 0
-      ? power.dailyLimit
-      : 1;
+    const dailyLimit: number = resolved.dailyLimit;
 
     // Daily limit check reads committed data via this.prisma (outside ctx.tx).
     // Concurrent invocations for the same user are prevented by the player lock.
@@ -91,32 +93,26 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       );
     }
 
-    const isTickBoost = power.powerType === 'tick_boost' || power.powerType === 'tick_speed_boost';
-    const percentBoost = typeof power.value === 'number' ? power.value : 50;
+    const isTickBoost = resolved.powerType === 'tick_speed_boost';
     const locationName = location.name || location.definition?.id || 'Unique Outpost';
 
-    if (!isTickBoost && !power.effectDefId) {
+    if (!isTickBoost && !resolved.effectDefId) {
       throw new BadRequestException(`Power "${powerKey}" has no effectDefId defined. Non-tick powers must provide effectDefId.`);
     }
 
     await this.globalPowerService.triggerPower({
-      label: isTickBoost
-        ? `${locationName} — Global Tick Boost`
-        : `${location.name || nftAssetId} — ${powerKey}`,
-      effectDefId: isTickBoost ? null : (power.effectDefId ?? null),
+      label: `${locationName} — ${resolved.name}`,
+      effectDefId: isTickBoost ? null : resolved.effectDefId,
       effectOverrides: isTickBoost
-        ? { value: percentBoost, valueMode: 'percent_add' }
-        : power.effectOverrides,
-      selection: power.selection ?? undefined,
-      durationMinutes: power.durationMinutes,
+        ? { value: resolved.value, valueMode: resolved.valueMode }
+        : resolved.effectOverrides,
+      selection: resolved.selection,
+      durationMinutes: resolved.durationMinutes,
       triggeredByUserId: ctx.userId,
     });
 
     // Record usage after successful activation. Ordering is intentional: if
-    // activation throws, usage is never incremented. If the usage write fails
-    // after a successful activation (rare), the power remains active and the
-    // counter is simply not tracked for this use — acceptable given idempotency
-    // keys prevent duplicate command invocations.
+    // activation throws, usage is never incremented.
     if (existingUsage && existingUsage.lastUsedUtcDay === today) {
       await (this.prisma as any).locationPowerUsage.update({
         where: {
@@ -138,10 +134,6 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       });
     }
 
-    // Read today's usage records to include in the patch so the client
-    // can update its locationPowerUsages store without an extra round-trip.
-    // Scoped to today only — same filter as bootstrap — to keep the patch
-    // payload small and avoid surfacing stale prior-day rows to the client.
     const updatedUsageRows = await (this.prisma as any).locationPowerUsage.findMany({
       where: { locationInstanceId: locationId, lastUsedUtcDay: today },
       select: { powerKey: true, usageCount: true, lastUsedUtcDay: true },
@@ -155,9 +147,9 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     pb.upsert('locationPowerUsage', locationId, usageMap);
     await buildLocationPatches(pb, ctx.tx, ctx.userId, locationId);
 
-    const toastMessage = power.powerType === 'tick_boost'
-      ? `⚡ Global Tick Boost activated! +${percentBoost}% world tick speed for ${power.durationMinutes} minutes!`
-      : `Power "${powerKey}" activated for ${power.durationMinutes} minutes!`;
+    const toastMessage = isTickBoost
+      ? `⚡ ${resolved.name} activated! +${resolved.value}% world tick speed for ${resolved.durationMinutes} minutes!`
+      : `${resolved.name} activated for ${resolved.durationMinutes} minutes!`;
 
     return {
       patches: pb.build(),

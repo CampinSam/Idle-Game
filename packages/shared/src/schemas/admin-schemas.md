@@ -255,6 +255,89 @@ Links an on-chain NFT collection to an EntityDefinition or LocationDefinition.
 
 ---
 
+## PowerDef
+
+Reusable power blueprints stored in the `power_defs` table. A `PowerDef` defines the default behavior of a power (type, value, duration, scope, daily limit). Entity and location definitions embed `PowerRef` objects that point at a `PowerDef` via `powerDefId` and can override any default field.
+
+### Admin Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /admin/power-defs` | List all power definitions |
+| `GET /admin/power-defs?enabled=true` | List only enabled power definitions |
+| `GET /admin/power-defs/:id` | Get a single power definition by ID |
+| `POST /admin/power-defs` | Create a new power definition |
+| `PUT /admin/power-defs/:id` | Update a power definition |
+| `DELETE /admin/power-defs/:id` | Delete a power definition |
+
+### POST /admin/power-defs body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | yes | Stable slug (e.g. `global_tick_boost`). Lowercase snake_case. |
+| name | string | yes | Human-readable display name |
+| description | string | no | What this power does |
+| powerType | string | yes | `tick_speed_boost` or `effect_backed` |
+| effectDefId | string | no | Required for `effect_backed` powers. FK → `EffectDef.id` |
+| defaultValue | number | no | Numeric modifier value (default 50) |
+| defaultValueMode | string | no | `flat_add`, `percent_add`, `multiplier`, `flat_set`, `bps`, `flat_grant` (default `percent_add`) |
+| defaultDurationMinutes | number | no | Duration in minutes (default 60) |
+| defaultDailyLimit | number | no | Max activations per UTC day (default 1) |
+| defaultScope | string | no | `global`, `player`, `entity`, or `location` (default `global`) |
+| selection | object | no | Optional default `EffectSelection` JSON `{ scope, agg, filter? }` |
+| enabled | boolean | no | Whether this power can be activated (default `true`) |
+
+### PowerDef fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Stable slug primary key |
+| name | string | Display name shown to players |
+| description | string? | Human-readable description |
+| powerType | string | `tick_speed_boost` \| `effect_backed` |
+| effectDefId | string? | FK → `EffectDef` (required for `effect_backed`) |
+| defaultValue | float | Default numeric value |
+| defaultValueMode | string | How the value is applied |
+| defaultDurationMinutes | int | Default duration in minutes |
+| defaultDailyLimit | int | Default max activations per UTC day |
+| defaultScope | string | Scope at which the power applies |
+| selection | JSON? | Default `EffectSelection` shape |
+| enabled | boolean | Whether the power can be activated |
+| createdAt | DateTime | Creation timestamp |
+| updatedAt | DateTime | Last update timestamp |
+
+### PowerRef (embedded in definition rules)
+
+A `PowerRef` is embedded inside entity/location definition `rules.uniques` maps. It references a `PowerDef` by `powerDefId` and may override any default field:
+
+```json
+{
+  "powerDefId": "global_tick_boost",
+  "name": "Global Tick Boost",
+  "key": "tick_boost",
+  "value": 50,
+  "durationMinutes": 60,
+  "dailyLimit": 1,
+  "scope": "global"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| powerDefId | string | yes | FK → `PowerDef.id` |
+| name | string | yes | Display name (copied from PowerDef at seed time) |
+| key | string | yes | Stable key for usage tracking (e.g. `tick_boost`). Matched against `powerKey` in `LocationPowerUsage`/`EntityPowerUsage`. |
+| value | number | no | Overrides `PowerDef.defaultValue` |
+| valueMode | string | no | Overrides `PowerDef.defaultValueMode` |
+| durationMinutes | number | no | Overrides `PowerDef.defaultDurationMinutes` |
+| dailyLimit | number | no | Overrides `PowerDef.defaultDailyLimit` |
+| scope | string | no | Overrides `PowerDef.defaultScope` |
+| selection | object | no | Overrides `PowerDef.selection` |
+
+Resolution: `PowerDefService.resolve(powerRef)` merges PowerRef overrides on top of PowerDef defaults. Trigger handlers throw `BadRequestException` if the `powerDefId` on a `PowerRef` does not exist in `power_defs`.
+
+---
+
 ## Global Active Powers
 
 Time-limited server-side powers that apply globally to all players simultaneously. Created and cancelled by admins via the admin panel.
@@ -368,7 +451,7 @@ Triggers a unique power belonging to a specific NFT location. The caller must ow
 
 ## LocationDefinition `uniques` field
 
-The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers:
+The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers using the `PowerRef` format:
 
 ```json
 {
@@ -376,16 +459,13 @@ The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keye
     "CARDANO:policy123:asset456": {
       "powers": [
         {
-          "powerType": "tick_speed_boost",
+          "powerDefId": "global_tick_boost",
+          "name": "Global Tick Boost",
+          "key": "tick_boost",
           "value": 50,
           "durationMinutes": 60,
-          "dailyLimit": 1
-        },
-        {
-          "powerType": "entity_xp_boost",
-          "value": 25,
-          "durationMinutes": 120,
-          "dailyLimit": 1
+          "dailyLimit": 1,
+          "scope": "global"
         }
       ]
     }
@@ -393,9 +473,7 @@ The `rules` JSON on `LocationDefinition` supports an optional `uniques` map keye
 }
 ```
 
-**Power types:** `tick_speed_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
-
-For `tick_speed_boost` ("Global Tick Boost"), `value` is the additive percent increase (e.g. `50` = +50% world tick speed). Multiple concurrent boosts are summed additively. Legacy definitions using `tick_boost` as the powerType are automatically remapped to `tick_speed_boost` at trigger time. For all other power types, the same `powerType`/`value` semantics as `GlobalActivePower` apply.
+Each power entry is a `PowerRef` that references a `PowerDef` via `powerDefId`. The `key` field is used for daily-limit tracking in `LocationPowerUsage`. Optional override fields (`value`, `durationMinutes`, `dailyLimit`, `scope`, `valueMode`, `selection`) take precedence over the `PowerDef` defaults when the power is triggered. See the **PowerDef** section for the full `PowerRef` field reference.
 
 ---
 
@@ -434,7 +512,7 @@ Triggers a unique power belonging to a specific NFT entity. The caller must own 
 
 ## EntityDefinition `rules.uniques` field
 
-The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers that the entity owner can trigger once per UTC day:
+The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed by NFT asset ID string. Each entry defines per-NFT custom powers that the entity owner can trigger once per UTC day, using the `PowerRef` format:
 
 ```json
 {
@@ -442,16 +520,13 @@ The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed 
     "CARDANO:policy123:asset456": {
       "powers": [
         {
-          "powerType": "entity_xp_boost",
-          "value": 50,
-          "durationMinutes": 120,
-          "dailyLimit": 1
-        },
-        {
-          "powerType": "tick_speed_boost",
+          "powerDefId": "global_tick_boost",
+          "name": "Global Tick Boost",
+          "key": "tick_boost",
           "value": 25,
           "durationMinutes": 60,
-          "dailyLimit": 1
+          "dailyLimit": 1,
+          "scope": "global"
         }
       ]
     }
@@ -459,9 +534,7 @@ The `rules` JSON on `EntityDefinition` supports an optional `uniques` map keyed 
 }
 ```
 
-**Power types:** `tick_speed_boost` | `keeper_xp_boost` | `entity_xp_boost` | `mission_power_boost` | `mission_duration_reduction` | `crafting_duration_reduction` | `building_build_duration_reduction` | `building_upgrade_duration_reduction` | `injury_recovery_boost`
-
-These use the same `UniqueLocationPower` type as `LocationDefinition.rules.uniques`. The frontend entity detail panel renders a "Unique NFT Powers" section below the progression tabs for any entity with powers defined.
+Each power entry is a `PowerRef` (same shape as `LocationDefinition.rules.uniques`). The `key` field is used for daily-limit tracking in `EntityPowerUsage`. See the **PowerDef** section for the full `PowerRef` field reference. The frontend entity detail panel renders a "Unique NFT Powers" section below the progression tabs for any entity with powers defined.
 
 ---
 

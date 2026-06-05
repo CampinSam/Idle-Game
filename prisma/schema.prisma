@@ -1189,10 +1189,39 @@ model EffectDef {
   updatedAt     DateTime            @updatedAt
   activeEffects ActiveEffect[]
   globalPowers  GlobalActivePower[] @relation("GlobalActivePowerEffectDef")
+  powerDefs     PowerDef[]
 
   @@index([category])
   @@index([targetType])
   @@map("effect_defs")
+}
+
+/// Reusable power blueprint. Embedded PowerRef JSON in entity/location definitions
+/// references a PowerDef by powerDefId and may override individual fields.
+model PowerDef {
+  id                     String    @id
+  name                   String
+  description            String?
+  /// 'tick_speed_boost' | 'effect_backed'
+  powerType              String
+  /// FK → EffectDef; null for tick_speed_boost powers
+  effectDefId            String?
+  defaultValue           Float     @default(0)
+  defaultValueMode       String    @default("percent_add")
+  defaultDurationMinutes Int       @default(30)
+  defaultDailyLimit      Int       @default(1)
+  /// 'global' | 'player' | 'entity' | 'location'
+  defaultScope           String    @default("global")
+  /// Optional default EffectSelection JSON
+  selection              Json?
+  enabled                Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  effectDef              EffectDef? @relation(fields: [effectDefId], references: [id])
+
+  @@index([enabled])
+  @@index([powerType])
+  @@map("power_defs")
 }
 
 model ActiveEffect {

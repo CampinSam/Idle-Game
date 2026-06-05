@@ -25,7 +25,7 @@ import { api } from '../../../../services/api';
 import { useAppSelector } from '../../../../store';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../../tick';
 import { useNotifications } from '../../../../context/NotificationContext';
-import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown, powerLabel } from '../../../powers/powerUtils';
+import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../powers/powerUtils';
 
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
@@ -168,7 +168,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     if (!uniques) return [];
     const entry = uniques[nftAssetId];
     if (!entry) return [];
-    return (entry.powers as Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>) || [];
+    return (entry.powers as import('@derp/shared').PowerRef[]) || [];
   }, [entity]);
 
   const equippedBySlot = useMemo(() => {
@@ -571,7 +571,7 @@ function EntityUniquePowerPanel({
   powers,
 }: {
   entityId: string;
-  powers: Array<{ powerType: string; value: number; durationMinutes: number; dailyLimit: number }>;
+  powers: import('@derp/shared').PowerRef[];
 }) {
   const { execute } = useCommand();
   const { addTransientToast } = useNotifications();
@@ -584,20 +584,20 @@ function EntityUniquePowerPanel({
   const usageState = useMemo<Record<string, { usageCount: number; dailyLimit: number }>>(() => {
     const result: Record<string, { usageCount: number; dailyLimit: number }> = {};
     for (const p of powers) {
-      const entry = storedUsages[p.powerType];
+      const entry = storedUsages[p.key];
       if (entry && entry.lastUsedUtcDay === today) {
-        result[p.powerType] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
+        result[p.key] = { usageCount: entry.usageCount, dailyLimit: p.dailyLimit ?? 1 };
       }
     }
     return result;
   }, [storedUsages, powers, today]);
 
   const handleTrigger = useCallback(
-    async (powerType: string) => {
+    async (key: string) => {
       if (triggering) return;
-      setTriggering(powerType);
+      setTriggering(key);
       try {
-        const res = await execute('TriggerEntityPower', { entityId, powerKey: powerType });
+        const res = await execute('TriggerEntityPower', { entityId, powerKey: key });
         const toast = (res.ui as any[]).find((u) => u.type === 'toast');
         if (toast) {
           addTransientToast({
@@ -631,16 +631,17 @@ function EntityUniquePowerPanel({
     <div className="[background:linear-gradient(160deg,#1a1640_0%,#1e1850_100%)] border border-[rgba(139,92,246,0.2)] rounded-[14px] p-[10px] flex flex-col gap-[6px] shrink-0">
       <div className="text-[9px] font-black tracking-[0.8px] text-[#fde68a]/70 uppercase">Unique NFT Powers</div>
       {powers.map((p) => {
-        const usage = usageState[p.powerType];
+        const usage = usageState[p.key];
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
         const usageCount = usage?.usageCount ?? 0;
-        const label = powerLabel(p.powerType);
-        const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost';
+        const label = p.name;
+        const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
+          || p.powerDefId === 'global_tick_boost';
         const valueLabel = isPercent ? `+${p.value}% · ${p.durationMinutes}m` : `+${p.value} · ${p.durationMinutes}m`;
         const remaining = Math.max(0, limit - usageCount);
         return (
-          <div key={p.powerType}>
+          <div key={p.key}>
             {isAtLimit ? (
               <div className="flex items-center justify-between gap-1 bg-white/[0.04] rounded px-2 py-1.5">
                 <span className="text-[9px] font-bold text-white/40 truncate">{label}</span>
@@ -672,7 +673,7 @@ function EntityUniquePowerPanel({
                   <button
                     type="button"
                     disabled={!!triggering}
-                    onClick={() => handleTrigger(p.powerType)}
+                    onClick={() => handleTrigger(p.key)}
                     className="px-2 py-[2px] rounded text-[8px] font-extrabold tracking-[0.04em] cursor-pointer transition-[filter] hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F59E0B]/50"
                     style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.7), rgba(245,158,11,0.5))', color: '#fde68a' }}
                   >

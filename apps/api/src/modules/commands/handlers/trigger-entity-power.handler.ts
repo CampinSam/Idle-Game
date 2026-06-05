@@ -3,6 +3,7 @@ import { CommandHandler, CommandContext, CommandHandlerResult } from '../command
 import { PatchBuilder, buildEntityPatch } from '../patch-builder';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GlobalPowerService } from '../../global-power/global-power.service';
+import { PowerDefService } from '../../global-power/power-def.service';
 
 function getUtcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -13,6 +14,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
   constructor(
     private prisma: PrismaService,
     private globalPowerService: GlobalPowerService,
+    private powerDefService: PowerDefService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -59,16 +61,16 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     }
 
     const powers: any[] = uniqueEntry.powers || [];
-    const power = powers.find((p: any) => p.powerType === powerKey || p.effectDefId === powerKey);
+    const powerRef = powers.find((p: any) => p.key === powerKey);
 
-    if (!power) {
+    if (!powerRef) {
       throw new BadRequestException(`Power "${powerKey}" not found for this entity`);
     }
 
+    const resolved = await this.powerDefService.resolve(powerRef);
+
     const today = getUtcDay(new Date());
-    const dailyLimit: number = typeof power.dailyLimit === 'number' && power.dailyLimit > 0
-      ? power.dailyLimit
-      : 1;
+    const dailyLimit: number = resolved.dailyLimit;
 
     const existingUsage = await (this.prisma as any).entityPowerUsage.findUnique({
       where: {
@@ -88,23 +90,22 @@ export class TriggerEntityPowerHandler implements CommandHandler {
 
     const entityName = (entity.display as any)?.name || entity.speciesId || 'Entity';
 
-    const isTickBoost = power.powerType === 'tick_boost' || power.powerType === 'tick_speed_boost';
-    const percentBoost = typeof power.value === 'number' ? power.value : 50;
+    const isTickBoost = resolved.powerType === 'tick_speed_boost';
 
-    if (!isTickBoost && !power.effectDefId) {
+    if (!isTickBoost && !resolved.effectDefId) {
       throw new BadRequestException(`Power "${powerKey}" has no effectDefId defined. Non-tick powers must provide effectDefId.`);
     }
 
     await this.globalPowerService.triggerPower({
       label: isTickBoost
-        ? `${entityName} — Global Tick Boost`
-        : `${entityName} — ${powerKey}`,
-      effectDefId: isTickBoost ? null : (power.effectDefId ?? null),
+        ? `${entityName} — ${resolved.name}`
+        : `${entityName} — ${resolved.name}`,
+      effectDefId: isTickBoost ? null : resolved.effectDefId,
       effectOverrides: isTickBoost
-        ? { value: percentBoost, valueMode: 'percent_add' }
-        : power.effectOverrides,
-      selection: power.selection ?? undefined,
-      durationMinutes: power.durationMinutes,
+        ? { value: resolved.value, valueMode: resolved.valueMode }
+        : resolved.effectOverrides,
+      selection: resolved.selection,
+      durationMinutes: resolved.durationMinutes,
       triggeredByUserId: ctx.userId,
     });
 
@@ -131,7 +132,6 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     const pb = new PatchBuilder();
     await buildEntityPatch(pb, ctx.tx, entityId);
 
-
     const allUsagesForEntity = await (this.prisma as any).entityPowerUsage.findMany({
       where: { entityId, lastUsedUtcDay: today },
       select: { powerKey: true, usageCount: true, lastUsedUtcDay: true },
@@ -142,9 +142,9 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     }
     pb.upsert('entityPowerUsage', entityId, usageMap);
 
-    const toastMessage = power.powerType === 'tick_boost'
-      ? `⚡ Global Tick Boost activated! +${percentBoost}% world tick speed for ${power.durationMinutes} minutes!`
-      : `Power "${powerKey}" activated for ${power.durationMinutes} minutes!`;
+    const toastMessage = isTickBoost
+      ? `⚡ ${resolved.name} activated! +${resolved.value}% world tick speed for ${resolved.durationMinutes} minutes!`
+      : `${resolved.name} activated for ${resolved.durationMinutes} minutes!`;
 
     return {
       patches: pb.build(),

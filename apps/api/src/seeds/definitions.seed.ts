@@ -299,6 +299,7 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
+  await seedPowerDefs(prisma);
   await seedNftUniquePowers(prisma);
 
   logger.log('Definition seeding complete');
@@ -307,9 +308,8 @@ export async function seedDefinitions(prisma: any) {
 const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
 
 /**
- * Build a uniques map for NFT asset IDs. All seeded powers use tick_speed_boost
- * (effectDefId=null) for simplicity. Non-tick powers should be configured
- * manually via the admin panel with a proper effectDefId.
+ * Build a uniques map for NFT asset IDs using the PowerRef shape.
+ * All seeded powers reference the 'global_tick_boost' PowerDef.
  */
 function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry> {
   const uniques: Record<string, UniqueLocationEntry> = {};
@@ -317,10 +317,61 @@ function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry
     const id = assetIds[i];
     const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
     uniques[id] = {
-      powers: [{ powerType: 'tick_speed_boost', value, durationMinutes: 60, dailyLimit: 1 }],
+      powers: [{
+        powerDefId: 'global_tick_boost',
+        name: 'Global Tick Boost',
+        key: 'tick_speed_boost',
+        value,
+        durationMinutes: 60,
+        dailyLimit: 1,
+      }],
     };
   }
   return uniques;
+}
+
+/**
+ * Seed the canonical PowerDef blueprints. Runs before seedNftUniquePowers so
+ * that the PowerRef entries referencing 'global_tick_boost' resolve correctly.
+ */
+async function seedPowerDefs(prisma: any) {
+  const powerDefs = [
+    {
+      id: 'global_tick_boost',
+      name: 'Global Tick Boost',
+      description: 'Increases world tick speed for all players for a limited duration.',
+      powerType: 'tick_speed_boost',
+      effectDefId: null,
+      defaultValue: 50,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'global',
+      selection: null,
+      enabled: true,
+    },
+  ];
+
+  for (const def of powerDefs) {
+    await prisma.powerDef.upsert({
+      where: { id: def.id },
+      update: {
+        name: def.name,
+        description: def.description,
+        powerType: def.powerType,
+        effectDefId: def.effectDefId,
+        defaultValue: def.defaultValue,
+        defaultValueMode: def.defaultValueMode,
+        defaultDurationMinutes: def.defaultDurationMinutes,
+        defaultDailyLimit: def.defaultDailyLimit,
+        defaultScope: def.defaultScope,
+        selection: def.selection,
+        enabled: def.enabled,
+      },
+      create: def,
+    });
+  }
+  logger.log(`PowerDef seed: upserted ${powerDefs.length} entries`);
 }
 
 /**
@@ -353,10 +404,6 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
-      if (currentRules.uniques) {
-        logger.log(`NFT unique powers: skipping entityDefinition "${definitionId}" — uniques already seeded`);
-        continue;
-      }
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.entityDefinition.update({
@@ -382,10 +429,6 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
-      if (currentRules.uniques) {
-        logger.log(`NFT unique powers: skipping locationDefinition "${definitionId}" — uniques already seeded`);
-        continue;
-      }
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.locationDefinition.update({

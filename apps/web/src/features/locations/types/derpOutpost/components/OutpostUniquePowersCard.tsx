@@ -5,33 +5,29 @@ import { useCommand } from '../../../../../hooks/useCommand';
 import { useNotifications } from '../../../../../context/NotificationContext';
 import { Card } from '../../../../../components/ui';
 import { getUniqueEntry } from '../getUniqueEntry';
-import type { UniqueLocationPower } from '@derp/shared';
+import type { PowerRef } from '@derp/shared';
 import type { UiIntent } from '../../../../../services/api';
-import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown, powerLabel } from '../../../../../features/powers/powerUtils';
+import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../../features/powers/powerUtils';
 
-/** Derive a stable key for a power used for usage tracking and trigger commands. */
-function getPowerKey(p: UniqueLocationPower): string {
-  return p.powerType ?? p.effectDefId ?? 'unknown';
-}
-
-function powerValueLabel(p: UniqueLocationPower): string {
-  const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost';
+function powerValueLabel(p: PowerRef): string {
+  const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
+    || p.powerDefId === 'global_tick_boost';
   return isPercent ? `+${p.value}%` : `+${p.value}`;
 }
 
 interface PowerRowProps {
-  power: UniqueLocationPower;
+  power: PowerRef;
   usageCount: number;
   isAtLimit: boolean;
   isBusy: boolean;
   countdown: number;
-  onTrigger: (powerType: string) => void;
+  onTrigger: (key: string) => void;
 }
 
 function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }: PowerRowProps) {
   const limit = typeof power.dailyLimit === 'number' && power.dailyLimit > 0 ? power.dailyLimit : 1;
   const remaining = Math.max(0, limit - usageCount);
-  const label = powerLabel(getPowerKey(power));
+  const label = power.name;
   const valueLabel = powerValueLabel(power);
 
   return (
@@ -71,7 +67,7 @@ function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }
           <button
             type="button"
             disabled={isBusy}
-            onClick={() => onTrigger(getPowerKey(power))}
+            onClick={() => onTrigger(power.key)}
             className="px-3 py-1 rounded-full text-[11px] font-extrabold tracking-[0.04em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F59E0B]/50"
             style={{
               background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(245,158,11,0.4))',
@@ -103,27 +99,26 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
     outpost.definition || { rules: outpost.rules },
   );
 
-  const powers: UniqueLocationPower[] = uniqueEntry?.powers ?? [];
+  const powers: PowerRef[] = uniqueEntry?.powers ?? [];
 
   const today = getUtcDay();
 
   const usageByPower = useMemo<Record<string, number>>(() => {
     const result: Record<string, number> = {};
     for (const p of powers) {
-      const key = getPowerKey(p);
-      const entry = storedUsages[key];
-      result[key] = entry && entry.lastUsedUtcDay === today ? entry.usageCount : 0;
+      const entry = storedUsages[p.key];
+      result[p.key] = entry && entry.lastUsedUtcDay === today ? entry.usageCount : 0;
     }
     return result;
   }, [storedUsages, powers, today]);
 
 
   const handleTrigger = useCallback(
-    async (powerType: string) => {
+    async (key: string) => {
       if (triggering) return;
-      setTriggering(powerType);
+      setTriggering(key);
       try {
-        const res = await execute('TriggerLocationPower', { locationId: outpost.id, powerKey: powerType });
+        const res = await execute('TriggerLocationPower', { locationId: outpost.id, powerKey: key });
         const toast = res.ui.find((u: UiIntent) => u.type === 'toast') as Extract<UiIntent, { type: 'toast' }> | undefined;
         if (toast) {
           addTransientToast({
@@ -160,13 +155,12 @@ export function OutpostUniquePowersCard({ outpost }: OutpostUniquePowersCardProp
         <div className="flex-1 h-px bg-[rgba(245,158,11,0.15)]" />
       </div>
       {powers.map((p) => {
-        const key = getPowerKey(p);
-        const usageCount = usageByPower[key] ?? 0;
+        const usageCount = usageByPower[p.key] ?? 0;
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usageCount >= limit;
         return (
           <PowerRow
-            key={key}
+            key={p.key}
             power={p}
             usageCount={usageCount}
             isAtLimit={isAtLimit}

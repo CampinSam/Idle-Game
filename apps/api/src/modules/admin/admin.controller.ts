@@ -9,6 +9,7 @@ import { AdminDraftService } from './admin-draft.service';
 import { TABLE_KEY_TO_GROUP } from './admin-permissions';
 import { ScreensService } from '../screens/screens.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
+import { PowerDefService } from '../global-power/power-def.service';
 import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { GiftService } from '../gift/gift.service';
@@ -33,6 +34,7 @@ export class AdminController {
     private adminDraftService: AdminDraftService,
     private screensService: ScreensService,
     private globalPowerService: GlobalPowerService,
+    private powerDefService: PowerDefService,
     private notificationService: NotificationService,
     private eventService: EventService,
     private giftService: GiftService,
@@ -188,6 +190,7 @@ export class AdminController {
       { key: 'nftCollectionDef',  name: 'NFT Collection Definitions', table: 'nft_collection_defs',  group: 'NFT' },
       { key: 'modalDef',          name: 'Modal Definitions',          table: 'modal_defs',           group: 'UI' },
       { key: 'effectDef',         name: 'Effect Definitions',         table: 'effect_defs',          group: 'Effects' },
+      { key: 'powerDef',          name: 'Power Definitions',          table: 'power_defs',           group: 'Effects' },
       { key: 'tagDef',            name: 'Visual Tag Definitions',     table: 'tag_defs',             group: 'UI' },
       { key: 'visualEffectDef',   name: 'Visual Effect Definitions',  table: 'visual_effect_defs',   group: 'UI' },
       { key: 'homeBannerDef',     name: 'Home Banners',              table: 'home_banner_defs',     group: 'UI' },
@@ -957,6 +960,86 @@ export class AdminController {
       orderBy: { name: 'asc' },
     });
     return defs;
+  }
+
+  // ─── Power Definitions ─────────────────────────────────────────────────────
+
+  @Get('power-defs')
+  listPowerDefs(@Query('enabled') enabled?: string) {
+    const opts = enabled !== undefined ? { enabled: enabled !== 'false' } : {};
+    return this.powerDefService.list(opts);
+  }
+
+  @Get('power-defs/:id')
+  getPowerDef(@Param('id') id: string) {
+    return this.powerDefService.getById(id);
+  }
+
+  @Post('power-defs')
+  async createPowerDef(
+    @Req() req: any,
+    @Body() body: {
+      id: string;
+      name: string;
+      description?: string;
+      powerType: string;
+      effectDefId?: string | null;
+      defaultValue?: number;
+      defaultValueMode?: string;
+      defaultDurationMinutes?: number;
+      defaultDailyLimit?: number;
+      defaultScope?: string;
+      selection?: any;
+      enabled?: boolean;
+    },
+  ) {
+    const result = await this.powerDefService.create(body);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'power_def_create',
+      recordId: result.id,
+      diff: { name: body.name, powerType: body.powerType },
+    });
+    return result;
+  }
+
+  @Put('power-defs/:id')
+  async updatePowerDef(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: Partial<{
+      name: string;
+      description: string | null;
+      powerType: string;
+      effectDefId: string | null;
+      defaultValue: number;
+      defaultValueMode: string;
+      defaultDurationMinutes: number;
+      defaultDailyLimit: number;
+      defaultScope: string;
+      selection: any;
+      enabled: boolean;
+    }>,
+  ) {
+    const result = await this.powerDefService.update(id, body);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'power_def_update',
+      recordId: id,
+      diff: body,
+    });
+    return result;
+  }
+
+  @Delete('power-defs/:id')
+  async deletePowerDef(@Req() req: any, @Param('id') id: string) {
+    const result = await this.powerDefService.delete(id);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'power_def_delete',
+      recordId: id,
+    });
+    return result;
   }
 
   // ─── Global Active Powers ───────────────────────────────────────────────────

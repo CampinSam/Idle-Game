@@ -306,6 +306,28 @@ export const adminApi = {
   cancelGlobalPower: (id: string) =>
     adminRequest<any>(`/global-powers/${id}`, { method: 'DELETE' }),
   getEffectDefs: () => adminRequest<any[]>('/effect-defs'),
+
+  listPowerDefs: (enabled?: boolean) =>
+    adminRequest<any[]>(`/power-defs${enabled !== undefined ? `?enabled=${enabled}` : ''}`),
+  getPowerDef: (id: string) => adminRequest<any>(`/power-defs/${id}`),
+  createPowerDef: (data: {
+    id: string;
+    name: string;
+    description?: string;
+    powerType: string;
+    effectDefId?: string | null;
+    defaultValue?: number;
+    defaultValueMode?: string;
+    defaultDurationMinutes?: number;
+    defaultDailyLimit?: number;
+    defaultScope?: string;
+    selection?: any;
+    enabled?: boolean;
+  }) => adminRequest<any>('/power-defs', { method: 'POST', body: JSON.stringify(data) }),
+  updatePowerDef: (id: string, data: Record<string, any>) =>
+    adminRequest<any>(`/power-defs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePowerDef: (id: string) =>
+    adminRequest<any>(`/power-defs/${id}`, { method: 'DELETE' }),
   telemetryList: () => adminRequest<any[]>('/telemetry'),
   telemetryGet: (id: string) => adminRequest<any>(`/telemetry/${id}`),
   telemetryCreate: (body: any) => adminRequest<any>('/telemetry', { method: 'POST', body: JSON.stringify(body) }),
