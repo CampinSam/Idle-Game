@@ -340,6 +340,7 @@ function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry
         name: powerDef.name,
         key: powerDef.key,
         value,
+        valueMode: 'percent_add',
         durationMinutes: 60,
         dailyLimit: 1,
       }],
