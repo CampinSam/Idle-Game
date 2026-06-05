@@ -45,7 +45,7 @@ export class TelemetryContextBuilderService {
       });
 
       entities = rows.map((e: any) => {
-        const traits = (e.traits as Record<string, string>) ?? {};
+        const traits = (e.traits as Record<string, import('@derp/shared').TraitPrimitive>) ?? {};
         const stats = (e.stats as Record<string, number>) ?? {};
         const level = (e.progression as any)?.level ?? 1;
         return {
@@ -56,7 +56,7 @@ export class TelemetryContextBuilderService {
           traits,
           stats,
           level: Number(level),
-          rarity: (traits.rarity as string | undefined) ?? undefined,
+          rarity: typeof traits.rarity === 'string' ? traits.rarity : undefined,
         } satisfies SelectionEntityContext;
       });
     }

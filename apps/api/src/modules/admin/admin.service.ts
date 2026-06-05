@@ -13,7 +13,7 @@ import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribut
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
-import type { RichSelection } from '@derp/shared';
+import type { RichSelection, TraitPrimitive } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
@@ -821,14 +821,14 @@ export class AdminService {
 
         // Compute scaling/compositRarity from traits only when missing
         if (scalingMissing || compositRarityMissing) {
-          const traits = (entity.traits as Record<string, string>) || {};
+          const traits = (entity.traits as Record<string, TraitPrimitive>) || {};
           const entityDef = entityDefById[entity.definitionId];
           const slots: Record<string, string[]> = (entityDef?.slots as any) || {};
 
           const scalingContributions: ScalingContribution[] = [];
           for (const [slotName] of Object.entries(slots)) {
             const chosenArchetype = traits[slotName];
-            if (!chosenArchetype) continue;
+            if (!chosenArchetype || typeof chosenArchetype !== 'string') continue;
             const traitDef = traitByArchetype[chosenArchetype];
             if (!traitDef) continue;
             const traitScaling = (traitDef.scaling as Record<string, number> | undefined) || {};
@@ -1212,11 +1212,11 @@ export class AdminService {
       team.push({
         id: entity.id,
         entityType: (entity.role as string | undefined) ?? undefined,
-        traits: ((entity.traits ?? {}) as Record<string, string>),
+        traits: (entity.traits ?? {}) as Record<string, TraitPrimitive>,
         stats: entityStats,
         speciesId: (entity.definitionId as string | undefined) ?? undefined,
         collectionId: (entity.nftCollectionDefId as string | undefined) ?? undefined,
-        rarity: ((entity.traits as any)?.rarity as string | undefined) ?? undefined,
+        rarity: typeof (entity.traits as any)?.rarity === 'string' ? (entity.traits as any).rarity : undefined,
       });
     }
 

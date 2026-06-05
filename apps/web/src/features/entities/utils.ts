@@ -3,6 +3,7 @@
  * (already mirrored from server formulas in the @derp/math package).
  */
 import { getPowerScore, HIDDEN_STATS } from '@derp/math';
+import type { TraitPrimitive } from '@derp/shared';
 
 export function normalizeStats(stats: any): Record<string, number> {
   const s = stats || {};
@@ -61,11 +62,13 @@ export function getStarRating(entity: any): number {
  *  3. Role based on the highest stat (Support, Attacker, etc.)
  */
 export function getTraitCategoryTags(entity: any): string[] {
-  const traits: Record<string, string> = entity?.traits || {};
+  const traits: Record<string, TraitPrimitive> = entity?.traits || {};
 
   const counts: Record<string, number> = {};
   for (const val of Object.values(traits)) {
-    if (val) counts[val] = (counts[val] || 0) + 1;
+    if (val !== null && val !== undefined && typeof val === 'string') {
+      counts[val] = (counts[val] || 0) + 1;
+    }
   }
 
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);

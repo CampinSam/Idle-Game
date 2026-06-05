@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { EntityTraits, RichSelection } from '@derp/shared';
+import type { EntityTraits, RichSelection, TraitPrimitive } from '@derp/shared';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import type { SelectionContext } from '../selection/selection.types';
 
@@ -20,7 +20,7 @@ export interface LocationContext {
 export interface TeamEntitySnap {
   id: string;
   entityType?: string;
-  traits?: Record<string, string>;
+  traits?: Record<string, TraitPrimitive>;
   stats?: Record<string, number>;
   speciesId?: string;
   collectionId?: string;
@@ -117,7 +117,7 @@ export class GameRulesService {
         entityType: e.entityType,
         speciesId: e.speciesId,
         collectionId: e.collectionId,
-        traits: (e.traits ?? {}) as Record<string, string>,
+        traits: e.traits ?? {},
         stats: (e.stats ?? {}) as Record<string, number>,
         rarity: e.rarity,
       })),

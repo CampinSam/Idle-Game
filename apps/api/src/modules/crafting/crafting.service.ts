@@ -14,7 +14,7 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
 import { adoptLegacyCraftingJobLocations } from './legacy-job-adoption.util';
-import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
+import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
 import {
   calculateCraftingLuck,
   effectiveCL,
@@ -457,10 +457,10 @@ export class CraftingService {
     const craftingDescriptor = [{
       entityId: (entity as any).id as string,
       entityType: ((entity as any).role as string | undefined) ?? undefined,
-      traits: ((entity as any).traits ?? {}) as Record<string, string>,
+      traits: ((entity as any).traits ?? {}) as Record<string, TraitPrimitive>,
       speciesId: (entity as any).definitionId as string | undefined,
       collectionId: (entity as any).nftCollectionDefId as string | undefined,
-      rarity: (((entity as any).traits as any)?.rarity as string | undefined) ?? undefined,
+      rarity: typeof ((entity as any).traits as any)?.rarity === 'string' ? ((entity as any).traits as any).rarity : undefined,
     }];
     const craftingSynergyResult = await this.synergyResolver.resolveRules(
       { activityType: 'crafting', teamSize: 1 },

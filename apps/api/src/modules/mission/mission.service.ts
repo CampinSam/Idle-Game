@@ -20,7 +20,7 @@ import { NotificationService } from '../notification/notification.service';
 import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
-import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier } from '@derp/shared';
+import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
 import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
@@ -315,11 +315,11 @@ export class MissionService {
       team.push({
         id: e.id as string,
         entityType: (e.role as string | undefined) ?? undefined,
-        traits: (e.traits ?? {}) as Record<string, string>,
+        traits: e.traits ?? {},
         stats,
         speciesId: (e.definitionId as string | undefined) ?? undefined,
         collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
-        rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+        rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
       });
     }
 
@@ -392,10 +392,10 @@ export class MissionService {
     const synergyDescriptorsForStart = entities.map((e: any) => ({
       entityId: e.id as string,
       entityType: (e.role as string | undefined) ?? undefined,
-      traits: (e.traits ?? {}) as Record<string, string>,
+      traits: (e.traits ?? {}) as Record<string, TraitPrimitive>,
       speciesId: e.definitionId as string | undefined,
       collectionId: e.nftCollectionDefId as string | undefined,
-      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+      rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
       regionId: missionRegionId,
     }));
     const synergyContextForStart = {
@@ -522,10 +522,10 @@ export class MissionService {
     const synergyDescriptors = entities.map((e: any) => ({
       entityId: e.id as string,
       entityType: (e.role as string | undefined) ?? undefined,
-      traits: (e.traits ?? {}) as Record<string, string>,
+      traits: (e.traits ?? {}) as Record<string, TraitPrimitive>,
       speciesId: e.definitionId as string | undefined,
       collectionId: e.nftCollectionDefId as string | undefined,
-      rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+      rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
       regionId: missionRegionId,
     }));
 

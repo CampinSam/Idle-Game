@@ -14,6 +14,7 @@ import {
   applyModifier,
   applyStatModifiers,
   emptyResolvedModifier,
+  type TraitPrimitive,
 } from '@derp/shared';
 import {
   calculateTeamMP,
@@ -99,11 +100,11 @@ export class JobPreviewService {
       team.push({
         id: e.id as string,
         entityType: (e.role as string | undefined) ?? undefined,
-        traits: (e.traits ?? {}) as Record<string, string>,
+        traits: (e.traits ?? {}) as Record<string, TraitPrimitive>,
         stats,
         speciesId: (e.definitionId as string | undefined) ?? undefined,
         collectionId: (e.nftCollectionDefId as string | undefined) ?? undefined,
-        rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+        rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
       });
     }
 
@@ -172,10 +173,10 @@ export class JobPreviewService {
       const synergyDescriptors = entities.map((e: any) => ({
         entityId: e.id as string,
         entityType: (e.role as string | undefined) ?? undefined,
-        traits: (e.traits ?? {}) as Record<string, string>,
+        traits: (e.traits ?? {}) as Record<string, TraitPrimitive>,
         speciesId: e.definitionId as string | undefined,
         collectionId: e.nftCollectionDefId as string | undefined,
-        rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+        rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
         regionId: missionRegionId,
       }));
 

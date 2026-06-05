@@ -61,7 +61,7 @@ describe('generateEntityData — slotFill: { kind: "fixed" }', () => {
       const result = await generateEntityData(prisma, 'user-1', def.id, 'Birdy');
       expect(result.traits.body).toBe('finch');
       expect(['crested', 'plain']).toContain(result.traits.head);
-      headTraits.add(result.traits.head);
+      headTraits.add(result.traits.head as string);
     }
     // Over 50 trials with 2 options the random fallback should hit both.
     expect(headTraits.size).toBe(2);

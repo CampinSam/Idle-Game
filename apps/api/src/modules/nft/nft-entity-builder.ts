@@ -2,6 +2,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NftMetadata } from './nft-ownership.interface';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { resolveRnd } from '../entity/rnd-resolver.util';
+import type { TraitPrimitive } from '@derp/shared';
 
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,
@@ -31,7 +32,7 @@ export async function buildEntityDataFromNftMetadata(
   }
 
   const scalingContributions: ScalingContribution[] = [];
-  const traits: Record<string, string | number | boolean | null> = {};
+  const traits: Record<string, TraitPrimitive> = {};
 
   const normalizedAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(meta.attributes)) {

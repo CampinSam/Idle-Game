@@ -14,7 +14,7 @@ import { CurrencyService } from '../currency/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
-import { EffectCategory, EffectTargetType, EffectTargetContext } from '@derp/shared';
+import { EffectCategory, EffectTargetType, EffectTargetContext, type TraitPrimitive } from '@derp/shared';
 import { sumEquippedStatsForEntities, StatMap } from '../entity/entity-stats.util';
 
 type TxClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
@@ -239,10 +239,10 @@ export class LocationSettlementService {
         const workerDescriptors = workerEntities.map((e: any) => ({
           entityId: e.id as string,
           entityType: (e.role as string | undefined) ?? undefined,
-          traits: (e.traits ?? {}) as Record<string, string>,
+          traits: (e.traits ?? {}) as Record<string, TraitPrimitive>,
           speciesId: e.definitionId as string | undefined,
           collectionId: e.nftCollectionDefId as string | undefined,
-          rarity: ((e.traits as any)?.rarity as string | undefined) ?? undefined,
+          rarity: typeof (e.traits as any)?.rarity === 'string' ? (e.traits as any).rarity : undefined,
           regionId: locationRegionId,
         }));
         const synergyResult = await this.synergyResolver.resolveRules(

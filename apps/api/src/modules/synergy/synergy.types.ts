@@ -1,3 +1,5 @@
+import type { TraitPrimitive } from '@derp/shared';
+
 /**
  * Normalized per-entity shape passed to the SynergyResolverService.
  * Callers (mission, crafting, outpost) build these from their fetched entities.
@@ -7,7 +9,7 @@ export interface SynergyEntityDescriptor {
   entityType?: string;
   speciesId?: string;
   collectionId?: string;
-  traits: Record<string, string>;
+  traits: Record<string, TraitPrimitive>;
   rarity?: string;
   regionId?: string;
   locationTypes?: string[];

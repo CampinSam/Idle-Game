@@ -1,9 +1,11 @@
+import type { TraitPrimitive } from '@derp/shared';
+
 export interface SelectionEntityContext {
   id?: string;
   entityType?: string;
   speciesId?: string;
   collectionId?: string;
-  traits: Record<string, string>;
+  traits: Record<string, TraitPrimitive>;
   stats: Record<string, number>;
   level?: number;
   rarity?: string;

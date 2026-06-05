@@ -8,6 +8,14 @@ export interface EntityStats {
 }
 
 /**
+ * All primitive types that a trait value can hold.
+ * The `slotTypes` feature allows NFT attribute slots to be cast to a specific
+ * type at entity-build time (string, number, boolean, or null), so trait maps
+ * are no longer string-only.
+ */
+export type TraitPrimitive = string | number | boolean | null;
+
+/**
  * The 6 visible entity stats that appear on the radar graph, contribute to
  * PowerScore, and are stored as base stats on an entity.
  */
@@ -44,16 +52,18 @@ export type EntityArchetype =
   | 'Deity';
 
 /**
- * Open-ended slot → archetype map. Keys are the slot names defined on the
+ * Open-ended slot → value map. Keys are the slot names defined on the
  * EntityDefinition (e.g. "body", "faction", "special" for Perps; "head",
- * "ears", … for Derp Birds). Values are the lowercase archetype string stored
- * after the builder resolves the NFT metadata or random generation.
+ * "ears", … for Derp Birds). Values are the resolved primitives stored after
+ * the builder resolves the NFT metadata or random generation. The `slotTypes`
+ * feature allows slots to be cast to number, boolean, or null — so values are
+ * `TraitPrimitive`, not just `string`.
  *
- * This is intentionally `Record<string, string>` rather than a fixed interface
- * so every collection can define its own slot schema without requiring shared-
- * package changes.
+ * This is intentionally `Record<string, TraitPrimitive>` rather than a fixed
+ * interface so every collection can define its own slot schema without
+ * requiring shared-package changes.
  */
-export type EntityTraits = Record<string, string>;
+export type EntityTraits = Record<string, TraitPrimitive>;
 
 export type EntityStatus = 'idle' | 'mission' | 'working' | 'injured';
 
@@ -92,12 +102,15 @@ export function isEntityStats(value: unknown): value is EntityStats {
 
 /**
  * Type guard for EntityTraits JSON field from the database.
- * Accepts any object whose enumerable values are all strings — the key set is
- * collection-specific and is not validated here.
+ * Accepts any object whose enumerable values are all TraitPrimitive
+ * (string, number, boolean, or null) — the key set is collection-specific
+ * and is not validated here.
  */
 export function isEntityTraits(value: unknown): value is EntityTraits {
   if (!value || typeof value !== 'object') return false;
-  return Object.values(value as Record<string, unknown>).every((v) => typeof v === 'string');
+  return Object.values(value as Record<string, unknown>).every(
+    (v) => v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean',
+  );
 }
 
 /** Parses and validates EntityStats from a raw JSON field value. Throws if invalid. */

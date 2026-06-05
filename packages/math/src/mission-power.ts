@@ -1,8 +1,8 @@
-import { EntityStats } from '@derp/shared';
+import { EntityStats, TraitPrimitive } from '@derp/shared';
 
 export interface EntityForMP {
   stats: EntityStats;
-  traits: Record<string, string>;
+  traits: Record<string, TraitPrimitive>;
 }
 
 /**

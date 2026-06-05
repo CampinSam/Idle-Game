@@ -6,7 +6,7 @@ import { useAnimatedProgress } from './useAnimatedProgress';
 import { GameImage } from '../../../../components/GameImage';
 import GameIcon from '../../../../components/GameIcon';
 import { getEntityImagePath, ENTITY_ARCHETYPE_IMAGES } from '../../../../config/images';
-import { getArchetypeDisplay } from '@derp/shared';
+import { getArchetypeDisplay, type TraitPrimitive } from '@derp/shared';
 import { getEntityArchetype } from '../../registry';
 import { getEntityPower, getXpForLevel, normalizeStats } from '../../utils';
 import { useSyncItems } from '../../../../hooks/useSyncSelectors';
@@ -157,7 +157,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
     [entity],
   );
   const equippedStats = (entity as any).equippedStats as Record<string, number> | undefined;
-  const traits: Record<string, string> = (entity.traits as Record<string, string>) || {};
+  const traits: Record<string, TraitPrimitive> = entity.traits || {};
   const entityBusy = isEntityBusy(entity);
 
   const uniquePowers = useMemo(() => {
@@ -534,7 +534,8 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-1">SLOTS &amp; TRAITS</div>
               <div className="h-px bg-[rgba(139,92,246,0.2)]" />
               {Object.keys(traits).map((slot) => {
-                const value = traits[slot];
+                const rawValue = traits[slot];
+                const value = rawValue !== null && rawValue !== undefined ? String(rawValue) : '';
                 const archetypeColor = value
                   ? (getArchetypeDisplay(value)?.color ?? '#A78BFA')
                   : 'rgba(255,255,255,0.3)';

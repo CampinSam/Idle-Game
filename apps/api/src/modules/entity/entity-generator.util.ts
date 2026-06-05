@@ -25,7 +25,7 @@ export interface GeneratedEntityData {
   speciesId: string;
   display: { name: string };
   stats: Record<string, any>;
-  traits: Record<string, string>;
+  traits: Record<string, string | number | boolean | null>;
   progression: { level: number; xp: number; ascension: number; levelHistory: any[] };
   state: { status: string };
 }
@@ -91,7 +91,7 @@ export async function generateEntityData(
   for (const k of STAT_KEYS) baseStats[k] = typeof initBaseStats[k] === 'number' ? initBaseStats[k] : 0;
 
   const scalingContributions: ScalingContribution[] = [];
-  const traits: Record<string, string> = {};
+  const traits: Record<string, string | number | boolean | null> = {};
 
   for (const [slotName, allowedArchetypes] of Object.entries(slots)) {
     if (!Array.isArray(allowedArchetypes) || allowedArchetypes.length === 0) continue;
