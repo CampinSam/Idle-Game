@@ -442,130 +442,135 @@ export default function EntityDetailContent() {
         onPointerCancel={handlePointerCancel}
         style={{ touchAction: 'pan-y' }}
       >
-        <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">
-          <div className="flex items-center gap-2 px-3 py-2">
-            <button
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-              onClick={() => navigate('/entities')}
-              aria-label="Back to entities"
-            >
-              ←
-            </button>
+        {/* Single scroll container — header is inside so sticky top-0 works */}
+        <div className="grid flex-1 min-h-0 overflow-y-auto [grid-template-rows:auto_1fr]" style={{ touchAction: 'pan-y' }}>
 
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-bold tracking-wide text-text-primary truncate m-0">
-                {entity.name.toUpperCase()}
-              </h1>
-              {(getCollectionLabel(entity) || isPerfectSpecimen(entity)) && (
-                <div className="flex items-center gap-1.5 text-xs text-text-secondary mt-0.5 flex-wrap">
-                  {isNftEntity(entity) && (
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(45,212,191,0.15)] border border-[rgba(45,212,191,0.4)] text-[#2dd4bf]">
-                      NFT
-                    </span>
-                  )}
-                  {isPerfectSpecimen(entity) ? (
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#f0abfc]">
-                      ★ PERFECT
-                      {getPerfectSpecimenTrait(entity) && (
-                        <span> · {getPerfectSpecimenTrait(entity)!.toUpperCase()}</span>
-                      )}
-                    </span>
-                  ) : (
-                    (() => {
-                      const kind = getEntityKind(entity);
-                      if (kind === 'perp') {
-                        const leaderKind = isLeader(entity);
-                        if (leaderKind) {
-                          const factionLabel = PERP_FACTION_LABELS[getFaction(entity) ?? ''];
-                          return (
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#fbbf24]">
-                              {leaderKind === 'multiverse_leader' ? '★ MULTIVERSE LEADER' : '★ LEADER'}
-                              {factionLabel && <span> · {factionLabel}</span>}
-                            </span>
-                          );
-                        }
-                      }
-                      return (
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-                          {getCollectionLabel(entity)}
-                        </span>
-                      );
-                    })()
-                  )}
-                </div>
-              )}
-            </div>
-
-            <span className="text-base flex-shrink-0" aria-label={entity.status || 'idle'}>
-              {statusEmoji(entity.status)}
-            </span>
-
-            <div className="relative flex-shrink-0" ref={menuRef}>
+          {/* ── Sticky header ── */}
+          <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">
+            <div className="flex items-center gap-2 px-3 py-2">
               <button
-                ref={buttonRef}
-                type="button"
-                className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-base cursor-pointer transition-colors"
-                onClick={toggleMenu}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
+                className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-text-primary text-xl cursor-pointer transition-colors flex-shrink-0 active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+                onClick={() => navigate('/entities')}
+                aria-label="Back to entities"
               >
-                ⚙️
+                ←
               </button>
-            </div>
-            {menuOpen && menuPos && createPortal(
-              <div
-                ref={dropdownRef}
-                className="fixed z-[9999] bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1 min-w-[140px]"
-                style={{ top: menuPos.top, right: menuPos.right }}
-                role="menu"
-              >
+
+              <div className="flex-1 min-w-0">
+                <h1 className="text-sm font-bold tracking-wide text-text-primary truncate m-0">
+                  {entity.name.toUpperCase()}
+                </h1>
+                {(getCollectionLabel(entity) || isPerfectSpecimen(entity)) && (
+                  <div className="flex items-center gap-1.5 text-xs text-text-secondary mt-0.5 flex-wrap">
+                    {isNftEntity(entity) && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-[rgba(45,212,191,0.15)] border border-[rgba(45,212,191,0.4)] text-[#2dd4bf]">
+                        NFT
+                      </span>
+                    )}
+                    {isPerfectSpecimen(entity) ? (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#f0abfc]">
+                        ★ PERFECT
+                        {getPerfectSpecimenTrait(entity) && (
+                          <span> · {getPerfectSpecimenTrait(entity)!.toUpperCase()}</span>
+                        )}
+                      </span>
+                    ) : (
+                      (() => {
+                        const kind = getEntityKind(entity);
+                        if (kind === 'perp') {
+                          const leaderKind = isLeader(entity);
+                          if (leaderKind) {
+                            const factionLabel = PERP_FACTION_LABELS[getFaction(entity) ?? ''];
+                            return (
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-[#fbbf24]">
+                                {leaderKind === 'multiverse_leader' ? '★ MULTIVERSE LEADER' : '★ LEADER'}
+                                {factionLabel && <span> · {factionLabel}</span>}
+                              </span>
+                            );
+                          }
+                        }
+                        return (
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                            {getCollectionLabel(entity)}
+                          </span>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <span className="text-base flex-shrink-0" aria-label={entity.status || 'idle'}>
+                {statusEmoji(entity.status)}
+              </span>
+
+              <div className="relative flex-shrink-0" ref={menuRef}>
                 <button
+                  ref={buttonRef}
                   type="button"
-                  className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
-                  role="menuitem"
-                  onClick={openRenameModal}
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-base cursor-pointer transition-colors"
+                  onClick={toggleMenu}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
                 >
-                  ✏️ Rename
+                  ⚙️
                 </button>
-                {isNft && nftExplorerUrl && (
+              </div>
+              {menuOpen && menuPos && createPortal(
+                <div
+                  ref={dropdownRef}
+                  className="fixed z-[9999] bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-1 min-w-[140px]"
+                  style={{ top: menuPos.top, right: menuPos.right }}
+                  role="menu"
+                >
                   <button
                     type="button"
                     className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
                     role="menuitem"
-                    onClick={handleViewNft}
+                    onClick={openRenameModal}
                   >
-                    🔗 View NFT
+                    ✏️ Rename
                   </button>
-                )}
-              </div>,
-              document.body
-            )}
+                  {isNft && nftExplorerUrl && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 w-full px-3.5 py-2.5 bg-transparent border-0 text-text-primary text-[13px] font-[inherit] text-left cursor-pointer rounded-md transition-[background] duration-150 whitespace-nowrap hover:bg-[rgba(139,92,246,0.18)] focus-visible:bg-[rgba(139,92,246,0.18)] focus-visible:outline-none"
+                      role="menuitem"
+                      onClick={handleViewNft}
+                    >
+                      🔗 View NFT
+                    </button>
+                  )}
+                </div>,
+                document.body
+              )}
 
-            {hasNav && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-                  onClick={handlePrev}
-                  aria-label="Previous entity"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
-                  onClick={handleNext}
-                  aria-label="Next entity"
-                >
-                  ›
-                </button>
-              </div>
-            )}
+              {hasNav && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+                    onClick={handlePrev}
+                    aria-label="Previous entity"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-[rgba(139,92,246,0.25)] text-2xl text-text-primary cursor-pointer transition-colors active:bg-[rgba(139,92,246,0.28)] active:border-[rgba(139,92,246,0.55)]"
+                    onClick={handleNext}
+                    aria-label="Next entity"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="grid flex-1 min-h-0 overflow-y-auto [grid-template-rows:1fr]" style={{ touchAction: 'pan-y' }}>
+          {/* ── Scrollable entity detail content (1fr row fills remaining space) ── */}
           <EntityDetail entity={entity} variant="full" />
+
         </div>
       </div>
     </div>
