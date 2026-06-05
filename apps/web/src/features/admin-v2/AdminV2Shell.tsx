@@ -221,19 +221,22 @@ function ChangePasswordModal({ me, onClose }: { me: AdminMe; onClose: () => void
   );
 }
 
+const IS_DEV = (import.meta as any).env?.DEV;
+const DEV_USERNAME = 'superadmin';
+const DEV_PASSWORD = 'admin';
+
 function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(IS_DEV ? DEV_USERNAME : '');
+  const [password, setPassword] = useState(IS_DEV ? DEV_PASSWORD : '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const autoLoginDone = useRef(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password) return;
+  const doLogin = async (u: string, p: string) => {
     setLoading(true);
     setError('');
     try {
-      const result = await adminApi.login(username.trim(), password);
+      const result = await adminApi.login(u.trim(), p);
       setAdminToken(result.token);
       onLogin(result.account);
     } catch (err: any) {
@@ -241,6 +244,19 @@ function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (IS_DEV && !autoLoginDone.current) {
+      autoLoginDone.current = true;
+      doLogin(DEV_USERNAME, DEV_PASSWORD);
+    }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) return;
+    await doLogin(username, password);
   };
 
   return (

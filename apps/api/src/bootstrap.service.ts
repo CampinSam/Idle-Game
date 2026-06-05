@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from './prisma/prisma.service';
 import { EntityService } from './modules/entity/entity.service';
 import { seedDefinitions } from './seeds/definitions.seed';
@@ -49,6 +50,9 @@ export class BootstrapService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    if (process.env.NODE_ENV !== 'production') {
+      await this.runStep('seedDevAdmin', () => this.seedDevAdmin());
+    }
     await this.runStep('seedTickRateIntervals', () => this.seedTickRateIntervals());
     await this.runStep('seedNftCollections', () => this.seedNftCollections());
     await this.runStep('seedEffectDefinitions', () => this.seedEffectDefinitions());
@@ -339,6 +343,38 @@ export class BootstrapService implements OnModuleInit {
     if (seeded > 0) {
       this.logger.log(`Seeded ${seeded} demo gem pack(s) into stripe.products/prices`);
     }
+  }
+
+  private async seedDevAdmin() {
+    const DEV_USERNAME = 'superadmin';
+    const DEV_PASSWORD = 'admin';
+    const SUPER_ADMIN_ROLE_ID = 'role_super_admin';
+
+    await this.prisma.adminRole.upsert({
+      where: { id: SUPER_ADMIN_ROLE_ID },
+      update: {},
+      create: {
+        id: SUPER_ADMIN_ROLE_ID,
+        name: 'Super Admin',
+        slug: 'super_admin',
+        permissionFlags: { read: true, write: true, approve: true, player_read: true, player_write: true, system_tools: true, metrics_read: true },
+        isBuiltIn: true,
+      },
+    });
+
+    const existing = await this.prisma.adminAccount.findUnique({ where: { username: DEV_USERNAME } });
+    if (existing) return;
+
+    const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
+    await this.prisma.adminAccount.create({
+      data: {
+        username: DEV_USERNAME,
+        passwordHash,
+        roleId: SUPER_ADMIN_ROLE_ID,
+        contentScopes: [],
+      },
+    });
+    this.logger.log(`Dev admin account created: ${DEV_USERNAME}`);
   }
 
   private async seedTickRateIntervals() {

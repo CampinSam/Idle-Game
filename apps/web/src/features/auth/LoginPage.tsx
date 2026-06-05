@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { login, clearError, setAuth } from '../../store/authSlice';
@@ -12,8 +12,6 @@ export default function LoginPage() {
   const { loading, error } = useAppSelector((s) => s.auth);
   const [email, setEmail] = useState(IS_DEV ? 'test@derp.dev' : '');
   const [password, setPassword] = useState(IS_DEV ? 'Derp1234!' : '');
-  const { token } = useAppSelector((s) => s.auth);
-  const autoLoginDone = useRef(false);
 
   const { connecting, error: walletError, detectedCardanoWallets, hasEvm, connectEvm, connectCardano, clearError: clearWalletError } = useWalletConnect();
   // After ~6s of "Connecting..." with no popup we show a troubleshooting hint.
@@ -26,16 +24,6 @@ export default function LoginPage() {
     return () => clearTimeout(t);
   }, [connecting]);
 
-  useEffect(() => {
-    if (IS_DEV && !autoLoginDone.current && !token) {
-      autoLoginDone.current = true;
-      dispatch(login({ email: 'test@derp.dev', password: 'Derp1234!' })).then((result) => {
-        if (login.fulfilled.match(result)) {
-          navigate('/');
-        }
-      });
-    }
-  }, [dispatch, navigate, token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
