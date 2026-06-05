@@ -1903,6 +1903,7 @@ input:focus {
 .top-bar-name {
   font-weight: 700;
   font-size: 18px;
+  line-height: 1;
   color: #e2d9ff;
   white-space: nowrap;
   flex-shrink: 0;
