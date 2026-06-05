@@ -1757,8 +1757,8 @@ input:focus {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 6px 12px 6px 6px;
   max-width: 520px;
   width: 100%;
   background: #1a1640;
@@ -1786,15 +1786,15 @@ input:focus {
 .top-bar-avatar-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   align-self: center;
   margin: -20px 0;
 }
 .top-bar-avatar-btn {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
   padding: 0;
   background: none;
@@ -1805,8 +1805,8 @@ input:focus {
   position: absolute;
   top: 0;
   left: 0;
-  width: 80px;
-  height: 80px;
+  width: 84px;
+  height: 84px;
   transform: rotate(-90deg);
   overflow: visible;
 }
@@ -1827,8 +1827,8 @@ input:focus {
   position: absolute;
   top: 5px;
   left: 5px;
-  width: 70px;
-  height: 70px;
+  width: 74px;
+  height: 74px;
   border-radius: 50%;
   object-fit: cover;
 }
