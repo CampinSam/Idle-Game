@@ -510,9 +510,10 @@ async function seedPowerDefs(prisma: any) {
  * Merge `rules.uniques` onto entity_definitions and location_definitions using
  * the asset ID lists in nft-unique-powers.json. Runs after the main definition
  * seed so the base records already exist. Power types are assigned
- * deterministically (cycling through NFT_POWER_TYPES by index) so the output
- * is stable across boots. Existing rules keys (e.g. `level` on derp_outpost)
- * are preserved — only the `uniques` key is overwritten.
+ * deterministically (cycling through NFT_POWER_DEFS by index) so the output
+ * is stable and idempotent across boots. Existing rules keys (e.g. `level` on
+ * derp_outpost) are preserved — only the `uniques` key is overwritten on every
+ * boot to ensure the cycling distribution is always applied.
  */
 async function seedNftUniquePowers(prisma: any) {
   const data = loadJson('nft-unique-powers.json');
@@ -536,18 +537,6 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
-      const existingUniques = currentRules.uniques as Record<string, any> | undefined;
-
-      // Skip if uniques already exist in PowerRef format (any asset has a power with powerDefId).
-      // Only overwrite if uniques are absent or still in the old inline format (no powerDefId).
-      const firstPower = existingUniques
-        ? Object.values(existingUniques)[0]?.powers?.[0]
-        : undefined;
-      const alreadyMigrated = firstPower && typeof firstPower.powerDefId === 'string';
-      if (alreadyMigrated) {
-        logger.log(`NFT unique powers: skipped (already in PowerRef format) on entityDefinition "${definitionId}"`);
-        continue;
-      }
 
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
@@ -574,18 +563,6 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
-      const existingUniques = currentRules.uniques as Record<string, any> | undefined;
-
-      // Skip if uniques already exist in PowerRef format (any asset has a power with powerDefId).
-      // Only overwrite if uniques are absent or still in the old inline format (no powerDefId).
-      const firstPower = existingUniques
-        ? Object.values(existingUniques)[0]?.powers?.[0]
-        : undefined;
-      const alreadyMigrated = firstPower && typeof firstPower.powerDefId === 'string';
-      if (alreadyMigrated) {
-        logger.log(`NFT unique powers: skipped (already in PowerRef format) on locationDefinition "${definitionId}"`);
-        continue;
-      }
 
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
