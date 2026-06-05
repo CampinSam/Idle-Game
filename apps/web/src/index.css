@@ -1267,14 +1267,15 @@ input:focus {
   z-index: 150;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 60px;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 12px 0;
 }
 .nc-panel {
   width: 100%;
   max-width: 460px;
-  height: calc(100vh - 60px);
+  flex: 1;
+  min-height: 0;
   background: linear-gradient(180deg, #1e1b3a 0%, #151228 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 16px;
