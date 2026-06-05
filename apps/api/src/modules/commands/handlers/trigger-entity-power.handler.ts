@@ -119,16 +119,19 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     } else if (resolved.selection) {
       selection = resolved.selection;
     } else {
-      // All non-global scoped powers ultimately target entities (the effect resolver evaluates
-      // against entity rows). Map scope semantics accordingly:
+      // Derive selection from the resolved scope. 'player' → player-level effect
+      // for triggering player only; 'entity' → all entities of the player;
+      // 'location' → entities at the entity's current location.
       switch (resolved.scope) {
         case 'player':
-          // Apply to all entities owned by the triggering user.
-          selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId } };
+          // Player-level effects (timer speeds, keeper XP, mission power, etc.) are
+          // resolved via resolveForTarget(userId, PLAYER, ...). Use scope:'player' +
+          // agg:'self' so the power only applies to the triggering player.
+          selection = { scope: 'player', agg: 'self' };
           break;
         case 'entity':
-          // Apply to only the exact triggering entity.
-          selection = { scope: 'entity', agg: 'any', filter: { entityId } };
+          // Apply to all entities owned by the triggering user.
+          selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId } };
           break;
         case 'location': {
           // Apply to entities at the location this entity is currently assigned to.
