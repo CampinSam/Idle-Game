@@ -33,7 +33,7 @@ interface PowerRowProps {
 function PowerRow({ power, usageCount, isAtLimit, isBusy, countdown, onTrigger }: PowerRowProps) {
   const limit = typeof power.dailyLimit === 'number' && power.dailyLimit > 0 ? power.dailyLimit : 1;
   const remaining = Math.max(0, limit - usageCount);
-  const label = power.name;
+  const label = power.name || powerKey(power);
   const valueLabel = powerValueLabel(power);
 
   return (

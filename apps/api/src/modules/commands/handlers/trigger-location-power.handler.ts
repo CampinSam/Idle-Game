@@ -107,10 +107,23 @@ export class TriggerLocationPowerHandler implements CommandHandler {
 
     // Tick-speed boosts always operate at global scope — the BoostEvent processor
     // applies to the world tick, not to individual players or entities.
-    // For all other power types derive selection from the resolved scope field.
-    const selection = isTickBoost
-      ? { scope: 'global', agg: 'any' }
-      : (resolved.selection ?? { scope: resolved.scope, agg: 'any' });
+    // For all other power types use the explicit selection from the PowerRef/PowerDef.
+    // Non-global scopes (player, entity, location) REQUIRE an explicit selection that
+    // includes a binding filter; deriving one from scope alone would silently apply
+    // the power to all entities regardless of the intended target.
+    let selection: any;
+    if (isTickBoost) {
+      selection = { scope: 'global', agg: 'any' };
+    } else if (resolved.selection) {
+      selection = resolved.selection;
+    } else if (resolved.scope === 'global') {
+      selection = { scope: 'global', agg: 'any' };
+    } else {
+      throw new BadRequestException(
+        `Power "${powerKey}" has scope "${resolved.scope}" but no explicit selection defined. ` +
+        `Non-global scoped powers must carry an explicit selection in the PowerRef or PowerDef.`,
+      );
+    }
 
     await this.globalPowerService.triggerPower({
       label: `${locationName} — ${resolved.name}`,

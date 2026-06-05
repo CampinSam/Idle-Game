@@ -31,6 +31,7 @@ export const TABLE_API_KEYS: Record<string, string> = {
   GemPackDef: 'gemPacks',
   GameDefinition: 'game-definitions',
   CryptoRateConfig: 'cryptoRateConfig',
+  PowerDef: 'powerDef',
 };
 
 export interface FieldDef {

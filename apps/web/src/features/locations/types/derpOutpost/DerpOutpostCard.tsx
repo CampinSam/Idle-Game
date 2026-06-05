@@ -122,7 +122,7 @@ function UniquePowerPanel({
         const limit = typeof p.dailyLimit === 'number' && p.dailyLimit > 0 ? p.dailyLimit : 1;
         const isAtLimit = usage ? usage.usageCount >= limit : false;
         const usageCount = usage?.usageCount ?? 0;
-        const label = p.name;
+        const label = p.name || k;
         const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
           || p.powerDefId === 'global_tick_boost';
         const valStr = p.value !== undefined ? (isPercent ? `+${p.value}%` : `+${p.value}`) : '—';

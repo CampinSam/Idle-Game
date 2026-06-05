@@ -20,10 +20,10 @@ export interface PowerRef {
 
   /**
    * Stable slug used as the usage-tracking key in EntityPowerUsage /
-   * LocationPowerUsage. Always required and must be unique within the
-   * entity/location definition.
+   * LocationPowerUsage. Required for PowerDef-backed refs; legacy inline powers
+   * without this field fall back to `powerType` at runtime.
    */
-  key: string;
+  key?: string;
 
   // ─── Optional overrides (fall back to PowerDef defaults when omitted) ──────
 
