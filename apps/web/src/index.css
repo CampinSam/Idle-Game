@@ -1758,7 +1758,7 @@ input:focus {
   flex-direction: row;
   align-items: center;
   gap: 6px;
-  padding: 6px;
+  padding: 9px;
   max-width: 520px;
   width: 100%;
   background: #1a1640;
