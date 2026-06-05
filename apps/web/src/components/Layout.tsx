@@ -76,9 +76,7 @@ export default function Layout() {
       {profile && (
         <div className="top-bar-container">
           <div className="top-bar">
-            {/* Row 1: avatar · name · gift · bell */}
-            <div className="top-bar-main-row">
-              <div className="top-bar-avatar-wrap">
+            <div className="top-bar-avatar-wrap">
                 <button
                   className="top-bar-avatar-btn"
                   onClick={() => setShowMenu(!showMenu)}
@@ -154,6 +152,8 @@ export default function Layout() {
                   </div>
                 )}
               </div>
+            <div className="top-bar-right-col">
+              <div className="top-bar-main-row">
               <span className="top-bar-name">{profile.username}</span>
               <div style={{ flex: 1 }} />
               {hasClaimableRewards && (
@@ -196,7 +196,7 @@ export default function Layout() {
                   </span>
                 )}
               </button>
-            </div>
+              </div>
             {/* Row 2: currencies */}
             <div className="top-bar-currencies">
               {(() => {
@@ -228,6 +228,7 @@ export default function Layout() {
                   </div>
                 ));
               })()}
+            </div>
             </div>
           </div>
         </div>
