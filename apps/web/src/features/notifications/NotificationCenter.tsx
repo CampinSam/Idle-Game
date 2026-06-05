@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
 import { useModal } from '../../context/ModalContext';
 import { useCollectJob } from '../../hooks/useCollectJob';
+import { useCommand } from '../../hooks/useCommand';
 import { api } from '../../services/api';
 
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
@@ -72,6 +73,13 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const [filter, setFilter] = useState<string>('All');
   const [jobsExpanded, setJobsExpanded] = useState(true);
   const nowMs = useNow(60_000);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  const { execute } = useCommand({
+    onUiIntent: (intent) => {
+      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
+    },
+  });
 
   const filtered = useMemo(() => {
     if (filter === 'All') return notifications;
@@ -147,10 +155,49 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
   const handleGiftClaim = async (e: React.MouseEvent, n: AppNotification) => {
     e.stopPropagation();
     const giftId = n.meta?.giftId;
-    if (!giftId) return;
-    dismissNotification(n.id);
-    onClose();
-    await openModalSpec({ giftId });
+    if (!giftId || claimingId) return;
+    setClaimingId(n.id);
+    try {
+      dismissNotification(n.id);
+      onClose();
+      await execute('ClaimGift', { giftId });
+    } catch (err) {
+      console.error('[NotificationCenter] Gift claim failed:', err);
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  const handleQuestClaim = async (e: React.MouseEvent, n: AppNotification) => {
+    e.stopPropagation();
+    const questInstanceId = n.meta?.questInstanceId;
+    if (!questInstanceId || claimingId) return;
+    setClaimingId(n.id);
+    try {
+      if (!n.readAt) markRead([n.id]).catch(() => {});
+      onClose();
+      await execute('ClaimQuestReward', { questInstanceId });
+    } catch (err) {
+      console.error('[NotificationCenter] Quest claim failed:', err);
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  const handleAchievementClaim = async (e: React.MouseEvent, n: AppNotification) => {
+    e.stopPropagation();
+    const achievementInstanceId = n.meta?.questInstanceId;
+    if (!achievementInstanceId || claimingId) return;
+    setClaimingId(n.id);
+    try {
+      if (!n.readAt) markRead([n.id]).catch(() => {});
+      onClose();
+      await execute('ClaimAchievementReward', { achievementInstanceId });
+    } catch (err) {
+      console.error('[NotificationCenter] Achievement claim failed:', err);
+    } finally {
+      setClaimingId(null);
+    }
   };
 
   return (
@@ -231,6 +278,10 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                   const jobId = resolveJobId(n);
                   const isReady = READY_TYPES.includes(n.type) && !!jobId;
                   const isGift = n.type === 'gift' && !!n.meta?.giftId;
+                  const isQuestComplete = n.type === 'quest_complete' && !!n.meta?.questInstanceId;
+                  const isAchievementComplete = n.type === 'achievement_complete' && !!n.meta?.questInstanceId;
+                  const isClaiming = claimingId === n.id;
+                  const hasClaimBtn = !n.readAt && (isGift || isQuestComplete || isAchievementComplete);
                   return (
                     <button
                       key={n.id}
@@ -245,8 +296,18 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                         <span className="nc-item-body">{n.body}</span>
                         <span className="nc-item-time">{timeAgo(n.createdAt, nowMs)}</span>
                       </div>
-                      {isGift && !n.readAt ? (
-                        <span className="nc-collect-btn" onClick={(e) => handleGiftClaim(e, n)}>Claim</span>
+                      {hasClaimBtn ? (
+                        <span
+                          className="nc-collect-btn"
+                          onClick={(e) => {
+                            if (isGift) handleGiftClaim(e, n);
+                            else if (isQuestComplete) handleQuestClaim(e, n);
+                            else handleAchievementClaim(e, n);
+                          }}
+                          style={{ opacity: isClaiming ? 0.5 : 1 }}
+                        >
+                          {isClaiming ? '…' : 'Claim'}
+                        </span>
                       ) : isReady ? (
                         <span className="nc-collect-btn" onClick={(e) => handleCollect(e, n)}>Collect</span>
                       ) : !n.readAt ? (
