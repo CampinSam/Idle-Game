@@ -1801,7 +1801,12 @@ input:focus {
   cursor: pointer;
 }
 .top-bar-progress-ring {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  transform: rotate(-90deg);
 }
 .progress-ring-bg {
   fill: none;
