@@ -404,6 +404,19 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
+      const existingUniques = currentRules.uniques as Record<string, any> | undefined;
+
+      // Skip if uniques already exist in PowerRef format (any asset has a power with powerDefId).
+      // Only overwrite if uniques are absent or still in the old inline format (no powerDefId).
+      const firstPower = existingUniques
+        ? Object.values(existingUniques)[0]?.powers?.[0]
+        : undefined;
+      const alreadyMigrated = firstPower && typeof firstPower.powerDefId === 'string';
+      if (alreadyMigrated) {
+        logger.log(`NFT unique powers: skipped (already in PowerRef format) on entityDefinition "${definitionId}"`);
+        continue;
+      }
+
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.entityDefinition.update({
@@ -429,6 +442,19 @@ async function seedNftUniquePowers(prisma: any) {
       }
 
       const currentRules = (existing.rules as Record<string, unknown>) || {};
+      const existingUniques = currentRules.uniques as Record<string, any> | undefined;
+
+      // Skip if uniques already exist in PowerRef format (any asset has a power with powerDefId).
+      // Only overwrite if uniques are absent or still in the old inline format (no powerDefId).
+      const firstPower = existingUniques
+        ? Object.values(existingUniques)[0]?.powers?.[0]
+        : undefined;
+      const alreadyMigrated = firstPower && typeof firstPower.powerDefId === 'string';
+      if (alreadyMigrated) {
+        logger.log(`NFT unique powers: skipped (already in PowerRef format) on locationDefinition "${definitionId}"`);
+        continue;
+      }
+
       const mergedRules = { ...currentRules, uniques: buildUniquesMap(assetIds) };
 
       await prisma.locationDefinition.update({

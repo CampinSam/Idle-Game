@@ -101,10 +101,12 @@ export class TriggerEntityPowerHandler implements CommandHandler {
       throw new BadRequestException(`Power "${powerKey}" has no effectDefId defined. Non-tick powers must provide effectDefId.`);
     }
 
-    // Derive a selection from resolved scope when no explicit selection is provided.
-    // This ensures scope:'player' / 'entity' / 'location' flows into GlobalActivePower
-    // rather than silently defaulting to global inside createPower().
-    const selection = resolved.selection ?? { scope: resolved.scope, agg: 'any' };
+    // Tick-speed boosts always operate at global scope — the BoostEvent processor
+    // applies to the world tick, not to individual players or entities.
+    // For all other power types derive selection from the resolved scope field.
+    const selection = isTickBoost
+      ? { scope: 'global', agg: 'any' }
+      : (resolved.selection ?? { scope: resolved.scope, agg: 'any' });
 
     await this.globalPowerService.triggerPower({
       label: `${entityName} — ${resolved.name}`,
