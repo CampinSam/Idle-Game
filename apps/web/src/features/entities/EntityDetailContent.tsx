@@ -564,8 +564,10 @@ export default function EntityDetailContent() {
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto" style={{ touchAction: 'pan-y' }}>
-          <EntityDetail entity={entity} variant="full" />
+        <div className="relative flex-1 min-h-0" style={{ touchAction: 'pan-y' }}>
+          <div className="absolute inset-0 overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+            <EntityDetail entity={entity} variant="full" />
+          </div>
         </div>
       </div>
     </div>
