@@ -138,9 +138,12 @@ export class TriggerEntityPowerHandler implements CommandHandler {
             where: { entityId },
             select: { locationId: true },
           });
-          selection = assignment?.locationId
-            ? { scope: 'entity', agg: 'any', filter: { locationId: assignment.locationId } }
-            : { scope: 'global', agg: 'any' }; // entity has no location — fall back to global
+          if (!assignment?.locationId) {
+            throw new BadRequestException(
+              `Cannot activate location-scoped power "${resolved.name ?? resolved.key}": entity is not assigned to any location.`,
+            );
+          }
+          selection = { scope: 'entity', agg: 'any', filter: { locationId: assignment.locationId } };
           break;
         }
         default:
