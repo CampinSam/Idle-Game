@@ -1029,12 +1029,168 @@ function StoreItemPicker({
   );
 }
 
+// ─── Resource def picker (currency or item, determined by sibling type field) ──
+
+function ResourceDefPicker({
+  resourceType,
+  value,
+  onChange,
+}: {
+  resourceType: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allDefs, setAllDefs] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef<string | null>(null);
+
+  const loadDefs = useCallback((type: string) => {
+    if (fetchedRef.current === type) return;
+    fetchedRef.current = type;
+    setLoading(true);
+    setError('');
+    setAllDefs([]);
+    const req = type === 'currency'
+      ? adminApi.listCurrencyDefs().then((defs: any[]) => defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })))
+      : adminApi.listItemDefs().then((defs: any[]) => defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+    req
+      .then(mapped => { setAllDefs(mapped); setLoading(false); })
+      .catch((e: any) => { fetchedRef.current = null; setError(e.message || 'Failed to load definitions'); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    if (value && resourceType) loadDefs(resourceType);
+  }, [value, resourceType, loadDefs]);
+
+  useEffect(() => {
+    if (open && resourceType) loadDefs(resourceType);
+  }, [open, resourceType, loadDefs]);
+
+  useEffect(() => {
+    fetchedRef.current = null;
+    setAllDefs([]);
+  }, [resourceType]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allDefs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allDefs;
+
+  const selected = allDefs.find(d => d.id === value);
+  const accentColor = resourceType === 'currency' ? '#fbbf24' : '#60a5fa';
+  const accentBorder = resourceType === 'currency' ? 'rgba(251,191,36,0.4)' : 'rgba(96,165,250,0.4)';
+  const accentBg = resourceType === 'currency' ? 'rgba(251,191,36,0.15)' : 'rgba(96,165,250,0.15)';
+  const placeholder = resourceType === 'currency' ? 'currency def id' : resourceType === 'item' ? 'item def id' : 'def id';
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{
+            ...inputStyle,
+            width: 'auto', padding: '0 8px', flexShrink: 0,
+            cursor: 'pointer', fontSize: 10,
+            color: open ? accentColor : '#6b7280',
+            borderColor: open ? accentBorder : undefined,
+          }}
+          title={`Pick ${resourceType || 'resource'} definition`}
+        >
+          {open ? '▲ pick' : '▼ pick'}
+        </button>
+      </div>
+
+      {value && selected && (
+        <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>
+          ✓ {selected.name}
+        </div>
+      )}
+      {value && !selected && allDefs.length > 0 && !loading && (
+        <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>
+          ⚠ ID not found in current results — it may still be valid
+        </div>
+      )}
+      {!resourceType && (
+        <div style={{ fontSize: 10, color: '#6b7280', fontStyle: 'italic', paddingLeft: 2 }}>
+          Set the type field first to enable the picker
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4,
+          background: '#0f0f1e', border: `1px solid ${accentBorder}`,
+          borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden',
+        }}>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="search by name or id…"
+            autoFocus
+            style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }}
+          />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && (
+              <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>
+                No {resourceType || 'resource'} definitions found
+              </div>
+            )}
+            {filtered.map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left' as const,
+                  padding: '4px 6px', background: opt.id === value ? accentBg : 'transparent',
+                  border: 'none', borderRadius: 4, cursor: 'pointer',
+                  color: opt.id === value ? accentColor : '#c4b5fd',
+                  fontSize: 11, fontFamily: 'inherit',
+                }}
+                title={opt.id}
+              >
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Array-of-objects editor ──────────────────────────────────────────────────
 
 interface ArrayFieldSchema {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'enum';
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'resourceDefPicker';
   options?: string[];
   optional?: boolean;
 }
@@ -1042,7 +1198,7 @@ interface ArrayFieldSchema {
 const ARRAY_FIELD_SCHEMAS: Record<string, ArrayFieldSchema[]> = {
   'ResourceSummaryBar.resources': [
     { key: 'type',  label: 'type',  type: 'enum', options: ['currency', 'item'] },
-    { key: 'defId', label: 'defId', type: 'string' },
+    { key: 'defId', label: 'defId', type: 'resourceDefPicker' },
   ],
   'CTAButtonGroup.buttons': [
     { key: 'actionKey', label: 'actionKey', type: 'string' },
@@ -1206,7 +1362,7 @@ function ArrayOfObjectsEditor({
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                   {fieldSchemas.map(f => (
-                    <div key={f.key} style={{ ...fieldGroupStyle, minWidth: 90 }}>
+                    <div key={f.key} style={{ ...fieldGroupStyle, minWidth: f.type === 'resourceDefPicker' ? 180 : 90 }}>
                       <span style={labelStyle}>{f.label}{f.optional ? '' : ' *'}</span>
                       {f.type === 'boolean' ? (
                         <select
@@ -1231,6 +1387,12 @@ function ArrayOfObjectsEditor({
                           value={String(rowObj[f.key] ?? 0)}
                           onChange={e => updateField(rowIdx, f.key, Number(e.target.value))}
                           style={{ ...inputStyle, width: '100%' }}
+                        />
+                      ) : f.type === 'resourceDefPicker' ? (
+                        <ResourceDefPicker
+                          resourceType={String(rowObj['type'] ?? '')}
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={v => updateField(rowIdx, f.key, v)}
                         />
                       ) : (
                         <input

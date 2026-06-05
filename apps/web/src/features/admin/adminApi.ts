@@ -198,6 +198,7 @@ export const adminApi = {
     adminRequest<any>(`/players/${id}/items`, { method: 'POST', body: JSON.stringify({ itemId, quantity }) }),
   getPlayerItems: (id: string) => adminRequest<any[]>(`/players/${id}/items`),
   listItemDefs: () => adminRequest<any[]>('/item-defs'),
+  listCurrencyDefs: () => adminRequest<any[]>('/currency'),
 
   updatePlayerEntity: (id: string, entityId: string, data: { stats?: any; level?: number; name?: string }) =>
     adminRequest<any>(`/players/${id}/entities/${entityId}`, { method: 'PUT', body: JSON.stringify(data) }),
