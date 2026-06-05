@@ -209,6 +209,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       category: 'system',
       title: powerTitle,
       body: powerBody,
+      deepLink: { locationId, screen: `/locations/${locationId}` },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

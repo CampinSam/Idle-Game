@@ -10,7 +10,7 @@ export const NOTIFICATION_READY_TYPES = ['job_ready', 'mission_ready'];
 export const NOTIFICATION_COMPLETE_TYPES = ['mission_complete', 'craft_complete', 'building_complete'];
 
 export function resolveNotificationJobId(n: AppNotification): string | undefined {
-  return n.deepLink?.jobId || n.deepLink?.missionRunId || n.deepLink?.craftJobId || n.deepLink?.entityId;
+  return n.deepLink?.jobId || n.deepLink?.missionRunId || n.deepLink?.craftJobId;
 }
 
 /**
@@ -73,10 +73,7 @@ export function useNotificationAction(opts?: { onAfterAction?: () => void }) {
       if (!n.readAt) markRead([n.id]).catch(() => {});
 
       const jobId = resolveNotificationJobId(n);
-      if (
-        jobId &&
-        (NOTIFICATION_READY_TYPES.includes(n.type) || NOTIFICATION_COMPLETE_TYPES.includes(n.type))
-      ) {
+      if (jobId) {
         afterAction?.();
         await openModalSpec({ jobId });
         return;

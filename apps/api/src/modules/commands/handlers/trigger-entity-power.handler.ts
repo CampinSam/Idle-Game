@@ -211,6 +211,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
       category: 'system',
       title: powerTitle,
       body: powerBody,
+      deepLink: { entityId, screen: `/entities/${entityId}` },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

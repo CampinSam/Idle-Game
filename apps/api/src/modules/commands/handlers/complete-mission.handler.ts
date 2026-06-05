@@ -53,6 +53,7 @@ export class CompleteMissionHandler implements CommandHandler {
       category: 'missions',
       title,
       body,
+      deepLink: { jobId },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

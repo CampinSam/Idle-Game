@@ -197,12 +197,17 @@ export class UseConsumableHandler implements CommandHandler {
         }))).join(', ')
       : item.definition.name;
 
+    const consumableDeepLink = targetId
+      ? { entityId: targetId, screen: `/entities/${targetId}` }
+      : {};
+
     const notification = await this.notificationService.createForCommand({
       userId: ctx.userId,
       type: 'consumable_used',
       category: 'general',
       title: `Used ${item.definition.name}`,
       body: effectNames,
+      deepLink: consumableDeepLink,
     }, ctx.tx);
     pb.upsertNotification(notification);
 

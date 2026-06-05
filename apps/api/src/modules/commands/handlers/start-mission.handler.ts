@@ -34,6 +34,7 @@ export class StartMissionHandler implements CommandHandler {
       category: 'missions',
       title: 'Mission Started',
       body: 'Your mission is underway.',
+      deepLink: { missionRunId: result.id },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

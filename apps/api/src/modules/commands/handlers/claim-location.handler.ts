@@ -27,6 +27,7 @@ export class ClaimLocationHandler implements CommandHandler {
       category: 'location',
       title: 'Resources Claimed',
       body: 'Location resources have been collected.',
+      deepLink: { locationId, screen: `/locations/${locationId}` },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

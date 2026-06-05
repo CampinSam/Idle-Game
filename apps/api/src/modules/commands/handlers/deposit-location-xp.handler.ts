@@ -75,6 +75,7 @@ export class DepositLocationXpHandler implements CommandHandler {
         category: 'location',
         title,
         body,
+        deepLink: { locationId, screen: `/locations/${locationId}` },
       }, ctx.tx);
       pb.upsertNotification(newNotif);
       commandNotifId = newNotif.id;

@@ -166,6 +166,7 @@ export class EquipItemHandler implements CommandHandler {
       category: 'equipment',
       title: 'Gear Equipped',
       body,
+      deepLink: { entityId, screen: `/entities/${entityId}` },
     }, ctx.tx);
     pb.upsertNotification(notification);
 

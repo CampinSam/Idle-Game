@@ -98,6 +98,7 @@ export class UnequipItemHandler implements CommandHandler {
       category: 'equipment',
       title: 'Gear Unequipped',
       body,
+      deepLink: { entityId, screen: `/entities/${entityId}` },
     }, ctx.tx);
     pb.upsertNotification(notification);
 
