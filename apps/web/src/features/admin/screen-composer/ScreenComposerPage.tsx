@@ -1029,6 +1029,235 @@ function StoreItemPicker({
   );
 }
 
+// ─── Array-of-objects editor ──────────────────────────────────────────────────
+
+interface ArrayFieldSchema {
+  key: string;
+  label: string;
+  type: 'string' | 'number' | 'boolean' | 'enum';
+  options?: string[];
+  optional?: boolean;
+}
+
+const ARRAY_FIELD_SCHEMAS: Record<string, ArrayFieldSchema[]> = {
+  'ResourceSummaryBar.resources': [
+    { key: 'type',  label: 'type',  type: 'enum', options: ['currency', 'item'] },
+    { key: 'defId', label: 'defId', type: 'string' },
+  ],
+  'CTAButtonGroup.buttons': [
+    { key: 'actionKey', label: 'actionKey', type: 'string' },
+    { key: 'label',     label: 'label',     type: 'string' },
+    { key: 'style',     label: 'style',     type: 'enum', options: ['primary', 'secondary'], optional: true },
+  ],
+  'DailyQuestPanel.quests': [
+    { key: 'title',       label: 'title',       type: 'string' },
+    { key: 'description', label: 'description', type: 'string', optional: true },
+    { key: 'completed',   label: 'completed',   type: 'boolean', optional: true },
+  ],
+  'AnnouncementFeed.entries': [
+    { key: 'headline', label: 'headline', type: 'string' },
+    { key: 'body',     label: 'body',     type: 'string', optional: true },
+    { key: 'emoji',    label: 'emoji',    type: 'string', optional: true },
+  ],
+  'BattlePassTierList.tiers': [
+    { key: 'tier',     label: 'tier',     type: 'number' },
+    { key: 'label',    label: 'label',    type: 'string' },
+    { key: 'reward',   label: 'reward',   type: 'string' },
+    { key: 'unlocked', label: 'unlocked', type: 'boolean' },
+  ],
+  'EventCarousel.events': [
+    { key: 'title',       label: 'title',          type: 'string' },
+    { key: 'emoji',       label: 'emoji',          type: 'string' },
+    { key: 'description', label: 'description',    type: 'string', optional: true },
+    { key: 'endsAt',      label: 'endsAt (ISO)',   type: 'string', optional: true },
+    { key: 'href',        label: 'href',           type: 'string', optional: true },
+  ],
+  'EventCardList.events': [
+    { key: 'title',       label: 'title',          type: 'string' },
+    { key: 'emoji',       label: 'emoji',          type: 'string' },
+    { key: 'description', label: 'description',    type: 'string', optional: true },
+    { key: 'endsAt',      label: 'endsAt (ISO)',   type: 'string', optional: true },
+    { key: 'href',        label: 'href',           type: 'string', optional: true },
+  ],
+  'TelemetryCard.entries': [
+    { key: 'key',   label: 'key',   type: 'string' },
+    { key: 'label', label: 'label', type: 'string' },
+    { key: 'icon',  label: 'icon',  type: 'string', optional: true },
+    { key: 'color', label: 'color', type: 'string', optional: true },
+  ],
+};
+
+function ArrayOfObjectsEditor({
+  value,
+  fieldSchemas,
+  onChange,
+}: {
+  value: unknown[];
+  fieldSchemas: ArrayFieldSchema[];
+  onChange: (arr: unknown[]) => void;
+}) {
+  const [mode, setMode] = useState<'rows' | 'raw'>('rows');
+  const [rawText, setRawText] = useState(() => JSON.stringify(value, null, 2));
+  const [rawError, setRawError] = useState('');
+
+  const items = Array.isArray(value) ? value : [];
+
+  const handleModeChange = (next: 'rows' | 'raw') => {
+    if (next === 'raw') {
+      setRawText(JSON.stringify(value, null, 2));
+      setRawError('');
+    }
+    setMode(next);
+  };
+
+  const handleRawChange = (text: string) => {
+    setRawText(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) { setRawError('Must be a JSON array []'); return; }
+      setRawError('');
+      onChange(parsed);
+    } catch {
+      setRawError('Invalid JSON');
+    }
+  };
+
+  const addRow = () => {
+    const newItem: Record<string, unknown> = {};
+    for (const f of fieldSchemas) {
+      if (!f.optional) {
+        newItem[f.key] = f.type === 'number' ? 0 : f.type === 'boolean' ? false : f.type === 'enum' ? (f.options?.[0] ?? '') : '';
+      }
+    }
+    onChange([...items, newItem]);
+  };
+
+  const removeRow = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  const moveRow = (from: number, to: number) => {
+    if (to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onChange(next);
+  };
+
+  const updateField = (rowIdx: number, key: string, val: unknown) => {
+    const next = items.map((row, i) =>
+      i === rowIdx ? { ...(row as Record<string, unknown>), [key]: val } : row,
+    );
+    onChange(next);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button type="button" style={tabBtnStyle(mode === 'rows')} onClick={() => handleModeChange('rows')}>Rows</button>
+        <button type="button" style={tabBtnStyle(mode === 'raw')} onClick={() => handleModeChange('raw')}>Raw JSON</button>
+      </div>
+
+      {mode === 'raw' ? (
+        <div>
+          <textarea
+            value={rawText}
+            onChange={e => handleRawChange(e.target.value)}
+            rows={5}
+            style={{
+              ...inputStyle, width: '100%', resize: 'vertical' as const,
+              fontFamily: 'monospace', fontSize: 11, boxSizing: 'border-box' as const,
+              color: rawError ? '#ff6b6b' : '#a0e0a0',
+            }}
+          />
+          {rawError && <span style={{ color: '#ff6b6b', fontSize: 10 }}>{rawError}</span>}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {items.length === 0 && (
+            <div style={{ color: '#555', fontSize: 11, fontStyle: 'italic', padding: '4px 2px' }}>
+              No items — click + Add Row below
+            </div>
+          )}
+          {items.map((row, rowIdx) => {
+            const rowObj = (row as Record<string, unknown>) ?? {};
+            return (
+              <div key={rowIdx} style={{ ...entryCardStyle, gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ ...labelStyle, flex: 1 }}>#{rowIdx + 1}</span>
+                  <button
+                    type="button"
+                    style={iconButtonStyle}
+                    disabled={rowIdx === 0}
+                    onClick={() => moveRow(rowIdx, rowIdx - 1)}
+                    title="Move up"
+                  >↑</button>
+                  <button
+                    type="button"
+                    style={iconButtonStyle}
+                    disabled={rowIdx === items.length - 1}
+                    onClick={() => moveRow(rowIdx, rowIdx + 1)}
+                    title="Move down"
+                  >↓</button>
+                  <button
+                    type="button"
+                    style={dangerIconButtonStyle}
+                    onClick={() => removeRow(rowIdx)}
+                    title="Remove row"
+                  >×</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                  {fieldSchemas.map(f => (
+                    <div key={f.key} style={{ ...fieldGroupStyle, minWidth: 90 }}>
+                      <span style={labelStyle}>{f.label}{f.optional ? '' : ' *'}</span>
+                      {f.type === 'boolean' ? (
+                        <select
+                          value={String(rowObj[f.key] ?? false)}
+                          onChange={e => updateField(rowIdx, f.key, e.target.value === 'true')}
+                          style={{ ...selectStyle, width: '100%' }}
+                        >
+                          <option value="true">true</option>
+                          <option value="false">false</option>
+                        </select>
+                      ) : f.type === 'enum' ? (
+                        <select
+                          value={String(rowObj[f.key] ?? f.options?.[0] ?? '')}
+                          onChange={e => updateField(rowIdx, f.key, e.target.value)}
+                          style={{ ...selectStyle, width: '100%' }}
+                        >
+                          {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : f.type === 'number' ? (
+                        <input
+                          type="number"
+                          value={String(rowObj[f.key] ?? 0)}
+                          onChange={e => updateField(rowIdx, f.key, Number(e.target.value))}
+                          style={{ ...inputStyle, width: '100%' }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={e => updateField(rowIdx, f.key, e.target.value)}
+                          style={{ ...inputStyle, width: '100%' }}
+                          placeholder={f.optional ? '(optional)' : ''}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            style={{ ...addButtonStyle, alignSelf: 'flex-start' as const }}
+            onClick={addRow}
+          >+ Add Row</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Structured props editor ──────────────────────────────────────────────────
 
 type PropType = 'string' | 'number' | 'boolean' | 'json';
@@ -1054,11 +1283,13 @@ function StructuredFieldsEditor({
   hints,
   onChange,
   highlightKeys = [],
+  componentKey = '',
 }: {
   props: Record<string, unknown>;
   hints: Record<string, PropHint>;
   onChange: (p: Record<string, unknown>) => void;
   highlightKeys?: string[];
+  componentKey?: string;
 }) {
   const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
   const [jsonTexts, setJsonTexts] = useState<Record<string, string>>({});
@@ -1184,19 +1415,34 @@ function StructuredFieldsEditor({
                   style={{ ...inputStyle, width: '100%' }}
                 />
               ) : ptype === 'json' ? (
-                <div>
-                  <textarea
-                    value={getJsonText(key, val)}
-                    onChange={e => handleJsonChange(key, e.target.value)}
-                    rows={3}
-                    style={{
-                      ...inputStyle, width: '100%', resize: 'vertical' as const,
-                      fontFamily: 'monospace', fontSize: 11, boxSizing: 'border-box' as const,
-                      color: jsonErrors[key] ? '#ff6b6b' : '#a0e0a0',
-                    }}
-                  />
-                  {jsonErrors[key] && <span style={{ color: '#ff6b6b', fontSize: 10 }}>{jsonErrors[key]}</span>}
-                </div>
+                (() => {
+                  const arraySchema = componentKey ? ARRAY_FIELD_SCHEMAS[`${componentKey}.${key}`] : undefined;
+                  if (arraySchema) {
+                    const arrVal = Array.isArray(val) ? val : [];
+                    return (
+                      <ArrayOfObjectsEditor
+                        value={arrVal}
+                        fieldSchemas={arraySchema}
+                        onChange={arr => updateProp(key, arr)}
+                      />
+                    );
+                  }
+                  return (
+                    <div>
+                      <textarea
+                        value={getJsonText(key, val)}
+                        onChange={e => handleJsonChange(key, e.target.value)}
+                        rows={3}
+                        style={{
+                          ...inputStyle, width: '100%', resize: 'vertical' as const,
+                          fontFamily: 'monospace', fontSize: 11, boxSizing: 'border-box' as const,
+                          color: jsonErrors[key] ? '#ff6b6b' : '#a0e0a0',
+                        }}
+                      />
+                      {jsonErrors[key] && <span style={{ color: '#ff6b6b', fontSize: 10 }}>{jsonErrors[key]}</span>}
+                    </div>
+                  );
+                })()
               ) : (
                 <input
                   type="text"
@@ -1408,7 +1654,7 @@ function PropsEditor({
       </div>
 
       {tab === 'raw' ? rawJsonPanel : (
-        noPropsNotice ?? <StructuredFieldsEditor props={props} hints={hints} onChange={onChange} highlightKeys={highlightKeys} />
+        noPropsNotice ?? <StructuredFieldsEditor props={props} hints={hints} onChange={onChange} highlightKeys={highlightKeys} componentKey={componentKey} />
       )}
     </div>
   );
