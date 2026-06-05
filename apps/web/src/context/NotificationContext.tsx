@@ -15,9 +15,6 @@ export interface LocalToast {
   durationMs?: number;
 }
 
-/** @deprecated Use LocalToast */
-export type TransientToast = LocalToast;
-
 export interface AppNotification {
   id: string;
   type: string;
@@ -54,12 +51,6 @@ interface NotificationContextValue {
   hideToast: (toastId: string) => void;
   addLocalToast: (toast: Omit<LocalToast, 'id'>) => void;
   dismissLocalToast: (id: string) => void;
-  /** @deprecated Use addLocalToast */
-  addTransientToast: (toast: Omit<LocalToast, 'id'>) => void;
-  /** @deprecated Use dismissLocalToast */
-  dismissTransientToast: (id: string) => void;
-  /** @deprecated Use localToasts */
-  transientToasts: LocalToast[];
 }
 
 const NotificationContext = createContext<NotificationContextValue>({
@@ -76,9 +67,6 @@ const NotificationContext = createContext<NotificationContextValue>({
   hideToast: () => {},
   addLocalToast: () => {},
   dismissLocalToast: () => {},
-  addTransientToast: () => {},
-  dismissTransientToast: () => {},
-  transientToasts: [],
 });
 
 export function useNotifications() {
@@ -283,9 +271,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         hideToast,
         addLocalToast,
         dismissLocalToast,
-        addTransientToast: addLocalToast,
-        dismissTransientToast: dismissLocalToast,
-        transientToasts: localToasts,
       }}
     >
       {children}
