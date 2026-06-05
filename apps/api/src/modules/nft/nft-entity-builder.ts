@@ -31,7 +31,7 @@ export async function buildEntityDataFromNftMetadata(
   }
 
   const scalingContributions: ScalingContribution[] = [];
-  const traits: Record<string, string> = {};
+  const traits: Record<string, string | number | boolean | null> = {};
 
   const normalizedAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(meta.attributes)) {
@@ -88,6 +88,15 @@ export async function buildEntityDataFromNftMetadata(
   if (typeof slotDefaults !== 'object') {
     throw new Error(`EntityDefinition "${entityDef.id}" has invalid \`init.nft.defaults\` (must be object)`);
   }
+  // valueMap: per-slot value remapping. Keys are lowercased resolved archetype strings;
+  // values are the replacement (string → new archetype, number/boolean → cast then stringify
+  // for lookup, null → skip slot entirely). A "*" key catches anything not explicitly listed.
+  const rawValueMap = (nftRules.valueMap ?? {}) as Record<string, Record<string, string | number | boolean | null>>;
+  // slotTypes: per-slot type cast applied to the resolved archetype before storage.
+  // The archetype string is still used for traitDef lookup; only the stored value is cast.
+  // Supported: "string" (default, no-op), "number", "boolean", "null".
+  const rawSlotTypes = (nftRules.slotTypes ?? {}) as Record<string, 'string' | 'number' | 'boolean' | 'null'>;
+
   if (rawAttributeMap && typeof rawAttributeMap === 'object') {
     for (const [rawKey, mappedSlot] of Object.entries(rawAttributeMap)) {
       if (typeof mappedSlot !== 'string') continue;
@@ -116,9 +125,46 @@ export async function buildEntityDataFromNftMetadata(
     }
 
     const archetype = attrValue.toLowerCase();
-    traits[slotName] = archetype;
 
-    const traitDef = traitByArchetype[archetype];
+    // ── valueMap: remap the resolved archetype string for this slot ──────────
+    const slotValueMap = rawValueMap[slotName] ?? rawValueMap[slotName.toLowerCase()];
+    let resolvedArchetype = archetype;
+    if (slotValueMap && typeof slotValueMap === 'object') {
+      const hit = Object.prototype.hasOwnProperty.call(slotValueMap, archetype)
+        ? slotValueMap[archetype]
+        : Object.prototype.hasOwnProperty.call(slotValueMap, '*')
+          ? slotValueMap['*']
+          : undefined;
+      if (hit !== undefined) {
+        if (hit === null) continue; // null replacement → skip slot entirely (no trait, no stats)
+        resolvedArchetype = String(hit).toLowerCase();
+      }
+      // no match and no '*' → fall through with original archetype (existing behaviour)
+    }
+
+    // ── slotTypes: cast the stored value; traitDef lookup always uses string ─
+    const declaredType = rawSlotTypes[slotName] ?? rawSlotTypes[slotName.toLowerCase()];
+    if (declaredType === 'null') {
+      traits[slotName] = null; // record trait as null; skip stat processing
+      continue;
+    }
+    let storedValue: string | number | boolean = resolvedArchetype;
+    if (declaredType === 'boolean') {
+      storedValue = resolvedArchetype === 'true' || resolvedArchetype === 'yes' || resolvedArchetype === '1';
+    } else if (declaredType === 'number') {
+      const n = Number(resolvedArchetype);
+      if (!Number.isNaN(n)) {
+        storedValue = n;
+      } else {
+        console.warn(
+          `[nft-entity-builder] slotTypes: cannot cast "${resolvedArchetype}" to number ` +
+            `for slot "${slotName}" on NFT "${meta.name}" — keeping as string`,
+        );
+      }
+    }
+    traits[slotName] = storedValue;
+
+    const traitDef = traitByArchetype[resolvedArchetype];
     if (!traitDef) continue;
 
     const slotStats = (traitDef.slotStats as any)?.[slotName];

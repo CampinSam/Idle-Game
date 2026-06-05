@@ -1678,6 +1678,51 @@
       },
       "additionalProperties": false
     },
+    "NftInitBlock": {
+      "type": "object",
+      "description": "The `init.nft` block inside an EntityDefinition that is backed by an NftCollectionDef. Controls how raw on-chain NFT attributes are translated into game trait slots.",
+      "required": ["attributeMap", "missingSlotPolicy"],
+      "properties": {
+        "attributeMap": {
+          "type": "object",
+          "description": "Maps raw NFT attribute key names (lowercased) to internal slot names. Multiple raw keys can map to the same slot. Example: { \"meta_body\": \"body\", \"is leader\": \"leader\" }",
+          "additionalProperties": { "type": "string" }
+        },
+        "missingSlotPolicy": {
+          "type": "string",
+          "enum": ["error", "skip", "default"],
+          "description": "What to do when an NFT is missing an attribute for a declared slot. error: throw (blocks import). skip: silently omit the slot. default: use the value from `defaults` for that slot."
+        },
+        "defaults": {
+          "type": "object",
+          "description": "Fallback archetype values used when missingSlotPolicy=default. Keys are slot names; values are the archetype string to use. Example: { \"leader\": \"none\" }",
+          "additionalProperties": { "type": "string" }
+        },
+        "valueMap": {
+          "type": "object",
+          "description": "Optional per-slot value remapping applied after attributeMap. Keys are slot names; each value is a map from the resolved (lowercased) raw NFT attribute value to a replacement. Replacement types: string (new archetype), number or boolean (converted to string for lookup, then cast for storage via slotTypes), null (skip the slot entirely — no trait stored, no stats applied). A \"*\" key acts as a wildcard/catch-all for values not explicitly listed. When there is no matching key and no \"*\", the raw value passes through unchanged.\n\nExample:\n```json\n{\n  \"leader\": { \"yes\": \"faction_leader\", \"no\": \"common\", \"*\": \"common\" },\n  \"level\":  { \"*\": null }\n}\n```",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
+        "slotTypes": {
+          "type": "object",
+          "description": "Optional per-slot type cast applied to the resolved archetype *before* it is stored in `entity.traits`. The archetype string is still used for traitDef lookup — only the persisted value is cast. Supported values:\n- \"string\" (default, no-op)\n- \"boolean\": \"true\", \"yes\", \"1\" → true; anything else → false\n- \"number\": parsed via Number(); if NaN, falls back to string with a server warning\n- \"null\": always stores null; skips stat processing but records the trait key\n\nExample:\n```json\n{\n  \"is_leader\": \"boolean\",\n  \"power_level\": \"number\"\n}\n```",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["string", "number", "boolean", "null"]
+          }
+        }
+      }
+    },
     "DustingData": {
       "type": "object",
       "description": "Dusting configuration for an ItemDefinition. When present, a 'Dust' action appears on the item in inventory. The player consumes the item and receives randomised rewards via the job/outcome-tier pipeline.",
