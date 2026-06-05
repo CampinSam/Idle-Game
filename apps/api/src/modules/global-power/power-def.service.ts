@@ -43,8 +43,20 @@ export class PowerDefService {
     }
     if (!data.name) throw new BadRequestException('name is required');
     if (!data.powerType) throw new BadRequestException('powerType is required');
-    if (!['tick_speed_boost', 'effect_backed'].includes(data.powerType)) {
-      throw new BadRequestException('powerType must be "tick_speed_boost" or "effect_backed"');
+    const validPowerTypes = [
+      'tick_speed_boost',
+      'effect_backed',
+      'keeper_xp_boost',
+      'entity_xp_boost',
+      'mission_power_boost',
+      'mission_duration_reduction',
+      'crafting_duration_reduction',
+      'building_build_duration_reduction',
+      'building_upgrade_duration_reduction',
+      'injury_recovery_boost',
+    ];
+    if (!validPowerTypes.includes(data.powerType)) {
+      throw new BadRequestException(`powerType must be one of: ${validPowerTypes.join(', ')}`);
     }
     if (data.powerType === 'effect_backed' && !data.effectDefId) {
       throw new BadRequestException('effectDefId is required for effect_backed powers');

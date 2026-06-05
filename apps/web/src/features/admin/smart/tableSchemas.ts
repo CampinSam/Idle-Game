@@ -543,7 +543,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       id: { type: 'string', required: true, description: 'Unique identifier (slug, e.g. global_tick_boost). Lowercase snake_case.' },
       name: { type: 'string', required: true, description: 'Human-readable display name shown to players' },
       description: { type: 'string', description: 'What this power does' },
-      powerType: { type: 'options', options: ['tick_speed_boost', 'effect_backed'], required: true, description: 'tick_speed_boost uses the BoostEvent pipeline; effect_backed delegates to an EffectDef' },
+      powerType: { type: 'options', options: ['tick_speed_boost', 'effect_backed', 'keeper_xp_boost', 'entity_xp_boost', 'mission_power_boost', 'mission_duration_reduction', 'crafting_duration_reduction', 'building_build_duration_reduction', 'building_upgrade_duration_reduction', 'injury_recovery_boost'], required: true, description: 'tick_speed_boost uses the BoostEvent pipeline; effect_backed delegates to an EffectDef; all others are named domain-specific boost types (require effectDefId to be wired up for full functionality)' },
       effectDefId: { type: 'ref', refTable: 'effect_defs', description: 'Required for effect_backed powers. FK → EffectDef.' },
       defaultValue: { type: 'number', default: 50, description: 'Default numeric value (e.g. percent boost)' },
       defaultValueMode: { type: 'options', options: ['flat_add', 'percent_add', 'multiplier', 'flat_set', 'bps', 'flat_grant'], default: 'percent_add', description: 'How the value is applied' },

@@ -277,7 +277,7 @@ Reusable power blueprints stored in the `power_defs` table. A `PowerDef` defines
 | id | string | yes | Stable slug (e.g. `global_tick_boost`). Lowercase snake_case. |
 | name | string | yes | Human-readable display name |
 | description | string | no | What this power does |
-| powerType | string | yes | `tick_speed_boost` or `effect_backed` |
+| powerType | string | yes | See valid types below |
 | effectDefId | string | no | Required for `effect_backed` powers. FK → `EffectDef.id` |
 | defaultValue | number | no | Numeric modifier value (default 50) |
 | defaultValueMode | string | no | `flat_add`, `percent_add`, `multiplier`, `flat_set`, `bps`, `flat_grant` (default `percent_add`) |
@@ -294,7 +294,7 @@ Reusable power blueprints stored in the `power_defs` table. A `PowerDef` defines
 | id | string | Stable slug primary key |
 | name | string | Display name shown to players |
 | description | string? | Human-readable description |
-| powerType | string | `tick_speed_boost` \| `effect_backed` |
+| powerType | string | One of the valid power types — see table below |
 | effectDefId | string? | FK → `EffectDef` (required for `effect_backed`) |
 | defaultValue | float | Default numeric value |
 | defaultValueMode | string | How the value is applied |
@@ -305,6 +305,21 @@ Reusable power blueprints stored in the `power_defs` table. A `PowerDef` defines
 | enabled | boolean | Whether the power can be activated |
 | createdAt | DateTime | Creation timestamp |
 | updatedAt | DateTime | Last update timestamp |
+
+### Valid `powerType` values
+
+| powerType | Pipeline | Notes |
+|-----------|----------|-------|
+| `tick_speed_boost` | BoostEvent | Directly speeds up world tick rate. Uses BoostEvent / TickRateInterval; does **not** require `effectDefId`. |
+| `effect_backed` | EffectDef resolver | Generic type that delegates to an `EffectDef`. `effectDefId` is **required**. |
+| `keeper_xp_boost` | EffectDef resolver | Boosts keeper (player) XP gain. Requires `effectDefId` wired by admin to become functional. |
+| `entity_xp_boost` | EffectDef resolver | Boosts entity XP gain. Requires `effectDefId`. |
+| `mission_power_boost` | EffectDef resolver | Boosts mission power contribution. Requires `effectDefId`. |
+| `mission_duration_reduction` | EffectDef resolver | Reduces active mission duration. Requires `effectDefId`. |
+| `crafting_duration_reduction` | EffectDef resolver | Reduces crafting job duration. Requires `effectDefId`. |
+| `building_build_duration_reduction` | EffectDef resolver | Reduces building construction time. Requires `effectDefId`. |
+| `building_upgrade_duration_reduction` | EffectDef resolver | Reduces building upgrade time. Requires `effectDefId`. |
+| `injury_recovery_boost` | EffectDef resolver | Speeds up entity injury recovery. Requires `effectDefId`. |
 
 ### PowerRef (embedded in definition rules)
 

@@ -308,19 +308,37 @@ export async function seedDefinitions(prisma: any) {
 const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
 
 /**
+ * All canonical power def blueprints. Order is stable so that the cycling
+ * assignment in buildUniquesMap is deterministic across boots.
+ */
+const NFT_POWER_DEFS = [
+  { powerDefId: 'global_tick_boost', name: 'Global Tick Boost', key: 'tick_speed_boost' },
+  { powerDefId: 'keeper_xp_boost', name: 'Keeper XP Boost', key: 'keeper_xp_boost' },
+  { powerDefId: 'entity_xp_boost', name: 'Entity XP Boost', key: 'entity_xp_boost' },
+  { powerDefId: 'mission_power_boost', name: 'Mission Power Boost', key: 'mission_power_boost' },
+  { powerDefId: 'mission_duration_reduction', name: 'Mission Duration Reduction', key: 'mission_duration_reduction' },
+  { powerDefId: 'crafting_duration_reduction', name: 'Crafting Duration Reduction', key: 'crafting_duration_reduction' },
+  { powerDefId: 'building_build_duration_reduction', name: 'Building Construction Boost', key: 'building_build_duration_reduction' },
+  { powerDefId: 'building_upgrade_duration_reduction', name: 'Building Upgrade Boost', key: 'building_upgrade_duration_reduction' },
+  { powerDefId: 'injury_recovery_boost', name: 'Injury Recovery Boost', key: 'injury_recovery_boost' },
+] as const;
+
+/**
  * Build a uniques map for NFT asset IDs using the PowerRef shape.
- * All seeded powers reference the 'global_tick_boost' PowerDef.
+ * Powers are assigned deterministically by cycling through NFT_POWER_DEFS
+ * so that each asset ID gets a distinct power type across the collection.
  */
 function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry> {
   const uniques: Record<string, UniqueLocationEntry> = {};
   for (let i = 0; i < assetIds.length; i++) {
     const id = assetIds[i];
     const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
+    const powerDef = NFT_POWER_DEFS[i % NFT_POWER_DEFS.length];
     uniques[id] = {
       powers: [{
-        powerDefId: 'global_tick_boost',
-        name: 'Global Tick Boost',
-        key: 'tick_speed_boost',
+        powerDefId: powerDef.powerDefId,
+        name: powerDef.name,
+        key: powerDef.key,
         value,
         durationMinutes: 60,
         dailyLimit: 1,
@@ -332,7 +350,9 @@ function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry
 
 /**
  * Seed the canonical PowerDef blueprints. Runs before seedNftUniquePowers so
- * that the PowerRef entries referencing 'global_tick_boost' resolve correctly.
+ * that the PowerRef entries referencing these IDs resolve correctly.
+ * One entry per existing power type — effectDefId is null for all non-effect_backed
+ * types and must be wired up by an admin to make those powers fully operational.
  */
 async function seedPowerDefs(prisma: any) {
   const powerDefs = [
@@ -347,6 +367,118 @@ async function seedPowerDefs(prisma: any) {
       defaultDurationMinutes: 60,
       defaultDailyLimit: 1,
       defaultScope: 'global',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'keeper_xp_boost',
+      name: 'Keeper XP Boost',
+      description: 'Boosts keeper (player) XP gain for the triggering player for a limited duration.',
+      powerType: 'keeper_xp_boost',
+      effectDefId: null,
+      defaultValue: 25,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'entity_xp_boost',
+      name: 'Entity XP Boost',
+      description: 'Boosts XP gain for all entities owned by the triggering player.',
+      powerType: 'entity_xp_boost',
+      effectDefId: null,
+      defaultValue: 25,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'mission_power_boost',
+      name: 'Mission Power Boost',
+      description: 'Increases mission power contribution for entities owned by the triggering player.',
+      powerType: 'mission_power_boost',
+      effectDefId: null,
+      defaultValue: 15,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'mission_duration_reduction',
+      name: 'Mission Duration Reduction',
+      description: 'Reduces active mission duration for the triggering player.',
+      powerType: 'mission_duration_reduction',
+      effectDefId: null,
+      defaultValue: 20,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'crafting_duration_reduction',
+      name: 'Crafting Duration Reduction',
+      description: 'Reduces active crafting job duration for the triggering player.',
+      powerType: 'crafting_duration_reduction',
+      effectDefId: null,
+      defaultValue: 20,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'building_build_duration_reduction',
+      name: 'Building Construction Boost',
+      description: 'Reduces building construction time for the triggering player.',
+      powerType: 'building_build_duration_reduction',
+      effectDefId: null,
+      defaultValue: 15,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'building_upgrade_duration_reduction',
+      name: 'Building Upgrade Boost',
+      description: 'Reduces building upgrade time for the triggering player.',
+      powerType: 'building_upgrade_duration_reduction',
+      effectDefId: null,
+      defaultValue: 15,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
+      selection: null,
+      enabled: true,
+    },
+    {
+      id: 'injury_recovery_boost',
+      name: 'Injury Recovery Boost',
+      description: 'Speeds up injury recovery for entities owned by the triggering player.',
+      powerType: 'injury_recovery_boost',
+      effectDefId: null,
+      defaultValue: 30,
+      defaultValueMode: 'percent_add',
+      defaultDurationMinutes: 60,
+      defaultDailyLimit: 1,
+      defaultScope: 'player',
       selection: null,
       enabled: true,
     },
