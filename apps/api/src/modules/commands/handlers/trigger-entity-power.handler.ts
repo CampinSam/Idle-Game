@@ -106,11 +106,30 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     // Tick-speed boosts always operate at global scope — the BoostEvent processor
     // applies to the world tick, not to individual players or entities.
     // For all other powers: use the explicit selection from PowerRef/PowerDef when provided;
-    // otherwise derive a selection from the resolved scope so non-global scope values
-    // (player, entity, location) work from scope alone without requiring explicit selection.
-    const selection: any = isTickBoost
-      ? { scope: 'global', agg: 'any' }
-      : (resolved.selection ?? { scope: resolved.scope, agg: 'any' });
+    // otherwise derive a contextual selection from the resolved scope, embedding the
+    // triggering identity (userId/entityId) so the effect is constrained to the correct
+    // target rather than all targets of that scope type.
+    let selection: any;
+    if (isTickBoost) {
+      selection = { scope: 'global', agg: 'any' };
+    } else if (resolved.selection) {
+      selection = resolved.selection;
+    } else {
+      switch (resolved.scope) {
+        case 'player':
+          selection = { scope: 'player', agg: 'any', filter: { userId: ctx.userId } };
+          break;
+        case 'entity':
+          selection = { scope: 'entity', agg: 'any', filter: { entityId } };
+          break;
+        case 'location':
+          // Location context not available in the entity handler; fall back to global.
+          selection = { scope: 'global', agg: 'any' };
+          break;
+        default:
+          selection = { scope: 'global', agg: 'any' };
+      }
+    }
 
     await this.globalPowerService.triggerPower({
       label: `${entityName} — ${resolved.name}`,

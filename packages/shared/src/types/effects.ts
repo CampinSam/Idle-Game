@@ -135,6 +135,15 @@ export interface EffectSelectionFilter {
   traits?: string[];
   minLevel?: number;
   maxLevel?: number;
+  /**
+   * Scope-identity fields. Populated automatically by trigger handlers when the
+   * resolved scope is player/entity/location — constrains the effect to only the
+   * triggering user/entity/location rather than all targets of that scope type.
+   * Evaluated by matchesSelection() in the effect resolver.
+   */
+  userId?: string;
+  entityId?: string;
+  locationId?: string;
 }
 
 /**
