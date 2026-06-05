@@ -61,10 +61,12 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     }
 
     const powers: any[] = uniqueEntry.powers || [];
-    // Support both new PowerRef format (key field) and legacy inline format (powerType field)
+    // Support new PowerRef format (key field), legacy inline format (powerType / effectDefId fields),
+    // and the historical 'tick_boost' alias for 'tick_speed_boost'.
     const powerRef = powers.find((p: any) =>
       p.key === powerKey ||
       p.powerType === powerKey ||
+      p.effectDefId === powerKey ||
       (powerKey === 'tick_boost' && (p.key === 'tick_speed_boost' || p.powerType === 'tick_speed_boost')),
     );
 
@@ -103,23 +105,12 @@ export class TriggerEntityPowerHandler implements CommandHandler {
 
     // Tick-speed boosts always operate at global scope — the BoostEvent processor
     // applies to the world tick, not to individual players or entities.
-    // For all other power types use the explicit selection from the PowerRef/PowerDef.
-    // Non-global scopes (player, entity, location) REQUIRE an explicit selection that
-    // includes a binding filter; deriving one from scope alone would silently apply
-    // the power to all entities regardless of the intended target.
-    let selection: any;
-    if (isTickBoost) {
-      selection = { scope: 'global', agg: 'any' };
-    } else if (resolved.selection) {
-      selection = resolved.selection;
-    } else if (resolved.scope === 'global') {
-      selection = { scope: 'global', agg: 'any' };
-    } else {
-      throw new BadRequestException(
-        `Power "${powerKey}" has scope "${resolved.scope}" but no explicit selection defined. ` +
-        `Non-global scoped powers must carry an explicit selection in the PowerRef or PowerDef.`,
-      );
-    }
+    // For all other powers: use the explicit selection from PowerRef/PowerDef when provided;
+    // otherwise derive a selection from the resolved scope so non-global scope values
+    // (player, entity, location) work from scope alone without requiring explicit selection.
+    const selection: any = isTickBoost
+      ? { scope: 'global', agg: 'any' }
+      : (resolved.selection ?? { scope: resolved.scope, agg: 'any' });
 
     await this.globalPowerService.triggerPower({
       label: `${entityName} — ${resolved.name}`,

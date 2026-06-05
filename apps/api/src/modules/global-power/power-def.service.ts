@@ -85,7 +85,8 @@ export class PowerDefService {
    */
   async resolve(powerRef: {
     powerDefId?: string;
-    key: string;
+    /** Optional for legacy inline powers; falls back to powerType then effectDefId. */
+    key?: string;
     name: string;
     value?: number;
     valueMode?: string;
@@ -116,9 +117,19 @@ export class PowerDefService {
       if (!def.enabled) throw new BadRequestException(`PowerDef "${powerRef.powerDefId}" is disabled`);
     }
 
-    // Normalise tick_boost → tick_speed_boost for backward compatibility
-    const rawType: string = def?.powerType ?? powerRef.powerType ?? 'tick_speed_boost';
+    // Determine effective key: PowerRef.key → powerType → effectDefId (legacy inline fallback)
+    const effectiveKey: string =
+      powerRef.key ?? powerRef.powerType ?? powerRef.effectDefId ?? 'unknown';
+
+    // Normalise tick_boost → tick_speed_boost for backward compatibility.
+    // Inline-only powers (no powerDefId) that carry effectDefId but no powerType are
+    // treated as 'effect_backed', not 'tick_speed_boost', to avoid misclassification.
+    const rawType: string =
+      def?.powerType ??
+      powerRef.powerType ??
+      (powerRef.effectDefId ? 'effect_backed' : 'tick_speed_boost');
     const powerType: string = rawType === 'tick_boost' ? 'tick_speed_boost' : rawType;
+
     const effectDefId: string | null = powerRef.effectDefId !== undefined
       ? (powerRef.effectDefId ?? null)
       : (def?.effectDefId ?? null);
@@ -130,7 +141,7 @@ export class PowerDefService {
     const selection = powerRef.selection ?? def?.selection ?? undefined;
 
     return {
-      key: powerRef.key,
+      key: effectiveKey,
       name: powerRef.name,
       powerType,
       effectDefId,
