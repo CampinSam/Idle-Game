@@ -1185,12 +1185,249 @@ function ResourceDefPicker({
   );
 }
 
+// ─── Item definition picker ───────────────────────────────────────────────────
+
+function ItemDefPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allDefs, setAllDefs] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
+
+  const loadDefs = useCallback(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError('');
+    adminApi.listItemDefs()
+      .then((defs: any[]) => {
+        setAllDefs(defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+        setLoading(false);
+      })
+      .catch((e: any) => {
+        fetchedRef.current = false;
+        setError(e.message || 'Failed to load item definitions');
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => { if (value) loadDefs(); }, [value, loadDefs]);
+  useEffect(() => { if (open) loadDefs(); }, [open, loadDefs]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allDefs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allDefs;
+  const selected = allDefs.find(d => d.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="item def id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{ ...inputStyle, width: 'auto', padding: '0 8px', flexShrink: 0, cursor: 'pointer', fontSize: 10, color: open ? '#60a5fa' : '#6b7280', borderColor: open ? 'rgba(96,165,250,0.4)' : undefined }}
+          title="Pick item definition"
+        >{open ? '▲ pick' : '▼ pick'}</button>
+      </div>
+      {value && selected && <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>✓ {selected.name}</div>}
+      {value && !selected && allDefs.length > 0 && !loading && <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>⚠ ID not found — may still be valid</div>}
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: '#0f0f1e', border: '1px solid rgba(96,165,250,0.3)', borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden' }}>
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="search by name or id…" autoFocus style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }} />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>No item definitions found</div>}
+            {filtered.map(opt => (
+              <button key={opt.id} type="button" onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{ display: 'block', width: '100%', textAlign: 'left' as const, padding: '4px 6px', background: opt.id === value ? 'rgba(96,165,250,0.15)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', color: opt.id === value ? '#60a5fa' : '#93c5fd', fontSize: 11, fontFamily: 'inherit' }}
+                title={opt.id}>
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Quest definition picker ──────────────────────────────────────────────────
+
+function QuestDefPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allDefs, setAllDefs] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
+
+  const loadDefs = useCallback(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError('');
+    adminApi.list('quest_defs')
+      .then((defs: any[]) => {
+        setAllDefs(defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+        setLoading(false);
+      })
+      .catch((e: any) => {
+        fetchedRef.current = false;
+        setError(e.message || 'Failed to load quest definitions');
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => { if (value) loadDefs(); }, [value, loadDefs]);
+  useEffect(() => { if (open) loadDefs(); }, [open, loadDefs]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allDefs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allDefs;
+  const selected = allDefs.find(d => d.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="quest def id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{ ...inputStyle, width: 'auto', padding: '0 8px', flexShrink: 0, cursor: 'pointer', fontSize: 10, color: open ? '#f59e0b' : '#6b7280', borderColor: open ? 'rgba(245,158,11,0.4)' : undefined }}
+          title="Pick quest definition"
+        >{open ? '▲ pick' : '▼ pick'}</button>
+      </div>
+      {value && selected && <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>✓ {selected.name}</div>}
+      {value && !selected && allDefs.length > 0 && !loading && <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>⚠ ID not found — may still be valid</div>}
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: '#0f0f1e', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden' }}>
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="search by name or id…" autoFocus style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }} />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>No quest definitions found</div>}
+            {filtered.map(opt => (
+              <button key={opt.id} type="button" onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{ display: 'block', width: '100%', textAlign: 'left' as const, padding: '4px 6px', background: opt.id === value ? 'rgba(245,158,11,0.15)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', color: opt.id === value ? '#f59e0b' : '#fcd34d', fontSize: 11, fontFamily: 'inherit' }}
+                title={opt.id}>
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Action key picker ────────────────────────────────────────────────────────
+
+const KNOWN_ACTION_KEYS = [
+  'go_home',
+  'go_entities',
+  'go_locations',
+  'go_missions',
+  'go_inventory',
+  'go_crafting',
+  'go_profile',
+  'go_settings',
+  'go_store',
+  'go_rewards',
+  'go_achievements',
+  'go_jobs',
+  'start_mission',
+  'connect_wallet',
+  'view_pass',
+  'open_checkin',
+  'open_store',
+];
+
+function ActionKeyPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const listId = useRef(`akp-${Math.random().toString(36).slice(2)}`).current;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        list={listId}
+        style={{ ...inputStyle, width: '100%' }}
+        placeholder="action key"
+        autoComplete="off"
+      />
+      <datalist id={listId}>
+        {KNOWN_ACTION_KEYS.map(k => <option key={k} value={k} />)}
+      </datalist>
+      {value && !KNOWN_ACTION_KEYS.includes(value) && (
+        <div style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic', paddingLeft: 2 }}>
+          Custom key — make sure it's defined in this section's actions
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Array-of-objects editor ──────────────────────────────────────────────────
 
 interface ArrayFieldSchema {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'enum' | 'resourceDefPicker';
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'resourceDefPicker' | 'actionKeyPicker' | 'itemDefPicker' | 'questDefPicker';
   options?: string[];
   optional?: boolean;
 }
@@ -1201,11 +1438,12 @@ const ARRAY_FIELD_SCHEMAS: Record<string, ArrayFieldSchema[]> = {
     { key: 'defId', label: 'defId', type: 'resourceDefPicker' },
   ],
   'CTAButtonGroup.buttons': [
-    { key: 'actionKey', label: 'actionKey', type: 'string' },
+    { key: 'actionKey', label: 'actionKey', type: 'actionKeyPicker' },
     { key: 'label',     label: 'label',     type: 'string' },
     { key: 'style',     label: 'style',     type: 'enum', options: ['primary', 'secondary'], optional: true },
   ],
   'DailyQuestPanel.quests': [
+    { key: 'questDefId',  label: 'questDefId',  type: 'questDefPicker', optional: true },
     { key: 'title',       label: 'title',       type: 'string' },
     { key: 'description', label: 'description', type: 'string', optional: true },
     { key: 'completed',   label: 'completed',   type: 'boolean', optional: true },
@@ -1216,10 +1454,11 @@ const ARRAY_FIELD_SCHEMAS: Record<string, ArrayFieldSchema[]> = {
     { key: 'emoji',    label: 'emoji',    type: 'string', optional: true },
   ],
   'BattlePassTierList.tiers': [
-    { key: 'tier',     label: 'tier',     type: 'number' },
-    { key: 'label',    label: 'label',    type: 'string' },
-    { key: 'reward',   label: 'reward',   type: 'string' },
-    { key: 'unlocked', label: 'unlocked', type: 'boolean' },
+    { key: 'tier',        label: 'tier',        type: 'number' },
+    { key: 'label',       label: 'label',       type: 'string' },
+    { key: 'reward',      label: 'reward',      type: 'string' },
+    { key: 'itemDefId',   label: 'itemDefId',   type: 'itemDefPicker', optional: true },
+    { key: 'unlocked',    label: 'unlocked',    type: 'boolean' },
   ],
   'EventCarousel.events': [
     { key: 'title',       label: 'title',          type: 'string' },
@@ -1286,6 +1525,14 @@ function ArrayOfObjectsEditor({
       }
     }
     onChange([...items, newItem]);
+  };
+
+  const getFieldWidth = (f: ArrayFieldSchema) => {
+    if (f.type === 'resourceDefPicker') return 180;
+    if (f.type === 'actionKeyPicker') return 160;
+    if (f.type === 'itemDefPicker') return 170;
+    if (f.type === 'questDefPicker') return 170;
+    return 90;
   };
 
   const removeRow = (i: number) => onChange(items.filter((_, idx) => idx !== i));
@@ -1362,7 +1609,7 @@ function ArrayOfObjectsEditor({
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                   {fieldSchemas.map(f => (
-                    <div key={f.key} style={{ ...fieldGroupStyle, minWidth: f.type === 'resourceDefPicker' ? 180 : 90 }}>
+                    <div key={f.key} style={{ ...fieldGroupStyle, minWidth: getFieldWidth(f) }}>
                       <span style={labelStyle}>{f.label}{f.optional ? '' : ' *'}</span>
                       {f.type === 'boolean' ? (
                         <select
@@ -1391,6 +1638,21 @@ function ArrayOfObjectsEditor({
                       ) : f.type === 'resourceDefPicker' ? (
                         <ResourceDefPicker
                           resourceType={String(rowObj['type'] ?? '')}
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={v => updateField(rowIdx, f.key, v)}
+                        />
+                      ) : f.type === 'actionKeyPicker' ? (
+                        <ActionKeyPicker
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={v => updateField(rowIdx, f.key, v)}
+                        />
+                      ) : f.type === 'itemDefPicker' ? (
+                        <ItemDefPicker
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={v => updateField(rowIdx, f.key, v)}
+                        />
+                      ) : f.type === 'questDefPicker' ? (
+                        <QuestDefPicker
                           value={String(rowObj[f.key] ?? '')}
                           onChange={v => updateField(rowIdx, f.key, v)}
                         />
