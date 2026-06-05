@@ -2,16 +2,17 @@ import { useState, useMemo } from 'react';
 import { useNow } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications, AppNotification } from '../../context/NotificationContext';
-import { useModal } from '../../context/ModalContext';
-import { useCollectJob } from '../../hooks/useCollectJob';
-import { useCommand } from '../../hooks/useCommand';
-import { api } from '../../services/api';
+import {
+  useNotificationAction,
+  NOTIFICATION_READY_TYPES,
+  resolveNotificationJobId,
+} from '../../hooks/useNotificationAction';
+import { ActiveJobsList } from '../jobs/ActiveJobsList';
 
 import { NOTIFICATION_CATEGORY_DISPLAY } from '@derp/shared';
 import { useGlobalPowers, useAllActiveJobs } from '../../hooks/useSyncSelectors';
 import type { GlobalPowerSnapshot } from '../../store/syncSlice';
 import { getPowerTypeLabel, getPowerIcon, formatPowerValue, formatCountdown } from '../../utils/globalPowerUtils';
-import { ActiveJobsList } from '../jobs/ActiveJobsList';
 
 
 const FILTERS = ['All', 'Missions', 'Crafting', 'Locations', 'Gifts', 'System'] as const;
@@ -65,21 +66,15 @@ const ACTIVE_JOBS_DRAWER_LIMIT = 3;
 
 export default function NotificationCenter({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
-  const { notifications, markRead, markAllRead, clearRead, dismissNotification, unreadCount } = useNotifications();
-  const { pushModal } = useModal();
-  const { collectJob } = useCollectJob();
+  const { notifications, markAllRead, clearRead, unreadCount } = useNotifications();
+  const { handleTap, handleCollect, handleGiftClaim, handleQuestClaim, handleAchievementClaim } =
+    useNotificationAction({ onAfterAction: onClose });
   const globalPowers = useGlobalPowers();
   const allActiveJobs = useAllActiveJobs();
   const [filter, setFilter] = useState<string>('All');
   const [jobsExpanded, setJobsExpanded] = useState(true);
   const nowMs = useNow(60_000);
   const [claimingId, setClaimingId] = useState<string | null>(null);
-
-  const { execute } = useCommand({
-    onUiIntent: (intent) => {
-      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
-    },
-  });
 
   const filtered = useMemo(() => {
     if (filter === 'All') return notifications;
@@ -96,105 +91,15 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
     return sections;
   }, [filtered, nowMs]);
 
-  const READY_TYPES = ['job_ready', 'mission_ready'];
-  const COMPLETE_TYPES = ['mission_complete', 'craft_complete', 'building_complete'];
-
-  const resolveJobId = (n: AppNotification) =>
-    n.deepLink?.jobId || n.deepLink?.missionRunId || n.deepLink?.craftJobId || n.deepLink?.entityId;
-
-  const openModalSpec = async (params: { jobId?: string; notificationId?: string; giftId?: string; locationId?: string; levelUp?: boolean }) => {
-    try {
-      const spec = await api.getModalSpec(params);
-      if (spec?.version === 1) {
-        pushModal(spec);
-      }
-    } catch (err) {
-      console.error('[NotificationCenter] Failed to fetch modal spec:', err);
-    }
-  };
-
-  const handleTap = async (n: AppNotification) => {
-    if (n.type === 'gift' && n.meta?.giftId) {
-      dismissNotification(n.id);
-      onClose();
-      await openModalSpec({ giftId: n.meta.giftId });
-      return;
-    }
-
-    if (n.type === 'location_level_up' && n.meta?.locationId) {
-      onClose();
-      await openModalSpec({ locationId: n.meta.locationId, levelUp: true, notificationId: n.id });
-      return;
-    }
-
-    if (!n.readAt) {
-      markRead([n.id]).catch(() => {});
-    }
-
-    const jobId = resolveJobId(n);
-    if (jobId && (READY_TYPES.includes(n.type) || COMPLETE_TYPES.includes(n.type))) {
-      onClose();
-      await openModalSpec({ jobId });
-      return;
-    }
-
-    if (n.deepLink?.screen) {
-      navigate(n.deepLink.screen);
-      onClose();
-    }
-  };
-
-  const handleCollect = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const jobId = resolveJobId(n);
-    if (!jobId) return;
-    onClose();
-    await collectJob(jobId);
-  };
-
-  const handleGiftClaim = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const giftId = n.meta?.giftId;
-    if (!giftId || claimingId) return;
+  const handleClaimWithGuard = async (
+    e: React.MouseEvent,
+    n: AppNotification,
+    handler: (e: React.MouseEvent, n: AppNotification) => Promise<void>,
+  ) => {
+    if (claimingId) return;
     setClaimingId(n.id);
     try {
-      dismissNotification(n.id);
-      onClose();
-      await execute('ClaimGift', { giftId });
-    } catch (err) {
-      console.error('[NotificationCenter] Gift claim failed:', err);
-    } finally {
-      setClaimingId(null);
-    }
-  };
-
-  const handleQuestClaim = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const questInstanceId = n.meta?.questInstanceId;
-    if (!questInstanceId || claimingId) return;
-    setClaimingId(n.id);
-    try {
-      if (!n.readAt) markRead([n.id]).catch(() => {});
-      onClose();
-      await execute('ClaimQuestReward', { questInstanceId });
-    } catch (err) {
-      console.error('[NotificationCenter] Quest claim failed:', err);
-    } finally {
-      setClaimingId(null);
-    }
-  };
-
-  const handleAchievementClaim = async (e: React.MouseEvent, n: AppNotification) => {
-    e.stopPropagation();
-    const achievementInstanceId = n.meta?.questInstanceId;
-    if (!achievementInstanceId || claimingId) return;
-    setClaimingId(n.id);
-    try {
-      if (!n.readAt) markRead([n.id]).catch(() => {});
-      onClose();
-      await execute('ClaimAchievementReward', { achievementInstanceId });
-    } catch (err) {
-      console.error('[NotificationCenter] Achievement claim failed:', err);
+      await handler(e, n);
     } finally {
       setClaimingId(null);
     }
@@ -275,8 +180,8 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
               <div key={section} className="nc-section">
                 <div className="nc-section-title">{section}</div>
                 {items.map((n) => {
-                  const jobId = resolveJobId(n);
-                  const isReady = READY_TYPES.includes(n.type) && !!jobId;
+                  const jobId = resolveNotificationJobId(n);
+                  const isReady = NOTIFICATION_READY_TYPES.includes(n.type) && !!jobId;
                   const isGift = n.type === 'gift' && !!n.meta?.giftId;
                   const isQuestComplete = n.type === 'quest_complete' && !!n.meta?.questInstanceId;
                   const isAchievementComplete = n.type === 'achievement_complete' && !!n.meta?.questInstanceId;
@@ -300,9 +205,9 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
                         <span
                           className="nc-collect-btn"
                           onClick={(e) => {
-                            if (isGift) handleGiftClaim(e, n);
-                            else if (isQuestComplete) handleQuestClaim(e, n);
-                            else handleAchievementClaim(e, n);
+                            if (isGift) handleClaimWithGuard(e, n, handleGiftClaim);
+                            else if (isQuestComplete) handleClaimWithGuard(e, n, handleQuestClaim);
+                            else handleClaimWithGuard(e, n, handleAchievementClaim);
                           }}
                           style={{ opacity: isClaiming ? 0.5 : 1 }}
                         >

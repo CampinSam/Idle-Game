@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildPlayerPatch, buildEntityPatch } from '../patch-builder';
 import { MissionService } from '../../mission/mission.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class CompleteMissionHandler implements CommandHandler {
-  constructor(private missionService: MissionService) {}
+  constructor(
+    private missionService: MissionService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { jobId } = payload;
@@ -38,10 +42,23 @@ export class CompleteMissionHandler implements CommandHandler {
 
     const missionResult = result.missionResult;
     const success = missionResult?.success;
+    const title = success ? 'Mission Complete!' : 'Mission Failed';
+    const body = success
+      ? (missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || 'Rewards collected.')
+      : 'Better luck next time.';
+
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'mission_complete',
+      category: 'missions',
+      title,
+      body,
+    }, ctx.tx);
+    pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: success ? 'success' as const : 'info' as const, title: success ? 'Mission Complete!' : 'Mission Failed', body: success ? (missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || 'Rewards collected.') : 'Better luck next time.' }],
+      ui: [{ type: 'notification' as const, notificationId: notification.id }],
     };
   }
 }

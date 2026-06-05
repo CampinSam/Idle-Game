@@ -7,6 +7,7 @@ import {
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildEntityPatch, buildItemPatches, buildLocationPatches } from '../patch-builder';
 import { LocationSettlementService } from '../../location/location-settlement.service';
+import { NotificationService } from '../../notification/notification.service';
 import { gearWouldChangeStats } from '../../entity/entity-stats.util';
 
 function txDb(tx: unknown) {
@@ -30,7 +31,10 @@ function txDb(tx: unknown) {
  */
 @Injectable()
 export class EquipItemHandler implements CommandHandler {
-  constructor(private settlementService: LocationSettlementService) {}
+  constructor(
+    private settlementService: LocationSettlementService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { entityId, itemInstanceId } = payload || {};
@@ -156,9 +160,18 @@ export class EquipItemHandler implements CommandHandler {
       ? `Equipped ${itemName} (replaced previous ${slot})`
       : `Equipped ${itemName}`;
 
+    const notification = await this.notificationService.createForCommand({
+      userId: ctx.userId,
+      type: 'gear_equipped',
+      category: 'equipment',
+      title: 'Gear Equipped',
+      body,
+    }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Gear Equipped', body }],
+      ui: [{ type: 'notification' as const, notificationId: notification.id }],
     };
   }
 }

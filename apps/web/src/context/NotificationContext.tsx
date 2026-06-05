@@ -194,16 +194,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [toasts, scheduleToastDismiss]);
 
-  const dismissToast = useCallback((toastId: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== toastId));
-    const timer = toastTimers.current.get(toastId);
-    if (timer) {
-      clearTimeout(timer);
-      toastTimers.current.delete(toastId);
-    }
-    api.dismissNotification(toastId).catch(() => {});
-  }, []);
-
   const hideToast = useCallback((toastId: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== toastId));
     const timer = toastTimers.current.get(toastId);
@@ -224,6 +214,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .map((n) => ({ op: 'upsert', entity: 'notification', id: n.id, data: { ...n, readAt: n.readAt || now } })),
     }));
   }, [dispatch, notifications]);
+
+  const dismissToast = useCallback((toastId: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== toastId));
+    const timer = toastTimers.current.get(toastId);
+    if (timer) {
+      clearTimeout(timer);
+      toastTimers.current.delete(toastId);
+    }
+    markRead([toastId]).catch(() => {});
+  }, [markRead]);
 
   const markAllRead = useCallback(async () => {
     await api.markAllNotificationsRead();
