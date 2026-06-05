@@ -361,7 +361,12 @@ export class EffectService {
       : [];
 
     const passiveRows = await this.getPassiveEffectsFromEquipment(userId, targetType, targetId, tx);
-    const globalRows = await this.resolveGlobalPowerRows(category, userId, targetType, targetContext);
+    // Merge targetId into context so matchesSelection() can enforce filter.entityId /
+    // filter.locationId identity constraints from PowerRef-scoped selections.
+    const contextWithId: EffectTargetContext = targetContext
+      ? { ...targetContext, targetId }
+      : { targetId };
+    const globalRows = await this.resolveGlobalPowerRows(category, userId, targetType, contextWithId);
     // Note: resolveGlobalPowerRows calls getGlobalPowerRows(userId, targetType) internally,
     // so scope + agg:'self' filtering is applied at the base layer.
 

@@ -75,6 +75,10 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     }
 
     const resolved = await this.powerDefService.resolve(powerRef);
+    // Use the canonical key returned by resolve() for all usage accounting so that
+    // alias variants (e.g. 'tick_boost' → 'tick_speed_boost') map to the same row
+    // and cannot bypass the daily limit by using a different alias.
+    const canonicalKey = resolved.key;
 
     const today = getUtcDay(new Date());
     const dailyLimit: number = resolved.dailyLimit;
@@ -83,7 +87,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
       where: {
         entityId_powerKey: {
           entityId,
-          powerKey,
+          powerKey: canonicalKey,
         },
       },
     });
@@ -91,7 +95,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     if (existingUsage && existingUsage.lastUsedUtcDay === today
         && existingUsage.usageCount >= dailyLimit) {
       throw new BadRequestException(
-        `Daily limit reached for power "${powerKey}". Resets at 00:00 UTC.`,
+        `Daily limit reached for power "${canonicalKey}". Resets at 00:00 UTC.`,
       );
     }
 
@@ -117,9 +121,13 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     } else {
       switch (resolved.scope) {
         case 'player':
-          selection = { scope: 'player', agg: 'any', filter: { userId: ctx.userId } };
+          // 'player' scope from an entity trigger means "apply to entities owned by this user".
+          // Use entity scope + userId filter so matchesSelection() gates on entity targetType
+          // (not player targetType) while still restricting to the triggering user's entities.
+          selection = { scope: 'entity', agg: 'any', filter: { userId: ctx.userId } };
           break;
         case 'entity':
+          // Constrain to the exact triggering entity via entityId identity filter.
           selection = { scope: 'entity', agg: 'any', filter: { entityId } };
           break;
         case 'location':
@@ -145,20 +153,20 @@ export class TriggerEntityPowerHandler implements CommandHandler {
     if (existingUsage && existingUsage.lastUsedUtcDay === today) {
       await (this.prisma as any).entityPowerUsage.update({
         where: {
-          entityId_powerKey: { entityId, powerKey },
+          entityId_powerKey: { entityId, powerKey: canonicalKey },
         },
         data: { usageCount: { increment: 1 } },
       });
     } else if (existingUsage) {
       await (this.prisma as any).entityPowerUsage.update({
         where: {
-          entityId_powerKey: { entityId, powerKey },
+          entityId_powerKey: { entityId, powerKey: canonicalKey },
         },
         data: { lastUsedUtcDay: today, usageCount: 1 },
       });
     } else {
       await (this.prisma as any).entityPowerUsage.create({
-        data: { entityId, powerKey, lastUsedUtcDay: today, usageCount: 1 },
+        data: { entityId, powerKey: canonicalKey, lastUsedUtcDay: today, usageCount: 1 },
       });
     }
 

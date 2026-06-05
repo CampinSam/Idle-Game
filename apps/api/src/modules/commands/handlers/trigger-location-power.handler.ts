@@ -78,6 +78,10 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     }
 
     const resolved = await this.powerDefService.resolve(powerRef);
+    // Use the canonical key returned by resolve() for all usage accounting so that
+    // alias variants (e.g. 'tick_boost' → 'tick_speed_boost') map to the same row
+    // and cannot bypass the daily limit by using a different alias.
+    const canonicalKey = resolved.key;
 
     const today = getUtcDay(new Date());
     const dailyLimit: number = resolved.dailyLimit;
@@ -88,7 +92,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       where: {
         locationInstanceId_powerKey: {
           locationInstanceId: locationId,
-          powerKey,
+          powerKey: canonicalKey,
         },
       },
     });
@@ -96,7 +100,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     if (existingUsage && existingUsage.lastUsedUtcDay === today
         && existingUsage.usageCount >= dailyLimit) {
       throw new BadRequestException(
-        `Daily limit reached for power "${powerKey}". Resets at 00:00 UTC.`,
+        `Daily limit reached for power "${canonicalKey}". Resets at 00:00 UTC.`,
       );
     }
 
@@ -151,7 +155,7 @@ export class TriggerLocationPowerHandler implements CommandHandler {
     if (existingUsage && existingUsage.lastUsedUtcDay === today) {
       await (this.prisma as any).locationPowerUsage.update({
         where: {
-          locationInstanceId_powerKey: { locationInstanceId: locationId, powerKey },
+          locationInstanceId_powerKey: { locationInstanceId: locationId, powerKey: canonicalKey },
         },
         data: { usageCount: { increment: 1 } },
       });
@@ -159,13 +163,13 @@ export class TriggerLocationPowerHandler implements CommandHandler {
       // New UTC day — reset counter
       await (this.prisma as any).locationPowerUsage.update({
         where: {
-          locationInstanceId_powerKey: { locationInstanceId: locationId, powerKey },
+          locationInstanceId_powerKey: { locationInstanceId: locationId, powerKey: canonicalKey },
         },
         data: { lastUsedUtcDay: today, usageCount: 1 },
       });
     } else {
       await (this.prisma as any).locationPowerUsage.create({
-        data: { locationInstanceId: locationId, powerKey, lastUsedUtcDay: today, usageCount: 1 },
+        data: { locationInstanceId: locationId, powerKey: canonicalKey, lastUsedUtcDay: today, usageCount: 1 },
       });
     }
 

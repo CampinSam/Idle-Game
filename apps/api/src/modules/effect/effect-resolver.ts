@@ -60,24 +60,36 @@ export function matchesSelection(
     return false;
   }
 
-  if (filter && context) {
-    if (filter.archetype && context.archetype !== filter.archetype) return false;
+  // Identity filter: filter.userId is checked against the resolution userId (always available).
+  // filter.entityId / filter.locationId are checked against context.targetId when context is present;
+  // when context is absent the check is skipped (safe default — effect applies).
+  if (filter) {
+    if (filter.userId && filter.userId !== userId) return false;
 
-    if (filter.rarity && context.rarity != null) {
-      const rarities = Array.isArray(filter.rarity) ? filter.rarity : [filter.rarity];
-      if (!rarities.includes(context.rarity)) return false;
+    if (context) {
+      if (filter.entityId && context.targetId !== filter.entityId) return false;
+      if (filter.locationId && context.targetId !== filter.locationId) return false;
     }
 
-    if (filter.traits && filter.traits.length > 0 && context.traits) {
-      if (!filter.traits.every((t) => context.traits!.includes(t))) return false;
-    }
+    if (context) {
+      if (filter.archetype && context.archetype !== filter.archetype) return false;
 
-    if (filter.minLevel !== undefined && context.level !== undefined && context.level < filter.minLevel) {
-      return false;
-    }
+      if (filter.rarity && context.rarity != null) {
+        const rarities = Array.isArray(filter.rarity) ? filter.rarity : [filter.rarity];
+        if (!rarities.includes(context.rarity)) return false;
+      }
 
-    if (filter.maxLevel !== undefined && context.level !== undefined && context.level > filter.maxLevel) {
-      return false;
+      if (filter.traits && filter.traits.length > 0 && context.traits) {
+        if (!filter.traits.every((t) => context.traits!.includes(t))) return false;
+      }
+
+      if (filter.minLevel !== undefined && context.level !== undefined && context.level < filter.minLevel) {
+        return false;
+      }
+
+      if (filter.maxLevel !== undefined && context.level !== undefined && context.level > filter.maxLevel) {
+        return false;
+      }
     }
   }
 

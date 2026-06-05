@@ -166,6 +166,13 @@ export interface EffectTargetContext {
   archetype?: string;
   rarity?: string;
   traits?: string[];
+  /**
+   * The concrete target ID (entityId or locationId) for the current resolution.
+   * Used by matchesSelection() to enforce filter.entityId and filter.locationId
+   * identity constraints from PowerRef/PowerDef-scoped selections.
+   * Populated automatically by resolveForTarget(); never persisted.
+   */
+  targetId?: string;
 }
 
 export interface EffectDefData {
