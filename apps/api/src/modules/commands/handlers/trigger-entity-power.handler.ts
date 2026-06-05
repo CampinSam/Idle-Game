@@ -159,7 +159,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
       effectDefId: isTickBoost ? null : resolved.effectDefId,
       effectOverrides: isTickBoost
         ? { value: resolved.value, valueMode: resolved.valueMode }
-        : resolved.effectOverrides,
+        : { ...resolved.effectOverrides, value: resolved.value, valueMode: resolved.valueMode },
       selection,
       durationMinutes: resolved.durationMinutes,
       triggeredByUserId: ctx.userId,
