@@ -1766,6 +1766,7 @@ input:focus {
   border-radius: 14px;
   backdrop-filter: blur(12px);
   pointer-events: auto;
+  overflow: visible;
 }
 .top-bar-right-col {
   flex: 1;
@@ -1807,6 +1808,7 @@ input:focus {
   width: 80px;
   height: 80px;
   transform: rotate(-90deg);
+  overflow: visible;
 }
 .progress-ring-bg {
   fill: none;
