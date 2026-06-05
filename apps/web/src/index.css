@@ -1761,7 +1761,7 @@ input:focus {
   padding: 6px 12px;
   max-width: 520px;
   width: 100%;
-  background: linear-gradient(135deg, #1e1b3a 0%, #2a1f4e 100%);
+  background: #1a1640;
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 14px;
   backdrop-filter: blur(12px);
@@ -1779,6 +1779,8 @@ input:focus {
   align-items: center;
   gap: 8px;
   width: 100%;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.25);
 }
 .top-bar-avatar-wrap {
   position: relative;
@@ -1905,10 +1907,11 @@ input:focus {
 }
 .top-bar-currencies {
   display: flex;
+  align-items: center;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  padding-left: 2px;
+  padding-top: 2px;
 }
 .top-bar-currencies::-webkit-scrollbar {
   display: none;
