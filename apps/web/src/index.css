@@ -1823,10 +1823,10 @@ input:focus {
 }
 .top-bar-avatar-img {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 80px;
-  height: 80px;
+  top: 5px;
+  left: 5px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   object-fit: cover;
 }
