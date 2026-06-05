@@ -1786,6 +1786,7 @@ input:focus {
   width: 68px;
   height: 68px;
   align-self: center;
+  margin: -10px 0;
 }
 .top-bar-avatar-btn {
   position: relative;
