@@ -46,7 +46,6 @@ export default function ForgeContent() {
   // ── Swipe gesture refs ──────────────────────────────────────────────────
   const cardRef = useRef<HTMLDivElement | null>(null);
   const navigatingRef = useRef(false);
-  const mountedRef = useRef(false);
   const pointerRef = useRef<{
     startX: number;
     startY: number;
@@ -409,37 +408,36 @@ export default function ForgeContent() {
     }, 170);
   }
 
-  // Slide-in animation on mount when arriving from an adjacent page
+  // Set initial off-screen position synchronously before first paint.
   useLayoutEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
-    const state = location.state as LocationState | null;
-    const dir = state?.slideDir;
+    const dir = (location.state as LocationState | null)?.slideDir;
+    if (!dir || prefersReducedMotion) return;
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transition = 'none';
+    card.style.transform = dir === 'left' ? 'translateX(100%)' : 'translateX(-100%)';
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Animate from off-screen to final position after layout.
+  useEffect(() => {
+    const dir = (location.state as LocationState | null)?.slideDir;
     if (!dir || prefersReducedMotion) {
       navigatingRef.current = false;
       return;
     }
     const card = cardRef.current;
     if (!card) { navigatingRef.current = false; return; }
-    const fromX = dir === 'left' ? '100%' : '-100%';
-    card.style.transition = 'none';
-    card.style.transform = `translateX(${fromX})`;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        card.style.transition = 'transform 0.22s ease-out';
-        card.style.transform = 'translateX(0)';
-        card.addEventListener('transitionend', function onEnd() {
-          card.style.transition = '';
-          card.style.transform = '';
-          navigatingRef.current = false;
-          card.removeEventListener('transitionend', onEnd);
-        }, { once: true });
-      });
+      card.style.transition = 'transform 0.22s ease-out';
+      card.style.transform = 'translateX(0)';
+      card.addEventListener('transitionend', function onEnd() {
+        card.style.transition = '';
+        card.style.transform = '';
+        navigatingRef.current = false;
+        card.removeEventListener('transitionend', onEnd);
+      }, { once: true });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workshopPath]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (pointerRef.current) return;
