@@ -1274,7 +1274,7 @@ input:focus {
 .nc-panel {
   width: 100%;
   max-width: 460px;
-  max-height: 70vh;
+  height: calc(100vh - 60px);
   background: linear-gradient(180deg, #1e1b3a 0%, #151228 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 16px;
