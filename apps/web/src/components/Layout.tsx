@@ -76,109 +76,130 @@ export default function Layout() {
       {profile && (
         <div className="top-bar-container">
           <div className="top-bar">
-            <div className="top-bar-avatar-wrap">
-              <button
-                className="top-bar-avatar-btn"
-                onClick={() => setShowMenu(!showMenu)}
-              >
-                <svg className="top-bar-progress-ring" viewBox="0 0 48 48">
-                  <circle className="progress-ring-bg" cx="24" cy="24" r="21" />
-                  <circle
-                    className="progress-ring-fill"
-                    cx="24"
-                    cy="24"
-                    r="21"
-                    strokeDasharray={`${2 * Math.PI * 21}`}
-                    strokeDashoffset={`${2 * Math.PI * 21 * (1 - Math.min(1, Math.max(0, profile.keeperXp / (profile.xpToNextLevel || 100))))}`}
+            {/* Row 1: avatar · name · gift · bell */}
+            <div className="top-bar-main-row">
+              <div className="top-bar-avatar-wrap">
+                <button
+                  className="top-bar-avatar-btn"
+                  onClick={() => setShowMenu(!showMenu)}
+                >
+                  <svg className="top-bar-progress-ring" viewBox="0 0 48 48">
+                    <circle className="progress-ring-bg" cx="24" cy="24" r="21" />
+                    <circle
+                      className="progress-ring-fill"
+                      cx="24"
+                      cy="24"
+                      r="21"
+                      strokeDasharray={`${2 * Math.PI * 21}`}
+                      strokeDashoffset={`${2 * Math.PI * 21 * (1 - Math.min(1, Math.max(0, profile.keeperXp / (profile.xpToNextLevel || 100))))}`}
+                    />
+                  </svg>
+                  <img
+                    className="top-bar-avatar-img"
+                    src="/media/images/icon-entities.png"
+                    alt=""
                   />
-                </svg>
-                <img
-                  className="top-bar-avatar-img"
-                  src="/media/images/icon-entities.png"
-                  alt=""
-                />
-                <span className="top-bar-level-center">
-                  {profile.keeperLevel}
-                </span>
-              </button>
-              {showMenu && (
-                <div className="top-bar-menu">
-                  <div className="top-bar-menu-name">{profile.username}</div>
-                  <div className="top-bar-menu-info">
-                    Keeper Lvl {profile.keeperLevel}
+                  <span className="top-bar-level-center">
+                    {profile.keeperLevel}
+                  </span>
+                </button>
+                {showMenu && (
+                  <div className="top-bar-menu">
+                    <div className="top-bar-menu-name">{profile.username}</div>
+                    <div className="top-bar-menu-info">
+                      Keeper Lvl {profile.keeperLevel}
+                    </div>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/profile"); setShowMenu(false); }}
+                    >
+                      Profile
+                    </button>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/settings"); setShowMenu(false); }}
+                    >
+                      Settings
+                    </button>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/rewards"); setShowMenu(false); }}
+                    >
+                      Rewards
+                    </button>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/achievements"); setShowMenu(false); }}
+                    >
+                      Achievements
+                    </button>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/jobs"); setShowMenu(false); }}
+                    >
+                      Active Jobs
+                    </button>
+                    <button
+                      className="top-bar-menu-profile"
+                      onClick={() => { navigate("/settings"); setShowMenu(false); }}
+                    >
+                      Wallet
+                    </button>
+                    <button
+                      className="top-bar-menu-logout"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </button>
                   </div>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/profile");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Profile
-                  </button>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/settings");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Settings
-                  </button>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/rewards");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Rewards
-                  </button>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/achievements");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Achievements
-                  </button>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/jobs");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Active Jobs
-                  </button>
-                  <button
-                    className="top-bar-menu-profile"
-                    onClick={() => {
-                      navigate("/settings");
-                      setShowMenu(false);
-                    }}
-                  >
-                    Wallet
-                  </button>
-                  <button
-                    className="top-bar-menu-logout"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </button>
-                </div>
+                )}
+              </div>
+              <span className="top-bar-name">{profile.username}</span>
+              <div style={{ flex: 1 }} />
+              {hasClaimableRewards && (
+                <button
+                  className="top-bar-gift"
+                  onClick={() => navigate("/rewards")}
+                  aria-label="Claimable rewards"
+                >
+                  🎁
+                </button>
               )}
+              <button
+                className="top-bar-bell"
+                onClick={() => setShowNotifCenter(true)}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  width="20"
+                  height="20"
+                >
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="bell-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+                {globalPowers.length > 0 && (
+                  <span
+                    className="bell-boost-indicator"
+                    title={globalPowers.map((p) => p.label).join(', ')}
+                  >
+                    ⚡
+                  </span>
+                )}
+              </button>
             </div>
-            <span className="top-bar-name">{profile.username}</span>
+            {/* Row 2: currencies */}
             <div className="top-bar-currencies">
               {(() => {
-                // Data-driven currency chips. Pulls every currency flagged for
-                // the top bar, sorts by sortOrder (then id for stability), and
-                // caps at 6 to protect the layout. Falls back to the canonical
-                // four only while definitions are still loading (empty array =
-                // not yet fetched). Once loaded, only showInTopBar currencies
-                // appear — an empty result renders nothing.
                 const FALLBACK = [
                   "soft_arcanium",
                   "hard_essence",
@@ -208,46 +229,6 @@ export default function Layout() {
                 ));
               })()}
             </div>
-            {hasClaimableRewards && (
-              <button
-                className="top-bar-gift"
-                onClick={() => navigate("/rewards")}
-                aria-label="Claimable rewards"
-              >
-                🎁
-              </button>
-            )}
-            <button
-              className="top-bar-bell"
-              onClick={() => setShowNotifCenter(true)}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                width="20"
-                height="20"
-              >
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="bell-badge">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-              {globalPowers.length > 0 && (
-                <span
-                  className="bell-boost-indicator"
-                  title={globalPowers.map((p) => p.label).join(', ')}
-                >
-                  ⚡
-                </span>
-              )}
-            </button>
           </div>
         </div>
       )}

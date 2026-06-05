@@ -1750,14 +1750,14 @@ input:focus {
   z-index: 90;
   display: flex;
   justify-content: center;
-  padding: 8px 16px 0;
+  padding: 8px 16px 8px;
   pointer-events: none;
 }
 .top-bar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 1px 14px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 14px 8px;
   max-width: 520px;
   width: 100%;
   background: linear-gradient(135deg, #1e1b3a 0%, #2a1f4e 100%);
@@ -1765,6 +1765,12 @@ input:focus {
   border-radius: 14px;
   backdrop-filter: blur(12px);
   pointer-events: auto;
+}
+.top-bar-main-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
 }
 .top-bar-avatar-wrap {
   position: relative;
@@ -1892,11 +1898,9 @@ input:focus {
 .top-bar-currencies {
   display: flex;
   gap: 8px;
-  flex: 1 1 0;
-  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  margin-left: 0;
+  padding-left: 2px;
 }
 .top-bar-currencies::-webkit-scrollbar {
   display: none;
@@ -1960,7 +1964,7 @@ input:focus {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 68px 8px calc(64px + env(safe-area-inset-bottom, 0px) + 8px) 8px;
+  padding: 92px 8px calc(64px + env(safe-area-inset-bottom, 0px) + 8px) 8px;
   max-width: 520px;
   margin: 0 auto;
   width: 100%;
