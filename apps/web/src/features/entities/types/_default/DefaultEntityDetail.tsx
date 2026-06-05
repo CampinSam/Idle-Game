@@ -394,9 +394,9 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
           ))}
         </div>
 
-        <div className="p-[10px] flex-1">
+        <div className="p-[10px] flex-1 flex flex-col">
           {activeTab === 'LEVEL' && (
-            <div className="flex flex-col gap-[10px]">
+            <div className="flex flex-col gap-[10px] flex-1">
               {/* Level / XP section */}
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] text-[rgba(255,255,255,0.55)]">Current Level</span>
@@ -506,7 +506,7 @@ function FullEntityDetail({ entity, portraitBadge }: { entity: EntityDetailProps
               })()}
 
               {/* Recent Events */}
-              <div>
+              <div className="flex flex-col flex-1">
                 <div className="text-[9px] font-extrabold tracking-[1px] text-[rgba(255,255,255,0.45)] mb-2">RECENT EVENTS</div>
                 {eventsLoading ? (
                   <div className="flex flex-col gap-1.5">
