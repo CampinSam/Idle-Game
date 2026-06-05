@@ -81,12 +81,15 @@ function decryptSkey(stored: string): string {
   return decrypted.toString('utf8');
 }
 
+const PENDING_KEY_ESCALATION_INTERVAL_MS = 15 * 60_000; // 15 minutes
+
 @Injectable()
 export class CryptoWalletService {
   private readonly logger = new Logger(CryptoWalletService.name);
   private depositIntervalRef: NodeJS.Timeout | null = null;
   private withdrawalIntervalRef: NodeJS.Timeout | null = null;
   private withdrawalProcessing = false;
+  private pendingKeyEscalationRef: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -112,6 +115,12 @@ export class CryptoWalletService {
     this.autoGenerateHotWalletIfNeeded().catch((err) => {
       this.logger.error(`Hot wallet auto-generation check failed: ${err}`);
     });
+
+    this.pendingKeyEscalationRef = setInterval(() => {
+      this.escalatePendingKeyWarning().catch((err) => {
+        this.logger.error(`Pending key escalation check failed: ${err}`);
+      });
+    }, PENDING_KEY_ESCALATION_INTERVAL_MS);
   }
 
   /**
@@ -141,6 +150,25 @@ export class CryptoWalletService {
     );
   }
 
+  /**
+   * Fires every PENDING_KEY_ESCALATION_INTERVAL_MS.
+   * If the hot wallet private key is still pending download, escalates to ERROR
+   * so the condition is visible in error-monitoring dashboards and log alerts.
+   */
+  private async escalatePendingKeyWarning(): Promise<void> {
+    const config = await (this.prisma as any).cryptoWalletConfig.findUnique({
+      where: { id: 'default' },
+      select: { hotWalletKeyPendingDownload: true },
+    });
+    if (config?.hotWalletKeyPendingDownload) {
+      this.logger.error(
+        '[HotWallet] CRITICAL: The hot wallet private key has not been downloaded. ' +
+        'If the server restarts before the key is claimed, it will be permanently lost. ' +
+        'Navigate to Admin → System → Crypto → Config and download the private key immediately.',
+      );
+    }
+  }
+
   onModuleDestroy() {
     if (this.depositIntervalRef) {
       clearInterval(this.depositIntervalRef);
@@ -149,6 +177,10 @@ export class CryptoWalletService {
     if (this.withdrawalIntervalRef) {
       clearInterval(this.withdrawalIntervalRef);
       this.withdrawalIntervalRef = null;
+    }
+    if (this.pendingKeyEscalationRef) {
+      clearInterval(this.pendingKeyEscalationRef);
+      this.pendingKeyEscalationRef = null;
     }
   }
 

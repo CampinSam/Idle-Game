@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
-  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X, BarChart2,
+  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X, BarChart2, AlertTriangle,
 } from 'lucide-react';
 import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
@@ -299,6 +299,7 @@ function Sidebar({
   onCollapse,
   onNavigate,
   onLogout,
+  keyPending,
 }: {
   me: AdminMe;
   collapsed: boolean;
@@ -307,6 +308,7 @@ function Sidebar({
   onCollapse: () => void;
   onNavigate: (s: Section, sub?: string) => void;
   onLogout: () => void;
+  keyPending: boolean;
 }) {
   const visibleItems = NAV_ITEMS.filter(item => isVisible(item, me));
 
@@ -330,13 +332,14 @@ function Sidebar({
         {visibleItems.map(item => {
           const isActive = activeSection === item.key;
           const hasSubs = !collapsed && !item.stub && isActive && item.subs && item.subs.length > 0;
+          const showWarnDot = keyPending && item.key === 'system';
 
           return (
             <div key={item.key} className="av2-nav-section">
               <button
                 className={`av2-nav-item${isActive ? ' active' : ''}`}
                 onClick={() => onNavigate(item.key)}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? (showWarnDot ? `${item.label} — key pending!` : item.label) : undefined}
               >
                 <span className="av2-nav-icon">{item.icon}</span>
                 {!collapsed && (
@@ -345,6 +348,7 @@ function Sidebar({
                       {item.label}
                     </span>
                     {item.stub && <span className="av2-stub-badge">SOON</span>}
+                    {showWarnDot && <span className="av2-nav-warn-dot" />}
                     {item.subs && !item.stub && (
                       <ChevronDown
                         size={11}
@@ -358,6 +362,7 @@ function Sidebar({
                     )}
                   </>
                 )}
+                {collapsed && showWarnDot && <span className="av2-nav-warn-dot" style={{ position: 'absolute', top: 6, right: 6 }} />}
               </button>
 
               {hasSubs && (
@@ -369,6 +374,9 @@ function Sidebar({
                       onClick={() => onNavigate(item.key, sub.key)}
                     >
                       {sub.label}
+                      {keyPending && sub.key === 'crypto' && (
+                        <span className="av2-nav-warn-dot" style={{ marginLeft: 6 }} />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -436,6 +444,8 @@ function TopBar({
   );
 }
 
+const KEY_POLL_INTERVAL_MS = 5 * 60_000; // poll every 5 minutes
+
 export default function AdminV2Shell() {
   const [me, setMe] = useState<AdminMe | null>(null);
   const [checking, setChecking] = useState(true);
@@ -443,6 +453,20 @@ export default function AdminV2Shell() {
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [keyPending, setKeyPending] = useState(false);
+  const keyPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pollKeyPending = useCallback(async (account: AdminMe) => {
+    const isSuperAdmin = account.role.slug === 'super_admin' || !!account.isBootstrap;
+    const perms = account.effectivePermissions ?? account.role.permissionFlags;
+    if (!isSuperAdmin && !perms.system_tools) return;
+    try {
+      const config = await adminApi.getCryptoConfig();
+      setKeyPending(!!config?.hotWalletKeyPendingDownload);
+    } catch {
+      // silently ignore — this is a non-critical background check
+    }
+  }, []);
 
   useEffect(() => {
     const token = getAdminToken();
@@ -459,13 +483,18 @@ export default function AdminV2Shell() {
           setActiveSub(saved.sub);
           persistNav(saved.section, saved.sub);
         }
+        pollKeyPending(account);
+        keyPollRef.current = setInterval(() => pollKeyPending(account), KEY_POLL_INTERVAL_MS);
       })
       .catch(() => {
         clearAdminToken();
         clearPersistedNav();
       })
       .finally(() => setChecking(false));
-  }, []);
+    return () => {
+      if (keyPollRef.current) clearInterval(keyPollRef.current);
+    };
+  }, [pollKeyPending]);
 
   const handleLogin = useCallback((account: AdminMe) => {
     setMe(account);
@@ -475,12 +504,17 @@ export default function AdminV2Shell() {
     setActiveSection(defaultSection);
     setActiveSub(null);
     persistNav(defaultSection, null);
-  }, []);
+    pollKeyPending(account);
+    if (keyPollRef.current) clearInterval(keyPollRef.current);
+    keyPollRef.current = setInterval(() => pollKeyPending(account), KEY_POLL_INTERVAL_MS);
+  }, [pollKeyPending]);
 
   const handleLogout = useCallback(() => {
     clearAdminToken();
     clearPersistedNav();
+    if (keyPollRef.current) clearInterval(keyPollRef.current);
     setMe(null);
+    setKeyPending(false);
     setActiveSection('dashboard');
     setActiveSub(null);
   }, []);
@@ -579,6 +613,8 @@ export default function AdminV2Shell() {
     }
   };
 
+  const handleGoToCrypto = () => handleNavigate('system', 'crypto');
+
   return (
     <div className="av2-shell">
       <Sidebar
@@ -589,6 +625,7 @@ export default function AdminV2Shell() {
         onCollapse={() => setCollapsed(c => !c)}
         onNavigate={handleNavigate}
         onLogout={handleLogout}
+        keyPending={keyPending}
       />
       <div className="av2-main">
         <TopBar
@@ -597,6 +634,20 @@ export default function AdminV2Shell() {
           activeSub={activeSub}
           onPasswordChange={() => setShowPasswordModal(true)}
         />
+        {keyPending && (
+          <button
+            className="av2-key-pending-banner"
+            onClick={handleGoToCrypto}
+            title="Click to go to Crypto config and download the private key"
+          >
+            <AlertTriangle size={14} className="av2-key-pending-icon" />
+            <span>
+              <strong>Action required:</strong> Hot wallet private key has not been downloaded.
+              If the server restarts, it will be permanently lost.
+            </span>
+            <span className="av2-key-pending-cta">Download now →</span>
+          </button>
+        )}
         <div className="av2-content">
           {renderSection()}
         </div>

@@ -251,6 +251,61 @@
   min-height: 0;
 }
 
+.av2-key-pending-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 20px;
+  background: rgba(251, 191, 36, 0.1);
+  border: none;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.av2-key-pending-banner:hover {
+  background: rgba(251, 191, 36, 0.17);
+}
+
+.av2-key-pending-banner strong {
+  color: #fbbf24;
+}
+
+.av2-key-pending-icon {
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.av2-key-pending-cta {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.av2-nav-warn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fbbf24;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px rgba(251, 191, 36, 0.7);
+  animation: av2-pulse-warn 1.8s ease-in-out infinite;
+}
+
+@keyframes av2-pulse-warn {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.75); }
+}
+
 .av2-login {
   display: flex;
   align-items: center;
