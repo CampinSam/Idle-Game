@@ -778,7 +778,7 @@ export class BootstrapService implements OnModuleInit {
     for (const def of defs) {
       const result = await (this.prisma as any).effectDef.upsert({
         where: { id: def.id },
-        update: {},
+        update: { value: def.value, valueMode: def.valueMode },
         create: {
           ...def,
           meta: {},

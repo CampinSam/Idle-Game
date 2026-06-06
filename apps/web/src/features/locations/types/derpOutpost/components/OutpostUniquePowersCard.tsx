@@ -15,10 +15,13 @@ function powerKey(p: PowerRef): string {
 }
 
 function powerValueLabel(p: PowerRef): string {
-  const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
-    || p.powerDefId === 'global_tick_boost';
   if (p.value === undefined) return '—';
-  return isPercent ? `+${p.value}%` : `+${p.value}`;
+  const isPercent = p.valueMode === 'percent_add'
+    || p.powerType === 'tick_boost'
+    || p.powerType === 'tick_speed_boost'
+    || p.powerDefId === 'global_tick_boost';
+  const suffix = isPercent ? '%' : '';
+  return p.value > 0 ? `+${p.value}${suffix}` : `${p.value}${suffix}`;
 }
 
 interface PowerRowProps {
