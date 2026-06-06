@@ -76,6 +76,15 @@ function serializeEntity(entity: any) {
 @Injectable()
 export class NftCollectionService {
   private readonly logger = new Logger(NftCollectionService.name);
+  private readonly createInstancesJobs = new Map<string, {
+    status: 'idle' | 'running' | 'done' | 'error';
+    total: number;
+    processed: number;
+    upserted: number;
+    failed: number;
+    startedAt?: string;
+    finishedAt?: string;
+  }>();
 
   constructor(
     private prisma: PrismaService,
@@ -88,10 +97,33 @@ export class NftCollectionService {
   ) {}
 
   async listCollections() {
-    return (this.prisma as any).nftCollectionDef.findMany({
+    const collections = await (this.prisma as any).nftCollectionDef.findMany({
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { nftAssets: true } } },
     });
+
+    const entityCounts: { nft_collection_def_id: string; count: number }[] = await (this.prisma as any).$queryRaw`
+      SELECT nft_collection_def_id, COUNT(*)::int AS count
+      FROM entities
+      WHERE nft_collection_def_id IS NOT NULL
+      GROUP BY nft_collection_def_id
+    `;
+
+    const locationCounts: { collection_id: string; count: number }[] = await (this.prisma as any).$queryRaw`
+      SELECT na.collection_id, COUNT(*)::int AS count
+      FROM location_instances li
+      JOIN nft_assets na ON na.nft_asset_id = li.nft_asset_id
+      WHERE li.nft_asset_id IS NOT NULL
+      GROUP BY na.collection_id
+    `;
+
+    const entityCountMap = new Map(entityCounts.map(r => [r.nft_collection_def_id, Number(r.count)]));
+    const locationCountMap = new Map(locationCounts.map(r => [r.collection_id, Number(r.count)]));
+
+    return collections.map((c: any) => ({
+      ...c,
+      instanceCount: entityCountMap.get(c.id) ?? locationCountMap.get(c.id) ?? 0,
+    }));
   }
 
   private validateCollectionMode(entityDefinitionId?: string | null, locationDefinitionId?: string | null): void {
@@ -155,16 +187,17 @@ export class NftCollectionService {
    * fetchAndCache() is still invoked per asset so any cache-miss is filled on
    * demand, but the work list comes from the local DB rather than from the chain.
    */
+  getCreateInstancesStatus(id: string) {
+    return this.createInstancesJobs.get(id) ?? { status: 'idle' as const, total: 0, processed: 0, upserted: 0, failed: 0 };
+  }
+
   async createInstances(id: string): Promise<{ started: true; total: number }> {
     const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
     if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
-    if (!collection.entityDefinitionId) {
-      throw new BadRequestException(
-        `create-instances is only supported for entity-backed collections (entityDefinitionId is required)`,
-      );
+    if (!collection.entityDefinitionId && !collection.locationDefinitionId) {
+      throw new BadRequestException(`Collection "${id}" has neither entityDefinitionId nor locationDefinitionId`);
     }
 
-    // Source from cached NftAsset rows — no direct Blockfrost enumeration here.
     const cachedAssets = await (this.prisma as any).nftAsset.findMany({
       where: { collectionId: id },
       select: { nftAssetId: true },
@@ -179,20 +212,36 @@ export class NftCollectionService {
     const nftAssetIds: string[] = cachedAssets.map((a: any) => a.nftAssetId as string);
     const total = nftAssetIds.length;
 
+    this.createInstancesJobs.set(id, {
+      status: 'running',
+      total,
+      processed: 0,
+      upserted: 0,
+      failed: 0,
+      startedAt: new Date().toISOString(),
+    });
+
     this.logger.log(`Starting background instance creation of ${total} tokens for collection "${id}"`);
 
-    this.runInstanceCreation(collection, nftAssetIds).catch((err) =>
-      this.logger.error(`Background instance creation failed for collection "${id}": ${err}`),
-    );
+    const runner = collection.entityDefinitionId
+      ? this.runEntityInstanceCreation(collection, nftAssetIds)
+      : this.runLocationInstanceCreation(collection, nftAssetIds);
+
+    runner.catch((err) => {
+      this.logger.error(`Background instance creation failed for collection "${id}": ${err}`);
+      const prev = this.createInstancesJobs.get(id);
+      if (prev) {
+        this.createInstancesJobs.set(id, { ...prev, status: 'error', finishedAt: new Date().toISOString() });
+      }
+    });
 
     return { started: true, total };
   }
 
-  private async runInstanceCreation(collection: any, nftAssetIds: string[]) {
+  private async runEntityInstanceCreation(collection: any, nftAssetIds: string[]) {
     const BATCH_SIZE = 5;
     const BATCH_DELAY_MS = 300;
-    let created = 0;
-    let skipped = 0;
+    let upserted = 0;
     let failed = 0;
 
     for (let i = 0; i < nftAssetIds.length; i += BATCH_SIZE) {
@@ -203,7 +252,7 @@ export class NftCollectionService {
           try {
             const existing = await (this.prisma as any).entity.findFirst({ where: { nftAssetId } });
             if (existing) {
-              skipped++;
+              upserted++;
               return;
             }
 
@@ -212,27 +261,25 @@ export class NftCollectionService {
             const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
 
             await (this.prisma as any).entity.create({
-              data: {
-                ...entityData,
-                nftAssetId,
-                nftCollectionDefId: collection.id,
-              },
+              data: { ...entityData, nftAssetId, nftCollectionDefId: collection.id },
             });
 
             this.nftImageImport.invalidateKnownCidCache();
-
-            created++;
+            upserted++;
           } catch (err) {
-            this.logger.error(`Failed to create instance for NFT ${nftAssetId}: ${err}`);
+            this.logger.error(`Failed to create entity instance for NFT ${nftAssetId}: ${err}`);
             failed++;
           }
         }),
       );
 
       const processed = Math.min(i + BATCH_SIZE, nftAssetIds.length);
+      const job = this.createInstancesJobs.get(collection.id);
+      if (job) this.createInstancesJobs.set(collection.id, { ...job, processed, upserted, failed });
+
       if (processed % 100 === 0 || processed === nftAssetIds.length) {
         this.logger.log(
-          `Instance creation progress [${collection.id}]: ${processed}/${nftAssetIds.length} processed — created: ${created}, skipped: ${skipped}, failed: ${failed}`,
+          `Entity instance creation progress [${collection.id}]: ${processed}/${nftAssetIds.length} — upserted: ${upserted}, failed: ${failed}`,
         );
       }
 
@@ -241,9 +288,79 @@ export class NftCollectionService {
       }
     }
 
-    this.logger.log(
-      `Instance creation complete [${collection.id}]: created=${created}, skipped=${skipped}, failed=${failed}`,
-    );
+    this.createInstancesJobs.set(collection.id, {
+      status: 'done',
+      total: nftAssetIds.length,
+      processed: nftAssetIds.length,
+      upserted,
+      failed,
+      startedAt: this.createInstancesJobs.get(collection.id)?.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
+
+    this.logger.log(`Entity instance creation complete [${collection.id}]: upserted=${upserted}, failed=${failed}`);
+  }
+
+  private async runLocationInstanceCreation(collection: any, nftAssetIds: string[]) {
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY_MS = 300;
+    let upserted = 0;
+    let failed = 0;
+
+    for (let i = 0; i < nftAssetIds.length; i += BATCH_SIZE) {
+      const batch = nftAssetIds.slice(i, i + BATCH_SIZE);
+
+      await Promise.all(
+        batch.map(async (nftAssetId) => {
+          try {
+            const existing = await (this.prisma as any).locationInstance.findFirst({ where: { nftAssetId } });
+            if (existing) {
+              upserted++;
+              return;
+            }
+
+            const cachedAsset = await this.nftAssetCache.fetchAndCache(nftAssetId);
+            const meta = nftAssetRowToMetadata(cachedAsset);
+            const locationData = buildLocationDataFromNftMetadata(collection, meta, nftAssetId);
+
+            await (this.prisma as any).locationInstance.create({
+              data: { ...locationData, ownerUserId: null, enabled: false },
+            });
+
+            upserted++;
+          } catch (err) {
+            this.logger.error(`Failed to create location instance for NFT ${nftAssetId}: ${err}`);
+            failed++;
+          }
+        }),
+      );
+
+      const processed = Math.min(i + BATCH_SIZE, nftAssetIds.length);
+      const job = this.createInstancesJobs.get(collection.id);
+      if (job) this.createInstancesJobs.set(collection.id, { ...job, processed, upserted, failed });
+
+      if (processed % 100 === 0 || processed === nftAssetIds.length) {
+        this.logger.log(
+          `Location instance creation progress [${collection.id}]: ${processed}/${nftAssetIds.length} — upserted: ${upserted}, failed: ${failed}`,
+        );
+      }
+
+      if (i + BATCH_SIZE < nftAssetIds.length) {
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+      }
+    }
+
+    this.createInstancesJobs.set(collection.id, {
+      status: 'done',
+      total: nftAssetIds.length,
+      processed: nftAssetIds.length,
+      upserted,
+      failed,
+      startedAt: this.createInstancesJobs.get(collection.id)?.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
+
+    this.logger.log(`Location instance creation complete [${collection.id}]: upserted=${upserted}, failed=${failed}`);
   }
 
   static readonly DEFAULT_SYNC_THROTTLE_MS = 5 * 60 * 1000;

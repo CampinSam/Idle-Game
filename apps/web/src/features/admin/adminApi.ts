@@ -347,6 +347,8 @@ export const adminApi = {
     nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; upserted: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/import/status`),
   createNftInstances: (id: string) =>
     nftAdminRequest<{ started: true; total: number }>(`/nft/collections/${id}/create-instances`, { method: 'POST' }),
+  getCreateInstancesStatus: (id: string) =>
+    nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; upserted: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/create-instances/status`),
   refreshNftOwnership: (id: string) =>
     nftAdminRequest<any>(`/nft/collections/${id}/refresh`, { method: 'POST' }),
   getRefreshStatus: (id: string) =>

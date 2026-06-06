@@ -97,6 +97,15 @@ export class NftCollectionController {
   }
 
   /**
+   * Return the current progress of a running (or completed) create-instances job.
+   */
+  @Get(':id/create-instances/status')
+  @UseGuards(AdminGuard)
+  getCreateInstancesStatus(@Param('id') id: string) {
+    return this.nftCollectionService.getCreateInstancesStatus(id);
+  }
+
+  /**
    * Re-fetch current on-chain holder addresses for all NftAsset rows in a
    * collection and update ownerAddress + lastSyncedAt.
    */
