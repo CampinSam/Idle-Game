@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { adminApi } from './adminApi';
 
 type OracleStatus = {
@@ -951,13 +951,130 @@ function WithdrawalsTab() {
   );
 }
 
+type PlayerSearchResult = { id: string; username: string | null; email: string | null; keeperLevel?: number };
+
+function PlayerPicker({
+  selectedPlayer,
+  onSelect,
+}: {
+  selectedPlayer: PlayerSearchResult | null;
+  onSelect: (player: PlayerSearchResult | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<PlayerSearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    setSearching(true);
+    try {
+      const data = await adminApi.searchPlayers(q.trim());
+      setResults(data);
+      setOpen(true);
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const inputStyle: CSSProperties = {
+    width: '100%',
+    padding: '0.35rem 0.6rem',
+    borderRadius: 4,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.06)',
+    color: '#e0e0ff',
+    fontSize: '0.8rem',
+    boxSizing: 'border-box',
+  };
+
+  if (selectedPlayer) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.6rem', borderRadius: 4, border: '1px solid rgba(139,92,246,0.4)', background: 'rgba(139,92,246,0.1)' }}>
+        <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#6d28d9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 10, color: '#fff', flexShrink: 0 }}>
+          {(selectedPlayer.username || '?')[0]?.toUpperCase()}
+        </span>
+        <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.8rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selectedPlayer.username || '(no username)'}
+        </span>
+        {selectedPlayer.email && (
+          <span style={{ color: '#64748b', fontSize: '0.72rem', flexShrink: 0 }}>{selectedPlayer.email}</span>
+        )}
+        <button
+          onClick={() => { onSelect(null); setQuery(''); }}
+          style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.85rem', lineHeight: 1, flexShrink: 0 }}
+          title="Clear selection"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', gap: '0.35rem' }}>
+        <input
+          style={inputStyle}
+          value={query}
+          placeholder="Search by username or email…"
+          onChange={(e) => { setQuery(e.target.value); setOpen(false); }}
+          onKeyDown={(e) => e.key === 'Enter' && doSearch(query)}
+        />
+        <button
+          onClick={() => doSearch(query)}
+          disabled={searching}
+          style={{ padding: '0.35rem 0.6rem', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#a0a0c0', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          {searching ? '…' : 'Search'}
+        </button>
+      </div>
+      {open && results.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 2, borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: '#131320', boxShadow: '0 4px 16px rgba(0,0,0,0.5)', maxHeight: 200, overflowY: 'auto' }}>
+          {results.map((p) => (
+            <div
+              key={p.id}
+              onClick={() => { onSelect(p); setQuery(''); setOpen(false); }}
+              style={{ padding: '0.45rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#1e1e2e'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              <span style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.8rem' }}>{p.username || '(no username)'}</span>
+              {p.email && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{p.email}</span>}
+              {p.keeperLevel !== undefined && <span style={{ color: '#a78bfa', fontSize: '0.72rem', marginLeft: 'auto' }}>Lv.{p.keeperLevel}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {open && results.length === 0 && !searching && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 2, borderRadius: 4, border: '1px solid rgba(255,255,255,0.12)', background: '#131320', padding: '0.5rem 0.75rem', fontSize: '0.78rem', color: '#666' }}>
+          No players found
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UnresolvedDepositsTab() {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [includeResolved, setIncludeResolved] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
-  const [creditUserId, setCreditUserId] = useState<Record<string, string>>({});
+  const [selectedPlayers, setSelectedPlayers] = useState<Record<string, PlayerSearchResult | null>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -976,8 +1093,10 @@ function UnresolvedDepositsTab() {
   const handleResolve = async (id: string) => {
     setResolving(id); setMsg(null);
     try {
-      await adminApi.resolveUnresolvedDeposit(id, creditUserId[id] || undefined);
-      setMsg({ text: 'Deposit resolved', type: 'success' });
+      const player = selectedPlayers[id] ?? null;
+      await adminApi.resolveUnresolvedDeposit(id, player?.id || undefined);
+      setMsg({ text: player ? `Deposit resolved — credited to ${player.username || player.id}` : 'Deposit dismissed without credit', type: 'success' });
+      setSelectedPlayers((prev) => { const next = { ...prev }; delete next[id]; return next; });
       load();
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -1038,23 +1157,31 @@ function UnresolvedDepositsTab() {
                 {d.resolvedAt ? (
                   <div style={{ fontSize: '0.78rem', color: '#4caf50', whiteSpace: 'nowrap' }}>
                     ✓ Resolved {new Date(d.resolvedAt).toLocaleDateString()}
-                    {d.creditedUserId && <div style={{ color: '#888' }}>→ {d.creditedUserId.slice(0, 8)}</div>}
+                    {d.creditedUserId && (
+                      <div style={{ color: '#a78bfa', marginTop: 2 }}>
+                        → {d.creditedUser?.username ? (
+                          <span title={d.creditedUserId}>{d.creditedUser.username}</span>
+                        ) : (
+                          <span style={{ color: '#888' }}>{d.creditedUserId.slice(0, 8)}…</span>
+                        )}
+                        {d.creditedUser?.email && (
+                          <span style={{ color: '#64748b', marginLeft: 4, fontSize: '0.72rem' }}>{d.creditedUser.email}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 200 }}>
-                    <input
-                      type="text"
-                      placeholder="Player User ID (optional)"
-                      value={creditUserId[d.id] ?? ''}
-                      onChange={(e) => setCreditUserId((prev) => ({ ...prev, [d.id]: e.target.value }))}
-                      style={{ padding: '0.35rem 0.6rem', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#e0e0ff', fontSize: '0.8rem' }}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 220 }}>
+                    <PlayerPicker
+                      selectedPlayer={selectedPlayers[d.id] ?? null}
+                      onSelect={(p) => setSelectedPlayers((prev) => ({ ...prev, [d.id]: p }))}
                     />
                     <button
                       onClick={() => handleResolve(d.id)}
                       disabled={resolving === d.id}
                       style={{ padding: '0.35rem 0.8rem', borderRadius: 4, border: '1px solid rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.1)', color: '#fbbf24', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
                     >
-                      {resolving === d.id ? 'Resolving…' : 'Resolve'}
+                      {resolving === d.id ? 'Resolving…' : selectedPlayers[d.id] ? 'Resolve & Credit' : 'Dismiss (no credit)'}
                     </button>
                   </div>
                 )}

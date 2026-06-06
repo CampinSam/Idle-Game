@@ -2614,8 +2614,11 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
+      include: {
+        creditedUser: { select: { id: true, username: true, email: true } },
+      },
     });
-    return rows;
+    return serializeBigInts(rows);
   }
 
   async adminResolveUnresolvedDeposit(
