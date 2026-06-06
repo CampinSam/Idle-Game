@@ -319,5 +319,43 @@
         }
       ]
     }
+  },
+  {
+    "id": "item_lootbox_common",
+    "type": "LOOTBOX",
+    "rarity": "COMMON",
+    "name": "Common Chest",
+    "description": "A common chest filled with useful materials and consumables.",
+    "iconKey": null,
+    "uiColor": null,
+    "category": "MISC",
+    "groups": ["lootbox"],
+    "tags": ["lootbox", "chest"],
+    "stackable": true,
+    "maxStack": 99,
+    "uniqueInstance": false,
+    "lootboxDefId": "lootbox_common_chest",
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": null
+  },
+  {
+    "id": "item_lootbox_rare",
+    "type": "LOOTBOX",
+    "rarity": "RARE",
+    "name": "Rare Crate",
+    "description": "A rare crate containing premium materials and hard-to-find items.",
+    "iconKey": null,
+    "uiColor": null,
+    "category": "MISC",
+    "groups": ["lootbox"],
+    "tags": ["lootbox", "crate"],
+    "stackable": true,
+    "maxStack": 99,
+    "uniqueInstance": false,
+    "lootboxDefId": "lootbox_rare_crate",
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": null
   }
 ]

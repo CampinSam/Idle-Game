@@ -1743,6 +1743,34 @@
         }
       }
     },
+    "LootboxItemFields": {
+      "type": "object",
+      "description": "Extra fields that apply when an ItemDefinition has type=LOOTBOX. A LOOTBOX item grants the player a chest/crate that can be opened via the OpenLootBox command. The item must reference a LootboxDef which defines the weighted outcome pool.",
+      "required": ["lootboxDefId"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "LOOTBOX",
+          "description": "Must be exactly \"LOOTBOX\"."
+        },
+        "lootboxDefId": {
+          "type": "string",
+          "description": "ID of the LootboxDef that defines the outcome pool. Required when type is LOOTBOX. Opening the item rolls against this pool using seeded RNG (seed = itemInstanceId + userId)."
+        },
+        "stackable": {
+          "type": "boolean",
+          "description": "Lootbox items should be stackable (true). Set maxStack to control the per-stack limit (typically 99)."
+        },
+        "consumableData": {
+          "type": "null",
+          "description": "Must be null for LOOTBOX items — opening is handled by the OpenLootBox command, not the consumable pipeline."
+        },
+        "equipData": {
+          "type": "null",
+          "description": "Must be null for LOOTBOX items."
+        }
+      }
+    },
     "DustingData": {
       "type": "object",
       "description": "Dusting configuration for an ItemDefinition. When present, a 'Dust' action appears on the item in inventory. The player consumes the item and receives randomised rewards via the job/outcome-tier pipeline.",

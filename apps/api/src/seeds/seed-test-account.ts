@@ -72,21 +72,9 @@ const PERP_NAMES = [
   'Nexus', 'Void', 'Static', 'Pulse', 'Echo',
 ];
 
-const LOOTBOX_ITEM_DEFS = [
-  {
-    id: 'item_lootbox_common',
-    name: 'Common Chest',
-    description: 'A common chest filled with useful materials and consumables.',
-    rarity: 'COMMON',
-    lootboxDefId: 'lootbox_common_chest',
-  },
-  {
-    id: 'item_lootbox_rare',
-    name: 'Rare Crate',
-    description: 'A rare crate containing premium materials and hard-to-find items.',
-    rarity: 'RARE',
-    lootboxDefId: 'lootbox_rare_crate',
-  },
+const LOOTBOX_ITEM_DEF_IDS = [
+  'item_lootbox_common',
+  'item_lootbox_rare',
 ] as const;
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -255,34 +243,19 @@ async function main() {
   }
   console.log(`[powered]  ${poweredCreated} created, ${poweredSkipped} reconciled (already existed)\n`);
 
-  // ── 4. Lootbox item definitions ────────────────────────────────────────────
-  console.log('[lootboxes] Upserting lootbox item definitions:');
-  for (const def of LOOTBOX_ITEM_DEFS) {
-    const lbDef = await (prisma as any).lootboxDef.findUnique({ where: { id: def.lootboxDefId } });
-    if (!lbDef) {
-      console.log(`[lootboxes] ⚠  LootboxDef "${def.lootboxDefId}" not found in DB — run definition seed first`);
-      continue;
+  // ── 4. Verify lootbox item definitions ────────────────────────────────────
+  // These definitions live in item-defs.json and are seeded by the canonical
+  // definition seed (seedDefinitions). We only verify they are present so a
+  // missing definition seed is caught early rather than silently skipped.
+  console.log('[lootboxes] Verifying lootbox item definitions exist:');
+  for (const id of LOOTBOX_ITEM_DEF_IDS) {
+    const existing = await (prisma as any).itemDefinition.findUnique({ where: { id } });
+    if (!existing) {
+      throw new Error(
+        `ItemDefinition "${id}" not found. Run the definition seed first (pnpm prisma db seed).`,
+      );
     }
-    await (prisma as any).itemDefinition.upsert({
-      where: { id: def.id },
-      update: { name: def.name, description: def.description },
-      create: {
-        id: def.id,
-        type: 'LOOTBOX',
-        rarity: def.rarity,
-        name: def.name,
-        description: def.description,
-        iconKey: null,
-        category: 'MISC',
-        groups: [],
-        tags: [],
-        stackable: true,
-        maxStack: 99,
-        uniqueInstance: false,
-        lootboxDefId: def.lootboxDefId,
-      },
-    });
-    console.log(`[lootboxes] ✓ ${def.id} (${def.name})`);
+    console.log(`[lootboxes] ✓ ${id} exists`);
   }
   console.log();
 
