@@ -30,9 +30,23 @@ CREATE INDEX IF NOT EXISTS "unresolved_deposits_resolvedAt_idx" ON "unresolved_d
 -- NULL values are excluded from enforcement (PostgreSQL unique indexes allow multiple NULLs).
 CREATE UNIQUE INDEX IF NOT EXISTS "currencies_cntPolicyId_cntAssetName_key" ON "currencies"("cntPolicyId", "cntAssetName");
 
--- AddForeignKey
-ALTER TABLE "unresolved_deposits" ADD CONSTRAINT "unresolved_deposits_resolvedByUserId_fkey"
-    FOREIGN KEY ("resolvedByUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AddForeignKey (idempotent: skip if constraint already exists)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'unresolved_deposits_resolvedByUserId_fkey'
+  ) THEN
+    ALTER TABLE "unresolved_deposits" ADD CONSTRAINT "unresolved_deposits_resolvedByUserId_fkey"
+      FOREIGN KEY ("resolvedByUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
-ALTER TABLE "unresolved_deposits" ADD CONSTRAINT "unresolved_deposits_creditedUserId_fkey"
-    FOREIGN KEY ("creditedUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'unresolved_deposits_creditedUserId_fkey'
+  ) THEN
+    ALTER TABLE "unresolved_deposits" ADD CONSTRAINT "unresolved_deposits_creditedUserId_fkey"
+      FOREIGN KEY ("creditedUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
