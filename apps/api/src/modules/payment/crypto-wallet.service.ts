@@ -979,13 +979,30 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         if (!rec || rec.status !== 'PROCESSING') return;
 
         if (isAda) {
-          // ADA withdrawal: debit exact network fee as additional player cost
+          // ADA withdrawal: debit exact network fee as additional player cost.
+          // TX has already been built — proceed even if balance is short and log a CRITICAL warning.
           if (adaNetworkFee > 0n) {
-            await tx.userCurrencyBalance.upsert({
+            const adaRow = await tx.userCurrencyBalance.findUnique({
               where: { userId_currencyId: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID } },
-              create: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: 0n },
-              update: { balance: { decrement: adaNetworkFee } },
             });
+            const currentAda = BigInt(adaRow?.balance ?? 0);
+            if (currentAda < adaNetworkFee) {
+              this.logger.error(
+                `CRITICAL: ADA network fee debit for withdrawal ${id} would push player ` +
+                `${withdrawal.userId} ADA balance negative ` +
+                `(current: ${currentAda}, debit: ${adaNetworkFee}). Proceeding — TX already built.`,
+              );
+            }
+            if (adaRow) {
+              await tx.userCurrencyBalance.update({
+                where: { userId_currencyId: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID } },
+                data: { balance: { decrement: adaNetworkFee } },
+              });
+            } else {
+              await tx.userCurrencyBalance.create({
+                data: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: -adaNetworkFee },
+              });
+            }
             await tx.currencyLedger.create({
               data: {
                 userId: withdrawal.userId,
@@ -1003,13 +1020,31 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           // CNT withdrawal: debit full physical on-chain cost (min-UTxO bundled with CNT + tx fee).
           // adaServiceFee (platform fee) was already debited at request time — leave it unchanged.
           // adaNetworkFee here stores the total physical ADA cost for accurate refund accounting.
+          // TX has already been built — proceed even if balance is short and log a CRITICAL warning.
           const physicalCost = MIN_ADA_LOVELACE + adaNetworkFee; // total ADA leaving player for on-chain cost
           if (physicalCost > 0n) {
-            await tx.userCurrencyBalance.upsert({
+            const adaRow = await tx.userCurrencyBalance.findUnique({
               where: { userId_currencyId: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID } },
-              create: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: 0n },
-              update: { balance: { decrement: physicalCost } },
             });
+            const currentAda = BigInt(adaRow?.balance ?? 0);
+            if (currentAda < physicalCost) {
+              this.logger.error(
+                `CRITICAL: ADA on-chain cost debit for CNT withdrawal ${id} would push player ` +
+                `${withdrawal.userId} ADA balance negative ` +
+                `(current: ${currentAda}, debit: ${physicalCost} = ${MIN_ADA_LOVELACE} minUTxO + ${adaNetworkFee} fee). ` +
+                `Proceeding — TX already built.`,
+              );
+            }
+            if (adaRow) {
+              await tx.userCurrencyBalance.update({
+                where: { userId_currencyId: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID } },
+                data: { balance: { decrement: physicalCost } },
+              });
+            } else {
+              await tx.userCurrencyBalance.create({
+                data: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: -physicalCost },
+              });
+            }
             await tx.currencyLedger.create({
               data: {
                 userId: withdrawal.userId,
