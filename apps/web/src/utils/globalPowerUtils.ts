@@ -32,9 +32,16 @@ export function getPowerIcon(power: GlobalPowerSnapshot): string {
   return icons[cat] ?? '🌐';
 }
 
+/** Returns true for valueMode strings that carry no percent suffix (flat_add, flat_set, flat_grant, bps). */
+function isFlatMode(valueMode: string): boolean {
+  return valueMode.startsWith('flat_') || valueMode === 'flat' || valueMode === 'bps';
+}
+
 export function formatPowerValue(value: number, valueMode: string): string {
+  const sign = value > 0 ? '+' : '';
   if (valueMode === 'multiplier') return `${value}×`;
-  return value > 0 ? `+${value}%` : `${value}%`;
+  if (isFlatMode(valueMode)) return `${sign}${value}`;
+  return `${sign}${value}%`;
 }
 
 export function formatCountdown(endTime: string, nowMs?: number): string {

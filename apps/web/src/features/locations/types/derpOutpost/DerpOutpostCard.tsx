@@ -14,6 +14,7 @@ import { useNotifications } from '../../../../context/NotificationContext';
 import type { LocationCardProps } from '../../registry';
 import { getUniqueEntry } from './getUniqueEntry';
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../features/powers/powerUtils';
+import { formatPowerValue } from '../../../../utils/globalPowerUtils';
 
 function buildNftExplorerUrl(nftAssetId: string): string | null {
   const parts = nftAssetId.split(':');
@@ -113,9 +114,7 @@ function UniquePowerPanel({
         const isAtLimit = usage ? usage.usageCount >= limit : false;
         const usageCount = usage?.usageCount ?? 0;
         const label = p.name || k;
-        const isPercent = p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
-          || p.powerDefId === 'global_tick_boost';
-        const valStr = p.value !== undefined ? (isPercent ? `+${p.value}%` : `+${p.value}`) : '—';
+        const valStr = p.value !== undefined ? formatPowerValue(p.value, p.valueMode ?? 'percent_add') : '—';
         const durStr = p.durationMinutes !== undefined ? `${p.durationMinutes}m` : '—';
         const valueLabel = `${valStr} · ${durStr}`;
         const remaining = Math.max(0, limit - usageCount);

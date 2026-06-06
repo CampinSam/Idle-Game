@@ -8,6 +8,7 @@ import { getUniqueEntry } from '../getUniqueEntry';
 import type { PowerRef } from '@derp/shared';
 
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../../../features/powers/powerUtils';
+import { formatPowerValue } from '../../../../../utils/globalPowerUtils';
 
 /** Stable key for a PowerRef — prefers p.key, then p.powerType, then p.effectDefId (full legacy compat). */
 function powerKey(p: PowerRef): string {
@@ -16,12 +17,7 @@ function powerKey(p: PowerRef): string {
 
 function powerValueLabel(p: PowerRef): string {
   if (p.value === undefined) return '—';
-  const isPercent = p.valueMode === 'percent_add'
-    || p.powerType === 'tick_boost'
-    || p.powerType === 'tick_speed_boost'
-    || p.powerDefId === 'global_tick_boost';
-  const suffix = isPercent ? '%' : '';
-  return p.value > 0 ? `+${p.value}${suffix}` : `${p.value}${suffix}`;
+  return formatPowerValue(p.value, p.valueMode ?? 'percent_add');
 }
 
 interface PowerRowProps {

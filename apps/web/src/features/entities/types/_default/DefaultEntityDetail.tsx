@@ -26,6 +26,7 @@ import { useAppSelector } from '../../../../store';
 import { useCurrentTick, useTickRate, createCountdownTimer } from '../../../../tick';
 import { useNotifications } from '../../../../context/NotificationContext';
 import { getUtcDay, getSecondsUntilUtcMidnight, formatCountdown } from '../../../powers/powerUtils';
+import { formatPowerValue } from '../../../../utils/globalPowerUtils';
 
 const PROGRESSION_TABS = ['LEVEL', 'ASCENSION', 'MASTERY', 'RELICS', 'HISTORY', 'TRAITS'] as const;
 type ProgressionTab = typeof PROGRESSION_TABS[number];
@@ -628,10 +629,7 @@ function EntityUniquePowerPanel({
         const isAtLimit = usage ? usage.usageCount >= limit : false;
         const usageCount = usage?.usageCount ?? 0;
         const label = p.name || k;
-        const isPercent = p.valueMode === 'percent_add'
-          || p.powerType === 'tick_boost' || p.powerType === 'tick_speed_boost'
-          || p.powerDefId === 'global_tick_boost';
-        const valStr = p.value !== undefined ? (isPercent ? `+${p.value}%` : `+${p.value}`) : '—';
+        const valStr = p.value !== undefined ? formatPowerValue(p.value, p.valueMode ?? 'percent_add') : '—';
         const durStr = p.durationMinutes !== undefined ? `${p.durationMinutes}m` : '—';
         const valueLabel = `${valStr} · ${durStr}`;
         const remaining = Math.max(0, limit - usageCount);
