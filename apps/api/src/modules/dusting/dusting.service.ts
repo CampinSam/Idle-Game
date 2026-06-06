@@ -8,7 +8,9 @@ import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
 import { NotificationService } from '../notification/notification.service';
 import { rollPassFail, rollQualityFromCl, collapseQualityProbabilities, qualityProbabilities, SeededRng } from '@derp/math';
+import { EffectCategory, EffectTargetType, applyModifier, emptyResolvedModifier } from '@derp/shared';
 import type { StartDustingPayload, CollectDustingPayload, DustingData } from '@derp/shared';
+import { EffectService } from '../effect/effect.service';
 
 const EMPTY_TIER_BLOCK = { rewards: [] };
 
@@ -60,6 +62,7 @@ export class DustingService {
     private gameRules: GameRulesService,
     private eventService: EventService,
     private notificationService: NotificationService,
+    private effectService: EffectService,
   ) {}
 
   private async removeSpecificInstanceTx(
@@ -141,9 +144,25 @@ export class DustingService {
     const rawScaling: string = legacyData.timerScaling ?? legacyData.quantityScaling ?? 'flat';
     const timerScaling: string =
       rawScaling === 'LINEAR' ? 'per_unit' : rawScaling === 'ALL_AT_ONCE' ? 'flat' : rawScaling;
-    const totalDurationTicks = (timerScaling === 'per_unit' && !dustingData.instant)
+    let totalDurationTicks = (timerScaling === 'per_unit' && !dustingData.instant)
       ? Math.max(0, baseDuration * qty)
       : baseDuration;
+
+    if (!dustingData.instant && totalDurationTicks > 0) {
+      const [dustingTimerMod, legacyTimerMod] = await Promise.all([
+        this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.DUSTING_TIMER_SPEED),
+        this.effectService.resolveForTarget(userId, EffectTargetType.PLAYER, userId, EffectCategory.TIMER_SPEED),
+      ]);
+      const combinedTimer = {
+        ...emptyResolvedModifier(),
+        flatAdd: dustingTimerMod.flatAdd + legacyTimerMod.flatAdd,
+        percentAdd: dustingTimerMod.percentAdd + legacyTimerMod.percentAdd,
+        multiplier: dustingTimerMod.multiplier * legacyTimerMod.multiplier,
+      };
+      if (combinedTimer.flatAdd !== 0 || combinedTimer.percentAdd !== 0 || combinedTimer.multiplier !== 1) {
+        totalDurationTicks = Math.max(0, Math.floor(applyModifier(totalDurationTicks, combinedTimer)));
+      }
+    }
 
     const readyAtTick = Math.floor(currentTick) + totalDurationTicks;
     const seed = randomUUID();

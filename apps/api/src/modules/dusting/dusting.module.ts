@@ -6,9 +6,10 @@ import { CurrencyModule } from '../currency/currency.module';
 import { GameRulesModule } from '../game-rules/game-rules.module';
 import { EventModule } from '../event/event.module';
 import { NotificationModule } from '../notification/notification.module';
+import { EffectModule } from '../effect/effect.module';
 
 @Module({
-  imports: [TickModule, InventoryModule, CurrencyModule, GameRulesModule, EventModule, NotificationModule],
+  imports: [TickModule, InventoryModule, CurrencyModule, GameRulesModule, EventModule, NotificationModule, EffectModule],
   providers: [DustingService],
   exports: [DustingService],
 })
