@@ -823,16 +823,14 @@ export class LocationService {
           },
         });
         try {
-          await this.notificationService.updateBySource({
+          await this.notificationService.upsertJobNotification({
             userId,
-            sourceType: "job_ready",
-            sourceId: buildingJob.id,
+            jobId: buildingJob.id,
             type: "building_complete",
-            category: "buildings",
+            category: "locations",
             priority: "normal",
             title: "Construction Failed",
             body: errorMsg,
-            markRead: true,
           });
         } catch (err) {
           // notification update is non-critical
@@ -914,22 +912,20 @@ export class LocationService {
       });
 
       const isUpgrade = !!upgradeToLevel;
-      const existingNotif = await (tx as any).notification.findFirst({
-        where: { userId, sourceType: "job_ready", sourceId: buildingJob.id, archivedAt: null },
-      });
       let updatedNotification: any = null;
-      if (existingNotif) {
-        updatedNotification = await (tx as any).notification.update({
-          where: { id: existingNotif.id },
-          data: {
-            type: "building_complete",
-            title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
-            body: `${building.buildingDef.name}${isUpgrade ? ` upgraded to level ${building.level}` : " has been built"}`,
-            readAt: new Date(),
-            dismissedAt: null,
-            deepLink: { screen: "/locations", locationId, buildingId },
-          },
-        });
+      try {
+        updatedNotification = await this.notificationService.upsertJobNotification({
+          userId,
+          jobId: buildingJob.id,
+          type: "building_complete",
+          category: "locations",
+          priority: "normal",
+          title: isUpgrade ? "Upgrade Complete!" : "Construction Complete!",
+          body: `${building.buildingDef.name}${isUpgrade ? ` upgraded to level ${building.level}` : " has been built"}`,
+          deepLink: { screen: "/locations", locationId, buildingId },
+        }, tx);
+      } catch (err) {
+        // notification update is non-critical
       }
 
       return { building, updatedNotification };
@@ -1428,7 +1424,7 @@ export class LocationService {
           const staleNotifs = await (db as any).notification.findMany({
             where: {
               userId,
-              sourceType: "job_ready",
+              sourceType: { in: ["job", "job_ready"] },
               sourceId: { in: allCancelledJobIds },
               archivedAt: null,
             },

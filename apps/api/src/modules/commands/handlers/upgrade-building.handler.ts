@@ -22,7 +22,7 @@ export class UpgradeBuildingHandler implements CommandHandler {
     await buildActiveJobPatches(pb, ctx.tx, ctx.userId);
 
     const buildingJob = await (ctx.tx as any).job.findFirst({
-      where: { userId: ctx.userId, type: 'building', status: 'active' },
+      where: { userId: ctx.userId, type: 'BuildingJob', status: 'active' },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });

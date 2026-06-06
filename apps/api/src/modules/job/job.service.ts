@@ -47,17 +47,18 @@ export class JobService {
           })
         : [];
 
-      const notifWhere = {
-        userId,
-        sourceType: 'job_ready',
-        sourceId: jobId,
-        archivedAt: null,
-      };
-      const stale = await tx.notification.findMany({ where: notifWhere });
+      const stale = await tx.notification.findMany({
+        where: {
+          userId,
+          sourceId: jobId,
+          sourceType: { in: ['job', 'job_ready'] },
+          archivedAt: null,
+        },
+      });
       const now = new Date();
       if (stale.length > 0) {
         await tx.notification.updateMany({
-          where: notifWhere,
+          where: { id: { in: stale.map((n: any) => n.id) } },
           data: { archivedAt: now, dismissedAt: now, readAt: now },
         });
       }
