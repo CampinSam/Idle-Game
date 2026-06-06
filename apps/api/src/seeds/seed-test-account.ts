@@ -33,27 +33,32 @@ const LOOTBOX_QTY = 10;
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const POWER_DEFS = [
-  { powerDefId: 'global_tick_boost', name: 'Global Tick Boost', key: 'tick_speed_boost', scope: 'global' },
-  { powerDefId: 'keeper_xp_boost', name: 'Keeper XP Boost', key: 'keeper_xp_boost', scope: 'player' },
-  { powerDefId: 'entity_xp_boost', name: 'Entity XP Boost', key: 'entity_xp_boost', scope: 'entity' },
-  { powerDefId: 'mission_power_boost', name: 'Mission Power Boost', key: 'mission_power_boost', scope: 'player' },
-  { powerDefId: 'mission_duration_reduction', name: 'Mission Duration Reduction', key: 'mission_duration_reduction', scope: 'player' },
-  { powerDefId: 'crafting_duration_reduction', name: 'Crafting Duration Reduction', key: 'crafting_duration_reduction', scope: 'player' },
-  { powerDefId: 'building_build_duration_reduction', name: 'Building Construction Boost', key: 'building_build_duration_reduction', scope: 'player' },
-  { powerDefId: 'building_upgrade_duration_reduction', name: 'Building Upgrade Boost', key: 'building_upgrade_duration_reduction', scope: 'player' },
-  { powerDefId: 'injury_recovery_boost', name: 'Injury Recovery Boost', key: 'injury_recovery_boost', scope: 'player' },
+  { powerDefId: 'global_tick_boost',                  name: 'Global Tick Boost',           key: 'tick_speed_boost',                    scope: 'global'   },
+  { powerDefId: 'keeper_xp_boost',                    name: 'Keeper XP Boost',             key: 'keeper_xp_boost',                     scope: 'player'   },
+  { powerDefId: 'entity_xp_boost',                    name: 'Entity XP Boost',             key: 'entity_xp_boost',                     scope: 'entity'   },
+  { powerDefId: 'mission_power_boost',                name: 'Mission Power Boost',          key: 'mission_power_boost',                 scope: 'player'   },
+  { powerDefId: 'mission_duration_reduction',         name: 'Mission Duration Reduction',   key: 'mission_duration_reduction',          scope: 'player'   },
+  { powerDefId: 'crafting_duration_reduction',        name: 'Crafting Duration Reduction',  key: 'crafting_duration_reduction',         scope: 'player'   },
+  { powerDefId: 'building_build_duration_reduction',  name: 'Building Construction Boost',  key: 'building_build_duration_reduction',   scope: 'player'   },
+  { powerDefId: 'building_upgrade_duration_reduction',name: 'Building Upgrade Boost',       key: 'building_upgrade_duration_reduction', scope: 'player'   },
+  { powerDefId: 'injury_recovery_boost',              name: 'Injury Recovery Boost',        key: 'injury_recovery_boost',               scope: 'player'   },
+  // Extra entry with scope 'location' so all four scopes (global/player/entity/location) are exercised.
+  // Reuses the entity_xp_boost powerDef but overrides scope to 'location' via PowerRef.scope.
+  { powerDefId: 'entity_xp_boost',                   name: 'Location XP Boost (test)',     key: 'entity_xp_boost_location_test',       scope: 'location' },
 ] as const;
 
+// Keyed by `${powerDefId}:${scope}` for powered entities with duplicate powerDefId
 const POWERED_ENTITY_NAMES: Record<string, string> = {
-  global_tick_boost: 'Chrono',
-  keeper_xp_boost: 'Lorekeeper',
-  entity_xp_boost: 'Sage',
-  mission_power_boost: 'Vanguard',
-  mission_duration_reduction: 'Swiftclaw',
-  crafting_duration_reduction: 'Forgebound',
-  building_build_duration_reduction: 'Stonepact',
-  building_upgrade_duration_reduction: 'Ironwill',
-  injury_recovery_boost: 'Mender',
+  'global_tick_boost:global': 'Chrono',
+  'keeper_xp_boost:player': 'Lorekeeper',
+  'entity_xp_boost:entity': 'Sage',
+  'mission_power_boost:player': 'Vanguard',
+  'mission_duration_reduction:player': 'Swiftclaw',
+  'crafting_duration_reduction:player': 'Forgebound',
+  'building_build_duration_reduction:player': 'Stonepact',
+  'building_upgrade_duration_reduction:player': 'Ironwill',
+  'injury_recovery_boost:player': 'Mender',
+  'entity_xp_boost:location': 'Geomancer',
 };
 
 const DERP_BIRD_NAMES = [
@@ -196,14 +201,18 @@ async function main() {
 
   for (let i = 0; i < POWER_DEFS.length; i++) {
     const pd = POWER_DEFS[i];
-    const assetId = `TEST:seed_power_${pd.powerDefId}`;
+    // Include scope in the asset ID so entries with the same powerDefId but
+    // different scopes (e.g. entity_xp_boost:entity vs entity_xp_boost:location)
+    // are stored as distinct entity + uniques records.
+    const assetId = `TEST:seed_power_${pd.powerDefId}_${pd.scope}`;
 
     const defId = i % 2 === 0 ? 'derp_bird' : 'perp';
-    const displayName = POWERED_ENTITY_NAMES[pd.powerDefId] ?? pd.name;
+    const nameKey = `${pd.powerDefId}:${pd.scope}`;
+    const displayName = POWERED_ENTITY_NAMES[nameKey] ?? pd.name;
 
     const existing = await (prisma as any).entity.findUnique({ where: { nftAssetId: assetId } });
     if (existing) {
-      console.log(`[powered]  ⏭  ${pd.powerDefId} — entity already exists, reconciling uniques...`);
+      console.log(`[powered]  ⏭  ${nameKey} — entity already exists, reconciling uniques...`);
       poweredSkipped++;
     } else {
       const entityData = await generateEntityData(prisma as any, userId, defId, displayName);
@@ -213,8 +222,9 @@ async function main() {
       poweredCreated++;
     }
 
-    // Always reconcile: ensure this asset ID is present in entityDefinition.rules.uniques
-    // (runs whether entity was just created or already existed from a prior run)
+    // Always reconcile: ensure this asset ID + explicit scope override is
+    // present in entityDefinition.rules.uniques (runs whether entity was just
+    // created or already existed from a prior run).
     const defRecord = await (prisma as any).entityDefinition.findUnique({
       where: { id: defId },
       select: { rules: true },
@@ -228,6 +238,7 @@ async function main() {
           powerDefId: pd.powerDefId,
           name: pd.name,
           key: pd.key,
+          scope: pd.scope,   // explicit override — never rely on PowerDef.defaultScope
           value: 10,
           valueMode: 'percent_add',
           durationMinutes: 60,
