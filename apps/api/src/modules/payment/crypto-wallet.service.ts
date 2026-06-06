@@ -2619,6 +2619,32 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         resolvedBy: { select: { id: true, username: true } },
       },
     });
+
+    const resolvedRows = rows.filter((r: any) => r.resolvedAt && r.txHash);
+    if (resolvedRows.length > 0) {
+      const txHashes = resolvedRows.map((r: any) => r.txHash as string);
+      const ledgerEntries = await this.prisma.currencyLedger.findMany({
+        where: { sourceType: 'CRYPTO_DEPOSIT', sourceId: { in: txHashes } },
+        select: { id: true, currencyId: true, delta: true, reason: true, createdAt: true, sourceId: true },
+        orderBy: { id: 'asc' },
+      });
+
+      const ledgerByTxHash: Record<string, any[]> = {};
+      for (const entry of ledgerEntries) {
+        const key = entry.sourceId!;
+        if (!ledgerByTxHash[key]) ledgerByTxHash[key] = [];
+        ledgerByTxHash[key].push(entry);
+      }
+
+      for (const row of rows) {
+        row.ledgerEntries = ledgerByTxHash[row.txHash] ?? [];
+      }
+    } else {
+      for (const row of rows) {
+        row.ledgerEntries = [];
+      }
+    }
+
     return serializeBigInts(rows);
   }
 

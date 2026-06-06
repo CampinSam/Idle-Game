@@ -1075,6 +1075,7 @@ function UnresolvedDepositsTab() {
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Record<string, PlayerSearchResult | null>>({});
+  const [expandedLedger, setExpandedLedger] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1155,8 +1156,10 @@ function UnresolvedDepositsTab() {
                 </div>
 
                 {d.resolvedAt ? (
-                  <div style={{ fontSize: '0.78rem', color: '#4caf50', whiteSpace: 'nowrap' }}>
-                    ✓ Resolved {new Date(d.resolvedAt).toLocaleDateString()}
+                  <div style={{ fontSize: '0.78rem', color: '#4caf50' }}>
+                    <div style={{ whiteSpace: 'nowrap' }}>
+                      ✓ Resolved {new Date(d.resolvedAt).toLocaleDateString()}
+                    </div>
                     {d.resolvedBy && (
                       <div style={{ color: '#94a3b8', marginTop: 2, fontSize: '0.72rem' }}>
                         by <span style={{ color: '#cbd5e1' }}>{d.resolvedBy.username ?? d.resolvedByUserId?.slice(0, 8) + '…'}</span>
@@ -1172,6 +1175,47 @@ function UnresolvedDepositsTab() {
                         {d.creditedUser?.email && (
                           <span style={{ color: '#64748b', marginLeft: 4, fontSize: '0.72rem' }}>{d.creditedUser.email}</span>
                         )}
+                      </div>
+                    )}
+                    {d.ledgerEntries && d.ledgerEntries.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          onClick={() => setExpandedLedger((prev) => ({ ...prev, [d.id]: !prev[d.id] }))}
+                          style={{
+                            background: 'none', border: '1px solid rgba(99,102,241,0.35)',
+                            borderRadius: 4, color: '#818cf8', cursor: 'pointer',
+                            fontSize: '0.7rem', padding: '0.15rem 0.45rem', fontWeight: 600,
+                          }}
+                        >
+                          {expandedLedger[d.id] ? '▲ Hide ledger' : `▼ Ledger (${d.ledgerEntries.length})`}
+                        </button>
+                        {expandedLedger[d.id] && (
+                          <div style={{ marginTop: 6, padding: '0.5rem 0.65rem', borderRadius: 6, background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                            {d.ledgerEntries.map((entry: any, idx: number) => (
+                              <div key={entry.id} style={{ marginBottom: 6, paddingBottom: 6, borderBottom: idx < d.ledgerEntries.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ fontWeight: 700, color: '#34d399', fontSize: '0.8rem' }}>
+                                    +{entry.delta}
+                                  </span>
+                                  <span style={{ color: '#a78bfa', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                                    {entry.currencyId}
+                                  </span>
+                                  <span style={{ color: '#64748b', fontSize: '0.68rem' }}>
+                                    {new Date(entry.createdAt).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.7rem', marginTop: 2, fontStyle: 'italic' }}>
+                                  {entry.reason}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {d.creditedUserId && (!d.ledgerEntries || d.ledgerEntries.length === 0) && (
+                      <div style={{ marginTop: 4, fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>
+                        No ledger entries found
                       </div>
                     )}
                   </div>
