@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildCurrencyPatches, buildItemPatches, buildEntityPatch } from '../patch-builder';
 import { CraftingService } from '../../crafting/crafting.service';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class StartCraftingHandler implements CommandHandler {
-  constructor(private craftingService: CraftingService) {}
+  constructor(
+    private craftingService: CraftingService,
+    private notificationService: NotificationService,
+  ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { recipeId, entityId, locationId, quantity } = payload;
@@ -21,9 +25,24 @@ export class StartCraftingHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
+    const notification = await this.notificationService.upsertJobNotification({
+      userId: ctx.userId,
+      jobId: result.id,
+      type: 'crafting_started',
+      category: 'crafting',
+      priority: 'normal',
+      title: 'Crafting Started',
+      body: 'Crafting job has begun.',
+      deepLink: { craftJobId: result.id },
+    }, ctx.tx);
+    pb.upsertNotification(notification);
+
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'info' as const, title: 'Crafting Started', body: 'Crafting job has begun.' }],
+      ui: [
+        { type: 'local_toast' as const, tone: 'info' as const, title: 'Crafting Started', body: 'Crafting job has begun.' },
+        { type: 'notification' as const, notificationId: notification.id },
+      ],
     };
   }
 }

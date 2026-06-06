@@ -35,11 +35,6 @@ export class CompleteMissionHandler implements CommandHandler {
       pb.deleteActiveEffect(effectId);
     }
 
-    const updatedNotif = await (ctx.tx as any).notification.findFirst({
-      where: { userId: ctx.userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
-    });
-    if (updatedNotif) pb.upsertNotification(updatedNotif);
-
     const missionResult = result.missionResult;
     const success = missionResult?.success;
     const title = success ? 'Mission Complete!' : 'Mission Failed';
@@ -47,10 +42,12 @@ export class CompleteMissionHandler implements CommandHandler {
       ? (missionResult?.rewards?.map((r: any) => `${r.amount}x ${r.name || r.key || r.type}`).join(', ') || 'Rewards collected.')
       : 'Better luck next time.';
 
-    const notification = await this.notificationService.createForCommand({
+    const notification = await this.notificationService.upsertJobNotification({
       userId: ctx.userId,
+      jobId,
       type: 'mission_complete',
       category: 'missions',
+      priority: 'normal',
       title,
       body,
       deepLink: { jobId },

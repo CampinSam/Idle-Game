@@ -6,6 +6,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { CurrencyService } from '../currency/currency.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
 import { EventService } from '../event/event.service';
+import { NotificationService } from '../notification/notification.service';
 import { rollPassFail, rollQualityFromCl, collapseQualityProbabilities, qualityProbabilities, SeededRng } from '@derp/math';
 import type { StartDustingPayload, CollectDustingPayload, DustingData } from '@derp/shared';
 
@@ -58,6 +59,7 @@ export class DustingService {
     private currencyService: CurrencyService,
     private gameRules: GameRulesService,
     private eventService: EventService,
+    private notificationService: NotificationService,
   ) {}
 
   private async removeSpecificInstanceTx(
@@ -222,22 +224,16 @@ export class DustingService {
 
       let updatedNotification: any = null;
       try {
-        const existing = await (tx as any).notification.findFirst({
-          where: { userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
-        });
-        if (existing) {
-          updatedNotification = await (tx as any).notification.update({
-            where: { id: existing.id },
-            data: {
-              type: 'dust_complete',
-              title: 'Dusting Complete!',
-              body: `${def.name} dusting finished`,
-              readAt: new Date(),
-              dismissedAt: null,
-              deepLink: { screen: '/inventory', jobId },
-            },
-          });
-        }
+        updatedNotification = await this.notificationService.upsertJobNotification({
+          userId,
+          jobId,
+          type: 'dust_complete',
+          category: 'inventory',
+          priority: 'normal',
+          title: 'Dusting Complete!',
+          body: `${def.name} dusting finished`,
+          deepLink: { screen: '/inventory', jobId },
+        }, tx);
       } catch (err) {
         this.logger.warn(`Failed to update dusting notification: ${err}`);
       }

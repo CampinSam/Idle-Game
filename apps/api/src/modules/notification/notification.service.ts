@@ -382,6 +382,75 @@ export class NotificationService {
     });
   }
 
+  /**
+   * Upserts the single notification record that tracks a job through its
+   * entire lifecycle (started → job_ready → complete/collected).
+   *
+   * Keyed by { sourceType: 'job', sourceId: jobId } — type-agnostic so it
+   * transitions through any lifecycle phase without caring about the current
+   * type. On update: rewrites type/title/body/deepLink/priority and clears
+   * readAt + dismissedAt so the record resurfaces as unread. On create:
+   * stores the keyed source fields so future transitions find it.
+   *
+   * Always pass `ctx.tx` from command handlers so the record is committed
+   * atomically with the command's primary effects.
+   */
+  async upsertJobNotification(data: {
+    userId: string;
+    jobId: string;
+    type: string;
+    category: string;
+    priority: string;
+    title: string;
+    body: string;
+    deepLink?: any;
+  }, tx?: any) {
+    const notif = tx ? (tx as any).notification : this.notification;
+
+    const existing = await notif.findFirst({
+      where: {
+        userId: data.userId,
+        sourceType: 'job',
+        sourceId: data.jobId,
+        archivedAt: null,
+      },
+    });
+
+    if (existing) {
+      return notif.update({
+        where: { id: existing.id },
+        data: {
+          type: data.type,
+          category: data.category,
+          priority: data.priority,
+          title: data.title,
+          body: data.body,
+          deepLink: data.deepLink ?? existing.deepLink,
+          readAt: null,
+          dismissedAt: null,
+        },
+      });
+    }
+
+    const created = await notif.create({
+      data: {
+        userId: data.userId,
+        type: data.type,
+        category: data.category,
+        priority: data.priority,
+        title: data.title,
+        body: data.body,
+        deepLink: data.deepLink ?? {},
+        meta: { count: 1 },
+        groupKey: null,
+        sourceType: 'job',
+        sourceId: data.jobId,
+      },
+    });
+    if (!tx) await this.pruneOld(data.userId);
+    return created;
+  }
+
   async updateBySource(data: {
     userId: string;
     sourceType: string;

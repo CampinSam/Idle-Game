@@ -599,16 +599,14 @@ export class CraftingService {
         data: { status: 'failed', results: { success: false, error: errorMsg, rewards: [] } },
       });
       try {
-        await this.notificationService.updateBySource({
+        await this.notificationService.upsertJobNotification({
           userId,
-          sourceType: 'job_ready',
-          sourceId: jobId,
+          jobId,
           type: 'craft_complete',
           category: 'crafting',
           priority: 'normal',
           title: 'Crafting Failed',
           body: errorMsg,
-          markRead: true,
         });
       } catch (err) {
         this.logger.warn(`Failed to update crafting notification: ${err}`);
@@ -786,38 +784,19 @@ export class CraftingService {
       ? { screen: `/locations/${jobLocationId}/workshop`, craftJobId: jobId, locationId: jobLocationId }
       : { screen: '/crafting', craftJobId: jobId };
     let updatedNotification: any = null;
-
-    if (externalTx) {
-      try {
-        const existing = await (externalTx as any).notification.findFirst({
-          where: { userId, sourceType: 'job_ready', sourceId: jobId, archivedAt: null },
-        });
-        if (existing) {
-          updatedNotification = await (externalTx as any).notification.update({
-            where: { id: existing.id },
-            data: { type: 'craft_complete', title: passed ? 'Crafting Complete!' : 'Crafting Failed', body: notifBody, readAt: new Date(), dismissedAt: null, deepLink: notifDeepLink },
-          });
-        }
-      } catch (err) {
-        // notification update is non-critical
-      }
-    } else {
-      try {
-        await this.notificationService.updateBySource({
-          userId,
-          sourceType: 'job_ready',
-          sourceId: jobId,
-          type: 'craft_complete',
-          category: 'crafting',
-          priority: 'normal',
-          title: passed ? 'Crafting Complete!' : 'Crafting Failed',
-          body: notifBody,
-          deepLink: notifDeepLink,
-          markRead: true,
-        });
-      } catch (err) {
-        // notification update is non-critical
-      }
+    try {
+      updatedNotification = await this.notificationService.upsertJobNotification({
+        userId,
+        jobId,
+        type: 'craft_complete',
+        category: 'crafting',
+        priority: 'normal',
+        title: passed ? 'Crafting Complete!' : 'Crafting Failed',
+        body: notifBody,
+        deepLink: notifDeepLink,
+      }, externalTx);
+    } catch (err) {
+      // notification update is non-critical
     }
 
     return { ...this.mapJobToCraftingResponse(updated), updatedNotification };

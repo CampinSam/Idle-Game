@@ -28,10 +28,12 @@ export class StartMissionHandler implements CommandHandler {
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildItemPatches(pb, ctx.tx, ctx.userId);
 
-    const notification = await this.notificationService.createForCommand({
+    const notification = await this.notificationService.upsertJobNotification({
       userId: ctx.userId,
+      jobId: result.id,
       type: 'mission_started',
       category: 'missions',
+      priority: 'normal',
       title: 'Mission Started',
       body: 'Your mission is underway.',
       deepLink: { missionRunId: result.id },

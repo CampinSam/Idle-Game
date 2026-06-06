@@ -27,14 +27,25 @@ export class BuildBuildingHandler implements CommandHandler {
       select: { id: true },
     });
 
-    const notification = await this.notificationService.createForCommand({
-      userId: ctx.userId,
-      type: 'construction_started',
-      category: 'locations',
-      title: 'Construction Started',
-      body: 'Building construction has begun.',
-      deepLink: buildingJob ? { jobId: buildingJob.id } : { locationId, screen: `/locations/${locationId}` },
-    }, ctx.tx);
+    const notification = buildingJob
+      ? await this.notificationService.upsertJobNotification({
+          userId: ctx.userId,
+          jobId: buildingJob.id,
+          type: 'construction_started',
+          category: 'locations',
+          priority: 'normal',
+          title: 'Construction Started',
+          body: 'Building construction has begun.',
+          deepLink: { jobId: buildingJob.id },
+        }, ctx.tx)
+      : await this.notificationService.createForCommand({
+          userId: ctx.userId,
+          type: 'construction_started',
+          category: 'locations',
+          title: 'Construction Started',
+          body: 'Building construction has begun.',
+          deepLink: { locationId, screen: `/locations/${locationId}` },
+        }, ctx.tx);
     pb.upsertNotification(notification);
 
     return {
