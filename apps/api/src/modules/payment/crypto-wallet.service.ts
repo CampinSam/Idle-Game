@@ -1493,6 +1493,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     amount: bigint,
     utxosCborHex: string[],
     tokenOverride?: { policyId: string; assetName: string },
+    currencyId?: string,
   ): Promise<{ unsignedTxCborHex: string }> {
     const walletConfig = await (this.prisma as any).cryptoWalletConfig.findUnique({ where: { id: 'default' } });
     if (!walletConfig?.hotWalletAddress) throw new BadRequestException('Hot wallet not configured');
@@ -1500,14 +1501,22 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     const apiKey = this.getBlockfrostApiKey(walletConfig);
     if (!apiKey) throw new BadRequestException('Blockfrost API key not configured');
 
-    // Default to primary CNT currency for buildDepositTx (legacy CIP-30 path)
-    const primaryCurrency = await this.prisma.currency.findFirst({
-      where: { type: 'CRYPTO' as any, enabled: true },
-      orderBy: { sortOrder: 'asc' },
-    });
-    const cryptoRow = primaryCurrency as any ?? {};
-    if (!tokenOverride && (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName)) {
-      throw new BadRequestException('Token policy/asset not configured for this currency');
+    // Resolve currency: prefer explicit currencyId, then tokenOverride, then primary CNT
+    let cryptoRow: any;
+    if (currencyId) {
+      cryptoRow = await this.prisma.currency.findUnique({ where: { id: currencyId } }) as any;
+      if (!cryptoRow || !cryptoRow.cntPolicyId || !cryptoRow.cntAssetName) {
+        throw new BadRequestException(`Currency '${currencyId}' is not a valid CNT currency`);
+      }
+    } else {
+      const primaryCurrency = await this.prisma.currency.findFirst({
+        where: { type: 'CRYPTO' as any, enabled: true },
+        orderBy: { sortOrder: 'asc' },
+      });
+      cryptoRow = primaryCurrency as any ?? {};
+      if (!tokenOverride && (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName)) {
+        throw new BadRequestException('Token policy/asset not configured for this currency');
+      }
     }
 
     const linkedWallet = await (this.prisma as any).linkedWallet.findFirst({
@@ -2407,13 +2416,89 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       return serializeBigInts(updated);
     }
 
+    // * → FAILED (admin force-fail): atomically refund primary currency + all ADA debited.
+    // Mirrors auto-fail/stale-reaper logic so admin-forced failures are always fully refunded.
+    const isAdminFail = data.status === 'FAILED' && existing.status !== 'FAILED';
+
+    if (isAdminFail) {
+      const failed = await this.prisma.$transaction(async (tx) => {
+        const guard = await (tx as any).cryptoWithdrawal.updateMany({
+          where: { id, status: existing.status },
+          data: {
+            status: 'FAILED',
+            ...(data.txHash !== undefined ? { txHash: data.txHash } : {}),
+            ...(data.adminNote !== undefined ? { adminNote: data.adminNote } : {}),
+          },
+        });
+        if (guard.count === 0) {
+          const current = await (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+          throw new BadRequestException(
+            `Withdrawal status changed concurrently — current status is ${current?.status ?? 'unknown'}. Refresh and retry.`,
+          );
+        }
+
+        // Refund primary currency
+        await tx.userCurrencyBalance.upsert({
+          where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
+          create: { userId: existing.userId, currencyId: existing.currencyId, balance: BigInt(existing.amount) },
+          update: { balance: { increment: BigInt(existing.amount) } },
+        });
+        await tx.currencyLedger.create({
+          data: {
+            userId: existing.userId,
+            currencyId: existing.currencyId,
+            delta: BigInt(existing.amount),
+            reason: `${existing.currencyId === ADA_CURRENCY_ID ? 'ADA' : existing.currencyId} withdrawal admin-forced FAILED — balance refunded`,
+            sourceType: 'crypto_withdrawal_refund',
+            sourceId: id,
+            metadata: { withdrawalId: id, adminNote: data.adminNote ?? null },
+          },
+        });
+
+        // Refund all ADA debited (service fee + physical cost if already debited)
+        const adaRefund = BigInt(existing.adaServiceFee ?? 0) + BigInt(existing.adaNetworkFee ?? 0);
+        if (adaRefund > 0n) {
+          await tx.userCurrencyBalance.upsert({
+            where: { userId_currencyId: { userId: existing.userId, currencyId: ADA_CURRENCY_ID } },
+            create: { userId: existing.userId, currencyId: ADA_CURRENCY_ID, balance: adaRefund },
+            update: { balance: { increment: adaRefund } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: existing.userId,
+              currencyId: ADA_CURRENCY_ID,
+              delta: adaRefund,
+              reason: `ADA fee refund for admin-forced FAILED ${existing.currencyId} withdrawal`,
+              sourceType: 'crypto_withdrawal_refund',
+              sourceId: id,
+              metadata: { withdrawalId: id, adaRefund: adaRefund.toString() },
+            },
+          });
+        }
+
+        return (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+      });
+
+      await this.emitCurrencyDelta(existing.userId);
+      await this.emitWithdrawalNotification(
+        existing.userId, id, 'withdrawal_failed',
+        'Withdrawal Failed',
+        'Your withdrawal was cancelled by an administrator. Your balance has been refunded.',
+        { screen: '/wallet' },
+        { withdrawalId: id },
+      );
+      return serializeBigInts(failed);
+    }
+
     // FAILED/REJECTED → APPROVED: re-debit balances that were refunded when the withdrawal failed/was rejected.
     const isRequeue = data.status === 'APPROVED' && (existing.status === 'FAILED' || existing.status === 'REJECTED');
 
     if (isRequeue) {
       const fromStatus = existing.status as string;
-      // adaServiceFee was refunded on failure/rejection; adaNetworkFee was also refunded if > 0.
-      const adaToRedebit = BigInt(existing.adaServiceFee ?? 0) + BigInt(existing.adaNetworkFee ?? 0);
+      // Re-debit only the request-phase ADA (adaServiceFee = platform fee debited at request time).
+      // adaNetworkFee is the submission-phase physical cost; it was refunded on failure/rejection
+      // and will be re-measured fresh at the next submission — do NOT re-debit it here.
+      const adaToRedebit = BigInt(existing.adaServiceFee ?? 0);
 
       const requeued = await this.prisma.$transaction(async (tx) => {
         const guard = await (tx as any).cryptoWithdrawal.updateMany({

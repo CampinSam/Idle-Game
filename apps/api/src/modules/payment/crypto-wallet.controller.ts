@@ -105,7 +105,7 @@ export class CryptoWalletController {
   @Post('build-deposit-tx')
   async buildDepositTx(
     @Request() req: any,
-    @Body() body: { amount: number; utxosCborHex: string[]; policyId?: string; assetName?: string },
+    @Body() body: { amount: number; utxosCborHex: string[]; policyId?: string; assetName?: string; currencyId?: string },
   ) {
     if (!body.amount || body.amount <= 0) throw new BadRequestException('amount must be a positive integer');
     if (!Array.isArray(body.utxosCborHex) || body.utxosCborHex.length === 0) {
@@ -119,6 +119,7 @@ export class CryptoWalletController {
       BigInt(Math.floor(body.amount)),
       body.utxosCborHex,
       tokenOverride,
+      body.currencyId?.trim(),
     );
   }
 
