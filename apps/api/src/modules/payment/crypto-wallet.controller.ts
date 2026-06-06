@@ -44,6 +44,7 @@ export class CryptoWalletController {
         enabled: Boolean(config.hotWalletAddress),
         minWithdrawalLovelace: (config.adaMinWithdrawalAmount ?? 2_000_000n).toString(),
         withdrawalFeeLovelace: (config.adaWithdrawalFee ?? 5_000_000n).toString(),
+        estimatedNetworkFeeLovelace: '200000', // ESTIMATED_FEE_LOVELACE — tx fee reserved for affordability UX
       },
     };
   }

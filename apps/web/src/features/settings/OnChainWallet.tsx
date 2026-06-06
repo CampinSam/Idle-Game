@@ -308,6 +308,18 @@ function WithdrawTab({
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Affordability: compute how much ADA this withdrawal will consume and whether player can cover it
+  const serviceFeeLovelace = Number(adaConfig?.withdrawalFeeLovelace ?? 0);
+  const estimatedNetworkFeeLovelace = Number(adaConfig?.estimatedNetworkFeeLovelace ?? 200_000);
+  const enteredAmount = parseInt(amount, 10) || 0;
+  // ADA path: full cost = net send amount + platform service fee + estimated tx fee
+  // CNT path: ADA cost = platform service fee + estimated tx fee (no CNT involved in ADA cost)
+  const adaTotalNeeded = isAda
+    ? enteredAmount + serviceFeeLovelace + estimatedNetworkFeeLovelace
+    : serviceFeeLovelace + estimatedNetworkFeeLovelace;
+  const adaAffordable = serviceFeeLovelace === 0 && !isAda ? true : adaLovelaceBalance >= adaTotalNeeded;
+  const adaShortfall = adaAffordable ? 0 : adaTotalNeeded - adaLovelaceBalance;
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -441,18 +453,60 @@ function WithdrawTab({
             </div>
           </div>
         )}
-        {isAda && (
-          <div className="mb-3 px-3 py-2 bg-[rgba(96,165,250,0.07)] border border-[rgba(96,165,250,0.2)] rounded-[8px] text-[12px] text-text-secondary">
-            ADA balance:{' '}
-            <span className="text-[#93c5fd] font-bold">
-              {(adaLovelaceBalance / 1_000_000).toFixed(6)} ₳
-            </span>{' '}
-            ({adaLovelaceBalance.toLocaleString()} lovelace)
-            {adaConfig?.withdrawalFeeLovelace && Number(adaConfig.withdrawalFeeLovelace) > 0 && (
-              <span className="ml-2 text-[#888]">
-                · Fee: {Number(adaConfig.withdrawalFeeLovelace).toLocaleString()} lovelace
+        {/* ADA affordability panel — shown for both ADA and CNT withdrawals when a service fee applies */}
+        {(isAda || serviceFeeLovelace > 0) && (
+          <div className={`mb-3 px-3 py-2.5 rounded-[8px] text-[12px] border ${
+            adaAffordable
+              ? 'bg-[rgba(96,165,250,0.06)] border-[rgba(96,165,250,0.2)]'
+              : 'bg-[rgba(239,68,68,0.08)] border-[rgba(239,68,68,0.3)]'
+          }`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-text-secondary font-semibold">
+                {isAda ? 'ADA Cost Breakdown' : 'ADA Required for Fees'}
               </span>
-            )}
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
+                adaAffordable
+                  ? 'bg-[rgba(96,165,250,0.12)] text-[#93c5fd]'
+                  : 'bg-[rgba(239,68,68,0.15)] text-[#f87171]'
+              }`}>
+                {adaAffordable ? '✓ Sufficient' : '✗ Insufficient'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5 text-[11px] text-text-secondary">
+              <div className="flex justify-between">
+                <span>Your ADA balance</span>
+                <span className="text-[#93c5fd] font-semibold">
+                  {(adaLovelaceBalance / 1_000_000).toFixed(6)} ₳
+                </span>
+              </div>
+              {isAda && enteredAmount > 0 && (
+                <div className="flex justify-between">
+                  <span>Send amount</span>
+                  <span className="text-white/70">{(enteredAmount / 1_000_000).toFixed(6)} ₳</span>
+                </div>
+              )}
+              {serviceFeeLovelace > 0 && (
+                <div className="flex justify-between">
+                  <span>Platform service fee</span>
+                  <span className="text-white/70">{(serviceFeeLovelace / 1_000_000).toFixed(6)} ₳</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Estimated tx fee</span>
+                <span className="text-white/70">~{(estimatedNetworkFeeLovelace / 1_000_000).toFixed(6)} ₳</span>
+              </div>
+              <div className="flex justify-between border-t border-white/10 mt-1 pt-1 font-semibold">
+                <span>Total ADA needed</span>
+                <span className={adaAffordable ? 'text-[#93c5fd]' : 'text-[#f87171]'}>
+                  {(adaTotalNeeded / 1_000_000).toFixed(6)} ₳
+                </span>
+              </div>
+              {!adaAffordable && (
+                <div className="mt-0.5 text-[#f87171]">
+                  Shortfall: {(adaShortfall / 1_000_000).toFixed(6)} ₳ — deposit more ADA first.
+                </div>
+              )}
+            </div>
           </div>
         )}
         <div className="mb-3">
@@ -537,7 +591,7 @@ function WithdrawTab({
 
         <button
           onClick={submit}
-          disabled={submitting || !amount || !address || withdrawStatus.state === 'pending'}
+          disabled={submitting || !amount || !address || withdrawStatus.state === 'pending' || !adaAffordable}
           className="w-full py-2.5 rounded-[9px] border-0 font-bold text-[14px] text-white cursor-pointer transition-colors bg-[rgba(99,102,241,0.7)] hover:not(:disabled):bg-[rgba(99,102,241,0.85)] disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {submitting ? 'Submitting…' : 'Request Withdrawal'}

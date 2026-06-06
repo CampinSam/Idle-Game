@@ -478,13 +478,14 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         });
       }
 
-      // ADA approvedWithdrawals = APPROVED + PROCESSING net ADA amounts (gross - fee) queued for send
+      // ADA approvedWithdrawals = APPROVED + PROCESSING net ADA amounts queued for on-chain send.
+      // ADA withdrawal.amount = net (not gross) — sum directly without subtracting fee.
       const adaApprovedRows = await (this.prisma as any).cryptoWithdrawal.findMany({
         where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: ADA_CURRENCY_ID },
-        select: { amount: true, fee: true },
+        select: { amount: true },
       });
       const adaApprovedWithdrawals = adaApprovedRows.reduce((acc: bigint, r: any) => {
-        return acc + (BigInt(r.amount) - BigInt(r.fee));
+        return acc + BigInt(r.amount);
       }, 0n);
 
       return {
@@ -691,9 +692,9 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         data: {
           userId,
           currencyId: ADA_CURRENCY_ID,
-          amount: grossLovelace,    // total gross debited (net send = amount - fee; network fee debited separately at submission)
-          fee: feeLovelace,         // platform service fee portion
-          adaServiceFee: 0n,        // 0 for ADA — service fee already included in amount; only adaNetworkFee added at submission
+          amount: netLovelace,      // net lovelace player receives on-chain (consistent with CNT net-amount semantics)
+          fee: feeLovelace,         // platform service fee — debited at request time with the gross balance debit
+          adaServiceFee: feeLovelace, // mirrors fee — tracks request-phase ADA debit for exact refund accounting
           destinationAddress,
           status: 'PENDING',
           autoApproved: false,
@@ -940,8 +941,8 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       let adaNetworkFee = 0n;
 
       if (isAda) {
-        // ADA-only transfer: net = amount - fee (both in lovelace)
-        const netLovelace = BigInt(withdrawal.amount) - BigInt(withdrawal.fee);
+        // ADA-only transfer: amount IS the net lovelace to send (fee stored separately)
+        const netLovelace = BigInt(withdrawal.amount);
         const result = await this.buildAndSignAdaTransfer({
           utxos,
           destinationAddress: destination,
