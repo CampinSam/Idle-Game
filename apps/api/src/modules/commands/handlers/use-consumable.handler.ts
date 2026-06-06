@@ -121,6 +121,13 @@ export class UseConsumableHandler implements CommandHandler {
         throw new BadRequestException(`Unsupported effect target type: ${effectTargetType}`);
       }
 
+      if (
+        def.category === EffectCategory.INJURY_RECOVERY_REDUCTION &&
+        def.durationModel !== EffectDurationModel.INSTANT
+      ) {
+        throw new BadRequestException('INJURY_RECOVERY_REDUCTION effects must have durationModel: instant');
+      }
+
       if (def.durationModel === EffectDurationModel.INSTANT) {
         const mergedValue = effectSpec.effectOverrides?.value ?? def.value ?? 0;
         const mergedStats = effectSpec.effectOverrides?.stats ?? def.stats ?? null;
