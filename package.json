@@ -14,7 +14,8 @@
     "lint:fix": "pnpm -r lint:fix",
     "prisma:generate": "pnpm --filter @derp/api prisma:generate",
     "prisma:migrate": "pnpm --filter @derp/api prisma:migrate",
-    "prisma:studio": "pnpm --filter @derp/api prisma:studio"
+    "prisma:studio": "pnpm --filter @derp/api prisma:studio",
+    "seed:test-account": "cd apps/api && npx tsx src/seeds/seed-test-account.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
