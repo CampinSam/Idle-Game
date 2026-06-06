@@ -317,6 +317,145 @@ export class AdminController {
     return result;
   }
 
+  @Get('instances/entities')
+  async listEntityInstances(
+    @Query('q') q?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('userId') userId?: string,
+    @Query('definitionId') definitionId?: string,
+    @Query('status') status?: string,
+    @Query('nftCollectionDefId') nftCollectionDefId?: string,
+  ) {
+    const search = (q ?? '').trim();
+    const pageSize = Math.min(limit ?? 50, 100);
+    const offset = (Math.max(page ?? 1, 1) - 1) * pageSize;
+    const userIdParam = userId ?? null;
+    const defIdParam = definitionId ?? null;
+    const statusParam = status ?? null;
+    const nftParam = nftCollectionDefId ?? null;
+
+    const items = await this.prisma.$queryRaw<any[]>`
+      SELECT
+        e.id,
+        COALESCE(e.display->>'name', '') AS name,
+        e.definition_id AS "definitionId",
+        COALESCE(ed.name, e.definition_id) AS "definitionName",
+        e.level,
+        COALESCE(e.state->>'status', 'idle') AS status,
+        e.owner_user_id AS "ownerUserId",
+        u.username AS "ownerUsername",
+        e.nft_asset_id AS "nftAssetId",
+        e.nft_collection_def_id AS "nftCollectionDefId",
+        e.stats,
+        e.rarity,
+        e.created_at AS "createdAt"
+      FROM entities e
+      LEFT JOIN users u ON u.id = e.owner_user_id
+      LEFT JOIN entity_definitions ed ON ed.id = e.definition_id
+      WHERE (
+        ${search} = ''
+        OR e.display->>'name' ILIKE ${'%' + search + '%'}
+        OR e.id ILIKE ${'%' + search + '%'}
+        OR u.username ILIKE ${'%' + search + '%'}
+      )
+        AND (${userIdParam}::text IS NULL OR e.owner_user_id = ${userIdParam})
+        AND (${defIdParam}::text IS NULL OR e.definition_id = ${defIdParam})
+        AND (${statusParam}::text IS NULL OR e.state->>'status' = ${statusParam})
+        AND (${nftParam}::text IS NULL OR e.nft_collection_def_id = ${nftParam})
+      ORDER BY e.created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `;
+
+    const [{ total }] = await this.prisma.$queryRaw<[{ total: number }]>`
+      SELECT COUNT(*)::int AS total
+      FROM entities e
+      LEFT JOIN users u ON u.id = e.owner_user_id
+      WHERE (
+        ${search} = ''
+        OR e.display->>'name' ILIKE ${'%' + search + '%'}
+        OR e.id ILIKE ${'%' + search + '%'}
+        OR u.username ILIKE ${'%' + search + '%'}
+      )
+        AND (${userIdParam}::text IS NULL OR e.owner_user_id = ${userIdParam})
+        AND (${defIdParam}::text IS NULL OR e.definition_id = ${defIdParam})
+        AND (${statusParam}::text IS NULL OR e.state->>'status' = ${statusParam})
+        AND (${nftParam}::text IS NULL OR e.nft_collection_def_id = ${nftParam})
+    `;
+
+    return { items, total, page: page ?? 1, limit: pageSize };
+  }
+
+  @Get('instances/locations')
+  async listLocationInstances(
+    @Query('q') q?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('userId') userId?: string,
+    @Query('definitionId') definitionId?: string,
+    @Query('enabled') enabled?: string,
+    @Query('nftCollectionDefId') nftCollectionDefId?: string,
+  ) {
+    const search = (q ?? '').trim();
+    const pageSize = Math.min(limit ?? 50, 100);
+    const offset = (Math.max(page ?? 1, 1) - 1) * pageSize;
+    const userIdParam = userId ?? null;
+    const defIdParam = definitionId ?? null;
+    const enabledParam = enabled === 'true' ? true : enabled === 'false' ? false : null;
+    const nftParam = nftCollectionDefId ?? null;
+
+    const items = await this.prisma.$queryRaw<any[]>`
+      SELECT
+        li.id,
+        COALESCE(li.state->>'nftName', li.definition_id) AS name,
+        li.definition_id AS "definitionId",
+        COALESCE(ld.kind, li.definition_id) AS "definitionName",
+        li.level,
+        li.enabled,
+        li.owner_user_id AS "ownerUserId",
+        u.username AS "ownerUsername",
+        li.nft_asset_id AS "nftAssetId",
+        na.collection_id AS "nftCollectionDefId",
+        li.storage,
+        li.created_at AS "createdAt"
+      FROM location_instances li
+      LEFT JOIN users u ON u.id = li.owner_user_id
+      LEFT JOIN location_definitions ld ON ld.id = li.definition_id
+      LEFT JOIN nft_assets na ON na.nft_asset_id = li.nft_asset_id
+      WHERE (
+        ${search} = ''
+        OR li.state->>'nftName' ILIKE ${'%' + search + '%'}
+        OR li.id ILIKE ${'%' + search + '%'}
+        OR u.username ILIKE ${'%' + search + '%'}
+      )
+        AND (${userIdParam}::text IS NULL OR li.owner_user_id = ${userIdParam})
+        AND (${defIdParam}::text IS NULL OR li.definition_id = ${defIdParam})
+        AND (${enabledParam}::boolean IS NULL OR li.enabled = ${enabledParam})
+        AND (${nftParam}::text IS NULL OR na.collection_id = ${nftParam})
+      ORDER BY li.created_at DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `;
+
+    const [{ total }] = await this.prisma.$queryRaw<[{ total: number }]>`
+      SELECT COUNT(*)::int AS total
+      FROM location_instances li
+      LEFT JOIN users u ON u.id = li.owner_user_id
+      LEFT JOIN nft_assets na ON na.nft_asset_id = li.nft_asset_id
+      WHERE (
+        ${search} = ''
+        OR li.state->>'nftName' ILIKE ${'%' + search + '%'}
+        OR li.id ILIKE ${'%' + search + '%'}
+        OR u.username ILIKE ${'%' + search + '%'}
+      )
+        AND (${userIdParam}::text IS NULL OR li.owner_user_id = ${userIdParam})
+        AND (${defIdParam}::text IS NULL OR li.definition_id = ${defIdParam})
+        AND (${enabledParam}::boolean IS NULL OR li.enabled = ${enabledParam})
+        AND (${nftParam}::text IS NULL OR na.collection_id = ${nftParam})
+    `;
+
+    return { items, total, page: page ?? 1, limit: pageSize };
+  }
+
   @Get('entities')
   async listEntities(
     @Query('q') query?: string,

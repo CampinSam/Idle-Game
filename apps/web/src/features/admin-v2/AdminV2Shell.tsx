@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
-  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X, BarChart2, AlertTriangle,
+  ChevronRight, LogOut, Layers, ChevronDown, UserCog, KeyRound, X, BarChart2, AlertTriangle, Database,
 } from 'lucide-react';
 import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
@@ -18,6 +18,7 @@ import AdminV2SystemSection, { SYSTEM_TOOLS, type SystemTool } from './sections/
 import AdminV2AccountsSection from './sections/AdminV2AccountsSection';
 import AdminV2MetricsSection from './sections/AdminV2MetricsSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
+import AdminV2InstancesSection from './sections/AdminV2InstancesSection';
 import './admin-v2.css';
 
 type Section =
@@ -26,6 +27,7 @@ type Section =
   | 'content'
   | 'approvals'
   | 'players'
+  | 'instances'
   | 'live-ops'
   | 'economy'
   | 'system'
@@ -43,7 +45,7 @@ function readPersistedNav(): { section: Section; sub: string | null } | null {
     const hash = window.location.hash.slice(1); // e.g. "content/Entities" or "system"
     if (hash) {
       const [section, sub = null] = hash.split('/');
-      const valid: Section[] = ['dashboard','metrics','content','approvals','players','live-ops','economy','system','support','moderation'];
+      const valid: Section[] = ['dashboard','metrics','content','approvals','players','instances','live-ops','economy','system','support','moderation'];
       if (valid.includes(section as Section)) {
         return { section: section as Section, sub };
       }
@@ -103,6 +105,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { key: 'approvals', label: 'Approvals', icon: <CheckSquare size={15} />, requirePerm: 'approve' },
   { key: 'players', label: 'Players', icon: <Users size={15} />, requirePerm: 'player_read' },
+  { key: 'instances', label: 'World Instances', icon: <Database size={15} />, requirePerm: 'player_read' },
   { key: 'economy', label: 'Economy', icon: <Coins size={15} />, requirePerm: 'system_tools' },
   {
     key: 'system',
@@ -429,6 +432,7 @@ function TopBar({
     content: 'Content Editor',
     approvals: 'Approvals',
     players: 'Player Management',
+    instances: 'World Instances',
     'live-ops': 'Live Ops',
     economy: 'Balance Simulator',
     system: 'System Tools',
@@ -567,6 +571,8 @@ export default function AdminV2Shell() {
         return <AdminV2ApprovalsSection me={me} />;
       case 'players':
         return <AdminV2PlayersSection me={me} />;
+      case 'instances':
+        return <AdminV2InstancesSection me={me} />;
       case 'economy':
         return <AdminV2EconomySection me={me} />;
       case 'system':

@@ -2341,3 +2341,91 @@ Item dusting lets players break down items into resources. Items must have `dust
 Each tier block: `{ rewards: OutcomeEntry[], clRequirement?: number }`. Rewards follow the same outcome-entry schema as mission tiers.
 
 Skip cost is configured in `dustingData.timer.skip_cost` (same format as crafting/mission timers). The generic `POST /jobs/:id/skip` endpoint handles all skip logic.
+
+---
+
+## World Instance Viewer — `GET /api/admin/instances/entities`
+
+Browse all entity instances across all players with filtering and pagination.
+
+**Query params:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `q` | string | Full-text search on `display.name`, `id`, or owner username |
+| `page` | number | Page number (default: 1) |
+| `limit` | number | Page size, max 100 (default: 50) |
+| `userId` | string | Filter to a specific owner user ID |
+| `definitionId` | string | Filter to a specific entity definition ID |
+| `status` | string | Filter by status from `state.status` (idle, working, mission, injured, …) |
+| `nftCollectionDefId` | string | Filter by NFT collection definition ID |
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "name": "display.name",
+      "definitionId": "derp_bird",
+      "definitionName": "Derp Bird",
+      "level": 5,
+      "status": "idle",
+      "ownerUserId": "uuid | null",
+      "ownerUsername": "string | null",
+      "nftAssetId": "string | null",
+      "nftCollectionDefId": "string | null",
+      "stats": { "ATK": 10, "DEF": 8, … },
+      "rarity": "common | null",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "total": 1234,
+  "page": 1,
+  "limit": 50
+}
+```
+
+---
+
+## World Instance Viewer — `GET /api/admin/instances/locations`
+
+Browse all location instances across all players with filtering and pagination.
+
+**Query params:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `q` | string | Full-text search on `state.nftName`, `id`, or owner username |
+| `page` | number | Page number (default: 1) |
+| `limit` | number | Page size, max 100 (default: 50) |
+| `userId` | string | Filter to a specific owner user ID |
+| `definitionId` | string | Filter to a specific location definition ID |
+| `enabled` | boolean | Filter by enabled state (`true` / `false`) |
+| `nftCollectionDefId` | string | Filter by NFT collection ID (joined through nft_assets) |
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "name": "state.nftName or definitionId",
+      "definitionId": "derp_outpost",
+      "definitionName": "outpost_fungible",
+      "level": 3,
+      "enabled": true,
+      "ownerUserId": "uuid | null",
+      "ownerUsername": "string | null",
+      "nftAssetId": "string | null",
+      "nftCollectionDefId": "string | null",
+      "storage": { "stored": { … }, "capacity": { … } }
+    }
+  ],
+  "total": 567,
+  "page": 1,
+  "limit": 50
+}
+```

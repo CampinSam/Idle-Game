@@ -360,6 +360,50 @@ export const adminApi = {
   seedNftEntities: () =>
     adminRequest<{ skipped: boolean; inserted: number }>('/seeds/nft-entities', { method: 'POST' }),
 
+  listEntityInstances: (params: {
+    q?: string; page?: number; limit?: number;
+    userId?: string; definitionId?: string; status?: string; nftCollectionDefId?: string;
+  }) => {
+    const p = new URLSearchParams();
+    if (params.q) p.set('q', params.q);
+    if (params.page) p.set('page', String(params.page));
+    if (params.limit) p.set('limit', String(params.limit));
+    if (params.userId) p.set('userId', params.userId);
+    if (params.definitionId) p.set('definitionId', params.definitionId);
+    if (params.status) p.set('status', params.status);
+    if (params.nftCollectionDefId) p.set('nftCollectionDefId', params.nftCollectionDefId);
+    return adminRequest<{
+      items: {
+        id: string; name: string; definitionId: string; definitionName: string;
+        level: number; status: string; ownerUserId: string | null; ownerUsername: string | null;
+        nftAssetId: string | null; nftCollectionDefId: string | null; stats: any; rarity: string | null;
+      }[];
+      total: number; page: number; limit: number;
+    }>(`/instances/entities?${p}`);
+  },
+
+  listLocationInstances: (params: {
+    q?: string; page?: number; limit?: number;
+    userId?: string; definitionId?: string; enabled?: boolean; nftCollectionDefId?: string;
+  }) => {
+    const p = new URLSearchParams();
+    if (params.q) p.set('q', params.q);
+    if (params.page) p.set('page', String(params.page));
+    if (params.limit) p.set('limit', String(params.limit));
+    if (params.userId) p.set('userId', params.userId);
+    if (params.definitionId) p.set('definitionId', params.definitionId);
+    if (params.enabled !== undefined) p.set('enabled', String(params.enabled));
+    if (params.nftCollectionDefId) p.set('nftCollectionDefId', params.nftCollectionDefId);
+    return adminRequest<{
+      items: {
+        id: string; name: string; definitionId: string; definitionName: string;
+        level: number; enabled: boolean; ownerUserId: string | null; ownerUsername: string | null;
+        nftAssetId: string | null; nftCollectionDefId: string | null; storage: any;
+      }[];
+      total: number; page: number; limit: number;
+    }>(`/instances/locations?${p}`);
+  },
+
   listEntities: (q?: string, limit = 50) => {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
