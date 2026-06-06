@@ -105,7 +105,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { key: 'approvals', label: 'Approvals', icon: <CheckSquare size={15} />, requirePerm: 'approve' },
   { key: 'players', label: 'Players', icon: <Users size={15} />, requirePerm: 'player_read' },
-  { key: 'instances', label: 'World Instances', icon: <Database size={15} />, requirePerm: 'player_read' },
+  { key: 'instances', label: 'Instances', icon: <Database size={15} />, requirePerm: 'player_read' },
   { key: 'economy', label: 'Economy', icon: <Coins size={15} />, requirePerm: 'system_tools' },
   {
     key: 'system',

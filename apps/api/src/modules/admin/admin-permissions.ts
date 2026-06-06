@@ -155,6 +155,12 @@ export function resolveRequiredPermission(
     return { allowed: true };
   }
 
+  // World instance viewer endpoints
+  if (adminPath.startsWith('/instances')) {
+    if (isWrite) return requirePerm(user, 'player_write');
+    return requirePerm(user, 'player_read');
+  }
+
   // Player endpoints
   if (adminPath.startsWith('/players') || adminPath.startsWith('/jobs') || adminPath.startsWith('/player-events')) {
     if (

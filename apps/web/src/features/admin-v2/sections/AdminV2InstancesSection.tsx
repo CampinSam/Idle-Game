@@ -500,7 +500,7 @@ function EntityInstancesTab({ me }: { me: AdminMe }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a3a' }}>
-                  {['Name', 'Owner', 'Definition', 'Level', 'Status'].map(h => (
+                  {['Name', 'Owner', 'Definition', 'Level', 'Status', 'Collection'].map(h => (
                     <th key={h} style={{ padding: '7px 12px', textAlign: 'left', color: '#4a4a7a', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                   ))}
                 </tr>
@@ -521,14 +521,17 @@ function EntityInstancesTab({ me }: { me: AdminMe }) {
                     <td style={{ padding: '8px 12px', color: '#c0c0e8', fontWeight: 600, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.name || <span style={{ color: '#3a3a6a' }}>{item.id.slice(0, 12)}</span>}
                     </td>
-                    <td style={{ padding: '8px 12px', color: item.ownerUsername ? '#a0a0c0' : '#3a3a6a', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 12px', color: item.ownerUsername ? '#a0a0c0' : '#3a3a6a', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.ownerUsername ?? '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', color: '#6060a0', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 12px', color: '#6060a0', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.definitionName}
                     </td>
                     <td style={{ padding: '8px 12px', color: '#b8b8ff', fontWeight: 700 }}>{item.level}</td>
                     <td style={{ padding: '8px 12px' }}><StatusBadge status={item.status} /></td>
+                    <td style={{ padding: '8px 12px', color: item.nftCollectionDefId ? '#c084fc' : '#2a2a4a', fontFamily: 'monospace', fontSize: 10, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.nftCollectionDefId ? (item.nftCollectionDefId.length > 14 ? item.nftCollectionDefId.slice(0, 14) + '…' : item.nftCollectionDefId) : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -648,7 +651,7 @@ function LocationInstancesTab({ me }: { me: AdminMe }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a1a3a' }}>
-                  {['Name', 'Owner', 'Definition', 'Level', 'Enabled', 'NFT'].map(h => (
+                  {['Name', 'Owner', 'Definition', 'Level', 'Enabled', 'Collection'].map(h => (
                     <th key={h} style={{ padding: '7px 12px', textAlign: 'left', color: '#4a4a7a', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                   ))}
                 </tr>
@@ -666,19 +669,19 @@ function LocationInstancesTab({ me }: { me: AdminMe }) {
                     onMouseEnter={e => { if (selected?.id !== item.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = selected?.id === item.id ? 'rgba(52,211,153,0.08)' : 'transparent'; }}
                   >
-                    <td style={{ padding: '8px 12px', color: '#c0c0e8', fontWeight: 600, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 12px', color: '#c0c0e8', fontWeight: 600, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.name || <span style={{ color: '#3a3a6a' }}>{item.id.slice(0, 12)}</span>}
                     </td>
-                    <td style={{ padding: '8px 12px', color: item.ownerUsername ? '#a0a0c0' : '#3a3a6a', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 12px', color: item.ownerUsername ? '#a0a0c0' : '#3a3a6a', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.ownerUsername ?? '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', color: '#6060a0', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '8px 12px', color: '#6060a0', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.definitionId}
                     </td>
                     <td style={{ padding: '8px 12px', color: '#b8b8ff', fontWeight: 700 }}>{item.level}</td>
                     <td style={{ padding: '8px 12px' }}><EnabledBadge enabled={item.enabled} /></td>
-                    <td style={{ padding: '8px 12px', color: item.nftAssetId ? '#34d399' : '#2a2a4a', fontSize: 11 }}>
-                      {item.nftAssetId ? '✓' : '—'}
+                    <td style={{ padding: '8px 12px', color: item.nftCollectionDefId ? '#34d399' : '#2a2a4a', fontFamily: 'monospace', fontSize: 10, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.nftCollectionDefId ? (item.nftCollectionDefId.length > 14 ? item.nftCollectionDefId.slice(0, 14) + '…' : item.nftCollectionDefId) : '—'}
                     </td>
                   </tr>
                 ))}
