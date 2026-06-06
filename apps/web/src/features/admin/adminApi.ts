@@ -477,6 +477,8 @@ export const adminApi = {
     withdrawalFee?: number;
     autoApprovalThreshold?: number;
     hotWalletSkeyHex?: string;
+    adaWithdrawalFee?: number;
+    adaMinWithdrawalAmount?: number;
   }) => adminRequest<any>('/crypto/config', { method: 'PUT', body: JSON.stringify(data) }),
   generateHotWallet: (confirm: true) =>
     adminRequest<{ address: string; pendingDownload: true }>('/crypto/wallet/generate', {

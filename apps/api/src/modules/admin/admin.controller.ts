@@ -1300,6 +1300,8 @@ export class AdminController {
       hotWalletAddress?: string;
       blockfrostProjectId?: string;
       hotWalletSkeyHex?: string;
+      adaWithdrawalFee?: number;
+      adaMinWithdrawalAmount?: number;
     },
   ) {
     const result = await this.cryptoWalletService.updateConfig(body);

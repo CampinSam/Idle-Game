@@ -1879,9 +1879,13 @@ update them via `PUT /api/admin/definitions/currencies/:id` using the fields doc
 {
   "hotWalletAddress": "addr1...",
   "blockfrostProjectId": "mainnetXXXXXXXXXX",
-  "hotWalletSkeyHex": "hex-encoded-extended-skey"
+  "hotWalletSkeyHex": "hex-encoded-extended-skey",
+  "adaWithdrawalFee": 5000000,
+  "adaMinWithdrawalAmount": 2000000
 }
 ```
+`adaWithdrawalFee` — platform fee (lovelace) added on top of the net ADA send amount. Defaults to 5,000,000 (5 ADA).
+`adaMinWithdrawalAmount` — minimum net ADA (lovelace) the player must receive per withdrawal. Defaults to 2,000,000 (2 ADA).
 
 ---
 
@@ -2037,7 +2041,11 @@ Get the hot wallet deposit address, all configured CNT currencies, and ADA withd
 ### `POST /api/crypto/withdraw`
 Request an on-chain withdrawal. Debits balance immediately; creates a withdrawal record. If auto-approved (CNT amount ≤ `autoApprovalThreshold`), the on-chain send is triggered in the background within seconds.
 
-For **ADA withdrawals**, the full `amount` (in lovelace) is debited upfront. On-chain network fees are recorded in `adaNetworkFee` after submission.
+For **ADA withdrawals**, `amount` (in lovelace) is the **net** lovelace the player will receive. The platform service fee (`adaWithdrawalFee` from config) is added on top and debited together with the net, making the total balance debit `amount + adaWithdrawalFee`. The exact Cardano network fee is measured when the TX is built and debited as an additional step before broadcast; it is returned in `adaNetworkFee` on the withdrawal record.
+
+For **CNT withdrawals**, an estimated ADA cost (`MIN_ADA_LOVELACE + ESTIMATED_FEE`) is debited from the player's ADA balance at request time (stored in `adaServiceFee`). At submission time, the estimate is reconciled with the exact on-chain cost and the player's ADA balance is adjusted (refund or additional debit).
+
+On FAILED or REJECTED, both the primary currency and the ADA fees are fully refunded.
 
 **Body:**
 ```json

@@ -442,6 +442,8 @@ function ConfigTab() {
         minWithdrawalAmount: c.minWithdrawalAmount ?? 1,
         withdrawalFee: c.withdrawalFee ?? '0',
         autoApprovalThreshold: c.autoApprovalThreshold ?? '0',
+        adaWithdrawalFee: c.adaWithdrawalFee ?? '5000000',
+        adaMinWithdrawalAmount: c.adaMinWithdrawalAmount ?? '2000000',
       });
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
@@ -482,6 +484,8 @@ function ConfigTab() {
         minWithdrawalAmount: Number(form.minWithdrawalAmount),
         withdrawalFee: Number(form.withdrawalFee),
         autoApprovalThreshold: Number(form.autoApprovalThreshold),
+        adaWithdrawalFee: Number(form.adaWithdrawalFee),
+        adaMinWithdrawalAmount: Number(form.adaMinWithdrawalAmount),
       };
       if (skeyInput.trim()) {
         payload.hotWalletSkeyHex = skeyInput.trim();
@@ -669,6 +673,12 @@ function ConfigTab() {
       {field('Min Withdrawal Amount', 'minWithdrawalAmount', 'number')}
       {field('Withdrawal Fee (CNT units)', 'withdrawalFee', 'number', 'Flat fee deducted before sending on-chain')}
       {field('Auto-Approval Threshold (CNT units)', 'autoApprovalThreshold', 'number', 'Withdrawals ≤ this amount are auto-approved. Set 0 to disable.')}
+
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+        <div style={{ fontSize: '0.78rem', color: '#a78bfa', fontWeight: 600, marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ADA Withdrawal Settings</div>
+        {field('ADA Platform Fee (lovelace)', 'adaWithdrawalFee', 'number', 'Platform fee charged on ADA withdrawals. Debited in addition to the net send amount. Default: 5,000,000 (5 ADA).')}
+        {field('ADA Min Withdrawal (lovelace)', 'adaMinWithdrawalAmount', 'number', 'Minimum net ADA the player receives per withdrawal. Default: 2,000,000 (2 ADA).')}
+      </div>
 
       <div style={{ marginBottom: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
         <label style={{ display: 'block', fontSize: '0.82rem', color: '#a0a0c0', marginBottom: 4 }}>
@@ -941,7 +951,129 @@ function WithdrawalsTab() {
   );
 }
 
-type CryptoTab = 'config' | 'withdrawals';
+function UnresolvedDepositsTab() {
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [includeResolved, setIncludeResolved] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [creditUserId, setCreditUserId] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows = await adminApi.getUnresolvedDeposits(includeResolved, 100);
+      setDeposits(rows);
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, [includeResolved]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleResolve = async (id: string) => {
+    setResolving(id); setMsg(null);
+    try {
+      await adminApi.resolveUnresolvedDeposit(id, creditUserId[id] || undefined);
+      setMsg({ text: 'Deposit resolved', type: 'success' });
+      load();
+    } catch (e: any) {
+      setMsg({ text: e.message, type: 'error' });
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0, color: '#e0e0ff', fontSize: '1rem' }}>Unresolved On-Chain Deposits</h3>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: '#a0a0c0', cursor: 'pointer' }}>
+          <input type="checkbox" checked={includeResolved} onChange={(e) => setIncludeResolved(e.target.checked)} />
+          Show resolved
+        </label>
+        <button onClick={load} style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#a0a0c0', cursor: 'pointer', fontSize: '0.82rem' }}>
+          Refresh
+        </button>
+      </div>
+
+      {msg && (
+        <div style={{ marginBottom: '0.75rem', padding: '0.5rem 0.75rem', borderRadius: 6, background: msg.type === 'error' ? 'rgba(255,107,107,0.12)' : 'rgba(76,175,80,0.12)', border: `1px solid ${msg.type === 'error' ? 'rgba(255,107,107,0.3)' : 'rgba(76,175,80,0.3)'}`, color: msg.type === 'error' ? '#ff6b6b' : '#4caf50', fontSize: '0.85rem' }}>
+          {msg.text}
+        </div>
+      )}
+
+      <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.75rem' }}>
+        Deposits that arrived at the hot wallet but could not be matched to a player (no linked Cardano wallet). Resolve by crediting a player's account or dismiss without credit.
+      </div>
+
+      {loading ? (
+        <div style={{ color: '#666', padding: '1rem' }}>Loading…</div>
+      ) : deposits.length === 0 ? (
+        <div style={{ color: '#666', padding: '1rem', textAlign: 'center' }}>No unresolved deposits</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          {deposits.map((d) => (
+            <div key={d.id} style={{ marginBottom: '1rem', padding: '0.85rem 1rem', borderRadius: 8, background: d.resolvedAt ? 'rgba(255,255,255,0.02)' : 'rgba(251,191,36,0.06)', border: `1px solid ${d.resolvedAt ? 'rgba(255,255,255,0.08)' : 'rgba(251,191,36,0.25)'}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#60a5fa', marginBottom: 4 }}>
+                    TX: {d.txHash?.slice(0, 16)}…{d.txHash?.slice(-8)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 4 }}>
+                    {d.blockTime ? new Date(d.blockTime * 1000).toLocaleString() : '—'}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#a0a0c0', marginBottom: 4 }}>
+                    <strong>Amounts:</strong> {Object.entries(d.amounts ?? {}).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#666' }}>
+                    Senders: {(d.senderAddresses ?? []).slice(0, 2).map((a: string) => a.slice(0, 18) + '…').join(', ')}
+                    {(d.senderAddresses ?? []).length > 2 ? ` +${d.senderAddresses.length - 2} more` : ''}
+                  </div>
+                  {d.reason && <div style={{ fontSize: '0.72rem', color: '#fbbf24', marginTop: 4 }}>{d.reason}</div>}
+                </div>
+
+                {d.resolvedAt ? (
+                  <div style={{ fontSize: '0.78rem', color: '#4caf50', whiteSpace: 'nowrap' }}>
+                    ✓ Resolved {new Date(d.resolvedAt).toLocaleDateString()}
+                    {d.creditedUserId && <div style={{ color: '#888' }}>→ {d.creditedUserId.slice(0, 8)}</div>}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: 200 }}>
+                    <input
+                      type="text"
+                      placeholder="Player User ID (optional)"
+                      value={creditUserId[d.id] ?? ''}
+                      onChange={(e) => setCreditUserId((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                      style={{ padding: '0.35rem 0.6rem', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#e0e0ff', fontSize: '0.8rem' }}
+                    />
+                    <button
+                      onClick={() => handleResolve(d.id)}
+                      disabled={resolving === d.id}
+                      style={{ padding: '0.35rem 0.8rem', borderRadius: 4, border: '1px solid rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.1)', color: '#fbbf24', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                    >
+                      {resolving === d.id ? 'Resolving…' : 'Resolve'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type CryptoTab = 'config' | 'withdrawals' | 'unresolved';
+
+const TAB_LABELS: Record<CryptoTab, string> = {
+  config: 'Config & Balance',
+  withdrawals: 'Withdrawals Queue',
+  unresolved: 'Unresolved Deposits',
+};
 
 export function CryptoAdminPage() {
   const [tab, setTab] = useState<CryptoTab>('config');
@@ -951,8 +1083,8 @@ export function CryptoAdminPage() {
       <AdaOracleWidget />
       <div style={{ marginBottom: '1.25rem' }}>
         <h2 style={{ margin: '0 0 1rem', color: '#e0e0ff', fontSize: '1.15rem' }}>DERP Crypto Wallet</h2>
-        <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-          {(['config', 'withdrawals'] as CryptoTab[]).map((t) => (
+        <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+          {(Object.keys(TAB_LABELS) as CryptoTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -962,16 +1094,16 @@ export function CryptoAdminPage() {
                 borderBottom: tab === t ? '1px solid #1a1a2e' : 'transparent',
                 background: tab === t ? 'rgba(99,102,241,0.15)' : 'transparent',
                 color: tab === t ? '#a78bfa' : '#666', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600,
-                textTransform: 'capitalize',
               }}
             >
-              {t === 'config' ? 'Config & Balance' : 'Withdrawals Queue'}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </div>
       </div>
       {tab === 'config' && <ConfigTab />}
       {tab === 'withdrawals' && <WithdrawalsTab />}
+      {tab === 'unresolved' && <UnresolvedDepositsTab />}
     </div>
   );
 }
