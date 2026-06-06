@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch, buildPlayerPatch } from '../patch-builder';
 import { GiftService } from '../../gift/gift.service';
-import { formatGrantSummary } from './grant-label.util';
+import { buildGrantsRewardsBlock } from './grant-label.util';
 
 @Injectable()
 export class ClaimGiftHandler implements CommandHandler {
@@ -29,8 +29,12 @@ export class ClaimGiftHandler implements CommandHandler {
 
     const snapshot = (gift.snapshot as any) ?? {};
     const presentation = snapshot.presentation ?? {};
-    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
-    const bodyText = rewardSummary || 'Your rewards have been added.';
+
+    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const bodyBlock = rewardsBlock ?? {
+      type: 'richText',
+      doc: [{ t: 'p', c: [{ t: 'text', v: 'Your rewards have been added.' }] }],
+    };
 
     return {
       patches: pb.build(),
@@ -45,12 +49,7 @@ export class ClaimGiftHandler implements CommandHandler {
             header: { title: presentation.title || 'Gift Claimed!' },
             pages: [
               {
-                body: [
-                  {
-                    type: 'richText',
-                    doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
-                  },
-                ],
+                body: [bodyBlock as any],
               },
             ],
             buttons: [

@@ -1,9 +1,9 @@
 /**
- * Resolves human-readable labels for a batch of reward grants.
+ * Resolves human-readable labels and structured reward blocks for a batch of
+ * reward grants.
  *
- * Grants produced by reward-resolver.util.ts only carry IDs; this helper
- * batch-fetches definition names from the DB and returns a formatted string
- * like "2x Iron Ore, 1x Gold Coin" suitable for use in modal body text.
+ * Grants produced by reward-resolver.util.ts only carry IDs; these helpers
+ * batch-fetch definition data from the DB so callers don't have to.
  *
  * Handles all three grant types:
  *   - currency: { type:'currency', key: currencyId, amount }
@@ -12,6 +12,7 @@
  *
  * Falls back to the raw ID when a definition record cannot be found.
  */
+
 export async function formatGrantSummary(tx: any, grants: any[]): Promise<string> {
   if (!grants.length) return '';
 
@@ -57,4 +58,83 @@ export async function formatGrantSummary(tx: any, grants: any[]): Promise<string
     })
     .filter(Boolean)
     .join(', ');
+}
+
+/**
+ * Converts a grants array into a `rewardsList` modal body block, matching the
+ * same visual format used by mission/crafting/building result modals.
+ *
+ * Returns `null` when grants is empty so callers can substitute a fallback
+ * plain-text block.
+ */
+export async function buildGrantsRewardsBlock(
+  tx: any,
+  grants: any[],
+  title = 'Rewards',
+): Promise<{ type: 'rewardsList'; title: string; items: any[] } | null> {
+  if (!grants.length) return null;
+
+  const itemKeys = [...new Set(grants.filter((g) => g.type === 'item').map((g) => g.key).filter(Boolean))];
+  const currencyKeys = [...new Set(grants.filter((g) => g.type === 'currency').map((g) => g.key).filter(Boolean))];
+  const entityDefIds = [...new Set(grants.filter((g) => g.type === 'entity').map((g) => g.definitionId).filter(Boolean))];
+
+  const [itemDefs, currencies, entityDefs] = await Promise.all([
+    itemKeys.length
+      ? tx.itemDefinition.findMany({
+          where: { id: { in: itemKeys } },
+          select: { id: true, name: true, iconKey: true, rarity: true },
+        })
+      : [],
+    currencyKeys.length
+      ? tx.currency.findMany({
+          where: { id: { in: currencyKeys } },
+          select: { id: true, name: true, iconKey: true },
+        })
+      : [],
+    entityDefIds.length
+      ? tx.entityDefinition.findMany({
+          where: { id: { in: entityDefIds } },
+          select: { id: true, name: true },
+        })
+      : [],
+  ]);
+
+  const itemDefMap = new Map<string, { name: string; iconKey: string | null; rarity: string | null }>(
+    (itemDefs as any[]).map((d) => [d.id, { name: d.name, iconKey: d.iconKey ?? null, rarity: d.rarity ?? null }]),
+  );
+  const currencyMap = new Map<string, { name: string; iconKey: string | null }>(
+    (currencies as any[]).map((d) => [d.id, { name: d.name, iconKey: d.iconKey ?? null }]),
+  );
+  const entityDefMap = new Map<string, string>(
+    (entityDefs as any[]).map((d) => [d.id, d.name]),
+  );
+
+  const items = grants.map((g: any) => {
+    if (g.type === 'item') {
+      const def = itemDefMap.get(g.key);
+      return {
+        name: def?.name ?? g.key ?? 'Item',
+        qty: g.amount ?? g.qty ?? 1,
+        assetKey: def?.iconKey ?? g.key ?? undefined,
+        rarity: def?.rarity ?? undefined,
+      };
+    }
+    if (g.type === 'currency') {
+      const def = currencyMap.get(g.key);
+      return {
+        name: def?.name ?? g.key ?? 'Currency',
+        qty: g.amount ?? g.qty ?? 1,
+        assetKey: def?.iconKey ?? g.key ?? undefined,
+      };
+    }
+    if (g.type === 'entity') {
+      const name = entityDefMap.get(g.definitionId) ?? g.definitionId ?? 'Entity';
+      return { name, qty: 1 };
+    }
+    const qty = g.amount ?? g.qty ?? 1;
+    const label = g.key ?? g.type ?? 'Reward';
+    return { name: label, qty };
+  });
+
+  return { type: 'rewardsList', title, items };
 }

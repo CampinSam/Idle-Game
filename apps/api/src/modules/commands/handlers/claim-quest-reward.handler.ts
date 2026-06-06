@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
-import { formatGrantSummary } from './grant-label.util';
+import { buildGrantsRewardsBlock } from './grant-label.util';
 
 @Injectable()
 export class ClaimQuestRewardHandler implements CommandHandler {
@@ -30,8 +30,11 @@ export class ClaimQuestRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
-    const questBodyText = rewardSummary || 'Rewards collected.';
+    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const bodyBlock = rewardsBlock ?? {
+      type: 'richText',
+      doc: [{ t: 'p', c: [{ t: 'text', v: 'Rewards collected.' }] }],
+    };
 
     return {
       patches: pb.build(),
@@ -46,12 +49,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
             header: { title: 'Quest Reward Claimed!' },
             pages: [
               {
-                body: [
-                  {
-                    type: 'richText',
-                    doc: [{ t: 'p', c: [{ t: 'text', v: questBodyText }] }],
-                  },
-                ],
+                body: [bodyBlock as any],
               },
             ],
             buttons: [

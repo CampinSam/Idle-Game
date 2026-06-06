@@ -11,7 +11,7 @@ import {
   buildActiveEffectPatches,
 } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
-import { formatGrantSummary } from './grant-label.util';
+import { buildGrantsRewardsBlock } from './grant-label.util';
 
 /**
  * ClaimAchievementReward — thin alias over ClaimQuestReward.
@@ -52,10 +52,11 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
-    const bodyText = rewardSummary
-      ? `Rewards: ${rewardSummary}`
-      : 'Achievement claimed.';
+    const rewardsBlock = await buildGrantsRewardsBlock(ctx.tx, grants);
+    const bodyBlock = rewardsBlock ?? {
+      type: 'richText',
+      doc: [{ t: 'p', c: [{ t: 'text', v: 'Achievement claimed.' }] }],
+    };
 
     return {
       patches: pb.build(),
@@ -73,12 +74,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
             },
             pages: [
               {
-                body: [
-                  {
-                    type: 'richText',
-                    doc: [{ t: 'p', c: [{ t: 'text', v: bodyText }] }],
-                  },
-                ],
+                body: [bodyBlock as any],
               },
             ],
             buttons: [
