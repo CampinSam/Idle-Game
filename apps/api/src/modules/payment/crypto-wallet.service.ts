@@ -537,11 +537,12 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     const autoApprovalThreshold = Number(cryptoRow.cntAutoApprovalThreshold ?? 0);
     const isAutoApproved = autoApprovalThreshold > 0 && amount <= autoApprovalThreshold;
 
-    // Estimated ADA the hot wallet needs to bundle with the CNT output (min-UTxO + tx fee).
-    // Debited upfront from the player; adjusted to exact cost at submission time.
-    const estimatedAdaCost = MIN_ADA_LOVELACE + ESTIMATED_FEE_LOVELACE;
+    // Platform service fee charged for this CNT withdrawal (same pool as ADA withdrawals).
+    // Debited upfront. Physical on-chain cost (min-UTxO + tx fee) is debited separately at submission.
+    const cntConfig = await this.getConfig();
+    const adaServiceFeeAmt = BigInt(cntConfig.adaWithdrawalFee ?? 5_000_000n);
 
-    // Atomic: deduct CNT balance + estimated ADA cost + create withdrawal record
+    // Atomic: deduct CNT balance + ADA platform service fee + create withdrawal record
     const withdrawal = await this.prisma.$transaction(async (tx) => {
       // ── CNT balance check and debit ────────────────────────────────────────
       const balanceRow = await tx.userCurrencyBalance.findUnique({
@@ -569,33 +570,33 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         },
       });
 
-      // ── ADA balance check and upfront debit (covers min-UTxO + estimated tx fee) ──
+      // ── ADA balance check and upfront debit (platform service fee) ──────────
       const adaBalanceRow = await tx.userCurrencyBalance.findUnique({
         where: { userId_currencyId: { userId, currencyId: ADA_CURRENCY_ID } },
       });
       const adaBalance = BigInt(adaBalanceRow?.balance ?? 0);
-      if (adaBalance < estimatedAdaCost) {
+      if (adaBalance < adaServiceFeeAmt) {
         throw new BadRequestException(
-          `Insufficient ADA for on-chain CNT send. Need ~${(Number(estimatedAdaCost) / 1_000_000).toFixed(2)} ADA ` +
-          `(min-UTxO + estimated fee), have ${(Number(adaBalance) / 1_000_000).toFixed(6)} ADA`,
+          `Insufficient ADA for CNT withdrawal service fee. Need ${(Number(adaServiceFeeAmt) / 1_000_000).toFixed(6)} ADA, ` +
+          `have ${(Number(adaBalance) / 1_000_000).toFixed(6)} ADA`,
         );
       }
 
       await tx.userCurrencyBalance.upsert({
         where: { userId_currencyId: { userId, currencyId: ADA_CURRENCY_ID } },
         create: { userId, currencyId: ADA_CURRENCY_ID, balance: 0n },
-        update: { balance: { decrement: estimatedAdaCost } },
+        update: { balance: { decrement: adaServiceFeeAmt } },
       });
 
       await tx.currencyLedger.create({
         data: {
           userId,
           currencyId: ADA_CURRENCY_ID,
-          delta: -estimatedAdaCost,
-          reason: `ADA pre-debit for ${cryptoRow.name ?? effectiveCurrencyId} on-chain withdrawal (estimated)`,
+          delta: -adaServiceFeeAmt,
+          reason: `ADA platform service fee for ${cryptoRow.name ?? effectiveCurrencyId} on-chain withdrawal`,
           sourceType: 'crypto_withdrawal',
           sourceId: null,
-          metadata: { estimatedAdaCost: estimatedAdaCost.toString(), currencyId: effectiveCurrencyId },
+          metadata: { adaServiceFee: adaServiceFeeAmt.toString(), currencyId: effectiveCurrencyId },
         },
       });
 
@@ -605,7 +606,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           currencyId: effectiveCurrencyId,
           amount: BigInt(amountInt),
           fee: BigInt(fee),
-          adaServiceFee: estimatedAdaCost, // ADA debited upfront; adjusted to exact at submission
+          adaServiceFee: adaServiceFeeAmt, // platform fee debited upfront; physical on-chain cost debited at submission
           destinationAddress,
           status: isAutoApproved ? 'APPROVED' : 'PENDING',
           autoApproved: isAutoApproved,
@@ -796,10 +797,9 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
             },
           });
 
-          // Refund ADA fees (CNT: adaServiceFee; ADA: adaNetworkFee)
-          const adaRefund = rec.currencyId !== ADA_CURRENCY_ID
-            ? BigInt(rec.adaServiceFee ?? 0)
-            : BigInt(rec.adaNetworkFee ?? 0);
+          // Refund all ADA debited: platform service fee (adaServiceFee, upfront)
+          // plus physical on-chain cost (adaNetworkFee, at submission — 0 if TX never built).
+          const adaRefund = BigInt(rec.adaServiceFee ?? 0) + BigInt(rec.adaNetworkFee ?? 0);
           if (adaRefund > 0n) {
             await tx.userCurrencyBalance.upsert({
               where: { userId_currencyId: { userId: rec.userId, currencyId: ADA_CURRENCY_ID } },
@@ -989,34 +989,32 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           }
           await (tx as any).cryptoWithdrawal.update({ where: { id }, data: { adaNetworkFee } });
         } else {
-          // CNT withdrawal: reconcile estimate vs exact total ADA cost
-          const estimated = BigInt(rec.adaServiceFee ?? 0);
-          const exactTotal = MIN_ADA_LOVELACE + adaNetworkFee;
-          const adjustment = exactTotal - estimated; // >0 = owe more; <0 = refund excess
-          if (adjustment !== 0n) {
+          // CNT withdrawal: debit full physical on-chain cost (min-UTxO bundled with CNT + tx fee).
+          // adaServiceFee (platform fee) was already debited at request time — leave it unchanged.
+          // adaNetworkFee here stores the total physical ADA cost for accurate refund accounting.
+          const physicalCost = MIN_ADA_LOVELACE + adaNetworkFee; // total ADA leaving player for on-chain cost
+          if (physicalCost > 0n) {
             await tx.userCurrencyBalance.upsert({
               where: { userId_currencyId: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID } },
-              create: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: adjustment < 0n ? -adjustment : 0n },
-              update: adjustment > 0n
-                ? { balance: { decrement: adjustment } }
-                : { balance: { increment: -adjustment } },
+              create: { userId: withdrawal.userId, currencyId: ADA_CURRENCY_ID, balance: 0n },
+              update: { balance: { decrement: physicalCost } },
             });
             await tx.currencyLedger.create({
               data: {
                 userId: withdrawal.userId,
                 currencyId: ADA_CURRENCY_ID,
-                delta: -adjustment,
-                reason: `ADA on-chain fee adjustment for CNT withdrawal (estimate → exact)`,
+                delta: -physicalCost,
+                reason: `ADA on-chain cost for CNT withdrawal (min-UTxO + network fee)`,
                 sourceType: 'crypto_withdrawal',
                 sourceId: id,
-                metadata: { withdrawalId: id, estimated: estimated.toString(), exactTotal: exactTotal.toString(), adjustment: adjustment.toString() },
+                metadata: { withdrawalId: id, minUtxo: MIN_ADA_LOVELACE.toString(), networkFee: adaNetworkFee.toString(), physicalCost: physicalCost.toString() },
               },
             });
           }
-          // Update adaServiceFee to exact total ADA spent by player for this withdrawal
+          // Store total physical cost in adaNetworkFee; adaServiceFee retains the platform fee
           await (tx as any).cryptoWithdrawal.update({
             where: { id },
-            data: { adaNetworkFee, adaServiceFee: exactTotal },
+            data: { adaNetworkFee: physicalCost },
           });
         }
       });
@@ -1090,11 +1088,9 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           },
         });
 
-        // For CNT: refund exact ADA service fee (updated to exact at submission)
-        // For ADA: refund additional network fee that was debited at submission
-        const adaRefund = rec.currencyId !== ADA_CURRENCY_ID
-          ? BigInt(rec.adaServiceFee ?? 0)
-          : BigInt(rec.adaNetworkFee ?? 0);
+        // Refund all ADA debited: platform service fee (adaServiceFee, upfront)
+        // plus physical on-chain cost (adaNetworkFee, at submission — 0 if TX never built).
+        const adaRefund = BigInt(rec.adaServiceFee ?? 0) + BigInt(rec.adaNetworkFee ?? 0);
         if (adaRefund > 0n) {
           await tx.userCurrencyBalance.upsert({
             where: { userId_currencyId: { userId: rec.userId, currencyId: ADA_CURRENCY_ID } },
@@ -2336,12 +2332,9 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           },
         });
 
-        // Refund ADA fees (CNT: adaServiceFee; ADA: adaNetworkFee)
-        // Note: REJECTED from PENDING/APPROVED means submission hasn't happened yet,
-        // so for CNT adaServiceFee = initial estimate, for ADA adaNetworkFee = 0.
-        const adaRefund = existing.currencyId !== ADA_CURRENCY_ID
-          ? BigInt(existing.adaServiceFee ?? 0)
-          : BigInt(existing.adaNetworkFee ?? 0);
+        // Refund all ADA debited: platform service fee (adaServiceFee, upfront)
+        // plus physical on-chain cost (adaNetworkFee, at submission — 0 for PENDING/APPROVED).
+        const adaRefund = BigInt(existing.adaServiceFee ?? 0) + BigInt(existing.adaNetworkFee ?? 0);
         if (adaRefund > 0n) {
           await tx.userCurrencyBalance.upsert({
             where: { userId_currencyId: { userId: existing.userId, currencyId: ADA_CURRENCY_ID } },
@@ -2368,13 +2361,17 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       return serializeBigInts(updated);
     }
 
-    // FAILED → APPROVED: re-debit the balance since FAILED already refunded it.
-    const isRequeue = data.status === 'APPROVED' && existing.status === 'FAILED';
+    // FAILED/REJECTED → APPROVED: re-debit balances that were refunded when the withdrawal failed/was rejected.
+    const isRequeue = data.status === 'APPROVED' && (existing.status === 'FAILED' || existing.status === 'REJECTED');
 
     if (isRequeue) {
+      const fromStatus = existing.status as string;
+      // adaServiceFee was refunded on failure/rejection; adaNetworkFee was also refunded if > 0.
+      const adaToRedebit = BigInt(existing.adaServiceFee ?? 0) + BigInt(existing.adaNetworkFee ?? 0);
+
       const requeued = await this.prisma.$transaction(async (tx) => {
         const guard = await (tx as any).cryptoWithdrawal.updateMany({
-          where: { id, status: 'FAILED' },
+          where: { id, status: fromStatus },
           data: {
             status: 'APPROVED',
             adaNetworkFee: 0n, // reset — will be re-measured at submission
@@ -2388,7 +2385,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           );
         }
 
-        // Re-debit: withdrawal was already refunded when it FAILED; debit again for the re-queue
+        // Re-debit primary currency (was refunded when withdrawal failed/was rejected)
         const balanceRow = await tx.userCurrencyBalance.findUnique({
           where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
         });
@@ -2410,12 +2407,41 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
             userId: existing.userId,
             currencyId: existing.currencyId,
             delta: -BigInt(existing.amount),
-            reason: `${existing.currencyId} withdrawal re-queued (FAILED → APPROVED)`,
+            reason: `${existing.currencyId} withdrawal re-queued (${fromStatus} → APPROVED)`,
             sourceType: 'crypto_withdrawal',
             sourceId: id,
             metadata: { withdrawalId: id, adminNote: data.adminNote ?? null },
           },
         });
+
+        // Re-debit ADA fees that were refunded (platform service fee + physical cost if any)
+        if (adaToRedebit > 0n) {
+          const adaBalanceRow = await tx.userCurrencyBalance.findUnique({
+            where: { userId_currencyId: { userId: existing.userId, currencyId: ADA_CURRENCY_ID } },
+          });
+          const adaBalance = BigInt(adaBalanceRow?.balance ?? 0);
+          if (adaBalance < adaToRedebit) {
+            throw new BadRequestException(
+              `Insufficient ADA to re-queue withdrawal — ` +
+              `player has ${(Number(adaBalance) / 1_000_000).toFixed(6)} ADA, needs ${(Number(adaToRedebit) / 1_000_000).toFixed(6)} ADA`,
+            );
+          }
+          await tx.userCurrencyBalance.update({
+            where: { userId_currencyId: { userId: existing.userId, currencyId: ADA_CURRENCY_ID } },
+            data: { balance: { decrement: adaToRedebit } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: existing.userId,
+              currencyId: ADA_CURRENCY_ID,
+              delta: -adaToRedebit,
+              reason: `ADA fees re-debited for re-queued ${existing.currencyId} withdrawal (${fromStatus} → APPROVED)`,
+              sourceType: 'crypto_withdrawal',
+              sourceId: id,
+              metadata: { withdrawalId: id, adaToRedebit: adaToRedebit.toString() },
+            },
+          });
+        }
 
         return (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
       });

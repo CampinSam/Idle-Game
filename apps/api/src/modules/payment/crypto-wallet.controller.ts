@@ -43,7 +43,7 @@ export class CryptoWalletController {
       ada: {
         enabled: Boolean(config.hotWalletAddress),
         minWithdrawalLovelace: (config.adaMinWithdrawalAmount ?? 2_000_000n).toString(),
-        withdrawalFeeLovelace: (config.adaWithdrawalFee ?? 500_000n).toString(),
+        withdrawalFeeLovelace: (config.adaWithdrawalFee ?? 5_000_000n).toString(),
       },
     };
   }

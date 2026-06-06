@@ -292,20 +292,18 @@ function WithdrawTab({
   const currencyBalances = useSyncCurrencyBalances();
   const cntCurrencies: CntCurrency[] = depositInfo?.cntCurrencies ?? [];
   const adaConfig = depositInfo?.ada;
-  const primaryCurrency = cntCurrencies[0];
-
-  // Currency selector: first option is always CNT (primary), optionally ADA
+  // Currency selector: all active CNT currencies + optionally ADA
   const withdrawCurrencies = [
-    ...(primaryCurrency ? [{ id: primaryCurrency.id, label: primaryCurrency.label ?? 'Tokens', isAda: false }] : []),
+    ...cntCurrencies.map((c) => ({ id: c.id, label: c.label ?? c.id, isAda: false })),
     ...(adaConfig?.enabled ? [{ id: 'ada', label: 'ADA (lovelace)', isAda: true }] : []),
   ];
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>(withdrawCurrencies[0]?.id ?? '');
   const isAda = selectedCurrencyId === 'ada';
+  const selectedCnt = cntCurrencies.find((c) => c.id === selectedCurrencyId);
 
-  const cntBalance = primaryCurrency ? (currencyBalances[primaryCurrency.id] ?? 0) : 0;
   const adaLovelaceBalance = currencyBalances['ada'] ?? 0;
-  const balance = isAda ? adaLovelaceBalance : cntBalance;
-  const currencyLabel = isAda ? 'lovelace (1 ADA = 1,000,000)' : (primaryCurrency?.label ?? 'tokens');
+  const balance = isAda ? adaLovelaceBalance : (currencyBalances[selectedCurrencyId] ?? 0);
+  const currencyLabel = isAda ? 'lovelace (1 ADA = 1,000,000)' : (selectedCnt?.label ?? 'tokens');
 
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
