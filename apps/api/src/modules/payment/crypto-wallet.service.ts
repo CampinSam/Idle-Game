@@ -406,18 +406,21 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     return config.blockfrostProjectId?.trim() || process.env.BLOCKFROST_API_KEY || null;
   }
 
-  /** Returns the total outstanding liability (in lovelace) for ADA withdrawals — APPROVED + PROCESSING. */
+  /** Returns total ADA held by all players (sum of UserCurrencyBalance for ADA_CURRENCY_ID). */
   private async getAdaLiability(): Promise<bigint> {
-    const rows = await (this.prisma as any).cryptoWithdrawal.findMany({
-      where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: ADA_CURRENCY_ID },
-      select: { amount: true },
+    const result = await (this.prisma as any).userCurrencyBalance.aggregate({
+      where: { currencyId: ADA_CURRENCY_ID },
+      _sum: { balance: true },
     });
-    return rows.reduce((acc: bigint, r: any) => acc + BigInt(r.amount), 0n);
+    return BigInt(result._sum.balance ?? 0);
   }
 
-  /** Returns gross / liability / net / approvedWithdrawals for each CNT currency and for ADA. */
+  /** Returns gross / liability / net / approvedWithdrawals for each CNT currency and for ADA.
+   *  liability = sum of all player balances (UserCurrencyBalance) = total owed by the hot wallet to players.
+   *  approvedWithdrawals = net amounts in APPROVED/PROCESSING withdrawals queued for on-chain send.
+   */
   async getHotWalletBalance(): Promise<{
-    ada: { gross: string; liability: string; net: string };
+    ada: { gross: string; liability: string; net: string; approvedWithdrawals: string };
     currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string; approvedWithdrawals: string }>;
   } | null> {
     const config = await this.getConfig();
@@ -450,15 +453,13 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         if (!row.cntPolicyId || !row.cntAssetName) continue;
         const unit = `${row.cntPolicyId}${row.cntAssetName}`;
         const gross = BigInt(amounts.find((a) => a.unit === unit)?.quantity ?? '0');
-        // Liability = APPROVED + PROCESSING net amounts (what the hot wallet must send)
-        const liabilityRows = await (this.prisma as any).cryptoWithdrawal.findMany({
-          where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: c.id },
-          select: { amount: true, fee: true },
+        // Liability = total CNT held by all players (sum of UserCurrencyBalance for this currency)
+        const balanceAgg = await (this.prisma as any).userCurrencyBalance.aggregate({
+          where: { currencyId: c.id },
+          _sum: { balance: true },
         });
-        const liability = liabilityRows.reduce((acc: bigint, r: any) => {
-          return acc + (BigInt(r.amount) - BigInt(r.fee));
-        }, 0n);
-        // approvedWithdrawals = APPROVED-only queue (net amounts)
+        const liability = BigInt(balanceAgg._sum.balance ?? 0);
+        // approvedWithdrawals = APPROVED-only queue (net CNT amounts awaiting on-chain send)
         const approvedRows = await (this.prisma as any).cryptoWithdrawal.findMany({
           where: { status: 'APPROVED', currencyId: c.id },
           select: { amount: true, fee: true },
@@ -477,11 +478,21 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         });
       }
 
+      // ADA approvedWithdrawals = APPROVED + PROCESSING net ADA amounts (gross - fee) queued for send
+      const adaApprovedRows = await (this.prisma as any).cryptoWithdrawal.findMany({
+        where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: ADA_CURRENCY_ID },
+        select: { amount: true, fee: true },
+      });
+      const adaApprovedWithdrawals = adaApprovedRows.reduce((acc: bigint, r: any) => {
+        return acc + (BigInt(r.amount) - BigInt(r.fee));
+      }, 0n);
+
       return {
         ada: {
           gross: grossLovelace.toString(),
           liability: adaLiability.toString(),
           net: adaNet.toString(),
+          approvedWithdrawals: adaApprovedWithdrawals.toString(),
         },
         currencies,
       };
@@ -682,7 +693,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           currencyId: ADA_CURRENCY_ID,
           amount: grossLovelace,    // total gross debited (net send = amount - fee; network fee debited separately at submission)
           fee: feeLovelace,         // platform service fee portion
-          adaServiceFee: feeLovelace, // tracks ADA service fee for refund accounting
+          adaServiceFee: 0n,        // 0 for ADA — service fee already included in amount; only adaNetworkFee added at submission
           destinationAddress,
           status: 'PENDING',
           autoApproved: false,

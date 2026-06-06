@@ -22,9 +22,13 @@ CREATE TABLE IF NOT EXISTS "unresolved_deposits" (
     CONSTRAINT "unresolved_deposits_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
+-- CreateIndex (unresolved_deposits)
 CREATE UNIQUE INDEX IF NOT EXISTS "unresolved_deposits_tx_hash_key" ON "unresolved_deposits"("tx_hash");
 CREATE INDEX IF NOT EXISTS "unresolved_deposits_resolved_at_idx" ON "unresolved_deposits"("resolved_at");
+
+-- CreateUniqueIndex: enforce one Currency row per CNT (policyId, assetName) pair.
+-- NULL values are excluded from enforcement (PostgreSQL unique indexes allow multiple NULLs).
+CREATE UNIQUE INDEX IF NOT EXISTS "currencies_cntPolicyId_cntAssetName_key" ON "currencies"("cntPolicyId", "cntAssetName");
 
 -- AddForeignKey
 ALTER TABLE "unresolved_deposits" ADD CONSTRAINT "unresolved_deposits_resolved_by_user_id_fkey"
