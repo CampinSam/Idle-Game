@@ -2616,6 +2616,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       take: limit,
       include: {
         creditedUser: { select: { id: true, username: true, email: true } },
+        resolvedBy: { select: { id: true, username: true } },
       },
     });
     return serializeBigInts(rows);

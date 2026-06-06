@@ -1157,6 +1157,11 @@ function UnresolvedDepositsTab() {
                 {d.resolvedAt ? (
                   <div style={{ fontSize: '0.78rem', color: '#4caf50', whiteSpace: 'nowrap' }}>
                     ✓ Resolved {new Date(d.resolvedAt).toLocaleDateString()}
+                    {d.resolvedBy && (
+                      <div style={{ color: '#94a3b8', marginTop: 2, fontSize: '0.72rem' }}>
+                        by <span style={{ color: '#cbd5e1' }}>{d.resolvedBy.username ?? d.resolvedByUserId?.slice(0, 8) + '…'}</span>
+                      </div>
+                    )}
                     {d.creditedUserId && (
                       <div style={{ color: '#a78bfa', marginTop: 2 }}>
                         → {d.creditedUser?.username ? (

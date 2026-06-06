@@ -1986,7 +1986,29 @@ List on-chain deposits that arrived at the hot wallet but could not be matched t
     "reason": "No linked Cardano wallet found for any input address",
     "resolvedAt": null,
     "resolvedByUserId": null,
+    "resolvedBy": null,
     "creditedUserId": null,
+    "creditedUser": null,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+]
+```
+
+Resolved example:
+```json
+[
+  {
+    "id": "uuid",
+    "txHash": "abc123...",
+    "blockTime": 1700000000,
+    "senderAddresses": ["addr1..."],
+    "amounts": { "lovelace": "2000000" },
+    "reason": "No linked Cardano wallet found for any input address",
+    "resolvedAt": "2026-06-01T12:00:00.000Z",
+    "resolvedByUserId": "admin-uuid",
+    "resolvedBy": { "id": "admin-uuid", "username": "adminname" },
+    "creditedUserId": "player-uuid",
+    "creditedUser": { "id": "player-uuid", "username": "playerName", "email": "player@example.com" },
     "createdAt": "2026-01-01T00:00:00.000Z"
   }
 ]
