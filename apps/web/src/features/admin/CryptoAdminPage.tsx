@@ -427,12 +427,8 @@ function ConfigTab() {
 
   const load = useCallback(async () => {
     try {
-      const [c, b] = await Promise.all([
-        adminApi.getCryptoConfig(),
-        adminApi.getCryptoBalance(),
-      ]);
+      const c = await adminApi.getCryptoConfig();
       setConfig(c);
-      setBalance(b);
       setForm({
         hotWalletAddress: c.hotWalletAddress ?? '',
         blockfrostProjectId: c.blockfrostProjectId ?? '',
@@ -447,6 +443,7 @@ function ConfigTab() {
     } catch (e: any) {
       setMsg({ text: e.message, type: 'error' });
     }
+    adminApi.getCryptoBalance().then(setBalance).catch(() => setBalance(null));
   }, []);
 
   useEffect(() => { load(); }, [load]);

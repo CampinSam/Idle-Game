@@ -75,12 +75,14 @@ async function adminRequest<T>(path: string, options: RequestInit = {}): Promise
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
+  const text = await res.text();
+  const parsed = text.trim() ? JSON.parse(text) : null;
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed: ${res.status}`);
+    throw new Error(parsed?.message || `Request failed: ${res.status}`);
   }
 
-  return res.json();
+  return parsed as T;
 }
 
 async function nftAdminRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -92,12 +94,14 @@ async function nftAdminRequest<T>(path: string, options: RequestInit = {}): Prom
 
   const res = await fetch(`${NFT_API_BASE}${path}`, { ...options, headers });
 
+  const text = await res.text();
+  const parsed = text.trim() ? JSON.parse(text) : null;
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `Request failed: ${res.status}`);
+    throw new Error(parsed?.message || `Request failed: ${res.status}`);
   }
 
-  return res.json();
+  return parsed;
 }
 
 export const adminApi = {
