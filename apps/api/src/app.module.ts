@@ -187,7 +187,11 @@ if (process.env.NODE_ENV === 'production') {
         // Hashed JS/CSS bundles still get the express.static defaults.
         setHeaders: (res, filePath) => {
           const base = filePath.split(/[\\/]/).pop() ?? '';
+          // index.html, SW, and manifest must never be cached — they are the
+          // entry points that reference hashed bundles; a stale copy pins
+          // players to an old build even after a redeploy.
           if (
+            base === 'index.html' ||
             base === 'sw.js' ||
             base === 'registerSW.js' ||
             base === 'manifest.webmanifest'
