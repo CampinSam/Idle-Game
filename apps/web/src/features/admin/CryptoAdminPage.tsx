@@ -1344,9 +1344,15 @@ function PlayerDepositLedgerTab() {
                   </td>
                   <td style={{ padding: '0.45rem 0.6rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {e.txHash ? (
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa' }} title={e.txHash}>
+                      <a
+                        href={`https://cardanoscan.io/transaction/${e.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={e.txHash}
+                        style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >
                         {e.txHash.slice(0, 16)}…{e.txHash.slice(-8)}
-                      </span>
+                      </a>
                     ) : (
                       <span style={{ color: '#444' }}>—</span>
                     )}
