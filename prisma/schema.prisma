@@ -28,7 +28,9 @@ model User {
   stripeCustomerId  String?
   activeEffects     ActiveEffect[]
   checkInInstances  CheckInInstance[]
-  cryptoWithdrawals CryptoWithdrawal[]
+  cryptoWithdrawals      CryptoWithdrawal[]
+  resolvedDeposits       UnresolvedDeposit[] @relation("ResolvedDeposits")
+  creditedDeposits       UnresolvedDeposit[] @relation("CreditedDeposits")
   currencyLedger    CurrencyLedger[]
   entities          Entity[]
   giftInstances     GiftInstance[]
@@ -192,6 +194,7 @@ model Currency {
   ledger                   CurrencyLedger[]
   balances                 UserCurrencyBalance[]
 
+  @@unique([cntPolicyId, cntAssetName], name: "unique_cnt_policy_asset")
   @@map("currencies")
 }
 
@@ -1091,6 +1094,8 @@ model CryptoWalletConfig {
   updatedAt                    DateTime @updatedAt
   hotWalletSkeyEncrypted       String   @default("")
   hotWalletKeyPendingDownload  Boolean  @default(false)
+  adaWithdrawalFee             BigInt   @default(5000000)
+  adaMinWithdrawalAmount       BigInt   @default(2000000)
 
   @@map("crypto_wallet_configs")
 }
@@ -1101,6 +1106,8 @@ model CryptoWithdrawal {
   currencyId         String
   amount             BigInt
   fee                BigInt           @default(0)
+  adaServiceFee      BigInt           @default(0)
+  adaNetworkFee      BigInt           @default(0)
   destinationAddress String
   status             WithdrawalStatus @default(PENDING)
   autoApproved       Boolean          @default(false)
@@ -1113,6 +1120,24 @@ model CryptoWithdrawal {
   @@index([userId])
   @@index([status])
   @@map("crypto_withdrawals")
+}
+
+model UnresolvedDeposit {
+  id                String    @id @default(uuid())
+  txHash            String    @unique
+  blockTime         Int
+  senderAddresses   Json
+  amounts           Json
+  reason            String
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  creditedUserId    String?
+  createdAt         DateTime  @default(now())
+  resolvedBy        User?     @relation("ResolvedDeposits", fields: [resolvedByUserId], references: [id])
+  creditedUser      User?     @relation("CreditedDeposits", fields: [creditedUserId], references: [id])
+
+  @@index([resolvedAt])
+  @@map("unresolved_deposits")
 }
 
 model Purchase {

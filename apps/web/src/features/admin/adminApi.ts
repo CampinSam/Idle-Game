@@ -485,7 +485,10 @@ export const adminApi = {
     }),
   claimPendingKeyDownload: () =>
     adminRequest<{ skeyHex: string }>('/crypto/wallet/claim-key', { method: 'POST', body: JSON.stringify({}) }),
-  getCryptoBalance: () => adminRequest<{ ada: string; cnt: string; totalApprovedCnt: string } | null>('/crypto/balance'),
+  getCryptoBalance: () => adminRequest<{
+    ada: { gross: string; liability: string; net: string };
+    currencies: Array<{ currencyId: string; gross: string; liability: string; net: string; approvedWithdrawals: string }>;
+  } | null>('/crypto/balance'),
   getCryptoWithdrawals: (status?: string, limit?: number) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
@@ -494,6 +497,14 @@ export const adminApi = {
   },
   updateCryptoWithdrawal: (id: string, data: { status?: string; txHash?: string; adminNote?: string }) =>
     adminRequest<any>(`/crypto/withdrawals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getUnresolvedDeposits: (includeResolved?: boolean, limit?: number) => {
+    const params = new URLSearchParams();
+    if (includeResolved) params.set('includeResolved', 'true');
+    if (limit) params.set('limit', String(limit));
+    return adminRequest<any[]>(`/crypto/unresolved-deposits?${params.toString()}`);
+  },
+  resolveUnresolvedDeposit: (id: string, creditUserId?: string) =>
+    adminRequest<any>(`/crypto/unresolved-deposits/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ creditUserId }) }),
 
   listPlayerWallets: (userId: string) =>
     adminRequest<Array<{ id: string; chain: string; address: string; isPrimary: boolean; createdAt: string }>>(

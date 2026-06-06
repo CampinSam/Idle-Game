@@ -291,9 +291,21 @@ function WithdrawTab({
 }) {
   const currencyBalances = useSyncCurrencyBalances();
   const cntCurrencies: CntCurrency[] = depositInfo?.cntCurrencies ?? [];
+  const adaConfig = depositInfo?.ada;
   const primaryCurrency = cntCurrencies[0];
-  const balance = primaryCurrency ? (currencyBalances[primaryCurrency.id] ?? 0) : 0;
-  const currencyLabel = primaryCurrency?.label ?? 'tokens';
+
+  // Currency selector: first option is always CNT (primary), optionally ADA
+  const withdrawCurrencies = [
+    ...(primaryCurrency ? [{ id: primaryCurrency.id, label: primaryCurrency.label ?? 'Tokens', isAda: false }] : []),
+    ...(adaConfig?.enabled ? [{ id: 'ada', label: 'ADA (lovelace)', isAda: true }] : []),
+  ];
+  const [selectedCurrencyId, setSelectedCurrencyId] = useState<string>(withdrawCurrencies[0]?.id ?? '');
+  const isAda = selectedCurrencyId === 'ada';
+
+  const cntBalance = primaryCurrency ? (currencyBalances[primaryCurrency.id] ?? 0) : 0;
+  const adaLovelaceBalance = currencyBalances['ada'] ?? 0;
+  const balance = isAda ? adaLovelaceBalance : cntBalance;
+  const currencyLabel = isAda ? 'lovelace (1 ADA = 1,000,000)' : (primaryCurrency?.label ?? 'tokens');
 
   const [amount, setAmount] = useState('');
   const [address, setAddress] = useState('');
@@ -391,7 +403,7 @@ function WithdrawTab({
     setMsg(null);
     setWithdrawStatus({ state: 'idle' });
     try {
-      const result = await api.requestWithdrawal(amt, address);
+      const result = await api.requestWithdrawal(amt, address, selectedCurrencyId || undefined);
       const withdrawalId: string = result.id ?? '';
       setAmount('');
       if (withdrawalId) {
@@ -411,6 +423,40 @@ function WithdrawTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-black/20 border border-[rgba(139,92,246,0.14)] rounded-[11px] p-4">
+        {withdrawCurrencies.length > 1 && (
+          <div className="mb-3">
+            <label className="block text-[12px] text-text-secondary mb-1.5">Currency</label>
+            <div className="flex gap-2 flex-wrap">
+              {withdrawCurrencies.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setSelectedCurrencyId(c.id); setAmount(''); }}
+                  className={`px-3 py-1.5 rounded-[7px] border text-[12px] font-semibold cursor-pointer transition-colors ${
+                    selectedCurrencyId === c.id
+                      ? 'border-[rgba(167,139,250,0.6)] bg-[rgba(167,139,250,0.15)] text-[#c4b5fd]'
+                      : 'border-white/15 bg-transparent text-[#888] hover:text-[#c4b5fd]'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {isAda && (
+          <div className="mb-3 px-3 py-2 bg-[rgba(96,165,250,0.07)] border border-[rgba(96,165,250,0.2)] rounded-[8px] text-[12px] text-text-secondary">
+            ADA balance:{' '}
+            <span className="text-[#93c5fd] font-bold">
+              {(adaLovelaceBalance / 1_000_000).toFixed(6)} ₳
+            </span>{' '}
+            ({adaLovelaceBalance.toLocaleString()} lovelace)
+            {adaConfig?.withdrawalFeeLovelace && Number(adaConfig.withdrawalFeeLovelace) > 0 && (
+              <span className="ml-2 text-[#888]">
+                · Fee: {Number(adaConfig.withdrawalFeeLovelace).toLocaleString()} lovelace
+              </span>
+            )}
+          </div>
+        )}
         <div className="mb-3">
           <label className="block text-[12px] text-text-secondary mb-1.5">
             Amount ({currencyLabel}) — Available:{' '}

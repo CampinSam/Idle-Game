@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, InternalServerErrorException, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, InternalServerErrorException, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrencyService } from '../currency/currency.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
@@ -7,7 +7,7 @@ import { NotificationService } from '../notification/notification.service';
 import { PatchBuilder, buildCurrencyPatches } from '../commands/patch-builder';
 import * as nodeCrypto from 'crypto';
 
-const CURRENCY_ID = 'crypto_derp';
+const ADA_CURRENCY_ID = 'ada';
 const BLOCKFROST_BASE = 'https://cardano-mainnet.blockfrost.io/api/v0';
 const POLL_INTERVAL_MS = 20_000;
 const WITHDRAWAL_POLL_INTERVAL_MS = 30_000;
@@ -84,7 +84,7 @@ function decryptSkey(stored: string): string {
 const PENDING_KEY_ESCALATION_INTERVAL_MS = 15 * 60_000; // 15 minutes
 
 @Injectable()
-export class CryptoWalletService implements OnApplicationBootstrap {
+export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit {
   private readonly logger = new Logger(CryptoWalletService.name);
   private depositIntervalRef: NodeJS.Timeout | null = null;
   private withdrawalIntervalRef: NodeJS.Timeout | null = null;
@@ -102,9 +102,25 @@ export class CryptoWalletService implements OnApplicationBootstrap {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    // Seed the inherent ADA currency (soft, hidden from UI, used for balance tracking)
+    await (this.prisma as any).currency.upsert({
+      where: { id: ADA_CURRENCY_ID },
+      create: {
+        id: ADA_CURRENCY_ID,
+        name: 'ADA',
+        symbol: '₳',
+        type: 'SOFT',
+        enabled: false,
+        sortOrder: 0,
+      },
+      update: {},
+    }).catch((err: any) => {
+      this.logger.warn(`Failed to seed ADA currency: ${err}`);
+    });
+
     this.depositIntervalRef = setInterval(() => {
       this.pollDeposits().catch((err) => {
-        this.logger.error(`CNT deposit poll error: ${err}`);
+        this.logger.error(`Deposit poll error: ${err}`);
       });
     }, POLL_INTERVAL_MS);
 
@@ -386,49 +402,89 @@ export class CryptoWalletService implements OnApplicationBootstrap {
     return config.blockfrostProjectId?.trim() || process.env.BLOCKFROST_API_KEY || null;
   }
 
-  /** Returns the sum of CNT across all APPROVED (queued) withdrawals. */
-  private async getApprovedWithdrawalTotalCnt(): Promise<bigint> {
+  /** Returns the total approved liability (in lovelace) for ADA withdrawals. */
+  private async getApprovedAdaLiability(): Promise<bigint> {
     const rows = await (this.prisma as any).cryptoWithdrawal.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'APPROVED', currencyId: ADA_CURRENCY_ID },
       select: { amount: true },
     });
     return rows.reduce((acc: bigint, r: any) => acc + BigInt(r.amount), 0n);
   }
 
-  async getHotWalletBalance(): Promise<{ ada: string; cnt: string; totalApprovedCnt: string } | null> {
+  /** Returns gross / liability / net for each CNT currency and for ADA. */
+  async getHotWalletBalance(): Promise<{
+    ada: { gross: string; liability: string; net: string };
+    currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string }>;
+  } | null> {
     const config = await this.getConfig();
     const apiKey = this.getBlockfrostApiKey(config);
     if (!apiKey || !config.hotWalletAddress) return null;
 
     try {
-      const [resp, totalApprovedCnt] = await Promise.all([
+      const [resp, cntCurrencies, adaLiability] = await Promise.all([
         fetch(
           `${BLOCKFROST_BASE}/addresses/${config.hotWalletAddress}`,
           { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
         ),
-        this.getApprovedWithdrawalTotalCnt(),
+        this.prisma.currency.findMany({
+          where: { type: 'CRYPTO' as any, enabled: true },
+          orderBy: { sortOrder: 'asc' },
+        }),
+        this.getApprovedAdaLiability(),
       ]);
       if (!resp.ok) return null;
 
       const data = (await resp.json()) as any;
       const amounts: Array<{ unit: string; quantity: string }> = data.amount ?? [];
 
-      const lovelace = amounts.find((a) => a.unit === 'lovelace');
-      const adaNum = lovelace ? (Number(lovelace.quantity) / 1_000_000).toFixed(6) : '0.000000';
+      const grossLovelace = BigInt(amounts.find((a) => a.unit === 'lovelace')?.quantity ?? '0');
+      const adaNet = grossLovelace - adaLiability;
 
-      const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
-      const unit = `${cryptoRow.cntPolicyId}${cryptoRow.cntAssetName}`;
-      const cntEntry = amounts.find((a) => a.unit === unit);
-      const cnt = cntEntry ? cntEntry.quantity : '0';
+      const currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string }> = [];
+      for (const c of cntCurrencies) {
+        const row = c as any;
+        if (!row.cntPolicyId || !row.cntAssetName) continue;
+        const unit = `${row.cntPolicyId}${row.cntAssetName}`;
+        const gross = BigInt(amounts.find((a) => a.unit === unit)?.quantity ?? '0');
+        // Approved CNT liability for this currency
+        const liabilityRows = await (this.prisma as any).cryptoWithdrawal.findMany({
+          where: { status: 'APPROVED', currencyId: c.id },
+          select: { amount: true, fee: true },
+        });
+        const liability = liabilityRows.reduce((acc: bigint, r: any) => {
+          const net = BigInt(r.amount) - BigInt(r.fee);
+          return acc + net;
+        }, 0n);
+        currencies.push({
+          currencyId: c.id,
+          label: c.name,
+          unit,
+          gross: gross.toString(),
+          liability: liability.toString(),
+          net: (gross - liability).toString(),
+        });
+      }
 
-      return { ada: adaNum, cnt, totalApprovedCnt: totalApprovedCnt.toString() };
+      return {
+        ada: {
+          gross: grossLovelace.toString(),
+          liability: adaLiability.toString(),
+          net: adaNet.toString(),
+        },
+        currencies,
+      };
     } catch (err) {
       this.logger.warn(`getHotWalletBalance failed: ${err}`);
       return null;
     }
   }
 
-  async requestWithdrawal(userId: string, amount: number, destinationAddress: string): Promise<any> {
+  async requestWithdrawal(
+    userId: string,
+    amount: number,
+    destinationAddress: string,
+    currencyId?: string,
+  ): Promise<any> {
     if (!destinationAddress?.trim()) {
       throw new BadRequestException('destinationAddress is required');
     }
@@ -440,7 +496,15 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       throw new BadRequestException('amount must be a whole number (no decimals)');
     }
 
-    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+    // Determine currency: ADA (native) or CNT
+    const isAda = !currencyId || currencyId === ADA_CURRENCY_ID;
+
+    if (isAda) {
+      return this.requestAdaWithdrawal(userId, BigInt(amountInt), destinationAddress);
+    }
+
+    // CNT withdrawal path
+    const cryptoRow = await this.getCryptoCurrencyRow(currencyId);
     const fee = Number(cryptoRow.cntWithdrawalFee ?? 0);
     const net = amount - fee;
 
@@ -455,39 +519,36 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
     // Atomic: deduct balance + create withdrawal record in a single transaction
     const withdrawal = await this.prisma.$transaction(async (tx) => {
-      const currency = await tx.currency.findUnique({ where: { id: CURRENCY_ID } });
-      if (!currency) throw new BadRequestException(`Currency ${CURRENCY_ID} not found`);
-
       const balanceRow = await tx.userCurrencyBalance.findUnique({
-        where: { userId_currencyId: { userId, currencyId: CURRENCY_ID } },
+        where: { userId_currencyId: { userId, currencyId } },
       });
-      const currentBalance = Number(balanceRow?.balance ?? 0);
-      if (currentBalance < amount) {
-        throw new BadRequestException('Insufficient DERP balance');
+      const currentBalance = BigInt(balanceRow?.balance ?? 0);
+      if (currentBalance < BigInt(amountInt)) {
+        throw new BadRequestException(`Insufficient ${cryptoRow.name ?? currencyId} balance`);
       }
 
       await tx.userCurrencyBalance.update({
-        where: { userId_currencyId: { userId, currencyId: CURRENCY_ID } },
-        data: { balance: { decrement: BigInt(amount) } },
+        where: { userId_currencyId: { userId, currencyId } },
+        data: { balance: { decrement: BigInt(amountInt) } },
       });
 
       await tx.currencyLedger.create({
         data: {
           userId,
-          currencyId: CURRENCY_ID,
-          delta: BigInt(-amount),
-          reason: 'DERP withdrawal request (on-chain)',
+          currencyId,
+          delta: BigInt(-amountInt),
+          reason: `${cryptoRow.name ?? currencyId} withdrawal request (on-chain)`,
           sourceType: 'crypto_withdrawal',
           sourceId: null,
-          metadata: { destinationAddress, fee },
+          metadata: { destinationAddress, fee, currencyId },
         },
       });
 
       return (tx as any).cryptoWithdrawal.create({
         data: {
           userId,
-          currencyId: CURRENCY_ID,
-          amount: BigInt(amount),
+          currencyId,
+          amount: BigInt(amountInt),
           fee: BigInt(fee),
           destinationAddress,
           status: isAutoApproved ? 'APPROVED' : 'PENDING',
@@ -498,14 +559,77 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
     await this.emitCurrencyDelta(userId);
 
-    // If the withdrawal was auto-approved, trigger processing immediately
-    // (fire-and-forget — the boolean flag prevents concurrent runs).
     if (isAutoApproved) {
       this.processApprovedWithdrawals().catch((err) => {
         this.logger.warn(`Background withdrawal processor error (post-request): ${err}`);
       });
     }
 
+    return serializeBigInts(withdrawal);
+  }
+
+  /** ADA-specific withdrawal path: debit lovelace, create withdrawal record. */
+  private async requestAdaWithdrawal(
+    userId: string,
+    amountLovelace: bigint,
+    destinationAddress: string,
+  ): Promise<any> {
+    const config = await this.getConfig();
+    const minLovelace = BigInt(config.adaMinWithdrawalAmount ?? 2_000_000);
+    if (amountLovelace < minLovelace) {
+      throw new BadRequestException(
+        `Minimum ADA withdrawal is ${(Number(minLovelace) / 1_000_000).toFixed(6)} ADA`,
+      );
+    }
+    const feeLovelace = BigInt(config.adaWithdrawalFee ?? 5_000_000);
+    const net = amountLovelace - feeLovelace;
+    if (net <= 0n) {
+      throw new BadRequestException(
+        `Amount must be greater than the ADA withdrawal fee (${(Number(feeLovelace) / 1_000_000).toFixed(6)} ADA)`,
+      );
+    }
+
+    const withdrawal = await this.prisma.$transaction(async (tx) => {
+      const balanceRow = await tx.userCurrencyBalance.findUnique({
+        where: { userId_currencyId: { userId, currencyId: ADA_CURRENCY_ID } },
+      });
+      const currentBalance = BigInt(balanceRow?.balance ?? 0);
+      if (currentBalance < amountLovelace) {
+        throw new BadRequestException('Insufficient ADA balance');
+      }
+
+      await tx.userCurrencyBalance.update({
+        where: { userId_currencyId: { userId, currencyId: ADA_CURRENCY_ID } },
+        data: { balance: { decrement: amountLovelace } },
+      });
+
+      await tx.currencyLedger.create({
+        data: {
+          userId,
+          currencyId: ADA_CURRENCY_ID,
+          delta: -amountLovelace,
+          reason: 'ADA withdrawal request (on-chain)',
+          sourceType: 'crypto_withdrawal',
+          sourceId: null,
+          metadata: { destinationAddress, feeLovelace: feeLovelace.toString() },
+        },
+      });
+
+      return (tx as any).cryptoWithdrawal.create({
+        data: {
+          userId,
+          currencyId: ADA_CURRENCY_ID,
+          amount: amountLovelace,
+          fee: feeLovelace,
+          adaServiceFee: amountLovelace,
+          destinationAddress,
+          status: 'PENDING',
+          autoApproved: false,
+        },
+      });
+    });
+
+    await this.emitCurrencyDelta(userId);
     return serializeBigInts(withdrawal);
   }
 
@@ -520,13 +644,14 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
   async getPlayerDepositHistory(userId: string, limit = 20): Promise<any[]> {
     const rows = await this.prisma.currencyLedger.findMany({
-      where: { userId, currencyId: CURRENCY_ID, sourceType: 'CRYPTO_DEPOSIT' },
+      where: { userId, sourceType: 'CRYPTO_DEPOSIT' },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
     return rows.map((e) => ({
       id: e.id.toString(),
       delta: Number(e.delta),
+      currencyId: e.currencyId,
       reason: e.reason,
       sourceType: e.sourceType,
       sourceId: e.sourceId,
@@ -592,7 +717,7 @@ export class CryptoWalletService implements OnApplicationBootstrap {
             record.id,
             'withdrawal_failed',
             'Withdrawal Failed',
-            'Your DERP withdrawal could not be sent. Please contact support.',
+            'Your withdrawal could not be confirmed. Please contact support — your balance will be reviewed.',
             { screen: '/wallet' },
             { withdrawalId: record.id },
           );
@@ -611,31 +736,24 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
       if (approved.length > 0) {
         // ── Balance safety check ─────────────────────────────────────────────
-        // Fetch the live hot-wallet balance and compare against queued totals.
-        // If funds are insufficient, emit a WARNING and skip all on-chain work
-        // until an operator tops up the wallet.
         const balance = await this.getHotWalletBalance();
         if (balance) {
-          const adaBalance = parseFloat(balance.ada);
-          const cntBalance = BigInt(balance.cnt);
-          const totalApprovedCnt = BigInt(balance.totalApprovedCnt);
-          const ADA_WARNING_THRESHOLD = 5; // ADA
+          const adaNetLovelace = BigInt(balance.ada.net);
+          const ADA_WARNING_THRESHOLD_LOVELACE = 5_000_000n; // 5 ADA
 
-          const cntShort = cntBalance < totalApprovedCnt;
-          const adaLow = adaBalance < ADA_WARNING_THRESHOLD;
-
-          if (cntShort || adaLow) {
-            const reasons: string[] = [];
-            if (cntShort) {
-              reasons.push(
-                `CNT balance (${cntBalance.toString()}) is below total queued withdrawals (${totalApprovedCnt.toString()})`,
-              );
+          const reasons: string[] = [];
+          if (adaNetLovelace < ADA_WARNING_THRESHOLD_LOVELACE) {
+            reasons.push(
+              `ADA net balance (${(Number(adaNetLovelace) / 1_000_000).toFixed(6)} ₳) is below the 5 ₳ safety threshold`,
+            );
+          }
+          for (const c of balance.currencies) {
+            const net = BigInt(c.net);
+            if (net < 0n) {
+              reasons.push(`${c.label} net balance (${c.net}) is negative — liability exceeds hot wallet holdings`);
             }
-            if (adaLow) {
-              reasons.push(
-                `ADA balance (${adaBalance.toFixed(6)} ₳) is below the ${ADA_WARNING_THRESHOLD} ₳ safety threshold`,
-              );
-            }
+          }
+          if (reasons.length > 0) {
             this.logger.warn(
               `[Withdrawals] HOT WALLET LOW BALANCE — skipping ${approved.length} queued withdrawal(s). ` +
               reasons.join('; ') +
@@ -677,7 +795,7 @@ export class CryptoWalletService implements OnApplicationBootstrap {
     skeyHex: string,
   ): Promise<void> {
     const id: string = withdrawal.id;
-    const netAmount: bigint = BigInt(withdrawal.amount) - BigInt(withdrawal.fee);
+    const isAda = withdrawal.currencyId === ADA_CURRENCY_ID;
     const destination: string = withdrawal.destinationAddress;
 
     // ── Step 1: atomic lock — move APPROVED → PROCESSING ─────────────────────
@@ -685,10 +803,7 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       where: { id, status: 'APPROVED' },
       data: { status: 'PROCESSING' },
     });
-    if (locked.count === 0) {
-      // Another process already grabbed this withdrawal
-      return;
-    }
+    if (locked.count === 0) return; // Another process grabbed it
 
     try {
       // ── Step 2: fetch UTXOs from hot wallet ─────────────────────────────────
@@ -697,27 +812,49 @@ export class CryptoWalletService implements OnApplicationBootstrap {
         throw new Error('Hot wallet has no UTXOs — cannot build transaction');
       }
 
-      const cryptoRow = await this.getCryptoCurrencyRow(withdrawal.currencyId);
-      const policyId = cryptoRow.cntPolicyId as string;
-      const assetName = cryptoRow.cntAssetName as string;
-      const unit = `${policyId}${assetName}`;
+      // ── Step 3: build and sign the transaction ────────────────────────────
+      let txHex: string;
+      let adaNetworkFee = 0n;
 
-      // ── Step 3: select UTXOs and build the transaction ────────────────────
-      const txHex = await this.buildAndSignCntTransfer({
-        utxos,
-        destinationAddress: destination,
-        hotWalletAddress,
-        cntAmount: netAmount,
-        policyIdHex: policyId,
-        assetNameHex: assetName,
-        skeyHex,
-        apiKey,
+      if (isAda) {
+        // ADA-only transfer: net = amount - fee (both in lovelace)
+        const netLovelace = BigInt(withdrawal.amount) - BigInt(withdrawal.fee);
+        const result = await this.buildAndSignAdaTransfer({
+          utxos,
+          destinationAddress: destination,
+          hotWalletAddress,
+          lovelaceAmount: netLovelace,
+          skeyHex,
+          apiKey,
+        });
+        txHex = result.txHex;
+        adaNetworkFee = result.networkFeeLovelace;
+      } else {
+        const cryptoRow = await this.getCryptoCurrencyRow(withdrawal.currencyId);
+        const policyId = cryptoRow.cntPolicyId as string;
+        const assetName = cryptoRow.cntAssetName as string;
+        const netCnt = BigInt(withdrawal.amount) - BigInt(withdrawal.fee);
+        const result = await this.buildAndSignCntTransferWithFee({
+          utxos,
+          destinationAddress: destination,
+          hotWalletAddress,
+          cntAmount: netCnt,
+          policyIdHex: policyId,
+          assetNameHex: assetName,
+          skeyHex,
+          apiKey,
+        });
+        txHex = result.txHex;
+        adaNetworkFee = result.networkFeeLovelace;
+      }
+
+      // Record exact ADA network fee before submitting
+      await (this.prisma as any).cryptoWithdrawal.updateMany({
+        where: { id, status: 'PROCESSING' },
+        data: { adaNetworkFee },
       });
 
       // ── Step 4: pre-submit status recheck ───────────────────────────────────
-      // Admin may have intervened between our PROCESSING lock and now.
-      // If the record is no longer PROCESSING we must not submit — the admin's
-      // action (e.g. setting back to APPROVED to defer) takes precedence.
       const current = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
       if (!current || current.status !== 'PROCESSING') {
         this.logger.warn(
@@ -730,15 +867,11 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       const txHash = await this.submitTransaction(txHex, apiKey);
 
       // ── Step 6: conditional SENT update ───────────────────────────────────
-      // Use updateMany with status guard so we never overwrite a status that
-      // was changed concurrently (e.g., admin forcefully moved it elsewhere).
       const sentUpdate = await (this.prisma as any).cryptoWithdrawal.updateMany({
         where: { id, status: 'PROCESSING' },
         data: { status: 'SENT', txHash },
       });
       if (sentUpdate.count === 0) {
-        // TX was submitted on-chain but status changed under us — log critical
-        // warning so admins can reconcile manually.
         this.logger.error(
           `CRITICAL: Withdrawal ${id} was sent on-chain (txHash: ${txHash}) but ` +
           `status had already changed — manual reconciliation required`,
@@ -747,12 +880,11 @@ export class CryptoWalletService implements OnApplicationBootstrap {
         this.logger.log(`Withdrawal ${id} sent on-chain — txHash: ${txHash}`);
         const cardanoscanUrl = `https://cardanoscan.io/transaction/${txHash}`;
         const shortHash = `${txHash.slice(0, 8)}…${txHash.slice(-8)}`;
+        const label = isAda ? 'ADA' : withdrawal.currencyId;
         await this.emitWithdrawalNotification(
-          withdrawal.userId,
-          id,
-          'withdrawal_sent',
+          withdrawal.userId, id, 'withdrawal_sent',
           'Withdrawal Sent!',
-          `Your DERP is on-chain. Tx: ${shortHash} — ${cardanoscanUrl}`,
+          `Your ${label} is on-chain. Tx: ${shortHash} — ${cardanoscanUrl}`,
           { screen: '/wallet', txHash, cardanoscanUrl },
           { txHash, withdrawalId: id, cardanoscanUrl },
         );
@@ -761,27 +893,181 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       const msg = String(err?.message ?? err);
       this.logger.error(`Withdrawal ${id} failed: ${msg}`);
 
-      // Conditional update: only move to FAILED if still PROCESSING.
-      // If status changed (e.g. admin intervened), skip the FAILED write.
-      const failedUpdate = await (this.prisma as any).cryptoWithdrawal.updateMany({
-        where: { id, status: 'PROCESSING' },
-        data: {
-          status: 'FAILED',
-          adminNote: `Auto-send failed: ${msg.slice(0, 500)}`,
-        },
+      // Move to FAILED and perform full refund (tokens + ADA)
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await (tx as any).cryptoWithdrawal.updateMany({
+          where: { id, status: 'PROCESSING' },
+          data: { status: 'FAILED', adminNote: `Auto-send failed: ${msg.slice(0, 500)}` },
+        });
+        if (updated.count === 0) return;
+
+        // Full refund: return the original debited amount
+        const rec = await (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+        if (!rec) return;
+
+        await tx.userCurrencyBalance.upsert({
+          where: { userId_currencyId: { userId: rec.userId, currencyId: rec.currencyId } },
+          create: { userId: rec.userId, currencyId: rec.currencyId, balance: BigInt(rec.amount) },
+          update: { balance: { increment: BigInt(rec.amount) } },
+        });
+        await tx.currencyLedger.create({
+          data: {
+            userId: rec.userId,
+            currencyId: rec.currencyId,
+            delta: BigInt(rec.amount),
+            reason: `${rec.currencyId === ADA_CURRENCY_ID ? 'ADA' : rec.currencyId} withdrawal auto-failed — balance refunded`,
+            sourceType: 'crypto_withdrawal_refund',
+            sourceId: id,
+            metadata: { withdrawalId: id, reason: 'auto_send_failed' },
+          },
+        });
+      }).catch((refundErr: any) => {
+        this.logger.error(`CRITICAL: Refund after FAILED withdrawal ${id} failed: ${refundErr}`);
       });
-      if (failedUpdate.count > 0) {
+
+      // Refresh balance after refund
+      const rec = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
+      if (rec) await this.emitCurrencyDelta(rec.userId);
+
+      const notifRec = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
+      if (notifRec?.status === 'FAILED') {
         await this.emitWithdrawalNotification(
-          withdrawal.userId,
-          id,
-          'withdrawal_failed',
+          withdrawal.userId, id, 'withdrawal_failed',
           'Withdrawal Failed',
-          'Your DERP withdrawal could not be sent. Please contact support.',
+          'Your withdrawal could not be sent. Your balance has been refunded.',
           { screen: '/wallet' },
           { withdrawalId: id },
         );
       }
     }
+  }
+
+  /** Builds and signs an ADA-only lovelace transfer from the hot wallet. */
+  private async buildAndSignAdaTransfer(params: {
+    utxos: any[];
+    destinationAddress: string;
+    hotWalletAddress: string;
+    lovelaceAmount: bigint;
+    skeyHex: string;
+    apiKey: string;
+  }): Promise<{ txHex: string; networkFeeLovelace: bigint }> {
+    const { utxos, destinationAddress, hotWalletAddress, lovelaceAmount, skeyHex, apiKey } = params;
+    const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+
+    const pp = await this.fetchProtocolParams(apiKey);
+    const linearFee = CSL.LinearFee.new(
+      CSL.BigNum.from_str(String(pp.min_fee_a ?? 44)),
+      CSL.BigNum.from_str(String(pp.min_fee_b ?? 155381)),
+    );
+    const txBuilderCfg = CSL.TransactionBuilderConfigBuilder.new()
+      .fee_algo(linearFee)
+      .pool_deposit(CSL.BigNum.from_str(String(pp.pool_deposit ?? 500000000)))
+      .key_deposit(CSL.BigNum.from_str(String(pp.key_deposit ?? 2000000)))
+      .max_value_size(pp.max_val_size ?? 5000)
+      .max_tx_size(pp.max_tx_size ?? 16384)
+      .coins_per_utxo_byte(CSL.BigNum.from_str(String(pp.coins_per_utxo_size ?? pp.coins_per_utxo_word ?? 4310)))
+      .build();
+    const txBuilder = CSL.TransactionBuilder.new(txBuilderCfg);
+
+    const hotAddr = CSL.Address.from_bech32(hotWalletAddress);
+    const destAddr = CSL.Address.from_bech32(destinationAddress);
+
+    // Select ADA-only UTXOs, pure lovelace
+    const adaUtxos = utxos
+      .filter((u) => !u.amount?.some((a: any) => a.unit !== 'lovelace'))
+      .sort((a, b) => {
+        const aL = BigInt(a.amount.find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+        const bL = BigInt(b.amount.find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+        return bL > aL ? 1 : -1;
+      });
+
+    // Also include any UTXOs (since we need enough total ADA)
+    const allSorted = [...utxos].sort((a, b) => {
+      const aL = BigInt(a.amount?.find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      const bL = BigInt(b.amount?.find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      return bL > aL ? 1 : -1;
+    });
+
+    // Add inputs until we have enough
+    const needed = lovelaceAmount + ESTIMATED_FEE_LOVELACE;
+    let selectedLovelace = 0n;
+    const selectedInputs: any[] = [];
+    for (const u of allSorted) {
+      if (selectedLovelace >= needed) break;
+      const l = BigInt(u.amount?.find((e: any) => e.unit === 'lovelace')?.quantity ?? 0);
+      selectedLovelace += l;
+      selectedInputs.push(u);
+    }
+    if (selectedLovelace < needed) {
+      throw new Error(`Insufficient ADA: need ${needed} lovelace, have ${selectedLovelace}`);
+    }
+
+    for (const utxo of selectedInputs) {
+      const txInput = CSL.TransactionInput.new(
+        CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, 'hex')),
+        utxo.tx_index,
+      );
+      const lovelace = BigInt(utxo.amount.find((a: any) => a.unit === 'lovelace')?.quantity ?? 0);
+      const inputValue = CSL.Value.new(CSL.BigNum.from_str(String(lovelace)));
+      const utxoMa = CSL.MultiAsset.new();
+      for (const entry of utxo.amount) {
+        if (entry.unit === 'lovelace') continue;
+        const ep = CSL.ScriptHash.from_bytes(Buffer.from(entry.unit.slice(0, 56), 'hex'));
+        const ea = CSL.AssetName.new(Buffer.from(entry.unit.slice(56), 'hex'));
+        const eAssets = CSL.Assets.new();
+        eAssets.insert(ea, CSL.BigNum.from_str(entry.quantity));
+        utxoMa.insert(ep, eAssets);
+      }
+      if (utxoMa.len() > 0) inputValue.set_multiasset(utxoMa);
+      txBuilder.add_regular_input(hotAddr, txInput, inputValue);
+    }
+
+    txBuilder.add_output(CSL.TransactionOutput.new(destAddr, CSL.Value.new(CSL.BigNum.from_str(String(lovelaceAmount)))));
+    txBuilder.add_change_if_needed(hotAddr);
+
+    const txBody = txBuilder.build();
+    const networkFeeLovelace = BigInt(txBody.fee().to_str());
+    const txHash = CSL.hash_transaction(txBody);
+
+    let privateKey: any;
+    const skeyBytes = Buffer.from(skeyHex, 'hex');
+    if (skeyBytes.length === 64) privateKey = CSL.PrivateKey.from_extended_bytes(skeyBytes);
+    else if (skeyBytes.length === 32) privateKey = CSL.PrivateKey.from_normal_bytes(skeyBytes);
+    else privateKey = CSL.PrivateKey.from_bech32(skeyHex);
+
+    const vkeyWitness = CSL.make_vkey_witness(txHash, privateKey);
+    const witnesses = CSL.TransactionWitnessSet.new();
+    const vkeys = CSL.Vkeywitnesses.new();
+    vkeys.add(vkeyWitness);
+    witnesses.set_vkeys(vkeys);
+
+    const signedTx = CSL.Transaction.new(txBody, witnesses, undefined);
+    return { txHex: Buffer.from(signedTx.to_bytes()).toString('hex'), networkFeeLovelace };
+  }
+
+  /** Wrapper around buildAndSignCntTransfer that also returns the exact network fee. */
+  private async buildAndSignCntTransferWithFee(params: {
+    utxos: any[];
+    destinationAddress: string;
+    hotWalletAddress: string;
+    cntAmount: bigint;
+    policyIdHex: string;
+    assetNameHex: string;
+    skeyHex: string;
+    apiKey: string;
+  }): Promise<{ txHex: string; networkFeeLovelace: bigint }> {
+    const CSL = require('@emurgo/cardano-serialization-lib-nodejs');
+    const txHex = await this.buildAndSignCntTransfer({ ...params });
+
+    // Parse the signed tx to get the exact fee from the body
+    let networkFeeLovelace = 0n;
+    try {
+      const tx = CSL.Transaction.from_bytes(Buffer.from(txHex, 'hex'));
+      networkFeeLovelace = BigInt(tx.body().fee().to_str());
+    } catch {
+      networkFeeLovelace = ESTIMATED_FEE_LOVELACE;
+    }
+    return { txHex, networkFeeLovelace };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -980,7 +1266,12 @@ export class CryptoWalletService implements OnApplicationBootstrap {
     const apiKey = this.getBlockfrostApiKey(walletConfig);
     if (!apiKey) throw new BadRequestException('Blockfrost API key not configured');
 
-    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
+    // Default to primary CNT currency for buildDepositTx (legacy CIP-30 path)
+    const primaryCurrency = await this.prisma.currency.findFirst({
+      where: { type: 'CRYPTO' as any, enabled: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const cryptoRow = primaryCurrency as any ?? {};
     if (!tokenOverride && (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName)) {
       throw new BadRequestException('Token policy/asset not configured for this currency');
     }
@@ -1420,19 +1711,15 @@ export class CryptoWalletService implements OnApplicationBootstrap {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Deposit poller (unchanged)
+  // Deposit poller
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
-   * Cursor-based deposit poller.
+   * Cursor-based deposit poller — handles all CNT currencies and native ADA.
    *
-   * Uses Blockfrost's ASC-ordered pagination with a persisted page cursor so:
-   * - Every tx is visited exactly once (no missed or duplicate credits).
-   * - On first run (depositScanPage = 0) it discovers the total page count and
-   *   starts from the CURRENT page, skipping historical txs to prevent accidental
-   *   back-crediting on first deployment.
-   * - `ProcessedCryptoTx` (unique PK on txHash) is the single idempotency source
-   *   of truth and also guards against concurrent pollers.
+   * Uses Blockfrost ASC-ordered pagination with a persisted cursor so every tx
+   * is visited exactly once.  On first run (scanPage=0) it starts from the
+   * current tip to skip history.  `ProcessedCryptoTx` is the idempotency gate.
    */
   async pollDeposits(): Promise<void> {
     const config = await this.getConfig();
@@ -1440,34 +1727,38 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
     if (!apiKey || !config.hotWalletAddress) return;
 
-    const cryptoRow = await this.getCryptoCurrencyRow(CURRENCY_ID);
-    if (!cryptoRow.cntPolicyId || !cryptoRow.cntAssetName) {
-      this.logger.warn('pollDeposits: crypto_derp Currency missing cntPolicyId/cntAssetName — skipping');
-      return;
+    // Build a lookup map: unit → currencyId for all active CNT currencies
+    const cntCurrencies = await this.prisma.currency.findMany({
+      where: { type: 'CRYPTO' as any, enabled: true },
+    });
+    const unitToCurrencyId = new Map<string, string>();
+    for (const c of cntCurrencies) {
+      const row = c as any;
+      if (row.cntPolicyId && row.cntAssetName) {
+        unitToCurrencyId.set(`${row.cntPolicyId}${row.cntAssetName}`, c.id);
+      }
     }
-    const unit = `${cryptoRow.cntPolicyId}${cryptoRow.cntAssetName}`;
+
     const PAGE_SIZE = 50;
 
     try {
       let scanPage: number = Number(config.depositScanPage ?? 0);
 
-      // First-run initialization: start from the current latest page to skip history
       if (scanPage === 0) {
         const initPage = await this.discoverCurrentPage(config.hotWalletAddress, apiKey, PAGE_SIZE);
         scanPage = initPage;
         await this.saveScanPage(scanPage);
-        this.logger.log(`CNT deposit poller initialized at page ${scanPage} (history skipped)`);
-        return; // process new txs starting next poll
+        this.logger.log(`Deposit poller initialized at page ${scanPage} (history skipped)`);
+        return;
       }
 
-      // Drain all pages from cursor forward
       while (true) {
         const resp = await fetch(
           `${BLOCKFROST_BASE}/addresses/${config.hotWalletAddress}/transactions?order=asc&count=${PAGE_SIZE}&page=${scanPage}`,
           { headers: { project_id: apiKey }, signal: AbortSignal.timeout(10_000) },
         );
 
-        if (resp.status === 404) break; // address has no txs yet
+        if (resp.status === 404) break;
         if (!resp.ok) {
           this.logger.warn(`Blockfrost page ${scanPage} responded ${resp.status}`);
           break;
@@ -1476,15 +1767,11 @@ export class CryptoWalletService implements OnApplicationBootstrap {
         const txList = (await resp.json()) as Array<{ tx_hash: string; block_time: number }>;
 
         for (const { tx_hash, block_time } of txList) {
-          await this.processDepositTx(tx_hash, block_time, config.hotWalletAddress, apiKey, unit);
+          await this.processDepositTx(tx_hash, block_time, config.hotWalletAddress, apiKey, unitToCurrencyId);
         }
 
-        if (txList.length < PAGE_SIZE) {
-          // At the tip — stay on this page for next poll (new txs may still arrive here)
-          break;
-        }
+        if (txList.length < PAGE_SIZE) break; // at tip
 
-        // Full page — advance cursor
         scanPage += 1;
         await this.saveScanPage(scanPage);
       }
@@ -1523,7 +1810,7 @@ export class CryptoWalletService implements OnApplicationBootstrap {
     block_time: number,
     hotWalletAddress: string,
     apiKey: string,
-    unit: string,
+    unitToCurrencyId: Map<string, string>,
   ): Promise<void> {
     const utxoResp = await fetch(
       `${BLOCKFROST_BASE}/txs/${tx_hash}/utxos`,
@@ -1536,66 +1823,136 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       outputs: Array<{ address: string; amount: Array<{ unit: string; quantity: string }> }>;
     };
 
-    const senderAddresses = (utxos.inputs ?? []).map((inp) => inp.address);
+    const inputAddresses = (utxos.inputs ?? []).map((inp) => inp.address);
 
-    let cntAmount = 0n;
+    // Self-tx guard: skip change outputs from our own outbound withdrawals
+    if (inputAddresses.includes(hotWalletAddress)) {
+      this.logger.debug(`Tx ${tx_hash}: hot wallet is an input — skipping (self-tx / change output)`);
+      // Still mark as processed to prevent re-scanning
+      await (this.prisma as any).processedCryptoTx.upsert({
+        where: { txHash: tx_hash },
+        create: { txHash: tx_hash },
+        update: {},
+      }).catch(() => {});
+      return;
+    }
+
+    // Collect amounts received at the hot wallet address
+    const receivedByCurrency = new Map<string, bigint>(); // currencyId → amount
+    let adaLovelaceReceived = 0n;
+
     for (const output of utxos.outputs ?? []) {
       if (output.address !== hotWalletAddress) continue;
-      const cntEntry = output.amount?.find((a) => a.unit === unit);
-      if (cntEntry) cntAmount += BigInt(cntEntry.quantity);
+      for (const entry of output.amount ?? []) {
+        if (entry.unit === 'lovelace') {
+          adaLovelaceReceived += BigInt(entry.quantity);
+        } else {
+          const currencyId = unitToCurrencyId.get(entry.unit);
+          if (currencyId) {
+            receivedByCurrency.set(currencyId, (receivedByCurrency.get(currencyId) ?? 0n) + BigInt(entry.quantity));
+          }
+        }
+      }
     }
 
-    if (cntAmount <= 0n) return; // not a CNT deposit tx — skip silently
-
-    const player = await this.findPlayerBySenderAddresses(senderAddresses);
-    if (!player) {
-      this.logger.warn(`CNT deposit tx ${tx_hash}: no linked player for senders [${senderAddresses.join(', ')}]`);
+    // Skip if nothing we care about arrived (no tracked CNTs, and no significant ADA)
+    if (receivedByCurrency.size === 0 && adaLovelaceReceived < MIN_ADA_LOVELACE) {
+      return;
     }
 
-    // Atomic credit + idempotency gate.
-    // ProcessedCryptoTx PK is the single source of truth; concurrent pollers get P2002 and skip.
+    const player = await this.findPlayerBySenderAddresses(inputAddresses);
+
     try {
       await this.prisma.$transaction(async (tx) => {
         await (tx as any).processedCryptoTx.create({ data: { txHash: tx_hash } });
 
-        if (!player) return; // tx is sealed; no credit (unlinked sender)
+        if (!player) {
+          // Write unresolved deposit record instead of just logging
+          if (receivedByCurrency.size > 0 || adaLovelaceReceived >= MIN_ADA_LOVELACE) {
+            const amountsMap: Record<string, string> = {};
+            if (adaLovelaceReceived > 0n) amountsMap['lovelace'] = adaLovelaceReceived.toString();
+            for (const [cId, amt] of receivedByCurrency) amountsMap[cId] = amt.toString();
 
-        await tx.userCurrencyBalance.upsert({
-          where: { userId_currencyId: { userId: player.userId, currencyId: CURRENCY_ID } },
-          create: { userId: player.userId, currencyId: CURRENCY_ID, balance: cntAmount },
-          update: { balance: { increment: cntAmount } },
-        });
+            await (tx as any).unresolvedDeposit.create({
+              data: {
+                txHash: tx_hash,
+                blockTime: block_time,
+                senderAddresses: inputAddresses,
+                amounts: amountsMap,
+                reason: 'No linked Cardano wallet found for any input address',
+              },
+            }).catch(() => {}); // ignore if already exists (race)
+          }
+          return;
+        }
 
-        await tx.currencyLedger.create({
-          data: {
-            userId: player.userId,
-            currencyId: CURRENCY_ID,
-            delta: cntAmount,
-            reason: 'DERP deposit (on-chain)',
-            sourceType: 'CRYPTO_DEPOSIT',
-            sourceId: tx_hash,
-            metadata: { txHash: tx_hash, blockTime: block_time, senderAddresses },
-          },
-        });
+        // Credit each CNT currency
+        for (const [currencyId, amount] of receivedByCurrency) {
+          await tx.userCurrencyBalance.upsert({
+            where: { userId_currencyId: { userId: player.userId, currencyId } },
+            create: { userId: player.userId, currencyId, balance: amount },
+            update: { balance: { increment: amount } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: player.userId,
+              currencyId,
+              delta: amount,
+              reason: `${currencyId} deposit (on-chain)`,
+              sourceType: 'CRYPTO_DEPOSIT',
+              sourceId: tx_hash,
+              metadata: { txHash: tx_hash, blockTime: block_time, senderAddresses: inputAddresses },
+            },
+          });
+        }
+
+        // Credit ADA (track all received ADA, not just min-ADA accompaniment)
+        if (adaLovelaceReceived >= MIN_ADA_LOVELACE) {
+          await tx.userCurrencyBalance.upsert({
+            where: { userId_currencyId: { userId: player.userId, currencyId: ADA_CURRENCY_ID } },
+            create: { userId: player.userId, currencyId: ADA_CURRENCY_ID, balance: adaLovelaceReceived },
+            update: { balance: { increment: adaLovelaceReceived } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: player.userId,
+              currencyId: ADA_CURRENCY_ID,
+              delta: adaLovelaceReceived,
+              reason: 'ADA deposit (on-chain)',
+              sourceType: 'CRYPTO_DEPOSIT',
+              sourceId: tx_hash,
+              metadata: { txHash: tx_hash, blockTime: block_time, senderAddresses: inputAddresses, lovelace: adaLovelaceReceived.toString() },
+            },
+          });
+        }
       });
 
       if (player) {
-        this.logger.log(`Credited ${cntAmount} DERP to user ${player.userId} from tx ${tx_hash}`);
         await this.emitCurrencyDelta(player.userId);
-        this.notificationService.createNotification({
-          userId: player.userId,
-          type: 'crypto_deposit',
-          category: 'wallet',
-          priority: 'high',
-          title: `DERP Deposit Received: +${cntAmount.toString()} DERP`,
-          body: `Tx: ${tx_hash.slice(0, 8)}…${tx_hash.slice(-8)}`,
-          deepLink: { screen: '/wallet' },
-          meta: { txHash: tx_hash, amount: cntAmount.toString() },
-          sourceType: 'CRYPTO_DEPOSIT',
-          sourceId: tx_hash,
-        }).catch((err) => {
-          this.logger.warn(`Failed to create deposit notification for user ${player.userId}: ${err}`);
-        });
+
+        // Notify for each credited CNT currency
+        for (const [currencyId, amount] of receivedByCurrency) {
+          this.logger.log(`Credited ${amount} ${currencyId} to user ${player.userId} from tx ${tx_hash}`);
+          this.notificationService.createNotification({
+            userId: player.userId,
+            type: 'crypto_deposit',
+            category: 'wallet',
+            priority: 'high',
+            title: `${currencyId} Deposit: +${amount.toString()}`,
+            body: `Tx: ${tx_hash.slice(0, 8)}…${tx_hash.slice(-8)}`,
+            deepLink: { screen: '/wallet' },
+            meta: { txHash: tx_hash, amount: amount.toString(), currencyId },
+            sourceType: 'CRYPTO_DEPOSIT',
+            sourceId: tx_hash,
+          }).catch((err: any) => {
+            this.logger.warn(`Failed to create deposit notification: ${err}`);
+          });
+        }
+        if (adaLovelaceReceived >= MIN_ADA_LOVELACE) {
+          this.logger.log(`Credited ${adaLovelaceReceived} lovelace (ADA) to user ${player.userId} from tx ${tx_hash}`);
+        }
+      } else {
+        this.logger.warn(`Deposit tx ${tx_hash}: no linked player — UnresolvedDeposit recorded`);
       }
     } catch (err: any) {
       if (err?.code === 'P2002') {
@@ -1765,17 +2122,19 @@ export class CryptoWalletService implements OnApplicationBootstrap {
           );
         }
 
-        await tx.userCurrencyBalance.update({
+        // Full refund: return the original debited amount to the player
+        await tx.userCurrencyBalance.upsert({
           where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
-          data: { balance: { increment: existing.amount } },
+          create: { userId: existing.userId, currencyId: existing.currencyId, balance: BigInt(existing.amount) },
+          update: { balance: { increment: BigInt(existing.amount) } },
         });
 
         await tx.currencyLedger.create({
           data: {
             userId: existing.userId,
             currencyId: existing.currencyId,
-            delta: existing.amount,
-            reason: 'DERP withdrawal rejected — balance refunded',
+            delta: BigInt(existing.amount),
+            reason: `${existing.currencyId === ADA_CURRENCY_ID ? 'ADA' : existing.currencyId} withdrawal rejected — balance refunded`,
             sourceType: 'crypto_withdrawal_refund',
             sourceId: id,
             metadata: { withdrawalId: id, adminNote: data.adminNote ?? null },
@@ -1789,15 +2148,68 @@ export class CryptoWalletService implements OnApplicationBootstrap {
       return serializeBigInts(updated);
     }
 
-    // Non-rejection update (e.g. FAILED → APPROVED re-queue, adding txHash/adminNote).
-    // Also guarded: block the transition if status changed concurrently.
+    // FAILED → APPROVED: re-debit the balance since FAILED already refunded it.
+    const isRequeue = data.status === 'APPROVED' && existing.status === 'FAILED';
+
+    if (isRequeue) {
+      const requeued = await this.prisma.$transaction(async (tx) => {
+        const guard = await (tx as any).cryptoWithdrawal.updateMany({
+          where: { id, status: 'FAILED' },
+          data: {
+            status: 'APPROVED',
+            adaNetworkFee: 0n, // reset — will be re-measured at submission
+            ...(data.adminNote !== undefined ? { adminNote: data.adminNote } : {}),
+          },
+        });
+        if (guard.count === 0) {
+          const current = await (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+          throw new BadRequestException(
+            `Withdrawal status changed concurrently — current status is ${current?.status ?? 'unknown'}. Refresh and retry.`,
+          );
+        }
+
+        // Re-debit: withdrawal was already refunded when it FAILED; debit again for the re-queue
+        const balanceRow = await tx.userCurrencyBalance.findUnique({
+          where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
+        });
+        const currentBalance = BigInt(balanceRow?.balance ?? 0);
+        if (currentBalance < BigInt(existing.amount)) {
+          throw new BadRequestException(
+            `Insufficient ${existing.currencyId} balance to re-queue withdrawal — ` +
+            `player has ${currentBalance}, needs ${BigInt(existing.amount)}`,
+          );
+        }
+
+        await tx.userCurrencyBalance.update({
+          where: { userId_currencyId: { userId: existing.userId, currencyId: existing.currencyId } },
+          data: { balance: { decrement: BigInt(existing.amount) } },
+        });
+
+        await tx.currencyLedger.create({
+          data: {
+            userId: existing.userId,
+            currencyId: existing.currencyId,
+            delta: -BigInt(existing.amount),
+            reason: `${existing.currencyId} withdrawal re-queued (FAILED → APPROVED)`,
+            sourceType: 'crypto_withdrawal',
+            sourceId: id,
+            metadata: { withdrawalId: id, adminNote: data.adminNote ?? null },
+          },
+        });
+
+        return (tx as any).cryptoWithdrawal.findUnique({ where: { id } });
+      });
+
+      await this.emitCurrencyDelta(existing.userId);
+      return serializeBigInts(requeued);
+    }
+
+    // Non-special update (status changes like PENDING→APPROVED, adding txHash/adminNote).
     const updateData: any = {};
     if (data.status) updateData.status = data.status;
     if (data.txHash !== undefined) updateData.txHash = data.txHash;
     if (data.adminNote !== undefined) updateData.adminNote = data.adminNote;
 
-    // Guard non-status-change writes (txHash/adminNote on SENT rows) by id only.
-    // Status changes are guarded against the expected prior status.
     const whereClause: any = data.status && data.status !== existing.status
       ? { id, status: existing.status }
       : { id };
@@ -1816,5 +2228,73 @@ export class CryptoWalletService implements OnApplicationBootstrap {
 
     const updated = await (this.prisma as any).cryptoWithdrawal.findUnique({ where: { id } });
     return serializeBigInts(updated);
+  }
+
+  async adminGetUnresolvedDeposits(includeResolved = false, limit = 50): Promise<any[]> {
+    const where: any = includeResolved ? {} : { resolvedAt: null };
+    const rows = await (this.prisma as any).unresolvedDeposit.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return rows;
+  }
+
+  async adminResolveUnresolvedDeposit(
+    depositId: string,
+    adminUserId: string,
+    creditUserId?: string,
+  ): Promise<any> {
+    const deposit = await (this.prisma as any).unresolvedDeposit.findUnique({ where: { id: depositId } });
+    if (!deposit) throw new NotFoundException(`Unresolved deposit ${depositId} not found`);
+    if (deposit.resolvedAt) throw new BadRequestException('Deposit is already resolved');
+
+    if (creditUserId) {
+      // Credit the specified user and mark resolved
+      const amounts = deposit.amounts as Record<string, string>;
+      await this.prisma.$transaction(async (tx) => {
+        for (const [currencyId, amountStr] of Object.entries(amounts)) {
+          const amount = BigInt(amountStr);
+          if (amount <= 0n) continue;
+          const effectiveCurrencyId = currencyId === 'lovelace' ? ADA_CURRENCY_ID : currencyId;
+
+          await tx.userCurrencyBalance.upsert({
+            where: { userId_currencyId: { userId: creditUserId, currencyId: effectiveCurrencyId } },
+            create: { userId: creditUserId, currencyId: effectiveCurrencyId, balance: amount },
+            update: { balance: { increment: amount } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: creditUserId,
+              currencyId: effectiveCurrencyId,
+              delta: amount,
+              reason: `Manual credit from unresolved deposit (tx: ${deposit.txHash.slice(0, 12)}…)`,
+              sourceType: 'CRYPTO_DEPOSIT',
+              sourceId: deposit.txHash,
+              metadata: { unresolvedDepositId: depositId, creditedByAdminId: adminUserId },
+            },
+          });
+        }
+
+        await (tx as any).unresolvedDeposit.update({
+          where: { id: depositId },
+          data: {
+            resolvedAt: new Date(),
+            resolvedByUserId: adminUserId,
+            creditedUserId: creditUserId,
+          },
+        });
+      });
+
+      await this.emitCurrencyDelta(creditUserId);
+    } else {
+      // Mark resolved without credit (e.g. spam / acknowledged)
+      await (this.prisma as any).unresolvedDeposit.update({
+        where: { id: depositId },
+        data: { resolvedAt: new Date(), resolvedByUserId: adminUserId },
+      });
+    }
+
+    return (this.prisma as any).unresolvedDeposit.findUnique({ where: { id: depositId } });
   }
 }

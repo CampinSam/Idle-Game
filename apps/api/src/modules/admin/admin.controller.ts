@@ -1363,6 +1363,33 @@ export class AdminController {
     return result;
   }
 
+  @Get('crypto/unresolved-deposits')
+  getUnresolvedDeposits(
+    @Query('includeResolved') includeResolved?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.cryptoWalletService.adminGetUnresolvedDeposits(
+      includeResolved === 'true',
+      limit ? parseInt(limit, 10) : 50,
+    );
+  }
+
+  @Put('crypto/unresolved-deposits/:id/resolve')
+  async resolveUnresolvedDeposit(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: { creditUserId?: string },
+  ) {
+    const result = await this.cryptoWalletService.adminResolveUnresolvedDeposit(id, req.adminUser.id, body.creditUserId);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'crypto_unresolved_deposit_resolve',
+      recordId: id,
+      diff: body,
+    });
+    return result;
+  }
+
   // ─── Content Draft & Review ──────────────────────────────────────────────────
 
   @Post('drafts')

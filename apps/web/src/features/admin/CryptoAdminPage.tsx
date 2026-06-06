@@ -416,7 +416,10 @@ function CycleWalletDialog({ onCancel, onSuccess }: { onCancel: () => void; onSu
 
 function ConfigTab() {
   const [config, setConfig] = useState<any>(null);
-  const [balance, setBalance] = useState<{ ada: string; cnt: string; totalApprovedCnt: string } | null>(null);
+  const [balance, setBalance] = useState<{
+    ada: { gross: string; liability: string; net: string };
+    currencies: Array<{ currencyId: string; gross: string; liability: string; net: string; approvedWithdrawals: string }>;
+  } | null>(null);
   const [form, setForm] = useState<any>({});
   const [skeyInput, setSkeyInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -561,12 +564,17 @@ function ConfigTab() {
       )}
 
       {balance && (() => {
-        const adaBalance = parseFloat(balance.ada);
-        const cntBalance = Number(balance.cnt);
-        const totalApprovedCnt = Number(balance.totalApprovedCnt);
-        const cntShort = totalApprovedCnt > 0 && cntBalance < totalApprovedCnt;
-        const adaLow = adaBalance < ADA_WARNING_THRESHOLD;
-        const hasWarning = cntShort || adaLow;
+        const adaNetLovelace = BigInt(balance.ada.net ?? '0');
+        const adaAda = Number(adaNetLovelace) / 1_000_000;
+        const adaLow = adaAda < ADA_WARNING_THRESHOLD;
+
+        const currencies = balance.currencies ?? [];
+        const anyCntShort = currencies.some((c) => {
+          const approved = Number(c.approvedWithdrawals);
+          const net = Number(c.net);
+          return approved > 0 && net < approved;
+        });
+        const hasWarning = anyCntShort || adaLow;
 
         return (
           <>
@@ -579,28 +587,31 @@ function ConfigTab() {
                 <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.35rem' }}>
                   ⚠ Hot Wallet Low Balance
                 </div>
-                {cntShort && (
-                  <div style={{ fontSize: '0.82rem', marginBottom: '0.2rem' }}>
-                    CNT balance ({cntBalance.toLocaleString()}) is below total queued withdrawals ({totalApprovedCnt.toLocaleString()}). Withdrawals are paused until funds are topped up.
+                {anyCntShort && currencies.filter((c) => Number(c.approvedWithdrawals) > 0 && Number(c.net) < Number(c.approvedWithdrawals)).map((c) => (
+                  <div key={c.currencyId} style={{ fontSize: '0.82rem', marginBottom: '0.2rem' }}>
+                    {c.currencyId} net ({Number(c.net).toLocaleString()}) below queued withdrawals ({Number(c.approvedWithdrawals).toLocaleString()}).
                   </div>
-                )}
+                ))}
                 {adaLow && (
                   <div style={{ fontSize: '0.82rem' }}>
-                    ADA balance ({adaBalance.toFixed(6)} ₳) is below the {ADA_WARNING_THRESHOLD} ₳ safety threshold. Top up the hot wallet to cover transaction fees.
+                    ADA net ({adaAda.toFixed(4)} ₳) is below the {ADA_WARNING_THRESHOLD} ₳ safety threshold.
                   </div>
                 )}
               </div>
             )}
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+              display: 'grid', gridTemplateColumns: `repeat(${1 + currencies.length}, 1fr)`, gap: '0.75rem',
               marginBottom: '1.5rem', padding: '1rem',
               background: 'rgba(255,255,255,0.04)', borderRadius: 8,
               border: `1px solid ${hasWarning ? 'rgba(251,191,36,0.4)' : 'rgba(255,255,255,0.1)'}`,
             }}>
               <div>
-                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET ADA</div>
+                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET ADA (net)</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: adaLow ? '#fbbf24' : '#60a5fa' }}>
-                  {balance.ada} ₳
+                  {adaAda.toFixed(4)} ₳
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#666', marginTop: 2 }}>
+                  {(Number(BigInt(balance.ada.liability ?? '0')) / 1_000_000).toFixed(4)} ₳ liability
                 </div>
                 {adaLow && (
                   <div style={{ fontSize: '0.72rem', color: '#fbbf24', marginTop: 2 }}>
@@ -608,17 +619,26 @@ function ConfigTab() {
                   </div>
                 )}
               </div>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>HOT WALLET DERP CNT</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: cntShort ? '#fbbf24' : '#a78bfa' }}>
-                  {cntBalance.toLocaleString()}
-                </div>
-                {totalApprovedCnt > 0 && (
-                  <div style={{ fontSize: '0.72rem', color: cntShort ? '#fbbf24' : '#666', marginTop: 2 }}>
-                    {totalApprovedCnt.toLocaleString()} queued
+              {currencies.map((c) => {
+                const approved = Number(c.approvedWithdrawals);
+                const net = Number(c.net);
+                const short = approved > 0 && net < approved;
+                return (
+                  <div key={c.currencyId}>
+                    <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 3 }}>
+                      {c.currencyId.toUpperCase()} (net)
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: short ? '#fbbf24' : '#a78bfa' }}>
+                      {net.toLocaleString()}
+                    </div>
+                    {approved > 0 && (
+                      <div style={{ fontSize: '0.72rem', color: short ? '#fbbf24' : '#666', marginTop: 2 }}>
+                        {approved.toLocaleString()} queued
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </>
         );

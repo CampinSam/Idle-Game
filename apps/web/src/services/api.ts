@@ -619,10 +619,10 @@ class ApiClient {
     });
   }
 
-  requestWithdrawal(amount: number, destinationAddress: string) {
+  requestWithdrawal(amount: number, destinationAddress: string, currencyId?: string) {
     return this.request<{ id: string }>('/crypto/withdraw', {
       method: 'POST',
-      body: JSON.stringify({ amount, destinationAddress }),
+      body: JSON.stringify({ amount, destinationAddress, ...(currencyId ? { currencyId } : {}) }),
     });
   }
 

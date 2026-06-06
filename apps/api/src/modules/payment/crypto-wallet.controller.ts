@@ -40,13 +40,18 @@ export class CryptoWalletController {
         ecosystem: c.cntEcosystem,
         walletType: c.cntWalletType,
       })),
+      ada: {
+        enabled: Boolean(config.hotWalletAddress),
+        minWithdrawalLovelace: (config.adaMinWithdrawalAmount ?? 2_000_000n).toString(),
+        withdrawalFeeLovelace: (config.adaWithdrawalFee ?? 500_000n).toString(),
+      },
     };
   }
 
   @Post('withdraw')
   async requestWithdrawal(
     @Request() req: any,
-    @Body() body: { amount: number; destinationAddress?: string },
+    @Body() body: { amount: number; destinationAddress?: string; currencyId?: string },
   ) {
     const userId: string = req.user.id;
     let destinationAddress = body.destinationAddress?.trim();
@@ -69,7 +74,16 @@ export class CryptoWalletController {
       throw new BadRequestException('destinationAddress is required (no linked Cardano wallet found)');
     }
 
-    return this.cryptoWalletService.requestWithdrawal(userId, body.amount, destinationAddress);
+    return this.cryptoWalletService.requestWithdrawal(userId, body.amount, destinationAddress, body.currencyId);
+  }
+
+  @Get('ada-balance')
+  async getAdaBalance(@Request() req: any) {
+    const userId: string = req.user.id;
+    const balanceRow = await (this.prisma as any).userCurrencyBalance.findUnique({
+      where: { userId_currencyId: { userId, currencyId: 'ada' } },
+    });
+    return { lovelace: (balanceRow?.balance ?? 0n).toString() };
   }
 
   @Get('withdrawals')

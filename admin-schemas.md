@@ -1905,12 +1905,24 @@ the following extra fields are available:
 ---
 
 ### `GET /api/admin/crypto/balance`
-Fetch the hot wallet's current ADA and CNT balance from Blockfrost.
+Fetch the hot wallet's current on-chain ADA and CNT balances from Blockfrost, minus outstanding liabilities (APPROVED/PROCESSING withdrawals).
 
 **Response:**
 ```json
-{ "ada": "12.345678", "cnt": "50000" }
+{
+  "ada": { "gross": "12345678", "liability": "2000000", "net": "10345678" },
+  "currencies": [
+    {
+      "currencyId": "crypto_derp",
+      "gross": "1000000",
+      "liability": "50000",
+      "net": "950000",
+      "approvedWithdrawals": "50000"
+    }
+  ]
+}
 ```
+All lovelace/token values are serialised as strings. `gross` = on-chain balance; `liability` = APPROVED + PROCESSING withdrawals; `net` = gross − liability.
 Returns `null` if `BLOCKFROST_API_KEY` is not set or wallet address is unconfigured.
 
 ---
@@ -1918,9 +1930,9 @@ Returns `null` if `BLOCKFROST_API_KEY` is not set or wallet address is unconfigu
 ### `GET /api/admin/crypto/withdrawals`
 List withdrawal requests.
 
-**Query:** `status` (optional: `PENDING` | `APPROVED` | `REJECTED` | `SENT`), `limit` (default 50)
+**Query:** `status` (optional: `PENDING` | `APPROVED` | `PROCESSING` | `FAILED` | `REJECTED` | `SENT`), `limit` (default 50)
 
-**Response:** `CryptoWithdrawal[]` with `user` nested object
+**Response:** `CryptoWithdrawal[]` with `user` nested object. Fields include `currencyId`, `adaServiceFee` (lovelace held as service fee for ADA withdrawals), `adaNetworkFee` (exact network fee recorded after submission).
 
 ---
 
@@ -1930,11 +1942,62 @@ Update a withdrawal request (set status, attach tx hash, add admin note).
 **Body:**
 ```json
 {
-  "status": "SENT",
+  "status": "APPROVED",
   "txHash": "cardano-tx-hash-here",
   "adminNote": "Processed manually"
 }
 ```
+
+**Allowed state transitions:**
+
+| From | To | Effect |
+|---|---|---|
+| `PENDING` | `APPROVED` or `REJECTED` | REJECTED refunds full `amount` to player balance |
+| `APPROVED` | `REJECTED` | Refunds full `amount` |
+| `PROCESSING` | `FAILED` | Force-fail only — no auto-refund (admin must verify blockchain first) |
+| `FAILED` | `APPROVED` | Re-debit player balance; resets `adaNetworkFee` to 0 for re-measurement |
+| `FAILED` | `REJECTED` | Refunds full `amount` |
+| `REJECTED` | `APPROVED` | Re-debit player balance |
+| `SENT` | — | Status immutable; `txHash`/`adminNote` edits only |
+
+**Note on FAILED → APPROVED re-queue:** When a withdrawal fails and the player is refunded, then an admin re-queues it, the player's balance is re-debited immediately. If the player no longer has sufficient balance, the endpoint returns `400 Bad Request`.
+
+---
+
+### `GET /api/admin/crypto/unresolved-deposits`
+List on-chain deposits that arrived at the hot wallet but could not be matched to any player (unlinked sender addresses).
+
+**Query:** `includeResolved` (boolean, default `false`), `limit` (default 50)
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "txHash": "abc123...",
+    "blockTime": 1700000000,
+    "senderAddresses": ["addr1..."],
+    "amounts": { "lovelace": "2000000", "crypto_derp": "5000" },
+    "reason": "No linked Cardano wallet found for any input address",
+    "resolvedAt": null,
+    "resolvedByUserId": null,
+    "creditedUserId": null,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+]
+```
+
+---
+
+### `PUT /api/admin/crypto/unresolved-deposits/:id/resolve`
+Resolve an unresolved deposit. Optionally credit a specific player.
+
+**Body:**
+```json
+{ "creditUserId": "player-uuid-or-omit-to-just-mark-resolved" }
+```
+
+If `creditUserId` is provided, all token amounts (lovelace → `ada`, other keys → currencyId) are credited to that player and the deposit is marked resolved. If omitted, the deposit is marked resolved without credit (use for spam/invalid txs).
 
 ---
 
@@ -1943,39 +2006,48 @@ Update a withdrawal request (set status, attach tx hash, add admin note).
 All endpoints require `Authorization: Bearer <jwt>`.
 
 ### `GET /api/crypto/deposit-info`
-Get the hot wallet deposit address and all configured CNT currencies.
+Get the hot wallet deposit address, all configured CNT currencies, and ADA withdrawal config.
 
 **Response:**
 ```json
 {
   "hotWalletAddress": "addr1...",
   "currencyId": "crypto_derp",
-  "cntAssetId": "d9d59e71eb99e653a493956a6826a406060706bd8c9a2427b3564f645045525020434f494e",
+  "cntAssetId": "d9d59e71...",
   "note": "Send DERP COIN to the deposit address...",
   "minWithdrawalType": "QUANTITY",
   "minWithdrawalAmount": 1,
   "withdrawalFee": "0",
   "autoApprovalThreshold": "0",
   "cntCurrencies": [
-    { "id": "crypto_derp", "label": "DERP COIN", "policyId": "<hex>", "assetName": "<hex>" }
-  ]
+    { "id": "crypto_derp", "label": "DERP COIN", "policyId": "<hex>", "assetName": "<hex>", "ecosystem": "CARDANO", "walletType": "CIP30" }
+  ],
+  "ada": {
+    "enabled": true,
+    "minWithdrawalLovelace": "2000000",
+    "withdrawalFeeLovelace": "500000"
+  }
 }
 ```
-`cntCurrencies` lists all configured CNT tokens. Currently always contains one entry (the default DERP COIN). Future expansion may add more entries — the deposit UI renders a chip selector when `cntCurrencies.length > 1`.
+`cntCurrencies` lists all active CNT currencies. `ada.enabled` is `true` when a hot wallet address is configured.
 
 ---
 
 ### `POST /api/crypto/withdraw`
-Request an on-chain withdrawal. Deducts from balance immediately; creates a withdrawal record. If the withdrawal is auto-approved (amount ≤ `autoApprovalThreshold`), `processApprovedWithdrawals()` is triggered in the background so the on-chain send happens within seconds rather than waiting for the next 30 s scheduler tick.
+Request an on-chain withdrawal. Debits balance immediately; creates a withdrawal record. If auto-approved (CNT amount ≤ `autoApprovalThreshold`), the on-chain send is triggered in the background within seconds.
+
+For **ADA withdrawals**, the full `amount` (in lovelace) is debited upfront. On-chain network fees are recorded in `adaNetworkFee` after submission.
 
 **Body:**
 ```json
 {
   "amount": 500,
-  "destinationAddress": "addr1..."
+  "destinationAddress": "addr1...",
+  "currencyId": "crypto_derp"
 }
 ```
 `destinationAddress` is optional — defaults to the user's primary linked Cardano wallet.
+`currencyId` is optional — defaults to the primary CNT currency. Pass `"ada"` for a native ADA withdrawal.
 
 **Response:** `CryptoWithdrawal` object (includes `id` field; frontend subscribes to `withdrawal_sent` / `withdrawal_failed` notifications matching `sourceId === id` for live status updates)
 
