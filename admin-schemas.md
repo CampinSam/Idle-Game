@@ -1954,13 +1954,14 @@ Update a withdrawal request (set status, attach tx hash, add admin note).
 |---|---|---|
 | `PENDING` | `APPROVED` or `REJECTED` | REJECTED refunds full `amount` to player balance |
 | `APPROVED` | `REJECTED` | Refunds full `amount` |
-| `PROCESSING` | `FAILED` | Force-fail only — no auto-refund (admin must verify blockchain first) |
+| `PROCESSING` | `FAILED` | Force-fail only — no auto-refund (admin verifies blockchain) |
 | `FAILED` | `APPROVED` | Re-debit player balance; resets `adaNetworkFee` to 0 for re-measurement |
-| `FAILED` | `REJECTED` | Refunds full `amount` |
 | `REJECTED` | `APPROVED` | Re-debit player balance |
 | `SENT` | — | Status immutable; `txHash`/`adminNote` edits only |
 
-**Note on FAILED → APPROVED re-queue:** When a withdrawal fails and the player is refunded, then an admin re-queues it, the player's balance is re-debited immediately. If the player no longer has sufficient balance, the endpoint returns `400 Bad Request`.
+> **FAILED → REJECTED is blocked.** All FAILED withdrawals are pre-refunded automatically — either by `sendWithdrawalOnChain` (when the TX build/submit fails) or by the stale-PROCESSING reaper (moves PROCESSING → FAILED + issues refund). Allowing FAILED → REJECTED would cause a double-credit. To re-attempt a failed withdrawal, use FAILED → APPROVED (re-debits player, retries the on-chain send).
+
+**Note on FAILED → APPROVED re-queue:** When a withdrawal is re-queued, the player's balance is re-debited immediately. If the player no longer has sufficient balance, the endpoint returns `400 Bad Request`.
 
 ---
 

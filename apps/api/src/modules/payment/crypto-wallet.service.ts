@@ -402,19 +402,19 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     return config.blockfrostProjectId?.trim() || process.env.BLOCKFROST_API_KEY || null;
   }
 
-  /** Returns the total approved liability (in lovelace) for ADA withdrawals. */
-  private async getApprovedAdaLiability(): Promise<bigint> {
+  /** Returns the total outstanding liability (in lovelace) for ADA withdrawals — APPROVED + PROCESSING. */
+  private async getAdaLiability(): Promise<bigint> {
     const rows = await (this.prisma as any).cryptoWithdrawal.findMany({
-      where: { status: 'APPROVED', currencyId: ADA_CURRENCY_ID },
+      where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: ADA_CURRENCY_ID },
       select: { amount: true },
     });
     return rows.reduce((acc: bigint, r: any) => acc + BigInt(r.amount), 0n);
   }
 
-  /** Returns gross / liability / net for each CNT currency and for ADA. */
+  /** Returns gross / liability / net / approvedWithdrawals for each CNT currency and for ADA. */
   async getHotWalletBalance(): Promise<{
     ada: { gross: string; liability: string; net: string };
-    currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string }>;
+    currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string; approvedWithdrawals: string }>;
   } | null> {
     const config = await this.getConfig();
     const apiKey = this.getBlockfrostApiKey(config);
@@ -430,7 +430,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           where: { type: 'CRYPTO' as any, enabled: true },
           orderBy: { sortOrder: 'asc' },
         }),
-        this.getApprovedAdaLiability(),
+        this.getAdaLiability(),
       ]);
       if (!resp.ok) return null;
 
@@ -440,20 +440,27 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       const grossLovelace = BigInt(amounts.find((a) => a.unit === 'lovelace')?.quantity ?? '0');
       const adaNet = grossLovelace - adaLiability;
 
-      const currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string }> = [];
+      const currencies: Array<{ currencyId: string; label: string; unit: string; gross: string; liability: string; net: string; approvedWithdrawals: string }> = [];
       for (const c of cntCurrencies) {
         const row = c as any;
         if (!row.cntPolicyId || !row.cntAssetName) continue;
         const unit = `${row.cntPolicyId}${row.cntAssetName}`;
         const gross = BigInt(amounts.find((a) => a.unit === unit)?.quantity ?? '0');
-        // Approved CNT liability for this currency
+        // Liability = APPROVED + PROCESSING net amounts (what the hot wallet must send)
         const liabilityRows = await (this.prisma as any).cryptoWithdrawal.findMany({
-          where: { status: 'APPROVED', currencyId: c.id },
+          where: { status: { in: ['APPROVED', 'PROCESSING'] }, currencyId: c.id },
           select: { amount: true, fee: true },
         });
         const liability = liabilityRows.reduce((acc: bigint, r: any) => {
-          const net = BigInt(r.amount) - BigInt(r.fee);
-          return acc + net;
+          return acc + (BigInt(r.amount) - BigInt(r.fee));
+        }, 0n);
+        // approvedWithdrawals = APPROVED-only queue (net amounts)
+        const approvedRows = await (this.prisma as any).cryptoWithdrawal.findMany({
+          where: { status: 'APPROVED', currencyId: c.id },
+          select: { amount: true, fee: true },
+        });
+        const approvedWithdrawals = approvedRows.reduce((acc: bigint, r: any) => {
+          return acc + (BigInt(r.amount) - BigInt(r.fee));
         }, 0n);
         currencies.push({
           currencyId: c.id,
@@ -462,6 +469,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
           gross: gross.toString(),
           liability: liability.toString(),
           net: (gross - liability).toString(),
+          approvedWithdrawals: approvedWithdrawals.toString(),
         });
       }
 
@@ -496,15 +504,23 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       throw new BadRequestException('amount must be a whole number (no decimals)');
     }
 
-    // Determine currency: ADA (native) or CNT
-    const isAda = !currencyId || currencyId === ADA_CURRENCY_ID;
+    // Determine currency: ADA (native) or CNT.
+    // Explicitly passing 'ada' routes to ADA path; omitting or passing any other value falls back to
+    // the primary CNT currency (first active CRYPTO currency by sortOrder).
+    const isAda = currencyId === ADA_CURRENCY_ID;
 
     if (isAda) {
       return this.requestAdaWithdrawal(userId, BigInt(amountInt), destinationAddress);
     }
 
-    // CNT withdrawal path
-    const cryptoRow = await this.getCryptoCurrencyRow(currencyId);
+    // CNT withdrawal path — resolve currencyId to primary if omitted
+    const effectiveCurrencyId: string = currencyId ?? await this.prisma.currency.findFirst({
+      where: { type: 'CRYPTO' as any, enabled: true },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true },
+    }).then((c) => c?.id ?? '');
+    if (!effectiveCurrencyId) throw new BadRequestException('No active CRYPTO currency configured');
+    const cryptoRow = await this.getCryptoCurrencyRow(effectiveCurrencyId);
     const fee = Number(cryptoRow.cntWithdrawalFee ?? 0);
     const net = amount - fee;
 
@@ -520,34 +536,34 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     // Atomic: deduct balance + create withdrawal record in a single transaction
     const withdrawal = await this.prisma.$transaction(async (tx) => {
       const balanceRow = await tx.userCurrencyBalance.findUnique({
-        where: { userId_currencyId: { userId, currencyId } },
+        where: { userId_currencyId: { userId, currencyId: effectiveCurrencyId } },
       });
       const currentBalance = BigInt(balanceRow?.balance ?? 0);
       if (currentBalance < BigInt(amountInt)) {
-        throw new BadRequestException(`Insufficient ${cryptoRow.name ?? currencyId} balance`);
+        throw new BadRequestException(`Insufficient ${cryptoRow.name ?? effectiveCurrencyId} balance`);
       }
 
       await tx.userCurrencyBalance.update({
-        where: { userId_currencyId: { userId, currencyId } },
+        where: { userId_currencyId: { userId, currencyId: effectiveCurrencyId } },
         data: { balance: { decrement: BigInt(amountInt) } },
       });
 
       await tx.currencyLedger.create({
         data: {
           userId,
-          currencyId,
+          currencyId: effectiveCurrencyId,
           delta: BigInt(-amountInt),
-          reason: `${cryptoRow.name ?? currencyId} withdrawal request (on-chain)`,
+          reason: `${cryptoRow.name ?? effectiveCurrencyId} withdrawal request (on-chain)`,
           sourceType: 'crypto_withdrawal',
           sourceId: null,
-          metadata: { destinationAddress, fee, currencyId },
+          metadata: { destinationAddress, fee, currencyId: effectiveCurrencyId },
         },
       });
 
       return (tx as any).cryptoWithdrawal.create({
         data: {
           userId,
-          currencyId,
+          currencyId: effectiveCurrencyId,
           amount: BigInt(amountInt),
           fee: BigInt(fee),
           destinationAddress,
@@ -619,9 +635,9 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
         data: {
           userId,
           currencyId: ADA_CURRENCY_ID,
-          amount: amountLovelace,
-          fee: feeLovelace,
-          adaServiceFee: amountLovelace,
+          amount: amountLovelace,   // gross debited (net send = amount - fee - adaNetworkFee)
+          fee: feeLovelace,         // service fee portion
+          adaServiceFee: feeLovelace, // same as fee for ADA; tracks ADA held back as platform fee
           destinationAddress,
           status: 'PENDING',
           autoApproved: false,
@@ -702,22 +718,50 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
       });
       let reaperCount = 0;
       for (const record of staleRecords) {
-        const result = await (this.prisma as any).cryptoWithdrawal.updateMany({
-          where: { id: record.id, status: 'PROCESSING' },
-          data: {
-            status: 'FAILED',
-            adminNote: 'Auto-recovered from stale PROCESSING by scheduler reaper. ' +
-              'Check blockchain for a broadcast transaction before re-queueing.',
-          },
-        });
-        if (result.count > 0) {
+        // Atomically move to FAILED and refund balance so all FAILED records are consistently refunded
+        await this.prisma.$transaction(async (tx) => {
+          const guard = await (tx as any).cryptoWithdrawal.updateMany({
+            where: { id: record.id, status: 'PROCESSING' },
+            data: {
+              status: 'FAILED',
+              adminNote: 'Auto-recovered from stale PROCESSING by scheduler reaper. ' +
+                'Check blockchain for a broadcast transaction before re-queueing (balance pre-refunded).',
+            },
+          });
+          if (guard.count === 0) return;
+
           reaperCount++;
+          const rec = await (tx as any).cryptoWithdrawal.findUnique({ where: { id: record.id } });
+          if (!rec) return;
+
+          await tx.userCurrencyBalance.upsert({
+            where: { userId_currencyId: { userId: rec.userId, currencyId: rec.currencyId } },
+            create: { userId: rec.userId, currencyId: rec.currencyId, balance: BigInt(rec.amount) },
+            update: { balance: { increment: BigInt(rec.amount) } },
+          });
+          await tx.currencyLedger.create({
+            data: {
+              userId: rec.userId,
+              currencyId: rec.currencyId,
+              delta: BigInt(rec.amount),
+              reason: `${rec.currencyId} withdrawal stale-failed — balance pre-refunded pending admin review`,
+              sourceType: 'crypto_withdrawal_refund',
+              sourceId: rec.id,
+              metadata: { withdrawalId: rec.id, reason: 'stale_processing' },
+            },
+          });
+        }).catch((err: any) => {
+          this.logger.error(`Stale reaper FAILED+refund for ${record.id} failed: ${err}`);
+        });
+
+        if (reaperCount > 0) {
+          await this.emitCurrencyDelta(record.userId);
           await this.emitWithdrawalNotification(
             record.userId,
             record.id,
             'withdrawal_failed',
             'Withdrawal Failed',
-            'Your withdrawal could not be confirmed. Please contact support — your balance will be reviewed.',
+            'Your withdrawal could not be confirmed and your balance has been refunded. Please contact support if the transaction appeared on-chain.',
             { screen: '/wallet' },
             { withdrawalId: record.id },
           );
@@ -2062,11 +2106,14 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
     //
     // All status-change updates are additionally guarded at the DB level with
     // a conditional updateMany to close the TOCTOU race with the scheduler.
+    // FAILED records are always pre-refunded (either by sendWithdrawalOnChain or stale reaper).
+    // FAILED → REJECTED is blocked to prevent double-credit.
+    // To re-attempt: use FAILED → APPROVED (re-debit + retry).
     const ALLOWED_TRANSITIONS: Record<string, string[]> = {
       PENDING:    ['APPROVED', 'REJECTED'],
       APPROVED:   ['REJECTED'],
-      PROCESSING: ['FAILED'],   // force-fail escape hatch only
-      FAILED:     ['APPROVED', 'REJECTED'],
+      PROCESSING: ['FAILED'],   // force-fail escape hatch only; triggers no auto-refund (admin verifies blockchain)
+      FAILED:     ['APPROVED'], // REJECTED blocked — already refunded; use APPROVED to re-queue
       REJECTED:   ['APPROVED'],
       SENT:       [],           // status immutable; txHash/adminNote edits via non-status path
     };
@@ -2096,8 +2143,8 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
 
     if (isRejection) {
       // Statuses from which rejection (with refund) is allowed.
-      // PROCESSING and SENT are excluded to prevent the double-payout race.
-      const rejectableStatuses = ['PENDING', 'APPROVED', 'FAILED'];
+      // FAILED and PROCESSING and SENT are excluded — FAILED is always already refunded.
+      const rejectableStatuses = ['PENDING', 'APPROVED'];
 
       // Atomically reject + refund, guarded so that if the scheduler moved
       // the row to PROCESSING or SENT between our findUnique and now, the
