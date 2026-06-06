@@ -1392,6 +1392,32 @@ export class AdminController {
     return result;
   }
 
+  @Get('players/:id/ledger/deposits')
+  async getPlayerDepositLedger(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const take = limit ? parseInt(limit, 10) : 50;
+    const skip = offset ? parseInt(offset, 10) : 0;
+    const entries = await this.prisma.currencyLedger.findMany({
+      where: { userId: id, sourceType: 'CRYPTO_DEPOSIT' },
+      orderBy: { createdAt: 'desc' },
+      take,
+      skip,
+    });
+    return entries.map((e: any) => ({
+      id: e.id.toString(),
+      currencyId: e.currencyId,
+      delta: e.delta.toString(),
+      reason: e.reason,
+      sourceType: e.sourceType,
+      txHash: e.sourceId ?? null,
+      metadata: e.metadata,
+      createdAt: e.createdAt.toISOString(),
+    }));
+  }
+
   // ─── Content Draft & Review ──────────────────────────────────────────────────
 
   @Post('drafts')

@@ -508,6 +508,22 @@ export const adminApi = {
   resolveUnresolvedDeposit: (id: string, creditUserId?: string) =>
     adminRequest<any>(`/crypto/unresolved-deposits/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ creditUserId }) }),
 
+  getPlayerDepositLedger: (userId: string, limit?: number, offset?: number) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    if (offset) params.set('offset', String(offset));
+    return adminRequest<Array<{
+      id: string;
+      currencyId: string;
+      delta: string;
+      reason: string | null;
+      sourceType: string;
+      txHash: string | null;
+      metadata: any;
+      createdAt: string;
+    }>>(`/players/${userId}/ledger/deposits?${params.toString()}`);
+  },
+
   listPlayerWallets: (userId: string) =>
     adminRequest<Array<{ id: string; chain: string; address: string; isPrimary: boolean; createdAt: string }>>(
       `/players/${userId}/wallets`,

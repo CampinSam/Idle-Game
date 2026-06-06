@@ -1243,12 +1243,137 @@ function UnresolvedDepositsTab() {
   );
 }
 
-type CryptoTab = 'config' | 'withdrawals' | 'unresolved';
+function PlayerDepositLedgerTab() {
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (userId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await adminApi.getPlayerDepositLedger(userId, 100);
+      setEntries(rows);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load ledger');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedPlayer) {
+      load(selectedPlayer.id);
+    } else {
+      setEntries([]);
+      setError(null);
+    }
+  }, [selectedPlayer, load]);
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1rem' }}>
+        <h3 style={{ margin: '0 0 0.75rem', color: '#e0e0ff', fontSize: '1rem' }}>Player Deposit Ledger</h3>
+        <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.75rem' }}>
+          Search for a player to view their CRYPTO_DEPOSIT ledger entries — credits granted from on-chain deposits.
+        </div>
+        <div style={{ maxWidth: 400 }}>
+          <PlayerPicker selectedPlayer={selectedPlayer} onSelect={(p) => { setSelectedPlayer(p); }} />
+        </div>
+      </div>
+
+      {selectedPlayer && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <span style={{ fontSize: '0.82rem', color: '#a0a0c0' }}>
+            Showing deposit credits for <strong style={{ color: '#e2e8f0' }}>{selectedPlayer.username || selectedPlayer.id}</strong>
+          </span>
+          <button
+            onClick={() => load(selectedPlayer.id)}
+            disabled={loading}
+            style={{ padding: '0.25rem 0.65rem', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: '#a0a0c0', cursor: loading ? 'default' : 'pointer', fontSize: '0.78rem' }}
+          >
+            {loading ? '…' : 'Refresh'}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ padding: '0.5rem 0.75rem', borderRadius: 6, marginBottom: '0.75rem', fontSize: '0.85rem', background: 'rgba(255,107,107,0.12)', color: '#ff6b6b', border: '1px solid rgba(255,107,107,0.3)' }}>
+          {error}
+        </div>
+      )}
+
+      {!selectedPlayer && (
+        <div style={{ color: '#555', padding: '2rem', textAlign: 'center', fontSize: '0.85rem' }}>
+          Select a player above to view their deposit ledger
+        </div>
+      )}
+
+      {selectedPlayer && !loading && entries.length === 0 && !error && (
+        <div style={{ color: '#666', padding: '1.5rem', textAlign: 'center', fontSize: '0.85rem' }}>
+          No CRYPTO_DEPOSIT ledger entries found for this player
+        </div>
+      )}
+
+      {selectedPlayer && loading && (
+        <div style={{ color: '#666', padding: '1rem', fontSize: '0.85rem' }}>Loading…</div>
+      )}
+
+      {entries.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                {['Date', 'Amount', 'Currency', 'TX Hash', 'Reason'].map((h) => (
+                  <th key={h} style={{ padding: '0.5rem 0.6rem', textAlign: 'left', color: '#a0a0c0', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ padding: '0.45rem 0.6rem', color: '#888', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                    {new Date(e.createdAt).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '0.45rem 0.6rem', fontWeight: 700, color: '#34d399' }}>
+                    +{Number(e.delta).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '0.45rem 0.6rem' }}>
+                    <span style={{ color: '#a78bfa', fontFamily: 'monospace', fontSize: '0.8rem' }}>{e.currencyId}</span>
+                  </td>
+                  <td style={{ padding: '0.45rem 0.6rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {e.txHash ? (
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa' }} title={e.txHash}>
+                        {e.txHash.slice(0, 16)}…{e.txHash.slice(-8)}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#444' }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '0.45rem 0.6rem', color: '#94a3b8', fontSize: '0.78rem' }}>
+                    {e.reason || <span style={{ color: '#444' }}>—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#555' }}>
+            {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type CryptoTab = 'config' | 'withdrawals' | 'unresolved' | 'ledger';
 
 const TAB_LABELS: Record<CryptoTab, string> = {
   config: 'Config & Balance',
   withdrawals: 'Withdrawals Queue',
   unresolved: 'Unresolved Deposits',
+  ledger: 'Player Ledger',
 };
 
 export function CryptoAdminPage() {
@@ -1280,6 +1405,7 @@ export function CryptoAdminPage() {
       {tab === 'config' && <ConfigTab />}
       {tab === 'withdrawals' && <WithdrawalsTab />}
       {tab === 'unresolved' && <UnresolvedDepositsTab />}
+      {tab === 'ledger' && <PlayerDepositLedgerTab />}
     </div>
   );
 }
