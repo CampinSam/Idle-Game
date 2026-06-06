@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildActiveEffectPatches } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
+import { formatGrantSummary } from './grant-label.util';
 
 @Injectable()
 export class ClaimQuestRewardHandler implements CommandHandler {
@@ -29,10 +30,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.type}`)
-      .join(', ');
-
+    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
     const questBodyText = rewardSummary || 'Rewards collected.';
 
     return {

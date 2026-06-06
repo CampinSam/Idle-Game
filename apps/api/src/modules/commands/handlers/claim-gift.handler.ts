@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { CommandHandler, CommandContext, CommandHandlerResult } from '../command.types';
 import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch, buildPlayerPatch } from '../patch-builder';
 import { GiftService } from '../../gift/gift.service';
+import { formatGrantSummary } from './grant-label.util';
 
 @Injectable()
 export class ClaimGiftHandler implements CommandHandler {
@@ -28,9 +29,7 @@ export class ClaimGiftHandler implements CommandHandler {
 
     const snapshot = (gift.snapshot as any) ?? {};
     const presentation = snapshot.presentation ?? {};
-    const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? g.qty ?? 1}x ${g.key ?? g.currencyId ?? g.itemDefId ?? g.definitionId ?? g.type}`)
-      .join(', ');
+    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
     const bodyText = rewardSummary || 'Your rewards have been added.';
 
     return {

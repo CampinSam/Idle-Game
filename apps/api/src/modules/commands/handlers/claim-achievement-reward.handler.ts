@@ -11,6 +11,7 @@ import {
   buildActiveEffectPatches,
 } from '../patch-builder';
 import { QuestService } from '../../quest/quest.service';
+import { formatGrantSummary } from './grant-label.util';
 
 /**
  * ClaimAchievementReward — thin alias over ClaimQuestReward.
@@ -51,10 +52,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
       await buildActiveEffectPatches(pb, ctx.tx, ctx.userId);
     }
 
-    const rewardSummary = grants
-      .map((g: any) => `${g.amount ?? 1}x ${g.key ?? g.type}`)
-      .join(', ');
-
+    const rewardSummary = await formatGrantSummary(ctx.tx, grants);
     const bodyText = rewardSummary
       ? `Rewards: ${rewardSummary}`
       : 'Achievement claimed.';
