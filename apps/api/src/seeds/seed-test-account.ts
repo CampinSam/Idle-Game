@@ -93,27 +93,42 @@ async function grantStackableItem(
   targetQty: number,
   maxStack: number | null,
 ): Promise<{ granted: number; skipped: boolean }> {
-  const existing = await (prisma as any).itemInstance.findFirst({
+  // Collect ALL existing stacks so we handle items where maxStack < targetQty
+  const allInstances: Array<{ id: string; quantity: number }> = await (prisma as any).itemInstance.findMany({
     where: { userId, definitionId: itemDefId },
   });
-  const currentQty: number = existing?.quantity ?? 0;
-  if (currentQty >= targetQty) return { granted: 0, skipped: true };
+  const totalCurrentQty = allInstances.reduce((sum, inst) => sum + inst.quantity, 0);
+  if (totalCurrentQty >= targetQty) return { granted: 0, skipped: true };
 
-  const rawNewQty = targetQty;
-  const cappedNewQty = maxStack !== null ? Math.min(rawNewQty, maxStack) : rawNewQty;
-  const delta = cappedNewQty - currentQty;
-  if (delta <= 0) return { granted: 0, skipped: true };
+  const delta = targetQty - totalCurrentQty;
+  let remaining = delta;
+
+  // Phase 1: top up existing stacks that aren't full
+  const stackUpdates: Array<{ id: string; newQty: number }> = [];
+  for (const inst of allInstances) {
+    if (remaining <= 0) break;
+    const capacity = maxStack !== null ? maxStack - inst.quantity : Infinity;
+    if (capacity > 0) {
+      const add = Math.min(remaining, capacity);
+      stackUpdates.push({ id: inst.id, newQty: inst.quantity + add });
+      remaining -= add;
+    }
+  }
+
+  // Phase 2: create new stacks for any remainder
+  const newStackQtys: number[] = [];
+  while (remaining > 0) {
+    const stackQty = maxStack !== null ? Math.min(remaining, maxStack) : remaining;
+    newStackQtys.push(stackQty);
+    remaining -= stackQty;
+  }
 
   await (prisma as any).$transaction(async (tx: any) => {
-    if (existing) {
-      await tx.itemInstance.update({
-        where: { id: existing.id },
-        data: { quantity: cappedNewQty },
-      });
-    } else {
-      await tx.itemInstance.create({
-        data: { userId, definitionId: itemDefId, quantity: cappedNewQty },
-      });
+    for (const u of stackUpdates) {
+      await tx.itemInstance.update({ where: { id: u.id }, data: { quantity: u.newQty } });
+    }
+    for (const qty of newStackQtys) {
+      await tx.itemInstance.create({ data: { userId, definitionId: itemDefId, quantity: qty } });
     }
     await tx.itemLedger.create({
       data: {
@@ -183,22 +198,23 @@ async function main() {
     const pd = POWER_DEFS[i];
     const assetId = `TEST:seed_power_${pd.powerDefId}`;
 
-    const existing = await (prisma as any).entity.findUnique({ where: { nftAssetId: assetId } });
-    if (existing) {
-      console.log(`[powered]  ⏭  ${pd.powerDefId} — entity already exists`);
-      poweredSkipped++;
-      continue;
-    }
-
     const defId = i % 2 === 0 ? 'derp_bird' : 'perp';
     const displayName = POWERED_ENTITY_NAMES[pd.powerDefId] ?? pd.name;
-    const entityData = await generateEntityData(prisma as any, userId, defId, displayName);
 
-    await (prisma as any).entity.create({
-      data: { ...entityData, nftAssetId: assetId },
-    });
+    const existing = await (prisma as any).entity.findUnique({ where: { nftAssetId: assetId } });
+    if (existing) {
+      console.log(`[powered]  ⏭  ${pd.powerDefId} — entity already exists, reconciling uniques...`);
+      poweredSkipped++;
+    } else {
+      const entityData = await generateEntityData(prisma as any, userId, defId, displayName);
+      await (prisma as any).entity.create({
+        data: { ...entityData, nftAssetId: assetId },
+      });
+      poweredCreated++;
+    }
 
-    // Merge test asset ID into entity definition's rules.uniques (non-destructive)
+    // Always reconcile: ensure this asset ID is present in entityDefinition.rules.uniques
+    // (runs whether entity was just created or already existed from a prior run)
     const defRecord = await (prisma as any).entityDefinition.findUnique({
       where: { id: defId },
       select: { rules: true },
@@ -225,9 +241,8 @@ async function main() {
     });
 
     console.log(`[powered]  ✓ ${displayName} [${defId}] — ${pd.name} (scope: ${pd.scope})`);
-    poweredCreated++;
   }
-  console.log(`[powered]  ${poweredCreated} created, ${poweredSkipped} skipped\n`);
+  console.log(`[powered]  ${poweredCreated} created, ${poweredSkipped} reconciled (already existed)\n`);
 
   // ── 4. Lootbox item definitions ────────────────────────────────────────────
   console.log('[lootboxes] Upserting lootbox item definitions:');
