@@ -187,6 +187,13 @@ async function main() {
   let poweredCreated = 0;
   let poweredSkipped = 0;
 
+  const REDUCTION_POWER_DEFS = new Set([
+    'mission_duration_reduction',
+    'crafting_duration_reduction',
+    'building_build_duration_reduction',
+    'building_upgrade_duration_reduction',
+  ]);
+
   for (let i = 0; i < POWER_DEFS.length; i++) {
     const pd = POWER_DEFS[i];
     // Include scope in the asset ID so entries with the same powerDefId but
@@ -219,6 +226,7 @@ async function main() {
     });
     const currentRules = (defRecord?.rules as Record<string, unknown>) ?? {};
     const currentUniques = (currentRules.uniques as Record<string, unknown>) ?? {};
+    const powerValue = REDUCTION_POWER_DEFS.has(pd.powerDefId) ? -10 : 10;
     const mergedUniques = {
       ...currentUniques,
       [assetId]: {
@@ -227,7 +235,7 @@ async function main() {
           name: pd.name,
           key: pd.key,
           scope: pd.scope,   // explicit override — never rely on PowerDef.defaultScope
-          value: 10,
+          value: powerValue,
           valueMode: 'percent_add',
           durationMinutes: 60,
           dailyLimit: 1,

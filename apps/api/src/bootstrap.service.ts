@@ -717,7 +717,7 @@ export class BootstrapService implements OnModuleInit {
         durationModel: 'timed',
         stackingRule: 'refresh',
         targetType: 'player',
-        value: 20,
+        value: -20,
         durationSec: 3600,
       },
       {
@@ -730,7 +730,7 @@ export class BootstrapService implements OnModuleInit {
         durationModel: 'timed',
         stackingRule: 'refresh',
         targetType: 'player',
-        value: 20,
+        value: -20,
         durationSec: 3600,
       },
       {
@@ -743,7 +743,7 @@ export class BootstrapService implements OnModuleInit {
         durationModel: 'timed',
         stackingRule: 'refresh',
         targetType: 'player',
-        value: 15,
+        value: -15,
         durationSec: 3600,
       },
       {
@@ -756,7 +756,7 @@ export class BootstrapService implements OnModuleInit {
         durationModel: 'timed',
         stackingRule: 'refresh',
         targetType: 'player',
-        value: 15,
+        value: -15,
         durationSec: 3600,
       },
       {

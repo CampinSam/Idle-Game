@@ -308,6 +308,17 @@ export async function seedDefinitions(prisma: any) {
 const NFT_POWER_VALUES = [5, 7, 8, 9, 10, 11, 12, 13, 15] as const;
 
 /**
+ * Power defs whose value must be negative so the formula
+ * `duration * (1 + percentAdd / 100)` correctly shortens (not extends) the timer.
+ */
+const DURATION_REDUCTION_POWER_DEFS = new Set([
+  'mission_duration_reduction',
+  'crafting_duration_reduction',
+  'building_build_duration_reduction',
+  'building_upgrade_duration_reduction',
+]);
+
+/**
  * All canonical power def blueprints. Order is stable so that the cycling
  * assignment in buildUniquesMap is deterministic across boots.
  */
@@ -327,13 +338,16 @@ const NFT_POWER_DEFS = [
  * Build a uniques map for NFT asset IDs using the PowerRef shape.
  * Powers are assigned deterministically by cycling through NFT_POWER_DEFS
  * so that each asset ID gets a distinct power type across the collection.
+ * Duration-reduction powers use a negative value so the timer formula
+ * `duration * (1 + percentAdd / 100)` correctly shrinks the timer.
  */
 function buildUniquesMap(assetIds: string[]): Record<string, UniqueLocationEntry> {
   const uniques: Record<string, UniqueLocationEntry> = {};
   for (let i = 0; i < assetIds.length; i++) {
     const id = assetIds[i];
-    const value = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
     const powerDef = NFT_POWER_DEFS[i % NFT_POWER_DEFS.length];
+    const absValue = NFT_POWER_VALUES[i % NFT_POWER_VALUES.length];
+    const value = DURATION_REDUCTION_POWER_DEFS.has(powerDef.powerDefId) ? -absValue : absValue;
     uniques[id] = {
       powers: [{
         powerDefId: powerDef.powerDefId,
@@ -419,7 +433,7 @@ async function seedPowerDefs(prisma: any) {
       description: 'Reduces active mission duration for the triggering player.',
       powerType: 'mission_duration_reduction',
       effectDefId: 'eff_nft_mission_timer_speed',
-      defaultValue: 20,
+      defaultValue: -20,
       defaultValueMode: 'percent_add',
       defaultDurationMinutes: 60,
       defaultDailyLimit: 1,
@@ -433,7 +447,7 @@ async function seedPowerDefs(prisma: any) {
       description: 'Reduces active crafting job duration for the triggering player.',
       powerType: 'crafting_duration_reduction',
       effectDefId: 'eff_nft_crafting_timer_speed',
-      defaultValue: 20,
+      defaultValue: -20,
       defaultValueMode: 'percent_add',
       defaultDurationMinutes: 60,
       defaultDailyLimit: 1,
@@ -447,7 +461,7 @@ async function seedPowerDefs(prisma: any) {
       description: 'Reduces building construction time for the triggering player.',
       powerType: 'building_build_duration_reduction',
       effectDefId: 'eff_nft_building_build_timer_speed',
-      defaultValue: 15,
+      defaultValue: -15,
       defaultValueMode: 'percent_add',
       defaultDurationMinutes: 60,
       defaultDailyLimit: 1,
@@ -461,7 +475,7 @@ async function seedPowerDefs(prisma: any) {
       description: 'Reduces building upgrade time for the triggering player.',
       powerType: 'building_upgrade_duration_reduction',
       effectDefId: 'eff_nft_building_upgrade_timer_speed',
-      defaultValue: 15,
+      defaultValue: -15,
       defaultValueMode: 'percent_add',
       defaultDurationMinutes: 60,
       defaultDailyLimit: 1,
