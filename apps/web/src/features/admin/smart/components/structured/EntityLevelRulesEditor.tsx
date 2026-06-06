@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import CollapsibleObject from '../CollapsibleObject';
+import UniquesEditor from './UniquesEditor';
+import type { UniquesMap } from './UniquesEditor';
 import RefSelect from '../RefSelect';
 import TimerEditor from './TimerEditor';
 import ResourceEntryListEditor, { resourceEntryListErrorCount, resourceEntryListErrorMessages } from './ResourceEntryListEditor';
@@ -951,13 +953,12 @@ export default function EntityLevelRulesEditor({ value, onChange, mode }: Props)
           <div style={{ fontSize: 11, color: '#a78bfa', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
             Unique NFT Powers (uniques)
           </div>
-          <CollapsibleObject
-            value={safe.uniques ?? {}}
+          <UniquesEditor
+            value={(safe.uniques ?? {}) as UniquesMap}
             onChange={v => {
-              if (!v || Object.keys(v as object).length === 0) remove('uniques');
+              if (!v || Object.keys(v).length === 0) remove('uniques');
               else set('uniques', v);
             }}
-            path="uniques"
           />
         </div>
       )}

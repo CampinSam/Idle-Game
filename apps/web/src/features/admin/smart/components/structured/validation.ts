@@ -324,19 +324,33 @@ export function masteryErrorCount(value: any): number {
 }
 
 export interface PowerErrors {
+  name?: string;
   powerType?: string;
   value?: string;
   durationMinutes?: string;
   dailyLimit?: string;
 }
 
+/**
+ * Validates a PowerRef (new format) or legacy Power object.
+ * - PowerDef-backed (powerDefId set): only `name` is required.
+ * - Inline (no powerDefId): `name`, `powerType`, `value`, `durationMinutes ≥ 1`,
+ *   and `dailyLimit ≥ 1` are all required.
+ */
 export function validatePower(p: any): PowerErrors {
   const errs: PowerErrors = {};
-  if (!p || typeof p !== 'object') return { powerType: 'invalid power' };
-  if (!p.powerType) errs.powerType = 'powerType required';
-  if (isMissingNumber(p.value)) {
-    errs.value = 'value required';
+  if (!p || typeof p !== 'object') return { name: 'invalid power' };
+
+  if (!p.name || !String(p.name).trim()) errs.name = 'name required';
+
+  if (p.powerDefId) {
+    // PowerDef-backed: only name is required (other fields are optional overrides)
+    return errs;
   }
+
+  // Inline power: all core fields required
+  if (!p.powerType) errs.powerType = 'powerType required';
+  if (isMissingNumber(p.value)) errs.value = 'value required';
   if (!p.durationMinutes || Number(p.durationMinutes) < 1) {
     errs.durationMinutes = 'durationMinutes must be ≥ 1';
   }
@@ -356,10 +370,8 @@ export function uniquesErrorCount(value: any): number {
     if (!Array.isArray(powers)) { n++; continue; }
     for (const p of powers) {
       if (!p || typeof p !== 'object') { n++; continue; }
-      if (!p.powerType) n++;
-      if (p.value === undefined || p.value === null || isNaN(Number(p.value))) n++;
-      if (!p.durationMinutes || Number(p.durationMinutes) < 1) n++;
-      if (!p.dailyLimit || Number(p.dailyLimit) < 1) n++;
+      const errs = validatePower(p);
+      n += Object.keys(errs).length;
     }
   }
   return n;
@@ -448,10 +460,10 @@ function uniquesMessages(value: any, fieldName: string): string[] {
         msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: invalid power`);
         return;
       }
-      if (!p.powerType) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: powerType required`);
-      if (p.value === undefined || p.value === null || isNaN(Number(p.value))) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: value required`);
-      if (!p.durationMinutes || Number(p.durationMinutes) < 1) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: durationMinutes must be ≥ 1`);
-      if (!p.dailyLimit || Number(p.dailyLimit) < 1) msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: dailyLimit must be ≥ 1`);
+      const errs = validatePower(p);
+      Object.values(errs).forEach(msg => {
+        msgs.push(`${fieldName}.${keyLabel}.powers[${i}]: ${msg}`);
+      });
     });
   }
   return msgs;
