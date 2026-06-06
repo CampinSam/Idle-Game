@@ -128,11 +128,24 @@ export class UseConsumableHandler implements CommandHandler {
         throw new BadRequestException('INJURY_RECOVERY_REDUCTION effects must have durationModel: instant');
       }
 
+      if (
+        (
+          def.category === EffectCategory.MISSION_DURATION_REDUCTION ||
+          def.category === EffectCategory.CRAFTING_DURATION_REDUCTION ||
+          def.category === EffectCategory.BUILDING_BUILD_DURATION_REDUCTION ||
+          def.category === EffectCategory.BUILDING_UPGRADE_DURATION_REDUCTION ||
+          def.category === EffectCategory.DUSTING_DURATION_REDUCTION
+        ) && def.durationModel !== EffectDurationModel.INSTANT
+      ) {
+        throw new BadRequestException(`${def.category} effects must have durationModel: instant`);
+      }
+
       if (def.durationModel === EffectDurationModel.INSTANT) {
         const mergedValue = effectSpec.effectOverrides?.value ?? def.value ?? 0;
         const mergedStats = effectSpec.effectOverrides?.stats ?? def.stats ?? null;
         const mergedResourceId = effectSpec.effectOverrides?.resourceId ?? (def as any).resourceId ?? null;
-        await this.applyInstantEffect(ctx, { ...def, value: mergedValue, stats: mergedStats as any, resourceId: mergedResourceId, valueMode: def.valueMode }, resolvedTargetId, effectTargetType);
+        const updatedJob = await this.applyInstantEffect(ctx, { ...def, value: mergedValue, stats: mergedStats as any, resourceId: mergedResourceId, valueMode: def.valueMode }, resolvedTargetId, effectTargetType);
+        if (updatedJob) pb.upsertJob(updatedJob);
       } else {
         const result = await this.effectService.applyEffect(
           {
@@ -232,7 +245,7 @@ export class UseConsumableHandler implements CommandHandler {
     def: { id: string; name: string; category: string; value: number | null; stats: Record<string, number> | null; resourceId?: string; valueMode?: string },
     targetId: string,
     targetType: EffectTargetType,
-  ): Promise<void> {
+  ): Promise<any | null> {
     const value = def.value ?? 0;
     const stats: Record<string, number> = (def.stats && typeof def.stats === 'object') ? def.stats : {};
 
@@ -327,8 +340,130 @@ export class UseConsumableHandler implements CommandHandler {
         break;
       }
 
+      case EffectCategory.MISSION_DURATION_REDUCTION: {
+        if (targetType !== EffectTargetType.PLAYER) {
+          throw new BadRequestException('MISSION_DURATION_REDUCTION requires a player target');
+        }
+        // Targets the earliest-ending active mission for this player.
+        const job = await txDb(ctx.tx).job.findFirst({
+          where: { userId: ctx.userId, type: 'MissionJob', status: 'active' },
+          orderBy: { readyAtTick: 'asc' },
+        });
+        if (!job || job.readyAtTick == null) {
+          throw new BadRequestException('No active mission to reduce');
+        }
+        return this.applyJobDurationDelta(ctx, job, def.valueMode, value);
+      }
+
+      case EffectCategory.CRAFTING_DURATION_REDUCTION: {
+        if (targetType !== EffectTargetType.PLAYER) {
+          throw new BadRequestException('CRAFTING_DURATION_REDUCTION requires a player target');
+        }
+        const job = await txDb(ctx.tx).job.findFirst({
+          where: { userId: ctx.userId, type: 'CraftingJob', status: 'active' },
+          orderBy: { readyAtTick: 'asc' },
+        });
+        if (!job || job.readyAtTick == null) {
+          throw new BadRequestException('No active crafting job to reduce');
+        }
+        return this.applyJobDurationDelta(ctx, job, def.valueMode, value);
+      }
+
+      case EffectCategory.BUILDING_BUILD_DURATION_REDUCTION: {
+        if (targetType !== EffectTargetType.PLAYER) {
+          throw new BadRequestException('BUILDING_BUILD_DURATION_REDUCTION requires a player target');
+        }
+        // Build jobs store no `upgradeToLevel` in data; upgrade jobs do.
+        const buildJobs = await txDb(ctx.tx).job.findMany({
+          where: { userId: ctx.userId, type: 'BuildingJob', status: 'active' },
+          orderBy: { readyAtTick: 'asc' },
+        });
+        const buildJob = buildJobs.find((j: any) => !(j.data as any)?.upgradeToLevel);
+        if (!buildJob || buildJob.readyAtTick == null) {
+          throw new BadRequestException('No active building construction to reduce');
+        }
+        return this.applyJobDurationDelta(ctx, buildJob, def.valueMode, value);
+      }
+
+      case EffectCategory.BUILDING_UPGRADE_DURATION_REDUCTION: {
+        if (targetType !== EffectTargetType.PLAYER) {
+          throw new BadRequestException('BUILDING_UPGRADE_DURATION_REDUCTION requires a player target');
+        }
+        const upgradeJobs = await txDb(ctx.tx).job.findMany({
+          where: { userId: ctx.userId, type: 'BuildingJob', status: 'active' },
+          orderBy: { readyAtTick: 'asc' },
+        });
+        const upgradeJob = upgradeJobs.find((j: any) => !!(j.data as any)?.upgradeToLevel);
+        if (!upgradeJob || upgradeJob.readyAtTick == null) {
+          throw new BadRequestException('No active building upgrade to reduce');
+        }
+        return this.applyJobDurationDelta(ctx, upgradeJob, def.valueMode, value);
+      }
+
+      case EffectCategory.DUSTING_DURATION_REDUCTION: {
+        if (targetType !== EffectTargetType.PLAYER) {
+          throw new BadRequestException('DUSTING_DURATION_REDUCTION requires a player target');
+        }
+        const job = await txDb(ctx.tx).job.findFirst({
+          where: { userId: ctx.userId, type: 'DustingJob', status: 'active' },
+          orderBy: { readyAtTick: 'asc' },
+        });
+        if (!job || job.readyAtTick == null) {
+          throw new BadRequestException('No active dusting job to reduce');
+        }
+        return this.applyJobDurationDelta(ctx, job, def.valueMode, value);
+      }
+
+      // TODO: Requires tick-rate manipulation per job (tier 3 — deferred)
+      case EffectCategory.MISSION_TIMER_SPEED_BOOST:
+      case EffectCategory.CRAFTING_TIMER_SPEED_BOOST:
+      case EffectCategory.BUILDING_BUILD_TIMER_SPEED_BOOST:
+      case EffectCategory.BUILDING_UPGRADE_TIMER_SPEED_BOOST:
+      case EffectCategory.DUSTING_TIMER_SPEED_BOOST:
+        break;
+
       default:
         break;
     }
+    return null;
+  }
+
+  /**
+   * Shared helper for all job remaining-duration reduction categories.
+   * Reduces `readyAtTick` (and the mirrored `timer.durationTicks` in the JSON)
+   * by `delta` ticks so the tick processor and UI countdown both stay accurate.
+   * Floors at `currentTick` so the tick processor picks the job up immediately
+   * on the next cycle rather than completing it inline (reward processing stays
+   * in the normal tick path).
+   */
+  private async applyJobDurationDelta(
+    ctx: CommandContext,
+    job: any,
+    valueMode: string | undefined,
+    value: number,
+  ): Promise<any> {
+    const currentTick = await this.tickService.getCurrentTick();
+    const remaining = (job.readyAtTick as number) - Math.floor(currentTick);
+    if (remaining <= 0) {
+      throw new BadRequestException('Job is already completing — no active timer to reduce');
+    }
+    const absValue = Math.abs(value);
+    let delta: number;
+    if (valueMode === EffectValueMode.PERCENT_ADD) {
+      delta = Math.floor((absValue / 100) * remaining);
+    } else {
+      // FLAT_ADD (default): value is minutes, 1 min = 60 ticks
+      delta = absValue * 60;
+    }
+    const timerData = job.timer as any;
+    const newReadyAtTick = Math.max(Math.floor(currentTick), (job.readyAtTick as number) - delta);
+    const newDurationTicks = Math.max(0, (timerData.durationTicks ?? 0) - delta);
+    return txDb(ctx.tx).job.update({
+      where: { id: job.id },
+      data: {
+        readyAtTick: newReadyAtTick,
+        timer: { ...timerData, durationTicks: newDurationTicks },
+      },
+    });
   }
 }

@@ -357,5 +357,130 @@
     "equipData": null,
     "passiveEffects": null,
     "consumableData": null
+  },
+  {
+    "id": "consumable_mission_rush",
+    "type": "CONSUMABLE",
+    "rarity": "UNCOMMON",
+    "name": "Mission Rush",
+    "description": "Instantly cuts 20% of the remaining time from your active mission.",
+    "iconKey": "consumable_mission_skip",
+    "uiColor": null,
+    "category": "ENHANCEMENT",
+    "groups": ["skip", "mission"],
+    "tags": ["timer", "skip", "mission"],
+    "stackable": true,
+    "maxStack": 20,
+    "uniqueInstance": false,
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": {
+      "effects": [
+        {
+          "effectDefId": "eff_consumable_mission_duration_reduction",
+          "targetType": "player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "consumable_crafting_rush",
+    "type": "CONSUMABLE",
+    "rarity": "UNCOMMON",
+    "name": "Crafting Rush",
+    "description": "Instantly cuts 20% of the remaining time from your active crafting job.",
+    "iconKey": "consumable_crafting_skip",
+    "uiColor": null,
+    "category": "ENHANCEMENT",
+    "groups": ["skip", "crafting"],
+    "tags": ["timer", "skip", "crafting"],
+    "stackable": true,
+    "maxStack": 20,
+    "uniqueInstance": false,
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": {
+      "effects": [
+        {
+          "effectDefId": "eff_consumable_crafting_duration_reduction",
+          "targetType": "player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "consumable_building_build_rush",
+    "type": "CONSUMABLE",
+    "rarity": "UNCOMMON",
+    "name": "Builder's Rush",
+    "description": "Instantly cuts 20% of the remaining time from your active building construction.",
+    "iconKey": "consumable_building_build_skip",
+    "uiColor": null,
+    "category": "ENHANCEMENT",
+    "groups": ["skip", "building"],
+    "tags": ["timer", "skip", "building"],
+    "stackable": true,
+    "maxStack": 20,
+    "uniqueInstance": false,
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": {
+      "effects": [
+        {
+          "effectDefId": "eff_consumable_building_build_duration_reduction",
+          "targetType": "player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "consumable_building_upgrade_rush",
+    "type": "CONSUMABLE",
+    "rarity": "UNCOMMON",
+    "name": "Upgrade Rush",
+    "description": "Instantly cuts 20% of the remaining time from your active building upgrade.",
+    "iconKey": "consumable_building_upgrade_skip",
+    "uiColor": null,
+    "category": "ENHANCEMENT",
+    "groups": ["skip", "building"],
+    "tags": ["timer", "skip", "upgrade"],
+    "stackable": true,
+    "maxStack": 20,
+    "uniqueInstance": false,
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": {
+      "effects": [
+        {
+          "effectDefId": "eff_consumable_building_upgrade_duration_reduction",
+          "targetType": "player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "consumable_dusting_rush",
+    "type": "CONSUMABLE",
+    "rarity": "UNCOMMON",
+    "name": "Dusting Rush",
+    "description": "Instantly cuts 20% of the remaining time from your active dusting job.",
+    "iconKey": "consumable_dusting_skip",
+    "uiColor": null,
+    "category": "ENHANCEMENT",
+    "groups": ["skip", "dusting"],
+    "tags": ["timer", "skip", "dusting"],
+    "stackable": true,
+    "maxStack": 20,
+    "uniqueInstance": false,
+    "equipData": null,
+    "passiveEffects": null,
+    "consumableData": {
+      "effects": [
+        {
+          "effectDefId": "eff_consumable_dusting_duration_reduction",
+          "targetType": "player"
+        }
+      ]
+    }
   }
 ]

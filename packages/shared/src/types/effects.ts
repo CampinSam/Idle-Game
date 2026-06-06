@@ -25,6 +25,17 @@ export enum EffectCategory {
   COOLDOWN_REDUCTION = 'cooldown_reduction',
   LEVEL_UP_BONUS = 'level_up_bonus',
   INJURY_RECOVERY_REDUCTION = 'injury_recovery_reduction',
+  DUSTING_TIMER_SPEED = 'dusting_timer_speed',
+  MISSION_DURATION_REDUCTION = 'mission_duration_reduction',
+  CRAFTING_DURATION_REDUCTION = 'crafting_duration_reduction',
+  BUILDING_BUILD_DURATION_REDUCTION = 'building_build_duration_reduction',
+  BUILDING_UPGRADE_DURATION_REDUCTION = 'building_upgrade_duration_reduction',
+  DUSTING_DURATION_REDUCTION = 'dusting_duration_reduction',
+  MISSION_TIMER_SPEED_BOOST = 'mission_timer_speed_boost',
+  CRAFTING_TIMER_SPEED_BOOST = 'crafting_timer_speed_boost',
+  BUILDING_BUILD_TIMER_SPEED_BOOST = 'building_build_timer_speed_boost',
+  BUILDING_UPGRADE_TIMER_SPEED_BOOST = 'building_upgrade_timer_speed_boost',
+  DUSTING_TIMER_SPEED_BOOST = 'dusting_timer_speed_boost',
 }
 
 export enum EffectValueMode {

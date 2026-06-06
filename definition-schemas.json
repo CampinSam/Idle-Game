@@ -681,6 +681,57 @@
         }
       }
     },
+    "JobDurationReductionEffectDef": {
+      "type": "object",
+      "description": "EffectDef shape for the five remaining-duration reduction categories:\n  - `mission_duration_reduction`\n  - `crafting_duration_reduction`\n  - `building_build_duration_reduction`\n  - `building_upgrade_duration_reduction`\n  - `dusting_duration_reduction`\n\ndurationModel MUST be `instant`. targetType MUST be `player`. Reduces the remaining time on the earliest-ending active job of the matching type. Both `readyAtTick` and `timer.durationTicks` on the Job row are updated atomically so the tick-processor and UI countdown stay in sync.\n\nBuilding sub-type selection:\n  - `building_build_duration_reduction` targets BuildingJobs where `data.upgradeToLevel` is absent/null (construction jobs).\n  - `building_upgrade_duration_reduction` targets BuildingJobs where `data.upgradeToLevel` is set (upgrade jobs).\n\nIf no active job of the required type exists a 400 error is returned.\n\nSupported valueModes:\n  - `percent_add` (recommended): `value` is treated as a positive percentage (0–100). Delta = `floor((value / 100) * remaining)` ticks.\n  - `flat_add`: `value` is interpreted as minutes. Delta = `value * 60` ticks.\n\nClamping: `newReadyAtTick` is floored at `currentTick` so the tick processor can pick up an 'already past' job on its next cycle without the consumable handler completing the job inline.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique effect def ID, e.g. eff_consumable_mission_duration_reduction." },
+        "name": { "type": "string", "description": "Display name shown in the consumable notification." },
+        "category": {
+          "type": "string",
+          "enum": [
+            "mission_duration_reduction",
+            "crafting_duration_reduction",
+            "building_build_duration_reduction",
+            "building_upgrade_duration_reduction",
+            "dusting_duration_reduction"
+          ]
+        },
+        "durationModel": { "type": "string", "const": "instant", "description": "Must be `instant`." },
+        "targetType": { "type": "string", "const": "player", "description": "Must be `player` — the job is looked up by userId." },
+        "valueMode": {
+          "type": "string",
+          "enum": ["flat_add", "percent_add"],
+          "description": "percent_add: value is % of remaining ticks to remove. flat_add: value is minutes (× 60 ticks)."
+        },
+        "value": {
+          "type": "number",
+          "description": "Magnitude of the reduction. Always interpreted as a positive (absolute) quantity — sign is ignored. For flat_add: minutes. For percent_add: 0–100."
+        }
+      }
+    },
+    "JobTimerSpeedBoostEffectDef": {
+      "type": "object",
+      "description": "Stub EffectDef shape for the five per-job timer-speed-boost categories (tier 3 — deferred):\n  - `mission_timer_speed_boost`\n  - `crafting_timer_speed_boost`\n  - `building_build_timer_speed_boost`\n  - `building_upgrade_timer_speed_boost`\n  - `dusting_timer_speed_boost`\n\nThese categories are reserved for per-job tick-rate manipulation. The consumable handler contains no-op `case` branches with a TODO comment. Do not wire consumable items to these EffectDefs until the tick-rate injection design is implemented.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique effect def ID, e.g. eff_mission_timer_speed_boost." },
+        "name": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "mission_timer_speed_boost",
+            "crafting_timer_speed_boost",
+            "building_build_timer_speed_boost",
+            "building_upgrade_timer_speed_boost",
+            "dusting_timer_speed_boost"
+          ]
+        },
+        "durationModel": { "type": "string", "enum": ["timed", "instant"] },
+        "targetType": { "type": "string", "const": "player" },
+        "valueMode": { "type": "string", "enum": ["flat_add", "percent_add"] },
+        "value": { "type": "number" }
+      }
+    },
     "RecipeTierBlock": {
       "description": "Reward block for a single crafting quality tier. Used as values in RecipeDef.tiers.",
       "type": "object",
