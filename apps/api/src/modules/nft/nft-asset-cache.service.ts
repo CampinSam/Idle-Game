@@ -283,6 +283,7 @@ export class NftAssetCacheService {
   private async runOwnershipRefresh(collection: any, assets: any[]): Promise<void> {
     let updated = 0;
     let failed = 0;
+    const isLocationBacked = !!collection.locationDefinitionId;
 
     for (let i = 0; i < assets.length; i++) {
       const asset = assets[i];
@@ -296,6 +297,31 @@ export class NftAssetCacheService {
           where: { nftAssetId: asset.nftAssetId },
           data: { ownerAddress, lastSyncedAt: new Date() },
         });
+
+        if (isLocationBacked) {
+          // Resolve on-chain address to an in-game userId via the linked wallets table.
+          const ownerUserId = ownerAddress
+            ? await (this.prisma as any).linkedWallet
+                .findFirst({ where: { address: ownerAddress }, select: { userId: true } })
+                .then((w: any) => w?.userId ?? null)
+            : null;
+
+          const locationInstance = await (this.prisma as any).locationInstance.findFirst({
+            where: { nftAssetId: asset.nftAssetId },
+            select: { id: true, ownerUserId: true },
+          });
+
+          if (locationInstance && locationInstance.ownerUserId !== ownerUserId) {
+            await (this.prisma as any).locationInstance.update({
+              where: { id: locationInstance.id },
+              data: { ownerUserId },
+            });
+            this.logger.log(
+              `Transferred location ${locationInstance.id} ownership: ${locationInstance.ownerUserId ?? 'none'} → ${ownerUserId ?? 'none'} (asset: ${asset.nftAssetId})`,
+            );
+          }
+        }
+
         updated++;
       } catch (err) {
         this.logger.error(`refreshOwnership failed for ${asset.nftAssetId}: ${err}`);

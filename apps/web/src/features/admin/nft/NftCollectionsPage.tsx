@@ -448,21 +448,19 @@ export default function NftCollectionsPage() {
                     </button>
                   </div>
 
-                  {isEntityBacked && (
-                    <div style={{ flex: '0 0 auto' }}>
-                      <div style={{ fontSize: 11, color: '#8888aa', marginBottom: 4 }}>Ownership: sync holders</div>
-                      <button
-                        className="av2-btn-ghost"
-                        onClick={() => handleRefreshOwnership(col.id)}
-                        disabled={st.refreshLoading || st.refreshStatus?.status === 'running' || !hasCache}
-                        title={!hasCache ? 'Import cache first' : undefined}
-                      >
-                        {st.refreshLoading || st.refreshStatus?.status === 'running'
-                          ? 'Refreshing…'
-                          : 'Refresh Ownership'}
-                      </button>
-                    </div>
-                  )}
+                  <div style={{ flex: '0 0 auto' }}>
+                    <div style={{ fontSize: 11, color: '#8888aa', marginBottom: 4 }}>Ownership: sync holders</div>
+                    <button
+                      className="av2-btn-ghost"
+                      onClick={() => handleRefreshOwnership(col.id)}
+                      disabled={st.refreshLoading || st.refreshStatus?.status === 'running' || !hasCache}
+                      title={!hasCache ? 'Import cache first' : undefined}
+                    >
+                      {st.refreshLoading || st.refreshStatus?.status === 'running'
+                        ? 'Refreshing…'
+                        : 'Refresh Ownership'}
+                    </button>
+                  </div>
                 </div>
 
                 {st.importError && <div className="av2-inline-msg error">{st.importError}</div>}
