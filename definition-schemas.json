@@ -661,6 +661,26 @@
         }
       }
     },
+    "InjuryRecoveryReductionEffectDef": {
+      "type": "object",
+      "description": "EffectDef shape for the `injury_recovery_reduction` category. durationModel must be `instant`. Adjusts the target entity's injuredUntilTick — positive value shortens recovery (heals), negative value extends it (debuff/curse). The entity must be in the `injured` state when the consumable is used, otherwise a 400 error is returned.\n\nSupported valueModes:\n  - `flat_add` (default): `value` is interpreted as minutes. The tick adjustment is `value * 60` ticks, tick-rate-independent.\n  - `percent_add`: `value` is a percentage (0–100, or negative). The tick adjustment is `floor(value / 100 * remainingTicks)` where remainingTicks = injuredUntilTick − currentTick.\n\nFull recovery (newTick ≤ currentTick): entity state is immediately set to `idle` and injuredUntilTick is cleared — no need to wait for the next tick processor pass.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique effect def ID (e.g. eff_heal_minor_recovery)." },
+        "name": { "type": "string", "description": "Display name shown in the consumable notification." },
+        "category": { "type": "string", "const": "injury_recovery_reduction" },
+        "durationModel": { "type": "string", "const": "instant", "description": "Must be `instant`. No other duration model is supported for this category." },
+        "targetType": { "type": "string", "const": "entity", "description": "Must target an entity." },
+        "valueMode": {
+          "type": "string",
+          "enum": ["flat_add", "percent_add"],
+          "description": "flat_add: value is minutes (× 60 ticks). percent_add: value is percentage of remaining recovery ticks."
+        },
+        "value": {
+          "type": "number",
+          "description": "Magnitude of the adjustment. Positive = shorten recovery. Negative = extend recovery (debuff). For flat_add: minutes. For percent_add: 0–100 (or negative)."
+        }
+      }
+    },
     "RecipeTierBlock": {
       "description": "Reward block for a single crafting quality tier. Used as values in RecipeDef.tiers.",
       "type": "object",

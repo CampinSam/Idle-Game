@@ -12,6 +12,7 @@ import { InventoryService } from '../../inventory/inventory.service';
 import { EffectService } from '../../effect/effect.service';
 import { EntityService } from '../../entity/entity.service';
 import { CurrencyService } from '../../currency/currency.service';
+import { TickService } from '../../tick/tick.service';
 import { effectWouldChangeStats } from '../../entity/entity-stats.util';
 import { resolveRnd } from '../../entity/rnd-resolver.util';
 import {
@@ -19,6 +20,7 @@ import {
   EffectCategory,
   EffectTargetType,
   EffectSourceType,
+  EffectValueMode,
 } from '@derp/shared';
 
 function txDb(tx: unknown) {
@@ -33,6 +35,7 @@ export class UseConsumableHandler implements CommandHandler {
     private entityService: EntityService,
     private currencyService: CurrencyService,
     private notificationService: NotificationService,
+    private tickService: TickService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -122,7 +125,7 @@ export class UseConsumableHandler implements CommandHandler {
         const mergedValue = effectSpec.effectOverrides?.value ?? def.value ?? 0;
         const mergedStats = effectSpec.effectOverrides?.stats ?? def.stats ?? null;
         const mergedResourceId = effectSpec.effectOverrides?.resourceId ?? (def as any).resourceId ?? null;
-        await this.applyInstantEffect(ctx, { ...def, value: mergedValue, stats: mergedStats as any, resourceId: mergedResourceId }, resolvedTargetId, effectTargetType);
+        await this.applyInstantEffect(ctx, { ...def, value: mergedValue, stats: mergedStats as any, resourceId: mergedResourceId, valueMode: def.valueMode }, resolvedTargetId, effectTargetType);
       } else {
         const result = await this.effectService.applyEffect(
           {
@@ -219,7 +222,7 @@ export class UseConsumableHandler implements CommandHandler {
 
   private async applyInstantEffect(
     ctx: CommandContext,
-    def: { id: string; name: string; category: string; value: number | null; stats: Record<string, number> | null; resourceId?: string },
+    def: { id: string; name: string; category: string; value: number | null; stats: Record<string, number> | null; resourceId?: string; valueMode?: string },
     targetId: string,
     targetType: EffectTargetType,
   ): Promise<void> {
@@ -274,6 +277,44 @@ export class UseConsumableHandler implements CommandHandler {
             reason: `Consumable instant: ${def.name}`,
             sourceType: 'consumable',
             sourceId: def.id,
+          });
+        }
+        break;
+      }
+
+      case EffectCategory.INJURY_RECOVERY_REDUCTION: {
+        if (targetType !== EffectTargetType.ENTITY) {
+          throw new BadRequestException('INJURY_RECOVERY_REDUCTION requires an entity target');
+        }
+        const entity = await txDb(ctx.tx).entity.findUnique({
+          where: { id: targetId },
+          select: { state: true, injuredUntilTick: true },
+        });
+        if (!entity || (entity.state as any)?.status !== 'injured' || entity.injuredUntilTick == null) {
+          throw new BadRequestException('Target entity is not injured');
+        }
+        const injuredUntilTick: number = entity.injuredUntilTick;
+        const currentTick = await this.tickService.getCurrentTick();
+        const remaining = injuredUntilTick - currentTick;
+
+        let delta: number;
+        if (def.valueMode === EffectValueMode.PERCENT_ADD) {
+          delta = Math.floor((value / 100) * remaining);
+        } else {
+          // FLAT_ADD (default): value is minutes, 1 min = 60 ticks, tick-rate-independent
+          delta = value * 60;
+        }
+
+        const newTick = injuredUntilTick - delta;
+        if (newTick <= currentTick) {
+          await txDb(ctx.tx).entity.update({
+            where: { id: targetId },
+            data: { injuredUntilTick: null, state: { status: 'idle' } },
+          });
+        } else {
+          await txDb(ctx.tx).entity.update({
+            where: { id: targetId },
+            data: { injuredUntilTick: newTick },
           });
         }
         break;

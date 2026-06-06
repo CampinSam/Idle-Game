@@ -24,6 +24,7 @@ export enum EffectCategory {
   WORKER_EFFICIENCY = 'worker_efficiency',
   COOLDOWN_REDUCTION = 'cooldown_reduction',
   LEVEL_UP_BONUS = 'level_up_bonus',
+  INJURY_RECOVERY_REDUCTION = 'injury_recovery_reduction',
 }
 
 export enum EffectValueMode {
