@@ -414,7 +414,7 @@ export function structuredFieldErrorCount(type: string | undefined, value: any):
     case 'roomLevelRules':
       return entityLevelRulesErrorCount(value, 'room');
     case 'locationLevelRules':
-      return entityLevelRulesErrorCount(value, 'location');
+      return entityLevelRulesErrorCount(value, 'location') + uniquesErrorCount((value as any)?.uniques);
     case 'productionProfile':
       return productionProfileErrorCount(value);
     case 'contentDocumentData': {
@@ -566,8 +566,11 @@ export function structuredFieldMessages(type: string | undefined, fieldName: str
       return entityLevelRulesErrorMessages(value, 'building', fieldName);
     case 'roomLevelRules':
       return entityLevelRulesErrorMessages(value, 'room', fieldName);
-    case 'locationLevelRules':
-      return entityLevelRulesErrorMessages(value, 'location', fieldName);
+    case 'locationLevelRules': {
+      const locationMsgs = entityLevelRulesErrorMessages(value, 'location', fieldName);
+      locationMsgs.push(...uniquesMessages((value as any)?.uniques, `${fieldName}.uniques`));
+      return locationMsgs;
+    }
     case 'productionProfile':
       return productionProfileErrorMessages(value, fieldName);
     case 'contentDocumentData': {

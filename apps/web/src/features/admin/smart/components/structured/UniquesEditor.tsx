@@ -146,6 +146,114 @@ function defaultPowerRef(defs: PowerDefRow[]): PowerRef {
   };
 }
 
+// ─── SearchableSelect ─────────────────────────────────────────────────────────
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder = '— search and select —',
+  hasError = false,
+}: {
+  options: SelectOption[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  hasError?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedLabel = options.find(o => o.value === value)?.label ?? '';
+  const filtered = query.trim()
+    ? options.filter(
+        o =>
+          o.label.toLowerCase().includes(query.toLowerCase()) ||
+          o.value.toLowerCase().includes(query.toLowerCase()),
+      )
+    : options;
+
+  const commit = (v: string) => {
+    onChange(v);
+    setOpen(false);
+    setQuery('');
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={open ? query : selectedLabel}
+        onChange={e => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => {
+          setQuery('');
+          setOpen(true);
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 160)}
+        placeholder={value ? undefined : placeholder}
+        style={{
+          ...inputStyle,
+          width: '100%',
+          borderColor: hasError ? ERROR_BORDER_COLOR : '#333',
+        }}
+      />
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            zIndex: 200,
+            background: '#0f0f2e',
+            border: '1px solid #3a3a6e',
+            borderRadius: 4,
+            maxHeight: 220,
+            overflowY: 'auto',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          }}
+        >
+          {filtered.length === 0 && (
+            <div
+              style={{
+                padding: '6px 10px',
+                color: '#555',
+                fontSize: 11,
+              }}
+            >
+              No matches
+            </div>
+          )}
+          {filtered.map(o => (
+            <div
+              key={o.value}
+              onMouseDown={() => commit(o.value)}
+              style={{
+                padding: '6px 10px',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: o.value === value ? '#a78bfa' : '#e0e0ff',
+                background: o.value === value ? 'rgba(167,139,250,0.08)' : 'transparent',
+              }}
+            >
+              {o.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PowerRefEditor ───────────────────────────────────────────────────────────
 
 type PowerMode = 'def' | 'inline';
@@ -245,25 +353,16 @@ function PowerRefEditor({
           <div style={fieldRowStyle}>
             <div style={{ ...fieldGroupStyle, flex: 2, minWidth: 200 }}>
               <span style={labelStyle}>powerDef *</span>
-              <select
+              <SearchableSelect
+                options={powerDefs.map(d => ({ value: d.id, label: `${d.name} — ${d.id}` }))}
                 value={power.powerDefId ?? ''}
-                onChange={e => {
-                  const def = powerDefs.find(d => d.id === e.target.value);
-                  onChange({ ...power, powerDefId: e.target.value, name: def?.name ?? power.name });
+                onChange={defId => {
+                  const def = powerDefs.find(d => d.id === defId);
+                  onChange({ ...power, powerDefId: defId, name: def?.name ?? power.name });
                 }}
-                style={{
-                  ...selectStyle,
-                  width: '100%',
-                  borderColor: !power.powerDefId ? ERROR_BORDER_COLOR : '#333',
-                }}
-              >
-                {!power.powerDefId && <option value="">— select a PowerDef —</option>}
-                {powerDefs.map(d => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} — {d.id}
-                  </option>
-                ))}
-              </select>
+                placeholder="— search PowerDefs —"
+                hasError={!power.powerDefId}
+              />
               {!power.powerDefId && (
                 <span style={errorTextStyle}>powerDef required</span>
               )}
@@ -829,7 +928,16 @@ export default function UniquesEditor({ value, onChange }: Props) {
         }
       })
       .catch(() => {
-        // PowerDefs unavailable; editor still works in inline-only mode
+        // PowerDefs unavailable — run migration with empty defs so legacy
+        // powers still get a generated name (inline fallback path).
+        if (!migrationApplied.current) {
+          migrationApplied.current = true;
+          const { migrated, count } = migrateUniquesMap(value, []);
+          if (count > 0) {
+            onChange(migrated);
+            setMigratedCount(count);
+          }
+        }
       })
       .finally(() => setDefsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
