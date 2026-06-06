@@ -930,7 +930,7 @@ function WithdrawalsTab() {
                   <td style={{ padding: '0.45rem 0.6rem' }}><StatusBadge status={w.status} /></td>
                   <td style={{ padding: '0.45rem 0.6rem', color: w.autoApproved ? '#4caf50' : '#666' }}>{w.autoApproved ? 'Yes' : 'No'}</td>
                   <td style={{ padding: '0.45rem 0.6rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {w.txHash ? <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa' }} title={w.txHash}>{w.txHash.slice(0, 16)}…</span> : <span style={{ color: '#444' }}>—</span>}
+                    {w.txHash ? <a href={`https://cardanoscan.io/transaction/${w.txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#60a5fa', textDecoration: 'underline' }} title={w.txHash}>{w.txHash.slice(0, 16)}…</a> : <span style={{ color: '#444' }}>—</span>}
                   </td>
                   <td style={{ padding: '0.45rem 0.6rem', color: '#666', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{new Date(w.createdAt).toLocaleDateString()}</td>
                   <td style={{ padding: '0.45rem 0.6rem' }}>
