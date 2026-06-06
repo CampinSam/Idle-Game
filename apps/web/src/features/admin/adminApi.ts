@@ -345,6 +345,8 @@ export const adminApi = {
     nftAdminRequest<any>(`/nft/collections/${id}/import`, { method: 'POST' }),
   getImportCacheStatus: (id: string) =>
     nftAdminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; upserted: number; failed: number; startedAt?: string; finishedAt?: string }>(`/nft/collections/${id}/import/status`),
+  createNftInstances: (id: string) =>
+    nftAdminRequest<{ started: true; total: number }>(`/nft/collections/${id}/create-instances`, { method: 'POST' }),
   refreshNftOwnership: (id: string) =>
     nftAdminRequest<any>(`/nft/collections/${id}/refresh`, { method: 'POST' }),
   getRefreshStatus: (id: string) =>
@@ -353,6 +355,8 @@ export const adminApi = {
     nftAdminRequest<{ items: any[]; total: number; page: number; limit: number }>(
       `/nft/collections/${id}/assets?page=${page}&limit=${limit}`,
     ),
+  seedNftEntities: () =>
+    adminRequest<{ skipped: boolean; inserted: number }>('/seeds/nft-entities', { method: 'POST' }),
 
   listEntities: (q?: string, limit = 50) => {
     const params = new URLSearchParams();

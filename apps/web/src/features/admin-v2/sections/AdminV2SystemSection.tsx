@@ -7,12 +7,14 @@ import { CryptoAdminPage } from '../../admin/CryptoAdminPage';
 import ScreenComposerPage from '../../admin/screen-composer/ScreenComposerPage';
 import ModalEditorPage from '../../admin/modal-editor/ModalEditorPage';
 import PlayerEventsAdminPage from '../../admin/player-events/PlayerEventsAdminPage';
+import NftCollectionsPage from '../../admin/nft/NftCollectionsPage';
 import AdminV2PlayersSection from './AdminV2PlayersSection';
 import type { AdminMe } from '../../admin/adminApi';
 
-export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events';
+export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events' | 'nft-collections';
 
 export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
+  { key: 'nft-collections', label: 'NFT Collections' },
   { key: 'icons', label: 'Icons' },
   { key: 'audio', label: 'Audio' },
   { key: 'tags', label: 'Tags & Effects' },
@@ -46,6 +48,11 @@ export default function AdminV2SystemSection({ me, activeTool, onToolChange }: P
         ))}
       </div>
       <div className="av2-system-content">
+        {activeTool === 'nft-collections' && (
+          <div className="av2-tool-wrap" style={{ height: '100%', overflow: 'auto' }}>
+            <NftCollectionsPage />
+          </div>
+        )}
         {activeTool === 'icons' && (
           <div className="av2-tool-wrap">
             <IconManagerContent />
