@@ -19,7 +19,7 @@ import {
   BUSY_CONSUMABLE_TOOLTIP,
 } from './utils/statChangeHelpers';
 
-const PAGE_WRAPPER_CLASS = 'flex flex-col h-full';
+const PAGE_WRAPPER_CLASS = 'flex flex-col flex-1 min-h-0';
 const CARD_CLASS = 'flex flex-col flex-1 min-h-0 relative';
 
 const BTN_BASE =

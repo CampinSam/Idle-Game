@@ -114,22 +114,20 @@ export default function EntitiesPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
-        <EntityList
-          entities={entities}
-          mode="display"
-          useCase="browse"
-          showControls
-          activeFilter={validFilter}
-          onFilterChange={handleFilterChange}
-          search={searchQuery}
-          onSearchChange={handleSearchChange}
-          sortBy={sortBy}
-          onSortChange={handleSortChange}
-          emptyMessage="No entities found."
-        />
-      </div>
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <EntityList
+        entities={entities}
+        mode="display"
+        useCase="browse"
+        showControls
+        activeFilter={validFilter}
+        onFilterChange={handleFilterChange}
+        search={searchQuery}
+        onSearchChange={handleSearchChange}
+        sortBy={sortBy}
+        onSortChange={handleSortChange}
+        emptyMessage="No entities found."
+      />
     </div>
   );
 }

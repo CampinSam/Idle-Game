@@ -1412,9 +1412,7 @@ export default function StoreContent() {
       )}
 
 
-      <div className="overflow-hidden flex flex-col flex-1 min-h-0">
-
-        <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
+      <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
           {mainCurrencies.map((id) => (
@@ -1551,7 +1549,6 @@ export default function StoreContent() {
           )}
         </div>
 
-      </div>
     </div>
   );
 }

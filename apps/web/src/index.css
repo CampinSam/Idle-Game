@@ -39,6 +39,11 @@
   max-height: 128px;
 }
 
+html {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 body {
   font-family: 'Exo 2', system-ui, -apple-system, sans-serif;
   background: var(--bg-primary);
@@ -2821,4 +2826,24 @@ input:focus {
 @keyframes unique-twinkle {
   0%, 100% { opacity: 0.55; }
   50%       { opacity: 1; }
+}
+
+/* ── Themed scrollbars ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.55);
+}
+.body-card {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
 }
