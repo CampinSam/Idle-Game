@@ -32,6 +32,7 @@ import { TriggerLocationPowerHandler } from './handlers/trigger-location-power.h
 import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handler';
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
+import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -98,6 +99,7 @@ import { NotificationModule } from '../notification/notification.module';
     TriggerEntityPowerHandler,
     StartDustingHandler,
     CollectDustingHandler,
+    SwapOutpostHandler,
   ],
   exports: [CommandService],
 })

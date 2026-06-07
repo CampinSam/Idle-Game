@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { getRegionDisplay } from '@derp/shared';
 import { FullscreenModal } from '../../../../../components/ui';
 import { useCommand } from '../../../../../hooks/useCommand';
+import { useModal } from '../../../../../context/ModalContext';
 import { useAppDispatch } from '../../../../../store';
 import { patchPlayerOptimistic } from '../../../../../store/syncSlice';
 import { useSyncPlayer } from '../../../../../hooks/useSyncSelectors';
@@ -83,7 +84,15 @@ function DeactivateConfirm({ name, onConfirm, onCancel, isLoading }: DeactivateC
 export function OutpostHeader({ outpost }: OutpostHeaderProps) {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { execute } = useCommand();
+  const { pushModal } = useModal();
+  const commandOptions = useMemo(() => ({
+    onUiIntent: (intent: any) => {
+      if (intent.type === 'modal') {
+        pushModal(intent.spec);
+      }
+    },
+  }), [pushModal]);
+  const { execute } = useCommand(commandOptions);
   const player = useSyncPlayer();
 
   const [showDeactivate, setShowDeactivate] = useState(false);
@@ -166,8 +175,7 @@ export function OutpostHeader({ outpost }: OutpostHeaderProps) {
     setMenuOpen(false);
     try {
       await execute('ToggleLocation', { locationId: id, enabled: true });
-    } catch (err) {
-      console.error('[OutpostHeader] ToggleLocation activate failed:', err);
+    } catch {
     }
   };
 

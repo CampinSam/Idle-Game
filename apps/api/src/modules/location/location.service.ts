@@ -1457,6 +1457,116 @@ export class LocationService {
     return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
   }
 
+  async swapOutposts(
+    userId: string,
+    disableLocationId: string,
+    enableLocationId: string,
+    externalTx?: any,
+  ): Promise<void> {
+    const currentTickBig = BigInt(Math.floor(await this.tickService.getCurrentTick()));
+
+    const doWork = async (db: any) => {
+      await this.settlementService.settleLocationTx(db, disableLocationId, userId, currentTickBig);
+
+      const assignments = await (db as any).locationWorkerAssignment.findMany({
+        where: { locationId: disableLocationId },
+        select: { entityId: true },
+      });
+      const workerEntityIds: string[] = assignments.map((a: any) => a.entityId);
+      await (db as any).locationWorkerAssignment.deleteMany({ where: { locationId: disableLocationId } });
+
+      const buildingAndCraftingJobs = await (db as any).job.findMany({
+        where: {
+          userId,
+          type: { in: ['BuildingJob', 'CraftingJob'] },
+          status: { in: ['active', 'ready_notified'] },
+          data: { path: ['locationId'], equals: disableLocationId },
+        },
+        select: { id: true, team: true },
+      });
+
+      const allActiveMissionJobs = workerEntityIds.length > 0
+        ? await (db as any).job.findMany({
+            where: {
+              userId,
+              type: 'MissionJob',
+              status: { in: ['active', 'ready_notified'] },
+            },
+            select: { id: true, team: true },
+          })
+        : [];
+      const affectedMissionJobs = (allActiveMissionJobs as any[]).filter((j: any) => {
+        const team: string[] = Array.isArray(j.team) ? j.team : [];
+        return workerEntityIds.some((eid) => team.includes(eid));
+      });
+
+      const allCancelledJobs = [...buildingAndCraftingJobs, ...affectedMissionJobs];
+      const allCancelledJobIds: string[] = allCancelledJobs.map((j: any) => j.id);
+
+      const allEntityIdsToIdle = new Set<string>(workerEntityIds);
+      for (const job of allCancelledJobs) {
+        const team: string[] = Array.isArray(job.team) ? job.team : [];
+        for (const eid of team) allEntityIdsToIdle.add(eid);
+      }
+
+      for (const entityId of allEntityIdsToIdle) {
+        const entity = await (db as any).entity.findUnique({
+          where: { id: entityId },
+          select: { state: true },
+        });
+        if (entity) {
+          const entityState = (entity.state as any) || {};
+          await (db as any).entity.update({
+            where: { id: entityId },
+            data: { state: { ...entityState, status: 'idle' } },
+          });
+        }
+      }
+
+      if (allCancelledJobIds.length > 0) {
+        await (db as any).job.updateMany({
+          where: { id: { in: allCancelledJobIds } },
+          data: { status: 'cancelled' },
+        });
+
+        const staleNotifs = await (db as any).notification.findMany({
+          where: {
+            userId,
+            sourceType: { in: ['job', 'job_ready'] },
+            sourceId: { in: allCancelledJobIds },
+            archivedAt: null,
+          },
+          select: { id: true },
+        });
+        if (staleNotifs.length > 0) {
+          const now = new Date();
+          await (db as any).notification.updateMany({
+            where: { id: { in: staleNotifs.map((n: any) => n.id) } },
+            data: { archivedAt: now, dismissedAt: now, readAt: now },
+          });
+        }
+      }
+
+      await (db as any).user.updateMany({
+        where: { id: userId, primaryLocationId: disableLocationId },
+        data: { primaryLocationId: null },
+      });
+
+      await (db as any).locationInstance.update({
+        where: { id: disableLocationId },
+        data: { enabled: false },
+      });
+
+      await this.settlementService.settleLocationTx(db, enableLocationId, userId, currentTickBig);
+      await (db as any).locationInstance.update({
+        where: { id: enableLocationId },
+        data: { enabled: true },
+      });
+    };
+
+    return externalTx ? doWork(externalTx) : this.prisma.$transaction((tx) => doWork(tx));
+  }
+
   async toggleBuildingEnabled(
     userId: string,
     locationId: string,

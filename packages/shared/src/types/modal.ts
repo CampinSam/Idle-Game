@@ -71,7 +71,8 @@ export type ModalAction =
   | { type: 'SHOP_PURCHASE'; shopItemDefId: string }
   | { type: 'DEPOSIT_LOCATION_XP'; locationId: string; costOption: { type: 'currency' | 'item'; id: string; amount: number }; charges?: number }
   | { type: 'PRESTIGE' }
-  | { type: 'SKIP'; targetType: string; targetId: string };
+  | { type: 'SKIP'; targetType: string; targetId: string }
+  | { type: 'EXECUTE_COMMAND'; command: string; payload: Record<string, unknown> };
 
 export type ModalBlock =
   | ModalBlockRichText
@@ -269,6 +270,7 @@ export const MODAL_ACTION_TYPES = [
   'DEPOSIT_LOCATION_XP',
   'PRESTIGE',
   'SKIP',
+  'EXECUTE_COMMAND',
 ] as const;
 
 export type ModalActionType = (typeof MODAL_ACTION_TYPES)[number];

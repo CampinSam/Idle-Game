@@ -242,6 +242,17 @@ export default function GameModalHost() {
           return;
         }
 
+        case 'EXECUTE_COMMAND': {
+          try {
+            await execute(action.command, action.payload as Record<string, any>);
+            dismissModal();
+          } catch (err: any) {
+            audioEngine.play('ui.error');
+            console.warn('[GameModalHost] EXECUTE_COMMAND failed:', err?.message);
+          }
+          return;
+        }
+
         case 'API_CALL': {
           const { apiKey, payload } = action;
 

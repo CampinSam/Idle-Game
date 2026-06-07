@@ -956,3 +956,4 @@ Each entry in `pages` is a `ModalPageSpec`. The page's `header`, `buttons`, and 
 | `DEPOSIT_LOCATION_XP` | `locationId`, `costOption`, `charges?` | Deposits XP into a location via currency or item cost. |
 | `PRESTIGE` | — | Triggers a prestige reset. |
 | `SKIP` | `targetType: string`, `targetId: string` | Skips a timer-based target (e.g. a job or cooldown). |
+| `EXECUTE_COMMAND` | `command: string`, `payload: Record<string, unknown>` | Executes a backend command and dismisses the modal on success. On error, shows a local error toast and leaves the modal open. Use for atomic server-side operations triggered from a modal button (e.g. outpost swap). |
