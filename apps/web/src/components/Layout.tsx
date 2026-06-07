@@ -26,6 +26,7 @@ import { useAudioNavigation } from "../hooks/useAudioNavigation";
 import { useLevelUpAudio } from "../hooks/useLevelUpAudio";
 import { useSeasonStartAudio } from "../hooks/useSeasonStartAudio";
 import { useEntityProgressionAudio } from "../hooks/useEntityProgressionAudio";
+import { useBootstrapModals } from "../hooks/useBootstrapModals";
 
 export default function Layout() {
   const dispatch = useAppDispatch();
@@ -54,6 +55,7 @@ export default function Layout() {
   useLevelUpAudio();
   useSeasonStartAudio();
   useEntityProgressionAudio();
+  useBootstrapModals();
 
   const hasClaimableRewards =
     gifts.some((g: any) => g.status === "UNCLAIMED") ||

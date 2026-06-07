@@ -7,6 +7,7 @@ import { TelemetryService } from '../../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
 import { NotificationService } from '../../notification/notification.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     private telemetryContextBuilder: TelemetryContextBuilderService,
     private gameRules: GameRulesService,
     private notificationService: NotificationService,
+    private prisma: PrismaService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -145,33 +147,51 @@ export class OpenLootBoxHandler implements CommandHandler {
 
     const lootboxBodyText = rewardSummary || 'No rewards this time.';
 
-    return {
-      patches: pb.build(),
-      ui: [
+    const generatedSpec: any = {
+      version: 1,
+      id: `lootbox-opened-${itemInstanceId}`,
+      kind: 'lootbox_opened',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: { title: `${lootboxDef.name} Opened!` },
+      pages: [
         {
-          type: 'modal' as const,
-          spec: {
-            version: 1,
-            id: `lootbox-opened-${itemInstanceId}`,
-            kind: 'lootbox_opened',
-            dismiss: { backdrop: true, x: true, escape: true },
-            header: { title: `${lootboxDef.name} Opened!` },
-            pages: [
-              {
-                body: [
-                  {
-                    type: 'richText',
-                    doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
-                  },
-                ],
-              },
-            ],
-            buttons: [
-              { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
-            ],
-          },
+          body: [
+            {
+              type: 'richText',
+              doc: [{ t: 'p', c: [{ t: 'text', v: lootboxBodyText }] }],
+            },
+          ],
         },
       ],
+      buttons: [
+        { id: 'close', label: 'Collect', variant: 'primary', action: { type: 'CLOSE_MODAL' } },
+      ],
+    };
+
+    // Apply default_lootbox_reveal template — lets operators customize header/buttons
+    // via the admin panel. Generated pages (reward text) are preserved when the
+    // default has no pages of its own.
+    try {
+      const templateRow = await (this.prisma as any).defaultModalDef.findUnique({
+        where: { id: 'default_lootbox_reveal' },
+      });
+      if (templateRow?.enabled && templateRow.spec && typeof templateRow.spec === 'object') {
+        const tpl = templateRow.spec as any;
+        if (tpl.header && typeof tpl.header === 'object') {
+          generatedSpec.header = { ...generatedSpec.header, ...tpl.header };
+        }
+        if (Array.isArray(tpl.pages) && tpl.pages.length > 0) {
+          generatedSpec.pages = tpl.pages;
+        }
+        if (Array.isArray(tpl.buttons) && tpl.buttons.length > 0) {
+          generatedSpec.buttons = tpl.buttons;
+        }
+      }
+    } catch { /* ignore — fall back to inline spec */ }
+
+    return {
+      patches: pb.build(),
+      ui: [{ type: 'modal' as const, spec: generatedSpec }],
     };
   }
 }

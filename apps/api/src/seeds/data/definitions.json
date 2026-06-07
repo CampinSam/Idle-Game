@@ -7720,6 +7720,22 @@
         "buttons": [{ "id": "btn_ok", "label": "Done", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
       },
       "enabled": true
+    },
+    {
+      "id": "default_location_deposit_xp",
+      "name": "Default Location Deposit XP",
+      "description": "System fallback modal shown when a player opens the XP deposit panel for an outpost and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_location_deposit_xp",
+        "kind": "location_deposit_xp",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Deposit XP" },
+        "body": [],
+        "buttons": []
+      },
+      "enabled": true
     }
   ],
   "systemIconDefs": [

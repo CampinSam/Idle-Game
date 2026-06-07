@@ -915,7 +915,7 @@ export class UiService {
     }
     buttons.push({ id: 'close', label: 'Close', variant: 'ghost', action: { type: 'CLOSE_MODAL' } });
 
-    return {
+    const generated = {
       version: 1,
       id: `location_deposit_xp_${locationId}`,
       kind: 'location_deposit_xp',
@@ -927,6 +927,14 @@ export class UiService {
       pages: [{ body }],
       buttons,
     };
+
+    // Fall back to the system default modal for the XP deposit panel when no custom modal is assigned.
+    // The default can only override the header framing — generated pages (balance rows, affordability
+    // previews) and action buttons are preserved because the default has empty body/buttons.
+    const defaultSpec = await this.resolveDefaultModalDef('default_location_deposit_xp');
+    if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec);
+
+    return generated;
   }
 
   /**

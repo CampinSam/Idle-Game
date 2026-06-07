@@ -666,6 +666,7 @@ export interface BootstrapResponse {
     locationPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
   };
   cursor: { delta: string };
+  ui?: Array<{ type: string; spec: any }>;
 }
 
 export interface CommandRequest {

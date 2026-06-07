@@ -1,4 +1,4 @@
-import type { SyncEngine, GlobalPowerChangeHandler, BoostChangeHandler } from './SyncEngine';
+import type { SyncEngine, GlobalPowerChangeHandler, BoostChangeHandler, BootstrapUiIntentHandler } from './SyncEngine';
 
 /**
  * Module-level handle to the active SyncEngine, set by `useSyncEngine`.
@@ -17,8 +17,9 @@ let current: SyncEngine | null = null;
 // Pending handlers registered before any engine was available.
 const pendingGlobalPowerHandlers = new Set<GlobalPowerChangeHandler>();
 const pendingBoostChangeHandlers = new Set<BoostChangeHandler>();
+const pendingBootstrapUiIntentHandlers = new Set<BootstrapUiIntentHandler>();
 // Map from pending handler → its active unsubscribe fn (set once engine arrives).
-const activeUnsubs = new Map<GlobalPowerChangeHandler | BoostChangeHandler, () => void>();
+const activeUnsubs = new Map<GlobalPowerChangeHandler | BoostChangeHandler | BootstrapUiIntentHandler, () => void>();
 
 export function setSyncEngine(engine: SyncEngine | null): void {
   if (!engine) {
@@ -41,6 +42,10 @@ export function setSyncEngine(engine: SyncEngine | null): void {
   }
   for (const handler of pendingBoostChangeHandlers) {
     const unsub = engine.onBoostChange(handler);
+    activeUnsubs.set(handler, unsub);
+  }
+  for (const handler of pendingBootstrapUiIntentHandlers) {
+    const unsub = engine.onBootstrapUiIntents(handler);
     activeUnsubs.set(handler, unsub);
   }
 }
@@ -76,6 +81,23 @@ export const syncEngine = {
 
     return () => {
       pendingBoostChangeHandlers.delete(handler);
+      const unsub = activeUnsubs.get(handler);
+      if (unsub) {
+        unsub();
+        activeUnsubs.delete(handler);
+      }
+    };
+  },
+  onBootstrapUiIntents(handler: BootstrapUiIntentHandler): () => void {
+    pendingBootstrapUiIntentHandlers.add(handler);
+
+    if (current) {
+      const unsub = current.onBootstrapUiIntents(handler);
+      activeUnsubs.set(handler, unsub);
+    }
+
+    return () => {
+      pendingBootstrapUiIntentHandlers.delete(handler);
       const unsub = activeUnsubs.get(handler);
       if (unsub) {
         unsub();

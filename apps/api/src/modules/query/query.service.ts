@@ -50,6 +50,7 @@ export interface BootstrapResult {
     locationPowerUsages?: Record<string, Record<string, { usageCount: number; lastUsedUtcDay: string }>>;
   };
   cursor: { delta: string };
+  ui?: UiIntent[];
 }
 
 export interface DeltaResult {
@@ -366,6 +367,54 @@ export class QueryService {
       currencyMap[row.currencyId] = Number(row.balance);
     }
 
+    // Collect one-time UI intents (welcome modal, season intro).
+    // These are shown once per trigger and tracked via user.flags.
+    const bootstrapUi: UiIntent[] = [];
+    const userFlags = ((user?.flags as Record<string, any>) ?? {});
+    const flagUpdates: Record<string, any> = {};
+
+    // Welcome modal — shown exactly once on a user's first bootstrap.
+    if (!userFlags.seenWelcomeModal) {
+      try {
+        const welcomeRow = await (this.prisma as any).defaultModalDef.findUnique({
+          where: { id: 'default_welcome' },
+        });
+        if (welcomeRow?.enabled && welcomeRow.spec) {
+          bootstrapUi.push({ type: 'modal', spec: welcomeRow.spec as any });
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to load default_welcome for ${userId}: ${err}`);
+      }
+      flagUpdates.seenWelcomeModal = true;
+    }
+
+    // Season intro — shown once per active season (keyed on season id).
+    if (activeSeason && userFlags.seenSeasonIntroFor !== activeSeason.id) {
+      try {
+        const seasonIntroRow = await (this.prisma as any).defaultModalDef.findUnique({
+          where: { id: 'default_season_intro' },
+        });
+        if (seasonIntroRow?.enabled && seasonIntroRow.spec) {
+          bootstrapUi.push({ type: 'modal', spec: seasonIntroRow.spec as any });
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to load default_season_intro for ${userId}: ${err}`);
+      }
+      flagUpdates.seenSeasonIntroFor = activeSeason.id;
+    }
+
+    // Persist flag updates in the background (best-effort, does not block response).
+    if (user && Object.keys(flagUpdates).length > 0) {
+      this.prisma.user
+        .update({
+          where: { id: user.id },
+          data: { flags: { ...(userFlags as object), ...flagUpdates } },
+        })
+        .catch((err) => {
+          this.logger.warn(`Failed to persist bootstrap modal flags for ${userId}: ${err}`);
+        });
+    }
+
     return {
       serverTime: Date.now(),
       tickAnchor: {
@@ -503,6 +552,7 @@ export class QueryService {
         locationPowerUsages,
       },
       cursor: { delta: cursorId.toString() },
+      ui: bootstrapUi.length > 0 ? bootstrapUi : undefined,
     };
   }
 

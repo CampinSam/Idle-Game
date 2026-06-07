@@ -16,6 +16,8 @@ export type BoostChangeHandler = (data: {
   combinedPercent: number;
 }) => void;
 
+export type BootstrapUiIntentHandler = (intents: Array<{ type: string; spec: any }>) => void;
+
 const HEARTBEAT_TIMEOUT_MS = 45_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -29,6 +31,7 @@ export class SyncEngine {
   private destroyed = false;
   private globalPowerHandlers = new Set<GlobalPowerChangeHandler>();
   private boostChangeHandlers = new Set<BoostChangeHandler>();
+  private bootstrapUiIntentHandlers = new Set<BootstrapUiIntentHandler>();
 
   constructor(store: Store<RootState>) {
     this.store = store;
@@ -44,6 +47,11 @@ export class SyncEngine {
     return () => this.boostChangeHandlers.delete(handler);
   }
 
+  onBootstrapUiIntents(handler: BootstrapUiIntentHandler): () => void {
+    this.bootstrapUiIntentHandlers.add(handler);
+    return () => this.bootstrapUiIntentHandlers.delete(handler);
+  }
+
   private emitGlobalPowerChange(event: 'started' | 'ended', change: any) {
     for (const handler of this.globalPowerHandlers) {
       try { handler(event, change); } catch { /* ignore */ }
@@ -53,6 +61,12 @@ export class SyncEngine {
   private emitBoostChange(data: any) {
     for (const handler of this.boostChangeHandlers) {
       try { handler(data); } catch { /* ignore */ }
+    }
+  }
+
+  private emitBootstrapUiIntents(intents: Array<{ type: string; spec: any }>) {
+    for (const handler of this.bootstrapUiIntentHandlers) {
+      try { handler(intents); } catch { /* ignore */ }
     }
   }
 
@@ -71,6 +85,9 @@ export class SyncEngine {
       setSystemIconRegistry(systemIconDefs.map((d) => d.id));
       this.store.dispatch(setStatus('connected'));
       this.openStream();
+      if (Array.isArray(response.ui) && response.ui.length > 0) {
+        this.emitBootstrapUiIntents(response.ui);
+      }
     } catch (err: any) {
       if (this.destroyed) return;
       console.error('[SyncEngine] Bootstrap failed:', err);
