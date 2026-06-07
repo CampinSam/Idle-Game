@@ -34,6 +34,13 @@ export class CheckInService {
 
   async autoCheck(userId: string, tx?: any): Promise<string[]> {
     const db = tx || this.prisma;
+
+    // Serialize concurrent check-ins for the same user within this transaction.
+    // pg_advisory_xact_lock blocks until it can acquire the lock and releases
+    // automatically when the transaction ends, so a second rapid tap will wait,
+    // then re-read the already-claimed state and return 0 gifts → 400.
+    await (db as any).$queryRaw`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`;
+
     const now = new Date();
 
     const defs = await (db as any).checkInDef.findMany({ where: { enabled: true } });
