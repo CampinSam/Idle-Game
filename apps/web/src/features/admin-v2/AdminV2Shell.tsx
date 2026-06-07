@@ -354,7 +354,7 @@ function Sidebar({
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-[6px]">
+      <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-[6px]">
         {visibleItems.map(item => {
           const isActive = activeSection === item.key;
           const hasSubs = !collapsed && !item.stub && isActive && item.subs && item.subs.length > 0;

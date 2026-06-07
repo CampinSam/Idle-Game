@@ -15,7 +15,8 @@
     "prisma:generate": "pnpm --filter @derp/api prisma:generate",
     "prisma:migrate": "pnpm --filter @derp/api prisma:migrate",
     "prisma:studio": "pnpm --filter @derp/api prisma:studio",
-    "seed:test-account": "cd apps/api && npx tsx src/seeds/seed-test-account.ts"
+    "seed:test-account": "cd apps/api && npx tsx src/seeds/seed-test-account.ts",
+    "lint:scroll": "bash scripts/check-scroll-containers.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
