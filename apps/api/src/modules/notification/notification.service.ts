@@ -404,6 +404,9 @@ export class NotificationService {
     title: string;
     body: string;
     deepLink?: any;
+    /** Pre-mark the notification as read. Use for silent lifecycle records
+     *  that should not surface a toast or contribute to the unread dot. */
+    readAt?: Date | null;
   }, tx?: any) {
     const notif = tx ? (tx as any).notification : this.notification;
 
@@ -426,7 +429,7 @@ export class NotificationService {
           title: data.title,
           body: data.body,
           deepLink: data.deepLink ?? existing.deepLink,
-          readAt: null,
+          readAt: data.readAt !== undefined ? data.readAt : null,
           dismissedAt: null,
         },
       });
@@ -445,6 +448,7 @@ export class NotificationService {
         groupKey: null,
         sourceType: 'job',
         sourceId: data.jobId,
+        readAt: data.readAt ?? null,
       },
     });
     if (!tx) await this.pruneOld(data.userId);

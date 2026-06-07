@@ -33,16 +33,17 @@ export class StartMissionHandler implements CommandHandler {
       jobId: result.id,
       type: 'mission_started',
       category: 'missions',
-      priority: 'normal',
+      priority: 'low',
       title: 'Mission Started',
       body: 'Your mission is underway.',
       deepLink: { missionRunId: result.id },
+      readAt: new Date(),
     }, ctx.tx);
     pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: notification.id }],
+      ui: [],
       meta: {
         synergyPreview: result.synergyPreview,
       },
