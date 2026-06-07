@@ -242,7 +242,6 @@ interface CryptoModalState {
   chain: string;
   expiresAt: string;
   paymentMethod: 'crypto_evm' | 'crypto_cardano';
-  comingSoon?: boolean;
   usdEquiv?: number;
   rateComputedAt?: string;
   usingFallback?: boolean;
@@ -578,7 +577,6 @@ function CryptoPayModal({
 
   const canUseGuided =
     state.paymentMethod === 'crypto_cardano' &&
-    !state.comingSoon &&
     !!state.cntGuidedAvailable &&
     !!injectedWalletKey &&
     !guidedBlocked;
@@ -591,7 +589,6 @@ function CryptoPayModal({
 
   // SSE listener — always active so confirmation fires regardless of guided/manual path
   useEffect(() => {
-    if (state.comingSoon) return;
     const token = localStorage.getItem('derp_token') || '';
     if (!token) return;
     const rawApiUrl = (import.meta as any).env?.VITE_API_URL as string | undefined;
@@ -609,11 +606,10 @@ function CryptoPayModal({
     });
 
     return () => es.close();
-  }, [state.purchaseId, state.comingSoon]);
+  }, [state.purchaseId]);
 
   // Poll fallback — only for non-guided OR after guided submission
   useEffect(() => {
-    if (state.comingSoon) return;
     if (status !== 'pending') return;
     // Don't start polling until we're actually waiting on-chain
     if (canUseGuided && guidedStep !== 'submitted') return;
@@ -639,7 +635,7 @@ function CryptoPayModal({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [state.purchaseId, state.comingSoon, status, canUseGuided, guidedStep]);
+  }, [state.purchaseId, status, canUseGuided, guidedStep]);
 
   useEffect(() => {
     if (status === 'confirmed') {
@@ -800,15 +796,7 @@ function CryptoPayModal({
               </div>
             )}
 
-            {state.comingSoon ? (
-              <div className="flex flex-col items-center gap-2 bg-[rgba(251,191,36,0.06)] border border-[rgba(251,191,36,0.2)] rounded-[10px] px-4 py-3 text-center">
-                <span className="text-[16px]">🚧</span>
-                <div className="text-[12px] font-black text-[#fbbf24] uppercase tracking-wide">Coming Soon</div>
-                <div className="text-[11px] text-text-secondary leading-snug">
-                  On-chain payments are not yet live. This preview shows what the payment flow will look like.
-                </div>
-              </div>
-            ) : canUseGuided ? (
+            {canUseGuided ? (
               /* ── Guided CIP-30 flow ── */
               <>
                 {guidedStep !== 'submitted' ? (
@@ -1004,18 +992,16 @@ function GemPackCard({
           onClick={() => hasCardanoWallet ? onBuyCardano(pack) : onPromptWallet()}
           data-sfx="ui.button_primary"
           className={
-            `w-full py-1 rounded-[6px] text-[9px] font-bold tracking-[0.2px] border cursor-pointer ` +
-            `transition-colors duration-150 bg-transparent ` +
+            `w-full py-1.5 rounded-[7px] text-[11px] font-black tracking-[0.3px] border-0 cursor-pointer ` +
+            `transition-colors duration-150 ` +
             (buying
-              ? 'opacity-40 cursor-not-allowed border-[rgba(139,92,246,0.15)] text-text-secondary'
-              : hasCardanoWallet
-                ? 'border-[rgba(139,92,246,0.25)] text-text-secondary hover:border-[rgba(139,92,246,0.5)] hover:text-[#c4b5fd]'
-                : 'border-[rgba(99,102,241,0.2)] text-[rgba(167,139,250,0.5)] hover:border-[rgba(99,102,241,0.4)] hover:text-[#a78bfa]')
+              ? 'opacity-50 cursor-not-allowed bg-[#1e3a8a] text-white/60'
+              : 'bg-[#1d4ed8] hover:bg-[#1e40af] text-white')
           }
         >
-          {adaRate
+          {buying ? '…' : adaRate
             ? `≈ ${formatAdaAmount(Math.ceil((pack.unitAmount / 100) * adaRate.lovelacePerUsd))} ₳`
-            : hasCardanoWallet ? '💳 Pay with Wallet' : '₳ Pay with ADA'}
+            : '₳ ADA'}
         </button>
       </div>
     </div>
@@ -1161,7 +1147,6 @@ export default function StoreContent() {
           chain: data.action.chain,
           expiresAt: data.action.expiresAt,
           paymentMethod,
-          comingSoon: data.comingSoon ?? false,
           usdEquiv: snap?.usdPrice,
           rateComputedAt: snap?.computedAt,
           usingFallback: snap?.usingFallback,
@@ -1412,7 +1397,8 @@ export default function StoreContent() {
       )}
 
 
-      <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
+      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch]">
+        <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
           {mainCurrencies.map((id) => (
@@ -1422,7 +1408,7 @@ export default function StoreContent() {
           ))}
         </div>
 
-        <div className="flex bg-black/25 border-y border-[rgba(139,92,246,0.12)] overflow-x-auto overflow-y-hidden">
+        <div className="sticky top-0 z-10 flex bg-[rgba(26,22,64,0.97)] border-y border-[rgba(139,92,246,0.12)] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden backdrop-blur-sm">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -1440,7 +1426,7 @@ export default function StoreContent() {
           ))}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto [-webkit-overflow-scrolling:touch] p-3.5">
+        <div className="p-3.5">
           {isGemPacksTab ? (
             gemPacksLoading ? (
               <div className="flex flex-col gap-3">
@@ -1548,6 +1534,7 @@ export default function StoreContent() {
             renderTabItemsWithSections()
           )}
         </div>
+      </div>
 
     </div>
   );
