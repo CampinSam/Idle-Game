@@ -281,13 +281,13 @@ export class GiftService {
       },
     });
 
-    await this.notificationService.markReadBySource(userId, 'Gift', giftId, tx);
+    const readNotifications = await this.notificationService.markReadBySource(userId, 'Gift', giftId, tx);
 
     try {
       await this.telemetryService.record(userId, 'gift_claimed', giftDefId, 1, {}, db);
     } catch (_) {}
 
-    return { gift: updatedGift, claimTx };
+    return { gift: updatedGift, claimTx, readNotifications };
   }
 
   private async resolveRewards(

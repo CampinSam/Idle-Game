@@ -188,16 +188,34 @@ achievement, etc.). When that source entity transitions to a terminal state
 (claimed, completed, collected, cancelled), the notification's relevance ends.
 The command handler responsible for that transition **must** do both:
 
-1. **Mark the notification read inside the transaction** — do an inline
-   `findFirst` + `update` within the `ctx.tx` scope so the updated record is
-   available as a return value from the service method. `markReadBySource` (which
-   uses `updateMany` and returns only a count) is acceptable only for REST
-   fire-and-forget paths that don't feed a patch back to the client.
+1. **Mark the notification read via `markReadBySource`** — call
+   `NotificationService.markReadBySource(userId, sourceType, sourceId, tx)`
+   inside the command's service method (forwarding `ctx.tx`). This method uses
+   a find-then-update pattern and returns the updated records as `any[]`, so the
+   service method must capture the return value and include it in its result object.
 
-2. **Emit a notification patch** — call `pb.upsertNotification(markedReadNotif)`
-   so the client's Redux store reflects the read state in the same response cycle.
-   Omitting this step causes the bell badge and unread indicator to persist after
-   the player has acted — a "ghost notification" that silently erodes trust.
+2. **Emit notification upsert patches in the handler** — the command handler
+   iterates the returned notifications and calls `pb.upsertNotification(notif)`
+   for each one, so the client's Redux store reflects the read state in the same
+   response cycle. Omitting this step causes the bell badge and unread indicator
+   to persist after the player has acted — a "ghost notification" that silently
+   erodes trust.
+
+### Canonical pattern
+
+```typescript
+// In the service method:
+const readNotifications = await this.notificationService.markReadBySource(
+  userId, 'Gift', giftId, tx,
+);
+return { gift: updatedGift, claimTx, readNotifications };
+
+// In the command handler:
+const { gift, claimTx, readNotifications } = await this.giftService.claimGift(...);
+for (const notif of readNotifications ?? []) {
+  pb.upsertNotification(notif);
+}
+```
 
 **Correct reference handlers:** `complete-mission.handler.ts`,
 `collect-crafting.handler.ts`, `complete-building.handler.ts`,

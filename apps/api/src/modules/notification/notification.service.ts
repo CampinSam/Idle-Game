@@ -593,12 +593,19 @@ export class NotificationService {
     });
   }
 
-  async markReadBySource(userId: string, sourceType: string, sourceId: string, tx?: any) {
+  async markReadBySource(userId: string, sourceType: string, sourceId: string, tx?: any): Promise<any[]> {
     const notif = tx ? (tx as any).notification : this.notification;
-    return notif.updateMany({
+    const unread = await notif.findMany({
       where: { userId, sourceType, sourceId, readAt: null },
-      data: { readAt: new Date() },
     });
+    if (unread.length === 0) return [];
+    const ids = unread.map((n: any) => n.id);
+    const readAt = new Date();
+    await notif.updateMany({
+      where: { id: { in: ids } },
+      data: { readAt },
+    });
+    return unread.map((n: any) => ({ ...n, readAt }));
   }
 
   async clearRead(userId: string) {

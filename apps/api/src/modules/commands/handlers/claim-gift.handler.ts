@@ -12,10 +12,13 @@ export class ClaimGiftHandler implements CommandHandler {
     const { giftId } = payload;
     if (!giftId) throw new BadRequestException('giftId is required');
 
-    const { gift, claimTx } = await this.giftService.claimGift(ctx.userId, giftId, ctx.tx);
+    const { gift, claimTx, readNotifications } = await this.giftService.claimGift(ctx.userId, giftId, ctx.tx);
 
     const pb = new PatchBuilder();
     pb.delete('gift', giftId);
+    for (const notif of readNotifications ?? []) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);
