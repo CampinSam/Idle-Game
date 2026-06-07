@@ -348,7 +348,7 @@ export class AdminController {
         e."nftAssetId",
         e."nftCollectionDefId",
         e.stats,
-        e.rarity,
+        NULL::text AS rarity,
         e."createdAt"
       FROM entities e
       LEFT JOIN users u ON u.id = e."ownerUserId"
