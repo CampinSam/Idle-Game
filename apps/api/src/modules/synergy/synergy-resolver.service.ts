@@ -144,8 +144,7 @@ export class SynergyResolverService {
     if (this.isSelectorEmpty(selector)) return true;
 
     if (!this.isRichSelection(selector)) {
-      this.logger.error('matchesSelector: non-RichSelection data in DB — failing closed; run migration script');
-      return false;
+      throw new Error(`matchesSelector: non-RichSelection data in DB for selector — ${JSON.stringify(selector).slice(0, 120)}`);
     }
     const richSel = selector as unknown as RichSelection;
 
@@ -164,8 +163,7 @@ export class SynergyResolverService {
     if (this.isRichSelection(ruleCtx) && ruleCtx.rules.length === 0) return true;
 
     if (!this.isRichSelection(ruleCtx)) {
-      this.logger.error('matchesContext: non-RichSelection data in DB — failing closed; run migration script');
-      return false;
+      throw new Error(`matchesContext: non-RichSelection data in DB for context — ${JSON.stringify(ruleCtx).slice(0, 120)}`);
     }
     const richSel = ruleCtx as unknown as RichSelection;
 

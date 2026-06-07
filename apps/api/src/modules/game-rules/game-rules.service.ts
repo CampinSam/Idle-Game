@@ -81,11 +81,9 @@ export class GameRulesService {
       return this.selectionResolver.evaluate(requirements as RichSelection, this.reqCtxToSelCtx(context));
     }
     if (Array.isArray(requirements)) {
-      this.logger.error('checkRequirements: legacy Requirement[] format detected — failing closed; run migration script to convert to RichSelection');
-      return false;
+      throw new Error('checkRequirements: legacy Requirement[] format detected — run migration script to convert to RichSelection');
     }
-    this.logger.error('checkRequirements: unknown non-null requirements shape — failing closed', { requirements });
-    return false;
+    throw new Error(`checkRequirements: unknown non-null requirements shape — ${JSON.stringify(requirements).slice(0, 120)}`);
   }
 
   checkVisibility(

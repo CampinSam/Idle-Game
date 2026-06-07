@@ -5,6 +5,7 @@ import SmartField from './components/SmartField';
 import { invalidateRefCache } from './components/RefSelect';
 import { structuredFieldErrorCount, structuredFieldMessages } from './components/structured/validation';
 import { migrateMissionOutcomes, needsMissionMigration } from './migrateMissionOutcomes';
+import { detectBadRichSelectionFields, BadRichSelectionField } from './legacyRichSelectionCheck';
 import TelemetryCardPreviewPanel from '../telemetry/TelemetryCardPreviewPanel';
 
 interface TableEntry {
@@ -228,6 +229,8 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
 
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
+  const [badRichSelFields, setBadRichSelFields] = useState<BadRichSelectionField[]>([]);
+  const [seeDataField, setSeeDataField] = useState<string | null>(null);
 
   useEffect(() => {
     adminApi.getTables().then(setTables).catch(() => {});
@@ -319,6 +322,8 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setSearch('');
     setActiveSectionId(null);
     setNeedsMigration(false);
+    setBadRichSelFields([]);
+    setSeeDataField(null);
     dispatch({ type: 'CLEAR' });
     loadRecords(key);
     loadPendingDrafts(key, me?.id);
@@ -351,13 +356,19 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
           ? pendingDraft.payload
           : rec;
       setNeedsMigration(false);
+      setBadRichSelFields([]);
+      setSeeDataField(null);
       dispatch({ type: 'LOAD_AS_DRAFT', record: draftPayload as Record<string, any>, draftId: pendingDraft.id, operation: pendingDraft.operation });
     } else if (activeTable === TABLE_API_KEYS.MissionDef) {
       const hasMigration = needsMissionMigration(rec);
       setNeedsMigration(hasMigration);
+      setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
+      setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
     } else {
       setNeedsMigration(false);
+      setBadRichSelFields(schema ? detectBadRichSelectionFields(rec, schema, getSchemaName()) : []);
+      setSeeDataField(null);
       dispatch({ type: 'LOAD', record: rec });
     }
   };
@@ -371,6 +382,8 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setIsNew(true);
     setDeleteConfirm(false);
     setNeedsMigration(false);
+    setBadRichSelFields([]);
+    setSeeDataField(null);
     dispatch({ type: 'LOAD', record: blank });
   };
 
@@ -388,6 +401,8 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     setIsNew(true);
     setDeleteConfirm(false);
     setNeedsMigration(false);
+    setBadRichSelFields([]);
+    setSeeDataField(null);
     dispatch({ type: 'LOAD_DIRTY', record: duplicated });
   };
 
@@ -945,6 +960,89 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
                   </button>
                 </div>
               )}
+              {/* BAD RICHSELECTION DATA banners — per-field warning for non-RichSelection values */}
+              {badRichSelFields.length > 0 && !editorState.isDraftMode && badRichSelFields.map(bad => (
+                <div key={bad.field} style={{
+                  padding: '8px 20px',
+                  background: 'rgba(120, 20, 20, 0.4)',
+                  borderBottom: '1px solid rgba(252, 165, 165, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  flexShrink: 0,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', color: '#fca5a5', textTransform: 'uppercase', flexShrink: 0 }}>
+                      ⚠ Bad Data
+                    </span>
+                    <span style={{ fontSize: 11, color: '#fecaca', flex: 1 }}>
+                      Field <code style={{ background: 'rgba(252,165,165,0.1)', borderRadius: 3, padding: '0 3px' }}>{bad.field}</code> contains non-RichSelection data and must be removed before saving.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSeeDataField(seeDataField === bad.field ? null : bad.field)}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'rgba(252, 165, 165, 0.1)',
+                        border: '1px solid rgba(252, 165, 165, 0.35)',
+                        borderRadius: 6,
+                        color: '#fca5a5',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.2)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.1)'; }}
+                    >
+                      {seeDataField === bad.field ? 'Hide Data' : 'See Data'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch({ type: 'SET_FIELD', field: bad.field, value: null });
+                        setBadRichSelFields(prev => prev.filter(b => b.field !== bad.field));
+                        if (seeDataField === bad.field) setSeeDataField(null);
+                      }}
+                      style={{
+                        padding: '5px 12px',
+                        background: 'rgba(252, 165, 165, 0.15)',
+                        border: '1px solid rgba(252, 165, 165, 0.4)',
+                        borderRadius: 6,
+                        color: '#fca5a5',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.28)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(252,165,165,0.15)'; }}
+                    >
+                      Remove It
+                    </button>
+                  </div>
+                  {seeDataField === bad.field && (
+                    <div style={{ fontSize: 11, paddingTop: 2 }}>
+                      <div style={{ color: 'rgba(252,165,165,0.6)', marginBottom: 4, fontFamily: 'monospace' }}>{bad.path}</div>
+                      <pre style={{
+                        background: 'rgba(0,0,0,0.45)',
+                        borderRadius: 4,
+                        padding: '6px 8px',
+                        margin: 0,
+                        color: '#fecaca',
+                        overflowX: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all',
+                        maxHeight: 200,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      }}>
+                        {JSON.stringify(bad.rawValue, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ))}
               {/* REJECTED DRAFT banner — show when the current record has a rejected draft from this author */}
               {!editorState.isDraftMode && selectedId && rejectedDrafts[selectedId] && (() => {
                 const rd = rejectedDrafts[selectedId];
