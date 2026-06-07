@@ -7688,6 +7688,38 @@
         "buttons": [{ "id": "btn_ok", "label": "Awesome!", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
       },
       "enabled": true
+    },
+    {
+      "id": "default_crafting_complete",
+      "name": "Default Crafting Complete",
+      "description": "System fallback modal shown when a crafting job completes and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_crafting_complete",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Crafting Complete!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Collect", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_complete",
+      "name": "Default Building Complete",
+      "description": "System fallback modal shown when a building job completes and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_complete",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Construction Complete!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Done", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
     }
   ],
   "systemIconDefs": [

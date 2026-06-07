@@ -136,10 +136,17 @@ export class UiService {
       if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     }
 
-    // Fall back to the system default modal for mission completion when no custom modal is assigned.
-    if (job.type === 'MissionJob' && (job.status === 'completed' || job.status === 'failed' || job.status === 'collected')) {
-      const defaultSpec = await this.resolveDefaultModalDef('default_mission_complete');
-      if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec, ctx);
+    // Fall back to the system default modal when no custom modal is assigned.
+    const isTerminal = job.status === 'completed' || job.status === 'failed' || job.status === 'collected';
+    if (isTerminal) {
+      let defaultId: string | null = null;
+      if (job.type === 'MissionJob') defaultId = 'default_mission_complete';
+      else if (job.type === 'CraftingJob') defaultId = 'default_crafting_complete';
+      else if (job.type === 'BuildingJob') defaultId = 'default_building_complete';
+      if (defaultId) {
+        const defaultSpec = await this.resolveDefaultModalDef(defaultId);
+        if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec, ctx);
+      }
     }
 
     return generated;
