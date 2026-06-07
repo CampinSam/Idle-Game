@@ -1,3 +1,4 @@
 - [Schema migration policy](dev-migration-divergence.md) — prisma migrate dev is mandatory for all schema changes; db push is forbidden (production only sees migration files).
 - [Enum reorder pattern](enum-reorder-pattern.md) — reordering a PostgreSQL enum with an active partial index requires: drop partial index first, then convert column→text→new enum, recreate index.
 - [Nested flex percentage flex-basis pitfall](flex-nested-percentage-basis.md) — page-root wrappers inside <Outlet /> should use h-full not flex-1; bottom-pinned panels belong inside the card (flex-shrink-0), not outside it.
+- [iOS scroll + animation fill-mode](ios-scroll-animation-fillmode.md) — transform on page-transition-wrapper (via fill-mode:both) blocks touch scroll on iOS; fix + touch-pan-y pattern.
