@@ -275,6 +275,10 @@ export async function seedDefinitions(prisma: any) {
     await upsertManyForce(prisma, 'modalDef', defs.modalDefs);
   }
 
+  if (defs.defaultModalDefs) {
+    await upsertManyForce(prisma, 'defaultModalDef', defs.defaultModalDefs);
+  }
+
   const homeBannerDefs = loadJson('home-banner-defs.json');
   if (Array.isArray(homeBannerDefs) && homeBannerDefs.length > 0) {
     await upsertManyForce(prisma, 'homeBannerDef', homeBannerDefs, (r: any) => {

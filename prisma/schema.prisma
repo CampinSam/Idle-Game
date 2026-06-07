@@ -799,6 +799,19 @@ model ModalDef {
   @@map("modal_defs")
 }
 
+model DefaultModalDef {
+  id          String   @id
+  name        String
+  description String?
+  version     Int      @default(1)
+  spec        Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("default_modal_defs")
+}
+
 model GiftDef {
   id           String   @id
   name         String

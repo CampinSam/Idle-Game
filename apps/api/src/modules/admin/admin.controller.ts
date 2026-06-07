@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, ParseIntPipe, DefaultValuePipe, Req, ParseArrayPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Logger, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, ParseIntPipe, DefaultValuePipe, Req, ParseArrayPipe, MethodNotAllowedException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AudioBus } from '@prisma/client';
 import { AdminGuard } from './admin.guard';
@@ -189,6 +189,7 @@ export class AdminController {
       { key: 'shopItemDef',       name: 'Shop Item Definitions',      table: 'shop_item_defs',       group: 'Store' },
       { key: 'nftCollectionDef',  name: 'NFT Collection Definitions', table: 'nft_collection_defs',  group: 'NFT' },
       { key: 'modalDef',          name: 'Modal Definitions',          table: 'modal_defs',           group: 'UI' },
+      { key: 'defaultModalDef',   name: 'Default Modal Definitions',  table: 'default_modal_defs',   group: 'UI' },
       { key: 'effectDef',         name: 'Effect Definitions',         table: 'effect_defs',          group: 'Effects' },
       { key: 'powerDef',          name: 'Power Definitions',          table: 'power_defs',           group: 'Effects' },
       { key: 'tagDef',            name: 'Visual Tag Definitions',     table: 'tag_defs',             group: 'UI' },
@@ -1613,6 +1614,10 @@ export class AdminController {
 
   @Post(':table')
   async create(@Req() req: any, @Param('table') table: string, @Body() body: any) {
+    if (table === 'defaultModalDef') {
+      throw new MethodNotAllowedException('Creating records is not allowed for Default Modal Definitions');
+    }
+
     const isSuperAdmin = req.adminUser.role === 'super_admin';
 
     if (!isSuperAdmin) {
@@ -1686,6 +1691,10 @@ export class AdminController {
 
   @Delete(':table/:id')
   async remove(@Req() req: any, @Param('table') table: string, @Param('id') id: string) {
+    if (table === 'defaultModalDef') {
+      throw new MethodNotAllowedException('Deleting records is not allowed for Default Modal Definitions');
+    }
+
     const isSuperAdmin = req.adminUser.role === 'super_admin';
 
     if (!isSuperAdmin) {

@@ -697,18 +697,20 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
               placeholder="Search..."
               style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box' }}
             />
-            <button
-              type="button"
-              disabled={!activeTable}
-              onClick={handleNewRecord}
-              style={{
-                padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
-                borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
-              }}
-              title="New record"
-            >
-              +
-            </button>
+            {!schema?.editOnly && (
+              <button
+                type="button"
+                disabled={!activeTable}
+                onClick={handleNewRecord}
+                style={{
+                  padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
+                  borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
+                }}
+                title="New record"
+              >
+                +
+              </button>
+            )}
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {!activeTable && (
@@ -834,31 +836,33 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              disabled={!activeTable}
-              onClick={handleNewRecord}
-              title="New record"
-              style={{
-                width: 44,
-                height: 40,
-                flexShrink: 0,
-                background: activeTable ? 'linear-gradient(135deg, #6d28d9, #a78bfa)' : '#1a1a2e',
-                border: 'none',
-                borderRadius: 6,
-                color: '#fff',
-                fontSize: 22,
-                lineHeight: 1,
-                cursor: activeTable ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: activeTable ? 1 : 0.3,
-                transition: 'background 0.15s, opacity 0.15s',
-              }}
-            >
-              +
-            </button>
+            {!schema?.editOnly && (
+              <button
+                type="button"
+                disabled={!activeTable}
+                onClick={handleNewRecord}
+                title="New record"
+                style={{
+                  width: 44,
+                  height: 40,
+                  flexShrink: 0,
+                  background: activeTable ? 'linear-gradient(135deg, #6d28d9, #a78bfa)' : '#1a1a2e',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: '#fff',
+                  fontSize: 22,
+                  lineHeight: 1,
+                  cursor: activeTable ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: activeTable ? 1 : 0.3,
+                  transition: 'background 0.15s, opacity 0.15s',
+                }}
+              >
+                +
+              </button>
+            )}
           </div>
         )}
 
@@ -982,7 +986,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
                     {editorState.saveError}
                   </span>
                 )}
-                {!isNew && !deleteConfirm && !editorState.isDraftMode && (
+                {!isNew && !deleteConfirm && !editorState.isDraftMode && !schema?.editOnly && (
                   <>
                     <button
                       type="button"

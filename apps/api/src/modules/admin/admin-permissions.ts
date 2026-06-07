@@ -25,6 +25,7 @@ export interface PermissionCheckResult {
 export const TABLE_KEY_TO_GROUP: Record<string, string> = {
   displayDef: 'UI',
   modalDef: 'UI',
+  defaultModalDef: 'UI',
   homeBannerDef: 'UI',
   systemIconDef: 'UI',
   tagDef: 'UI',

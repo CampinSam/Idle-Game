@@ -1,4 +1,5 @@
 export const TABLE_API_KEYS: Record<string, string> = {
+  DefaultModalDef: 'defaultModalDef',
   Currency: 'currency',
   ItemDef: 'itemDef',
   EntityDefinition: 'entityDefinition',
@@ -70,9 +71,24 @@ export interface TableSchema {
   sections?: SectionDef[];
   /** Optional — returns a badge to overlay on the record list row (e.g. "scheduled", "expiring"). */
   getRowBadge?: (record: Record<string, any>) => { label: string; color: string } | null;
+  /** When true, New Record, Duplicate, and Delete controls are hidden. API-level POST and DELETE also return 405. */
+  editOnly?: boolean;
 }
 
 export const TABLE_SCHEMAS: Record<string, TableSchema> = {
+  DefaultModalDef: {
+    color: '#455A64',
+    group: 'UI',
+    editOnly: true,
+    fields: {
+      id: { type: 'string', description: 'System identifier (read-only)' },
+      name: { type: 'string', required: true, description: 'Admin-facing name' },
+      description: { type: 'string', description: 'Notes on what this modal kind is for' },
+      version: { type: 'number', default: 1, description: 'Schema version' },
+      spec: { type: 'modalSpec', default: {}, description: 'ModalSpecV1: { kind, dismiss, header, body, buttons }' },
+      enabled: { type: 'boolean', default: true, description: 'Active?' },
+    },
+  },
   ModalDef: {
     color: '#607D8B',
     group: 'UI',
@@ -704,7 +720,7 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
 };
 
 export const TABLE_GROUPS: Record<string, string[]> = {
-  UI: ['ModalDef', 'DisplayDef', 'HomeBannerDef'],
+  UI: ['DefaultModalDef', 'ModalDef', 'DisplayDef', 'HomeBannerDef'],
   Missions: ['MissionDef', 'MissionCategoryDef'],
   Crafting: ['RecipeDef'],
   Locations: ['BuildingDef', 'RoomDef', 'LocationDefinition', 'RegionDefinition'],

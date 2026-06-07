@@ -7592,6 +7592,104 @@
       "enabled": true
     }
   ],
+  "defaultModalDefs": [
+    {
+      "id": "default_welcome",
+      "name": "Default Welcome",
+      "description": "System fallback modal shown when no custom welcome modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_welcome",
+        "kind": "announcement",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Welcome!", "subtitle": "Your adventure begins now." },
+        "body": [{ "type": "richText", "doc": [{ "t": "p", "c": [{ "t": "text", "v": "Welcome to Derp Universe. Start by completing your first mission and claiming your welcome gift." }] }] }],
+        "buttons": [{ "id": "btn_ok", "label": "Let's Go!", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_season_intro",
+      "name": "Default Season Intro",
+      "description": "System fallback modal shown at the start of each new season when no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_season_intro",
+        "kind": "announcement",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "New Season Begins!", "subtitle": "Fresh rewards await." },
+        "body": [{ "type": "richText", "doc": [{ "t": "p", "c": [{ "t": "text", "v": "A new season has started. Check the store and missions for seasonal rewards." }] }] }],
+        "buttons": [{ "id": "btn_ok", "label": "Let's Go!", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_mission_complete",
+      "name": "Default Mission Complete",
+      "description": "System fallback modal shown when a mission completes and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_mission_complete",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Mission Complete!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Collect", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_gift_claim",
+      "name": "Default Gift Claim",
+      "description": "System fallback modal shown when a gift is claimed and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_gift_claim",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Gift Claimed!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Claim", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_location_levelup",
+      "name": "Default Location Level-Up",
+      "description": "System fallback modal shown when a location levels up and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_location_levelup",
+        "kind": "announcement",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Location Levelled Up!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Nice!", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_lootbox_reveal",
+      "name": "Default Lootbox Reveal",
+      "description": "System fallback modal shown when a lootbox is opened and no custom modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_lootbox_reveal",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "You Got Something!" },
+        "body": [],
+        "buttons": [{ "id": "btn_ok", "label": "Awesome!", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+      },
+      "enabled": true
+    }
+  ],
   "systemIconDefs": [
     {
       "id": "entity_xp",
