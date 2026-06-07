@@ -136,6 +136,12 @@ export class UiService {
       if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     }
 
+    // Fall back to the system default modal for mission completion when no custom modal is assigned.
+    if (job.type === 'MissionJob' && (job.status === 'completed' || job.status === 'failed' || job.status === 'collected')) {
+      const defaultSpec = await this.resolveDefaultModalDef('default_mission_complete');
+      if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec, ctx);
+    }
+
     return generated;
   }
 
@@ -256,6 +262,10 @@ export class UiService {
         }
       } catch {}
     }
+
+    // Fall back to the system default modal for gift claims when no custom modal is assigned.
+    const defaultGiftSpec = await this.resolveDefaultModalDef('default_gift_claim');
+    if (defaultGiftSpec) return this.mergeModalDefSpec(generated, defaultGiftSpec, ctx);
 
     return generated;
   }
@@ -638,6 +648,24 @@ export class UiService {
       return modalDef.spec && typeof modalDef.spec === 'object' ? (modalDef.spec as ModalSpecV1) : null;
     } catch {}
     return null;
+  }
+
+  private async resolveDefaultModalDef(systemId: string): Promise<ModalSpecV1 | null> {
+    try {
+      const row = await (this.prisma as any).defaultModalDef.findUnique({ where: { id: systemId } });
+      if (!row) {
+        this.logger.warn(`DefaultModalDef missing for system ID "${systemId}" — no fallback spec available`);
+        return null;
+      }
+      if (!row.enabled) {
+        this.logger.warn(`DefaultModalDef "${systemId}" is disabled — fallback spec will not be applied`);
+        return null;
+      }
+      return row.spec && typeof row.spec === 'object' ? (row.spec as ModalSpecV1) : null;
+    } catch (err) {
+      this.logger.warn(`Failed to resolve DefaultModalDef "${systemId}": ${(err as Error)?.message}`);
+      return null;
+    }
   }
 
   private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | LocationContext): any {
@@ -1043,28 +1071,31 @@ export class UiService {
       ],
     };
 
+    const locationCtx: LocationContext = {
+      location: {
+        id: location.id,
+        name: location.definitionId || 'Outpost',
+        level: location.level,
+        xp: Number(location.xp ?? 0),
+        xpToNext: 0,
+        maxLevel: ((def?.rules as any)?.maxLevel) ?? 50,
+      },
+      def: def || {},
+      fromLevel,
+      toLevel,
+      options: [],
+      unlocks: unlocks as unknown as Record<string, unknown>,
+    };
+
     const modalDefId = def?.levelUpModalDefId;
     if (modalDefId) {
       const spec = await this.resolveModalDef(modalDefId);
-      if (spec) {
-        const ctx: LocationContext = {
-          location: {
-            id: location.id,
-            name: location.definitionId || 'Outpost',
-            level: location.level,
-            xp: Number(location.xp ?? 0),
-            xpToNext: 0,
-            maxLevel: ((def?.rules as any)?.maxLevel) ?? 50,
-          },
-          def: def || {},
-          fromLevel,
-          toLevel,
-          options: [],
-          unlocks: unlocks as unknown as Record<string, unknown>,
-        };
-        return this.mergeModalDefSpec(generated, spec, ctx);
-      }
+      if (spec) return this.mergeModalDefSpec(generated, spec, locationCtx);
     }
+
+    // Fall back to the system default modal for location level-ups when no custom modal is assigned.
+    const defaultSpec = await this.resolveDefaultModalDef('default_location_levelup');
+    if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec, locationCtx);
 
     return generated;
   }
