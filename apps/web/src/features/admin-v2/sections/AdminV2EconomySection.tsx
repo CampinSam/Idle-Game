@@ -7,7 +7,7 @@ interface Props {
 
 export default function AdminV2EconomySection({ me: _ }: Props) {
   return (
-    <div className="av2-section-full">
+    <div className="h-full overflow-auto">
       <BalancePage />
     </div>
   );

@@ -12,6 +12,15 @@ type PlayerTab = 'tools' | 'wallet' | 'events';
 const SUPPORTED_CHAINS = ['CARDANO', 'ETH', 'SOL'];
 const PAGE_SIZE = 20;
 
+const CARD = "bg-[#0d0e1f] border border-[#1a1b35] rounded-[10px] p-4";
+const DRAFT_TABLE = "text-[11px] font-bold tracking-[0.05em] bg-[rgba(108,99,255,0.15)] text-[#8080c8] border border-[rgba(108,99,255,0.25)] py-[2px] px-[6px] rounded";
+const STAT_ROW = "flex items-center justify-between py-[6px] border-b border-[#1a1b35] text-[12px] last:border-b-0";
+const MSG_SUCCESS = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(5,150,105,0.12)] border border-[rgba(5,150,105,0.3)] text-[#34d399]";
+const MSG_ERROR = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]";
+const TAB_BASE = "py-[5px] px-[12px] border rounded-[6px] bg-transparent text-[12px] font-semibold cursor-pointer transition-[background,color] duration-[120ms]";
+const TAB_ACTIVE = "bg-[rgba(108,99,255,0.18)] border-[rgba(108,99,255,0.3)] text-[#a89fff]";
+const TAB_INACTIVE = "border-transparent text-[#5a5a8a] hover:bg-[#1a1b35] hover:text-[#9090c8]";
+
 function isCardanoHexAddress(chain: string, address: string): boolean {
   if (chain !== 'CARDANO' || !address) return false;
   const lower = address.toLowerCase();
@@ -111,20 +120,20 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
 
   return (
     <div style={{ padding: 16 }}>
-      {loading && <div className="av2-loading">Loading wallets…</div>}
-      {!loading && error && <div className="av2-inline-msg error" style={{ marginBottom: 12 }}>{error}</div>}
+      {loading && <div className="flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]">Loading wallets…</div>}
+      {!loading && error && <div className={`${MSG_ERROR} mb-3`}>{error}</div>}
       {!loading && wallets.length === 0 && !error && (
-        <div className="av2-empty" style={{ marginBottom: 16 }}>No wallets linked to this player.</div>
+        <div className="flex items-center justify-center p-[40px] text-[#3a3a6a] text-[13px] italic" style={{ marginBottom: 16 }}>No wallets linked to this player.</div>
       )}
 
-      {normalizeError && <div className="av2-inline-msg error" style={{ marginBottom: 10 }}>{normalizeError}</div>}
+      {normalizeError && <div className={`${MSG_ERROR} mb-[10px]`}>{normalizeError}</div>}
 
       {wallets.map((w: any) => {
         const hexFmt = isCardanoHexAddress(w.chain, w.address);
         return (
-          <div key={w.id} className="av2-card" style={{ marginBottom: 10 }}>
+          <div key={w.id} className={CARD} style={{ marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span className="av2-draft-table">{w.chain ?? 'Unknown chain'}</span>
+              <span className={DRAFT_TABLE}>{w.chain ?? 'Unknown chain'}</span>
               {w.isPrimary && <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 700 }}>PRIMARY</span>}
               {hexFmt && (
                 <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
@@ -180,7 +189,7 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
         );
       })}
 
-      <div className="av2-card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className={CARD} style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa' }}>NFT Ownership Sync</div>
           <button
@@ -198,12 +207,12 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
         <div style={{ fontSize: 11, color: '#4a4a7a' }}>
           Re-checks all linked wallets against the chain and updates NFT ownership for this player.
         </div>
-        {resyncResult && <div className="av2-inline-msg success">{resyncResult}</div>}
-        {resyncError && <div className="av2-inline-msg error">{resyncError}</div>}
+        {resyncResult && <div className={MSG_SUCCESS}>{resyncResult}</div>}
+        {resyncError && <div className={MSG_ERROR}>{resyncError}</div>}
       </div>
 
       {canWrite && (
-        <div className="av2-card" style={{ marginTop: 12 }}>
+        <div className={CARD} style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', marginBottom: 10 }}>
             Add Wallet / Staking Address
           </div>
@@ -244,8 +253,8 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
                 {adding ? 'Adding…' : 'Add'}
               </button>
             </div>
-            {addError && <div className="av2-inline-msg error">{addError}</div>}
-            {addSuccess && <div className="av2-inline-msg success">{addSuccess}</div>}
+            {addError && <div className={MSG_ERROR}>{addError}</div>}
+            {addSuccess && <div className={MSG_SUCCESS}>{addSuccess}</div>}
           </form>
         </div>
       )}
@@ -266,15 +275,15 @@ function EventsTab({ playerId }: { playerId: string }) {
       .finally(() => setLoading(false));
   }, [playerId]);
 
-  if (loading) return <div className="av2-loading">Loading events…</div>;
-  if (error) return <div className="av2-inline-msg error" style={{ margin: 16 }}>{error}</div>;
-  if (events.length === 0) return <div className="av2-empty">No recent events for this player.</div>;
+  if (loading) return <div className="flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]">Loading events…</div>;
+  if (error) return <div className={`${MSG_ERROR} m-4`}>{error}</div>;
+  if (events.length === 0) return <div className="flex items-center justify-center p-[40px] text-[#3a3a6a] text-[13px] italic">No recent events for this player.</div>;
 
   return (
     <div style={{ padding: 16 }}>
       {events.map((e: any, i: number) => (
-        <div key={e.id ?? i} className="av2-stat-row" style={{ padding: '8px 0' }}>
-          <span className="av2-draft-table" style={{ flexShrink: 0 }}>{e.eventType ?? e.type ?? '?'}</span>
+        <div key={e.id ?? i} className={STAT_ROW} style={{ padding: '8px 0' }}>
+          <span className={DRAFT_TABLE} style={{ flexShrink: 0 }}>{e.eventType ?? e.type ?? '?'}</span>
           <span style={{ fontSize: 11, color: '#6060a0', fontFamily: 'monospace', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {e.payload ? JSON.stringify(e.payload).slice(0, 80) : '—'}
           </span>
@@ -313,7 +322,6 @@ export default function AdminV2PlayersSection({ me }: Props) {
   const [player, setPlayer] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PlayerTab>('tools');
 
-  // Tracks last page visited in unfiltered browse mode so clearing a search restores it
   const browsePageRef = useRef(1);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -326,7 +334,6 @@ export default function AdminV2PlayersSection({ me }: Props) {
       setItems(data.items);
       setTotal(data.total);
       setPage(data.page);
-      // Only update the browse-position tracker when not filtering
       if (!q) browsePageRef.current = data.page;
     } catch (e: any) {
       setError(e.message || 'Failed to load players');
@@ -363,7 +370,6 @@ export default function AdminV2PlayersSection({ me }: Props) {
     setQuery(val);
     if (val === '') {
       setCommittedQuery('');
-      // Restore the browse page the admin was on before searching
       fetchPage('', browsePageRef.current);
     }
   }, [fetchPage]);
@@ -396,8 +402,8 @@ export default function AdminV2PlayersSection({ me }: Props) {
 
   if (!canRead) {
     return (
-      <div className="av2-access-denied">
-        <div className="av2-access-denied-icon">🔒</div>
+      <div className="flex flex-col items-center justify-center py-[60px] px-6 text-center text-[#4a4a7a]">
+        <div className="text-[36px] mb-3 opacity-40">🔒</div>
         <div>You don't have player read permissions.</div>
       </div>
     );
@@ -406,7 +412,7 @@ export default function AdminV2PlayersSection({ me }: Props) {
   if (player) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <div className="av2-system-tabs" style={{ alignItems: 'center' }}>
+        <div className="flex gap-1 py-2 px-3 border-b border-[#1a1b35] bg-[#0a0b1c] flex-wrap flex-shrink-0" style={{ alignItems: 'center' }}>
           <button
             style={{
               padding: '4px 10px', background: 'none', border: '1px solid #1a1b35',
@@ -422,7 +428,7 @@ export default function AdminV2PlayersSection({ me }: Props) {
           {PLAYER_TABS.map(t => (
             <button
               key={t.key}
-              className={`av2-system-tab${activeTab === t.key ? ' active' : ''}`}
+              className={`${TAB_BASE} ${activeTab === t.key ? TAB_ACTIVE : TAB_INACTIVE}`}
               onClick={() => setActiveTab(t.key)}
             >
               {t.label}
@@ -445,18 +451,18 @@ export default function AdminV2PlayersSection({ me }: Props) {
   }
 
   return (
-    <div className="av2-section-wrap" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="av2-search-row">
+    <div className="p-5 max-w-[1200px]" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="flex gap-2 mb-4">
         <input
           type="text"
-          className="av2-search-input"
+          className="flex-1 py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] focus:outline-none focus:border-[#6c63ff]"
           placeholder="Filter by username, email, or player ID…"
           value={query}
           onChange={e => handleQueryChange(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <button
-          className="av2-search-btn"
+          className="py-2 px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#5a52d5] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleSearch}
           disabled={loading}
         >
@@ -464,7 +470,7 @@ export default function AdminV2PlayersSection({ me }: Props) {
         </button>
       </div>
 
-      {error && <div className="av2-inline-msg error">{error}</div>}
+      {error && <div className={`${MSG_ERROR} mb-3`}>{error}</div>}
 
       <div style={{ fontSize: 11, color: '#3a3a6a', padding: '4px 0 6px', flexShrink: 0 }}>
         {total > 0 ? `${total} player${total !== 1 ? 's' : ''}${committedQuery ? ' matching' : ''}` : (!loading ? 'No players found.' : '')}
@@ -472,18 +478,17 @@ export default function AdminV2PlayersSection({ me }: Props) {
 
       <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
         {loading && items.length === 0 && (
-          <div className="av2-loading">Loading players…</div>
+          <div className="flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]">Loading players…</div>
         )}
         {items.map((p: any) => (
           <button
             key={p.id}
-            className="av2-player-result"
+            className="flex items-center gap-[10px] py-2 px-3 bg-[#0d0e1f] border border-[#1a1b35] rounded-[8px] cursor-pointer transition-[border-color] duration-[120ms] mb-[6px] w-full text-left hover:border-[#6c63ff55]"
             onClick={() => selectPlayer(p.id)}
-            style={{ width: '100%', textAlign: 'left' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span className="av2-player-name">{p.username ?? <span style={{ color: '#4a4a7a' }}>(no username)</span>}</span>
+                <span className="text-[13px] font-semibold text-[#c0c0e8]">{p.username ?? <span style={{ color: '#4a4a7a' }}>(no username)</span>}</span>
                 <span style={{ fontSize: 10, color: '#4a4a7a' }}>Lv {p.keeperLevel ?? 0}</span>
               </div>
               {p.email && (

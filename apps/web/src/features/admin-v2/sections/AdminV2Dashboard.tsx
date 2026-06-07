@@ -7,20 +7,28 @@ interface Props {
   onNavigate: (section: string, sub?: string) => void;
 }
 
+const CARD = "bg-[#0d0e1f] border border-[#1a1b35] rounded-[10px] p-4";
+const CARD_TITLE = "text-[11px] font-bold tracking-[0.07em] uppercase text-[#4a4a7a] m-0 mb-3";
+const CARD_VALUE = "text-[32px] font-[800] text-[#e0e0ff] leading-[1]";
+const CARD_SUB = "text-[12px] text-[#4a4a7a] mt-[6px]";
+const STAT_ROW = "flex items-center justify-between py-[6px] border-b border-[#1a1b35] text-[12px] last:border-b-0";
+const STAT_KEY = "text-[#6060a0]";
+const STAT_VAL = "text-[#c0c0e8] font-semibold";
+
 function StatCard({ title, value, sub, accent }: { title: string; value: React.ReactNode; sub?: string; accent?: string }) {
   return (
-    <div className="av2-card" style={{ borderTop: accent ? `2px solid ${accent}` : undefined }}>
-      <div className="av2-card-title">{title}</div>
-      <div className="av2-card-value">{value}</div>
-      {sub && <div className="av2-card-sub">{sub}</div>}
+    <div className={CARD} style={{ borderTop: accent ? `2px solid ${accent}` : undefined }}>
+      <div className={CARD_TITLE}>{title}</div>
+      <div className={CARD_VALUE}>{value}</div>
+      {sub && <div className={CARD_SUB}>{sub}</div>}
     </div>
   );
 }
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="av2-card">
-      <div className="av2-card-title">{title}</div>
+    <div className={CARD}>
+      <div className={CARD_TITLE}>{title}</div>
       {children}
     </div>
   );
@@ -149,9 +157,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
         </p>
       </div>
 
-      <div className="av2-dashboard-grid" style={{ padding: 0 }}>
+      <div className="grid [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] gap-4 p-5" style={{ padding: 0 }}>
 
-        {/* Season */}
         {season && (
           <StatCard
             title="Current Season"
@@ -164,57 +171,54 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           <StatCard title="Current Season" value="…" />
         )}
 
-        {/* Total Players / Active Players */}
         {perms.player_read && (
           <div
-            className="av2-card"
+            className={CARD}
             style={{ borderTop: '2px solid #6c63ff', cursor: 'pointer' }}
             onClick={() => onNavigate('players')}
           >
-            <div className="av2-card-title">Players</div>
+            <div className={CARD_TITLE}>Players</div>
             <div style={{ display: 'flex', gap: 20, alignItems: 'baseline', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 2 }}>Total</div>
-                <div className="av2-card-value" style={{ color: '#d4d4f0' }}>
+                <div className={CARD_VALUE} style={{ color: '#d4d4f0' }}>
                   {loadingPlayers ? '…' : (playerCount !== null ? playerCount.total.toLocaleString() : '—')}
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 2 }}>Active (24h)</div>
-                <div className="av2-card-value" style={{ color: '#34d399' }}>
+                <div className={CARD_VALUE} style={{ color: '#34d399' }}>
                   {loadingPlayers ? '…' : (playerCount !== null ? playerCount.active.toLocaleString() : '—')}
                 </div>
               </div>
             </div>
-            <div className="av2-card-sub">Registered accounts · refreshes every 60s</div>
+            <div className={CARD_SUB}>Registered accounts · refreshes every 60s</div>
           </div>
         )}
 
-        {/* Pending Approvals */}
         {perms.approve && (
           <div
-            className="av2-card"
+            className={CARD}
             style={{ borderTop: '2px solid #f59e0b', cursor: 'pointer' }}
             onClick={() => onNavigate('approvals')}
           >
-            <div className="av2-card-title">Pending Approvals</div>
-            <div className="av2-card-value" style={{ color: pendingDrafts ? '#fcd34d' : '#e0e0ff' }}>
+            <div className={CARD_TITLE}>Pending Approvals</div>
+            <div className={CARD_VALUE} style={{ color: pendingDrafts ? '#fcd34d' : '#e0e0ff' }}>
               {loadingDrafts ? '…' : (pendingDrafts ?? '—')}
             </div>
-            <div className="av2-card-sub">
+            <div className={CARD_SUB}>
               {pendingDrafts ? 'Click to review' : 'No pending drafts'}
             </div>
           </div>
         )}
 
-        {/* Player Management shortcut (for admins without system_tools) */}
         {perms.player_read && !perms.system_tools && (
           <div
-            className="av2-card"
+            className={CARD}
             style={{ cursor: 'pointer' }}
             onClick={() => onNavigate('players')}
           >
-            <div className="av2-card-title">Player Management</div>
+            <div className={CARD_TITLE}>Player Management</div>
             <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
               Search players, inspect profiles, manage currencies and items, view active missions, wallets, and recent events.
             </div>
@@ -222,7 +226,6 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {/* Recent Jobs */}
         {perms.system_tools && (
           <InfoCard title="Recent Jobs">
             {loadingJobs && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
@@ -233,8 +236,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
               const label = job.def?.name ?? job.defId ?? job.type;
               const statusColor = JOB_STATUS_COLOR[job.status] ?? '#6060a0';
               return (
-                <div key={i} className="av2-stat-row">
-                  <span className="av2-stat-key" style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div key={i} className={STAT_ROW}>
+                  <span className={STAT_KEY} style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {label}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: statusColor }}>
@@ -253,37 +256,36 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </InfoCard>
         )}
 
-        {/* System Health */}
         {perms.system_tools && (
           <InfoCard title="System Health">
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">API</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>API</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Online</span>
             </div>
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">Session</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>Session</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#34d399' }}>● Active</span>
             </div>
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">Tick Engine</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>Tick Engine</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: tickDriftColor }}>
                 {tickEngineStatus}
               </span>
             </div>
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">Current Tick</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>Current Tick</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4f0' }}>
                 {loadingHealth ? '…' : (systemHealth ? `#${systemHealth.currentTick.toLocaleString()}` : '—')}
               </span>
             </div>
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">Tick Rate</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>Tick Rate</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: '#d4d4f0' }}>
                 {loadingHealth ? '…' : (systemHealth ? `${systemHealth.tickRate}/s` : '—')}
               </span>
             </div>
-            <div className="av2-stat-row">
-              <span className="av2-stat-key">Active Jobs</span>
+            <div className={STAT_ROW}>
+              <span className={STAT_KEY}>Active Jobs</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: totalActiveJobs !== null && totalActiveJobs > 0 ? '#6c63ff' : '#34d399' }}>
                 {loadingHealth ? '…' : (totalActiveJobs !== null ? totalActiveJobs.toLocaleString() : '—')}
               </span>
@@ -295,7 +297,6 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </InfoCard>
         )}
 
-        {/* Recent Definitions (from audit log, visible to anyone with read/write) */}
         {(perms.read || perms.write) && (
           <InfoCard title="Recent Definitions">
             {loadingAudit && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
@@ -303,11 +304,11 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
               <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>No recent definition changes</div>
             )}
             {recentDefs.slice(0, 5).map((entry: any, i) => (
-              <div key={i} className="av2-stat-row">
-                <span className="av2-stat-key" style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div key={i} className={STAT_ROW}>
+                <span className={STAT_KEY} style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {entry.tableName}
                 </span>
-                <span className="av2-stat-val" style={{ fontSize: 11, color: '#6060a0' }}>
+                <span className={STAT_VAL} style={{ fontSize: 11, color: '#6060a0' }}>
                   {entry.action} · {entry.admin?.username ?? '?'}
                 </span>
               </div>
@@ -319,7 +320,6 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </InfoCard>
         )}
 
-        {/* Audit Log (super admin only) */}
         {isSuperAdmin && (
           <InfoCard title="Full Audit Log">
             {loadingAudit && <div style={{ color: '#3a3a6a', fontSize: 12 }}>Loading…</div>}
@@ -327,9 +327,9 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
               <div style={{ color: '#3a3a6a', fontSize: 12, fontStyle: 'italic' }}>No recent actions</div>
             )}
             {auditLog.map((entry: any, i) => (
-              <div key={i} className="av2-stat-row">
-                <span className="av2-stat-key">{entry.action}</span>
-                <span className="av2-stat-val" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+              <div key={i} className={STAT_ROW}>
+                <span className={STAT_KEY}>{entry.action}</span>
+                <span className={STAT_VAL} style={{ fontFamily: 'monospace', fontSize: 11 }}>
                   {entry.tableName} · {entry.admin?.username ?? '?'}
                 </span>
               </div>
@@ -337,10 +337,9 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </InfoCard>
         )}
 
-        {/* Economy shortcut */}
         {perms.system_tools && (
-          <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('economy')}>
-            <div className="av2-card-title">Balance Simulator</div>
+          <div className={CARD} style={{ cursor: 'pointer' }} onClick={() => onNavigate('economy')}>
+            <div className={CARD_TITLE}>Balance Simulator</div>
             <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
               Monte-Carlo simulation of entity power score progression.
             </div>
@@ -348,10 +347,9 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {/* Content editor shortcut (read/write without system_tools) */}
         {(perms.read || perms.write) && (
-          <div className="av2-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('content')}>
-            <div className="av2-card-title">Content Editor</div>
+          <div className={CARD} style={{ cursor: 'pointer' }} onClick={() => onNavigate('content')}>
+            <div className={CARD_TITLE}>Content Editor</div>
             <div style={{ fontSize: 13, color: '#8080a8', lineHeight: 1.5 }}>
               Definitions, missions, entities, locations, rewards, store, and more.
             </div>
@@ -359,11 +357,10 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
           </div>
         )}
 
-        {/* Permissions */}
         <InfoCard title="Your Permissions">
           {Object.entries(perms).map(([key, val]) => (
-            <div key={key} className="av2-stat-row">
-              <span className="av2-stat-key">{key.replace(/_/g, ' ')}</span>
+            <div key={key} className={STAT_ROW}>
+              <span className={STAT_KEY}>{key.replace(/_/g, ' ')}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: val ? '#34d399' : '#4a4a7a' }}>
                 {val ? '✓' : '—'}
               </span>

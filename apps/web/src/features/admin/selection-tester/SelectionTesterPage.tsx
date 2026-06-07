@@ -5,7 +5,6 @@ import { adminApi, getAdminToken, setAdminToken, type TraceNode } from '../admin
 import RichSelectionEditor from '../smart/components/structured/RichSelectionEditor';
 import EntityList from '../../entities/components/EntityList';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
-import '../admin.css';
 
 type Scenario = 'player' | 'mission' | 'crafting';
 type SubTab = 'selection' | 'context' | 'trace';

@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi, getAdminToken } from '../adminApi';
 import ModalSpecEditor, { DEFAULT_SPEC } from './ModalSpecEditor';
 import type { ModalSpecV1 } from '@derp/shared';
-import '../admin.css';
-import './ModalEditorPage.css';
 
 function AdminLogin({ onLogin }: { onLogin: () => void }) {
   const autoSubmitted = useRef(false);
@@ -14,8 +12,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     }
   }, [onLogin]);
   return (
-    <div className="admin-login">
-      <div className="admin-login-card" style={{ textAlign: 'center' }}>
+    <div className="flex items-center justify-center min-h-screen bg-[#06060f]">
+      <div className="bg-[#0f0f2e] border border-[#1a1a3e] rounded-xl p-8 max-w-sm w-full" style={{ textAlign: 'center' }}>
         <h1>Derp Universe Admin</h1>
         <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>
           Please <a href="/admin" style={{ color: '#7c3aed' }}>sign in</a> to access this page.
@@ -130,14 +128,17 @@ export default function ModalEditorPage() {
   if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
 
   return (
-    <div className="me-page">
-      <div className="me-topbar">
-        <div className="me-topbar-left">
-          <a href="/admin" className="me-back-link">← Admin</a>
-          <span className="me-topbar-title">Modal Editor</span>
+    <div className="min-h-screen bg-[#06060f] text-[#e0e0ff] flex flex-col">
+      {/* ── Topbar ── */}
+      <div className="sticky top-0 z-[100] flex items-center justify-between px-4 py-[10px] bg-[rgba(6,6,15,0.95)] border-b border-[#1a1a3e] backdrop-blur-[8px] gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <a href="/admin" className="text-[#64748b] text-xs no-underline px-2 py-1 rounded-md border border-[#2a2a4e] bg-transparent transition-colors whitespace-nowrap hover:text-[#a78bfa] hover:border-[#a78bfa44]">← Admin</a>
+          <span className="text-[15px] font-bold text-[#e0e0ff] tracking-[0.05em] whitespace-nowrap overflow-hidden text-ellipsis">Modal Editor</span>
         </div>
-        <div className="me-topbar-right">
-          {saveMsg && <span className={`me-save-msg ${saveMsg.startsWith('✓') ? 'me-save-ok' : 'me-save-err'}`}>{saveMsg}</span>}
+        <div className="flex items-center gap-2 shrink-0">
+          {saveMsg && (
+            <span className={`text-xs font-semibold ${saveMsg.startsWith('✓') ? 'text-[#34d399]' : 'text-[#ef4444]'}`}>{saveMsg}</span>
+          )}
           {dirty && !saving && <span style={{ fontSize: 11, color: '#f59e0b' }}>● unsaved</span>}
           <button type="button" onClick={handleNew} className="me-btn-ghost">New</button>
           <button type="button" onClick={handleSave} disabled={saving} className="me-btn-primary">
@@ -146,9 +147,10 @@ export default function ModalEditorPage() {
         </div>
       </div>
 
-      <div className="me-load-bar">
+      {/* ── Load bar ── */}
+      <div className="flex gap-2 px-4 py-[10px] border-b border-[#1a1a3e] bg-[#0a0a1e]">
         <select
-          className="me-select"
+          style={{ flex: 1, minWidth: 0, padding: '6px 10px', background: '#0a0a1e', border: '1px solid #2a2a4e', borderRadius: 6, color: '#e0e0ff', fontSize: 13, fontFamily: 'inherit' }}
           value={selectedId || ''}
           onChange={e => e.target.value ? loadModal(e.target.value) : handleNew()}
         >
@@ -162,7 +164,8 @@ export default function ModalEditorPage() {
         </button>
       </div>
 
-      <div className="me-content">
+      {/* ── Content ── */}
+      <div className="flex-1 flex flex-col gap-0 p-0 overflow-y-auto">
         {/* ── Database Record ── */}
         <div style={{ borderBottom: '1px solid #1a1a3e' }}>
           <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #0e0e28 0%, #0a0a1e 100%)', borderBottom: '1px solid #1a1a3e' }}>

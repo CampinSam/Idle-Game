@@ -206,45 +206,45 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
   };
 
   return (
-    <div className="me-rte">
+    <div className="flex flex-col border border-[#2a2a4e] rounded-[8px] bg-[#0a0a1e] overflow-hidden">
       {!showJson && (
-        <div className="me-rte-toolbar">
-          <button type="button" className="me-rte-btn" onClick={() => formatBlock('p')} title="Paragraph">P</button>
-          <button type="button" className="me-rte-btn" onClick={() => formatBlock('h1')} title="Heading 1">H1</button>
-          <button type="button" className="me-rte-btn" onClick={() => formatBlock('h2')} title="Heading 2">H2</button>
-          <span className="me-rte-sep" />
-          <button type="button" className="me-rte-btn" onClick={() => exec('bold')} title="Bold"><b>B</b></button>
-          <button type="button" className="me-rte-btn" onClick={() => exec('italic')} title="Italic"><i>I</i></button>
-          <button type="button" className="me-rte-btn" onClick={wrapInCode} title="Code"><code>{'<>'}</code></button>
-          <span className="me-rte-sep" />
-          <button type="button" className="me-rte-btn" onClick={() => exec('insertUnorderedList')} title="Bullet list">• ≡</button>
-          <button type="button" className="me-rte-btn" onClick={insertLink} title="Link">🔗</button>
-          <span className="me-rte-sep" />
-          <div ref={tokenWrapRef} className="me-rte-token-wrap">
+        <div className="me-rte-toolbar flex flex-wrap items-center gap-1 px-2 py-[6px] bg-[#0f0f2e] border-b border-[#1a1a3e] sticky top-0 z-[5]">
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => formatBlock('p')} title="Paragraph">P</button>
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => formatBlock('h1')} title="Heading 1">H1</button>
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => formatBlock('h2')} title="Heading 2">H2</button>
+          <span className="w-px h-[18px] bg-[#1a1a3e] mx-1" />
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => exec('bold')} title="Bold"><b>B</b></button>
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => exec('italic')} title="Italic"><i>I</i></button>
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={wrapInCode} title="Code"><code>{'<>'}</code></button>
+          <span className="w-px h-[18px] bg-[#1a1a3e] mx-1" />
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={() => exec('insertUnorderedList')} title="Bullet list">• ≡</button>
+          <button type="button" className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-transparent rounded-[4px] text-[#cbd5e1] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]" onClick={insertLink} title="Link">🔗</button>
+          <span className="w-px h-[18px] bg-[#1a1a3e] mx-1" />
+          <div ref={tokenWrapRef} className="relative">
             <button
               type="button"
-              className="me-rte-btn me-rte-btn-token"
+              className="me-rte-btn min-w-[32px] min-h-[32px] px-2 py-1 border border-[#a78bfa44] rounded-[4px] text-[#a78bfa] bg-[#7c3aed18] font-[inherit] text-xs cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]"
               onClick={() => setTokenPickerOpen(o => !o)}
               title="Insert token"
             >
               ${'{…}'}
             </button>
             {tokenPickerOpen && (
-              <div className="me-rte-token-menu">
-                <div className="me-rte-token-menu-hdr">Insert token</div>
+              <div className="absolute top-full left-0 z-20 mt-1 min-w-[240px] max-w-[320px] max-h-[280px] overflow-y-auto bg-[#0a0a1e] border border-[#2a2a4e] rounded-[8px] p-[6px] shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex flex-col gap-[2px]">
+                <div className="text-[10px] font-[800] tracking-[0.1em] uppercase text-[#4c4c7a] px-[6px] py-1">Insert token</div>
                 {tokenPaths && tokenPaths.length > 0 ? (
                   tokenPaths.map(p => (
-                    <button key={p} type="button" className="me-rte-token-opt" onClick={() => insertToken(p)}>
+                    <button key={p} type="button" className="text-left px-2 py-[6px] bg-transparent border-none rounded-[4px] text-[#c4b5fd] font-mono text-xs cursor-pointer hover:bg-[#7c3aed22] transition-colors" onClick={() => insertToken(p)}>
                       {`\${${p}}`}
                     </button>
                   ))
                 ) : (
-                  <div className="me-rte-token-empty">Paste a sample payload in the Payload section to see suggestions.</div>
+                  <div className="p-2 text-[11px] text-[#555] italic">Paste a sample payload in the Payload section to see suggestions.</div>
                 )}
-                <div className="me-rte-token-custom">
+                <div className="border-t border-[#1a1a3e] mt-1 pt-1">
                   <button
                     type="button"
-                    className="me-rte-token-opt"
+                    className="text-left px-2 py-[6px] bg-transparent border-none rounded-[4px] text-[#c4b5fd] font-mono text-xs cursor-pointer hover:bg-[#7c3aed22] transition-colors"
                     onClick={() => {
                       const p = window.prompt('Token path', 'results.message');
                       if (p) insertToken(p.trim());
@@ -258,7 +258,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
           </div>
           <button
             type="button"
-            className="me-rte-btn me-rte-btn-json"
+            className="me-rte-btn ml-auto min-w-[32px] min-h-[32px] px-2 py-1 bg-transparent border border-[#2a2a4e] rounded-[4px] text-[10px] text-[#94a3b8] font-[inherit] cursor-pointer inline-flex items-center justify-center transition-[background,color,border-color] hover:bg-[#1a1a3e] hover:text-[#e0e0ff]"
             onClick={() => setShowJson(true)}
             title="View raw JSON"
           >
@@ -270,7 +270,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
       {!showJson && (
         <div
           ref={ref}
-          className="me-rte-area"
+          className="me-rte-area min-h-[120px] max-h-[360px] overflow-y-auto px-[14px] py-3 bg-[#06061a] text-[#e2e8f0] text-[14px] leading-[1.6] outline-none"
           contentEditable
           suppressContentEditableWarning
           onInput={emit}
@@ -280,23 +280,23 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
       )}
 
       {showJson && (
-        <div className="me-rte-json">
+        <div className="flex flex-col">
           <textarea
-            className="me-rte-json-text"
+            className="w-full min-h-[200px] px-3 py-[10px] bg-[#06061a] border-0 text-[#c4b5fd] font-[ui-monospace,monospace] text-xs resize-y outline-none"
             value={jsonText}
             onChange={e => { setJsonText(e.target.value); setJsonError(''); }}
             spellCheck={false}
           />
-          {jsonError && <div className="me-rte-json-err">{jsonError}</div>}
-          <div className="me-rte-json-actions">
+          {jsonError && <div className="text-[#ef4444] text-[11px] px-3 py-1 bg-[rgba(239,68,68,0.08)]">{jsonError}</div>}
+          <div className="flex gap-2 justify-end px-2 py-[6px] border-t border-[#1a1a3e]">
             <button type="button" className="me-btn-ghost" onClick={cancelJson}>Cancel</button>
             <button type="button" className="me-btn-primary" onClick={tryApplyJson}>Apply JSON</button>
           </div>
         </div>
       )}
 
-      <div className="me-rte-hint">
-        Tokens: type or insert <code>{'${path}'}</code> anywhere — they\u2019re replaced from the payload at render time.
+      <div className="me-rte-hint text-[10px] text-[#4c4c7a] px-[10px] pt-1 pb-[6px] bg-[#0a0a1e] border-t border-[#1a1a3e]">
+        Tokens: type or insert <code>{'${path}'}</code> anywhere — they're replaced from the payload at render time.
       </div>
     </div>
   );

@@ -93,20 +93,25 @@ function formatValue(value: number | null, unit: string): string {
   return value.toLocaleString();
 }
 
+const CARD = "bg-[#0d0e1f] border border-[#1a1b35] rounded-[10px] p-4";
+const CARD_TITLE = "text-[11px] font-bold tracking-[0.07em] uppercase text-[#4a4a7a] m-0 mb-3";
+const CARD_SUB = "text-[12px] text-[#4a4a7a] mt-[6px]";
+const BTN_GHOST = "py-[7px] px-4 bg-transparent border border-[#1a1b35] rounded-[8px] text-[#6060a0] text-[13px] font-semibold cursor-pointer transition-[border-color,color] duration-[120ms] whitespace-nowrap hover:border-[#3a3a6a] hover:text-[#a0a0c8] disabled:opacity-50 disabled:cursor-not-allowed";
+
 function MetricCard({ metric }: { metric: MetricValue }) {
   const color = STATUS_COLOR[metric.status];
   const bg = STATUS_BG[metric.status];
 
   return (
     <div
-      className="av2-card"
+      className={CARD}
       style={{
         borderTop: `2px solid ${color}`,
         background: `linear-gradient(135deg, #0d0e1f 80%, ${bg})`,
       }}
       title={metric.description}
     >
-      <div className="av2-card-title">{metric.label}</div>
+      <div className={CARD_TITLE}>{metric.label}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <div style={{ fontSize: 28, fontWeight: 800, color, lineHeight: 1 }}>
           {formatValue(metric.value, metric.unit)}
@@ -115,7 +120,7 @@ function MetricCard({ metric }: { metric: MetricValue }) {
           <div style={{ fontSize: 11, color: '#4a4a7a' }}>{metric.unit}</div>
         )}
       </div>
-      <div className="av2-card-sub" style={{ marginTop: 8 }}>
+      <div className={CARD_SUB} style={{ marginTop: 8 }}>
         <span
           style={{
             display: 'inline-block',
@@ -163,8 +168,8 @@ function ChartPanel({
   });
 
   return (
-    <div className="av2-card">
-      <div className="av2-card-title" style={{ marginBottom: 16 }}>
+    <div className={CARD}>
+      <div className={CARD_TITLE} style={{ marginBottom: 16 }}>
         <TrendingUp size={11} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
         {title}
       </div>
@@ -270,7 +275,6 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
 
   return (
     <div style={{ padding: 20 }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 800, color: '#d4d4f0', margin: 0 }}>Game Health Metrics</h1>
@@ -282,7 +286,7 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button
-            className="av2-btn-ghost"
+            className={BTN_GHOST}
             onClick={fetchMetrics}
             disabled={loadingMetrics}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
@@ -291,7 +295,7 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
             Refresh
           </button>
           <button
-            className="av2-btn-ghost"
+            className={BTN_GHOST}
             onClick={handleRecordSnapshot}
             disabled={recordingSnapshot}
           >
@@ -301,20 +305,19 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
       </div>
 
       {error && (
-        <div className="av2-inline-msg error" style={{ marginBottom: 16 }}>
+        <div className="py-2 px-3 rounded-[6px] text-[12px] mb-4 bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]">
           {error}
         </div>
       )}
       {snapshotMsg && (
         <div
-          className="av2-inline-msg"
-          style={{ marginBottom: 16, color: snapshotMsg.includes('success') ? '#34d399' : '#f87171' }}
+          className="py-2 px-3 rounded-[6px] text-[12px] mb-4"
+          style={{ color: snapshotMsg.includes('success') ? '#34d399' : '#f87171' }}
         >
           {snapshotMsg}
         </div>
       )}
 
-      {/* Snapshot Cards — grouped */}
       {METRIC_GROUPS.map(group => {
         const groupMetrics = group.names.map(n => metricMap[n]).filter(Boolean);
         if (groupMetrics.length === 0 && !loadingMetrics) return null;
@@ -323,10 +326,10 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#3a3b5e', marginBottom: 10 }}>
               {group.label}
             </div>
-            <div className="av2-dashboard-grid" style={{ padding: 0 }}>
+            <div className="grid [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] gap-4 p-5" style={{ padding: 0 }}>
               {loadingMetrics && groupMetrics.length === 0
                 ? Array.from({ length: group.names.length }).map((_, i) => (
-                  <div key={i} className="av2-card" style={{ height: 80, background: '#0d0e1f' }} />
+                  <div key={i} className={CARD} style={{ height: 80, background: '#0d0e1f' }} />
                 ))
                 : groupMetrics.map(m => <MetricCard key={m.name} metric={m} />)
               }
@@ -335,7 +338,6 @@ export default function AdminV2MetricsSection({ me: _me }: Props) {
         );
       })}
 
-      {/* Time-series Charts */}
       <div style={{ marginTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#3a3b5e' }}>

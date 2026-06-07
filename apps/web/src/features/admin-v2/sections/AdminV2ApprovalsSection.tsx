@@ -6,6 +6,9 @@ interface Props {
   me: AdminMe;
 }
 
+const BTN_APPROVE = "py-[5px] px-[12px] bg-[rgba(5,150,105,0.15)] border border-[rgba(5,150,105,0.4)] rounded-[6px] text-[#34d399] text-[12px] font-semibold cursor-pointer transition-colors duration-[120ms] hover:bg-[rgba(5,150,105,0.25)] disabled:opacity-45 disabled:cursor-not-allowed";
+const BTN_REJECT = "py-[5px] px-[12px] bg-[rgba(220,38,38,0.12)] border border-[rgba(220,38,38,0.3)] rounded-[6px] text-[#f87171] text-[12px] font-semibold cursor-pointer transition-colors duration-[120ms] hover:bg-[rgba(220,38,38,0.22)] disabled:opacity-45 disabled:cursor-not-allowed";
+
 export default function AdminV2ApprovalsSection({ me }: Props) {
   const canApprove = me.role.permissionFlags.approve;
 
@@ -64,15 +67,15 @@ export default function AdminV2ApprovalsSection({ me }: Props) {
 
   if (!canApprove) {
     return (
-      <div className="av2-access-denied">
-        <div className="av2-access-denied-icon">🔒</div>
+      <div className="flex flex-col items-center justify-center py-[60px] px-6 text-center text-[#4a4a7a]">
+        <div className="text-[36px] mb-3 opacity-40">🔒</div>
         <div>You don't have approval permissions.</div>
       </div>
     );
   }
 
   return (
-    <div className="av2-section-wrap">
+    <div className="p-5 max-w-[1200px]">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {(['pending', 'approved', 'rejected'] as const).map(s => (
@@ -105,27 +108,35 @@ export default function AdminV2ApprovalsSection({ me }: Props) {
       </div>
 
       {msg && (
-        <div className={`av2-inline-msg ${msg.type}`} style={{ marginBottom: 14 }}>{msg.text}</div>
+        <div
+          className={`py-2 px-3 rounded-[6px] text-[12px] mb-[14px] ${
+            msg.type === 'success'
+              ? 'bg-[rgba(5,150,105,0.12)] border border-[rgba(5,150,105,0.3)] text-[#34d399]'
+              : 'bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]'
+          }`}
+        >
+          {msg.text}
+        </div>
       )}
 
-      {loading && <div className="av2-loading">Loading drafts…</div>}
+      {loading && <div className="flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]">Loading drafts…</div>}
 
       {!loading && drafts.length === 0 && (
-        <div className="av2-empty">No {statusFilter} drafts.</div>
+        <div className="flex items-center justify-center p-[40px] text-[#3a3a6a] text-[13px] italic">No {statusFilter} drafts.</div>
       )}
 
-      <div className="av2-approvals-list">
+      <div className="flex flex-col gap-[10px]">
         {drafts.map(draft => (
-          <div key={draft.id} className="av2-draft-card">
-            <div className="av2-draft-meta">
-              <span className="av2-draft-table">{draft.tableName}</span>
-              <span className="av2-draft-op">{draft.operation}</span>
+          <div key={draft.id} className="bg-[#0d0e1f] border border-[#1a1b35] rounded-[10px] py-[14px] px-4">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="text-[11px] font-bold tracking-[0.05em] bg-[rgba(108,99,255,0.15)] text-[#8080c8] border border-[rgba(108,99,255,0.25)] py-[2px] px-[6px] rounded">{draft.tableName}</span>
+              <span className="text-[11px] font-semibold text-[#6060a0]">{draft.operation}</span>
               {draft.recordId && (
                 <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#3a3a6a' }}>
                   {draft.recordId}
                 </span>
               )}
-              <span className="av2-draft-author">
+              <span className="text-[11px] text-[#4a4a7a] ml-auto">
                 {draft.author?.username ?? draft.authorId} · {new Date(draft.createdAt).toLocaleDateString()}
               </span>
             </div>
@@ -136,7 +147,7 @@ export default function AdminV2ApprovalsSection({ me }: Props) {
               </div>
             )}
 
-            <div className="av2-draft-summary">
+            <div className="text-[13px] text-[#8080a8] mb-[10px]">
               {draft.operation === 'CREATE' && 'New record to be created'}
               {draft.operation === 'UPDATE' && `${Object.keys(draft.changes || {}).length} field(s) changed`}
               {draft.operation === 'DELETE' && 'Record to be deleted'}
@@ -151,11 +162,11 @@ export default function AdminV2ApprovalsSection({ me }: Props) {
                       placeholder="Reject reason (optional)"
                       value={rejectComment}
                       onChange={e => setRejectComment(e.target.value)}
-                      className="av2-search-input"
-                      style={{ flex: 1, minWidth: 180 }}
+                      className="flex-1 py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] focus:outline-none focus:border-[#6c63ff]"
+                      style={{ minWidth: 180 }}
                     />
                     <button
-                      className="av2-btn-reject"
+                      className={BTN_REJECT}
                       disabled={acting === draft.id}
                       onClick={() => handleReject(draft.id)}
                     >
@@ -169,16 +180,16 @@ export default function AdminV2ApprovalsSection({ me }: Props) {
                     </button>
                   </div>
                 ) : (
-                  <div className="av2-draft-actions">
+                  <div className="flex gap-2">
                     <button
-                      className="av2-btn-approve"
+                      className={BTN_APPROVE}
                       disabled={acting === draft.id}
                       onClick={() => handleApprove(draft.id)}
                     >
                       {acting === draft.id ? 'Approving…' : '✓ Approve'}
                     </button>
                     <button
-                      className="av2-btn-reject"
+                      className={BTN_REJECT}
                       disabled={!!acting}
                       onClick={() => setRejectTarget(draft.id)}
                     >

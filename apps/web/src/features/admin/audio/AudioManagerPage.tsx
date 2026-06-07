@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi, getAdminToken } from '../adminApi';
 import { resolveAssetUrl } from '../../../utils/iconResolver';
-import '../admin.css';
-import './AudioManagerPage.css';
 
 const BUS_OPTIONS = ['music', 'sfx', 'ui', 'ambient'];
 
@@ -63,8 +61,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
   }, [onLogin]);
 
   return (
-    <div className="admin-login">
-      <div className="admin-login-card" style={{ textAlign: 'center' }}>
+    <div className="min-h-screen flex items-center justify-center bg-[#0f0f2e]">
+      <div className="bg-[#16213e] border border-[#2a2a4e] rounded-xl p-10 max-w-[480px] w-[90%]" style={{ textAlign: 'center' }}>
         <h1>Derp Universe Admin</h1>
         <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>
           Please <a href="/admin" style={{ color: '#7c3aed' }}>sign in</a> to access this page.
@@ -184,8 +182,8 @@ function SoundLibraryTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Sounds Library</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-save" onClick={load} disabled={loading}>Refresh</button>
-          <button className="btn-save" onClick={() => setCreating(true)}>+ New Sound</button>
+          <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" onClick={load} disabled={loading}>Refresh</button>
+          <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" onClick={() => setCreating(true)}>+ New Sound</button>
         </div>
       </div>
 
@@ -202,38 +200,38 @@ function SoundLibraryTab() {
         <div style={{ background: '#16213e', padding: '1.25rem', borderRadius: 8, border: '1px solid #2a2a4e', marginBottom: '1rem' }}>
           <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', color: '#b8b8ff' }}>New Sound Definition</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
-            <div className="form-field">
+            <div className="mb-4">
               <label>Action Key</label>
               <input type="text" placeholder="e.g. sfx.mission.success" value={form.key} onChange={e => setForm({ ...form, key: e.target.value })} />
             </div>
-            <div className="form-field">
+            <div className="mb-4">
               <label>Name</label>
               <input type="text" placeholder="Human-readable name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             </div>
-            <div className="form-field">
+            <div className="mb-4">
               <label>Bus</label>
               <select value={form.bus} onChange={e => setForm({ ...form, bus: e.target.value })} style={{ padding: '0.6rem', border: '1px solid #333', borderRadius: 6, background: '#0f0f2e', color: '#e0e0ff', fontSize: '0.9rem', width: '100%' }}>
                 {BUS_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
           </div>
-          <div className="form-field" style={{ marginTop: '0.5rem' }}>
+          <div className="mb-4" style={{ marginTop: '0.5rem' }}>
             <label>Description (optional)</label>
             <input type="text" placeholder="When this sound plays" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: '0.75rem' }}>
-            <button className="btn-save" onClick={handleCreate}>Create</button>
-            <button className="btn-delete" onClick={() => setCreating(false)}>Cancel</button>
+            <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" onClick={handleCreate}>Create</button>
+            <button className="py-[0.3rem] px-[0.7rem] border border-[#ff6b6b] rounded bg-transparent text-[#ff6b6b] cursor-pointer text-[0.8rem] hover:bg-[#ff6b6b] hover:text-white" onClick={() => setCreating(false)}>Cancel</button>
           </div>
         </div>
       )}
 
       <input ref={fileInputRef} type="file" accept=".mp3,.ogg,.wav,audio/mpeg,audio/ogg,audio/wav" style={{ display: 'none' }} onChange={handleFileChange} />
 
-      {loading && <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading sounds...</div>}
+      {loading && <div className="text-[#888]" style={{ padding: '2rem', textAlign: 'center' }}>Loading sounds...</div>}
 
       {!loading && (
-        <div className="table-scroll">
+        <div className="overflow-x-auto">
           <table>
             <thead>
               <tr>
@@ -263,8 +261,8 @@ function SoundLibraryTab() {
                       <td><input type="text" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} style={{ width: '100%', padding: '0.35rem', background: '#0f0f2e', border: '1px solid #333', borderRadius: 4, color: '#e0e0ff' }} /></td>
                       <td style={{ fontSize: '0.75rem', color: '#888' }}>{sound.fileKey || '—'}</td>
                       <td>
-                        <button className="btn-save" style={{ marginRight: 4, padding: '0.25rem 0.5rem' }} onClick={() => handleUpdate(sound.id)}>Save</button>
-                        <button className="btn-delete" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setEditingId(null)}>Cancel</button>
+                        <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" style={{ marginRight: 4, padding: '0.25rem 0.5rem' }} onClick={() => handleUpdate(sound.id)}>Save</button>
+                        <button className="py-[0.3rem] px-[0.7rem] border border-[#ff6b6b] rounded bg-transparent text-[#ff6b6b] cursor-pointer text-[0.8rem] hover:bg-[#ff6b6b] hover:text-white" style={{ padding: '0.25rem 0.5rem' }} onClick={() => setEditingId(null)}>Cancel</button>
                       </td>
                     </>
                   ) : (
@@ -303,7 +301,7 @@ function SoundLibraryTab() {
                           {uploadingId === sound.id ? '...' : sound.fileKey ? 'Replace' : 'Upload'}
                         </button>
                         <button style={{ background: 'none', border: '1px solid #555', borderRadius: 4, color: '#aaa', cursor: 'pointer', padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginRight: 4 }} onClick={() => startEdit(sound)}>Edit</button>
-                        <button className="btn-delete" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleDelete(sound.id, sound.name)}>Del</button>
+                        <button className="py-[0.3rem] px-[0.7rem] border border-[#ff6b6b] rounded bg-transparent text-[#ff6b6b] cursor-pointer text-[0.8rem] hover:bg-[#ff6b6b] hover:text-white" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleDelete(sound.id, sound.name)}>Del</button>
                       </td>
                     </>
                   )}
@@ -465,7 +463,7 @@ function ActionMappingsTab() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Action Mappings</h2>
-        <button className="btn-save" onClick={load} disabled={loading}>Refresh</button>
+        <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" onClick={load} disabled={loading}>Refresh</button>
       </div>
 
       {msg && (
@@ -477,7 +475,7 @@ function ActionMappingsTab() {
         }}>{msg.text}</div>
       )}
 
-      {loading && <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>Loading mappings...</div>}
+      {loading && <div className="text-[#888]" style={{ padding: '2rem', textAlign: 'center' }}>Loading mappings...</div>}
 
       {!loading && (Object.entries(ALL_ACTION_KEYS) as [string, any[]][]).map(([bus, actions]) => (
         <div key={bus} style={{ marginBottom: '1.5rem' }}>
@@ -644,7 +642,7 @@ function ActionMappingsTab() {
                 {sounds.map(s => <option key={s.id} value={s.id}>{s.bus} · {s.name}</option>)}
               </select>
               <button
-                className="btn-save"
+                className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={addingCustom || !customKeyInput.trim() || !customKeySoundId}
                 onClick={async () => {
                   if (!customKeyInput.trim() || !customKeySoundId) return;
@@ -669,13 +667,13 @@ export function AudioManagerContent() {
   const [tab, setTab] = useState<'library' | 'mappings'>('library');
 
   return (
-    <div className="audio-manager">
-      <div className="audio-manager-header">
+    <div className="max-w-[1100px] mx-auto px-6 py-6 min-h-screen bg-[#0f0f2e] text-[#e0e0ff]">
+      <div className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1>Audio Manager</h1>
-          <p className="audio-manager-subtitle">Manage sounds, music tracks, and action mappings</p>
+          <h1 style={{ backgroundImage: 'linear-gradient(135deg,#6c63ff,#b8b8ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', margin: 0, fontSize: '2rem', fontWeight: 700 }}>Audio Manager</h1>
+          <p className="m-0 text-[#888] text-[0.85rem]">Manage sounds, music tracks, and action mappings</p>
         </div>
-        <a href="/admin" className="icon-manager-back">← Admin</a>
+        <a href="/admin" className="inline-block py-2 px-4 border border-[#2a2a4e] rounded text-[#a0a0c0] no-underline text-[0.85rem] transition-colors hover:text-[#e0e0ff] hover:border-[#5b4fcf]">← Admin</a>
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginBottom: '1.5rem', borderBottom: '1px solid #2a2a4e', paddingBottom: '0.5rem' }}>

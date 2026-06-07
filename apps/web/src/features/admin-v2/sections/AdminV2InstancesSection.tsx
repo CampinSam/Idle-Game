@@ -10,6 +10,18 @@ const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'];
 
 const STATUS_OPTIONS = ['idle', 'working', 'mission', 'injured', 'resting'];
 
+const BTN_PRIMARY = "py-[7px] px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer transition-colors duration-[120ms] whitespace-nowrap hover:bg-[#5a52d5] disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_GHOST = "py-[7px] px-4 bg-transparent border border-[#1a1b35] rounded-[8px] text-[#6060a0] text-[13px] font-semibold cursor-pointer transition-[border-color,color] duration-[120ms] whitespace-nowrap hover:border-[#3a3a6a] hover:text-[#a0a0c8] disabled:opacity-50 disabled:cursor-not-allowed";
+const SEARCH_INPUT = "flex-1 py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] focus:outline-none focus:border-[#6c63ff]";
+const SEARCH_BTN = "py-2 px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer hover:bg-[#5a52d5]";
+const MSG_SUCCESS = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(5,150,105,0.12)] border border-[rgba(5,150,105,0.3)] text-[#34d399]";
+const MSG_ERROR = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]";
+const LOADING = "flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]";
+const EMPTY = "flex items-center justify-center text-[#3a3a6a] text-[13px] italic";
+const TAB_BASE = "py-[5px] px-[12px] border rounded-[6px] bg-transparent text-[12px] font-semibold cursor-pointer transition-[background,color] duration-[120ms]";
+const TAB_ACTIVE = "bg-[rgba(108,99,255,0.18)] border-[rgba(108,99,255,0.3)] text-[#a89fff]";
+const TAB_INACTIVE = "border-transparent text-[#5a5a8a] hover:bg-[#1a1b35] hover:text-[#9090c8]";
+
 function statusColor(status: string): string {
   switch (status) {
     case 'idle': return '#8888aa';
@@ -57,7 +69,7 @@ function FilterBar({
     <div style={{ display: 'flex', gap: 8, padding: '12px 16px', borderBottom: '1px solid #1a1a3a', flexWrap: 'wrap', alignItems: 'center' }}>
       <input
         type="text"
-        className="av2-search-input"
+        className={SEARCH_INPUT}
         placeholder="Search name, ID, or owner…"
         value={q}
         onChange={e => setQ(e.target.value)}
@@ -65,7 +77,7 @@ function FilterBar({
         style={{ flex: 1, minWidth: 200 }}
       />
       {extraFilters}
-      <button className="av2-search-btn" onClick={onSearch}>Search</button>
+      <button className={SEARCH_BTN} onClick={onSearch}>Search</button>
     </div>
   );
 }
@@ -75,7 +87,7 @@ function Pager({ page, total, limit, onPage }: { page: number; total: number; li
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderTop: '1px solid #1a1a3a', fontSize: 12, color: '#6060a0' }}>
       <button
-        className="av2-btn-ghost"
+        className={BTN_GHOST}
         disabled={page <= 1}
         onClick={() => onPage(page - 1)}
         style={{ fontSize: 12, padding: '3px 10px' }}
@@ -84,7 +96,7 @@ function Pager({ page, total, limit, onPage }: { page: number; total: number; li
       </button>
       <span style={{ flex: 1, textAlign: 'center' }}>Page {page} of {pages} · {total} total</span>
       <button
-        className="av2-btn-ghost"
+        className={BTN_GHOST}
         disabled={page >= pages}
         onClick={() => onPage(page + 1)}
         style={{ fontSize: 12, padding: '3px 10px' }}
@@ -184,7 +196,7 @@ function EntityDetailPanel({
         <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: '#6060a0' }}>Owner</span>
-            <span style={{ color: hasOwner ? '#c0c0e8' : '#3a3a6a', fontFamily: hasOwner ? 'inherit' : 'inherit' }}>
+            <span style={{ color: hasOwner ? '#c0c0e8' : '#3a3a6a' }}>
               {entity.ownerUsername ?? (hasOwner ? entity.ownerUserId!.slice(0, 12) : '— Unowned')}
             </span>
           </div>
@@ -216,24 +228,36 @@ function EntityDetailPanel({
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 10 }}>
-                <div className="form-field">
-                  <label>Name</label>
-                  <input type="text" value={edits.name ?? ''} onChange={e => setEdits(p => ({ ...p, name: e.target.value }))} disabled={!hasOwner} />
-                </div>
-                <div className="form-field">
-                  <label>Level</label>
-                  <input type="number" min="1" max="100" value={edits.level ?? '1'} onChange={e => setEdits(p => ({ ...p, level: e.target.value }))} disabled={!hasOwner} />
-                </div>
+                {[{ key: 'name', label: 'Name', type: 'text', min: undefined, max: undefined }, { key: 'level', label: 'Level', type: 'number', min: 1, max: 100 }].map(f => (
+                  <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <label style={{ fontSize: 10, color: '#4a4a7a', textTransform: 'uppercase', letterSpacing: 0.5 }}>{f.label}</label>
+                    <input
+                      type={f.type}
+                      min={f.min}
+                      max={f.max}
+                      value={edits[f.key] ?? ''}
+                      onChange={e => setEdits(p => ({ ...p, [f.key]: e.target.value }))}
+                      disabled={!hasOwner}
+                      style={{ padding: '4px 6px', background: '#0a0b1c', border: '1px solid #1a1a3a', borderRadius: 4, color: '#c0c0e8', fontSize: 12 }}
+                    />
+                  </div>
+                ))}
                 {STAT_KEYS.map(k => (
-                  <div key={k} className="form-field">
-                    <label>{k}</label>
-                    <input type="number" value={edits[k] ?? '0'} onChange={e => setEdits(p => ({ ...p, [k]: e.target.value }))} disabled={!hasOwner} />
+                  <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <label style={{ fontSize: 10, color: '#4a4a7a', textTransform: 'uppercase', letterSpacing: 0.5 }}>{k}</label>
+                    <input
+                      type="number"
+                      value={edits[k] ?? '0'}
+                      onChange={e => setEdits(p => ({ ...p, [k]: e.target.value }))}
+                      disabled={!hasOwner}
+                      style={{ padding: '4px 6px', background: '#0a0b1c', border: '1px solid #1a1a3a', borderRadius: 4, color: '#c0c0e8', fontSize: 12 }}
+                    />
                   </div>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
-                  className="av2-btn-primary"
+                  className={BTN_PRIMARY}
                   onClick={save}
                   disabled={!hasOwner || saving}
                   style={{ fontSize: 12 }}
@@ -241,7 +265,7 @@ function EntityDetailPanel({
                   {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button
-                  className="av2-btn-ghost"
+                  className={BTN_GHOST}
                   onClick={reconcile}
                   disabled={!hasOwner || reconciling}
                   title={!hasOwner ? 'No owner — cannot reconcile' : 'Check active jobs and correct entity status'}
@@ -255,7 +279,7 @@ function EntityDetailPanel({
         )}
 
         {msg && (
-          <div className={`av2-inline-msg ${msg.type === 'success' ? 'success' : 'error'}`}>
+          <div className={msg.type === 'success' ? MSG_SUCCESS : MSG_ERROR}>
             {msg.text}
           </div>
         )}
@@ -383,7 +407,7 @@ function LocationDetailPanel({
               </div>
             )}
             <button
-              className="av2-btn-ghost"
+              className={BTN_GHOST}
               onClick={settle}
               disabled={!hasOwner || settling}
               title={!hasOwner ? 'No owner — cannot settle' : 'Recalculate production for this location'}
@@ -395,7 +419,7 @@ function LocationDetailPanel({
         )}
 
         {msg && (
-          <div className={`av2-inline-msg ${msg.type === 'success' ? 'success' : 'error'}`}>
+          <div className={msg.type === 'success' ? MSG_SUCCESS : MSG_ERROR}>
             {msg.text}
           </div>
         )}
@@ -417,7 +441,7 @@ function EntityInstancesTab({ me }: { me: AdminMe }) {
   const [selected, setSelected] = useState<EntityItem | null>(null);
   const pendingParams = useRef({ q: '', filterStatus: '', filterDef: '', filterNft: '', page: 1 });
 
-  const fetch = useCallback(async (params: { q: string; filterStatus: string; filterDef: string; filterNft: string; page: number }) => {
+  const fetchData = useCallback(async (params: { q: string; filterStatus: string; filterDef: string; filterNft: string; page: number }) => {
     setLoading(true);
     setError(null);
     try {
@@ -437,23 +461,23 @@ function EntityInstancesTab({ me }: { me: AdminMe }) {
     }
   }, []);
 
-  useEffect(() => { fetch({ q: '', filterStatus: '', filterDef: '', filterNft: '', page: 1 }); }, [fetch]);
+  useEffect(() => { fetchData({ q: '', filterStatus: '', filterDef: '', filterNft: '', page: 1 }); }, [fetchData]);
 
   const search = () => {
     setPage(1);
     setSelected(null);
     pendingParams.current = { q, filterStatus, filterDef, filterNft, page: 1 };
-    fetch({ q, filterStatus, filterDef, filterNft, page: 1 });
+    fetchData({ q, filterStatus, filterDef, filterNft, page: 1 });
   };
 
   const goPage = (p: number) => {
     setPage(p);
     setSelected(null);
-    fetch({ q, filterStatus, filterDef, filterNft, page: p });
+    fetchData({ q, filterStatus, filterDef, filterNft, page: p });
   };
 
   const refresh = () => {
-    fetch({ q, filterStatus, filterDef, filterNft, page });
+    fetchData({ q, filterStatus, filterDef, filterNft, page });
     setSelected(null);
   };
 
@@ -491,10 +515,10 @@ function EntityInstancesTab({ me }: { me: AdminMe }) {
         />
 
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loading && <div className="av2-loading" style={{ padding: 24 }}>Loading…</div>}
-          {!loading && error && <div className="av2-inline-msg error" style={{ margin: 16 }}>{error}</div>}
+          {loading && <div className={LOADING} style={{ padding: 24 }}>Loading…</div>}
+          {!loading && error && <div className={`${MSG_ERROR} m-4`}>{error}</div>}
           {!loading && !error && data && data.items.length === 0 && (
-            <div className="av2-empty" style={{ padding: 32 }}>No entity instances found.</div>
+            <div className={EMPTY} style={{ padding: 32 }}>No entity instances found.</div>
           )}
           {!loading && !error && data && data.items.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -568,7 +592,7 @@ function LocationInstancesTab({ me }: { me: AdminMe }) {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LocationItem | null>(null);
 
-  const fetch = useCallback(async (params: { q: string; filterEnabled: string; filterDef: string; filterNft: string; page: number }) => {
+  const fetchData = useCallback(async (params: { q: string; filterEnabled: string; filterDef: string; filterNft: string; page: number }) => {
     setLoading(true);
     setError(null);
     try {
@@ -588,22 +612,22 @@ function LocationInstancesTab({ me }: { me: AdminMe }) {
     }
   }, []);
 
-  useEffect(() => { fetch({ q: '', filterEnabled: '', filterDef: '', filterNft: '', page: 1 }); }, [fetch]);
+  useEffect(() => { fetchData({ q: '', filterEnabled: '', filterDef: '', filterNft: '', page: 1 }); }, [fetchData]);
 
   const search = () => {
     setPage(1);
     setSelected(null);
-    fetch({ q, filterEnabled, filterDef, filterNft, page: 1 });
+    fetchData({ q, filterEnabled, filterDef, filterNft, page: 1 });
   };
 
   const goPage = (p: number) => {
     setPage(p);
     setSelected(null);
-    fetch({ q, filterEnabled, filterDef, filterNft, page: p });
+    fetchData({ q, filterEnabled, filterDef, filterNft, page: p });
   };
 
   const refresh = () => {
-    fetch({ q, filterEnabled, filterDef, filterNft, page });
+    fetchData({ q, filterEnabled, filterDef, filterNft, page });
     setSelected(null);
   };
 
@@ -642,10 +666,10 @@ function LocationInstancesTab({ me }: { me: AdminMe }) {
         />
 
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loading && <div className="av2-loading" style={{ padding: 24 }}>Loading…</div>}
-          {!loading && error && <div className="av2-inline-msg error" style={{ margin: 16 }}>{error}</div>}
+          {loading && <div className={LOADING} style={{ padding: 24 }}>Loading…</div>}
+          {!loading && error && <div className={`${MSG_ERROR} m-4`}>{error}</div>}
           {!loading && !error && data && data.items.length === 0 && (
-            <div className="av2-empty" style={{ padding: 32 }}>No location instances found.</div>
+            <div className={EMPTY} style={{ padding: 32 }}>No location instances found.</div>
           )}
           {!loading && !error && data && data.items.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -718,8 +742,8 @@ export default function AdminV2InstancesSection({ me }: Props) {
 
   if (!canRead) {
     return (
-      <div className="av2-access-denied">
-        <div className="av2-access-denied-icon">🔒</div>
+      <div className="flex flex-col items-center justify-center py-[60px] px-6 text-center text-[#4a4a7a]">
+        <div className="text-[36px] mb-3 opacity-40">🔒</div>
         <div>You don't have player read permissions.</div>
       </div>
     );
@@ -727,11 +751,11 @@ export default function AdminV2InstancesSection({ me }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="av2-system-tabs">
+      <div className="flex gap-1 py-2 px-3 border-b border-[#1a1b35] bg-[#0a0b1c] flex-wrap flex-shrink-0">
         {TABS.map(t => (
           <button
             key={t.key}
-            className={`av2-system-tab${tab === t.key ? ' active' : ''}`}
+            className={`${TAB_BASE} ${tab === t.key ? TAB_ACTIVE : TAB_INACTIVE}`}
             onClick={() => setTab(t.key)}
           >
             {t.emoji} {t.label}

@@ -1,24 +1,7 @@
 import { useEffect, useMemo, useState, CSSProperties } from 'react';
 import { adminApi } from '../adminApi';
-import './TagEditor.css';
 
-/**
- * Admin Tag Editor.
- *
- * Two surfaces in one page:
- *   1. Tags tab — CRUD for `TagDef` rows. Live preview, color pickers,
- *      opacity slider, effect dropdown sourced from VisualEffectDef.
- *   2. Effects tab — CRUD for `VisualEffectDef`. Each effect has a small
- *      preview swatch so admins can pick one without leaving the page.
- *
- * Bypasses the SmartAdmin generic editor on purpose: the entire point of
- * the feature is "see the change before you save it", which a
- * JSON-driven generic form cannot give us.
- *
- * Saving forces a full page reload after PUT so the running app picks
- * up the new bootstrap snapshot. Cheaper than wiring a refetch hook
- * into syncSlice for an admin-only flow.
- */
+const FIELD_INPUT_CLS = "bg-[#1c1830] border border-[#3a3a4a] text-white py-[7px] px-[10px] rounded text-[13px] font-[inherit] [text-transform:none] [letter-spacing:0]";
 
 type Tab = 'tags' | 'effects';
 
@@ -64,11 +47,6 @@ function fxVarsFor(effect: VisualEffectDef): CSSProperties {
   } as CSSProperties;
 }
 
-// Tiny self-contained preview that does NOT depend on the Redux catalog
-// — it renders straight from the in-flight form state so the admin sees
-// uncommitted edits before they hit the server. Mirrors <Tag>: stacked
-// effects render as nested wrappers so each gets its own ::before pseudo
-// and box-shadow halos compose cleanly.
 function TagPreview({ tag, fxStack }: { tag: TagDef; fxStack: VisualEffectDef[] }) {
   const tagStyle: CSSProperties = {
     background: tag.backgroundColor,
@@ -78,7 +56,10 @@ function TagPreview({ tag, fxStack }: { tag: TagDef; fxStack: VisualEffectDef[] 
     fontSize: tag.fontSize || undefined,
   };
   const pill = (
-    <span className="tag-editor-preview-pill" style={tagStyle}>
+    <span
+      className="inline-flex items-center gap-[6px] py-1 px-[10px] border rounded-full text-[11px] font-semibold tracking-[0.04em] uppercase leading-none whitespace-nowrap overflow-hidden"
+      style={tagStyle}
+    >
       {tag.label || tag.key || 'preview'}
     </span>
   );
@@ -99,13 +80,16 @@ function EffectPreview({ effect }: { effect: VisualEffectDef }) {
       className={`fx-host fx-${effect.cssAnimation}`}
       style={{ ...fxVarsFor(effect), borderRadius: 6 }}
     >
-      <span className="tag-editor-effect-swatch">A</span>
+      <span
+        className="inline-flex items-center justify-center w-7 h-7 rounded-md text-white font-bold"
+        style={{ background: 'linear-gradient(135deg, #2a2050, #5a3aaa)', fontFamily: "'Cinzel', serif" }}
+      >
+        A
+      </span>
     </span>
   );
 }
 
-// Resolve the active effect stack for a TagDef: prefer multi-effect array,
-// fall back to legacy single effectKey. Mirrors the runtime <Tag> resolver.
 function resolveStack(t: TagDef, effects: VisualEffectDef[]): VisualEffectDef[] {
   const keys = (t.effectKeys && t.effectKeys.length > 0)
     ? t.effectKeys
@@ -147,7 +131,6 @@ export default function TagEditorPage() {
     reload();
   }, []);
 
-  // Reset draft when switching tab or selection
   useEffect(() => {
     if (!selectedKey) {
       setDraft(null);
@@ -225,58 +208,105 @@ export default function TagEditorPage() {
   };
 
   return (
-    <div className="tag-editor-root">
-      <header className="tag-editor-header">
-        <h1>Visual Tag Editor</h1>
-        <div className="tag-editor-tabs">
-          <button className={tab === 'tags' ? 'active' : ''} onClick={() => { setTab('tags'); setSelectedKey(null); }}>
+    <div
+      className="bg-[#0c0a1a] text-[#e0d8ff] min-h-screen"
+      style={{ fontFamily: "'Exo 2', sans-serif" }}
+    >
+      <header className="px-6 py-[18px] border-b border-[#2a2a3a] flex items-center gap-6">
+        <h1
+          className="m-0 mr-auto text-[22px]"
+          style={{ fontFamily: "'Cinzel', serif" }}
+        >
+          Visual Tag Editor
+        </h1>
+        <div className="flex gap-2 items-center">
+          <button
+            className={`border py-[6px] px-[14px] rounded-md cursor-pointer text-[13px] transition-colors ${
+              tab === 'tags'
+                ? 'bg-[#2a2050] border-[#5a3aaa] text-white'
+                : 'bg-transparent border-[#3a3a4a] text-[#cccccc]'
+            }`}
+            onClick={() => { setTab('tags'); setSelectedKey(null); }}
+          >
             Tags ({tags.length})
           </button>
-          <button className={tab === 'effects' ? 'active' : ''} onClick={() => { setTab('effects'); setSelectedKey(null); }}>
+          <button
+            className={`border py-[6px] px-[14px] rounded-md cursor-pointer text-[13px] transition-colors ${
+              tab === 'effects'
+                ? 'bg-[#2a2050] border-[#5a3aaa] text-white'
+                : 'bg-transparent border-[#3a3a4a] text-[#cccccc]'
+            }`}
+            onClick={() => { setTab('effects'); setSelectedKey(null); }}
+          >
             Effects ({effects.length})
           </button>
-          <a className="tag-editor-back" href="/admin">← Back to Admin</a>
+          <a className="ml-4 text-[#8888aa] text-[12px] no-underline" href="/admin">← Back to Admin</a>
         </div>
       </header>
 
-      {error && <div className="tag-editor-error">{error}</div>}
+      {error && (
+        <div className="mx-6 my-3 px-[14px] py-[10px] bg-[#3a1a1a] border border-[#6a2a2a] rounded-md text-[#ff8c8c] text-[13px]">
+          {error}
+        </div>
+      )}
 
-      <div className="tag-editor-body">
-        <aside className="tag-editor-list">
-          <div className="tag-editor-list-controls">
+      <div className="grid h-[calc(100vh-70px)]" style={{ gridTemplateColumns: '320px 1fr' }}>
+        <aside className="border-r border-[#2a2a3a] bg-[#14101e] overflow-y-auto p-3 flex flex-col gap-1">
+          <div className="flex gap-[6px] mb-2">
             <input
+              className="flex-1 bg-[#1c1830] border border-[#3a3a4a] text-white py-[6px] px-[10px] rounded text-[12px]"
               placeholder="Filter…"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
-            <button onClick={handleCreate} disabled={saving}>+ New</button>
+            <button
+              className="bg-[#2a2050] border border-[#5a3aaa] text-white py-[6px] px-3 rounded cursor-pointer text-[12px]"
+              onClick={handleCreate}
+              disabled={saving}
+            >
+              + New
+            </button>
           </div>
-          {loading && <div className="tag-editor-loading">Loading…</div>}
+          {loading && (
+            <div className="text-[#6a6a8a] p-6 text-center italic">Loading…</div>
+          )}
           {tab === 'tags' && filteredTags.map((t) => (
             <button
               key={t.key}
-              className={`tag-editor-list-row ${selectedKey === t.key ? 'selected' : ''}`}
+              className={`border rounded-md py-2 px-[10px] flex items-center gap-[10px] cursor-pointer text-left w-full text-[12px] font-[inherit] transition-colors duration-[120ms] ${
+                selectedKey === t.key
+                  ? 'bg-[rgba(90,58,170,0.25)] border-[#5a3aaa]'
+                  : 'bg-transparent border-transparent hover:bg-[rgba(90,58,170,0.12)]'
+              }`}
               onClick={() => setSelectedKey(t.key)}
             >
               <TagPreview tag={t} fxStack={resolveStack(t, effects)} />
-              <span className="tag-editor-list-meta">{t.category}</span>
+              <span className="ml-auto text-[10px] text-[#6a6a8a] uppercase tracking-[0.05em]">{t.category}</span>
             </button>
           ))}
           {tab === 'effects' && filteredEffects.map((e) => (
             <button
               key={e.key}
-              className={`tag-editor-list-row ${selectedKey === e.key ? 'selected' : ''}`}
+              className={`border rounded-md py-2 px-[10px] flex items-center gap-[10px] cursor-pointer text-left w-full text-[12px] font-[inherit] transition-colors duration-[120ms] ${
+                selectedKey === e.key
+                  ? 'bg-[rgba(90,58,170,0.25)] border-[#5a3aaa]'
+                  : 'bg-transparent border-transparent hover:bg-[rgba(90,58,170,0.12)]'
+              }`}
               onClick={() => setSelectedKey(e.key)}
             >
               <EffectPreview effect={e} />
-              <span className="tag-editor-list-name">{e.name}</span>
-              <span className="tag-editor-list-meta">{e.cssAnimation}</span>
+              <span className="flex-1 font-semibold text-[#e0d8ff]">{e.name}</span>
+              <span className="ml-auto text-[10px] text-[#6a6a8a] uppercase tracking-[0.05em]">{e.cssAnimation}</span>
             </button>
           ))}
         </aside>
 
-        <main className="tag-editor-form">
-          {!draft && <div className="tag-editor-empty">Select an item on the left, or create a new one.</div>}
+        <main className="p-6 overflow-y-auto">
+          {!draft && (
+            <div className="text-[#6a6a8a] p-6 text-center italic">
+              Select an item on the left, or create a new one.
+            </div>
+          )}
 
           {draft && tab === 'tags' && (
             <TagForm
@@ -319,14 +349,10 @@ function TagForm({
   onSave: () => void;
   saving: boolean;
 }) {
-  // Working copy of the effect stack. Empty entries (`''`) render as a
-  // "— None —" row so admins can clear a slot without removing it.
   const stackKeys: string[] = (draft.effectKeys && draft.effectKeys.length > 0)
     ? draft.effectKeys
     : (draft.effectKey ? [draft.effectKey] : []);
 
-  // Persist both fields in lockstep: `effectKeys` is authoritative, but
-  // `effectKey` is kept as a back-compat fallback (FK still resolves).
   const writeStack = (next: string[]) => {
     const cleaned = next.filter((k) => !!k);
     onChange({
@@ -337,25 +363,25 @@ function TagForm({
 
   return (
     <>
-      <div className="tag-editor-preview-area">
-        <span className="tag-editor-preview-label">Live preview</span>
+      <div className="bg-[#1c1830] border border-dashed border-[#3a3a4a] rounded-lg p-7 flex flex-col items-center gap-3 mb-6">
+        <span className="text-[10px] uppercase tracking-[0.08em] text-[#6a6a8a]">Live preview</span>
         <TagPreview tag={draft} fxStack={fxStack} />
       </div>
 
-      <div className="tag-editor-form-grid">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-[14px] max-w-[720px]">
         <Field label="Key (immutable id)">
-          <input value={draft.key} onChange={(e) => onChange({ key: e.target.value })} />
+          <input className={FIELD_INPUT_CLS} value={draft.key} onChange={(e) => onChange({ key: e.target.value })} />
         </Field>
         <Field label="Label">
-          <input value={draft.label} onChange={(e) => onChange({ label: e.target.value })} />
+          <input className={FIELD_INPUT_CLS} value={draft.label} onChange={(e) => onChange({ label: e.target.value })} />
         </Field>
         <Field label="Category">
-          <select value={draft.category} onChange={(e) => onChange({ category: e.target.value })}>
+          <select className={FIELD_INPUT_CLS} value={draft.category} onChange={(e) => onChange({ category: e.target.value })}>
             {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
         <Field label="Sort order">
-          <input type="number" value={draft.sortOrder} onChange={(e) => onChange({ sortOrder: Number(e.target.value) })} />
+          <input className={FIELD_INPUT_CLS} type="number" value={draft.sortOrder} onChange={(e) => onChange({ sortOrder: Number(e.target.value) })} />
         </Field>
         <Field label="Text color">
           <ColorInput value={draft.color} onChange={(v) => onChange({ color: v })} />
@@ -368,6 +394,7 @@ function TagForm({
         </Field>
         <Field label={`Opacity (${draft.opacity.toFixed(2)})`}>
           <input
+            className={FIELD_INPUT_CLS}
             type="range"
             min="0"
             max="1"
@@ -377,16 +404,17 @@ function TagForm({
           />
         </Field>
         <Field label="Font size (e.g. 11px)">
-          <input value={draft.fontSize || ''} onChange={(e) => onChange({ fontSize: e.target.value || null })} />
+          <input className={FIELD_INPUT_CLS} value={draft.fontSize || ''} onChange={(e) => onChange({ fontSize: e.target.value || null })} />
         </Field>
         <Field label="Effect stack (outermost → innermost)">
-          <div className="tag-editor-fx-stack">
+          <div className="flex flex-col gap-[6px]">
             {stackKeys.length === 0 && (
-              <div className="tag-editor-fx-empty">No effects. Add one below.</div>
+              <div className="text-[#6a6a8a] text-[11px] italic py-1">No effects. Add one below.</div>
             )}
             {stackKeys.map((k, i) => (
-              <div key={i} className="tag-editor-fx-row">
+              <div key={i} className="flex gap-1 items-center">
                 <select
+                  className={FIELD_INPUT_CLS + " flex-1"}
                   value={k}
                   onChange={(e) => {
                     const next = stackKeys.slice();
@@ -399,7 +427,7 @@ function TagForm({
                 </select>
                 <button
                   type="button"
-                  className="tag-editor-fx-btn"
+                  className="bg-[#1c1830] border border-[#3a3a4a] text-white w-7 h-[30px] rounded cursor-pointer text-[13px] leading-none disabled:opacity-[0.35] disabled:cursor-not-allowed"
                   disabled={i === 0}
                   onClick={() => {
                     const next = stackKeys.slice();
@@ -410,7 +438,7 @@ function TagForm({
                 >↑</button>
                 <button
                   type="button"
-                  className="tag-editor-fx-btn"
+                  className="bg-[#1c1830] border border-[#3a3a4a] text-white w-7 h-[30px] rounded cursor-pointer text-[13px] leading-none disabled:opacity-[0.35] disabled:cursor-not-allowed"
                   disabled={i === stackKeys.length - 1}
                   onClick={() => {
                     const next = stackKeys.slice();
@@ -421,7 +449,7 @@ function TagForm({
                 >↓</button>
                 <button
                   type="button"
-                  className="tag-editor-fx-btn tag-editor-fx-remove"
+                  className="bg-[#1c1830] border border-[#6a2a2a] text-[#ff8c8c] w-7 h-[30px] rounded cursor-pointer text-[13px] leading-none"
                   onClick={() => writeStack(stackKeys.filter((_, j) => j !== i))}
                   title="Remove"
                 >×</button>
@@ -429,7 +457,7 @@ function TagForm({
             ))}
             <button
               type="button"
-              className="tag-editor-fx-add"
+              className="self-start bg-transparent border border-dashed border-[#3a3a4a] text-[#aaaacc] py-[6px] px-3 rounded cursor-pointer text-[12px] mt-[2px] hover:border-[#5a3aaa] hover:text-white"
               onClick={() => writeStack([...stackKeys, effects[0]?.key ?? ''])}
             >
               + Add effect
@@ -441,8 +469,15 @@ function TagForm({
         </Field>
       </div>
 
-      <div className="tag-editor-form-actions">
-        <button className="primary" disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save'}</button>
+      <div className="mt-6 flex gap-3">
+        <button
+          className="border-0 text-white py-[10px] px-6 rounded-md cursor-pointer text-[13px] font-bold uppercase tracking-[0.05em] disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, #5a3aaa, #8a4aff)' }}
+          disabled={saving}
+          onClick={onSave}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </>
   );
@@ -463,31 +498,31 @@ function EffectForm({
 }) {
   return (
     <>
-      <div className="tag-editor-preview-area">
-        <span className="tag-editor-preview-label">Live preview</span>
+      <div className="bg-[#1c1830] border border-dashed border-[#3a3a4a] rounded-lg p-7 flex flex-col items-center gap-3 mb-6">
+        <span className="text-[10px] uppercase tracking-[0.08em] text-[#6a6a8a]">Live preview</span>
         <EffectPreview effect={draft} />
       </div>
 
-      <div className="tag-editor-form-grid">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-[14px] max-w-[720px]">
         <Field label="Key (immutable id)">
-          <input value={draft.key} onChange={(e) => onChange({ key: e.target.value })} />
+          <input className={FIELD_INPUT_CLS} value={draft.key} onChange={(e) => onChange({ key: e.target.value })} />
         </Field>
         <Field label="Name">
-          <input value={draft.name} onChange={(e) => onChange({ name: e.target.value })} />
+          <input className={FIELD_INPUT_CLS} value={draft.name} onChange={(e) => onChange({ name: e.target.value })} />
         </Field>
         <Field label="Animation">
-          <select value={draft.cssAnimation} onChange={(e) => onChange({ cssAnimation: e.target.value })}>
+          <select className={FIELD_INPUT_CLS} value={draft.cssAnimation} onChange={(e) => onChange({ cssAnimation: e.target.value })}>
             {ANIMATION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         </Field>
         <Field label="Duration (ms)">
-          <input type="number" value={draft.durationMs} onChange={(e) => onChange({ durationMs: Number(e.target.value) })} />
+          <input className={FIELD_INPUT_CLS} type="number" value={draft.durationMs} onChange={(e) => onChange({ durationMs: Number(e.target.value) })} />
         </Field>
         <Field label="Easing">
-          <input value={draft.easing} onChange={(e) => onChange({ easing: e.target.value })} />
+          <input className={FIELD_INPUT_CLS} value={draft.easing} onChange={(e) => onChange({ easing: e.target.value })} />
         </Field>
         <Field label="Sort order">
-          <input type="number" value={draft.sortOrder} onChange={(e) => onChange({ sortOrder: Number(e.target.value) })} />
+          <input className={FIELD_INPUT_CLS} type="number" value={draft.sortOrder} onChange={(e) => onChange({ sortOrder: Number(e.target.value) })} />
         </Field>
         <Field label="Param: color">
           <ColorInput
@@ -498,6 +533,7 @@ function EffectForm({
         </Field>
         <Field label="Param: min opacity (pulse)">
           <input
+            className={FIELD_INPUT_CLS}
             type="number"
             step="0.05"
             min="0" max="1"
@@ -507,6 +543,7 @@ function EffectForm({
         </Field>
         <Field label="Param: max scale (pulse)">
           <input
+            className={FIELD_INPUT_CLS}
             type="number"
             step="0.01"
             value={draft.params?.maxScale ?? ''}
@@ -515,6 +552,7 @@ function EffectForm({
         </Field>
         <Field label="Description">
           <textarea
+            className={FIELD_INPUT_CLS + " resize-y"}
             rows={2}
             value={draft.description || ''}
             onChange={(e) => onChange({ description: e.target.value || null })}
@@ -525,8 +563,15 @@ function EffectForm({
         </Field>
       </div>
 
-      <div className="tag-editor-form-actions">
-        <button className="primary" disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save'}</button>
+      <div className="mt-6 flex gap-3">
+        <button
+          className="border-0 text-white py-[10px] px-6 rounded-md cursor-pointer text-[13px] font-bold uppercase tracking-[0.05em] disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, #5a3aaa, #8a4aff)' }}
+          disabled={saving}
+          onClick={onSave}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
       </div>
     </>
   );
@@ -534,7 +579,7 @@ function EffectForm({
 
 function Field({ label, children }: { label: string; children: any }) {
   return (
-    <label className="tag-editor-field">
+    <label className="flex flex-col gap-1 text-[11px] text-[#aaaacc] uppercase tracking-[0.04em]">
       <span>{label}</span>
       {children}
     </label>
@@ -550,18 +595,18 @@ function ColorInput({
   onChange: (v: string) => void;
   allowEmpty?: boolean;
 }) {
-  // The native <input type=color> needs a 6-char hex. Pass-through for
-  // the rgba() / named-color cases that VisualEffectDef.params uses.
   const isHex = /^#[0-9a-fA-F]{6}$/.test(value);
   return (
-    <span className="tag-editor-color-input">
+    <span className="flex gap-[6px] items-center">
       <input
         type="color"
+        className="w-9 h-8 p-0 border border-[#3a3a4a] bg-[#1c1830] rounded cursor-pointer"
         value={isHex ? value : '#000000'}
         onChange={(e) => onChange(e.target.value)}
       />
       <input
         type="text"
+        className={FIELD_INPUT_CLS + " flex-1"}
         value={value}
         placeholder={allowEmpty ? '(none)' : '#rrggbb / rgba(...)'}
         onChange={(e) => onChange(e.target.value)}

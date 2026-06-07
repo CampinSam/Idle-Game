@@ -19,7 +19,6 @@ import AdminV2AccountsSection from './sections/AdminV2AccountsSection';
 import AdminV2MetricsSection from './sections/AdminV2MetricsSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
 import AdminV2InstancesSection from './sections/AdminV2InstancesSection';
-import './admin-v2.css';
 
 type Section =
   | 'dashboard'
@@ -41,8 +40,7 @@ const SESSION_KEY = 'adminV2Section';
 
 function readPersistedNav(): { section: Section; sub: string | null } | null {
   try {
-    // URL hash takes priority (enables browser back/forward)
-    const hash = window.location.hash.slice(1); // e.g. "content/Entities" or "system"
+    const hash = window.location.hash.slice(1);
     if (hash) {
       const [section, sub = null] = hash.split('/');
       const valid: Section[] = ['dashboard','metrics','content','approvals','players','instances','live-ops','economy','system','support','moderation'];
@@ -76,7 +74,6 @@ function clearPersistedNav() {
     // ignore
   }
 }
-
 
 interface NavSub {
   key: string;
@@ -161,61 +158,65 @@ function ChangePasswordModal({ me, onClose }: { me: AdminMe; onClose: () => void
   };
 
   return (
-    <div className="av2-modal-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="av2-modal">
-        <div className="av2-modal-header">
+    <div className="fixed inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center z-[1000]" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-[#0d0e1f] border border-[#1a1b35] rounded-[12px] p-6 w-[380px] max-w-[calc(100vw-32px)] shadow-[0_12px_48px_rgba(0,0,0,0.7)]">
+        <div className="flex items-center justify-between text-[15px] font-bold text-[#d4d4f0] mb-5">
           <span>Change Password</span>
-          <button className="av2-modal-close" onClick={onClose}><X size={14} /></button>
+          <button className="flex items-center justify-center p-1 bg-transparent border-0 cursor-pointer text-[#4a4a7a] rounded hover:text-[#c0c0e8] transition-colors" onClick={onClose}><X size={14} /></button>
         </div>
         {success ? (
           <div style={{ padding: '24px 0 8px', textAlign: 'center' }}>
             <div style={{ fontSize: 24, marginBottom: 8 }}>✓</div>
             <div style={{ color: '#34d399', fontWeight: 700, marginBottom: 4 }}>Password changed successfully</div>
             <div style={{ color: '#4a4a7a', fontSize: 12, marginBottom: 20 }}>Your new password is active.</div>
-            <button className="av2-btn-primary" onClick={onClose}>Close</button>
+            <button className="py-[7px] px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer transition-colors duration-[120ms] whitespace-nowrap hover:bg-[#5a52d5] disabled:opacity-50 disabled:cursor-not-allowed" onClick={onClose}>Close</button>
           </div>
         ) : (
           <form onSubmit={submit}>
             {me.isBootstrap && (
-              <div className="av2-inline-msg error" style={{ marginBottom: 16 }}>
+              <div className="py-2 px-3 rounded-[6px] text-[12px] mb-4 bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]">
                 Bootstrap accounts cannot change their password via the panel.
               </div>
             )}
-            <label className="av2-form-label">Current password</label>
+            <label className="block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase mt-0 mb-1">Current password</label>
             <input
-              className="av2-form-input"
+              className="block w-full py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] box-border transition-[border-color] duration-[150ms] mb-4 focus:outline-none focus:border-[#6c63ff] disabled:opacity-45 disabled:cursor-not-allowed"
               type="password"
               value={current}
               onChange={e => setCurrent(e.target.value)}
               autoFocus
               disabled={me.isBootstrap}
             />
-            <label className="av2-form-label">New password</label>
+            <label className="block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase my-3 mb-1">New password</label>
             <input
-              className="av2-form-input"
+              className="block w-full py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] box-border transition-[border-color] duration-[150ms] mb-4 focus:outline-none focus:border-[#6c63ff] disabled:opacity-45 disabled:cursor-not-allowed"
               type="password"
               value={next}
               onChange={e => setNext(e.target.value)}
               disabled={me.isBootstrap}
             />
-            <label className="av2-form-label">Confirm new password</label>
+            <label className="block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase my-3 mb-1">Confirm new password</label>
             <input
-              className="av2-form-input"
+              className="block w-full py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] box-border transition-[border-color] duration-[150ms] mb-4 focus:outline-none focus:border-[#6c63ff] disabled:opacity-45 disabled:cursor-not-allowed"
               type="password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               disabled={me.isBootstrap}
             />
-            {error && <div className="av2-inline-msg error" style={{ marginTop: 8 }}>{error}</div>}
+            {error && <div className="py-2 px-3 rounded-[6px] text-[12px] mt-2 bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]">{error}</div>}
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 type="submit"
-                className="av2-btn-primary"
+                className="py-[7px] px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer transition-colors duration-[120ms] whitespace-nowrap hover:bg-[#5a52d5] disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={saving || me.isBootstrap || !current || !next || !confirm}
               >
                 {saving ? 'Saving…' : 'Change Password'}
               </button>
-              <button type="button" className="av2-btn-ghost" onClick={onClose}>Cancel</button>
+              <button
+                type="button"
+                className="py-[7px] px-4 bg-transparent border border-[#1a1b35] rounded-[8px] text-[#6060a0] text-[13px] font-semibold cursor-pointer transition-[border-color,color] duration-[120ms] whitespace-nowrap hover:border-[#3a3a6a] hover:text-[#a0a0c8]"
+                onClick={onClose}
+              >Cancel</button>
             </div>
           </form>
         )}
@@ -263,22 +264,25 @@ function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
   };
 
   return (
-    <div className="av2-login">
-      <form className="av2-login-card" onSubmit={handleSubmit}>
+    <div className="flex items-center justify-center min-h-[100dvh] bg-[#08091a]">
+      <form className="bg-[#0d0e1f] border border-[#1a1b35] rounded-[14px] p-10 w-[360px] shadow-[0_8px_40px_rgba(0,0,0,0.5)]" onSubmit={handleSubmit}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <div className="av2-sidebar-logo-icon">
+          <div
+            className="w-6 h-6 rounded-[6px] flex-shrink-0 flex items-center justify-center text-[12px] font-[800] text-white"
+            style={{ backgroundImage: 'linear-gradient(135deg,#6c63ff,#a855f7)' }}
+          >
             <Layers size={14} />
           </div>
           <div>
-            <div className="av2-login-title">Admin Panel</div>
-            <div className="av2-login-sub">Derp Universe · v2</div>
+            <div className="text-[1.4rem] font-[800] text-[#e0e0ff] m-0 mb-1">Admin Panel</div>
+            <div className="text-[12px] text-[#4a4a7a] m-0">Derp Universe · v2</div>
           </div>
         </div>
 
-        <label className="av2-login-label">Username</label>
+        <label className="block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase mb-1">Username</label>
         <input
           type="text"
-          className="av2-login-input"
+          className="w-full py-[0.65rem] px-[0.85rem] border border-[#1a1b35] rounded-[8px] bg-[#080918] text-[#d4d4f0] text-[14px] box-border transition-[border-color] duration-[150ms] mb-4 focus:outline-none focus:border-[#6c63ff]"
           placeholder="admin"
           value={username}
           onChange={e => setUsername(e.target.value)}
@@ -286,10 +290,10 @@ function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
           autoComplete="username"
         />
 
-        <label className="av2-login-label">Password</label>
+        <label className="block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase mb-1">Password</label>
         <input
           type="password"
-          className="av2-login-input"
+          className="w-full py-[0.65rem] px-[0.85rem] border border-[#1a1b35] rounded-[8px] bg-[#080918] text-[#d4d4f0] text-[14px] box-border transition-[border-color] duration-[150ms] mb-4 focus:outline-none focus:border-[#6c63ff]"
           placeholder="••••••••"
           value={password}
           onChange={e => setPassword(e.target.value)}
@@ -298,13 +302,13 @@ function AdminV2Login({ onLogin }: { onLogin: (me: AdminMe) => void }) {
 
         <button
           type="submit"
-          className="av2-login-btn"
+          className="w-full py-[0.7rem] bg-[#6c63ff] text-white border-0 rounded-[8px] text-[14px] font-bold cursor-pointer transition-colors duration-[150ms] mt-1 hover:bg-[#5a52d5] disabled:opacity-55 disabled:cursor-not-allowed"
           disabled={loading || !username.trim() || !password}
         >
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
 
-        {error && <div className="av2-login-error">{error}</div>}
+        {error && <div className="text-[#ff6b6b] text-[12px] mt-2">{error}</div>}
       </form>
     </div>
   );
@@ -332,14 +336,17 @@ function Sidebar({
   const visibleItems = NAV_ITEMS.filter(item => isVisible(item, me));
 
   return (
-    <div className={`av2-sidebar${collapsed ? ' collapsed' : ''}`}>
-      <div className="av2-sidebar-logo">
-        <div className="av2-sidebar-logo-icon">
+    <div className={`flex flex-col bg-[#0d0e1f] border-r border-[#1a1b35] transition-[width] duration-200 overflow-hidden flex-shrink-0 ${collapsed ? 'w-[48px]' : 'w-[220px]'}`}>
+      <div className="flex items-center gap-[10px] px-3 py-[14px] border-b border-[#1a1b35] flex-shrink-0 min-h-[52px]">
+        <div
+          className="w-6 h-6 rounded-[6px] flex-shrink-0 flex items-center justify-center text-[12px] font-[800] text-white"
+          style={{ backgroundImage: 'linear-gradient(135deg,#6c63ff,#a855f7)' }}
+        >
           <Layers size={14} />
         </div>
-        {!collapsed && <span className="av2-sidebar-logo-text">Admin v2</span>}
+        {!collapsed && <span className="text-[13px] font-bold text-[#e0e0ff] whitespace-nowrap overflow-hidden flex-1">Admin v2</span>}
         <button
-          className="av2-sidebar-collapse-btn av2-sidebar-collapse-top"
+          className="ml-auto flex-shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer text-[#4a4a7a] rounded-[6px] p-[4px_6px] transition-[background,color] duration-[120ms] hover:bg-[#1a1b35] hover:text-[#8080b0]"
           onClick={onCollapse}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -347,27 +354,33 @@ function Sidebar({
         </button>
       </div>
 
-      <nav className="av2-nav">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-[6px]">
         {visibleItems.map(item => {
           const isActive = activeSection === item.key;
           const hasSubs = !collapsed && !item.stub && isActive && item.subs && item.subs.length > 0;
           const showWarnDot = keyPending && item.key === 'system';
 
           return (
-            <div key={item.key} className="av2-nav-section">
+            <div key={item.key} className="mb-[2px]">
               <button
-                className={`av2-nav-item${isActive ? ' active' : ''}`}
+                className={`flex items-center gap-[10px] px-3 py-[7px] cursor-pointer border-0 w-[calc(100%-8px)] text-left text-[13px] rounded-[6px] mx-[4px] my-[1px] whitespace-nowrap transition-[background,color] duration-[120ms] relative hover:bg-[#1a1b35] hover:text-[#c0c0e8] ${
+                  isActive ? 'bg-[rgba(108,99,255,0.18)] text-[#a89fff]' : 'bg-transparent text-[#7a7aaa]'
+                }`}
                 onClick={() => onNavigate(item.key)}
                 title={collapsed ? (showWarnDot ? `${item.label} — key pending!` : item.label) : undefined}
               >
-                <span className="av2-nav-icon">{item.icon}</span>
+                <span className={`flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-75'}`}>{item.icon}</span>
                 {!collapsed && (
                   <>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.label}
                     </span>
-                    {item.stub && <span className="av2-stub-badge">SOON</span>}
-                    {showWarnDot && <span className="av2-nav-warn-dot" />}
+                    {item.stub && (
+                      <span className="text-[9px] font-bold tracking-[0.05em] bg-[rgba(107,114,128,0.2)] text-[#6b7280] border border-[rgba(107,114,128,0.3)] py-[1px] px-[5px] rounded-[3px] ml-auto flex-shrink-0">SOON</span>
+                    )}
+                    {showWarnDot && (
+                      <span className="w-[7px] h-[7px] rounded-full bg-[#fbbf24] flex-shrink-0 shadow-[0_0_5px_rgba(251,191,36,0.7)] animate-[av2-pulse-warn_1.8s_ease-in-out_infinite]" />
+                    )}
                     {item.subs && !item.stub && (
                       <ChevronDown
                         size={11}
@@ -381,20 +394,26 @@ function Sidebar({
                     )}
                   </>
                 )}
-                {collapsed && showWarnDot && <span className="av2-nav-warn-dot" style={{ position: 'absolute', top: 6, right: 6 }} />}
+                {collapsed && showWarnDot && (
+                  <span className="w-[7px] h-[7px] rounded-full bg-[#fbbf24] flex-shrink-0 shadow-[0_0_5px_rgba(251,191,36,0.7)] animate-[av2-pulse-warn_1.8s_ease-in-out_infinite]" style={{ position: 'absolute', top: 6, right: 6 }} />
+                )}
               </button>
 
               {hasSubs && (
-                <div className="av2-nav-subs">
+                <div className="overflow-hidden">
                   {item.subs!.map(sub => (
                     <button
                       key={sub.key}
-                      className={`av2-nav-item sub${activeSub === sub.key ? ' active' : ''}`}
+                      className={`flex items-center gap-[10px] text-[12px] px-3 py-[5px] pl-[30px] cursor-pointer border-0 w-[calc(100%-8px)] text-left rounded-[6px] mx-[4px] my-[1px] whitespace-nowrap transition-[background,color] duration-[120ms] ${
+                        activeSub === sub.key
+                          ? 'bg-[rgba(108,99,255,0.12)] text-[#9090d8]'
+                          : 'bg-transparent text-[#5a5a8a] hover:bg-[#1a1b35] hover:text-[#c0c0e8]'
+                      }`}
                       onClick={() => onNavigate(item.key, sub.key)}
                     >
                       {sub.label}
                       {keyPending && sub.key === 'crypto' && (
-                        <span className="av2-nav-warn-dot" style={{ marginLeft: 6 }} />
+                        <span className="w-[7px] h-[7px] rounded-full bg-[#fbbf24] flex-shrink-0 shadow-[0_0_5px_rgba(251,191,36,0.7)] animate-[av2-pulse-warn_1.8s_ease-in-out_infinite]" style={{ marginLeft: 6 }} />
                       )}
                     </button>
                   ))}
@@ -405,8 +424,12 @@ function Sidebar({
         })}
       </nav>
 
-      <div className="av2-sidebar-footer">
-        <button className="av2-sidebar-collapse-btn" onClick={onLogout} title="Sign out">
+      <div className="border-t border-[#1a1b35] p-[8px_4px] flex-shrink-0">
+        <button
+          className="flex items-center gap-2 px-3 py-[6px] bg-transparent border-0 cursor-pointer text-[#4a4a7a] text-[12px] w-full rounded-[6px] transition-[background,color] duration-[120ms] whitespace-nowrap hover:bg-[#1a1b35] hover:text-[#8080b0]"
+          onClick={onLogout}
+          title="Sign out"
+        >
           <LogOut size={13} style={{ flexShrink: 0 }} />
           {!collapsed && <span>Sign out</span>}
         </button>
@@ -442,17 +465,17 @@ function TopBar({
   };
 
   return (
-    <div className="av2-topbar">
-      <span className="av2-topbar-title">{labels[activeSection]}</span>
+    <div className="flex items-center gap-3 px-5 py-[10px] border-b border-[#1a1b35] bg-[#0a0b1c] flex-shrink-0 min-h-[48px]">
+      <span className="text-[15px] font-bold text-[#d4d4f0]">{labels[activeSection]}</span>
       {activeSub && (
-        <span className="av2-topbar-sub">/ {activeSub}</span>
+        <span className="text-[12px] text-[#4a4a7a]">/ {activeSub}</span>
       )}
-      <div className="av2-topbar-user">
-        <span className="av2-topbar-user-name">{me.username}</span>
-        <span className="av2-topbar-role">{me.role.name}</span>
+      <div className="ml-auto flex items-center gap-2">
+        <span className="text-[12px] text-[#6060a0]">{me.username}</span>
+        <span className="text-[10px] font-semibold tracking-[0.06em] bg-[rgba(108,99,255,0.15)] text-[#8080c8] border border-[rgba(108,99,255,0.25)] py-[2px] px-[6px] rounded">{me.role.name}</span>
         {!me.isBootstrap && (
           <button
-            className="av2-topbar-icon-btn"
+            className="flex items-center justify-center p-[5px] bg-transparent border border-[#1a1b35] rounded-[6px] text-[#4a4a7a] cursor-pointer transition-[border-color,color] duration-[120ms] hover:border-[#6c63ff55] hover:text-[#a89fff]"
             onClick={onPasswordChange}
             title="Change password"
           >
@@ -464,7 +487,7 @@ function TopBar({
   );
 }
 
-const KEY_POLL_INTERVAL_MS = 5 * 60_000; // poll every 5 minutes
+const KEY_POLL_INTERVAL_MS = 5 * 60_000;
 
 export default function AdminV2Shell() {
   const [me, setMe] = useState<AdminMe | null>(null);
@@ -549,7 +572,7 @@ export default function AdminV2Shell() {
 
   if (checking) {
     return (
-      <div className="av2-login">
+      <div className="flex items-center justify-center min-h-[100dvh] bg-[#08091a]">
         <div style={{ color: '#3a3a6a', fontSize: 13 }}>Checking session…</div>
       </div>
     );
@@ -638,7 +661,7 @@ export default function AdminV2Shell() {
   const handleGoToCrypto = () => handleNavigate('system', 'crypto');
 
   return (
-    <div className="av2-shell">
+    <div className="flex h-[100dvh] overflow-hidden bg-[#08091a] text-[#d4d4f0]">
       <Sidebar
         me={me}
         collapsed={collapsed}
@@ -649,7 +672,7 @@ export default function AdminV2Shell() {
         onLogout={handleLogout}
         keyPending={keyPending}
       />
-      <div className="av2-main">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col min-w-0">
         <TopBar
           me={me}
           activeSection={activeSection}
@@ -658,19 +681,19 @@ export default function AdminV2Shell() {
         />
         {keyPending && (
           <button
-            className="av2-key-pending-banner"
+            className="flex items-center gap-[10px] w-full py-[9px] px-5 bg-[rgba(251,191,36,0.1)] border-0 border-b border-[rgba(251,191,36,0.35)] text-[#fde68a] text-[12.5px] cursor-pointer text-left flex-shrink-0 transition-[background] duration-[150ms] hover:bg-[rgba(251,191,36,0.17)]"
             onClick={handleGoToCrypto}
             title="Click to go to Crypto config and download the private key"
           >
-            <AlertTriangle size={14} className="av2-key-pending-icon" />
+            <AlertTriangle size={14} style={{ color: '#fbbf24', flexShrink: 0 }} />
             <span>
               <strong>Action required:</strong> Hot wallet private key has not been downloaded.
               If the server restarts, it will be permanently lost.
             </span>
-            <span className="av2-key-pending-cta">Download now →</span>
+            <span className="ml-auto flex-shrink-0 font-bold text-[#fbbf24] text-[12px] whitespace-nowrap">Download now →</span>
           </button>
         )}
-        <div className="av2-content">
+        <div className="flex-1 overflow-auto min-h-0">
           {renderSection()}
         </div>
       </div>

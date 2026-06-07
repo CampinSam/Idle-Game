@@ -30,9 +30,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. results.message',
     fromShape: 'string  →  becomes a single paragraph\narray   →  used directly as RichTextDoc',
     preview: () => (
-      <div className="me-prev-richtext">
-        <div className="me-prev-rt-h">Heading</div>
-        <div className="me-prev-rt-p">Body text with <b>bold</b>.</div>
+      <div>
+        <div style={{ fontWeight: 800, color: '#e2e8f0', fontSize: 12 }}>Heading</div>
+        <div style={{ color: '#94a3b8', fontSize: 11 }}>Body text with <b>bold</b>.</div>
       </div>
     ),
   },
@@ -43,7 +43,7 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     color: '#64748b',
     fromHint: '',
     fromShape: '',
-    preview: () => <div className="me-prev-divider" />,
+    preview: () => <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.2)' }} />,
   },
   image: {
     friendlyName: 'Image',
@@ -52,7 +52,7 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     color: '#22d3ee',
     fromHint: 'e.g. results.image',
     fromShape: 'string  →  treated as assetKey\nobject  →  { assetKey, alt?, caption? }',
-    preview: () => <div className="me-prev-image"><span>🖼</span></div>,
+    preview: () => <div style={{ fontSize: 22, width: '100%', textAlign: 'center' }}><span>🖼</span></div>,
   },
   metaRows: {
     friendlyName: 'Meta Rows',
@@ -62,9 +62,13 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. results.stats',
     fromShape: 'array of { label, value }\nor object → keys become labels',
     preview: () => (
-      <div className="me-prev-meta">
-        <div className="me-prev-meta-row"><span>Label</span><span>Value</span></div>
-        <div className="me-prev-meta-row"><span>Score</span><span>1,250</span></div>
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+          <span style={{ color: '#64748b' }}>Label</span><span style={{ color: '#e2e8f0', fontWeight: 700 }}>Value</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+          <span style={{ color: '#64748b' }}>Score</span><span style={{ color: '#e2e8f0', fontWeight: 700 }}>1,250</span>
+        </div>
       </div>
     ),
   },
@@ -76,9 +80,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. timer.endsAt',
     fromShape: 'string ISO date\nor object { endsAt, label? }',
     preview: () => (
-      <div className="me-prev-timer">
-        <span className="me-prev-timer-label">ENDS IN</span>
-        <span className="me-prev-timer-val">12:34</span>
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 6, padding: '4px 8px' }}>
+        <span style={{ color: '#94a3b8', fontSize: 9, letterSpacing: '0.1em' }}>ENDS IN</span>
+        <span style={{ color: '#a78bfa', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>12:34</span>
       </div>
     ),
   },
@@ -90,9 +94,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. timer.progress',
     fromShape: 'object { current, max, label? }',
     preview: () => (
-      <div className="me-prev-progress">
-        <div className="me-prev-progress-fill" />
-        <span>62%</span>
+      <div style={{ position: 'relative', width: '100%', height: 18, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 4, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, right: '38%', background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
+        <span style={{ position: 'relative', zIndex: 1, fontSize: 10, fontWeight: 800, color: '#fff' }}>62%</span>
       </div>
     ),
   },
@@ -104,7 +108,7 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. results.rewards',
     fromShape: 'array of { name, qty?, assetKey?, rarity? }',
     preview: () => (
-      <div className="me-prev-rewards-compact">
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: '#fbbf24' }}>
         <span>🪙</span><span>×5</span>
         <span>💎</span><span>×1</span>
       </div>
@@ -118,9 +122,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. results.rewards',
     fromShape: 'array of { name, qty?, assetKey?, rarity? }',
     preview: () => (
-      <div className="me-prev-rewards-list">
-        <div className="me-prev-reward-card">🪙 Coin <b>×5</b></div>
-        <div className="me-prev-reward-card">💎 Gem <b>×1</b></div>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '3px 6px', fontSize: 10 }}>🪙 Coin <b>×5</b></div>
+        <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '3px 6px', fontSize: 10 }}>💎 Gem <b>×1</b></div>
       </div>
     ),
   },
@@ -132,9 +136,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. results.delta',
     fromShape: 'array of { name, qtyDelta, assetKey? }',
     preview: () => (
-      <div className="me-prev-delta">
-        <div>Wood <span className="me-prev-pos">+12</span></div>
-        <div>Stone <span className="me-prev-neg">−3</span></div>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2, fontSize: 10, color: '#cbd5e1' }}>
+        <div>Wood <span style={{ color: '#34d399', fontWeight: 800 }}>+12</span></div>
+        <div>Stone <span style={{ color: '#f87171', fontWeight: 800 }}>−3</span></div>
       </div>
     ),
   },
@@ -146,9 +150,9 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'e.g. gift',
     fromShape: 'object { gift?, giftId?, title?, rewards? }',
     preview: () => (
-      <div className="me-prev-gift">
-        <span className="me-prev-gift-icon">🎁</span>
-        <span className="me-prev-gift-title">A Gift!</span>
+      <div style={{ width: '100%', textAlign: 'center' }}>
+        <span style={{ display: 'block', fontSize: 22 }}>🎁</span>
+        <span style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#fbbf24' }}>A Gift!</span>
       </div>
     ),
   },
@@ -160,9 +164,13 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'use the "list" field instead of "from"',
     fromShape: 'list: ${path.to.array}\n→ children render N times with ${item}, ${index}',
     preview: () => (
-      <div className="me-prev-meta">
-        <div className="me-prev-meta-row"><span>${'{item.name}'}</span><span>×{'${item.qty}'}</span></div>
-        <div className="me-prev-meta-row"><span>(repeats)</span><span>…</span></div>
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+          <span style={{ color: '#64748b' }}>${'{item.name}'}</span><span style={{ color: '#e2e8f0', fontWeight: 700 }}>×{'${item.qty}'}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
+          <span style={{ color: '#64748b' }}>(repeats)</span><span style={{ color: '#e2e8f0', fontWeight: 700 }}>…</span>
+        </div>
       </div>
     ),
   },
@@ -174,10 +182,8 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     fromHint: 'use Tags + Sound/FX maps instead of "from"',
     fromShape: 'tags: "${item.rarity}"\nsoundMap: "legendary=sfx.x, *=sfx.y"\nfxMap: "rare=burst, *=shimmer"',
     preview: () => (
-      <div className="me-prev-meta">
-        <div className="me-prev-meta-row" style={{ justifyContent: 'center', color: '#c084fc' }}>
-          <span>👆 Tap to reveal</span>
-        </div>
+      <div style={{ width: '100%', display: 'flex', justifyContent: 'center', fontSize: 10, color: '#c084fc' }}>
+        <span>👆 Tap to reveal</span>
       </div>
     ),
   },
@@ -188,7 +194,7 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     color: '#ef4444',
     fromHint: 'e.g. results.errorMessage',
     fromShape: 'string\nor object { message }',
-    preview: () => <div className="me-prev-error">⚠ Something went wrong.</div>,
+    preview: () => <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 4, padding: '3px 6px', color: '#fca5a5', fontSize: 10, width: '100%' }}>⚠ Something went wrong.</div>,
   },
 };
 

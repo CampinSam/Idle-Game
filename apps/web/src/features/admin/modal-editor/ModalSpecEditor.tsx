@@ -17,7 +17,6 @@ import BlockPicker from './BlockPicker';
 import ActionPicker from './ActionPicker';
 import ScriptingHelp from './ScriptingHelp';
 import { BLOCK_META } from './modal-editor-meta';
-import './ModalEditorPage.css';
 
 // ─── Rich text helpers ────────────────────────────────────────────────────────
 
@@ -384,10 +383,10 @@ function Field({ label, children, hint }: { label: string; children: React.React
 function HelpHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <span className="me-helphint">
+    <span className="relative inline-flex items-center ml-[6px]">
       <button
         type="button"
-        className="me-helphint-btn"
+        className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#1a1140] border border-[#7c3aed55] text-[#a78bfa] text-[10px] font-[800] font-[inherit] cursor-pointer p-0 leading-none hover:bg-[#2a1a5a] hover:border-[#a78bfa] hover:text-white transition-colors"
         title={text}
         aria-label={text}
         onClick={(e) => { e.preventDefault(); setOpen(o => !o); }}
@@ -395,7 +394,7 @@ function HelpHint({ text }: { text: string }) {
       >
         ?
       </button>
-      {open && <span className="me-helphint-pop" role="tooltip">{text}</span>}
+      {open && <span className="absolute top-full left-0 z-[30] mt-[6px] min-w-[220px] max-w-[320px] px-[10px] py-2 bg-[#06061a] border border-[#7c3aed55] rounded-[6px] text-[#cbd5e1] text-[11px] leading-[1.5] font-normal normal-case tracking-normal shadow-[0_6px_20px_rgba(0,0,0,0.6)] whitespace-normal" role="tooltip">{text}</span>}
     </span>
   );
 }
@@ -411,13 +410,13 @@ function Section({ title, open, onToggle, badge, children, sectionClass }: {
   badge?: string; children: React.ReactNode; sectionClass?: string;
 }) {
   return (
-    <div className={`me-section ${sectionClass ?? ''}`}>
-      <button className="me-section-hdr" onClick={onToggle} type="button">
-        <span className="me-section-chevron">{open ? '▼' : '▶'}</span>
-        <span className="me-section-title">{title}</span>
-        {badge && <span className="me-section-badge">{badge}</span>}
+    <div className={`border-b border-[#1a1a3e] ${sectionClass ?? ''}`}>
+      <button className="me-section-hdr w-full flex items-center gap-[10px] px-4 py-3 bg-gradient-to-br from-[#0e0e28] to-[#0a0a1e] border-none cursor-pointer text-left font-[inherit] transition-[background]" onClick={onToggle} type="button">
+        <span className="me-section-chevron text-[10px] text-[#4c1d95] shrink-0">{open ? '▼' : '▶'}</span>
+        <span className="text-xs font-[800] tracking-[0.1em] uppercase text-[#a78bfa]">{title}</span>
+        {badge && <span className="ml-auto text-[10px] text-[#64748b] bg-[#1a1a3e] border border-[#2a2a4e] rounded-[4px] px-[6px] py-[1px] font-mono">{badge}</span>}
       </button>
-      {open && <div className="me-section-body">{children}</div>}
+      {open && <div className="me-section-body px-4 py-3 flex flex-col gap-[10px] bg-[#0a0a1e]">{children}</div>}
     </div>
   );
 }
@@ -428,7 +427,7 @@ function FromField({ block, onChange }: { block: ModalBlock; onChange: (b: Modal
   if (block.type === 'divider' || block.type === 'list' || block.type === 'clickReveal') return null;
   const hint = FROM_HINTS[block.type] || '';
   return (
-    <div className="me-from-field">
+    <div className="mb-[10px] pb-2 border-b border-dashed border-[#2a2a4e]">
       <label style={{ ...lbl, fontSize: 10, color: '#7c3aed', marginBottom: 2 }}>FROM (payload path)</label>
       <input
         style={{ ...inp, borderColor: '#3d2a6e', fontSize: 12 }}
@@ -1060,7 +1059,6 @@ function BlockList({ blocks, onChange, tokenPaths }: { blocks: ModalBlock[]; onC
             onDragOver={e => handleDragOver(e, i)}
             onDrop={e => handleDrop(e, i)}
             onDragEnd={handleDragEnd}
-            className="me-block-row"
             style={{
               marginBottom: 6, borderRadius: 8,
               border: isDropTarget ? `2px solid ${color}` : '1px solid #2a2a4e',
@@ -1068,19 +1066,19 @@ function BlockList({ blocks, onChange, tokenPaths }: { blocks: ModalBlock[]; onC
               opacity: isDragging ? 0.5 : 1,
             }}
           >
-            <div className="me-block-row-hdr" style={{ borderBottom: isCollapsed ? 'none' : '1px solid #1a1a3e' }}>
-              <span className="me-block-grip" style={{ cursor: 'grab', color: '#444', fontSize: 14, userSelect: 'none', padding: '0 2px' }}>⣿</span>
-              <span className="me-block-tag" style={{ color, background: `${color}22`, border: `1px solid ${color}44` }} title={block.type}>
+            <div className="flex items-center px-2 py-[5px] gap-[6px]" style={{ borderBottom: isCollapsed ? 'none' : '1px solid #1a1a3e' }}>
+              <span style={{ cursor: 'grab', color: '#444', fontSize: 14, userSelect: 'none', padding: '0 2px' }}>⣿</span>
+              <span className="text-[11px] font-[700] rounded-[4px] px-2 py-[2px] tracking-[0.04em] shrink-0 whitespace-nowrap max-w-[50%] overflow-hidden text-ellipsis" style={{ color, background: `${color}22`, border: `1px solid ${color}44` }} title={block.type}>
                 {friendly}
               </span>
               {hasFrom && (
-                <span className="me-block-from-badge">← {(block as any).from}</span>
+                <span className="text-[10px] text-[#7c3aed] bg-[#7c3aed18] border border-[#7c3aed33] rounded-[4px] px-[5px] py-[1px] font-mono shrink-0 max-w-[35%] overflow-hidden text-ellipsis whitespace-nowrap">← {(block as any).from}</span>
               )}
-              <button type="button" onClick={() => toggleCollapse(i)} className="me-block-toggle">
+              <button type="button" onClick={() => toggleCollapse(i)} className="flex-1 bg-transparent border-none text-[#888] cursor-pointer text-left text-[11px] py-[2px] font-[inherit] min-w-0 overflow-hidden">
                 <span style={{ color: '#444', fontSize: 9 }}>{isCollapsed ? '▶' : '▼'}</span>
                 {isCollapsed && <span style={{ marginLeft: 6, color: '#555' }}>{block.type === 'richText' ? richTextDocToText((block as any).doc || []).slice(0, 40) || '…' : ''}</span>}
               </button>
-              <button type="button" onClick={() => removeBlock(i)} className="me-block-remove" title="Remove">×</button>
+              <button type="button" onClick={() => removeBlock(i)} className="me-block-remove bg-transparent border-none text-[#ef444488] cursor-pointer text-[18px] px-2 py-[2px] leading-none shrink-0 min-h-[32px] min-w-[32px] hover:text-[#ef4444] transition-colors" title="Remove">×</button>
             </div>
             {!isCollapsed && (
               <div style={{ padding: '10px 12px' }}>
@@ -1508,7 +1506,7 @@ function PageEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div>
-        <div className="me-group-title" style={{ marginBottom: 6 }}>Body Blocks</div>
+        <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#4c4c7a] mb-3 pb-2 border-b border-[#1a1a3e]" style={{ marginBottom: 6 }}>Body Blocks</div>
         <BlockList
           blocks={page.body}
           onChange={body => onChange({ ...page, body })}
@@ -1622,7 +1620,7 @@ function LivePreview({ spec, payloadJson }: { spec: ModalSpecV1; payloadJson: st
   const { header, body, buttons, dismiss } = computeEffectivePageClient(resolvedSpec, clampedPage);
 
   return (
-    <div className="me-preview-outer">
+    <div className="flex items-start justify-center py-4">
       <div style={{ width: '100%' }}>
         {payloadJson && (
           <div style={{ textAlign: 'center', fontSize: 10, color: '#7c3aed', marginBottom: 8, opacity: 0.7 }}>
@@ -1785,7 +1783,7 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
       {/* ── Editor ── */}
       <Section title="Modal Spec" open={editorOpen} onToggle={() => setEditorOpen(v => !v)} sectionClass="me-section-edit">
         <div className="me-card">
-          <div className="me-group-title">Spec Options</div>
+          <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#4c4c7a] mb-3 pb-2 border-b border-[#1a1a3e]">Spec Options</div>
           <Row>
             <div style={{ flex: 2 }}>
               <Field label="Kind (e.g. mission_complete)">
@@ -1818,7 +1816,7 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Default Header</div>
+          <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#4c4c7a] mb-3 pb-2 border-b border-[#1a1a3e]">Default Header</div>
           <Row>
             <div style={{ flex: 2 }}>
               <Field label="Title" hint="Supports ${path} tokens — e.g. ${results.message}, ${defId}, ${data.amount}. They're replaced from the payload at render time.">
@@ -1846,12 +1844,12 @@ export default function ModalSpecEditor({ value, onChange }: ModalSpecEditorProp
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Default Buttons</div>
+          <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#4c4c7a] mb-3 pb-2 border-b border-[#1a1a3e]">Default Buttons</div>
           <ButtonList buttons={spec.buttons} onChange={buttons => updateSpec({ buttons })} />
         </div>
 
         <div className="me-card">
-          <div className="me-group-title">Pages</div>
+          <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#4c4c7a] mb-3 pb-2 border-b border-[#1a1a3e]">Pages</div>
           <PageTabStrip
             pageCount={pages.length}
             activeIdx={currentPageIdx}

@@ -30,6 +30,17 @@ const SCOPE_OPTIONS = [
   'Screens', 'Payments', 'Entities',
 ];
 
+const FORM_LABEL = "block text-[11px] font-semibold text-[#6060a0] tracking-[0.05em] uppercase my-3 first:mt-0 mb-1";
+const FORM_INPUT = "block w-full py-2 px-3 bg-[#080918] border border-[#1a1b35] rounded-[8px] text-[#d4d4f0] text-[13px] box-border transition-[border-color] duration-[150ms] focus:outline-none focus:border-[#6c63ff] disabled:opacity-45 disabled:cursor-not-allowed";
+const BTN_PRIMARY = "py-[7px] px-4 bg-[#6c63ff] border-0 rounded-[8px] text-white text-[13px] font-semibold cursor-pointer transition-colors duration-[120ms] whitespace-nowrap hover:bg-[#5a52d5] disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_GHOST = "py-[7px] px-4 bg-transparent border border-[#1a1b35] rounded-[8px] text-[#6060a0] text-[13px] font-semibold cursor-pointer transition-[border-color,color] duration-[120ms] whitespace-nowrap hover:border-[#3a3a6a] hover:text-[#a0a0c8]";
+const CARD = "bg-[#0d0e1f] border border-[#1a1b35] rounded-[10px] p-4";
+const DRAFT_TABLE = "text-[11px] font-bold tracking-[0.05em] bg-[rgba(108,99,255,0.15)] text-[#8080c8] border border-[rgba(108,99,255,0.25)] py-[2px] px-[6px] rounded";
+const STAT_ROW = "flex items-center justify-between py-[6px] border-b border-[#1a1b35] text-[12px] last:border-b-0";
+const STAT_KEY = "text-[#6060a0]";
+const MSG_SUCCESS = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(5,150,105,0.12)] border border-[rgba(5,150,105,0.3)] text-[#34d399]";
+const MSG_ERROR = "py-2 px-3 rounded-[6px] text-[12px] bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.25)] text-[#f87171]";
+
 function ScopeSelect({ scopes, onChange }: { scopes: string[]; onChange: (s: string[]) => void }) {
   const toggle = (s: string) =>
     onChange(scopes.includes(s) ? scopes.filter(x => x !== s) : [...scopes, s]);
@@ -95,14 +106,14 @@ function CreateForm({
     <form onSubmit={submit} style={{ maxWidth: 520 }}>
       <h2 style={{ fontSize: 16, fontWeight: 700, color: '#d4d4f0', marginBottom: 20 }}>Create Admin Account</h2>
 
-      <label className="av2-form-label">Username</label>
-      <input className="av2-form-input" value={username} onChange={e => setUsername(e.target.value)} autoFocus required />
+      <label className={FORM_LABEL}>Username</label>
+      <input className={FORM_INPUT} value={username} onChange={e => setUsername(e.target.value)} autoFocus required />
 
-      <label className="av2-form-label">Password (min 8 chars)</label>
-      <input className="av2-form-input" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+      <label className={FORM_LABEL}>Password (min 8 chars)</label>
+      <input className={FORM_INPUT} type="password" value={password} onChange={e => setPassword(e.target.value)} required />
 
-      <label className="av2-form-label">Role</label>
-      <select className="av2-form-input" value={roleId} onChange={e => setRoleId(e.target.value)}>
+      <label className={FORM_LABEL}>Role</label>
+      <select className={FORM_INPUT} value={roleId} onChange={e => setRoleId(e.target.value)}>
         {roles.map(r => (
           <option key={r.id} value={r.id}>{r.name}</option>
         ))}
@@ -110,18 +121,18 @@ function CreateForm({
 
       {!isSuperAdmin && (
         <>
-          <label className="av2-form-label" style={{ marginTop: 12 }}>Content Scopes</label>
+          <label className={FORM_LABEL} style={{ marginTop: 12 }}>Content Scopes</label>
           <ScopeSelect scopes={scopes} onChange={setScopes} />
         </>
       )}
 
-      {error && <div className="av2-inline-msg error" style={{ marginTop: 12 }}>{error}</div>}
+      {error && <div className={`${MSG_ERROR} mt-3`}>{error}</div>}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-        <button type="submit" className="av2-btn-primary" disabled={saving || !username.trim() || !password || !roleId}>
+        <button type="submit" className={BTN_PRIMARY} disabled={saving || !username.trim() || !password || !roleId}>
           {saving ? 'Creating…' : 'Create Account'}
         </button>
-        <button type="button" className="av2-btn-ghost" onClick={onCancel}>Cancel</button>
+        <button type="button" className={BTN_GHOST} onClick={onCancel}>Cancel</button>
       </div>
     </form>
   );
@@ -206,9 +217,9 @@ function EditForm({
         )}
       </div>
 
-      <label className="av2-form-label">Role</label>
+      <label className={FORM_LABEL}>Role</label>
       <select
-        className="av2-form-input"
+        className={FORM_INPUT}
         value={roleId}
         onChange={e => setRoleId(e.target.value)}
         disabled={isSelf}
@@ -221,14 +232,14 @@ function EditForm({
 
       {!isSuperAdmin && (
         <>
-          <label className="av2-form-label" style={{ marginTop: 12 }}>Content Scopes</label>
+          <label className={FORM_LABEL} style={{ marginTop: 12 }}>Content Scopes</label>
           <ScopeSelect scopes={scopes} onChange={setScopes} />
         </>
       )}
 
       {!isSuperAdmin && (
         <>
-          <label className="av2-form-label" style={{ marginTop: 14 }}>Permission Overrides</label>
+          <label className={FORM_LABEL} style={{ marginTop: 14 }}>Permission Overrides</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
             <input
               type="checkbox"
@@ -244,9 +255,9 @@ function EditForm({
         </>
       )}
 
-      <label className="av2-form-label" style={{ marginTop: 12 }}>Reset Password (leave blank to keep current)</label>
+      <label className={FORM_LABEL} style={{ marginTop: 12 }}>Reset Password (leave blank to keep current)</label>
       <input
-        className="av2-form-input"
+        className={FORM_INPUT}
         type="password"
         placeholder="New password (min 8 chars)…"
         value={newPassword}
@@ -255,7 +266,7 @@ function EditForm({
 
       {!isSelf && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-          <label className="av2-form-label" style={{ margin: 0 }}>Account enabled</label>
+          <label className={FORM_LABEL} style={{ margin: 0 }}>Account enabled</label>
           <input
             type="checkbox"
             checked={enabled}
@@ -265,13 +276,13 @@ function EditForm({
         </div>
       )}
 
-      {error && <div className="av2-inline-msg error" style={{ marginTop: 12 }}>{error}</div>}
+      {error && <div className={`${MSG_ERROR} mt-3`}>{error}</div>}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-        <button type="submit" className="av2-btn-primary" disabled={saving}>
+        <button type="submit" className={BTN_PRIMARY} disabled={saving}>
           {saving ? 'Saving…' : 'Save Changes'}
         </button>
-        <button type="button" className="av2-btn-ghost" onClick={onCancel}>Cancel</button>
+        <button type="button" className={BTN_GHOST} onClick={onCancel}>Cancel</button>
       </div>
     </form>
   );
@@ -306,19 +317,19 @@ export default function AdminV2AccountsSection({ me }: Props) {
 
   if (!isSuperAdmin) {
     return (
-      <div className="av2-access-denied">
-        <div className="av2-access-denied-icon">🔒</div>
+      <div className="flex flex-col items-center justify-center py-[60px] px-6 text-center text-[#4a4a7a]">
+        <div className="text-[36px] mb-3 opacity-40">🔒</div>
         <div>Account management requires Super Admin role.</div>
       </div>
     );
   }
 
-  if (loading) return <div className="av2-loading">Loading accounts…</div>;
-  if (error) return <div className="av2-inline-msg error" style={{ margin: 20 }}>{error}</div>;
+  if (loading) return <div className="flex items-center justify-center p-[60px] text-[#4a4a7a] text-[13px]">Loading accounts…</div>;
+  if (error) return <div className={`${MSG_ERROR} m-5`}>{error}</div>;
 
   if (panel === 'create') {
     return (
-      <div className="av2-section-wrap">
+      <div className="p-5 max-w-[1200px]">
         <CreateForm
           roles={roles}
           onSave={() => {
@@ -334,7 +345,7 @@ export default function AdminV2AccountsSection({ me }: Props) {
 
   if (panel === 'edit' && editTarget) {
     return (
-      <div className="av2-section-wrap">
+      <div className="p-5 max-w-[1200px]">
         <EditForm
           account={editTarget}
           roles={roles}
@@ -352,24 +363,24 @@ export default function AdminV2AccountsSection({ me }: Props) {
   }
 
   return (
-    <div className="av2-section-wrap">
+    <div className="p-5 max-w-[1200px]">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: '#d4d4f0', margin: 0 }}>Admin Accounts</h2>
         <button
-          className="av2-btn-primary"
+          className={BTN_PRIMARY}
           onClick={() => { setSuccess(null); setPanel('create'); }}
         >
           + New Account
         </button>
       </div>
 
-      {success && <div className="av2-inline-msg success" style={{ marginBottom: 12 }}>{success}</div>}
+      {success && <div className={`${MSG_SUCCESS} mb-3`}>{success}</div>}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {accounts.map(acc => (
           <div
             key={acc.id}
-            className="av2-card"
+            className={CARD}
             style={{
               display: 'flex', alignItems: 'center', gap: 12,
               opacity: acc.enabled ? 1 : 0.5,
@@ -386,7 +397,7 @@ export default function AdminV2AccountsSection({ me }: Props) {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                <span className="av2-draft-table">{acc.role.name}</span>
+                <span className={DRAFT_TABLE}>{acc.role.name}</span>
                 {acc.contentScopes.map(s => (
                   <span key={s} style={{
                     fontSize: 10, padding: '1px 5px', borderRadius: 3,
@@ -397,7 +408,7 @@ export default function AdminV2AccountsSection({ me }: Props) {
               </div>
             </div>
             <button
-              className="av2-btn-ghost"
+              className={BTN_GHOST}
               style={{ fontSize: 12, padding: '4px 12px' }}
               onClick={() => { setSuccess(null); setEditTarget(acc); setPanel('edit'); }}
             >
@@ -411,8 +422,8 @@ export default function AdminV2AccountsSection({ me }: Props) {
         <h3 style={{ fontSize: 13, fontWeight: 700, color: '#6060a0', marginBottom: 12 }}>Roles</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {roles.map(r => (
-            <div key={r.id} className="av2-stat-row">
-              <span className="av2-stat-key">{r.name}</span>
+            <div key={r.id} className={STAT_ROW}>
+              <span className={STAT_KEY}>{r.name}</span>
               <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#4a4a7a' }}>{r.slug}</span>
             </div>
           ))}

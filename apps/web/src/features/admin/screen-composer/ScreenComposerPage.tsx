@@ -16,7 +16,6 @@ import {
   dangerIconButtonStyle,
   addButtonStyle,
 } from '../smart/components/structured/editorStyles';
-import '../admin.css';
 
 // ─── Component registry ───────────────────────────────────────────────────────
 
@@ -3117,7 +3116,7 @@ function DefinitionEditor({
                 ? `Fix ${blockValidationErrors.size} block(s) with missing required fields before saving`
                 : undefined
             }
-            className="btn-save"
+            className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               padding: '0.35rem 1rem', fontSize: '0.85rem',
               opacity: (hasSectionErrors || hasBlockErrors) ? 0.5 : 1,
@@ -3334,14 +3333,14 @@ function ScreenComposer() {
   const createNewBlank = () => { setSelected(null); setDupeSource(null); setShowNew(true); };
 
   return (
-    <div className="admin-panel">
-      <div className="admin-sidebar" style={{ minWidth: 240, maxWidth: 280 }}>
-        <div className="sidebar-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+    <div className="flex min-h-screen bg-[#1a1a2e] text-[#e0e0ff]">
+      <div className="flex flex-col border-r border-[#2a2a4e] overflow-hidden bg-[#16213e] p-5" style={{ minWidth: 240, maxWidth: 280 }}>
+        <div className="flex mb-4 pb-3 border-b border-[#2a2a4e] gap-1" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ margin: 0, fontSize: '0.95rem' }}>Screen Composer</h2>
             <a href="/admin" style={{ fontSize: '0.75rem', color: '#888', textDecoration: 'none' }}>← Admin</a>
           </div>
-          <button className="btn-save" style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem' }} onClick={createNewBlank}>
+          <button className="py-[0.6rem] px-6 border-0 rounded-md bg-[#6c63ff] text-white cursor-pointer font-semibold text-[0.95rem] hover:bg-[#5a52d5] disabled:opacity-60 disabled:cursor-not-allowed" style={{ width: '100%', padding: '0.4rem', fontSize: '0.82rem' }} onClick={createNewBlank}>
             + New Definition
           </button>
           <input type="text" placeholder="Filter by key…" value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
@@ -3439,7 +3438,7 @@ function ScreenComposer() {
         </button>
       </div>
 
-      <div className="admin-content" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="flex-1" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {globalMsg && <div style={{ marginBottom: 12 }}><Msg msg={globalMsg} /></div>}
         {showEditor ? (
           <DefinitionEditor
@@ -3465,8 +3464,8 @@ export default function ScreenComposerPage() {
   const authed = !!(getAdminToken() || import.meta.env.DEV);
   if (!authed) {
     return (
-      <div className="admin-login">
-        <div className="admin-login-card" style={{ textAlign: 'center' }}>
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
+        <div className="bg-[#16213e] p-10 rounded-[12px] shadow-[0_4px_24px_rgba(0,0,0,0.4)] text-center min-w-[340px]" style={{ textAlign: 'center' }}>
           <h1>Derp Universe Admin</h1>
           <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>
             Please <a href="/admin" style={{ color: '#7c3aed' }}>sign in</a> to access this page.
