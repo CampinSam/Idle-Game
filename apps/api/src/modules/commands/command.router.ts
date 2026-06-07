@@ -31,6 +31,7 @@ import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handl
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
+import { ClaimCheckInHandler } from './handlers/claim-checkin.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -68,6 +69,7 @@ export class CommandRouter {
     private startDusting: StartDustingHandler,
     private collectDusting: CollectDustingHandler,
     private swapOutpost: SwapOutpostHandler,
+    private claimCheckIn: ClaimCheckInHandler,
   ) {
     this.handlers.set('StartMission', this.startMission);
     this.handlers.set('CompleteMission', this.completeMission);
@@ -100,6 +102,7 @@ export class CommandRouter {
     this.handlers.set('StartDusting', this.startDusting);
     this.handlers.set('CollectDusting', this.collectDusting);
     this.handlers.set('SwapOutpost', this.swapOutpost);
+    this.handlers.set('ClaimCheckIn', this.claimCheckIn);
   }
 
   resolve(commandType: string): CommandHandler {

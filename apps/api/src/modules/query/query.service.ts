@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CheckInService } from '../checkin/checkin.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 import { TickService } from '../tick/tick.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
@@ -149,7 +149,7 @@ export class QueryService {
 
   constructor(
     private prisma: PrismaService,
-    private checkInService: CheckInService,
+    private telemetryService: TelemetryService,
     private tickService: TickService,
     private homeBannerService: HomeBannerService,
     private globalPowerService: GlobalPowerService,
@@ -158,9 +158,9 @@ export class QueryService {
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
     try {
-      await this.checkInService.autoCheck(userId);
+      await this.telemetryService.record(userId, 'player_login', null, 1, {});
     } catch (err) {
-      this.logger.warn(`Failed to auto check-in on bootstrap for ${userId}: ${err}`);
+      this.logger.warn(`Failed to record player_login telemetry on bootstrap for ${userId}: ${err}`);
     }
 
     const [

@@ -27,6 +27,7 @@ const PLAYER_EVENT_TYPES = [
   'gift_claimed',
   'lootbox_opened',
   'checkin_completed',
+  'player_login',
 ];
 
 export interface Objective {

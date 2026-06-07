@@ -8,7 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { TickModule } from '../tick/tick.module';
 import { EventModule } from '../event/event.module';
 import { LocationModule } from '../location/location.module';
-import { CheckInModule } from '../checkin/checkin.module';
+import { TelemetryModule } from '../telemetry/telemetry.module';
 import { NftModule } from '../nft/nft.module';
 
 @Module({
@@ -25,7 +25,7 @@ import { NftModule } from '../nft/nft.module';
     TickModule,
     EventModule,
     LocationModule,
-    CheckInModule,
+    TelemetryModule,
     NftModule,
   ],
   providers: [AuthService, JwtStrategy],

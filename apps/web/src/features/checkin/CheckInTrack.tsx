@@ -3,6 +3,7 @@ import { useSyncCheckIns, useSyncGifts } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { audioEngine } from '../../services/AudioEngine';
 import { useModal } from '../../context/ModalContext';
+import { serverNow } from '../../services/clockSync';
 import { RewardTrack } from './RewardTrack';
 import { RewardClaimButton } from './RewardClaimButton';
 
@@ -60,6 +61,7 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
     },
   });
   const [claimingDay, setClaimingDay] = useState<number | null>(null);
+  const [checkingIn, setCheckingIn] = useState(false);
   const [countdown, setCountdown] = useState('');
 
   const instance = useMemo(
@@ -97,17 +99,27 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
 
   const hasClaimable = Object.keys(claimableGiftsByDay).length > 0;
 
-  const claimedToday = useMemo(() => {
+  const isCheckInAvailable = useMemo(() => {
+    if (hasClaimable) return false;
+    if (!instance) return true;
+    if (!instance.lastClaimedAt) return true;
+    const lastClaimed = new Date(instance.lastClaimedAt);
+    const now = new Date(serverNow());
+    const windowStart = getWindowStart(frequency, now);
+    return lastClaimed < windowStart;
+  }, [instance, frequency, hasClaimable]);
+
+  const claimedThisWindow = useMemo(() => {
     if (!instance?.lastClaimedAt) return false;
     const lastClaimed = new Date(instance.lastClaimedAt);
-    const now = new Date();
+    const now = new Date(serverNow());
     const windowStart = getWindowStart(frequency, now);
     return lastClaimed >= windowStart && !hasClaimable;
   }, [instance, frequency, hasClaimable]);
 
   useEffect(() => {
     const tick = () => {
-      const now = new Date();
+      const now = new Date(serverNow());
       const windowStart = getWindowStart(frequency, now);
       const windowMs = getWindowDurationMs(frequency);
       const nextWindow = new Date(windowStart.getTime() + windowMs);
@@ -133,7 +145,20 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
     }
   }, [claimableGiftsByDay, claimingDay, execute]);
 
-  if (!instance || !def) return null;
+  const handleCheckIn = useCallback(async () => {
+    if (checkingIn) return;
+    setCheckingIn(true);
+    try {
+      await execute('ClaimCheckIn', {});
+      audioEngine.play('sfx.reward.checkin');
+    } catch (err) {
+      console.error('[CheckInTrack] Check-in failed:', err);
+    } finally {
+      setCheckingIn(false);
+    }
+  }, [checkingIn, execute]);
+
+  if (!def) return null;
 
   return (
     <div className="checkin-track flex flex-col gap-2.5 py-3">
@@ -147,17 +172,36 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
           </span>
         )}
       </div>
-      <RewardTrack
-        cycleLength={cycleLength}
-        streak={streak}
-        claimableDays={claimableGiftsByDay}
-        dayIcons={dayIcons}
-        onClaimDay={handleClaimDay}
-        claimingDay={claimingDay}
-      />
+      {instance && (
+        <RewardTrack
+          cycleLength={cycleLength}
+          streak={streak}
+          claimableDays={claimableGiftsByDay}
+          dayIcons={dayIcons}
+          onClaimDay={handleClaimDay}
+          claimingDay={claimingDay}
+        />
+      )}
+      {isCheckInAvailable && (
+        <button
+          type="button"
+          disabled={checkingIn}
+          onClick={handleCheckIn}
+          className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold bg-[rgba(139,92,246,0.18)] border border-[rgba(139,92,246,0.45)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.28)] hover:border-[rgba(139,92,246,0.65)] active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {checkingIn ? (
+            <>
+              <span className="inline-block w-3.5 h-3.5 border-2 border-[#a78bfa] border-t-transparent rounded-full animate-spin" />
+              Checking in…
+            </>
+          ) : (
+            '✦ Check In'
+          )}
+        </button>
+      )}
       <RewardClaimButton
-        claimedToday={claimedToday}
-        nextWindowLabel={!hasClaimable ? countdown : null}
+        claimedToday={claimedThisWindow}
+        nextWindowLabel={!hasClaimable && !isCheckInAvailable ? countdown : null}
       />
     </div>
   );

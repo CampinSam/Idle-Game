@@ -119,6 +119,11 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       const idxs: number[] = [];
       for (let i = 0; i < objectives.length; i++) {
         const obj = objectives[i];
+        // Fast-path: if the objective declares an eventType it must match the
+        // incoming event exactly. Without this guard every objective without a
+        // selector would match every telemetry event (evaluateAll returns true
+        // for null), causing unrelated quests to complete on e.g. login.
+        if (obj?.eventType && obj.eventType !== event.eventType) continue;
         // evaluateAll returns true when selector is null/undefined, preserving
         // the "count every matching event" behavior for objectives without a selector.
         const passes = this.selectionResolver.evaluateAll(obj?.selector ?? null, contextWithEvent);

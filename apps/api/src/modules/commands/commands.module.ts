@@ -33,6 +33,8 @@ import { TriggerEntityPowerHandler } from './handlers/trigger-entity-power.handl
 import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
+import { ClaimCheckInHandler } from './handlers/claim-checkin.handler';
+import { CheckInModule } from '../checkin/checkin.module';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
 import { LocationModule } from '../location/location.module';
@@ -64,6 +66,7 @@ import { NotificationModule } from '../notification/notification.module';
     GlobalPowerModule,
     DustingModule,
     NotificationModule,
+    CheckInModule,
   ],
   controllers: [CommandController],
   providers: [
@@ -100,6 +103,7 @@ import { NotificationModule } from '../notification/notification.module';
     StartDustingHandler,
     CollectDustingHandler,
     SwapOutpostHandler,
+    ClaimCheckInHandler,
   ],
   exports: [CommandService],
 })

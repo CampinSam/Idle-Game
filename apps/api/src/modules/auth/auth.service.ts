@@ -9,7 +9,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../event/event.service';
 import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
-import { CheckInService } from '../checkin/checkin.service';
+import { TelemetryService } from '../telemetry/telemetry.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
 import { generateEntityData } from '../entity/entity-generator.util';
 
@@ -25,7 +25,7 @@ export class AuthService {
     private eventService: EventService,
     private locationService: LocationService,
     private settlementService: LocationSettlementService,
-    private checkInService: CheckInService,
+    private telemetryService: TelemetryService,
     private nftCollectionService: NftCollectionService,
   ) {}
 
@@ -122,9 +122,9 @@ export class AuthService {
     }
 
     try {
-      await this.checkInService.autoCheck(user.id);
+      await this.telemetryService.record(user.id, 'player_login', null, 1, {});
     } catch (err) {
-      this.logger.warn(`Failed to auto check-in for ${user.id}: ${err}`);
+      this.logger.warn(`Failed to record player_login telemetry for ${user.id}: ${err}`);
     }
 
     try {
@@ -241,7 +241,7 @@ export class AuthService {
       user = await this.prisma.user.findUnique({ where: { id: existing.userId } });
       if (!user) throw new UnauthorizedException('Account not found');
       try { await this.recalculateUserLocations(user.id); } catch {}
-      try { await this.checkInService.autoCheck(user.id); } catch {}
+      try { await this.telemetryService.record(user.id, 'player_login', null, 1, {}); } catch {}
       try { await this.nftCollectionService.lazySyncOnLogin(user.id); } catch (err) {
         this.logger.warn(`Lazy NFT sync failed on SIWE login for ${user.id}: ${err}`);
       }
