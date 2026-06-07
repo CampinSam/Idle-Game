@@ -194,8 +194,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
 
   return (
     <div
-      className="flex flex-col overflow-hidden pt-2 motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
-      style={{ height: 'calc(100dvh - 140px - env(safe-area-inset-bottom, 0px))' }}
+      className="flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
     >
       <div
         className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
