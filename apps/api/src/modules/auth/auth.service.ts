@@ -3,8 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { ethers } from 'ethers';
-import { bech32 } from 'bech32';
 import verifyCardanoDataSignature from '@cardano-foundation/cardano-verify-datasignature';
+import { normalizeCardanoAddress } from './cardano.utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../event/event.service';
 import { LocationService } from '../location/location.service';
@@ -158,7 +158,7 @@ export class AuthService {
   async requestWalletNonce(chain: string, address: string): Promise<{ nonce: string; message: string }> {
     const nonce = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    const normalizedAddress = chain === 'CARDANO' ? address : address.toLowerCase();
+    const normalizedAddress = chain === 'CARDANO' ? normalizeCardanoAddress(address) : address.toLowerCase();
 
     await (this.prisma as any).walletNonce.upsert({
       where: { chain_address: { chain, address: normalizedAddress } },
@@ -181,7 +181,7 @@ export class AuthService {
     | { linked: true }
     | { needsOnboarding: true; walletToken: string; chain: string; address: string }
   > {
-    const normalizedAddress = chain === 'CARDANO' ? address : address.toLowerCase();
+    const normalizedAddress = chain === 'CARDANO' ? normalizeCardanoAddress(address) : address.toLowerCase();
 
     const nonceRecord = await (this.prisma as any).walletNonce.findUnique({
       where: { chain_address: { chain, address: normalizedAddress } },
@@ -372,17 +372,10 @@ export class AuthService {
    * ~103 chars, so we pass an explicit large limit.
    */
   private hexAddressToBech32(hex: string): string {
-    const bytes = Buffer.from(hex, 'hex');
-    if (bytes.length === 0) throw new Error('Empty Cardano address');
-    const header = bytes[0];
-    const type = (header & 0xf0) >> 4;
-    const network = header & 0x0f;
-    const isStake = type >= 0x0e;
-    const isMainnet = network === 1;
-    const prefix = isStake
-      ? (isMainnet ? 'stake' : 'stake_test')
-      : (isMainnet ? 'addr' : 'addr_test');
-    return bech32.encode(prefix, bech32.toWords(bytes), 1000);
+    if (!hex || hex.length === 0) throw new Error('Empty Cardano address');
+    const converted = normalizeCardanoAddress(hex);
+    if (converted === hex) throw new Error(`Could not convert Cardano address to bech32: ${hex}`);
+    return converted;
   }
 
   /**

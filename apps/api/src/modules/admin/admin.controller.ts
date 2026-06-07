@@ -940,6 +940,21 @@ export class AdminController {
     return result;
   }
 
+  @Post('players/:id/wallets/:walletId/normalize')
+  async normalizePlayerWallet(@Req() req: any, @Param('id') id: string, @Param('walletId') walletId: string) {
+    const result = await this.walletService.normalizeWalletAddress(id, walletId);
+    if (result.changed) {
+      await this.adminAuditService.log({
+        adminId: req.adminUser.id,
+        action: 'player_normalize_wallet_address',
+        recordId: walletId,
+        diff: { address: result.address },
+        metadata: { userId: id },
+      });
+    }
+    return result;
+  }
+
   @Post('players/:userId/entities/:entityId/reconcile-status')
   async reconcileEntityStatus(
     @Req() req: any,

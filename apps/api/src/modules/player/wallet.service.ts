@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
+import { normalizeCardanoAddress, isCardanoHexAddress } from '../auth/cardano.utils';
 
 @Injectable()
 export class WalletService {
@@ -60,7 +61,7 @@ export class WalletService {
     }
 
     const trimmed = address.trim();
-    const normalizedAddress = chain === 'CARDANO' ? trimmed : trimmed.toLowerCase();
+    const normalizedAddress = chain === 'CARDANO' ? normalizeCardanoAddress(trimmed) : trimmed.toLowerCase();
 
     const existing = await (this.prisma as any).linkedWallet.findUnique({
       where: { chain_address: { chain, address: normalizedAddress } },
@@ -118,6 +119,37 @@ export class WalletService {
     }
 
     return { success: true };
+  }
+
+  async normalizeWalletAddress(userId: string, walletId: string) {
+    const wallet = await (this.prisma as any).linkedWallet.findFirst({
+      where: { id: walletId, userId },
+    });
+    if (!wallet) throw new NotFoundException('Wallet not found');
+    if (wallet.chain !== 'CARDANO') {
+      throw new BadRequestException('Address normalization is only applicable to CARDANO wallets');
+    }
+    if (!isCardanoHexAddress(wallet.chain, wallet.address)) {
+      return { success: true, changed: false, address: wallet.address };
+    }
+
+    const normalized = normalizeCardanoAddress(wallet.address);
+
+    const conflict = await (this.prisma as any).linkedWallet.findUnique({
+      where: { chain_address: { chain: wallet.chain, address: normalized } },
+    });
+    if (conflict && conflict.id !== walletId) {
+      throw new BadRequestException(
+        'A wallet with the converted bech32 address already exists for this account',
+      );
+    }
+
+    await (this.prisma as any).linkedWallet.update({
+      where: { id: walletId },
+      data: { address: normalized },
+    });
+
+    return { success: true, changed: true, address: normalized };
   }
 
   async setPrimary(userId: string, walletId: string) {

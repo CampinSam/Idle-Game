@@ -12,6 +12,13 @@ type PlayerTab = 'tools' | 'wallet' | 'events';
 const SUPPORTED_CHAINS = ['CARDANO', 'ETH', 'SOL'];
 const PAGE_SIZE = 20;
 
+function isCardanoHexAddress(chain: string, address: string): boolean {
+  if (chain !== 'CARDANO' || !address) return false;
+  const lower = address.toLowerCase();
+  if (lower.startsWith('addr') || lower.startsWith('stake')) return false;
+  return /^[0-9a-f]+$/.test(lower);
+}
+
 function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean }) {
   const [wallets, setWallets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +31,8 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
 
   const [removing, setRemoving] = useState<string | null>(null);
+  const [normalizing, setNormalizing] = useState<string | null>(null);
+  const [normalizeError, setNormalizeError] = useState<string | null>(null);
 
   const [resyncing, setResyncing] = useState(false);
   const [resyncResult, setResyncResult] = useState<string | null>(null);
@@ -85,6 +94,21 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
     }
   };
 
+  const handleNormalize = async (walletId: string) => {
+    setNormalizing(walletId);
+    setNormalizeError(null);
+    try {
+      const res = await adminApi.normalizePlayerWallet(playerId, walletId);
+      if (res.changed) {
+        reload();
+      }
+    } catch (e: any) {
+      setNormalizeError(e.message || 'Failed to normalize address');
+    } finally {
+      setNormalizing(null);
+    }
+  };
+
   return (
     <div style={{ padding: 16 }}>
       {loading && <div className="av2-loading">Loading wallets…</div>}
@@ -93,34 +117,68 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
         <div className="av2-empty" style={{ marginBottom: 16 }}>No wallets linked to this player.</div>
       )}
 
-      {wallets.map((w: any) => (
-        <div key={w.id} className="av2-card" style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span className="av2-draft-table">{w.chain ?? 'Unknown chain'}</span>
-            {w.isPrimary && <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 700 }}>PRIMARY</span>}
-            {canWrite && (
-              <button
-                style={{
-                  marginLeft: 'auto', padding: '2px 8px', fontSize: 11, cursor: 'pointer',
-                  background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
-                  borderRadius: 4, color: '#f87171',
-                  opacity: removing === w.id ? 0.5 : 1,
-                }}
-                disabled={removing === w.id}
-                onClick={() => handleRemove(w.id)}
-              >
-                {removing === w.id ? 'Removing…' : 'Remove'}
-              </button>
+      {normalizeError && <div className="av2-inline-msg error" style={{ marginBottom: 10 }}>{normalizeError}</div>}
+
+      {wallets.map((w: any) => {
+        const hexFmt = isCardanoHexAddress(w.chain, w.address);
+        return (
+          <div key={w.id} className="av2-card" style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span className="av2-draft-table">{w.chain ?? 'Unknown chain'}</span>
+              {w.isPrimary && <span style={{ fontSize: 10, color: '#a78bfa', fontWeight: 700 }}>PRIMARY</span>}
+              {hexFmt && (
+                <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
+                  ⚠ HEX FORMAT
+                </span>
+              )}
+              {canWrite && (
+                <button
+                  style={{
+                    marginLeft: 'auto', padding: '2px 8px', fontSize: 11, cursor: 'pointer',
+                    background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+                    borderRadius: 4, color: '#f87171',
+                    opacity: removing === w.id ? 0.5 : 1,
+                  }}
+                  disabled={removing === w.id}
+                  onClick={() => handleRemove(w.id)}
+                >
+                  {removing === w.id ? 'Removing…' : 'Remove'}
+                </button>
+              )}
+            </div>
+
+            <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#c0c0e8', wordBreak: 'break-all' }}>
+              {w.address}
+            </div>
+            {w.id && (
+              <div style={{ fontSize: 11, color: '#3a3a6a', marginTop: 4 }}>ID: {w.id}</div>
+            )}
+
+            {hexFmt && canWrite && (
+              <div style={{
+                marginTop: 10, padding: '8px 10px', borderRadius: 4,
+                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
+              }}>
+                <div style={{ fontSize: 11, color: '#fbbf24', marginBottom: 6, lineHeight: 1.5 }}>
+                  This address is stored as raw hex bytes from CIP-30. NFT syncs will fail until
+                  it is converted to a proper bech32 <code style={{ fontSize: 11 }}>addr1…</code> address.
+                </div>
+                <button
+                  onClick={() => handleNormalize(w.id)}
+                  disabled={normalizing === w.id}
+                  style={{
+                    padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: normalizing === w.id ? 'default' : 'pointer',
+                    background: normalizing === w.id ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.25)',
+                    border: '1px solid rgba(245,158,11,0.5)', borderRadius: 4, color: '#fbbf24',
+                  }}
+                >
+                  {normalizing === w.id ? 'Converting…' : 'Fix Address Format'}
+                </button>
+              </div>
             )}
           </div>
-          <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#c0c0e8', wordBreak: 'break-all' }}>
-            {w.address}
-          </div>
-          {w.id && (
-            <div style={{ fontSize: 11, color: '#3a3a6a', marginTop: 4 }}>ID: {w.id}</div>
-          )}
-        </div>
-      ))}
+        );
+      })}
 
       <div className="av2-card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

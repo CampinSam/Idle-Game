@@ -552,6 +552,12 @@ export const adminApi = {
       { method: 'DELETE' },
     ),
 
+  normalizePlayerWallet: (userId: string, walletId: string) =>
+    adminRequest<{ success: boolean; changed: boolean; address: string }>(
+      `/players/${userId}/wallets/${walletId}/normalize`,
+      { method: 'POST' },
+    ),
+
   evaluateSelection: (body: {
     rule: unknown;
     userId: string;
