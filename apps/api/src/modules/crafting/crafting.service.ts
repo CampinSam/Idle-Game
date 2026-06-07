@@ -129,7 +129,7 @@ export class CraftingService {
     if (!user) return allDefs.map((d: any) => this.mapDefToRecipeResponse(d));
 
     return allDefs
-      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any))
+      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any, undefined, undefined, `RecipeDef[${d.id}].visibilityRequirements`))
       .map((d: any) => this.mapDefToRecipeResponse(d));
   }
 
@@ -398,7 +398,7 @@ export class CraftingService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
 
-    if (!this.gameRules.checkVisibility(recipe.visibilityRequirements, user as any)) {
+    if (!this.gameRules.checkVisibility(recipe.visibilityRequirements, user as any, undefined, undefined, `RecipeDef[${recipe.id}].visibilityRequirements`)) {
       throw new BadRequestException('Recipe is not available');
     }
 

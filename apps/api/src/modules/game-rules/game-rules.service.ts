@@ -71,7 +71,7 @@ export class GameRulesService {
     }
   }
 
-  checkRequirements(requirements: unknown, context: RequirementContext): boolean {
+  checkRequirements(requirements: unknown, context: RequirementContext, hint?: string): boolean {
     if (
       !requirements ||
       (Array.isArray(requirements) && requirements.length === 0) ||
@@ -84,10 +84,14 @@ export class GameRulesService {
     ) {
       return this.selectionResolver.evaluate(requirements as RichSelection, this.reqCtxToSelCtx(context));
     }
+    const where = hint ? ` [${hint}]` : '';
+    const preview = JSON.stringify(requirements).slice(0, 200);
     if (Array.isArray(requirements)) {
-      throw new Error('checkRequirements: legacy Requirement[] format detected — run migration script to convert to RichSelection');
+      this.logger.warn(`bad-data${where}: legacy Requirement[] array in requirements field — treating as unconstrained. Data: ${preview}`);
+      return true;
     }
-    throw new Error(`checkRequirements: unknown non-null requirements shape — ${JSON.stringify(requirements).slice(0, 120)}`);
+    this.logger.warn(`bad-data${where}: unrecognised non-null requirements shape — treating as unconstrained. Data: ${preview}`);
+    return true;
   }
 
   checkVisibility(
@@ -95,11 +99,12 @@ export class GameRulesService {
     user: GameUser,
     userFlags?: Record<string, unknown>,
     extra?: Partial<RequirementContext>,
+    hint?: string,
   ): boolean {
     if (!visReqs) return true;
     const flags: Record<string, unknown> =
       userFlags ?? ((user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {});
-    return this.checkRequirements(visReqs, { user, userFlags: flags, ...extra });
+    return this.checkRequirements(visReqs, { user, userFlags: flags, ...extra }, hint);
   }
 
   buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {

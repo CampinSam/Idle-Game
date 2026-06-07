@@ -579,6 +579,7 @@ export class LocationService {
           !this.gameRules.checkRequirements(
             def.visibilityRequirements,
             reqContext,
+            `BuildingDef[${def.id}].visibilityRequirements`,
           )
         )
           return false;
@@ -590,6 +591,7 @@ export class LocationService {
         const meetsReqs = this.gameRules.checkRequirements(
           def.requirements,
           reqContext,
+          `BuildingDef[${def.id}].requirements`,
         );
         return {
           id: def.id,
@@ -659,7 +661,7 @@ export class LocationService {
       userId,
       location,
     );
-    if (!this.gameRules.checkRequirements(def.requirements, reqContext)) {
+    if (!this.gameRules.checkRequirements(def.requirements, reqContext, `BuildingDef[${def.id}].requirements`)) {
       throw new BadRequestException("Requirements not met to build this");
     }
     const defRules = (def.rules as LevelRules) || {};

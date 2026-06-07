@@ -63,7 +63,7 @@ export class SynergyResolverService {
       if (rule.startsAt && now < rule.startsAt) continue;
       if (rule.endsAt && now > rule.endsAt) continue;
 
-      if (!this.matchesContext(activityContext, rule.context)) {
+      if (!this.matchesContext(activityContext, rule.context, `SynergyRule[${rule.id}].context`)) {
         continue;
       }
 
@@ -71,11 +71,11 @@ export class SynergyResolverService {
       // Always compute the full Cartesian product: matchedSources × matchedTargets.
       const matchedSources = this.isSelectorEmpty(rule.sourceSelector)
         ? sourceDescriptors
-        : sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector));
+        : sourceDescriptors.filter(s => this.matchesSelector(s, rule.sourceSelector, `SynergyRule[${rule.id}].sourceSelector`));
 
       const matchedTargets = this.isSelectorEmpty(rule.targetSelector)
         ? targetDescriptors
-        : targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector));
+        : targetDescriptors.filter(t => this.matchesSelector(t, rule.targetSelector, `SynergyRule[${rule.id}].targetSelector`));
 
       const pairCount = matchedSources.length * matchedTargets.length;
 
@@ -140,11 +140,13 @@ export class SynergyResolverService {
     );
   }
 
-  matchesSelector(entity: SynergyEntityDescriptor, selector: RichSelection | null): boolean {
+  matchesSelector(entity: SynergyEntityDescriptor, selector: RichSelection | null, hint?: string): boolean {
     if (this.isSelectorEmpty(selector)) return true;
 
     if (!this.isRichSelection(selector)) {
-      throw new Error(`matchesSelector: non-RichSelection data in DB for selector — ${JSON.stringify(selector).slice(0, 120)}`);
+      const where = hint ? ` [${hint}]` : '';
+      this.logger.warn(`bad-data${where}: non-RichSelection selector in DB — treating as unconstrained. Data: ${JSON.stringify(selector).slice(0, 200)}`);
+      return true;
     }
     const richSel = selector as unknown as RichSelection;
 
@@ -158,12 +160,14 @@ export class SynergyResolverService {
     return this.selectionResolver.evaluate(richSel, selCtx);
   }
 
-  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: RichSelection | null): boolean {
+  matchesContext(activityCtx: SynergyActivityContext, ruleCtx: RichSelection | null, hint?: string): boolean {
     if (!ruleCtx) return true;
     if (this.isRichSelection(ruleCtx) && ruleCtx.rules.length === 0) return true;
 
     if (!this.isRichSelection(ruleCtx)) {
-      throw new Error(`matchesContext: non-RichSelection data in DB for context — ${JSON.stringify(ruleCtx).slice(0, 120)}`);
+      const where = hint ? ` [${hint}]` : '';
+      this.logger.warn(`bad-data${where}: non-RichSelection context in DB — treating as unconstrained. Data: ${JSON.stringify(ruleCtx).slice(0, 200)}`);
+      return true;
     }
     const richSel = ruleCtx as unknown as RichSelection;
 

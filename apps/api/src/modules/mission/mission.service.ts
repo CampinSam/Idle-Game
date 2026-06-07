@@ -134,7 +134,7 @@ export class MissionService {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user) {
         filtered = categories.filter((c: any) =>
-          this.gameRules.checkVisibility(c.visibilityRequirements, user as any)
+          this.gameRules.checkVisibility(c.visibilityRequirements, user as any, undefined, undefined, `MissionCategoryDef[${c.id}].visibilityRequirements`)
         );
         reqContext = this.gameRules.buildRequirementContext(user as any);
       }
@@ -143,7 +143,7 @@ export class MissionService {
     return filtered.map((c: any) => {
       const requirementStatus: any[] =
         reqContext && c.requirements
-          ? [{ met: this.gameRules.checkRequirements(c.requirements, reqContext) }]
+          ? [{ met: this.gameRules.checkRequirements(c.requirements, reqContext, `MissionCategoryDef[${c.id}].requirements`) }]
           : [];
 
       return {
@@ -184,7 +184,7 @@ export class MissionService {
     const reqContext = this.gameRules.buildRequirementContext(user as any);
 
     return allDefs
-      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any))
+      .filter((d: any) => this.gameRules.checkVisibility(d.visibilityRequirements, user as any, undefined, undefined, `MissionDef[${d.id}].visibilityRequirements`))
       .map((d: any) => this.mapDefToLegacy(d, reqContext));
   }
 
@@ -294,7 +294,7 @@ export class MissionService {
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
 
-    if (!this.gameRules.checkVisibility(dbDef.visibilityRequirements, user)) {
+    if (!this.gameRules.checkVisibility(dbDef.visibilityRequirements, user, undefined, undefined, `MissionDef[${dbDef.id}].visibilityRequirements`)) {
       throw new BadRequestException('Mission is not available');
     }
 
@@ -325,13 +325,13 @@ export class MissionService {
 
     const reqContext = this.gameRules.buildRequirementContext(user, { teamSize: entityIds.length, team });
 
-    if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext)) {
+    if (!this.gameRules.checkRequirements(dbDef.requirements, reqContext, `MissionDef[${dbDef.id}].requirements`)) {
       throw new BadRequestException('Mission requirements not met');
     }
 
     if (
       dbDef.launchRequirements &&
-      !this.gameRules.checkRequirements(dbDef.launchRequirements, reqContext)
+      !this.gameRules.checkRequirements(dbDef.launchRequirements, reqContext, `MissionDef[${dbDef.id}].launchRequirements`)
     ) {
       throw new BadRequestException('Mission launch requirements not met');
     }
