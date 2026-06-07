@@ -182,6 +182,8 @@ export const adminApi = {
       `/players?${qs.toString()}`,
     );
   },
+  resyncPlayerNfts: (id: string) =>
+    adminRequest<{ claimed: number; unclaimed: number; transferred: number }>(`/players/${id}/nft/resync`, { method: 'POST' }),
   searchPlayers: (q: string) => adminRequest<any[]>(`/players/search?q=${encodeURIComponent(q)}`),
   getPlayer: (id: string) => adminRequest<any>(`/players/${id}`),
   updatePlayer: (id: string, data: any) =>

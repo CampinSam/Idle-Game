@@ -966,6 +966,28 @@ Within any `RichSelection` tree (requirements, visibilityRequirements, etc.), a 
 
 ---
 
+## Player NFT Resync — `POST /api/admin/players/:id/nft/resync`
+
+Force an immediate NFT ownership sync for a specific player. Behaves identically to the player-initiated sync from Settings, but can be triggered by an admin on behalf of any player.
+
+**Auth:** Admin
+
+**Response:**
+
+```json
+{ "claimed": 2, "unclaimed": 0, "transferred": 1 }
+```
+
+| Field | Description |
+|-------|-------------|
+| `claimed` | NFTs newly assigned to this player |
+| `unclaimed` | NFTs removed from this player (no longer in their wallet) |
+| `transferred` | NFTs transferred from another player to this player |
+
+A real-time `playerDelta` is pushed to the player's SSE stream so their client updates immediately.
+
+---
+
 ## Player List — `GET /api/admin/players`
 
 Browse all players with optional free-text filtering and pagination.

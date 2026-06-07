@@ -516,6 +516,11 @@ export class AdminController {
     });
   }
 
+  @Post('players/:id/nft/resync')
+  resyncPlayerNfts(@Param('id') id: string) {
+    return this.adminService.resyncPlayerNfts(id);
+  }
+
   @Get('players/search')
   searchPlayers(@Query('q') query: string) {
     return this.adminService.searchPlayers(query || '');

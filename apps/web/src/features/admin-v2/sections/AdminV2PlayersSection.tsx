@@ -25,6 +25,24 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
 
   const [removing, setRemoving] = useState<string | null>(null);
 
+  const [resyncing, setResyncing] = useState(false);
+  const [resyncResult, setResyncResult] = useState<string | null>(null);
+  const [resyncError, setResyncError] = useState<string | null>(null);
+
+  const handleResync = async () => {
+    setResyncing(true);
+    setResyncResult(null);
+    setResyncError(null);
+    try {
+      const res = await adminApi.resyncPlayerNfts(playerId);
+      setResyncResult(`Sync complete — claimed: ${res.claimed}, unclaimed: ${res.unclaimed}, transferred: ${res.transferred}`);
+    } catch (e: any) {
+      setResyncError(e.message || 'NFT resync failed');
+    } finally {
+      setResyncing(false);
+    }
+  };
+
   const reload = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -104,8 +122,30 @@ function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean
         </div>
       ))}
 
+      <div className="av2-card" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa' }}>NFT Ownership Sync</div>
+          <button
+            onClick={handleResync}
+            disabled={resyncing}
+            style={{
+              padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: resyncing ? 'default' : 'pointer',
+              background: resyncing ? 'rgba(124,58,237,0.1)' : 'rgba(124,58,237,0.35)',
+              border: '1px solid rgba(124,58,237,0.5)', borderRadius: 4, color: '#c4b5fd',
+            }}
+          >
+            {resyncing ? 'Syncing…' : 'Resync NFTs'}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: '#4a4a7a' }}>
+          Re-checks all linked wallets against the chain and updates NFT ownership for this player.
+        </div>
+        {resyncResult && <div className="av2-inline-msg success">{resyncResult}</div>}
+        {resyncError && <div className="av2-inline-msg error">{resyncError}</div>}
+      </div>
+
       {canWrite && (
-        <div className="av2-card" style={{ marginTop: 20 }}>
+        <div className="av2-card" style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', marginBottom: 10 }}>
             Add Wallet / Staking Address
           </div>

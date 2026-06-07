@@ -9,6 +9,7 @@ import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { CraftingService } from '../crafting/crafting.service';
 import { generateEntityData } from '../entity/entity-generator.util';
+import { NftCollectionService } from '../nft/nft-collection.service';
 import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
@@ -63,6 +64,7 @@ export class AdminService {
     private selectionResolver: SelectionResolverService,
     private commandService: CommandService,
     private tickProcessor: TickEventProcessorService,
+    private nftCollectionService: NftCollectionService,
   ) {}
 
   /**
@@ -1132,6 +1134,12 @@ export class AdminService {
     });
 
     return serializeBigInts(enriched);
+  }
+
+  async resyncPlayerNfts(playerId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: playerId } });
+    if (!user) throw new NotFoundException(`Player ${playerId} not found`);
+    return this.nftCollectionService.syncUserCollections(playerId);
   }
 
   async getPlayerCount(): Promise<{ total: number; active: number }> {

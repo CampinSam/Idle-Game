@@ -28,6 +28,21 @@ export interface GeneratedEntityData {
   traits: Record<string, string | number | boolean | null>;
   progression: { level: number; xp: number; ascension: number; levelHistory: any[] };
   state: { status: string };
+  seed: number;
+}
+
+/**
+ * Deterministic PRNG — mulberry32.
+ * Returns a function that yields float values in [0, 1) from a 32-bit integer seed.
+ */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let z = Math.imul(s ^ (s >>> 15), 1 | s);
+    z = (z + Math.imul(z ^ (z >>> 7), 61 | z)) ^ z;
+    return ((z ^ (z >>> 14)) >>> 0) / 0x100000000;
+  };
 }
 
 export async function generateEntityData(
@@ -35,6 +50,7 @@ export async function generateEntityData(
   userId: string,
   definitionId: string,
   displayName?: string,
+  seed?: number,
 ): Promise<GeneratedEntityData> {
   const entityDef = await (prisma as any).entityDefinition.findUnique({
     where: { id: definitionId },
@@ -82,6 +98,18 @@ export async function generateEntityData(
   }
   const progressionStatGain = progression.statGain;
 
+  // Resolve or generate the seed. Using 0x7fffffff (max 32-bit signed int) keeps
+  // the value within Prisma's Int column range on all platforms.
+  const resolvedSeed = (typeof seed === 'number' && Number.isInteger(seed))
+    ? (seed & 0x7fffffff)
+    : (Math.random() * 0x7fffffff | 0);
+
+  const rng = mulberry32(resolvedSeed);
+
+  // Seeded picker for resolveRnd — uses the same PRNG stream as archetype selection.
+  const seededPicker = (visibleStats: readonly string[]) =>
+    visibleStats[Math.floor(rng() * visibleStats.length)];
+
   const resolvedName =
     displayName || entityDef.name || (entityDef.data as any)?.name || entityDef.id;
   const slots: Record<string, string[]> = (entityDef.slots as any) || {};
@@ -110,13 +138,13 @@ export async function generateEntityData(
       const pool = [...allowedArchetypes];
       chosenList = [];
       for (let i = 0; i < count; i++) {
-        const idx = Math.floor(Math.random() * pool.length);
+        const idx = Math.floor(rng() * pool.length);
         chosenList.push(pool[idx]);
         pool.splice(idx, 1);
       }
     } else {
       // singleRandomArchetype (default).
-      chosenList = [allowedArchetypes[Math.floor(Math.random() * allowedArchetypes.length)]];
+      chosenList = [allowedArchetypes[Math.floor(rng() * allowedArchetypes.length)]];
     }
     traits[slotName] = chosenList[0];
 
@@ -138,6 +166,7 @@ export async function generateEntityData(
         Object.fromEntries(
           Object.entries(slotStats).filter(([k, v]) => k === 'RND' || typeof v === 'number'),
         ) as Record<string, number | number[]>,
+        seededPicker,
       );
       for (const [stat, value] of Object.entries(resolved)) {
         baseStats[stat] = (baseStats[stat] || 0) + value;
@@ -185,6 +214,7 @@ export async function generateEntityData(
     traits,
     progression: { level: startingLevel, xp: 0, ascension: 0, levelHistory: initialHistory },
     state: { status: 'idle' },
+    seed: resolvedSeed,
   };
 }
 /**
