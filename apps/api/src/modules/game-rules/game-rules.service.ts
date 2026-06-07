@@ -72,7 +72,11 @@ export class GameRulesService {
   }
 
   checkRequirements(requirements: unknown, context: RequirementContext): boolean {
-    if (!requirements || (Array.isArray(requirements) && requirements.length === 0)) return true;
+    if (
+      !requirements ||
+      (Array.isArray(requirements) && requirements.length === 0) ||
+      (typeof requirements === 'object' && !Array.isArray(requirements) && Object.keys(requirements as object).length === 0)
+    ) return true;
     if (
       typeof requirements === 'object' &&
       !Array.isArray(requirements) &&
