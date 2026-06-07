@@ -8,7 +8,7 @@ export class ClaimCheckInHandler implements CommandHandler {
   constructor(private checkInService: CheckInService) {}
 
   async execute(ctx: CommandContext, _payload: any): Promise<CommandHandlerResult> {
-    const issuedGiftIds = await this.checkInService.autoCheck(ctx.userId);
+    const issuedGiftIds = await this.checkInService.autoCheck(ctx.userId, ctx.tx);
 
     if (issuedGiftIds.length === 0) {
       throw new BadRequestException('Already checked in for the current window');
@@ -21,7 +21,7 @@ export class ClaimCheckInHandler implements CommandHandler {
       include: { checkInDef: true },
     });
     for (const inst of updatedInstances) {
-      pb.upsert('checkIn', inst.id, inst);
+      pb.upsert('checkin', inst.id, inst);
     }
 
     const newGifts = await (ctx.tx as any).giftInstance.findMany({
