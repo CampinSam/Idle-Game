@@ -507,10 +507,12 @@ export class AdminController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
+    const parsedPage = page ? parseInt(page, 10) : undefined;
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
     return this.adminService.listPlayers({
       q,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: parsedPage && !isNaN(parsedPage) ? parsedPage : undefined,
+      limit: parsedLimit && !isNaN(parsedLimit) ? parsedLimit : undefined,
     });
   }
 

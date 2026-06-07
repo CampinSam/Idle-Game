@@ -215,6 +215,9 @@ export default function AdminV2PlayersSection({ me }: Props) {
   const [player, setPlayer] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PlayerTab>('tools');
 
+  // Tracks last page visited in unfiltered browse mode so clearing a search restores it
+  const browsePageRef = useRef(1);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const fetchPage = useCallback(async (q: string, p: number) => {
@@ -225,6 +228,8 @@ export default function AdminV2PlayersSection({ me }: Props) {
       setItems(data.items);
       setTotal(data.total);
       setPage(data.page);
+      // Only update the browse-position tracker when not filtering
+      if (!q) browsePageRef.current = data.page;
     } catch (e: any) {
       setError(e.message || 'Failed to load players');
     } finally {
@@ -260,7 +265,8 @@ export default function AdminV2PlayersSection({ me }: Props) {
     setQuery(val);
     if (val === '') {
       setCommittedQuery('');
-      fetchPage('', 1);
+      // Restore the browse page the admin was on before searching
+      fetchPage('', browsePageRef.current);
     }
   }, [fetchPage]);
 
