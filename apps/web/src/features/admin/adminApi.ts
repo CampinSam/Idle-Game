@@ -173,6 +173,15 @@ export const adminApi = {
     jobCounts: Record<string, number>;
   }>('/system/health'),
 
+  listPlayers: (params: { q?: string; page?: number; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set('q', params.q);
+    if (params.page != null) qs.set('page', String(params.page));
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    return adminRequest<{ items: any[]; total: number; page: number; limit: number }>(
+      `/players?${qs.toString()}`,
+    );
+  },
   searchPlayers: (q: string) => adminRequest<any[]>(`/players/search?q=${encodeURIComponent(q)}`),
   getPlayer: (id: string) => adminRequest<any>(`/players/${id}`),
   updatePlayer: (id: string, data: any) =>

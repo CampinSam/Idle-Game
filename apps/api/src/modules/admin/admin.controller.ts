@@ -501,6 +501,19 @@ export class AdminController {
     return this.adminService.getSystemHealth();
   }
 
+  @Get('players')
+  listPlayers(
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listPlayers({
+      q,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
+  }
+
   @Get('players/search')
   searchPlayers(@Query('q') query: string) {
     return this.adminService.searchPlayers(query || '');

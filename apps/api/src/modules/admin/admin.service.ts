@@ -93,6 +93,50 @@ export class AdminService {
     }
   }
 
+  async listPlayers(params: { q?: string; page?: number; limit?: number }) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = params.q?.trim()
+      ? {
+          OR: [
+            { username: { contains: params.q.trim(), mode: 'insensitive' } },
+            { email: { contains: params.q.trim(), mode: 'insensitive' } },
+            { id: { contains: params.q.trim(), mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: {
+          linkedWallets: {
+            orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+            take: 1,
+          },
+        },
+        take: limit,
+        skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const items = users.map(u => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      keeperLevel: (u as any).keeperLevel,
+      primaryWallet: u.linkedWallets[0]
+        ? { chain: u.linkedWallets[0].chain, address: u.linkedWallets[0].address }
+        : null,
+    }));
+
+    return { items: serializeBigInts(items), total, page, limit };
+  }
+
   async searchPlayers(query: string) {
     const users = await this.prisma.user.findMany({
       where: {

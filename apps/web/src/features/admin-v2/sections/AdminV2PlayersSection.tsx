@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { adminApi } from '../../admin/adminApi';
 import { GodModePanel } from '../../admin/GodModePanel';
 import type { AdminMe } from '../../admin/adminApi';
@@ -10,6 +10,7 @@ interface Props {
 type PlayerTab = 'tools' | 'wallet' | 'events';
 
 const SUPPORTED_CHAINS = ['CARDANO', 'ETH', 'SOL'];
+const PAGE_SIZE = 20;
 
 function WalletTab({ playerId, canWrite }: { playerId: string; canWrite: boolean }) {
   const [wallets, setWallets] = useState<any[]>([]);
@@ -194,46 +195,78 @@ const PLAYER_TABS: { key: PlayerTab; label: string }[] = [
   { key: 'events', label: 'Recent Events' },
 ];
 
+function truncateAddress(addr: string, chars = 8): string {
+  if (addr.length <= chars * 2 + 3) return addr;
+  return `${addr.slice(0, chars)}…${addr.slice(-chars)}`;
+}
+
 export default function AdminV2PlayersSection({ me }: Props) {
   const canRead = me.role.permissionFlags.player_read;
   const canWrite = me.role.permissionFlags.player_write;
+
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
-  const [player, setPlayer] = useState<any>(null);
+  const [committedQuery, setCommittedQuery] = useState('');
+  const [items, setItems] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [player, setPlayer] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PlayerTab>('tools');
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const playerId = params.get('playerId');
-    if (playerId && canRead) {
-      setLoading(true);
-      setError(null);
-      adminApi.getPlayer(playerId)
-        .then(data => { setPlayer(data); setActiveTab('tools'); })
-        .catch((e: any) => setError(e.message || 'Failed to load player'))
-        .finally(() => setLoading(false));
-      window.history.replaceState(null, '', window.location.pathname + '#players');
-    }
-  // Only run on mount — intentionally no deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const search = useCallback(async (q = query) => {
-    if (!q.trim()) return;
+  const fetchPage = useCallback(async (q: string, p: number) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await adminApi.searchPlayers(q.trim());
-      setResults(data);
-      if (data.length === 0) setError('No players found.');
+      const data = await adminApi.listPlayers({ q: q || undefined, page: p, limit: PAGE_SIZE });
+      setItems(data.items);
+      setTotal(data.total);
+      setPage(data.page);
     } catch (e: any) {
-      setError(e.message || 'Search failed');
+      setError(e.message || 'Failed to load players');
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, []);
+
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (didMount.current) return;
+    didMount.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const playerId = params.get('playerId');
+    if (playerId && canRead) {
+      window.history.replaceState(null, '', window.location.pathname + '#players');
+      adminApi.getPlayer(playerId)
+        .then(data => { setPlayer(data); setActiveTab('tools'); })
+        .catch((e: any) => setError(e.message || 'Failed to load player'));
+    }
+
+    if (canRead) fetchPage('', 1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSearch = useCallback(() => {
+    const q = query.trim();
+    setCommittedQuery(q);
+    fetchPage(q, 1);
+  }, [query, fetchPage]);
+
+  const handleQueryChange = useCallback((val: string) => {
+    setQuery(val);
+    if (val === '') {
+      setCommittedQuery('');
+      fetchPage('', 1);
+    }
+  }, [fetchPage]);
+
+  const goToPage = useCallback((p: number) => {
+    fetchPage(committedQuery, p);
+  }, [committedQuery, fetchPage]);
 
   const selectPlayer = useCallback(async (id: string) => {
     setLoading(true);
@@ -241,7 +274,6 @@ export default function AdminV2PlayersSection({ me }: Props) {
     try {
       const data = await adminApi.getPlayer(id);
       setPlayer(data);
-      setResults([]);
       setActiveTab('tools');
     } catch (e: any) {
       setError(e.message || 'Failed to load player');
@@ -309,20 +341,20 @@ export default function AdminV2PlayersSection({ me }: Props) {
   }
 
   return (
-    <div className="av2-section-wrap">
+    <div className="av2-section-wrap" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="av2-search-row">
         <input
           type="text"
           className="av2-search-input"
-          placeholder="Search by username, email, or player ID…"
+          placeholder="Filter by username, email, or player ID…"
           value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && search()}
+          onChange={e => handleQueryChange(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <button
           className="av2-search-btn"
-          onClick={() => search()}
-          disabled={loading || !query.trim()}
+          onClick={handleSearch}
+          disabled={loading}
         >
           {loading ? '…' : 'Search'}
         </button>
@@ -330,28 +362,82 @@ export default function AdminV2PlayersSection({ me }: Props) {
 
       {error && <div className="av2-inline-msg error">{error}</div>}
 
-      {results.length > 0 && (
-        <div>
-          {results.map((p: any) => (
-            <button
-              key={p.id}
-              className="av2-player-result"
-              onClick={() => selectPlayer(p.id)}
-            >
-              <div>
-                <div className="av2-player-name">{p.username ?? p.id}</div>
-                <div className="av2-player-meta">
-                  Level {p.keeperLevel} · ID: {p.id}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      <div style={{ fontSize: 11, color: '#3a3a6a', padding: '4px 0 6px', flexShrink: 0 }}>
+        {total > 0 ? `${total} player${total !== 1 ? 's' : ''}${committedQuery ? ' matching' : ''}` : (!loading ? 'No players found.' : '')}
+      </div>
 
-      {results.length === 0 && !loading && !error && (
-        <div className="av2-empty">
-          Enter a username, email, or player ID to search.
+      <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+        {loading && items.length === 0 && (
+          <div className="av2-loading">Loading players…</div>
+        )}
+        {items.map((p: any) => (
+          <button
+            key={p.id}
+            className="av2-player-result"
+            onClick={() => selectPlayer(p.id)}
+            style={{ width: '100%', textAlign: 'left' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span className="av2-player-name">{p.username ?? <span style={{ color: '#4a4a7a' }}>(no username)</span>}</span>
+                <span style={{ fontSize: 10, color: '#4a4a7a' }}>Lv {p.keeperLevel ?? 0}</span>
+              </div>
+              {p.email && (
+                <div style={{ fontSize: 11, color: '#5a5a8a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {p.email}
+                </div>
+              )}
+              {p.primaryWallet && (
+                <div style={{ fontSize: 11, color: '#4a4a7a', fontFamily: 'monospace', display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{
+                    fontSize: 9, color: '#6060a0', fontFamily: 'sans-serif', fontWeight: 700,
+                    background: 'rgba(96,96,160,0.12)', borderRadius: 3, padding: '1px 4px', flexShrink: 0,
+                  }}>
+                    {p.primaryWallet.chain}
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {truncateAddress(p.primaryWallet.address)}
+                  </span>
+                </div>
+              )}
+              <div style={{ fontSize: 10, color: '#2a2a4a', marginTop: 1 }}>
+                ID: {p.id}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          padding: '10px 0 4px', flexShrink: 0, borderTop: '1px solid #0f0f22',
+        }}>
+          <button
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1 || loading}
+            style={{
+              padding: '3px 10px', fontSize: 12, cursor: page <= 1 ? 'default' : 'pointer',
+              background: 'none', border: '1px solid #1a1b35', borderRadius: 4,
+              color: page <= 1 ? '#2a2a4a' : '#7070b0',
+            }}
+          >
+            ← Prev
+          </button>
+          <span style={{ fontSize: 11, color: '#5a5a8a' }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages || loading}
+            style={{
+              padding: '3px 10px', fontSize: 12, cursor: page >= totalPages ? 'default' : 'pointer',
+              background: 'none', border: '1px solid #1a1b35', borderRadius: 4,
+              color: page >= totalPages ? '#2a2a4a' : '#7070b0',
+            }}
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>

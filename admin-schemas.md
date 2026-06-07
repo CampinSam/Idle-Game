@@ -966,6 +966,48 @@ Within any `RichSelection` tree (requirements, visibilityRequirements, etc.), a 
 
 ---
 
+## Player List — `GET /api/admin/players`
+
+Browse all players with optional free-text filtering and pagination.
+
+**Auth:** Admin
+
+**Query params:**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `q` | string | — | Optional filter — case-insensitive contains match on `username`, `email`, or `id` |
+| `page` | integer | `1` | 1-based page number |
+| `limit` | integer | `20` | Results per page (max 100) |
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "username": "playerName",
+      "email": "player@example.com",
+      "keeperLevel": 5,
+      "primaryWallet": {
+        "chain": "CARDANO",
+        "address": "addr1q…"
+      }
+    }
+  ],
+  "total": 142,
+  "page": 1,
+  "limit": 20
+}
+```
+
+`primaryWallet` is `null` when the player has no linked wallets. When present, it is the wallet marked `isPrimary`, or the earliest-created wallet if none is marked primary.
+
+Players are ordered by `createdAt desc` (newest first).
+
+---
+
 ## Player Jobs — `/api/admin/players/:id/jobs`
 
 ### `POST /api/admin/players/:id/jobs/:jobId/force-complete`
