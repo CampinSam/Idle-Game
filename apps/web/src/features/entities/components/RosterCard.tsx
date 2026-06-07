@@ -3,6 +3,7 @@ import EntityCard from './EntityCard';
 import EntityList from './EntityList';
 import { buildCollectionOptions, SORT_OPTIONS } from '../entityListUtils';
 import { ListControls } from '../../../components/ui';
+import { isEntityBusy } from '../../inventory/utils/statChangeHelpers';
 import type { EntityFilter, EntitySortBy, EntityUseCase } from '../types';
 
 export interface RosterCardProps {
@@ -41,19 +42,33 @@ export default function RosterCard({
   const [pickerSort, setPickerSort] = useState<EntitySortBy>('name');
 
   const atMax = selectedIds.length >= maxSlots;
-  const pickerDisabledIds = useMemo(
-    () => disabledIds ?? (atMax
-      ? entities.filter((e: any) => !selectedIds.includes(e.id)).map((e: any) => e.id)
-      : []),
-    [atMax, entities, selectedIds, disabledIds],
-  );
+
+  const sortedEntities = useMemo(() => {
+    const available = entities.filter((e: any) => !isEntityBusy(e));
+    const busy = entities.filter((e: any) => isEntityBusy(e));
+    return [...available, ...busy];
+  }, [entities]);
+
+  const pickerDisabledIds = useMemo(() => {
+    const busyIds = entities.filter((e: any) => isEntityBusy(e)).map((e: any) => e.id);
+    if (disabledIds) return [...new Set([...disabledIds, ...busyIds])];
+    if (atMax) {
+      return entities
+        .filter((e: any) => !selectedIds.includes(e.id))
+        .map((e: any) => e.id);
+    }
+    return busyIds;
+  }, [atMax, entities, selectedIds, disabledIds]);
 
   const collectionOptions = useMemo(() => buildCollectionOptions(entities), [entities]);
 
-  const panelClass = 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
   const panelTitleClass = 'text-[11px] font-extrabold tracking-[0.08em] uppercase text-[#c4b5fd]';
 
   const showInlinePicker = inlinePicker && isPickerOpen;
+
+  const panelClass = showInlinePicker
+    ? 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 flex flex-col overflow-hidden max-h-[65vh]'
+    : 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
 
   return (
     <div ref={panelRef} className={panelClass}>
@@ -103,7 +118,10 @@ export default function RosterCard({
 
       {showInlinePicker && (
         <>
-          <div className="sticky top-0 z-10 -mx-3 -mt-3 px-3 pt-3 pb-2 rounded-t-xl flex flex-col gap-2" style={{ background: 'linear-gradient(180deg,#1a1640 92%,rgba(26,22,64,0) 100%)' }}>
+          <div
+            className="flex-shrink-0 px-3 pt-3 pb-2 flex flex-col gap-2 rounded-t-xl"
+            style={{ background: 'linear-gradient(180deg,#1a1640 92%,rgba(26,22,64,0) 100%)' }}
+          >
             <div className="flex items-center justify-between gap-2 px-1">
               <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
                 Tap to toggle · {selectedIds.length}/{maxSlots} chosen
@@ -136,22 +154,24 @@ export default function RosterCard({
               ]}
             />
           </div>
-          <EntityList
-            entities={entities}
-            mode="picker"
-            useCase={useCase}
-            showControls={false}
-            search={pickerSearch}
-            onSearchChange={setPickerSearch}
-            activeFilter={pickerFilter}
-            onFilterChange={setPickerFilter}
-            sortBy={pickerSort}
-            onSortChange={setPickerSort}
-            selectedIds={selectedIds}
-            disabledIds={pickerDisabledIds}
-            busyDisabledTooltip={busyDisabledTooltip}
-            onSelect={(entity) => onAdd?.(entity.id)}
-          />
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <EntityList
+              entities={sortedEntities}
+              mode="picker"
+              useCase={useCase}
+              showControls={false}
+              search={pickerSearch}
+              onSearchChange={setPickerSearch}
+              activeFilter={pickerFilter}
+              onFilterChange={setPickerFilter}
+              sortBy={pickerSort}
+              onSortChange={setPickerSort}
+              selectedIds={selectedIds}
+              disabledIds={pickerDisabledIds}
+              busyDisabledTooltip={busyDisabledTooltip}
+              onSelect={(entity) => onAdd?.(entity.id)}
+            />
+          </div>
         </>
       )}
     </div>

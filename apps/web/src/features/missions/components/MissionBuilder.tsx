@@ -197,7 +197,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
       className="flex flex-col flex-1 min-h-0 overflow-hidden motion-safe:animate-[detail-enter_0.28s_ease-out_both]"
     >
       <div
-        className="overflow-hidden rounded-2xl border flex flex-col relative flex-1 min-h-0"
+        className="overflow-clip rounded-2xl border flex flex-col relative flex-1 min-h-0"
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -205,7 +205,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
             documentId="mission_planning_document"
             baseContext={{ missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }}
             data={blockData}
-            className="flex flex-col gap-3 px-4 pt-3 pb-2"
+            className="flex flex-col gap-3 px-4 pt-2 pb-2"
           />
         </div>
 
