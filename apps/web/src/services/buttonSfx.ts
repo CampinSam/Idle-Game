@@ -39,7 +39,7 @@ const VARIANT_RULES: Array<{ classes: string[]; key: string }> = [
     key: 'ui.icon_button',
   },
   {
-    classes: ['tab-btn', 'me-tab', 'bnav-link'],
+    classes: ['tab-btn', 'me-tab'],
     key: 'ui.tab_switch',
   },
 ];

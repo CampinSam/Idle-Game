@@ -1611,13 +1611,13 @@ input:focus {
   .edp-card-perfect::before { animation: none; }
 }
 
-/* When the variant is applied to the persistent .body-card shell, skip the
+/* When the variant is applied to the persistent body-card shell, skip the
    one-shot detail-enter animation — body-card is never re-mounted on swipe.
    Keep only the continuous border-spin and twinkle effects. */
-.body-card.edp-card-perfect {
+[data-body-variant="edp-card-perfect"] {
   animation: detail-perfect-border-spin 6s linear infinite;
 }
-.body-card.edp-card-derp-bird {
+[data-body-variant="edp-card-derp-bird"] {
   border-color: rgba(45, 212, 191, 0.45);
 }
 
@@ -1768,17 +1768,6 @@ input:focus {
   0%, 100% { filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.7)); }
   50% { filter: drop-shadow(0 0 8px rgba(245, 158, 11, 1)); }
 }
-.body-card {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #1a1640 0%, #221a50 100%);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-}
 .page-content-spinner {
   width: 36px;
   height: 36px;
@@ -1790,40 +1779,7 @@ input:focus {
 @keyframes page-spin {
   to { transform: rotate(360deg); }
 }
-.bnav-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 12px;
-  text-decoration: none;
-  color: rgba(148, 163, 184, 0.6);
-  transition: color 0.2s, transform 0.1s ease;
-  border-radius: 10px;
-  min-width: 56px;
-  position: relative;
-}
-.bnav-link:active {
-  transform: scale(0.88);
-}
-.bnav-link svg {
-  width: 22px;
-  height: 22px;
-  transition: all 0.2s;
-}
-.bnav-link span {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  font-family: 'Exo 2', system-ui, sans-serif;
-}
-.bnav-link:hover {
-  color: rgba(196, 181, 253, 0.8);
-}
-.bnav-link.active {
-  color: var(--derp-purple);
-}
-.bnav-link.active::before {
+.bnav-active-bar::before {
   content: '';
   position: absolute;
   top: 0;
@@ -1835,7 +1791,7 @@ input:focus {
   border-radius: 0 0 2px 2px;
   box-shadow: 0 0 8px var(--derp-purple);
 }
-.bnav-link.active svg {
+.bnav-active-bar svg {
   filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.5));
 }
 .top-bar-gift {
@@ -2578,8 +2534,4 @@ input:focus {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.55);
-}
-.body-card {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
 }
