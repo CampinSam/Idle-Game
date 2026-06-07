@@ -102,23 +102,23 @@ export class NftCollectionService {
       include: { _count: { select: { nftAssets: true } } },
     });
 
-    const entityCounts: { nft_collection_def_id: string; count: number }[] = await (this.prisma as any).$queryRaw`
-      SELECT nft_collection_def_id, COUNT(*)::int AS count
+    const entityCounts: { nftCollectionDefId: string; count: number }[] = await (this.prisma as any).$queryRaw`
+      SELECT "nftCollectionDefId", COUNT(*)::int AS count
       FROM entities
-      WHERE nft_collection_def_id IS NOT NULL
-      GROUP BY nft_collection_def_id
+      WHERE "nftCollectionDefId" IS NOT NULL
+      GROUP BY "nftCollectionDefId"
     `;
 
-    const locationCounts: { collection_id: string; count: number }[] = await (this.prisma as any).$queryRaw`
-      SELECT na.collection_id, COUNT(*)::int AS count
+    const locationCounts: { collectionId: string; count: number }[] = await (this.prisma as any).$queryRaw`
+      SELECT na."collectionId", COUNT(*)::int AS count
       FROM location_instances li
-      JOIN nft_assets na ON na.nft_asset_id = li.nft_asset_id
-      WHERE li.nft_asset_id IS NOT NULL
-      GROUP BY na.collection_id
+      JOIN nft_assets na ON na."nftAssetId" = li."nftAssetId"
+      WHERE li."nftAssetId" IS NOT NULL
+      GROUP BY na."collectionId"
     `;
 
-    const entityCountMap = new Map(entityCounts.map(r => [r.nft_collection_def_id, Number(r.count)]));
-    const locationCountMap = new Map(locationCounts.map(r => [r.collection_id, Number(r.count)]));
+    const entityCountMap = new Map(entityCounts.map(r => [r.nftCollectionDefId, Number(r.count)]));
+    const locationCountMap = new Map(locationCounts.map(r => [r.collectionId, Number(r.count)]));
 
     return collections.map((c: any) => ({
       ...c,

@@ -707,8 +707,11 @@ export class AdminService {
       where,
       orderBy: { createdAt: 'desc' },
       take: Math.min(limit, 200),
+      include: { user: { select: { username: true } } },
     });
-    return serializeBigInts(events);
+    return serializeBigInts(
+      events.map((e: any) => ({ ...e, username: e.user?.username ?? null, user: undefined })),
+    );
   }
 
   private safeBigInt(value: any): bigint | null {

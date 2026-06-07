@@ -21,11 +21,34 @@ const inputStyle: React.CSSProperties = {
 interface PlayerEvent {
   id: string;
   userId: string;
+  username: string | null;
   eventType: string;
   key: string | null;
   amount: number;
   data: Record<string, unknown>;
   createdAt: string;
+}
+
+function PlayerLink({ userId, username }: { userId: string; username: string | null }) {
+  const label = username ?? userId.slice(0, 8) + '…';
+  const href = `/admin?playerId=${userId}#players`;
+  return (
+    <a
+      href={href}
+      title={userId}
+      style={{
+        fontFamily: username ? undefined : 'monospace',
+        color: '#7dd3fc', fontSize: 11,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        textDecoration: 'none',
+        display: 'block',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+      onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+    >
+      {label}
+    </a>
+  );
 }
 
 function EventRow({ ev }: { ev: PlayerEvent }) {
@@ -48,8 +71,8 @@ function EventRow({ ev }: { ev: PlayerEvent }) {
         <span style={{ fontFamily: 'monospace', color: '#9d96ff', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ev.id}>
           {ev.id}
         </span>
-        <span style={{ fontFamily: 'monospace', color: '#7dd3fc', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ev.userId}>
-          {ev.userId}
+        <span style={{ overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+          <PlayerLink userId={ev.userId} username={ev.username} />
         </span>
         <span style={{
           display: 'inline-block', padding: '2px 8px', borderRadius: 3,
@@ -175,7 +198,7 @@ export default function PlayerEventsAdminPage() {
             color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
           }}>
             <span>ID</span>
-            <span>User ID</span>
+            <span>Player</span>
             <span>Event Type</span>
             <span>Key</span>
             <span style={{ textAlign: 'right' }}>Amount</span>

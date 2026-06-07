@@ -204,6 +204,22 @@ export default function AdminV2PlayersSection({ me }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PlayerTab>('tools');
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const playerId = params.get('playerId');
+    if (playerId && canRead) {
+      setLoading(true);
+      setError(null);
+      adminApi.getPlayer(playerId)
+        .then(data => { setPlayer(data); setActiveTab('tools'); })
+        .catch((e: any) => setError(e.message || 'Failed to load player'))
+        .finally(() => setLoading(false));
+      window.history.replaceState(null, '', window.location.pathname + '#players');
+    }
+  // Only run on mount — intentionally no deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const search = useCallback(async (q = query) => {
     if (!q.trim()) return;
     setLoading(true);
