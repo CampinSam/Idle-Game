@@ -337,7 +337,6 @@ async function run() {
     makeReqTable('RecipeDef',          reqFields,          (client as any).recipeDef),
     makeReqTable('BuildingDef',        reqFields,          (client as any).buildingDef),
     makeReqTable('RoomDef',            reqFields,          (client as any).roomDef),
-    makeReqTable('ItemDef',            reqFields,          (client as any).itemDef),
     makeReqTable('QuestDef',           ['requirements'],   (client as any).questDef),
     makeReqTable('LocationDefinition', reqFields,          (client as any).locationDefinition),
   ];

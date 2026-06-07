@@ -21,7 +21,7 @@ import { EventService } from '../event/event.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
 import { ANTI_WHALE_CAPS, XP_PER_LEVEL, MAX_ENTITY_LEVEL, EffectCategory, EffectTargetType, EffectTargetContext, applyModifier, applyStatModifiers, emptyResolvedModifier, type TraitPrimitive } from '@derp/shared';
-import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl } from '@derp/math';
+import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, calculateInjuryRecoveryTicks, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
@@ -828,7 +828,21 @@ export class MissionService {
         const rolled = rollQualityFromCl(teamMP, rng, centerOverrides, missionSigma);
         quality = rolled.key;
         qualityLabel = rolled.label;
-        outcomeItems = (missionTiers[quality] ?? EMPTY_MISSION_TIER).rewards;
+        // Walk down from rolled tier to find nearest tier with rewards defined.
+        // e.g. rolled 'scare' but only 'common' is defined → use 'common'.
+        // If nothing at or below the rolled tier has rewards, yield nothing.
+        const tierKeys = QUALITY_TIERS.map(t => t.key);
+        const rolledIdx = tierKeys.indexOf(quality);
+        outcomeItems = [];
+        for (let i = rolledIdx >= 0 ? rolledIdx : tierKeys.length - 1; i >= 0; i--) {
+          const candidate = missionTiers[tierKeys[i]];
+          if (candidate && candidate.rewards.length > 0) {
+            quality = tierKeys[i];
+            qualityLabel = QUALITY_TIERS[i].label;
+            outcomeItems = candidate.rewards;
+            break;
+          }
+        }
       }
     } else {
       quality = success ? 'common' : 'failure';
