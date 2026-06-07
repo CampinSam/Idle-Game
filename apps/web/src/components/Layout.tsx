@@ -17,7 +17,6 @@ import { useAppSelector } from "../store";
 import ToastOverlay from "./ToastOverlay";
 import ConnectionStatusBanner from "./ConnectionStatusBanner";
 import NotificationCenter from "../features/notifications/NotificationCenter";
-import { formatCompact } from "../utils/formatNumber";
 import { resolveIcon } from "../utils/iconResolver";
 import ItemQty from "./ItemQty";
 import { audioEngine } from "../services/AudioEngine";
@@ -71,17 +70,18 @@ export default function Layout() {
   };
 
   return (
-    <div className="layout">
+    <div className="flex flex-col h-[100dvh] overflow-hidden">
       <ConnectionStatusBanner />
       {profile && (
-        <div className="top-bar-container">
-          <div className="top-bar">
-            <div className="top-bar-avatar-wrap">
+        <div className="fixed top-0 left-0 right-0 z-[90] flex justify-center px-4 py-2 pointer-events-none">
+          <div className="flex flex-row items-center gap-1.5 p-2 max-w-[520px] w-full bg-[#1a1640] border border-[rgba(139,92,246,0.3)] rounded-[14px] backdrop-blur-xl pointer-events-auto overflow-visible">
+            <div className="relative flex-shrink-0 w-[84px] h-[84px] self-center -my-5">
                 <button
-                  className="top-bar-avatar-btn"
+                  className="relative w-[84px] h-[84px] rounded-full p-0 bg-transparent border-0 cursor-pointer"
+                  data-sfx="ui.icon_button"
                   onClick={() => setShowMenu(!showMenu)}
                 >
-                  <svg className="top-bar-progress-ring" viewBox="0 0 48 48">
+                  <svg className="absolute top-0 left-0 w-[84px] h-[84px] -rotate-90 overflow-visible" viewBox="0 0 48 48">
                     <circle className="progress-ring-bg" cx="24" cy="24" r="21" />
                     <circle
                       className="progress-ring-fill"
@@ -93,58 +93,58 @@ export default function Layout() {
                     />
                   </svg>
                   <img
-                    className="top-bar-avatar-img"
+                    className="absolute top-[5px] left-[5px] w-[74px] h-[74px] rounded-full object-cover"
                     src="/media/images/icon-entities.png"
                     alt=""
                   />
-                  <span className="top-bar-level-center">
+                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-base font-black pointer-events-none leading-none [text-shadow:0_0_6px_rgba(0,0,0,0.9),0_1px_3px_rgba(0,0,0,0.8)]">
                     {profile.keeperLevel}
                   </span>
                 </button>
                 {showMenu && (
-                  <div className="top-bar-menu">
-                    <div className="top-bar-menu-name">{profile.username}</div>
-                    <div className="top-bar-menu-info">
+                  <div className="absolute top-[60px] left-0 bg-[#1e1b3a] border border-[rgba(139,92,246,0.35)] rounded-[10px] p-3 min-w-[150px] z-[100] shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                    <div className="text-sm font-bold text-[#e2d9ff] mb-0.5">{profile.username}</div>
+                    <div className="text-xs text-text-secondary mb-2.5">
                       Keeper Lvl {profile.keeperLevel}
                     </div>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/profile"); setShowMenu(false); }}
                     >
                       Profile
                     </button>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/settings"); setShowMenu(false); }}
                     >
                       Settings
                     </button>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/rewards"); setShowMenu(false); }}
                     >
                       Rewards
                     </button>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/achievements"); setShowMenu(false); }}
                     >
                       Achievements
                     </button>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/jobs"); setShowMenu(false); }}
                     >
                       Active Jobs
                     </button>
                     <button
-                      className="top-bar-menu-profile"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(139,92,246,0.3)] text-[#c4b5fd] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 mb-1.5 hover:bg-[rgba(139,92,246,0.1)] hover:border-[rgba(139,92,246,0.5)]"
                       onClick={() => { navigate("/settings"); setShowMenu(false); }}
                     >
                       Wallet
                     </button>
                     <button
-                      className="top-bar-menu-logout"
+                      className="w-full py-[7px] px-[7px] bg-transparent border border-[rgba(239,68,68,0.3)] text-[#f87171] text-xs font-semibold rounded-[6px] cursor-pointer transition-all duration-200 hover:bg-[rgba(239,68,68,0.1)] hover:border-[rgba(239,68,68,0.5)]"
                       onClick={handleLogout}
                     >
                       Logout
@@ -152,9 +152,9 @@ export default function Layout() {
                   </div>
                 )}
               </div>
-            <div className="top-bar-right-col">
-              <div className="top-bar-main-row">
-              <span className="top-bar-name">{profile.username}</span>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              <div className="flex items-center gap-2 w-full pb-1 border-b border-[rgba(139,92,246,0.25)]">
+              <span className="font-bold text-[20px] leading-none text-[#e2d9ff] whitespace-nowrap flex-shrink-0">{profile.username}</span>
               <div style={{ flex: 1 }} />
               {hasClaimableRewards && (
                 <button
@@ -166,7 +166,8 @@ export default function Layout() {
                 </button>
               )}
               <button
-                className="top-bar-bell"
+                className="relative bg-transparent border-0 text-white/60 cursor-pointer p-0 ml-0 flex-shrink-0 transition-colors duration-150 flex items-center hover:text-[#c4b5fd]"
+                data-sfx="ui.icon_button"
                 onClick={() => setShowNotifCenter(true)}
               >
                 <svg
@@ -183,7 +184,7 @@ export default function Layout() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="bell-badge">
+                  <span className="absolute -top-0.5 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#ef4444] text-white text-[10px] font-extrabold flex items-center justify-center leading-none shadow-[0_0_6px_rgba(239,68,68,0.5)]">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -197,8 +198,7 @@ export default function Layout() {
                 )}
               </button>
               </div>
-            {/* Row 2: currencies */}
-            <div className="top-bar-currencies">
+            <div className="flex items-center justify-end gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[520px]:gap-1.5">
               {(() => {
                 const FALLBACK = [
                   "soft_arcanium",
@@ -218,7 +218,7 @@ export default function Layout() {
                   .slice(0, 6);
                 const ids = defsLoaded ? visible.map((d: any) => d.id) : FALLBACK;
                 return ids.map((id: string) => (
-                  <div key={id} className="top-bar-currency">
+                  <div key={id} className="flex items-center gap-0.5 leading-none">
                     <ItemQty
                       src={resolveIcon("CURRENCY", id, currencyDefs, [])}
                       amount={currencyBalances[id] ?? 0}
@@ -242,12 +242,12 @@ export default function Layout() {
         />
       )}
 
-      <main className="content page-outlet">
+      <main className="flex-1 min-h-0 flex flex-col overflow-hidden pt-[92px] px-2 pb-[calc(64px+env(safe-area-inset-bottom,0px)+8px)] max-w-[520px] mx-auto w-full">
         <div className={['body-card', variantClass].filter(Boolean).join(' ')}>
-          <div key={location.key} className="page-transition-wrapper">
+          <div key={location.key} className="page-transition-wrapper flex-1 min-h-0 flex flex-col">
             <Suspense
               fallback={
-                <div className="page-content-loader">
+                <div className="flex-1 flex items-center justify-center">
                   <div className="page-content-spinner" />
                 </div>
               }
@@ -258,7 +258,7 @@ export default function Layout() {
         </div>
       </main>
 
-      <nav className="bottom-nav">
+      <nav className="fixed bottom-0 left-0 right-0 flex justify-around items-start h-[calc(64px+env(safe-area-inset-bottom,0px))] bg-gradient-to-b from-[rgba(15,10,35,0.95)] to-[rgba(10,8,25,0.98)] backdrop-blur-xl border-t border-[rgba(139,92,246,0.2)] pt-2 px-2 pb-[env(safe-area-inset-bottom,0px)] z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
         <NavLink
           to="/"
           end
