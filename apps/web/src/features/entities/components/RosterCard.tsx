@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import EntityCard from './EntityCard';
 import EntityList from './EntityList';
-import { buildCollectionOptions, SORT_OPTIONS } from '../entityListUtils';
+import { buildCollectionOptions, SORT_OPTIONS, getFilteredSortedEntities } from '../entityListUtils';
 import { ListControls } from '../../../components/ui';
 import { isEntityBusy } from '../../inventory/utils/statChangeHelpers';
 import type { EntityFilter, EntitySortBy, EntityUseCase } from '../types';
@@ -46,8 +46,10 @@ export default function RosterCard({
   const sortedEntities = useMemo(() => {
     const available = entities.filter((e: any) => !isEntityBusy(e));
     const busy = entities.filter((e: any) => isEntityBusy(e));
-    return [...available, ...busy];
-  }, [entities]);
+    const sortedAvailable = getFilteredSortedEntities(available, pickerFilter, pickerSearch, pickerSort);
+    const sortedBusy = getFilteredSortedEntities(busy, pickerFilter, pickerSearch, pickerSort);
+    return [...sortedAvailable, ...sortedBusy];
+  }, [entities, pickerFilter, pickerSearch, pickerSort]);
 
   const pickerDisabledIds = useMemo(() => {
     const busyIds = entities.filter((e: any) => isEntityBusy(e)).map((e: any) => e.id);
