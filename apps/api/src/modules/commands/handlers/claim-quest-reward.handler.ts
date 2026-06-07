@@ -11,7 +11,7 @@ export class ClaimQuestRewardHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { questInstanceId } = payload;
 
-    const { grants, permanentEffectId, markedReadNotif } = await this.questService.claimReward(ctx.userId, questInstanceId, ctx.tx);
+    const { grants, permanentEffectId, readNotifications } = await this.questService.claimReward(ctx.userId, questInstanceId, ctx.tx);
 
     const updatedInstance = await (ctx.tx as any).questInstance.findUnique({
       where: { id: questInstanceId },
@@ -23,7 +23,9 @@ export class ClaimQuestRewardHandler implements CommandHandler {
       const isAchievement = updatedInstance.questDef?.category === 'achievement';
       pb.upsert(isAchievement ? 'achievement' : 'quest', updatedInstance.id, updatedInstance);
     }
-    if (markedReadNotif) pb.upsertNotification(markedReadNotif);
+    for (const notif of readNotifications ?? []) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     if (permanentEffectId) {

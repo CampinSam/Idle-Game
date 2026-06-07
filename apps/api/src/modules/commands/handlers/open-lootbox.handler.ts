@@ -6,6 +6,7 @@ import { InventoryService } from '../../inventory/inventory.service';
 import { TelemetryService } from '../../telemetry/telemetry.service';
 import { TelemetryContextBuilderService } from '../../telemetry/telemetry-context-builder.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
+import { NotificationService } from '../../notification/notification.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class OpenLootBoxHandler implements CommandHandler {
     private telemetryService: TelemetryService,
     private telemetryContextBuilder: TelemetryContextBuilderService,
     private gameRules: GameRulesService,
+    private notificationService: NotificationService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -124,9 +126,14 @@ export class OpenLootBoxHandler implements CommandHandler {
       );
     } catch (_) {}
 
+    const readNotifications = await this.notificationService.markReadBySource(ctx.userId, 'ItemInstance', itemInstanceId, ctx.tx);
+
     const pb = new PatchBuilder();
     if ((item.quantity ?? 1) <= 1) {
       pb.deleteItem(itemInstanceId);
+    }
+    for (const notif of readNotifications) {
+      pb.upsertNotification(notif);
     }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);

@@ -4,6 +4,7 @@ import { PatchBuilder, buildItemPatches, buildCurrencyPatches, buildEntityPatch,
 import { CurrencyService } from '../../currency/currency.service';
 import { InventoryService } from '../../inventory/inventory.service';
 import { GameRulesService } from '../../game-rules/game-rules.service';
+import { NotificationService } from '../../notification/notification.service';
 import { resolveRewardSpec } from '../../gift/reward-resolver.util';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class OpenGiftPackageHandler implements CommandHandler {
     private currencyService: CurrencyService,
     private inventoryService: InventoryService,
     private gameRules: GameRulesService,
+    private notificationService: NotificationService,
   ) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
@@ -44,8 +46,13 @@ export class OpenGiftPackageHandler implements CommandHandler {
 
     await (ctx.tx as any).itemInstance.delete({ where: { id: itemInstanceId } });
 
+    const readNotifications = await this.notificationService.markReadBySource(ctx.userId, 'ItemInstance', itemInstanceId, ctx.tx);
+
     const pb = new PatchBuilder();
     pb.deleteItem(itemInstanceId);
+    for (const notif of readNotifications) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     await buildPlayerPatch(pb, ctx.tx, ctx.userId);

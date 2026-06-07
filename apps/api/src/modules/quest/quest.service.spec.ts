@@ -25,7 +25,7 @@ function makeFakes(rewardSpec: any, status: 'completed' | 'active' | 'claimed' =
       findMany: jest.fn(() => Promise.resolve([])),
     },
   };
-  const notification: any = { createNotification: jest.fn() };
+  const notification: any = { createNotification: jest.fn(), markReadBySource: jest.fn().mockResolvedValue([]) };
   const telemetry: any = { registerSubscriber: jest.fn() };
   const currency: any = {
     creditTx: jest.fn((_db: any, args: any) => {

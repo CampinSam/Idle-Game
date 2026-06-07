@@ -30,7 +30,7 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const questInstanceId = payload.achievementInstanceId ?? payload.questInstanceId;
 
-    const { grants, permanentEffectId, markedReadNotif } = await this.questService.claimReward(
+    const { grants, permanentEffectId, readNotifications } = await this.questService.claimReward(
       ctx.userId,
       questInstanceId,
       ctx.tx,
@@ -45,7 +45,9 @@ export class ClaimAchievementRewardHandler implements CommandHandler {
     if (updatedInstance) {
       pb.upsert('achievement', updatedInstance.id, updatedInstance);
     }
-    if (markedReadNotif) pb.upsertNotification(markedReadNotif);
+    for (const notif of readNotifications ?? []) {
+      pb.upsertNotification(notif);
+    }
     await buildItemPatches(pb, ctx.tx, ctx.userId);
     await buildCurrencyPatches(pb, ctx.tx, ctx.userId);
     if (permanentEffectId) {

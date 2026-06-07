@@ -298,7 +298,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
     return reset;
   }
 
-  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; permanentEffectId: string | null; markedReadNotif: any }> {
+  async claimReward(userId: string, questInstanceId: string, tx?: any): Promise<{ grants: any[]; permanentEffectId: string | null; readNotifications: any[] }> {
     const db = tx || this.prisma;
 
     const instance = await (db as any).questInstance.findUnique({
@@ -402,17 +402,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       });
     }
 
-    const notifModel = (tx as any)?.notification ?? (this.prisma as any).notification;
-    const existingNotif = await notifModel.findFirst({
-      where: { userId, sourceType: 'quest', sourceId: questInstanceId, readAt: null },
-    });
-    let markedReadNotif: any = null;
-    if (existingNotif) {
-      markedReadNotif = await notifModel.update({
-        where: { id: existingNotif.id },
-        data: { readAt: new Date() },
-      });
-    }
+    const readNotifications = await this.notificationService.markReadBySource(userId, 'quest', questInstanceId, tx);
 
     try {
       const eventType = isAchievement(def) ? 'achievement_claimed' : 'quest_claimed';
@@ -435,7 +425,7 @@ export class QuestService implements TelemetrySubscriber, OnModuleInit {
       this.logger.warn(`Failed to record quest/achievement claim telemetry: ${err}`);
     }
 
-    return { grants, permanentEffectId, markedReadNotif };
+    return { grants, permanentEffectId, readNotifications };
   }
 
   /**
