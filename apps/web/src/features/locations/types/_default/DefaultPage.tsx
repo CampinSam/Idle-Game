@@ -25,8 +25,8 @@ export default function DefaultPage({ outpost }: LocationPageProps) {
     }));
 
   return (
-    <>
-      <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-2 px-3 py-2">
           <button
             type="button"
@@ -59,7 +59,8 @@ export default function DefaultPage({ outpost }: LocationPageProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3.5 px-3 pt-3.5">
+      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain">
+      <div className="flex flex-col gap-3.5 px-3 pt-3.5 pb-6">
         <OutpostCard accent="header" className="!p-0">
           {regionImage && (
             <div className="relative overflow-hidden rounded-t-xl">
@@ -116,6 +117,7 @@ export default function DefaultPage({ outpost }: LocationPageProps) {
           </OutpostCard>
         )}
       </div>
-    </>
+      </div>
+    </div>
   );
 }
