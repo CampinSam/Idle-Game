@@ -17,6 +17,21 @@ export class CheckInService {
     private telemetryContextBuilder: TelemetryContextBuilderService,
   ) {}
 
+  async ensureInstances(userId: string): Promise<void> {
+    const defs = await (this.prisma as any).checkInDef.findMany({ where: { enabled: true } });
+    for (const def of defs) {
+      try {
+        await (this.prisma as any).checkInInstance.upsert({
+          where: { userId_checkInDefId: { userId, checkInDefId: def.id } },
+          create: { userId, checkInDefId: def.id, streak: 0, totalClaimed: 0 },
+          update: {},
+        });
+      } catch (err) {
+        this.logger.warn(`ensureInstances: failed to upsert checkIn instance for def ${def.id}: ${err}`);
+      }
+    }
+  }
+
   async autoCheck(userId: string, tx?: any): Promise<string[]> {
     const db = tx || this.prisma;
     const now = new Date();

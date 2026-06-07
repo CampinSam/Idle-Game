@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { HomeBannerService, HomeBannerSnapshot } from '../home-banner/home-banner.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { QuestService } from '../quest/quest.service';
+import { CheckInService } from '../checkin/checkin.service';
 import { Patch, UiIntent } from '../commands/command.types';
 import { serializeLocation } from '../commands/location-serializer.util';
 import { serializeEntityFull } from '../entity/entity-stats.util';
@@ -154,6 +155,7 @@ export class QueryService {
     private homeBannerService: HomeBannerService,
     private globalPowerService: GlobalPowerService,
     private questService: QuestService,
+    private checkInService: CheckInService,
   ) {}
 
   async bootstrap(userId: string): Promise<BootstrapResult> {
@@ -161,6 +163,12 @@ export class QueryService {
       await this.telemetryService.record(userId, 'player_login', null, 1, {});
     } catch (err) {
       this.logger.warn(`Failed to record player_login telemetry on bootstrap for ${userId}: ${err}`);
+    }
+
+    try {
+      await this.checkInService.ensureInstances(userId);
+    } catch (err) {
+      this.logger.warn(`Failed to ensure check-in instances on bootstrap for ${userId}: ${err}`);
     }
 
     const [

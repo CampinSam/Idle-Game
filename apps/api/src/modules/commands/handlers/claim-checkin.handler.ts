@@ -24,7 +24,7 @@ export class ClaimCheckInHandler implements CommandHandler {
       pb.upsert('checkIn', inst.id, inst);
     }
 
-    const newGifts = await (ctx.tx as any).gift.findMany({
+    const newGifts = await (ctx.tx as any).giftInstance.findMany({
       where: { id: { in: issuedGiftIds } },
     });
     for (const gift of newGifts) {

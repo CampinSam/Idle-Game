@@ -7,9 +7,10 @@ import { NftModule } from '../nft/nft.module';
 import { HomeBannerModule } from '../home-banner/home-banner.module';
 import { GlobalPowerModule } from '../global-power/global-power.module';
 import { QuestModule } from '../quest/quest.module';
+import { CheckInModule } from '../checkin/checkin.module';
 
 @Module({
-  imports: [TelemetryModule, TickModule, NftModule, HomeBannerModule, GlobalPowerModule, QuestModule],
+  imports: [TelemetryModule, TickModule, NftModule, HomeBannerModule, GlobalPowerModule, QuestModule, CheckInModule],
   controllers: [QueryController],
   providers: [QueryService],
   exports: [QueryService],
