@@ -4,7 +4,11 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Req,
+  Res,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { join } from 'path';
 import { PrismaService } from './prisma/prisma.service';
 
 @Controller()
@@ -13,17 +17,24 @@ export class HealthController {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // Liveness probe target used by Replit autoscale / Cloud Run.
+  // Dual-purpose root handler:
   //
-  // Always returns a small JSON payload so Cloud Run's promote-step health
-  // check succeeds regardless of which headers the probe sends. The frontend
-  // SPA is served by ServeStaticModule for all unmatched routes; browsers
-  // that hit "/" directly will be caught by that handler. We no longer try
-  // to sendFile index.html here — that HTML response was causing the promote
-  // step to fail because Cloud Run expects a fast, non-HTML 200.
+  // • Replit autoscale / Cloud Run liveness probe → GET / with no text/html
+  //   Accept header (typically Accept: */*).  We return a fast JSON 200 so the
+  //   promote-step health check passes.
+  //
+  // • Real browser → GET / with Accept: text/html.  ServeStaticModule would
+  //   normally handle this, but NestJS controller routes take priority over it,
+  //   so we explicitly send index.html here instead.  Without this, browsers
+  //   land on the health-check JSON rather than the React app.
   @Get()
-  root() {
-    return { status: 'ok', service: 'derp-universe' };
+  root(@Req() req: Request, @Res() res: Response) {
+    const accept = (req.headers['accept'] as string) ?? '';
+    if (accept.includes('text/html')) {
+      const spaIndex = join(__dirname, '..', '..', 'web', 'dist', 'index.html');
+      return res.sendFile(spaIndex);
+    }
+    return res.json({ status: 'ok', service: 'derp-universe' });
   }
 
   @Get('health')
