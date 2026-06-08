@@ -363,27 +363,6 @@ export class NftCollectionService {
     this.logger.log(`Location instance creation complete [${collection.id}]: upserted=${upserted}, failed=${failed}`);
   }
 
-  static readonly DEFAULT_SYNC_THROTTLE_MS = 5 * 60 * 1000;
-
-  /**
-   * Run syncUserCollections only if the user hasn't been synced within the
-   * given throttle window. Returns null when skipped, the SyncResult otherwise.
-   */
-  async syncIfStale(
-    userId: string,
-    minIntervalMs: number = NftCollectionService.DEFAULT_SYNC_THROTTLE_MS,
-  ): Promise<SyncResult | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { lastNftSyncAt: true } as any,
-    });
-    const last = (user as any)?.lastNftSyncAt as Date | null | undefined;
-    if (last && Date.now() - new Date(last).getTime() < minIntervalMs) {
-      return null;
-    }
-    return this.syncUserCollections(userId);
-  }
-
   /**
    * DB-only login reconciliation: matches NftAsset.ownerAddress against the
    * user's linked wallets and claims/transfers any entity or location rows that
@@ -937,15 +916,6 @@ export class NftCollectionService {
       this.logger.log(
         `NFT sync for user ${userId}: ${notImported} on-chain asset(s) held but not yet in entities table — awaiting on-chain reconciler worker.`,
       );
-    }
-
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { lastNftSyncAt: new Date() } as any,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to update lastNftSyncAt for user ${userId}: ${err}`);
     }
 
     return {
