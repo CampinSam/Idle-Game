@@ -69,7 +69,7 @@ export default function RosterCard({
   const showInlinePicker = inlinePicker && isPickerOpen;
 
   const panelClass = showInlinePicker
-    ? 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 flex flex-col overflow-hidden max-h-[65vh]'
+    ? 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 flex flex-col'
     : 'rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 p-3 flex flex-col gap-2';
 
   return (
@@ -121,8 +121,8 @@ export default function RosterCard({
       {showInlinePicker && (
         <>
           <div
-            className="flex-shrink-0 px-3 pt-3 pb-2 flex flex-col gap-2 rounded-t-xl"
-            style={{ background: 'linear-gradient(180deg,#1a1640 92%,rgba(26,22,64,0) 100%)' }}
+            className="sticky top-0 z-10 px-3 pt-3 pb-2 flex flex-col gap-2 rounded-t-xl"
+            style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
           >
             <div className="flex items-center justify-between gap-2 px-1">
               <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
@@ -156,7 +156,7 @@ export default function RosterCard({
               ]}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y">
+          <div className="touch-pan-y">
             <EntityList
               entities={sortedEntities}
               mode="picker"
