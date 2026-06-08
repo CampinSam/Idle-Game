@@ -217,6 +217,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   const [enumOptions, setEnumOptions] = useState<Record<string, string[]>>({});
   const [activeGroup, setActiveGroup] = useState<string>('');
   const activeGroupInitRef = React.useRef(false);
+  const [recordPanelCollapsed, setRecordPanelCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   const [editorState, dispatch] = useReducer(editorReducer, {
@@ -695,111 +696,142 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
       {/* ── Inner row: record list + form ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-      {/* ── DESKTOP: 260px record list panel ── */}
+      {/* ── DESKTOP: collapsible record list panel ── */}
       {!isMobile && (
-        <div style={{ width: 260, borderRight: '1px solid #1a1a3e', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search..."
-              style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box' }}
-            />
-            {!schema?.editOnly && (
+        <div style={{
+          width: recordPanelCollapsed ? 36 : 260,
+          borderRight: '1px solid #1a1a3e',
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          transition: 'width 0.18s ease',
+          overflow: 'hidden',
+          background: '#0d0d20',
+        }}>
+          {/* Panel header: search + new + collapse toggle */}
+          <div style={{ padding: recordPanelCollapsed ? '10px 4px' : '10px 12px', borderBottom: '1px solid #1a1a3e', display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, justifyContent: recordPanelCollapsed ? 'center' : undefined }}>
+            {!recordPanelCollapsed && (
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search..."
+                style={{ flex: 1, padding: '6px 10px', background: '#1a1a2e', border: '1px solid #333', borderRadius: 6, color: '#e0e0ff', fontSize: 12, boxSizing: 'border-box', minWidth: 0 }}
+              />
+            )}
+            {!recordPanelCollapsed && !schema?.editOnly && (
               <button
                 type="button"
                 disabled={!activeTable}
                 onClick={handleNewRecord}
                 style={{
                   padding: '6px 10px', background: activeTable ? '#7c3aed' : '#333', border: 'none',
-                  borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1,
+                  borderRadius: 6, color: '#fff', cursor: activeTable ? 'pointer' : 'not-allowed', fontSize: 18, lineHeight: 1, flexShrink: 0,
                 }}
                 title="New record"
               >
                 +
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setRecordPanelCollapsed(c => !c)}
+              title={recordPanelCollapsed ? 'Expand record list' : 'Collapse record list'}
+              style={{
+                background: 'none', border: '1px solid #2a2a4e', borderRadius: 6,
+                color: '#555', cursor: 'pointer', fontSize: 12,
+                width: 26, height: 26, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexShrink: 0, transition: 'color 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = '#a78bfa'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#555'; e.currentTarget.style.borderColor = '#2a2a4e'; }}
+            >
+              {recordPanelCollapsed ? '›' : '‹'}
+            </button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {!activeTable && (
-              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
-                Select a table from the sidebar
-              </div>
-            )}
-            {activeTable && recordsLoading && (
-              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>Loading...</div>
-            )}
-            {activeTable && !recordsLoading && filteredRecords.length === 0 && (
-              <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
-                {search ? 'No matches' : 'No records yet'}
-              </div>
-            )}
-            {filteredRecords.map(r => {
-              const rowBadge = !r._ghostDraft ? (schema?.getRowBadge?.(r) ?? null) : null;
-              const hasPendingDraft = !r._ghostDraft && !!pendingDrafts[r.id];
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => handleSelectRecord(r)}
-                  style={{
-                    padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
-                    background: selectedId === r.id
-                      ? (r._ghostDraft ? 'rgba(245,158,11,0.1)' : 'rgba(167,139,250,0.12)')
-                      : (r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'),
-                    borderLeft: selectedId === r.id ? `3px solid ${r._ghostDraft ? '#f59e0b' : '#a78bfa'}` : hasPendingDraft ? '3px solid #f59e0b' : '3px solid transparent',
-                  }}
-                  onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-                  onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? (r._ghostDraft ? '#fbbf24' : '#a78bfa') : (r._ghostDraft ? '#d97706' : '#e0e0ff'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-                      {r.id}
-                    </div>
-                    {r._ghostDraft && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
-                        padding: '1px 5px', borderRadius: 3,
-                        background: '#78350f', color: '#fbbf24',
-                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
-                      }}>
-                        PENDING CREATE
-                      </span>
-                    )}
-                    {hasPendingDraft && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
-                        padding: '1px 5px', borderRadius: 3,
-                        background: '#92400e', color: '#fbbf24',
-                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
-                      }}>
-                        DRAFT
-                      </span>
-                    )}
-                    {rowBadge && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
-                        padding: '1px 5px', borderRadius: 3,
-                        background: rowBadge.color, color: '#fff',
-                        textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
-                      }}>
-                        {rowBadge.label}
-                      </span>
-                    )}
+          {!recordPanelCollapsed && (
+            <>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {!activeTable && (
+                  <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+                    Select a table above
                   </div>
-                  {r.name && (
-                    <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.name}
+                )}
+                {activeTable && recordsLoading && (
+                  <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>Loading...</div>
+                )}
+                {activeTable && !recordsLoading && filteredRecords.length === 0 && (
+                  <div style={{ padding: 20, color: '#555', fontSize: 13, textAlign: 'center' }}>
+                    {search ? 'No matches' : 'No records yet'}
+                  </div>
+                )}
+                {filteredRecords.map(r => {
+                  const rowBadge = !r._ghostDraft ? (schema?.getRowBadge?.(r) ?? null) : null;
+                  const hasPendingDraft = !r._ghostDraft && !!pendingDrafts[r.id];
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => handleSelectRecord(r)}
+                      style={{
+                        padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1a1a3e',
+                        background: selectedId === r.id
+                          ? (r._ghostDraft ? 'rgba(245,158,11,0.1)' : 'rgba(167,139,250,0.12)')
+                          : (r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'),
+                        borderLeft: selectedId === r.id ? `3px solid ${r._ghostDraft ? '#f59e0b' : '#a78bfa'}` : hasPendingDraft ? '3px solid #f59e0b' : '3px solid transparent',
+                      }}
+                      onMouseEnter={e => { if (selectedId !== r.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                      onMouseLeave={e => { if (selectedId !== r.id) e.currentTarget.style.background = r._ghostDraft ? 'rgba(245,158,11,0.04)' : 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? (r._ghostDraft ? '#fbbf24' : '#a78bfa') : (r._ghostDraft ? '#d97706' : '#e0e0ff'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                          {r.id}
+                        </div>
+                        {r._ghostDraft && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                            padding: '1px 5px', borderRadius: 3,
+                            background: '#78350f', color: '#fbbf24',
+                            textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                          }}>
+                            PENDING CREATE
+                          </span>
+                        )}
+                        {hasPendingDraft && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                            padding: '1px 5px', borderRadius: 3,
+                            background: '#92400e', color: '#fbbf24',
+                            textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                          }}>
+                            DRAFT
+                          </span>
+                        )}
+                        {rowBadge && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.5px',
+                            padding: '1px 5px', borderRadius: 3,
+                            background: rowBadge.color, color: '#fff',
+                            textTransform: 'uppercase', flexShrink: 0, lineHeight: '14px',
+                          }}>
+                            {rowBadge.label}
+                          </span>
+                        )}
+                      </div>
+                      {r.name && (
+                        <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.name}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  );
+                })}
+              </div>
+              {activeTable && !recordsLoading && (
+                <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11, flexShrink: 0 }}>
+                  {records.length} record{records.length !== 1 ? 's' : ''}
                 </div>
-              );
-            })}
-          </div>
-          {activeTable && !recordsLoading && (
-            <div style={{ padding: '6px 14px', borderTop: '1px solid #1a1a3e', color: '#555', fontSize: 11 }}>
-              {records.length} record{records.length !== 1 ? 's' : ''}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

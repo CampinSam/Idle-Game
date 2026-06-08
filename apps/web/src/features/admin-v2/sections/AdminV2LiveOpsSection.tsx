@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { adminApi } from '../../admin/adminApi';
 
 interface GlobalPower {
@@ -48,6 +48,111 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function SearchableEffectSelect({
+  effectDefs,
+  value,
+  onChange,
+}: {
+  effectDefs: EffectDef[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const displayLabel = value
+    ? (() => {
+        const ef = effectDefs.find(e => e.id === value);
+        return ef ? (ef.name || ef.key || ef.id) : value;
+      })()
+    : '';
+
+  const filtered = effectDefs.filter(ef => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      ef.id.toLowerCase().includes(q) ||
+      (ef.name || '').toLowerCase().includes(q) ||
+      (ef.key || '').toLowerCase().includes(q)
+    );
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px', boxSizing: 'border-box',
+    background: '#111128', border: '1px solid #2a2a4e', borderRadius: 6,
+    color: '#e0e0ff', fontSize: 13, outline: 'none',
+  };
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      {open ? (
+        <input
+          autoFocus
+          style={{ ...inputStyle, borderColor: 'rgba(167,139,250,0.6)' }}
+          placeholder="Search effect definitions…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+      ) : (
+        <div
+          style={{ ...inputStyle, cursor: 'pointer', color: value ? '#e0e0ff' : '#4a4a7a' }}
+          onClick={() => { setOpen(true); setQuery(''); }}
+        >
+          {value ? displayLabel : '— none / manual effect —'}
+        </div>
+      )}
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: '#111128', border: '1px solid #2a2a4e', borderRadius: 6,
+          maxHeight: 220, overflowY: 'auto', marginTop: 2,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        }}>
+          <div
+            style={{ padding: '8px 12px', fontSize: 13, color: '#6060a0', cursor: 'pointer' }}
+            onMouseDown={() => { onChange(''); setOpen(false); setQuery(''); }}
+          >
+            — none / manual effect —
+          </div>
+          {filtered.map(ef => (
+            <div
+              key={ef.id}
+              style={{
+                padding: '8px 12px', fontSize: 13, cursor: 'pointer',
+                color: ef.id === value ? '#a78bfa' : '#e0e0ff',
+                background: ef.id === value ? 'rgba(167,139,250,0.1)' : 'transparent',
+              }}
+              onMouseDown={() => { onChange(ef.id); setOpen(false); setQuery(''); }}
+              onMouseEnter={e => { if (ef.id !== value) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              onMouseLeave={e => { if (ef.id !== value) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <span style={{ fontWeight: 600 }}>{ef.name || ef.key || ef.id}</span>
+              {ef.id !== (ef.name || ef.key) && (
+                <span style={{ marginLeft: 8, color: '#4a4a7a', fontSize: 11 }}>{ef.id}</span>
+              )}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ padding: '8px 12px', fontSize: 12, color: '#4a4a7a' }}>No matches</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface CreateFormProps {
   effectDefs: EffectDef[];
   onCreated: () => void;
@@ -58,6 +163,7 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
   const [label, setLabel] = useState('');
   const [effectDefId, setEffectDefId] = useState<string>('');
   const [durationMinutes, setDurationMinutes] = useState(60);
+  const [scheduledFor, setScheduledFor] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +177,7 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
         label: label.trim(),
         effectDefId: effectDefId || null,
         durationMinutes,
+        scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
       });
       onCreated();
     } catch (err: any) {
@@ -91,6 +198,12 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
     letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6,
   };
 
+  const durationDisplay = durationMinutes < 60
+    ? `${durationMinutes}m`
+    : durationMinutes % 60 === 0
+      ? `${durationMinutes / 60}h`
+      : `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`;
+
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 540 }}>
       <div>
@@ -101,21 +214,21 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
           onChange={e => setLabel(e.target.value)}
           placeholder="e.g. Double XP Weekend"
           autoFocus
+          onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
         />
       </div>
 
       <div>
         <label style={labelStyle}>Effect Definition</label>
-        <select
-          style={inputStyle}
+        <SearchableEffectSelect
+          effectDefs={effectDefs}
           value={effectDefId}
-          onChange={e => setEffectDefId(e.target.value)}
-        >
-          <option value="">— none / manual effect —</option>
-          {effectDefs.map(ef => (
-            <option key={ef.id} value={ef.id}>{ef.name || ef.key || ef.id}</option>
-          ))}
-        </select>
+          onChange={setEffectDefId}
+        />
+        <div style={{ fontSize: 11, color: '#4a4a7a', marginTop: 4 }}>
+          Leave blank to create a global power without a linked effect definition.
+        </div>
       </div>
 
       <div>
@@ -127,13 +240,24 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
           min={1}
           max={10080}
           onChange={e => setDurationMinutes(Number(e.target.value))}
+          onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
+        />
+        <div style={{ fontSize: 11, color: '#4a4a7a', marginTop: 4 }}>{durationDisplay}</div>
+      </div>
+
+      <div>
+        <label style={labelStyle}>Schedule For (optional)</label>
+        <input
+          type="datetime-local"
+          style={{ ...inputStyle, colorScheme: 'dark' }}
+          value={scheduledFor}
+          onChange={e => setScheduledFor(e.target.value)}
+          onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
         />
         <div style={{ fontSize: 11, color: '#4a4a7a', marginTop: 4 }}>
-          {durationMinutes < 60
-            ? `${durationMinutes}m`
-            : durationMinutes % 60 === 0
-              ? `${durationMinutes / 60}h`
-              : `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`}
+          Leave blank to activate immediately. Set a future time to schedule.
         </div>
       </div>
 
@@ -153,7 +277,7 @@ function CreateForm({ effectDefs, onCreated, onCancel }: CreateFormProps) {
             cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
           }}
         >
-          {saving ? 'Creating…' : 'Create Global Power'}
+          {saving ? 'Creating…' : scheduledFor ? 'Schedule Global Power' : 'Activate Global Power'}
         </button>
         <button
           type="button"
