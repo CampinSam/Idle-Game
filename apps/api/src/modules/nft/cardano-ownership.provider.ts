@@ -166,26 +166,38 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
   }
 
   /**
-   * Like getOwnedAssets but throws on any RPC failure rather than returning [].
-   * Use this when callers need to distinguish "wallet genuinely has 0 NFTs" from
-   * "the query failed and we cannot trust an empty result".
+   * Like getOwnedAssets but fail-closed: throws on any RPC failure rather than
+   * returning [].  Callers must treat a thrown error as "query failed — result
+   * is non-authoritative" and skip unclaim reconciliation for that wallet.
+   *
+   * Stake-address fallback behaviour:
+   * - 404 on stake endpoint → stake key not yet registered; fall through to
+   *   base-address lookup (this is a definitive "no stake registration", not
+   *   an RPC error).
+   * - Any other non-2xx on stake endpoint → throw immediately (fail-closed).
+   *   We do NOT fall back to base-address lookup on a real RPC error because
+   *   a transient failure would otherwise produce an apparently authoritative
+   *   empty result and trigger false unclaiming.
    */
   async getOwnedAssetsStrict(address: string, policyId: string): Promise<OwnedAsset[]> {
     if (!this.apiKey) {
       throw new Error('BLOCKFROST_API_KEY is not set — cannot fetch owned assets');
     }
 
+    // Pure stake address — query directly, 404 = not registered = 0 assets.
     if (address.startsWith('stake1') || address.startsWith('stake_test1')) {
-      return this.getAssetsByStakeAddressStrict(address, policyId);
+      const result = await this.getAssetsByStakeAddressStrict(address, policyId);
+      return result ?? [];
     }
 
+    // Base address — try to extract and use its stake key first.
     const stakeAddress = this.extractStakeAddress(address);
     if (stakeAddress) {
-      try {
-        return await this.getAssetsByStakeAddressStrict(stakeAddress, policyId);
-      } catch (err) {
-        this.logger.warn(`Strict stake lookup failed for ${stakeAddress}, falling back to address: ${err}`);
-      }
+      // Returns null ONLY on 404 (stake key not registered); throws on real errors.
+      const stakeResult = await this.getAssetsByStakeAddressStrict(stakeAddress, policyId);
+      if (stakeResult !== null) return stakeResult;
+      // stakeResult === null → stake key not registered on-chain; fall through
+      // to base-address lookup which is authoritative in this case.
     }
 
     return this.getAssetsByAddressStrict(address, policyId);
@@ -217,13 +229,18 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
     return results;
   }
 
-  private async getAssetsByStakeAddressStrict(stakeAddress: string, policyId: string): Promise<OwnedAsset[]> {
+  /**
+   * Returns null when the stake address is not registered (HTTP 404) so the
+   * caller can fall back to base-address lookup.  Throws on any other non-2xx
+   * response (fail-closed — do not treat this as an empty result).
+   */
+  private async getAssetsByStakeAddressStrict(stakeAddress: string, policyId: string): Promise<OwnedAsset[] | null> {
     const results: OwnedAsset[] = [];
     let page = 1;
     while (true) {
       const url = `${this.baseUrl}/accounts/${stakeAddress}/utxos?count=100&page=${page}`;
       const res = await fetch(url, { headers: { project_id: this.apiKey! } });
-      if (res.status === 404) return [];
+      if (res.status === 404) return null;
       if (!res.ok) {
         throw new Error(`Blockfrost stake UTXOs HTTP ${res.status} for ${stakeAddress}`);
       }
