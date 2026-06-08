@@ -130,6 +130,18 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
     }
   }
 
+  /**
+   * Return the stake-key form of a Cardano address, or the original address
+   * if it is already a stake address or the stake key cannot be derived.
+   * Used to canonicalize addresses before storing or comparing — stake keys
+   * are the canonical identity for a Cardano wallet across address types.
+   */
+  normalizeToStakeKey(address: string): string {
+    if (address.startsWith('stake1') || address.startsWith('stake_test1')) return address;
+    const stake = this.extractStakeAddress(address);
+    return stake ?? address;
+  }
+
   private extractStakeAddress(baseAddress: string): string | null {
     try {
       const decoded = bech32Decode(baseAddress);

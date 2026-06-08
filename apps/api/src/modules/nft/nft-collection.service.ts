@@ -400,7 +400,19 @@ export class NftCollectionService {
     });
     if (wallets.length === 0) return { claimed: 0, transfers: 0 };
 
-    const addresses: string[] = wallets.map((w: any) => w.address as string);
+    const rawAddresses: string[] = wallets.map((w: any) => w.address as string);
+    // Expand the address set: for each base address also include its derived
+    // stake key, and vice versa.  NftAsset.ownerAddress is stored in canonical
+    // (stake-key) form by the sweep; linked wallets may use either form, so we
+    // must query with both to avoid missing ownership on stake-linked wallets.
+    const addresses = Array.from(
+      new Set(
+        rawAddresses.flatMap((a) => {
+          const stake = this.cardanoProvider.normalizeToStakeKey(a);
+          return stake !== a ? [a, stake] : [a];
+        }),
+      ),
+    );
 
     const ownedAssets = await (this.prisma as any).nftAsset.findMany({
       where: { ownerAddress: { in: addresses } },
@@ -998,16 +1010,34 @@ export class NftCollectionService {
             asset.tokenName,
           );
 
+          // Normalize to stake-key canonical form before storing and matching.
+          // Blockfrost /assets/{unit}/addresses returns payment/base addresses;
+          // users may have linked their stake address — normalizing ensures both
+          // forms resolve to the same user without an address-form mismatch.
+          const canonicalOwner = onChainOwnerAddress
+            ? this.cardanoProvider.normalizeToStakeKey(onChainOwnerAddress)
+            : null;
+
           await (this.prisma as any).nftAsset.update({
             where: { nftAssetId: asset.nftAssetId },
-            data: { ownerAddress: onChainOwnerAddress, lastSyncedAt: new Date() },
+            data: { ownerAddress: canonicalOwner, lastSyncedAt: new Date() },
           });
 
-          const newOwnerUserId: string | null = onChainOwnerAddress
-            ? await (this.prisma as any).linkedWallet
-                .findFirst({ where: { address: onChainOwnerAddress }, select: { userId: true } })
-                .then((w: any) => w?.userId ?? null)
-            : null;
+          // Build candidate address set: canonical (stake-key) form PLUS the
+          // original payment address, to match wallets linked in either form.
+          const ownerCandidates: string[] = [
+            ...(canonicalOwner ? [canonicalOwner] : []),
+            ...(onChainOwnerAddress && onChainOwnerAddress !== canonicalOwner
+              ? [onChainOwnerAddress]
+              : []),
+          ];
+
+          const newOwnerUserId: string | null =
+            ownerCandidates.length > 0
+              ? await (this.prisma as any).linkedWallet
+                  .findFirst({ where: { address: { in: ownerCandidates } }, select: { userId: true } })
+                  .then((w: any) => w?.userId ?? null)
+              : null;
 
           const collection = collectionMap.get(asset.collectionId);
           if (!collection) {
