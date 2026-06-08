@@ -206,19 +206,23 @@ export function MissionBuilder(props: MissionBuilderProps) {
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
         {/* Sticky header */}
-        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-[rgba(139,92,246,0.18)]" style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}>
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="flex-shrink-0 px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/15 text-white text-[12px] font-bold hover:bg-white/10 cursor-pointer"
-            >
-              ← Back
-            </button>
-          )}
-          <span className="flex-1 min-w-0 font-cinzel text-[14px] font-extrabold tracking-wide text-white truncate">
-            {rawActiveDef.name}
-          </span>
-          <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex-shrink-0 flex flex-col gap-1 px-3 pt-2 pb-2 border-b border-[rgba(139,92,246,0.18)]" style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}>
+          {/* Row 1: Back + Title */}
+          <div className="flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/15 text-white text-[12px] font-bold hover:bg-white/10 cursor-pointer"
+              >
+                ← Back
+              </button>
+            )}
+            <span className="flex-1 min-w-0 font-cinzel text-[14px] font-extrabold tracking-wide text-white leading-tight">
+              {rawActiveDef.name}
+            </span>
+          </div>
+          {/* Row 2: Badges */}
+          <div className="flex items-center gap-1 flex-wrap pl-0.5">
             <Badge tone="info" className="!border-[rgba(168,85,247,0.4)] !bg-[rgba(168,85,247,0.3)] !text-[#C084FC] !text-[9px]">{diffInfo.tier}</Badge>
             <Badge tone="neutral" className="!border-transparent !text-white !text-[9px]" style={{ background: diffInfo.color }}>{diffInfo.label}</Badge>
             {missionDuration > 0 && (
