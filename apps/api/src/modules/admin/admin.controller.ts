@@ -342,7 +342,7 @@ export class AdminController {
         COALESCE(e."display"->>'name', '') AS name,
         e."definitionId",
         COALESCE(ed.name, e."definitionId") AS "definitionName",
-        e.level,
+        COALESCE((e.progression->>'level')::int, 1) AS level,
         COALESCE(e."state"->>'status', 'idle') AS status,
         e."ownerUserId",
         u.username AS "ownerUsername",
