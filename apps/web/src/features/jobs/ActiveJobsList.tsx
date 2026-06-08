@@ -61,6 +61,51 @@ interface SkipInfo {
   skipType?: string;
 }
 
+function computeCurrentCosts(
+  baseCosts: SkipCost[],
+  skipType: string | undefined,
+  remainingMs: number,
+  totalMs: number,
+): SkipCost[] {
+  if (skipType !== 'scaling' || totalMs <= 0 || remainingMs <= 0) {
+    return baseCosts;
+  }
+  const multiplier = remainingMs / totalMs;
+  return baseCosts.map((c) => ({
+    ...c,
+    amount: multiplier < 1 ? Math.max(1, Math.ceil(c.amount * multiplier)) : c.amount,
+  }));
+}
+
+function SkipCostChip({ cost, affordable }: { cost: SkipCost; affordable: boolean }) {
+  const currencyDefs = useAppSelector((s) => (s.game as any).currencyDefs ?? []);
+  const itemDefs = useAppSelector((s) => (s.game as any).itemDefs ?? []);
+
+  const iconKey = useMemo(() => {
+    if (cost.type === 'currency') {
+      const def = currencyDefs.find((d: any) => d.id === cost.id);
+      return def?.iconKey ?? cost.id;
+    }
+    if (cost.type === 'item') {
+      const def = itemDefs.find((d: any) => d.id === cost.id);
+      return def?.iconKey ?? cost.id;
+    }
+    return cost.id;
+  }, [cost, currencyDefs, itemDefs]);
+
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-opacity ${
+        affordable
+          ? 'border-[rgba(6,182,212,0.4)] bg-[rgba(6,182,212,0.08)] text-[#67e8f9]'
+          : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-text-secondary opacity-50'
+      }`}
+    >
+      <ItemQty src={iconKey} amount={cost.amount} size={11} />
+    </span>
+  );
+}
+
 function SkipCostEntry({ cost }: { cost: SkipCost }) {
   const currencyDefs = useAppSelector((s) => (s.game as any).currencyDefs ?? []);
   const itemDefs = useAppSelector((s) => (s.game as any).itemDefs ?? []);
@@ -83,19 +128,50 @@ function SkipCostEntry({ cost }: { cost: SkipCost }) {
 interface ActiveJobRowProps {
   job: any;
   remainingMs: number;
+  totalMs: number;
   progressPct: number;
   compact?: boolean;
   onClick: () => void;
   onSkip?: () => void;
+  skipBaseCosts?: SkipCost[];
+  skipType?: string;
 }
 
-export function ActiveJobRow({ job, remainingMs, progressPct, compact, onClick, onSkip }: ActiveJobRowProps) {
+export function ActiveJobRow({
+  job,
+  remainingMs,
+  totalMs,
+  progressPct,
+  compact,
+  onClick,
+  onSkip,
+  skipBaseCosts,
+  skipType,
+}: ActiveJobRowProps) {
   const isReady = remainingMs <= 0;
   const icon = JOB_ICON[job.type] ?? '⏱️';
   const label = JOB_LABEL[job.type] ?? job.type;
   const color = JOB_COLOR[job.type] ?? '#8b5cf6';
   const timeLabel = isReady ? null : formatTimeLeft(remainingMs);
   const showSkipButton = !!onSkip && !isReady;
+
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
+
+  const currentCosts = useMemo(() => {
+    if (!skipBaseCosts || skipBaseCosts.length === 0 || isReady) return [];
+    return computeCurrentCosts(skipBaseCosts, skipType, remainingMs, totalMs);
+  }, [skipBaseCosts, skipType, remainingMs, totalMs, isReady]);
+
+  const canAfford = useMemo(
+    () =>
+      currentCosts.every((c) => {
+        if (c.type !== 'currency') return true;
+        return (Number(currencyBalances[c.id] ?? 0)) >= c.amount;
+      }),
+    [currentCosts, currencyBalances],
+  );
+
+  const showCostChips = currentCosts.length > 0 && !isReady;
 
   return (
     <div
@@ -118,15 +194,24 @@ export function ActiveJobRow({ job, remainingMs, progressPct, compact, onClick, 
             <span className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-bold text-[#e2d9ff] capitalize truncate`}>
               {job.name || label}
             </span>
-            {isReady ? (
-              <span className="flex-shrink-0 bg-[rgba(16,185,129,0.2)] text-[#6ee7b7] text-[10px] font-extrabold px-2 py-0.5 rounded-md tracking-wide">
-                READY
-              </span>
-            ) : timeLabel ? (
-              <span className="flex-shrink-0 text-[11px] font-bold text-text-secondary whitespace-nowrap">
-                {timeLabel}
-              </span>
-            ) : null}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {showCostChips && (
+                <div className="flex items-center gap-1">
+                  {currentCosts.map((c, i) => (
+                    <SkipCostChip key={`${c.id}-${i}`} cost={c} affordable={canAfford} />
+                  ))}
+                </div>
+              )}
+              {isReady ? (
+                <span className="bg-[rgba(16,185,129,0.2)] text-[#6ee7b7] text-[10px] font-extrabold px-2 py-0.5 rounded-md tracking-wide">
+                  READY
+                </span>
+              ) : timeLabel ? (
+                <span className="text-[11px] font-bold text-text-secondary whitespace-nowrap">
+                  {timeLabel}
+                </span>
+              ) : null}
+            </div>
           </div>
 
           <div className={`w-full ${compact ? 'h-1' : 'h-1.5'} rounded-full bg-[rgba(255,255,255,0.07)] overflow-hidden`}>
@@ -243,7 +328,7 @@ export function ActiveJobsList({
             : totalMs > 0
             ? Math.min(100, Math.max(0, (1 - remainingMs / totalMs) * 100))
             : 0;
-        return { ...j, remainingMs, progressPct };
+        return { ...j, remainingMs, totalMs, progressPct };
       })
       .sort((a: any, b: any) => {
         const aReady = a.remainingMs <= 0;
@@ -328,17 +413,23 @@ export function ActiveJobsList({
 
   return (
     <div>
-      {displayed.map((j: any) => (
-        <ActiveJobRow
-          key={j.id}
-          job={j}
-          remainingMs={j.remainingMs}
-          progressPct={j.progressPct}
-          compact={compact}
-          onClick={() => handleJobClick(j)}
-          onSkip={skipInfoMap.get(j.id)?.skipable ? () => handleSkipClick(j.id) : undefined}
-        />
-      ))}
+      {displayed.map((j: any) => {
+        const si = skipInfoMap.get(j.id);
+        return (
+          <ActiveJobRow
+            key={j.id}
+            job={j}
+            remainingMs={j.remainingMs}
+            totalMs={j.totalMs}
+            progressPct={j.progressPct}
+            compact={compact}
+            onClick={() => handleJobClick(j)}
+            onSkip={si?.skipable ? () => handleSkipClick(j.id) : undefined}
+            skipBaseCosts={si?.skipable ? si.skipCost : undefined}
+            skipType={si?.skipType}
+          />
+        );
+      })}
 
       {confirmSkip && (
         <div className="mx-4 mt-2 mb-1 rounded-xl border border-[rgba(6,182,212,0.3)] bg-[rgba(6,182,212,0.07)] px-4 py-3 flex flex-col gap-2.5">
