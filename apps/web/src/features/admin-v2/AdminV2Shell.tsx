@@ -19,6 +19,7 @@ import AdminV2AccountsSection from './sections/AdminV2AccountsSection';
 import AdminV2MetricsSection from './sections/AdminV2MetricsSection';
 import AdminV2StubSection from './sections/AdminV2StubSection';
 import AdminV2InstancesSection from './sections/AdminV2InstancesSection';
+import AdminV2LiveOpsSection from './sections/AdminV2LiveOpsSection';
 
 type Section =
   | 'dashboard'
@@ -112,7 +113,7 @@ const NAV_ITEMS: NavItem[] = [
     subs: SYSTEM_TOOLS.map(t => ({ key: t.key, label: t.label })),
   },
   { key: 'accounts', label: 'Accounts', icon: <UserCog size={15} />, requireSuperAdmin: true },
-  { key: 'live-ops', label: 'Live Ops', icon: <Radio size={15} />, stub: true },
+  { key: 'live-ops', label: 'Live Ops', icon: <Radio size={15} />, requirePerm: 'system_tools' },
   { key: 'support', label: 'Support', icon: <HeadphonesIcon size={15} />, stub: true },
   { key: 'moderation', label: 'Moderation', icon: <Shield size={15} />, stub: true },
 ];
@@ -337,16 +338,18 @@ function Sidebar({
 
   return (
     <div className={`flex flex-col bg-[#0d0e1f] border-r border-[#1a1b35] transition-[width] duration-200 overflow-hidden flex-shrink-0 ${collapsed ? 'w-[48px]' : 'w-[220px]'}`}>
-      <div className="flex items-center gap-[10px] px-3 py-[14px] border-b border-[#1a1b35] flex-shrink-0 min-h-[52px]">
-        <div
-          className="w-6 h-6 rounded-[6px] flex-shrink-0 flex items-center justify-center text-[12px] font-[800] text-white"
-          style={{ backgroundImage: 'linear-gradient(135deg,#6c63ff,#a855f7)' }}
-        >
-          <Layers size={14} />
-        </div>
+      <div className={`flex items-center border-b border-[#1a1b35] flex-shrink-0 min-h-[52px] ${collapsed ? 'justify-center py-[14px]' : 'gap-[10px] px-3 py-[14px]'}`}>
+        {!collapsed && (
+          <div
+            className="w-6 h-6 rounded-[6px] flex-shrink-0 flex items-center justify-center text-[12px] font-[800] text-white"
+            style={{ backgroundImage: 'linear-gradient(135deg,#6c63ff,#a855f7)' }}
+          >
+            <Layers size={14} />
+          </div>
+        )}
         {!collapsed && <span className="text-[13px] font-bold text-[#e0e0ff] whitespace-nowrap overflow-hidden flex-1">Admin v2</span>}
         <button
-          className="ml-auto flex-shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer text-[#4a4a7a] rounded-[6px] p-[4px_6px] transition-[background,color] duration-[120ms] hover:bg-[#1a1b35] hover:text-[#8080b0]"
+          className={`flex-shrink-0 flex items-center justify-center bg-transparent border-0 cursor-pointer text-[#4a4a7a] rounded-[6px] p-[4px_6px] transition-[background,color] duration-[120ms] hover:bg-[#1a1b35] hover:text-[#8080b0] ${!collapsed ? 'ml-auto' : ''}`}
           onClick={onCollapse}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -609,20 +612,7 @@ export default function AdminV2Shell() {
       case 'accounts':
         return <AdminV2AccountsSection me={me} />;
       case 'live-ops':
-        return (
-          <AdminV2StubSection
-            icon="📡"
-            title="Live Ops"
-            description="Tools for managing live game events, seasonal content pushes, and time-limited campaigns without a code deploy."
-            plannedFeatures={[
-              'Scheduled content activation and deactivation',
-              'Event calendar with conflict detection',
-              'Bulk reward distribution to player segments',
-              'A/B test flag management',
-              'Emergency killswitch controls',
-            ]}
-          />
-        );
+        return <AdminV2LiveOpsSection />;
       case 'support':
         return (
           <AdminV2StubSection

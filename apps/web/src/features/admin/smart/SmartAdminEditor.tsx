@@ -215,7 +215,8 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   const [isNew, setIsNew] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [enumOptions, setEnumOptions] = useState<Record<string, string[]>>({});
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string>('');
+  const activeGroupInitRef = React.useRef(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
   const [editorState, dispatch] = useReducer(editorReducer, {
@@ -328,6 +329,16 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     loadRecords(key);
     loadPendingDrafts(key, me?.id);
     loadRejectedDrafts(key, me?.id);
+  };
+
+  const handleGroupChange = (group: string) => {
+    setActiveGroup(group);
+    const groupEntry = tableGroupsForSidebar.find(g => g.group === group);
+    if (!groupEntry) return;
+    const alreadyInGroup = groupEntry.items.some(t => t.key === activeTable);
+    if (!alreadyInGroup && groupEntry.items.length > 0) {
+      handleSelectTable(groupEntry.items[0].key);
+    }
   };
 
   const handleSelectRecord = (rec: any) => {
@@ -537,7 +548,22 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     return grouped;
   }, [tables]);
 
-  const sidebarWidth = sidebarCollapsed ? 44 : 220;
+  const filteredGroupTables = useMemo(() => {
+    const groupEntry = tableGroupsForSidebar.find(g => g.group === activeGroup);
+    return groupEntry?.items ?? [];
+  }, [tableGroupsForSidebar, activeGroup]);
+
+  // Initialize activeGroup once tables are available (must be after tableGroupsForSidebar useMemo)
+  useEffect(() => {
+    if (activeGroupInitRef.current || !tableGroupsForSidebar.length) return;
+    activeGroupInitRef.current = true;
+    if (initialGroup && tableGroupsForSidebar.some(g => g.group === initialGroup)) {
+      setActiveGroup(initialGroup);
+    } else {
+      setActiveGroup(tableGroupsForSidebar[0].group);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableGroupsForSidebar]);
 
   const controlStyle: React.CSSProperties = {
     height: 40,
@@ -556,7 +582,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   return (
     <div style={{
       display: 'flex',
-      flexDirection: isMobile ? 'column' : 'row',
+      flexDirection: 'column',
       height: '100vh',
       background: '#0a0a1a',
       color: '#e0e0ff',
@@ -631,75 +657,43 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
         </div>
       )}
 
-      {/* ── DESKTOP: collapsible sidebar ── */}
+      {/* ── DESKTOP: group + table selector top bar ── */}
       {!isMobile && (
         <div style={{
-          width: sidebarWidth,
-          borderRight: '1px solid #1a1a3e',
-          overflowY: sidebarCollapsed ? 'hidden' : 'auto',
-          overflowX: 'hidden',
-          flexShrink: 0,
-          background: '#0d0d20',
-          transition: 'width 0.2s ease',
-          display: 'flex',
-          flexDirection: 'column',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '7px 14px', borderBottom: '1px solid #1a1a3e',
+          background: '#08081a', flexShrink: 0,
         }}>
-          <div style={{
-            padding: sidebarCollapsed ? '12px 0' : '14px 16px 10px',
-            borderBottom: '1px solid #1a1a3e',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: sidebarCollapsed ? 'center' : 'space-between',
-            flexShrink: 0,
-          }}>
-            {!sidebarCollapsed && (
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#a78bfa' }}>Def Editor</div>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(c => !c)}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              style={{
-                background: 'none', border: '1px solid #2a2a4e', borderRadius: 6,
-                color: '#666', cursor: 'pointer', fontSize: 14,
-                width: 28, height: 28, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', flexShrink: 0, transition: 'color 0.15s, border-color 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = '#a78bfa'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#666'; e.currentTarget.style.borderColor = '#2a2a4e'; }}
-            >
-              {sidebarCollapsed ? '›' : '‹'}
-            </button>
-          </div>
-
-          {!sidebarCollapsed && tableGroupsForSidebar.map(({ group, items }) => (
-            <div key={group}>
-              <div style={{ padding: '10px 16px 4px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
-                {group}
-              </div>
-              {items.map(t => (
-                <div
-                  key={t.key}
-                  onClick={() => handleSelectTable(t.key)}
-                  style={{
-                    padding: '8px 16px', cursor: 'pointer', fontSize: 13,
-                    background: activeTable === t.key ? 'rgba(167,139,250,0.15)' : 'transparent',
-                    color: activeTable === t.key ? '#a78bfa' : '#bbb',
-                    borderLeft: activeTable === t.key ? '3px solid #a78bfa' : '3px solid transparent',
-                    transition: 'all 0.1s', whiteSpace: 'nowrap', overflow: 'hidden',
-                  }}
-                  onMouseEnter={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
-                  onMouseLeave={e => { if (activeTable !== t.key) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {t.name}
-                </div>
-              ))}
-            </div>
-          ))}
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>Group</span>
+          <select
+            value={activeGroup}
+            onChange={e => handleGroupChange(e.target.value)}
+            style={{ ...controlStyle, height: 32, fontSize: 12, padding: '0 10px', minWidth: 130 }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
+          >
+            {tableGroupsForSidebar.map(({ group }) => (
+              <option key={group} value={group}>{group}</option>
+            ))}
+          </select>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>Table</span>
+          <select
+            value={activeTable}
+            onChange={e => { if (e.target.value) handleSelectTable(e.target.value); }}
+            style={{ ...controlStyle, height: 32, fontSize: 12, padding: '0 10px', minWidth: 180 }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
+          >
+            <option value="">— select —</option>
+            {filteredGroupTables.map(t => (
+              <option key={t.key} value={t.key}>{t.name}</option>
+            ))}
+          </select>
         </div>
       )}
+
+      {/* ── Inner row: record list + form ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
       {/* ── DESKTOP: 260px record list panel ── */}
       {!isMobile && (
@@ -1070,7 +1064,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
                   </div>
                 );
               })()}
-              <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ padding: '12px 20px', borderBottom: '1px solid #1a1a3e', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, position: 'sticky', top: 0, zIndex: 10, background: '#0a0a1a' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#e0e0ff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {isNew ? 'New Record' : (editorState.record.id || 'Record')}
@@ -1208,6 +1202,7 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
           </div>
         )}
       </div>
+      </div>{/* ── end inner row ── */}
     </div>
   );
 }
