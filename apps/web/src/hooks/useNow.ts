@@ -5,8 +5,20 @@ export function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(serverNow);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(serverNow()), intervalMs);
-    return () => clearInterval(id);
+    const tick = () => setNow(serverNow());
+    const id = setInterval(tick, intervalMs);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        tick();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [intervalMs]);
 
   return now;
