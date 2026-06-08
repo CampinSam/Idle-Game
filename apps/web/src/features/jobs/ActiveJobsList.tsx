@@ -31,6 +31,8 @@ const JOB_COLOR: Record<string, string> = {
   DustingJob: '#06b6d4',
 };
 
+const SKIPPABLE_JOB_TYPES = new Set(['DustingJob', 'MissionJob', 'CraftingJob', 'BuildingJob']);
+
 const JOB_SCREEN: Record<string, string> = {
   MissionJob: '/missions',
   CraftingJob: '/crafting',
@@ -252,6 +254,7 @@ export function ActiveJobRow({
 
 interface SkipConfirmState {
   jobId: string;
+  jobType: string;
   skipCost: SkipCost[];
 }
 
@@ -283,10 +286,10 @@ export function ActiveJobsList({
   const [skipExecuting, setSkipExecuting] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
 
-  // Prefetch skipInfo for every DustingJob so the button is only shown when actually skipable.
+  // Prefetch skipInfo for all skippable job types so the skip button is shown when applicable.
   useEffect(() => {
     const dustingJobs = (allActiveJobs as any[]).filter(
-      (j) => j.type === 'DustingJob' && !skipInfoMap.has(j.id),
+      (j) => SKIPPABLE_JOB_TYPES.has(j.type) && !skipInfoMap.has(j.id),
     );
     if (dustingJobs.length === 0) return;
 
@@ -369,11 +372,11 @@ export function ActiveJobsList({
     [pushModal, navigate, onBeforeNavigate],
   );
 
-  const handleSkipClick = useCallback((jobId: string) => {
+  const handleSkipClick = useCallback((jobId: string, jobType: string) => {
     const si = skipInfoMap.get(jobId);
     if (!si?.skipable) return;
     setSkipError(null);
-    setConfirmSkip({ jobId, skipCost: si.skipCost ?? [] });
+    setConfirmSkip({ jobId, jobType, skipCost: si.skipCost ?? [] });
   }, [skipInfoMap]);
 
   const handleConfirmSkip = useCallback(async () => {
@@ -427,7 +430,7 @@ export function ActiveJobsList({
             progressPct={j.progressPct}
             compact={compact}
             onClick={() => handleJobClick(j)}
-            onSkip={si?.skipable ? () => handleSkipClick(j.id) : undefined}
+            onSkip={si?.skipable ? () => handleSkipClick(j.id, j.type) : undefined}
             skipBaseCosts={si?.skipable ? si.skipCost : undefined}
             skipType={si?.skipType}
           />
@@ -436,7 +439,7 @@ export function ActiveJobsList({
 
       {confirmSkip && (
         <div className="mx-4 mt-2 mb-1 rounded-xl border border-[rgba(6,182,212,0.3)] bg-[rgba(6,182,212,0.07)] px-4 py-3 flex flex-col gap-2.5">
-          <p className="text-[12px] font-bold text-[#e2d9ff]">Skip dusting early?</p>
+          <p className="text-[12px] font-bold text-[#e2d9ff]">Skip {JOB_LABEL[confirmSkip.jobType]?.toLowerCase() ?? 'job'} early?</p>
 
           {confirmSkip.skipCost.length > 0 ? (
             <div className="flex flex-col gap-1">
