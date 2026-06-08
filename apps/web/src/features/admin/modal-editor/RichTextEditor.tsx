@@ -230,7 +230,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
               ${'{…}'}
             </button>
             {tokenPickerOpen && (
-              <div className="absolute top-full left-0 z-20 mt-1 min-w-[240px] max-w-[320px] max-h-[280px] overflow-y-auto bg-[#0a0a1e] border border-[#2a2a4e] rounded-[8px] p-[6px] shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex flex-col gap-[2px]">
+              <div className="absolute top-full left-0 z-20 mt-1 min-w-[240px] max-w-[320px] max-h-[280px] overflow-y-auto touch-pan-y bg-[#0a0a1e] border border-[#2a2a4e] rounded-[8px] p-[6px] shadow-[0_10px_30px_rgba(0,0,0,0.6)] flex flex-col gap-[2px]">
                 <div className="text-[10px] font-[800] tracking-[0.1em] uppercase text-[#4c4c7a] px-[6px] py-1">Insert token</div>
                 {tokenPaths && tokenPaths.length > 0 ? (
                   tokenPaths.map(p => (
@@ -270,7 +270,7 @@ export default function RichTextEditor({ doc, onChange, tokenPaths }: Props) {
       {!showJson && (
         <div
           ref={ref}
-          className="me-rte-area min-h-[120px] max-h-[360px] overflow-y-auto px-[14px] py-3 bg-[#06061a] text-[#e2e8f0] text-[14px] leading-[1.6] outline-none"
+          className="me-rte-area min-h-[120px] max-h-[360px] overflow-y-auto touch-pan-y px-[14px] py-3 bg-[#06061a] text-[#e2e8f0] text-[14px] leading-[1.6] outline-none"
           contentEditable
           suppressContentEditableWarning
           onInput={emit}

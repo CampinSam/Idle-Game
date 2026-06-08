@@ -147,7 +147,7 @@ export function MissionShell({
       </section>
 
       {/* Categories / mission list — scrollable middle */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3">
+      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y p-3">
         {middle}
       </div>
 
@@ -168,7 +168,7 @@ export function MissionShell({
           )}
         </button>
         {!collapsed && (
-          <div className="px-3 pb-3 max-h-[35vh] overflow-y-auto">
+          <div className="px-3 pb-3 max-h-[35vh] overflow-y-auto touch-pan-y">
             {missionHistory.length === 0 ? (
               <EmptyState message="No mission activity yet." />
             ) : (

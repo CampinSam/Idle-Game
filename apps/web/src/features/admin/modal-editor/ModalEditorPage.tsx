@@ -165,7 +165,7 @@ export default function ModalEditorPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="flex-1 min-h-0 flex flex-col gap-0 p-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 flex flex-col gap-0 p-0 overflow-y-auto touch-pan-y">
         {/* ── Database Record ── */}
         <div style={{ borderBottom: '1px solid #1a1a3e' }}>
           <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #0e0e28 0%, #0a0a1e 100%)', borderBottom: '1px solid #1a1a3e' }}>

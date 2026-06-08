@@ -214,7 +214,7 @@ export default function EquipPickerModal({
           </div>
         )}
 
-        <div className="flex-1 min-h-0 px-3.5 pb-1 pt-2 overflow-y-auto">
+        <div className="flex-1 min-h-0 px-3.5 pb-1 pt-2 overflow-y-auto touch-pan-y">
           {candidates.length === 0 ? (
             <div className="py-8 px-4 text-slate-400 text-[13px] text-center leading-[1.4]">
               {hasEquipped

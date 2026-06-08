@@ -46,7 +46,7 @@ const CHAIN_COLORS: Record<string, string> = {
 };
 
 const WRAPPER_CARD =
-  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y ' +
   '[-webkit-overflow-scrolling:touch] overscroll-contain';
 
 const TAB_BASE =

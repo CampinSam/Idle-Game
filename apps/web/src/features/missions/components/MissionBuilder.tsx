@@ -227,7 +227,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y">
           <ContentDocumentRenderer
             documentId="mission_planning_document"
             baseContext={{ missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' }}

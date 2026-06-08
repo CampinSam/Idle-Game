@@ -3,7 +3,7 @@ import { useSyncAchievements } from '../../hooks/useSyncSelectors';
 import { AchievementCard } from './AchievementCard';
 
 const PAGE_CLASS =
-  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y ' +
   '[-webkit-overflow-scrolling:touch] overscroll-contain p-3.5 space-y-4';
 
 export default function AchievementsContent() {

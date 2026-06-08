@@ -52,7 +52,7 @@ export default function BlockPicker({ open, onClose, onPick }: Props) {
   const totalMatches = Object.values(groups).reduce((acc, arr) => acc + arr.length, 0);
 
   return (
-    <div ref={rootRef} className="border border-[#1a1a3e] rounded-[10px] p-[14px] bg-[#0a0a1e] overflow-y-auto max-h-[600px]">
+    <div ref={rootRef} className="border border-[#1a1a3e] rounded-[10px] p-[14px] bg-[#0a0a1e] overflow-y-auto touch-pan-y max-h-[600px]">
       <div className="flex gap-2 mb-3">
         <input
           autoFocus

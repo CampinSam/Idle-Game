@@ -134,7 +134,7 @@ export default function ScriptingHelp({ dynamicPaths = [], defaultOpen = false, 
               {dynamicPaths.length > 0 && (
                 <>
                   <div className="text-[10px] font-[800] tracking-[0.12em] uppercase text-[#4c4c7a] mt-[6px]">From the current payload sample</div>
-                  <div className="flex flex-wrap gap-1 max-h-[200px] overflow-y-auto">
+                  <div className="flex flex-wrap gap-1 max-h-[200px] overflow-y-auto touch-pan-y">
                     {dynamicPaths.map(p => (
                       <button
                         key={p}

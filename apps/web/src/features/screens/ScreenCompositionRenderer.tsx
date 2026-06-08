@@ -101,7 +101,7 @@ function VerticalFeedLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}
@@ -165,7 +165,7 @@ function TabbedFeedLayout({
           ))}
         </div>
       )}
-      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+      <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
         {activeSections.map((section) => (
           <SectionRenderer
             key={section.id}
@@ -189,7 +189,7 @@ function ModalStackLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-black/40 backdrop-blur-sm [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y p-4 bg-black/40 backdrop-blur-sm [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <div className="flex flex-col items-center gap-3">
         {sections.map((section) => (
           <div key={section.id} className="w-full max-w-md">
@@ -241,7 +241,7 @@ function FixedStructureLayout({
   );
 
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {renderSlot('header')}
       <div>{renderSlot('main')}</div>
       {extraSlots.map((slot) => (
@@ -268,7 +268,7 @@ function HeroStackLayout({
   const bgImage = (layout as any).backgroundImage as string | undefined;
 
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       <div
         className="relative min-h-[40vh] overflow-hidden"
         style={bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
@@ -309,7 +309,7 @@ function GridFeedLayout({
   const gridSections = sections.filter((s) => s.slot !== 'header' && s.slot !== 'footer');
 
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {headerSections.map((s) => (
         <SectionRenderer key={s.id} section={s} actionCtx={actionCtx} visibilityCtx={visibilityCtx} />
       ))}
@@ -340,7 +340,7 @@ function CarouselFeedLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => {
         if (!evaluateVisibilityGroup(section.visibility, visibilityCtx)) return null;
         return (
@@ -379,7 +379,7 @@ function PassThroughLayout({
   visibilityCtx: ClientVisibilityContext;
 }) {
   return (
-    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
+    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] [overscroll-behavior:contain]">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}

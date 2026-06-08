@@ -71,7 +71,7 @@ export default function ActionPicker({ current, onPick }: Props) {
         </div>
       )}
       {open && (
-        <div className="me-action-picker-menu absolute top-full left-0 right-0 z-50 mt-1 bg-[#0a0a1e] border border-[#2a2a4e] rounded-[8px] p-2 max-h-[360px] flex flex-col gap-[6px] shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-y-auto">
+        <div className="me-action-picker-menu absolute top-full left-0 right-0 z-50 mt-1 bg-[#0a0a1e] border border-[#2a2a4e] rounded-[8px] p-2 max-h-[360px] flex flex-col gap-[6px] shadow-[0_10px_40px_rgba(0,0,0,0.6)] overflow-y-auto touch-pan-y">
           <input
             autoFocus
             className="flex-1 px-3 py-2 bg-[#0f0f2e] border border-[#2a2a4e] rounded-[6px] text-[#e0e0ff] text-[13px] font-[inherit] min-h-[40px] focus:outline-none focus:border-[#7c3aed]"
@@ -79,7 +79,7 @@ export default function ActionPicker({ current, onPick }: Props) {
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <div className="overflow-y-auto flex flex-col gap-1">
+          <div className="overflow-y-auto touch-pan-y flex flex-col gap-1">
             {filtered.length === 0 && (
               <div className="px-4 py-4 text-center text-[#555] text-xs italic">No actions match "{query}".</div>
             )}

@@ -1196,7 +1196,7 @@ function EntityDetailPreview({ section }: ScreenComponentProps) {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
+    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto touch-pan-y">
       {!entityId && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border-b border-amber-500/20 text-[10px] text-amber-400/80">
           <span>⚠️</span>

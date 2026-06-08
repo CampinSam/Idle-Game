@@ -238,7 +238,7 @@ export default function DustFlowModal({ isOpen, item, activeJob, onClose }: Dust
           <p className="text-lg font-extrabold m-0 text-[#e2e8f0] [font-family:'Exo_2',system-ui,sans-serif]">{itemName}</p>
         </div>
 
-        <div className="flex-1 min-h-0 px-5 pt-1 pb-4 overflow-y-auto">
+        <div className="flex-1 min-h-0 px-5 pt-1 pb-4 overflow-y-auto touch-pan-y">
           {phase === 'confirm' && (
             <div className="flex flex-col gap-3">
               {canSkip && (

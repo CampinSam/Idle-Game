@@ -251,7 +251,7 @@ export default function TagEditorPage() {
       )}
 
       <div className="grid h-[calc(100vh-70px)]" style={{ gridTemplateColumns: '320px 1fr' }}>
-        <aside className="border-r border-[#2a2a3a] bg-[#14101e] overflow-y-auto p-3 flex flex-col gap-1">
+        <aside className="border-r border-[#2a2a3a] bg-[#14101e] overflow-y-auto touch-pan-y p-3 flex flex-col gap-1">
           <div className="flex gap-[6px] mb-2">
             <input
               className="flex-1 bg-[#1c1830] border border-[#3a3a4a] text-white py-[6px] px-[10px] rounded text-[12px]"
@@ -301,7 +301,7 @@ export default function TagEditorPage() {
           ))}
         </aside>
 
-        <main className="p-6 overflow-y-auto">
+        <main className="p-6 overflow-y-auto touch-pan-y">
           {!draft && (
             <div className="text-[#6a6a8a] p-6 text-center italic">
               Select an item on the left, or create a new one.

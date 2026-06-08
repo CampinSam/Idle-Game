@@ -18,7 +18,7 @@ export function Skeleton({ width = '100%', height = '1em', className = '', style
 export function HomePageSkeleton() {
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto p-3.5"
+      className="flex flex-col flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y p-3.5"
       aria-busy="true"
       aria-label="Loading..."
     >

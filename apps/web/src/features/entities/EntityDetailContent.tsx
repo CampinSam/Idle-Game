@@ -443,7 +443,7 @@ export default function EntityDetailContent() {
         style={{ touchAction: 'pan-y' }}
       >
         {/* Single scroll container — header is inside so sticky top-0 works */}
-        <div className="grid flex-1 min-h-0 overflow-y-auto [grid-template-rows:auto_1fr]" style={{ touchAction: 'pan-y' }}>
+        <div className="grid flex-1 min-h-0 overflow-y-auto touch-pan-y [grid-template-rows:auto_1fr]">
 
           {/* ── Sticky header ── */}
           <div className="bg-[rgba(26,22,64,0.97)] border-b border-[rgba(139,92,246,0.12)] sticky top-0 z-10">

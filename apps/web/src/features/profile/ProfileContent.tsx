@@ -7,7 +7,7 @@ function getInitials(username?: string | null, email?: string | null): string {
 
 const CARD_CLASS =
   'flex flex-col flex-1 min-h-0 ' +
-  'overflow-x-hidden overflow-y-auto [-webkit-overflow-scrolling:touch] overscroll-contain';
+  'overflow-x-hidden overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] overscroll-contain';
 
 const FIELD_LABEL_CLASS =
   'text-[12px] text-text-secondary font-semibold tracking-[0.3px] uppercase';

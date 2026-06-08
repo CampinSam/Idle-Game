@@ -553,7 +553,7 @@ export default function ForgeContent() {
       />
 
       {/* ── Scrollable body ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y overscroll-contain">
         <div className="flex flex-col gap-3 px-3 pt-3 pb-4">
 
           {/* ── Active crafting jobs — collapsible strip in Card ── */}
