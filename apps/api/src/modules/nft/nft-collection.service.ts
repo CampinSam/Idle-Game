@@ -172,10 +172,19 @@ export class NftCollectionService {
     const nextItemId = 'itemDefinitionId' in dto ? dto.itemDefinitionId : existing.itemDefinitionId;
     this.validateCollectionMode(nextEntityId, nextLocationId, nextItemId);
 
-    return (this.prisma as any).nftCollectionDef.update({
+    const updated = await (this.prisma as any).nftCollectionDef.update({
       where: { id },
       data: dto,
     });
+
+    const isBeingDisabled = 'active' in dto && dto.active === false && existing.active !== false;
+    if (isBeingDisabled) {
+      this.pushCollectionDisabledDeltas(id).catch((err) =>
+        this.logger.warn(`Failed to push disabled-collection deltas for "${id}": ${err}`),
+      );
+    }
+
+    return updated;
   }
 
   async deactivateCollection(id: string) {
@@ -185,6 +194,85 @@ export class NftCollectionService {
       where: { id },
       data: { active: false },
     });
+
+    if (existing.active !== false) {
+      this.pushCollectionDisabledDeltas(id).catch((err) =>
+        this.logger.warn(`Failed to push disabled-collection deltas for "${id}": ${err}`),
+      );
+    }
+  }
+
+  /**
+   * After a collection is disabled, find all affected entities, locations, and
+   * items that were backed by this collection and push delete patches to every
+   * user who owns them so active sessions reflect the change without a reload.
+   */
+  private async pushCollectionDisabledDeltas(collectionId: string): Promise<void> {
+    // Collect delete patches per user: Map<userId, Patch[]>
+    const patchesByUser = new Map<string, Array<{ op: 'delete'; entity: string; id: string }>>();
+
+    const addPatch = (userId: string, entity: string, id: string) => {
+      const list = patchesByUser.get(userId) ?? [];
+      list.push({ op: 'delete', entity, id });
+      patchesByUser.set(userId, list);
+    };
+
+    // --- Entities ---
+    const affectedEntities = await (this.prisma as any).entity.findMany({
+      where: { nftCollectionDefId: collectionId },
+      select: { id: true, ownerUserId: true },
+    });
+    for (const e of affectedEntities) {
+      if (e.ownerUserId) addPatch(e.ownerUserId, 'entity', e.id);
+    }
+
+    // --- Locations (linked via nftAsset → collectionId) ---
+    const collectionAssets = await (this.prisma as any).nftAsset.findMany({
+      where: { collectionId },
+      select: { nftAssetId: true },
+    });
+    if (collectionAssets.length > 0) {
+      const assetIds: string[] = collectionAssets.map((a: any) => a.nftAssetId as string);
+      const affectedLocations = await (this.prisma as any).locationInstance.findMany({
+        where: { nftAssetId: { in: assetIds } },
+        select: { id: true, ownerUserId: true },
+      });
+      for (const loc of affectedLocations) {
+        if (loc.ownerUserId) addPatch(loc.ownerUserId, 'location', loc.id);
+      }
+    }
+
+    // --- Items ---
+    const affectedItems = await (this.prisma as any).itemInstance.findMany({
+      where: { nftCollectionDefId: collectionId },
+      select: { id: true, userId: true },
+    });
+    for (const item of affectedItems) {
+      if (item.userId) addPatch(item.userId, 'item', item.id);
+    }
+
+    if (patchesByUser.size === 0) {
+      this.logger.log(`pushCollectionDisabledDeltas: no affected sessions for collection "${collectionId}"`);
+      return;
+    }
+
+    this.logger.log(
+      `pushCollectionDisabledDeltas: pushing to ${patchesByUser.size} user(s) for collection "${collectionId}"`,
+    );
+
+    for (const [userId, patches] of patchesByUser) {
+      try {
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: { userId, patches: patches as any, ui: [] as any },
+        });
+        this.pubsub.publish(`player:${userId}`, {
+          userId,
+          deltaId: typeof delta.id === 'bigint' ? delta.id.toString() : String(delta.id),
+        });
+      } catch (err) {
+        this.logger.warn(`pushCollectionDisabledDeltas: failed for user ${userId}: ${err}`);
+      }
+    }
   }
 
   /**
