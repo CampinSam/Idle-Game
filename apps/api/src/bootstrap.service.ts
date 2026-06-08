@@ -45,62 +45,8 @@ export class BootstrapService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    if (process.env.NODE_ENV !== 'production') {
-      await this.runStep('seedDevAdmin', () => this.seedDevAdmin());
-      await this.runStep('seedDevTestPlayer', () => this.seedDevTestPlayer());
-    }
-    await this.runStep('seedTickRateIntervals', () => this.seedTickRateIntervals());
-    await this.runStep('seedNftCollections', () => this.seedNftCollections());
-    await this.runStep('seedEffectDefinitions', () => this.seedEffectDefinitions());
-    await this.runStep('seedConsumableItems', () => this.seedConsumableItems());
-    // Idempotent: ensures the four gem packs exist in stripe.products / stripe.prices
-    // so GET /v1/payments/packs returns data even before Stripe is connected.
-    // ON CONFLICT DO NOTHING means real Stripe-synced rows are never overwritten.
-    await this.runStep('seedGemPacks', () => this.seedGemPacks());
-    // Idempotent: rewrite any historical `consumableData` rows that still
-    // carry the legacy `{ effect, duration, ... }` shape, UPPERCASE
-    // targetType enum values, or a redundant top-level `targetType`. After
-    // this runs every consumable on disk matches the canonical
-    // `{ effects: [{ effectDefId, targetType }] }` shape and the client no
-    // longer needs defensive normalization.
-    await this.backfillConsumableData();
-    // One-time backfill: rewrite any legacy `amount` outcome entries to
-    // `min` = `max` = amount across every definition table that holds an
-    // outcomeSpec. Idempotent — once a row is normalized, subsequent runs
-    // are no-ops. The legacy `item.amount` branch in resolveOutcomes has
-    // been removed, so any row that still carries `amount` would silently
-    // grant `1` at runtime. Failures here MUST crash startup loudly so an
-    // operator can intervene rather than serve broken rewards. Set
-    // OUTCOME_SPEC_BACKFILL_DISABLED=1 to skip (only safe in environments
-    // that have already been backfilled, e.g. CI without seed data).
-    if (process.env.OUTCOME_SPEC_BACKFILL_DISABLED === '1') {
-      this.logger.log('OutcomeSpec amount→min/max backfill skipped (OUTCOME_SPEC_BACKFILL_DISABLED=1)');
-    } else {
-      await this.backfillOutcomeSpecAmounts();
-    }
-    // Idempotent: convert any GiftDef records that still carry a legacy
-    // single-object rewardSpec or lootTable-type entries to the canonical
-    // array format. Safe to run on every boot — no-op once converged.
-    await this.backfillLegacyGiftSpecs();
-    // Idempotent: rebuilds missing levelHistory entries / stat gains for any
-    // entity that pre-dates the canonical addEntityXp pipeline.
-    // Set ENTITY_BACKFILL_DISABLED=1 to skip — useful once the dataset has
-    // converged so cold starts at scale don't re-scan every entity row.
-    if (process.env.ENTITY_BACKFILL_DISABLED === '1') {
-      this.logger.log('Entity level-history backfill skipped (ENTITY_BACKFILL_DISABLED=1)');
-    } else {
-      try {
-        await this.entityService.backfillLevelHistory();
-      } catch (err) {
-        this.logger.warn(`Entity level-history backfill failed: ${err}`);
-      }
-    }
-    // Idempotent: cancel any GlobalActivePower rows that have no effectDefId
-    // AND no effectOverrides. These are true legacy rows from before the
-    // effectDefId migration that can no longer be resolved by the effect
-    // system. Tick-speed-boost powers always have effectOverrides, so they
-    // are never affected by this backfill.
-    await this.backfillGlobalPowers();
+    // All seeds and backfills are run on demand via POST /api/admin/seed/run.
+    // Nothing runs automatically on startup.
   }
 
   private async backfillGlobalPowers() {
