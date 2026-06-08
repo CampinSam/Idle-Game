@@ -3,6 +3,7 @@ import { useNow } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import { useHomeBanners } from '../../hooks/useSyncSelectors';
 import { formatSeasonRemaining } from '../../utils/formatSeasonRemaining';
+import { resolveAssetUrl } from '../../utils/iconResolver';
 import type { HomeBannerSnapshot } from '../../store/syncSlice';
 
 const SWIPE_THRESHOLD_PX = 50;
@@ -134,7 +135,7 @@ export function BannerCarousel() {
         onTouchEnd={isCarousel ? () => handleTouchEnd(banner) : undefined}
       >
         {banner.backgroundImage && (
-          <img src={banner.backgroundImage} alt="" className="w-full h-[170px] object-cover block" />
+          <img src={resolveAssetUrl(banner.backgroundImage) ?? banner.backgroundImage} alt="" className="w-full h-[170px] object-cover block" />
         )}
         <div className="absolute inset-0 p-5 flex flex-col justify-center bg-gradient-to-br from-[rgba(15,10,40,0.85)] via-[rgba(30,20,60,0.5)] to-transparent">
           <h3 className="font-cinzel text-[22px] max-[520px]:text-[18px] font-black tracking-[0.1em] text-[#f0e6ff] mb-1 [text-shadow:0_2px_8px_rgba(139,92,246,0.5)]">
