@@ -95,11 +95,11 @@ export class UiService {
 
     switch (job.status) {
       case 'active':
-        generated = await this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        generated = await this.buildActiveJobModal(job, def, defName, typeLabel, tickInfo);
         modalDefId = def?.activeModalDefId ?? null;
         break;
       case 'ready_notified':
-        generated = await this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
+        generated = await this.buildActiveJobModal(job, def, defName, typeLabel, tickInfo);
         modalDefId = def?.readyModalDefId ?? null;
         break;
       case 'completed':
@@ -485,7 +485,7 @@ export class UiService {
     };
   }
 
-  private async buildActiveJobModal(job: any, defName: string, typeLabel: string, tickInfo: any): Promise<any> {
+  private async buildActiveJobModal(job: any, def: any, defName: string, typeLabel: string, tickInfo: any): Promise<any> {
     const timer = job.timer as any;
     const tickRate = tickInfo.currentRate ?? 1;
 
@@ -548,7 +548,7 @@ export class UiService {
       });
     }
 
-    const skipInfo = this.buildSkipInfo(job);
+    const skipInfo = this.buildSkipInfo(job, def);
     if (!isReady && skipInfo) {
       const computedCosts = this.computeSkipCosts(skipInfo, progress);
       const currencyIds = skipInfo.skipCost
@@ -769,13 +769,20 @@ export class UiService {
     return merged;
   }
 
-  private buildSkipInfo(job: any): any | null {
-    const data = job.data as any;
-    if (!data?.skipCost) return null;
+  private getDefTimer(job: any, def: any): any {
+    if (job.type === 'DustingJob') {
+      return (def?.dustingData as any)?.timer ?? null;
+    }
+    return def?.timer ?? null;
+  }
+
+  private buildSkipInfo(job: any, def?: any): any | null {
+    const defTimer = this.getDefTimer(job, def);
+    if (!defTimer?.skipable) return null;
     return {
       skipable: true,
-      skipCost: data.skipCost,
-      skipType: data.skipType || 'scaling',
+      skipCost: Array.isArray(defTimer.skip_cost) ? defTimer.skip_cost : [],
+      skipType: defTimer.skip_type || 'absolute',
     };
   }
 
