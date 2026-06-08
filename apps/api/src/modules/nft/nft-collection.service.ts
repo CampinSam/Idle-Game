@@ -184,6 +184,13 @@ export class NftCollectionService {
       );
     }
 
+    const isBeingEnabled = 'active' in dto && dto.active === true && existing.active === false;
+    if (isBeingEnabled) {
+      this.pushCollectionEnabledDeltas(id).catch((err) =>
+        this.logger.warn(`Failed to push enabled-collection deltas for "${id}": ${err}`),
+      );
+    }
+
     return updated;
   }
 
@@ -271,6 +278,106 @@ export class NftCollectionService {
         });
       } catch (err) {
         this.logger.warn(`pushCollectionDisabledDeltas: failed for user ${userId}: ${err}`);
+      }
+    }
+  }
+
+  /**
+   * After a collection is re-enabled, find all affected entities, locations, and
+   * items that are backed by this collection and push upsert patches to every
+   * user who owns them so active sessions see their assets return without a reload.
+   */
+  private async pushCollectionEnabledDeltas(collectionId: string): Promise<void> {
+    const patchesByUser = new Map<string, any[]>();
+
+    const addPatches = (userId: string, patches: any[]) => {
+      const list = patchesByUser.get(userId) ?? [];
+      list.push(...patches);
+      patchesByUser.set(userId, list);
+    };
+
+    // --- Entities ---
+    const affectedEntities = await (this.prisma as any).entity.findMany({
+      where: { nftCollectionDefId: collectionId },
+      select: { id: true, ownerUserId: true },
+    });
+    const entityIds = affectedEntities.filter((e: any) => e.ownerUserId).map((e: any) => e.id);
+
+    if (entityIds.length > 0) {
+      const fullEntities = await (this.prisma as any).entity.findMany({
+        where: { id: { in: entityIds } },
+        include: { equipment: true },
+      });
+      for (const e of fullEntities) {
+        if (e.ownerUserId) {
+          addPatches(e.ownerUserId, [{ op: 'upsert', entity: 'entity', id: e.id, data: serializeEntity(e) }]);
+        }
+      }
+    }
+
+    // --- Locations (linked via nftAsset → collectionId) ---
+    const collectionAssets = await (this.prisma as any).nftAsset.findMany({
+      where: { collectionId },
+      select: { nftAssetId: true },
+    });
+
+    if (collectionAssets.length > 0) {
+      const assetIds: string[] = collectionAssets.map((a: any) => a.nftAssetId as string);
+      const affectedLocations = await (this.prisma as any).locationInstance.findMany({
+        where: { nftAssetId: { in: assetIds }, ownerUserId: { not: null } },
+        select: { id: true, ownerUserId: true },
+      });
+
+      if (affectedLocations.length > 0) {
+        const currencyIds = await fetchCurrencyIds(this.prisma);
+        const ownerIds: string[] = [...new Set<string>(affectedLocations.map((l: any) => l.ownerUserId as string))];
+        const buildingJobsByUser = new Map<string, any[]>();
+        for (const ownerId of ownerIds) {
+          buildingJobsByUser.set(ownerId, await fetchBuildingJobs(this.prisma, ownerId));
+        }
+
+        for (const loc of affectedLocations) {
+          const fullLocation = await fetchFullLocation(this.prisma, loc.id);
+          if (fullLocation && loc.ownerUserId) {
+            const pb = new PatchBuilder();
+            pb.upsertLocation(fullLocation, buildingJobsByUser.get(loc.ownerUserId) ?? [], currencyIds);
+            addPatches(loc.ownerUserId, pb.build());
+          }
+        }
+      }
+    }
+
+    // --- Items ---
+    const affectedItems = await (this.prisma as any).itemInstance.findMany({
+      where: { nftCollectionDefId: collectionId, userId: { not: null } },
+      include: { definition: true },
+    });
+    for (const item of affectedItems) {
+      if (item.userId) {
+        addPatches(item.userId, [{ op: 'upsert', entity: 'item', id: item.id, data: item }]);
+      }
+    }
+
+    if (patchesByUser.size === 0) {
+      this.logger.log(`pushCollectionEnabledDeltas: no affected sessions for collection "${collectionId}"`);
+      return;
+    }
+
+    this.logger.log(
+      `pushCollectionEnabledDeltas: pushing to ${patchesByUser.size} user(s) for collection "${collectionId}"`,
+    );
+
+    for (const [userId, patches] of patchesByUser) {
+      try {
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: { userId, patches: patches as any, ui: [] as any },
+        });
+        this.pubsub.publish(`player:${userId}`, {
+          userId,
+          deltaId: typeof delta.id === 'bigint' ? delta.id.toString() : String(delta.id),
+        });
+      } catch (err) {
+        this.logger.warn(`pushCollectionEnabledDeltas: failed for user ${userId}: ${err}`);
       }
     }
   }
