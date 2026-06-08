@@ -6,6 +6,7 @@ import GameIcon from '../../../components/GameIcon';
 import { summarizeEffect } from '../utils/summarizeEffect';
 import type { EffectDefLite } from '../utils/summarizeEffect';
 import type { EntityFilter, EntitySortBy } from '../../entities/types';
+import { normalizeFilter } from '../../entities/entityListUtils';
 import {
   isEntityBusy,
   consumableWouldChangeEntityStats,
@@ -37,9 +38,12 @@ export default function EntityPickerModal({
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<EntityFilter>(() => {
     const saved = localStorage.getItem('entityPicker.filter');
-    const validFilters: EntityFilter[] = ['ALL', 'DERPS', 'VAMPS', 'PREDS'];
-    return validFilters.includes(saved as EntityFilter) ? (saved as EntityFilter) : 'ALL';
+    return (saved as EntityFilter) ?? 'ALL';
   });
+  const effectiveFilter = useMemo(
+    () => normalizeFilter(activeFilter, entities as any[]),
+    [activeFilter, entities],
+  );
   const [sortBy, setSortBy] = useState<EntitySortBy>(() => {
     const saved = localStorage.getItem('entityPicker.sort');
     const validSorts: EntitySortBy[] = ['name', 'level', 'power', 'collection'];
@@ -166,7 +170,7 @@ export default function EntityPickerModal({
                 showControls
                 search={search}
                 onSearchChange={setSearch}
-                activeFilter={activeFilter}
+                activeFilter={effectiveFilter}
                 onFilterChange={setActiveFilter}
                 sortBy={sortBy}
                 onSortChange={setSortBy}
