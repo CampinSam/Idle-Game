@@ -738,6 +738,55 @@ export const TABLE_GROUPS: Record<string, string[]> = {
   Payments: ['CryptoRateConfig'],
 };
 
+export const TABLE_LABELS: Record<string, string> = {
+  DefaultModalDef: 'Default Modals',
+  ModalDef: 'Modals',
+  DisplayDef: 'Display Defs',
+  HomeBannerDef: 'Home Banners',
+  MissionDef: 'Mission Defs',
+  MissionCategoryDef: 'Mission Categories',
+  RecipeDef: 'Recipes',
+  BuildingDef: 'Buildings',
+  RoomDef: 'Rooms',
+  LocationDefinition: 'Locations',
+  RegionDefinition: 'Regions',
+  Currency: 'Currencies',
+  ItemDef: 'Items',
+  GiftDef: 'Gifts',
+  LootboxDef: 'Lootboxes',
+  CheckInDef: 'Check-ins',
+  QuestDef: 'Quests',
+  ShopHeroDef: 'Shop Heroes',
+  ShopTabDef: 'Shop Tabs',
+  ShopSectionDef: 'Shop Sections',
+  ShopItemDef: 'Shop Items',
+  GemPackDef: 'Gem Packs',
+  NftCollectionDef: 'NFT Collections',
+  EntityDefinition: 'Entities',
+  EffectDef: 'Effects',
+  PowerDef: 'Powers',
+  SynergyRule: 'Synergy Rules',
+  SelectionRuleDef: 'Selection Rules',
+  EventDefinition: 'Events',
+  SystemIconDef: 'System Icons',
+  TelemetryDef: 'Telemetry',
+  GameDefinition: 'Game Defs',
+  CryptoRateConfig: 'Crypto Rates',
+};
+
+export interface ContentTableSub {
+  apiKey: string;
+  label: string;
+  group: string;
+}
+
+export const CONTENT_TABLE_SUBS: ContentTableSub[] = Object.entries(TABLE_GROUPS).flatMap(
+  ([group, schemaNames]) =>
+    schemaNames
+      .filter(sn => TABLE_API_KEYS[sn])
+      .map(sn => ({ apiKey: TABLE_API_KEYS[sn], label: TABLE_LABELS[sn] ?? sn, group }))
+);
+
 export const ASSET_KEY_FIELD_PATTERNS = ['iconKey', 'assetKey', 'backgroundImage', 'imageKey', 'cardBackground'];
 
 export function isAssetKeyField(fieldName: string): boolean {

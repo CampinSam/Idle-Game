@@ -75,7 +75,7 @@ function buildNewRecord(tableName: string): Record<string, any> {
 
 interface Props {
   adminKey: string;
-  initialGroup?: string;
+  initialTable?: string;
 }
 
 function SectionedFormBody({
@@ -204,10 +204,10 @@ function SectionedFormBody({
   );
 }
 
-export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
+export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
   const [tables, setTables] = useState<TableEntry[]>([]);
   const [activeTable, setActiveTable] = useState<string>('');
-  const initialGroupApplied = React.useRef(false);
+  const initialTableApplied = React.useRef(false);
   const [records, setRecords] = useState<any[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -215,8 +215,6 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   const [isNew, setIsNew] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [enumOptions, setEnumOptions] = useState<Record<string, string[]>>({});
-  const [activeGroup, setActiveGroup] = useState<string>('');
-  const activeGroupInitRef = React.useRef(false);
   const [recordPanelCollapsed, setRecordPanelCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
 
@@ -244,19 +242,14 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!initialGroup || !tables.length || initialGroupApplied.current) return;
-    const schemaNames = TABLE_GROUPS[initialGroup];
-    if (!schemaNames) return;
-    for (const sn of schemaNames) {
-      const apiKey = TABLE_API_KEYS[sn];
-      const match = tables.find(t => t.key === apiKey);
-      if (match) {
-        setActiveTable(match.key);
-        initialGroupApplied.current = true;
-        break;
-      }
+    if (!initialTable || !tables.length || initialTableApplied.current) return;
+    const match = tables.find(t => t.key === initialTable);
+    if (match) {
+      initialTableApplied.current = true;
+      handleSelectTable(match.key);
     }
-  }, [initialGroup, tables]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTable, tables]);
 
   const loadPendingDrafts = useCallback(async (tableKey: string, myId?: string) => {
     if (!tableKey) { setPendingDrafts({}); return; }
@@ -330,16 +323,6 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     loadRecords(key);
     loadPendingDrafts(key, me?.id);
     loadRejectedDrafts(key, me?.id);
-  };
-
-  const handleGroupChange = (group: string) => {
-    setActiveGroup(group);
-    const groupEntry = tableGroupsForSidebar.find(g => g.group === group);
-    if (!groupEntry) return;
-    const alreadyInGroup = groupEntry.items.some(t => t.key === activeTable);
-    if (!alreadyInGroup && groupEntry.items.length > 0) {
-      handleSelectTable(groupEntry.items[0].key);
-    }
   };
 
   const handleSelectRecord = (rec: any) => {
@@ -549,23 +532,6 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
     return grouped;
   }, [tables]);
 
-  const filteredGroupTables = useMemo(() => {
-    const groupEntry = tableGroupsForSidebar.find(g => g.group === activeGroup);
-    return groupEntry?.items ?? [];
-  }, [tableGroupsForSidebar, activeGroup]);
-
-  // Initialize activeGroup once tables are available (must be after tableGroupsForSidebar useMemo)
-  useEffect(() => {
-    if (activeGroupInitRef.current || !tableGroupsForSidebar.length) return;
-    activeGroupInitRef.current = true;
-    if (initialGroup && tableGroupsForSidebar.some(g => g.group === initialGroup)) {
-      setActiveGroup(initialGroup);
-    } else {
-      setActiveGroup(tableGroupsForSidebar[0].group);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableGroupsForSidebar]);
-
   const controlStyle: React.CSSProperties = {
     height: 40,
     padding: '0 12px',
@@ -658,40 +624,6 @@ export default function SmartAdminEditor({ adminKey: _, initialGroup }: Props) {
         </div>
       )}
 
-      {/* ── DESKTOP: group + table selector top bar ── */}
-      {!isMobile && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '7px 14px', borderBottom: '1px solid #1a1a3e',
-          background: '#08081a', flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>Group</span>
-          <select
-            value={activeGroup}
-            onChange={e => handleGroupChange(e.target.value)}
-            style={{ ...controlStyle, height: 32, fontSize: 12, padding: '0 10px', minWidth: 130 }}
-            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
-          >
-            {tableGroupsForSidebar.map(({ group }) => (
-              <option key={group} value={group}>{group}</option>
-            ))}
-          </select>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#444', letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>Table</span>
-          <select
-            value={activeTable}
-            onChange={e => { if (e.target.value) handleSelectTable(e.target.value); }}
-            style={{ ...controlStyle, height: 32, fontSize: 12, padding: '0 10px', minWidth: 180 }}
-            onFocus={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#2a2a4e'; }}
-          >
-            <option value="">— select —</option>
-            {filteredGroupTables.map(t => (
-              <option key={t.key} value={t.key}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* ── Inner row: record list + form ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>

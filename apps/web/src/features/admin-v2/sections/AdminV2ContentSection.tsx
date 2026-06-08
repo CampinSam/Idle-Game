@@ -3,13 +3,13 @@ import type { AdminMe } from '../../admin/adminApi';
 
 interface Props {
   me: AdminMe;
-  activeGroup?: string;
+  activeTable?: string;
 }
 
-export default function AdminV2ContentSection({ me: _, activeGroup }: Props) {
+export default function AdminV2ContentSection({ me: _, activeTable }: Props) {
   return (
     <div className="h-full overflow-auto">
-      <SmartAdminEditor key={activeGroup || 'all'} adminKey="" initialGroup={activeGroup} />
+      <SmartAdminEditor key={activeTable || 'all'} adminKey="" initialTable={activeTable} />
     </div>
   );
 }

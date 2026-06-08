@@ -8,7 +8,7 @@ import {
   adminApi, getAdminToken, setAdminToken, clearAdminToken,
   type AdminMe,
 } from '../admin/adminApi';
-import { TABLE_GROUPS } from '../admin/smart/tableSchemas';
+import { CONTENT_TABLE_SUBS } from '../admin/smart/tableSchemas';
 import AdminV2Dashboard from './sections/AdminV2Dashboard';
 import AdminV2ContentSection from './sections/AdminV2ContentSection';
 import AdminV2ApprovalsSection from './sections/AdminV2ApprovalsSection';
@@ -35,7 +35,11 @@ type Section =
   | 'support'
   | 'moderation';
 
-const CONTENT_SUBS = Object.keys(TABLE_GROUPS);
+const CONTENT_SUBS = CONTENT_TABLE_SUBS.map((t, idx) => ({
+  key: t.apiKey,
+  label: t.label,
+  groupLabel: idx === 0 || CONTENT_TABLE_SUBS[idx - 1].group !== t.group ? t.group : undefined,
+}));
 
 const SESSION_KEY = 'adminV2Section';
 
@@ -79,6 +83,7 @@ function clearPersistedNav() {
 interface NavSub {
   key: string;
   label: string;
+  groupLabel?: string;
 }
 
 interface NavItem {
@@ -99,7 +104,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Content',
     icon: <FileText size={15} />,
     requirePerm: 'read',
-    subs: CONTENT_SUBS.map(g => ({ key: g, label: g })),
+    subs: CONTENT_SUBS,
   },
   { key: 'approvals', label: 'Approvals', icon: <CheckSquare size={15} />, requirePerm: 'approve' },
   { key: 'players', label: 'Players', icon: <Users size={15} />, requirePerm: 'player_read' },
@@ -405,20 +410,26 @@ function Sidebar({
               {hasSubs && (
                 <div className="overflow-hidden">
                   {item.subs!.map(sub => (
-                    <button
-                      key={sub.key}
-                      className={`flex items-center gap-[10px] text-[12px] px-3 py-[5px] pl-[30px] cursor-pointer border-0 w-[calc(100%-8px)] text-left rounded-[6px] mx-[4px] my-[1px] whitespace-nowrap transition-[background,color] duration-[120ms] ${
-                        activeSub === sub.key
-                          ? 'bg-[rgba(108,99,255,0.12)] text-[#9090d8]'
-                          : 'bg-transparent text-[#5a5a8a] hover:bg-[#1a1b35] hover:text-[#c0c0e8]'
-                      }`}
-                      onClick={() => onNavigate(item.key, sub.key)}
-                    >
-                      {sub.label}
-                      {keyPending && sub.key === 'crypto' && (
-                        <span className="w-[7px] h-[7px] rounded-full bg-[#fbbf24] flex-shrink-0 shadow-[0_0_5px_rgba(251,191,36,0.7)] animate-[av2-pulse-warn_1.8s_ease-in-out_infinite]" style={{ marginLeft: 6 }} />
+                    <div key={sub.key}>
+                      {sub.groupLabel && (
+                        <div className="px-[30px] pt-[10px] pb-[2px] text-[9px] font-bold uppercase tracking-[0.1em] text-[#3a3a5a] select-none">
+                          {sub.groupLabel}
+                        </div>
                       )}
-                    </button>
+                      <button
+                        className={`flex items-center gap-[10px] text-[12px] px-3 py-[5px] pl-[30px] cursor-pointer border-0 w-[calc(100%-8px)] text-left rounded-[6px] mx-[4px] my-[1px] whitespace-nowrap transition-[background,color] duration-[120ms] ${
+                          activeSub === sub.key
+                            ? 'bg-[rgba(108,99,255,0.12)] text-[#9090d8]'
+                            : 'bg-transparent text-[#5a5a8a] hover:bg-[#1a1b35] hover:text-[#c0c0e8]'
+                        }`}
+                        onClick={() => onNavigate(item.key, sub.key)}
+                      >
+                        {sub.label}
+                        {keyPending && sub.key === 'crypto' && (
+                          <span className="w-[7px] h-[7px] rounded-full bg-[#fbbf24] flex-shrink-0 shadow-[0_0_5px_rgba(251,191,36,0.7)] animate-[av2-pulse-warn_1.8s_ease-in-out_infinite]" style={{ marginLeft: 6 }} />
+                        )}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -471,7 +482,9 @@ function TopBar({
     <div className="flex items-center gap-3 px-5 py-[10px] border-b border-[#1a1b35] bg-[#0a0b1c] flex-shrink-0 min-h-[48px]">
       <span className="text-[15px] font-bold text-[#d4d4f0]">{labels[activeSection]}</span>
       {activeSub && (
-        <span className="text-[12px] text-[#4a4a7a]">/ {activeSub}</span>
+        <span className="text-[12px] text-[#4a4a7a]">
+          / {CONTENT_SUBS.find(s => s.key === activeSub)?.label ?? activeSub}
+        </span>
       )}
       <div className="ml-auto flex items-center gap-2">
         <span className="text-[12px] text-[#6060a0]">{me.username}</span>
@@ -592,7 +605,7 @@ export default function AdminV2Shell() {
       case 'metrics':
         return <AdminV2MetricsSection me={me} />;
       case 'content':
-        return <AdminV2ContentSection me={me} activeGroup={activeSub || undefined} />;
+        return <AdminV2ContentSection me={me} activeTable={activeSub || undefined} />;
       case 'approvals':
         return <AdminV2ApprovalsSection me={me} />;
       case 'players':
