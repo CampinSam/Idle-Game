@@ -109,6 +109,38 @@ function MissionSynergyBlock(_: BlockComponentProps) {
   return <MissionSynergyPanel matchedRules={matchedRules} />;
 }
 
+// ─── mission_planning_sticky — sticky compound block (planning) ───────────────
+// Wraps the Details/Stats grid + synergy list in a single sticky container so
+// they pin to the top of the scroll area once the hero image scrolls away.
+
+function MissionPlanningStickyBlock(_: BlockComponentProps) {
+  const { data } = useSurfaceContext();
+  const matchedRules: any[] = data.synergy?.matchedRules ?? [];
+  return (
+    <div
+      className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
+      style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <MissionRequirementsBlock />
+        <MissionStatsPanel
+          missionPower={data.missionPower ?? 0}
+          difficulty={data.difficulty ?? 0}
+          successChance={data.successChance ?? 0}
+          injuryChance={data.injuryChance ?? 0}
+          injuryRate={data.injuryRate ?? 0}
+          powerRatio={data.powerRatio ?? 0}
+          hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
+          loading={data.statsLoading ?? false}
+        />
+      </div>
+      {matchedRules.length > 0 && (
+        <MissionSynergyPanel matchedRules={matchedRules} />
+      )}
+    </div>
+  );
+}
+
 // ─── team_section — editable team picker (planning mode) ─────────────────────
 
 function TeamSectionBlock(_: BlockComponentProps) {
@@ -252,6 +284,7 @@ export const BLOCK_REGISTRY: BlockRegistry = {
   mission_requirements: MissionRequirementsWrapper,
   mission_stats_requirements: MissionStatsRequirementsBlock,
   mission_synergy: MissionSynergyBlock,
+  mission_planning_sticky: MissionPlanningStickyBlock,
   team_section: TeamSectionBlock,
   reward_list: RewardListBlock,
   narrative_text: NarrativeTextBlock,

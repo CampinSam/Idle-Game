@@ -43,7 +43,9 @@ export function MissionStatsPanel({
                 </span>
                 <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">MP</span>
               </div>
-              <div className="text-[12px] font-extrabold text-text-secondary uppercase tracking-widest">vs</div>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[14px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
+              </div>
               <div className="flex flex-col items-end">
                 <span className="font-cinzel text-[22px] font-black text-[#ef4444] tabular-nums">{Number(difficulty.toFixed(2))}</span>
                 <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">D</span>
@@ -52,10 +54,6 @@ export function MissionStatsPanel({
             <div className="flex h-2 rounded-full overflow-hidden bg-black/40">
               <div className="h-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-[width] duration-300" style={{ width: `${Number((powerRatio * 100).toFixed(2))}%` }} />
               <div className="h-full bg-gradient-to-r from-[#ef4444] to-[#f87171] transition-[width] duration-300" style={{ width: `${Number(((1 - powerRatio) * 100).toFixed(2))}%` }} />
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-bold tracking-wide text-text-secondary uppercase">Success Chance</span>
-              <span className="text-[16px] font-extrabold tabular-nums" style={{ color: successColor }}>{successChance}%</span>
             </div>
             {injuryRate > 0 && (
               <div className="flex items-center justify-between gap-2">

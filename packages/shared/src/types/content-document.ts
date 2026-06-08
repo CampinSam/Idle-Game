@@ -58,6 +58,10 @@ export interface ContentBlockMissionSynergy {
   type: 'mission_synergy';
 }
 
+export interface ContentBlockMissionPlanningSticky {
+  type: 'mission_planning_sticky';
+}
+
 export interface ContentBlockTeamSection {
   type: 'team_section';
 }
@@ -104,6 +108,7 @@ export type ContentBlock =
   | ContentBlockMissionRequirements
   | ContentBlockMissionStatsRequirements
   | ContentBlockMissionSynergy
+  | ContentBlockMissionPlanningSticky
   | ContentBlockTeamSection
   | ContentBlockRewardList
   | ContentBlockNarrativeText
@@ -120,6 +125,7 @@ export const CONTENT_BLOCK_TYPES: ContentBlockType[] = [
   'mission_requirements',
   'mission_stats_requirements',
   'mission_synergy',
+  'mission_planning_sticky',
   'team_section',
   'reward_list',
   'narrative_text',
