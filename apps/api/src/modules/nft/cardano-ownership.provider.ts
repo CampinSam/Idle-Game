@@ -165,6 +165,32 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
     return this.getAssetsByAddress(address, policyId);
   }
 
+  /**
+   * Like getOwnedAssets but throws on any RPC failure rather than returning [].
+   * Use this when callers need to distinguish "wallet genuinely has 0 NFTs" from
+   * "the query failed and we cannot trust an empty result".
+   */
+  async getOwnedAssetsStrict(address: string, policyId: string): Promise<OwnedAsset[]> {
+    if (!this.apiKey) {
+      throw new Error('BLOCKFROST_API_KEY is not set — cannot fetch owned assets');
+    }
+
+    if (address.startsWith('stake1') || address.startsWith('stake_test1')) {
+      return this.getAssetsByStakeAddressStrict(address, policyId);
+    }
+
+    const stakeAddress = this.extractStakeAddress(address);
+    if (stakeAddress) {
+      try {
+        return await this.getAssetsByStakeAddressStrict(stakeAddress, policyId);
+      } catch (err) {
+        this.logger.warn(`Strict stake lookup failed for ${stakeAddress}, falling back to address: ${err}`);
+      }
+    }
+
+    return this.getAssetsByAddressStrict(address, policyId);
+  }
+
   private async getAssetsByStakeAddress(stakeAddress: string, policyId: string): Promise<OwnedAsset[] | null> {
     const results: OwnedAsset[] = [];
     let page = 1;
@@ -175,6 +201,31 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
       if (!res.ok) {
         this.logger.warn(`Blockfrost stake UTXOs failed: ${res.status} for ${stakeAddress}`);
         return null;
+      }
+      const data = (await res.json()) as Array<{ amount: Array<{ unit: string; quantity: string }> }>;
+      for (const utxo of data) {
+        for (const a of utxo.amount ?? []) {
+          if (a.unit.startsWith(policyId)) {
+            const assetId = a.unit.slice(policyId.length);
+            if (assetId) results.push({ assetId, quantity: parseInt(a.quantity, 10) });
+          }
+        }
+      }
+      if (data.length < 100) break;
+      page++;
+    }
+    return results;
+  }
+
+  private async getAssetsByStakeAddressStrict(stakeAddress: string, policyId: string): Promise<OwnedAsset[]> {
+    const results: OwnedAsset[] = [];
+    let page = 1;
+    while (true) {
+      const url = `${this.baseUrl}/accounts/${stakeAddress}/utxos?count=100&page=${page}`;
+      const res = await fetch(url, { headers: { project_id: this.apiKey! } });
+      if (res.status === 404) return [];
+      if (!res.ok) {
+        throw new Error(`Blockfrost stake UTXOs HTTP ${res.status} for ${stakeAddress}`);
       }
       const data = (await res.json()) as Array<{ amount: Array<{ unit: string; quantity: string }> }>;
       for (const utxo of data) {
@@ -219,6 +270,30 @@ export class CardanoOwnershipProvider implements NftOwnershipProvider {
       this.logger.error(`Blockfrost address UTXOs error: ${err}`);
       return [];
     }
+  }
+
+  private async getAssetsByAddressStrict(address: string, policyId: string): Promise<OwnedAsset[]> {
+    const results: OwnedAsset[] = [];
+    let page = 1;
+    while (true) {
+      const url = `${this.baseUrl}/addresses/${address}/utxos?count=100&page=${page}`;
+      const res = await fetch(url, { headers: { project_id: this.apiKey! } });
+      if (!res.ok) {
+        throw new Error(`Blockfrost address UTXOs HTTP ${res.status} for ${address}`);
+      }
+      const data = (await res.json()) as Array<{ amount: Array<{ unit: string; quantity: string }> }>;
+      for (const utxo of data) {
+        for (const a of utxo.amount ?? []) {
+          if (a.unit.startsWith(policyId)) {
+            const assetId = a.unit.slice(policyId.length);
+            if (assetId) results.push({ assetId, quantity: parseInt(a.quantity, 10) });
+          }
+        }
+      }
+      if (data.length < 100) break;
+      page++;
+    }
+    return results;
   }
 
   async ownsAsset(address: string, policyId: string, assetId: string): Promise<boolean> {

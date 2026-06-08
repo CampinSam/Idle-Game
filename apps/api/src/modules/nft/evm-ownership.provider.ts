@@ -43,6 +43,28 @@ export class EvmOwnershipProvider implements NftOwnershipProvider {
     }
   }
 
+  /**
+   * Like getOwnedAssets but throws on any RPC failure rather than returning [].
+   */
+  async getOwnedAssetsStrict(address: string, contractAddress: string, chain = 'ETH'): Promise<OwnedAsset[]> {
+    if (!this.apiKey) {
+      throw new Error('ALCHEMY_API_KEY is not set — cannot fetch owned EVM assets');
+    }
+    const network = CHAIN_NETWORK[chain] ?? CHAIN_NETWORK['ETH'];
+    const url = `https://${network}.g.alchemy.com/nft/v3/${this.apiKey}/getNFTsForOwner` +
+      `?owner=${address}&contractAddresses[]=${contractAddress}&withMetadata=false`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Alchemy getNFTsForOwner HTTP ${res.status} for ${address} on ${chain}`);
+    }
+    const data = (await res.json()) as { ownedNfts?: any[] };
+    const nfts: any[] = data.ownedNfts || [];
+    return nfts.map((nft) => ({
+      assetId: nft.tokenId,
+      quantity: parseInt(nft.balance ?? '1', 10),
+    }));
+  }
+
   async ownsAsset(address: string, contractAddress: string, tokenId: string, chain = 'ETH'): Promise<boolean> {
     const owned = await this.getOwnedAssets(address, contractAddress, chain);
     return owned.some((a) => a.assetId === tokenId && a.quantity > 0);

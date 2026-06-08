@@ -385,14 +385,153 @@ export class NftCollectionService {
   }
 
   /**
-   * Lazy ownership reconciliation for login flows. Always runs (no throttle).
+   * DB-only login reconciliation: matches NftAsset.ownerAddress against the
+   * user's linked wallets and claims/transfers any entity or location rows that
+   * belong to this user according to the cached ownership data.
    *
-   * For entity-backed collections: claims/transfers existing Entity rows.
-   * For location-backed collections: creates LocationInstance rows on-demand
-   * (no pre-import needed) or transfers ownership to the rightful on-chain owner.
+   * No chain RPC is made — relies on ownerAddress populated by the nightly
+   * entity-centric sweep.  New entity rows are NOT created here; use
+   * syncUserCollections for that (e.g. first-time wallet link).
    */
-  async lazySyncOnLogin(userId: string): Promise<SyncResult> {
-    return this.syncUserCollections(userId);
+  async claimFromCachedOwnership(userId: string): Promise<{ claimed: number; transfers: number }> {
+    const wallets = await (this.prisma as any).linkedWallet.findMany({
+      where: { userId },
+      select: { address: true },
+    });
+    if (wallets.length === 0) return { claimed: 0, transfers: 0 };
+
+    const addresses: string[] = wallets.map((w: any) => w.address as string);
+
+    const ownedAssets = await (this.prisma as any).nftAsset.findMany({
+      where: { ownerAddress: { in: addresses } },
+      select: { nftAssetId: true, collectionId: true },
+    });
+    if (ownedAssets.length === 0) return { claimed: 0, transfers: 0 };
+
+    const collectionIds = [...new Set(ownedAssets.map((a: any) => a.collectionId as string))];
+    const collections = await (this.prisma as any).nftCollectionDef.findMany({
+      where: { id: { in: collectionIds } },
+      select: { id: true, locationDefinitionId: true },
+    });
+    const collectionMap = new Map<string, any>(collections.map((c: any) => [c.id as string, c]));
+
+    const claimedEntityIds: string[] = [];
+    const claimedLocationIds: string[] = [];
+    const prevOwnerDeletes: Array<{ userId: string; entity: string; id: string }> = [];
+    let claimed = 0;
+    let transfers = 0;
+
+    for (const asset of ownedAssets) {
+      const collection = collectionMap.get(asset.collectionId);
+      if (!collection) continue;
+      try {
+        if (collection.locationDefinitionId) {
+          const loc = await (this.prisma as any).locationInstance.findFirst({
+            where: { nftAssetId: asset.nftAssetId },
+            select: { id: true, ownerUserId: true },
+          });
+          if (!loc || loc.ownerUserId === userId) continue;
+          const prevId: string | null = loc.ownerUserId;
+          const autoActivate = await this.locationService.shouldAutoActivate(userId);
+          await (this.prisma as any).locationInstance.update({
+            where: { id: loc.id },
+            data: { ownerUserId: userId, enabled: autoActivate },
+          });
+          claimedLocationIds.push(loc.id);
+          if (prevId) {
+            prevOwnerDeletes.push({ userId: prevId, entity: 'location', id: loc.id });
+            transfers++;
+          }
+          claimed++;
+        } else {
+          const entity = await (this.prisma as any).entity.findFirst({
+            where: { nftAssetId: asset.nftAssetId },
+            select: { id: true, ownerUserId: true },
+          });
+          if (!entity || entity.ownerUserId === userId) continue;
+          const prevId: string | null = entity.ownerUserId;
+          await (this.prisma as any).entity.update({
+            where: { id: entity.id },
+            data: { ownerUserId: userId },
+          });
+          this.nftImageImport.invalidateKnownCidCache();
+          claimedEntityIds.push(entity.id);
+          if (prevId) {
+            prevOwnerDeletes.push({ userId: prevId, entity: 'entity', id: entity.id });
+            transfers++;
+          }
+          claimed++;
+        }
+      } catch (err) {
+        this.logger.error(`claimFromCachedOwnership: failed for ${asset.nftAssetId}: ${err}`);
+      }
+    }
+
+    if (claimed === 0) return { claimed: 0, transfers };
+
+    for (const { userId: prevId, entity, id } of prevOwnerDeletes) {
+      try {
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: {
+            userId: prevId,
+            patches: [{ op: 'delete', entity, id }] as any,
+            ui: [] as any,
+          },
+        });
+        this.pubsub.publish(`player:${prevId}`, { userId: prevId, deltaId: delta.id.toString() });
+      } catch (err) {
+        this.logger.warn(`claimFromCachedOwnership: failed to notify previous owner ${prevId}: ${err}`);
+      }
+    }
+
+    const allPatches: any[] = [];
+
+    if (claimedEntityIds.length > 0) {
+      try {
+        const fullEntities = await (this.prisma as any).entity.findMany({
+          where: { id: { in: claimedEntityIds } },
+          include: { equipment: true },
+        });
+        for (const e of fullEntities) {
+          allPatches.push({ op: 'upsert', entity: 'entity', id: e.id, data: serializeEntity(e) });
+        }
+      } catch (err) {
+        this.logger.error(`claimFromCachedOwnership: failed to load entity rows: ${err}`);
+      }
+    }
+
+    if (claimedLocationIds.length > 0) {
+      try {
+        const currencyIds = await fetchCurrencyIds(this.prisma);
+        const buildingJobs = await fetchBuildingJobs(this.prisma, userId);
+        for (const locationId of claimedLocationIds) {
+          const fullLocation = await fetchFullLocation(this.prisma, locationId);
+          if (fullLocation) {
+            const pb = new PatchBuilder();
+            pb.upsertLocation(fullLocation, buildingJobs, currencyIds);
+            allPatches.push(...pb.build());
+          }
+        }
+      } catch (err) {
+        this.logger.error(`claimFromCachedOwnership: failed to load location rows: ${err}`);
+      }
+    }
+
+    if (allPatches.length > 0) {
+      try {
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: { userId, patches: allPatches as any, ui: [] as any },
+        });
+        this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
+        this.logger.log(
+          `claimFromCachedOwnership: user ${userId} — claimed=${claimed} transfers=${transfers}`,
+        );
+      } catch (err) {
+        this.logger.error(`claimFromCachedOwnership: failed to push delta: ${err}`);
+      }
+    }
+
+    return { claimed, transfers };
   }
 
   async syncUserCollections(userId: string): Promise<SyncResult> {
@@ -415,21 +554,21 @@ export class NftCollectionService {
       const matchingWallets = wallets.filter((w: any) => w.chain === collection.chain);
 
       const ownedAssetIdsThisCollection = new Set<string>();
-      let allWalletsSucceeded = true;
+      let isDefinitive = true;
 
       if (collection.locationDefinitionId) {
         // ── Location-backed collection (e.g. Derp Outposts) ──────────────────
         for (const wallet of matchingWallets) {
           let ownedAssets: { assetId: string; quantity: number }[] = [];
           try {
-            ownedAssets = await this.nftOwnership.getOwnedInCollection(
+            ownedAssets = await this.nftOwnership.getOwnedInCollectionStrict(
               collection.chain as SupportedChain,
               wallet.address,
               collection.collectionId,
             );
           } catch (err) {
             this.logger.warn(`Failed to fetch NFTs for wallet ${wallet.address} on ${collection.chain}: ${err}`);
-            allWalletsSucceeded = false;
+            isDefinitive = false;
             continue;
           }
 
@@ -522,7 +661,7 @@ export class NftCollectionService {
 
         // Reconciliation: unclaim location instances the user holds for this
         // collection that are no longer present in their wallet.
-        if (allWalletsSucceeded) {
+        if (isDefinitive) {
           const collectionPrefix = `${collection.chain}:${collection.collectionId}:`;
           const userOwnedLocations = await (this.prisma as any).locationInstance.findMany({
             where: {
@@ -554,14 +693,14 @@ export class NftCollectionService {
         for (const wallet of matchingWallets) {
           let ownedAssets: { assetId: string; quantity: number }[] = [];
           try {
-            ownedAssets = await this.nftOwnership.getOwnedInCollection(
+            ownedAssets = await this.nftOwnership.getOwnedInCollectionStrict(
               collection.chain as SupportedChain,
               wallet.address,
               collection.collectionId,
             );
           } catch (err) {
             this.logger.warn(`Failed to fetch NFTs for wallet ${wallet.address} on ${collection.chain}: ${err}`);
-            allWalletsSucceeded = false;
+            isDefinitive = false;
             continue;
           }
 
@@ -686,7 +825,7 @@ export class NftCollectionService {
           }
         }
 
-        if (allWalletsSucceeded) {
+        if (isDefinitive) {
           const collectionPrefix = `${collection.chain}:${collection.collectionId}:`;
           const userOwnedInCollection = await (this.prisma as any).entity.findMany({
             where: {
@@ -792,15 +931,6 @@ export class NftCollectionService {
       );
     }
 
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { lastNftSyncAt: new Date() } as any,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to update lastNftSyncAt for user ${userId}: ${err}`);
-    }
-
     return {
       claimed,
       alreadyClaimed,
@@ -810,6 +940,194 @@ export class NftCollectionService {
       entities: newEntities,
       locations: newLocations,
     };
+  }
+
+  /**
+   * Entity-centric ownership sweep: iterates every Cardano NftAsset row,
+   * queries the on-chain owner via getAssetOwner (throws on RPC failure so
+   * the asset is skipped rather than cleared), updates NftAsset.ownerAddress,
+   * and propagates changes to the associated Entity/LocationInstance rows.
+   * EVM assets are silently skipped (not yet supported).
+   */
+  async entityCentricOwnershipSweep(): Promise<{
+    processed: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  }> {
+    const BATCH_SIZE = 50;
+    const BATCH_DELAY_MS = 500;
+
+    const total = await (this.prisma as any).nftAsset.count({ where: { chain: 'CARDANO' } });
+    this.logger.log(`Entity-centric NFT sweep: ${total} Cardano assets to process`);
+
+    if (total === 0) return { processed: 0, updated: 0, skipped: 0, errors: 0 };
+
+    const collections = await (this.prisma as any).nftCollectionDef.findMany({
+      where: { active: true },
+      select: { id: true, locationDefinitionId: true },
+    });
+    const collectionMap = new Map<string, any>(collections.map((c: any) => [c.id as string, c]));
+
+    let processed = 0;
+    let updated = 0;
+    let skipped = 0;
+    let errors = 0;
+    let offset = 0;
+
+    while (offset < total) {
+      const batch = await (this.prisma as any).nftAsset.findMany({
+        where: { chain: 'CARDANO' },
+        select: { nftAssetId: true, policyId: true, tokenName: true, collectionId: true, ownerAddress: true },
+        skip: offset,
+        take: BATCH_SIZE,
+        orderBy: { nftAssetId: 'asc' },
+      });
+
+      for (const asset of batch) {
+        try {
+          // Throws on RPC failure — skip this asset rather than clearing ownership.
+          const onChainOwnerAddress = await this.nftOwnership.getAssetOwner(
+            'CARDANO',
+            asset.policyId,
+            asset.tokenName,
+          );
+
+          await (this.prisma as any).nftAsset.update({
+            where: { nftAssetId: asset.nftAssetId },
+            data: { ownerAddress: onChainOwnerAddress, lastSyncedAt: new Date() },
+          });
+
+          const newOwnerUserId: string | null = onChainOwnerAddress
+            ? await (this.prisma as any).linkedWallet
+                .findFirst({ where: { address: onChainOwnerAddress }, select: { userId: true } })
+                .then((w: any) => w?.userId ?? null)
+            : null;
+
+          const collection = collectionMap.get(asset.collectionId);
+          if (!collection) {
+            skipped++;
+            processed++;
+            continue;
+          }
+
+          if (collection.locationDefinitionId) {
+            const loc = await (this.prisma as any).locationInstance.findFirst({
+              where: { nftAssetId: asset.nftAssetId },
+              select: { id: true, ownerUserId: true },
+            });
+            if (loc && loc.ownerUserId !== newOwnerUserId) {
+              const prevOwnerId: string | null = loc.ownerUserId;
+              await (this.prisma as any).locationInstance.update({
+                where: { id: loc.id },
+                data: { ownerUserId: newOwnerUserId },
+              });
+              this.logger.log(
+                `Entity sweep: location ${loc.id} owner ${prevOwnerId ?? 'none'} → ${newOwnerUserId ?? 'none'} (${asset.nftAssetId})`,
+              );
+              if (prevOwnerId) {
+                try {
+                  const delta = await (this.prisma as any).playerDelta.create({
+                    data: {
+                      userId: prevOwnerId,
+                      patches: [{ op: 'delete', entity: 'location', id: loc.id }] as any,
+                      ui: [] as any,
+                    },
+                  });
+                  this.pubsub.publish(`player:${prevOwnerId}`, { userId: prevOwnerId, deltaId: delta.id.toString() });
+                } catch {}
+              }
+              if (newOwnerUserId) {
+                try {
+                  const currencyIds = await fetchCurrencyIds(this.prisma);
+                  const buildingJobs = await fetchBuildingJobs(this.prisma, newOwnerUserId);
+                  const fullLocation = await fetchFullLocation(this.prisma, loc.id);
+                  if (fullLocation) {
+                    const pb = new PatchBuilder();
+                    pb.upsertLocation(fullLocation, buildingJobs, currencyIds);
+                    const patches = pb.build();
+                    if (patches.length > 0) {
+                      const delta = await (this.prisma as any).playerDelta.create({
+                        data: { userId: newOwnerUserId, patches: patches as any, ui: [] as any },
+                      });
+                      this.pubsub.publish(`player:${newOwnerUserId}`, { userId: newOwnerUserId, deltaId: delta.id.toString() });
+                    }
+                  }
+                } catch {}
+              }
+              updated++;
+            } else {
+              skipped++;
+            }
+          } else {
+            const entity = await (this.prisma as any).entity.findFirst({
+              where: { nftAssetId: asset.nftAssetId },
+              select: { id: true, ownerUserId: true },
+            });
+            if (entity && entity.ownerUserId !== newOwnerUserId) {
+              const prevOwnerId: string | null = entity.ownerUserId;
+              await (this.prisma as any).entity.update({
+                where: { id: entity.id },
+                data: { ownerUserId: newOwnerUserId },
+              });
+              this.nftImageImport.invalidateKnownCidCache();
+              this.logger.log(
+                `Entity sweep: entity ${entity.id} owner ${prevOwnerId ?? 'none'} → ${newOwnerUserId ?? 'none'} (${asset.nftAssetId})`,
+              );
+              if (prevOwnerId) {
+                try {
+                  const delta = await (this.prisma as any).playerDelta.create({
+                    data: {
+                      userId: prevOwnerId,
+                      patches: [{ op: 'delete', entity: 'entity', id: entity.id }] as any,
+                      ui: [] as any,
+                    },
+                  });
+                  this.pubsub.publish(`player:${prevOwnerId}`, { userId: prevOwnerId, deltaId: delta.id.toString() });
+                } catch {}
+              }
+              if (newOwnerUserId) {
+                try {
+                  const fullEntities = await (this.prisma as any).entity.findMany({
+                    where: { id: entity.id },
+                    include: { equipment: true },
+                  });
+                  if (fullEntities.length > 0) {
+                    const patch = { op: 'upsert', entity: 'entity', id: entity.id, data: serializeEntity(fullEntities[0]) };
+                    const delta = await (this.prisma as any).playerDelta.create({
+                      data: { userId: newOwnerUserId, patches: [patch] as any, ui: [] as any },
+                    });
+                    this.pubsub.publish(`player:${newOwnerUserId}`, { userId: newOwnerUserId, deltaId: delta.id.toString() });
+                  }
+                } catch {}
+              }
+              updated++;
+            } else {
+              skipped++;
+            }
+          }
+        } catch (err) {
+          this.logger.warn(`Entity sweep: skipping ${asset.nftAssetId} — ${err}`);
+          errors++;
+        }
+        processed++;
+      }
+
+      offset += BATCH_SIZE;
+      if (offset < total && BATCH_DELAY_MS > 0) {
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+      }
+      if (processed % 500 === 0 || offset >= total) {
+        this.logger.log(
+          `Entity sweep progress: ${processed}/${total} — updated=${updated} skipped=${skipped} errors=${errors}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Entity-centric NFT sweep complete: processed=${processed} updated=${updated} skipped=${skipped} errors=${errors}`,
+    );
+    return { processed, updated, skipped, errors };
   }
 
   async getUserNftEntities(userId: string) {

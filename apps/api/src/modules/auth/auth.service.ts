@@ -128,9 +128,9 @@ export class AuthService {
     }
 
     try {
-      await this.nftCollectionService.lazySyncOnLogin(user.id);
+      await this.nftCollectionService.claimFromCachedOwnership(user.id);
     } catch (err) {
-      this.logger.warn(`Lazy NFT sync failed on login for ${user.id}: ${err}`);
+      this.logger.warn(`Cached NFT claim failed on login for ${user.id}: ${err}`);
     }
 
     const token = this.jwt.sign({ sub: user.id, username: user.username });
@@ -242,8 +242,8 @@ export class AuthService {
       if (!user) throw new UnauthorizedException('Account not found');
       try { await this.recalculateUserLocations(user.id); } catch {}
       try { await this.telemetryService.record(user.id, 'player_login', null, 1, {}); } catch {}
-      try { await this.nftCollectionService.lazySyncOnLogin(user.id); } catch (err) {
-        this.logger.warn(`Lazy NFT sync failed on SIWE login for ${user.id}: ${err}`);
+      try { await this.nftCollectionService.claimFromCachedOwnership(user.id); } catch (err) {
+        this.logger.warn(`Cached NFT claim failed on SIWE login for ${user.id}: ${err}`);
       }
     } else {
       // No account exists for this wallet yet. Don't auto-create one — issue a
