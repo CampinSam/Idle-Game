@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NftCollectionService } from '../nft/nft-collection.service';
-import { normalizeCardanoAddress, isCardanoHexAddress } from '../auth/cardano.utils';
+import { normalizeCardanoAddress, isCardanoHexAddress, normalizeToStakeKey } from '../auth/cardano.utils';
 
 @Injectable()
 export class WalletService {
@@ -61,10 +61,14 @@ export class WalletService {
     }
 
     const trimmed = address.trim();
-    const normalizedAddress = chain === 'CARDANO' ? normalizeCardanoAddress(trimmed) : trimmed.toLowerCase();
+    // normalizedBech32: hex-to-bech32 only (needed before stake key extraction).
+    const normalizedBech32 = chain === 'CARDANO' ? normalizeCardanoAddress(trimmed) : trimmed.toLowerCase();
+    // walletAddress: canonical identity for ownership — stake key for Cardano.
+    const walletAddress = chain === 'CARDANO' ? normalizeToStakeKey(normalizedBech32) : normalizedBech32;
+    const paymentAddr = chain === 'CARDANO' && walletAddress !== normalizedBech32 ? normalizedBech32 : null;
 
     const existing = await (this.prisma as any).linkedWallet.findUnique({
-      where: { chain_address: { chain, address: normalizedAddress } },
+      where: { chain_address: { chain, address: walletAddress } },
     });
     if (existing && existing.userId !== userId) {
       throw new BadRequestException('This wallet is already linked to a different account');
@@ -74,9 +78,9 @@ export class WalletService {
       (await (this.prisma as any).linkedWallet.count({ where: { userId } })) === 0;
 
     await (this.prisma as any).linkedWallet.upsert({
-      where: { chain_address: { chain, address: normalizedAddress } },
-      update: { userId },
-      create: { userId, chain, address: normalizedAddress, isPrimary: isFirst },
+      where: { chain_address: { chain, address: walletAddress } },
+      update: { userId, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
+      create: { userId, chain, address: walletAddress, isPrimary: isFirst, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
     });
 
     let sync: { claimed: number; alreadyClaimed: number; notImported: number; unclaimed: number } | null = null;
@@ -90,7 +94,7 @@ export class WalletService {
       };
     } catch (err) {
       this.logger.error(
-        `Linked wallet ${chain}:${normalizedAddress} for user ${userId} but NFT sync failed: ${err}`,
+        `Linked wallet ${chain}:${walletAddress} for user ${userId} but NFT sync failed: ${err}`,
       );
     }
 

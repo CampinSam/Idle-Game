@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { ethers } from 'ethers';
 import verifyCardanoDataSignature from '@cardano-foundation/cardano-verify-datasignature';
-import { normalizeCardanoAddress } from './cardano.utils';
+import { normalizeCardanoAddress, normalizeToStakeKey } from './cardano.utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventService } from '../event/event.service';
 import { LocationService } from '../location/location.service';
@@ -181,6 +181,8 @@ export class AuthService {
     | { linked: true }
     | { needsOnboarding: true; walletToken: string; chain: string; address: string }
   > {
+    // normalizedAddress: bech32 form of whatever the client sent (payment or stake).
+    // Used for nonce lookup and signature verification only.
     const normalizedAddress = chain === 'CARDANO' ? normalizeCardanoAddress(address) : address.toLowerCase();
 
     const nonceRecord = await (this.prisma as any).walletNonce.findUnique({
@@ -208,31 +210,36 @@ export class AuthService {
       where: { chain_address: { chain, address: normalizedAddress } },
     });
 
+    // walletAddress: the canonical identity used for ownership storage.
+    // For Cardano, always the stake key. For other chains, same as normalizedAddress.
+    const walletAddress = chain === 'CARDANO' ? normalizeToStakeKey(normalizedAddress) : normalizedAddress;
+    const paymentAddr = chain === 'CARDANO' && walletAddress !== normalizedAddress ? normalizedAddress : null;
+
     if (authenticatedUserId) {
       const existing = await (this.prisma as any).linkedWallet.findUnique({
-        where: { chain_address: { chain, address: normalizedAddress } },
+        where: { chain_address: { chain, address: walletAddress } },
       });
       if (existing && existing.userId !== authenticatedUserId) {
         throw new BadRequestException('This wallet is already linked to a different account');
       }
       const isFirst = (await (this.prisma as any).linkedWallet.count({ where: { userId: authenticatedUserId } })) === 0;
       await (this.prisma as any).linkedWallet.upsert({
-        where: { chain_address: { chain, address: normalizedAddress } },
-        update: { userId: authenticatedUserId },
-        create: { userId: authenticatedUserId, chain, address: normalizedAddress, isPrimary: isFirst },
+        where: { chain_address: { chain, address: walletAddress } },
+        update: { userId: authenticatedUserId, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
+        create: { userId: authenticatedUserId, chain, address: walletAddress, isPrimary: isFirst, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
       });
       try {
         await this.nftCollectionService.syncUserCollections(authenticatedUserId);
       } catch (err) {
         this.logger.error(
-          `Linked wallet ${chain}:${normalizedAddress} for user ${authenticatedUserId} but NFT sync failed: ${err}`,
+          `Linked wallet ${chain}:${walletAddress} for user ${authenticatedUserId} but NFT sync failed: ${err}`,
         );
       }
       return { linked: true };
     }
 
     const existing = await (this.prisma as any).linkedWallet.findUnique({
-      where: { chain_address: { chain, address: normalizedAddress } },
+      where: { chain_address: { chain, address: walletAddress } },
     });
 
     let user: any;
@@ -253,7 +260,8 @@ export class AuthService {
         {
           purpose: 'wallet_onboarding',
           chain,
-          address: normalizedAddress,
+          address: walletAddress,
+          ...(paymentAddr ? { paymentAddress: paymentAddr } : {}),
         },
         { expiresIn: '15m' },
       );
@@ -261,7 +269,7 @@ export class AuthService {
         needsOnboarding: true,
         walletToken,
         chain,
-        address: normalizedAddress,
+        address: walletAddress,
       };
     }
 
@@ -286,14 +294,18 @@ export class AuthService {
     }
 
     const chain: string = payload.chain;
-    const normalizedAddress: string = payload.address;
+    // Normalise to stake key (the token already carries stake key for new
+    // sign-ups, but may carry a payment address from older tokens still in flight).
+    const rawAddress: string = payload.address;
+    const walletAddress = chain === 'CARDANO' ? normalizeToStakeKey(rawAddress) : rawAddress;
+    const paymentAddr = chain === 'CARDANO' && walletAddress !== rawAddress ? rawAddress : (payload.paymentAddress ?? null);
 
     const trimmedUsername = (username || '').trim();
     if (trimmedUsername.length < 3) {
       throw new BadRequestException('Username must be at least 3 characters');
     }
 
-    const finalEmail = (email && email.trim()) || `${normalizedAddress}@wallet.derp`;
+    const finalEmail = (email && email.trim()) || `${walletAddress}@wallet.derp`;
 
     // Race-safe duplicate checks.
     const existingByName = await this.prisma.user.findUnique({ where: { username: trimmedUsername } });
@@ -305,7 +317,7 @@ export class AuthService {
       throw new ConflictException('Email already in use');
     }
     const existingWallet = await (this.prisma as any).linkedWallet.findUnique({
-      where: { chain_address: { chain, address: normalizedAddress } },
+      where: { chain_address: { chain, address: walletAddress } },
     });
     if (existingWallet) {
       throw new ConflictException('This wallet is already linked to an account');
@@ -318,13 +330,13 @@ export class AuthService {
         username: trimmedUsername,
         email: finalEmail,
         authProvider: 'wallet',
-        walletAddress: normalizedAddress,
+        walletAddress,
         ecosystemId: chain,
         ...(passwordHash ? { passwordHash } : {}),
       },
     });
     await (this.prisma as any).linkedWallet.create({
-      data: { userId: user.id, chain, address: normalizedAddress, isPrimary: true },
+      data: { userId: user.id, chain, address: walletAddress, isPrimary: true, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
     });
 
     try {

@@ -65,13 +65,14 @@ model PasswordReset {
 }
 
 model LinkedWallet {
-  id        String   @id @default(uuid())
-  userId    String
-  chain     String
-  address   String
-  isPrimary Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(uuid())
+  userId         String
+  chain          String
+  address        String
+  paymentAddress String?
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([chain, address])
   @@index([userId])

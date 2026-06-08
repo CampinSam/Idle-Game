@@ -609,18 +609,11 @@ export class NftCollectionService {
     if (wallets.length === 0) return { claimed: 0, transfers: 0 };
 
     const rawAddresses: string[] = wallets.map((w: any) => w.address as string);
-    // Expand the address set: for each base address also include its derived
-    // stake key, and vice versa.  NftAsset.ownerAddress is stored in canonical
-    // (stake-key) form by the sweep; linked wallets may use either form, so we
-    // must query with both to avoid missing ownership on stake-linked wallets.
-    const addresses = Array.from(
-      new Set(
-        rawAddresses.flatMap((a) => {
-          const stake = this.cardanoProvider.normalizeToStakeKey(a);
-          return stake !== a ? [a, stake] : [a];
-        }),
-      ),
-    );
+    // linked_wallets stores the stake key as `address` for Cardano (enforced at
+    // write time and backfilled by the migration script).  nft_assets.ownerAddress
+    // is also stored as a stake key by the sweep.  A direct IN-list match is
+    // therefore sufficient — no address-expansion workaround is needed.
+    const addresses = rawAddresses;
 
     const ownedAssets = await (this.prisma as any).nftAsset.findMany({
       where: { ownerAddress: { in: addresses } },
