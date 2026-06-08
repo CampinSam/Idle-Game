@@ -171,7 +171,10 @@ export function ActiveJobRow({
     [currentCosts, currencyBalances],
   );
 
-  const showCostChips = currentCosts.length > 0 && !isReady;
+  // In compact mode (home-page widget) chips and the skip button are intentionally
+  // suppressed — compact rows are a quick-glance summary only. Full skip interaction
+  // belongs on the dedicated ActiveJobsPage (non-compact).
+  const showCostChips = currentCosts.length > 0 && !isReady && !compact;
 
   return (
     <div
@@ -180,7 +183,7 @@ export function ActiveJobRow({
       <button
         type="button"
         onClick={onClick}
-        className={`flex-1 min-w-0 text-left flex items-center gap-3 pl-4 ${showSkipButton ? 'pr-2' : 'pr-4'} ${compact ? 'py-2' : 'py-2.5'} hover:bg-[rgba(139,92,246,0.06)] transition-colors`}
+        className={`flex-1 min-w-0 text-left flex items-center gap-3 pl-4 ${showSkipButton && !compact ? 'pr-2' : 'pr-4'} ${compact ? 'py-2' : 'py-2.5'} hover:bg-[rgba(139,92,246,0.06)] transition-colors`}
       >
         <div
           className={`flex items-center justify-center ${compact ? 'w-7 h-7 text-base' : 'w-[34px] h-[34px] text-xl'} rounded-lg flex-shrink-0`}
@@ -232,7 +235,7 @@ export function ActiveJobRow({
         </div>
       </button>
 
-      {showSkipButton && (
+      {showSkipButton && !compact && (
         <div className="pr-4 pl-1 flex-shrink-0 self-center">
           <button
             type="button"
