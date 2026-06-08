@@ -12,6 +12,7 @@ interface LinkedWallet {
   id: string;
   chain: string;
   address: string;
+  paymentAddress?: string | null;
   isPrimary: boolean;
 }
 
@@ -479,12 +480,22 @@ export default function SettingsContent() {
                             >
                               {CHAIN_LABELS[w.chain] ?? w.chain}
                             </span>
-                            <span
-                              className="text-[13px] text-text-primary font-['Fira_Code',monospace] overflow-hidden text-ellipsis whitespace-nowrap min-w-0"
-                              title={w.address}
-                            >
-                              {truncateAddress(w.address)}
-                            </span>
+                            <div className="flex flex-col min-w-0 overflow-hidden">
+                              <span
+                                className="text-[13px] text-text-primary font-['Fira_Code',monospace] overflow-hidden text-ellipsis whitespace-nowrap"
+                                title={w.address}
+                              >
+                                {truncateAddress(w.address)}
+                              </span>
+                              {w.chain === 'CARDANO' && w.paymentAddress && (
+                                <span
+                                  className="text-[11px] text-text-secondary font-['Fira_Code',monospace] overflow-hidden text-ellipsis whitespace-nowrap"
+                                  title={w.paymentAddress}
+                                >
+                                  {truncateAddress(w.paymentAddress)}
+                                </span>
+                              )}
+                            </div>
                             {w.isPrimary && (
                               <span className="text-[10px] font-semibold text-[#a78bfa] bg-[rgba(139,92,246,0.14)] border border-[rgba(139,92,246,0.3)] px-[7px] py-[2px] rounded-[5px] whitespace-nowrap flex-shrink-0">
                                 Primary

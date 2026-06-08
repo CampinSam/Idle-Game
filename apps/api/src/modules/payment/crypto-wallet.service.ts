@@ -1533,7 +1533,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
 
     const unsignedTxCborHex = await this.buildUnsignedPlayerCntTx({
       utxos,
-      senderAddress: linkedWallet.address,
+      senderAddress: linkedWallet.paymentAddress ?? linkedWallet.address,
       recipientAddress: walletConfig.hotWalletAddress,
       cntAmount: amount,
       policyIdHex: tokenOverride?.policyId ?? cryptoRow.cntPolicyId,
@@ -1630,7 +1630,7 @@ export class CryptoWalletService implements OnApplicationBootstrap, OnModuleInit
 
     const unsignedTxCborHex = await this.buildUnsignedPlayerCntTx({
       utxos,
-      senderAddress: linkedWallet.address,
+      senderAddress: linkedWallet.paymentAddress ?? linkedWallet.address,
       recipientAddress: purchase.destinationAddress,
       cntAmount,
       policyIdHex: cntMeta.policyId,

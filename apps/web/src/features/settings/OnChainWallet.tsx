@@ -7,6 +7,7 @@ interface LinkedWallet {
   id: string;
   chain: string;
   address: string;
+  paymentAddress?: string | null;
   isPrimary: boolean;
 }
 
@@ -378,7 +379,7 @@ function WithdrawTab({
         }
       }
       if (!cancelled && primaryCardano) {
-        setAddress(primaryCardano.address);
+        setAddress(primaryCardano.paymentAddress || primaryCardano.address);
       }
     })();
 
@@ -540,19 +541,22 @@ function WithdrawTab({
           </label>
           {cardanoWallets.length > 0 && (
             <div className="flex gap-1.5 flex-wrap mb-1.5">
-              {cardanoWallets.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => setAddress(w.address)}
-                  className={`px-2 py-1 rounded text-[11px] border cursor-pointer transition-colors ${
-                    address === w.address
-                      ? 'border-[rgba(167,139,250,0.6)] bg-[rgba(167,139,250,0.15)] text-[#c4b5fd]'
-                      : 'border-white/15 bg-transparent text-[#888]'
-                  }`}
-                >
-                  {w.isPrimary ? '★ ' : ''}{w.address.slice(0, 12)}…{w.address.slice(-6)}
-                </button>
-              ))}
+              {cardanoWallets.map((w) => {
+                const destAddr = w.paymentAddress || w.address;
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => setAddress(destAddr)}
+                    className={`px-2 py-1 rounded text-[11px] border cursor-pointer transition-colors ${
+                      address === destAddr
+                        ? 'border-[rgba(167,139,250,0.6)] bg-[rgba(167,139,250,0.15)] text-[#c4b5fd]'
+                        : 'border-white/15 bg-transparent text-[#888]'
+                    }`}
+                  >
+                    {w.isPrimary ? '★ ' : ''}{destAddr.slice(0, 12)}…{destAddr.slice(-6)}
+                  </button>
+                );
+              })}
             </div>
           )}
           <input
