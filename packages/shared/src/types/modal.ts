@@ -69,7 +69,7 @@ export type ModalAction =
   | { type: 'BUILD_BUILDING'; locationId: string; buildingDefId: string }
   | { type: 'UPGRADE_BUILDING'; locationId: string; buildingId: string }
   | { type: 'SHOP_PURCHASE'; shopItemDefId: string }
-  | { type: 'DEPOSIT_LOCATION_XP'; locationId: string; costOption: { type: 'currency' | 'item'; id: string; amount: number }; charges?: number }
+  | { type: 'DEPOSIT_LOCATION_XP'; locationId: string; costOption: { type: 'currency' | 'item'; id: string; amount: number }; charges?: number; chargesBindingId?: string }
   | { type: 'PRESTIGE' }
   | { type: 'SKIP'; targetType: string; targetId: string }
   | { type: 'EXECUTE_COMMAND'; command: string; payload: Record<string, unknown> };
@@ -89,7 +89,8 @@ export type ModalBlock =
   | ModalBlockClickReveal
   | ModalBlockError
   | ModalBlockCharacterEvents
-  | ModalBlockEntityRoster;
+  | ModalBlockEntityRoster
+  | ModalBlockQuantityInput;
 
 export interface ModalBlockRichText {
   type: 'richText';
@@ -233,6 +234,18 @@ export interface ModalBlockEntityRoster {
   from?: string;
 }
 
+export interface ModalBlockQuantityInput {
+  type: 'quantityInput';
+  id: string;
+  min: number;
+  max: number;
+  defaultValue: number;
+  resourceId: string;
+  costAmount: number;
+  xpPerCharge: number;
+  from?: string;
+}
+
 export interface RewardItem {
   assetKey?: string;
   name: string;
@@ -291,6 +304,7 @@ export const MODAL_BLOCK_TYPES = [
   'error',
   'characterEvents',
   'entityRoster',
+  'quantityInput',
 ] as const;
 
 /**

@@ -10,6 +10,7 @@ import GiftRevealBlock from './GiftRevealBlock';
 import ClickRevealBlock from './ClickRevealBlock';
 import CharacterEventsBlock from './CharacterEventsBlock';
 import EntityRosterBlock from './EntityRosterBlock';
+import QuantityInputBlock from './QuantityInputBlock';
 import AssetImage from '../AssetImage';
 
 export default function BlockRenderer({ block }: { block: ModalBlock }) {
@@ -98,6 +99,9 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
 
     case 'error':
       return <div className="gm-error-block">{block.message}</div>;
+
+    case 'quantityInput':
+      return <QuantityInputBlock block={block} />;
 
     default: {
       const _never: never = block;

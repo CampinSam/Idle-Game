@@ -875,33 +875,40 @@ export class UiService {
     } else {
       body.push({
         type: 'richText',
-        doc: [{ t: 'p', c: [{ t: 'text', v: 'Spend resources to grant XP. Each click below spends one charge.' }] }],
+        doc: [{ t: 'p', c: [{ t: 'text', v: 'Choose how many charges to deposit. Each charge costs the listed resource amount.' }] }],
       });
 
-      // Per-option preview row: shows current balance + XP gained + projected
-      // post-deposit XP / level so the player can see the result before
-      // committing.
-      const previewRows: Array<{ label: string; value: string }> = [];
+      // Per-option quantity picker block — carries all data the frontend needs
+      // to render the −/input/+ row and compute the live preview text without
+      // a round-trip.
       for (const opt of options) {
         const have = balances[opt.type]?.[opt.id] ?? 0;
-        const projectedXp = xp + opt.xpPerCharge;
-        const wouldLevel = projectedXp >= xpToNext;
-        previewRows.push({
-          label: `${opt.amount}× ${opt.id}`,
-          value: `Have ${have} • +${opt.xpPerCharge} XP${wouldLevel ? ' (Level Up!)' : ` → ${projectedXp}/${xpToNext}`}`,
+        const maxCharges = Math.max(0, Math.floor(have / opt.amount));
+        if (maxCharges === 0) continue;
+        const pickerId = `qty_${opt.type}_${opt.id}`;
+        body.push({
+          type: 'quantityInput',
+          id: pickerId,
+          min: 1,
+          max: maxCharges,
+          defaultValue: 1,
+          resourceId: opt.id,
+          costAmount: opt.amount,
+          xpPerCharge: opt.xpPerCharge,
         });
       }
-      if (previewRows.length > 0) body.push({ type: 'metaRows', rows: previewRows });
     }
 
     const buttons: any[] = [];
     if (!isMaxLevel) {
       for (const opt of options) {
         const have = balances[opt.type]?.[opt.id] ?? 0;
-        const canAfford = have >= opt.amount;
+        const maxCharges = Math.max(0, Math.floor(have / opt.amount));
+        const canAfford = maxCharges > 0;
+        const pickerId = `qty_${opt.type}_${opt.id}`;
         buttons.push({
           id: `deposit_${opt.type}_${opt.id}`,
-          label: `Spend ${opt.amount}× ${opt.id} (+${opt.xpPerCharge} XP)`,
+          label: `Deposit ${opt.id} (+${opt.xpPerCharge} XP/charge)`,
           variant: 'primary',
           disabled: !canAfford,
           action: {
@@ -909,6 +916,7 @@ export class UiService {
             locationId,
             costOption: { type: opt.type, id: opt.id, amount: opt.amount },
             charges: 1,
+            chargesBindingId: pickerId,
           },
         });
       }

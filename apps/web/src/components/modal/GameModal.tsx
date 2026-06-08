@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction } from '@derp/shared';
 import { computeEffectivePage } from '@derp/shared';
 import BlockRenderer from './blocks/BlockRenderer';
 import AssetImage from './AssetImage';
+import QuantityPickerContext from '../../context/QuantityPickerContext';
 export interface GameModalProps {
   spec: ModalSpecV1;
   isOpen: boolean;
@@ -15,11 +16,31 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
   const [pageIndex, setPageIndex] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [pendingConfirmBtn, setPendingConfirmBtn] = useState<ModalButtonSpec | null>(null);
+  const [pickerValues, setPickerValues] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setPageIndex(0);
     setPendingConfirmBtn(null);
+    // Initialize picker values from all quantityInput blocks in the spec
+    const initial: Record<string, number> = {};
+    for (const page of spec.pages ?? []) {
+      for (const block of page.body ?? []) {
+        if (block.type === 'quantityInput') {
+          initial[block.id] = block.defaultValue;
+        }
+      }
+    }
+    setPickerValues(initial);
   }, [spec]);
+
+  const setPickerValue = useCallback((id: string, value: number) => {
+    setPickerValues((prev) => ({ ...prev, [id]: value }));
+  }, []);
+
+  const pickerCtx = useMemo(
+    () => ({ values: pickerValues, setValue: setPickerValue }),
+    [pickerValues, setPickerValue],
+  );
 
   const totalPages = Array.isArray(spec.pages) ? spec.pages.length : 0;
   const { header, body, buttons, dismiss } = computeEffectivePage(spec, pageIndex);
@@ -49,10 +70,18 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
     if (dismiss.backdrop) onRequestClose();
   };
 
+  const resolveAction = useCallback((action: ModalAction): ModalAction => {
+    if (action.type === 'DEPOSIT_LOCATION_XP' && action.chargesBindingId) {
+      const qty = pickerValues[action.chargesBindingId] ?? action.charges ?? 1;
+      return { ...action, charges: Math.max(1, Math.floor(qty)) };
+    }
+    return action;
+  }, [pickerValues]);
+
   const fireAction = async (btn: ModalButtonSpec) => {
     setActionLoading(btn.id);
     try {
-      await onAction(btn.action);
+      await onAction(resolveAction(btn.action));
     } catch (err) {
       console.error('[GameModal] action failed:', err);
     } finally {
@@ -91,6 +120,7 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
   const handleCancelConfirm = () => setPendingConfirmBtn(null);
 
   return (
+    <QuantityPickerContext.Provider value={pickerCtx}>
     <div className="gm-overlay" onMouseDown={onBackdropClick} role="presentation">
       <div className="gm-modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <>
@@ -177,5 +207,6 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
         )}
       </div>
     </div>
+    </QuantityPickerContext.Provider>
   );
 }
