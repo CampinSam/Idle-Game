@@ -98,7 +98,7 @@ export class UiService {
         break;
       case 'ready_notified':
         generated = await this.buildActiveJobModal(job, defName, typeLabel, tickInfo);
-        modalDefId = def?.readyModalDefId ?? def?.activeModalDefId ?? null;
+        modalDefId = def?.readyModalDefId ?? null;
         break;
       case 'completed':
         generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
@@ -114,7 +114,7 @@ export class UiService {
         if (job.type === 'MissionJob') {
           modalDefId = resolveMissionTierModal((def as any)?.tiers, 'failure');
         } else {
-          modalDefId = def?.failedModalDefId ?? def?.completedModalDefId ?? null;
+          modalDefId = def?.failedModalDefId ?? null;
         }
         break;
       default:
