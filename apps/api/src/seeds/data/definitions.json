@@ -7626,22 +7626,6 @@
       "enabled": true
     },
     {
-      "id": "default_mission_complete",
-      "name": "Default Mission Complete",
-      "description": "System fallback modal shown when a mission completes and no custom modal is assigned.",
-      "version": 1,
-      "spec": {
-        "version": 1,
-        "id": "default_mission_complete",
-        "kind": "result",
-        "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Mission Complete!" },
-        "body": [],
-        "buttons": [{ "id": "btn_ok", "label": "Collect", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
-      },
-      "enabled": true
-    },
-    {
       "id": "default_gift_claim",
       "name": "Default Gift Claim",
       "description": "System fallback modal shown when a gift is claimed and no custom modal is assigned.",
@@ -7690,34 +7674,338 @@
       "enabled": true
     },
     {
-      "id": "default_crafting_complete",
-      "name": "Default Crafting Complete",
-      "description": "System fallback modal shown when a crafting job completes and no custom modal is assigned.",
+      "id": "default_job_active",
+      "name": "Default Job Active",
+      "description": "Universal fallback modal for any active job when no type-specific or definition-specific modal is assigned.",
       "version": 1,
       "spec": {
         "version": 1,
-        "id": "default_crafting_complete",
-        "kind": "result",
+        "id": "default_job_active",
+        "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Crafting Complete!" },
-        "body": [],
-        "buttons": [{ "id": "btn_ok", "label": "Collect", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+        "header": { "title": "Job In Progress" }
       },
       "enabled": true
     },
     {
-      "id": "default_building_complete",
-      "name": "Default Building Complete",
-      "description": "System fallback modal shown when a building job completes and no custom modal is assigned.",
+      "id": "default_job_ready",
+      "name": "Default Job Ready",
+      "description": "Universal fallback modal for any job in the ready_notified state when no type-specific or definition-specific modal is assigned.",
       "version": 1,
       "spec": {
         "version": 1,
-        "id": "default_building_complete",
+        "id": "default_job_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Job Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_job_completed",
+      "name": "Default Job Completed",
+      "description": "Universal fallback modal for any completed job when no type-specific or definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_job_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Construction Complete!" },
-        "body": [],
-        "buttons": [{ "id": "btn_ok", "label": "Done", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }]
+        "header": { "title": "Job Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_job_failed",
+      "name": "Default Job Failed",
+      "description": "Universal fallback modal for any failed job when no type-specific or definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_job_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Job Failed" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_mission_active",
+      "name": "Default Mission Active",
+      "description": "Fallback modal for active missions when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_mission_active",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Mission In Progress" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_mission_ready",
+      "name": "Default Mission Ready",
+      "description": "Fallback modal for ready missions when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_mission_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Mission Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_mission_completed",
+      "name": "Default Mission Completed",
+      "description": "Fallback modal for completed missions when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_mission_completed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Mission Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_mission_failed",
+      "name": "Default Mission Failed",
+      "description": "Fallback modal for failed missions when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_mission_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Mission Failed" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_crafting_active",
+      "name": "Default Crafting Active",
+      "description": "Fallback modal for active crafting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_crafting_active",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Crafting In Progress" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_crafting_ready",
+      "name": "Default Crafting Ready",
+      "description": "Fallback modal for ready crafting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_crafting_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Crafting Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_crafting_completed",
+      "name": "Default Crafting Completed",
+      "description": "Fallback modal for completed crafting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_crafting_completed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Crafting Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_crafting_failed",
+      "name": "Default Crafting Failed",
+      "description": "Fallback modal for failed crafting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_crafting_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Crafting Failed" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_active",
+      "name": "Default Building Active",
+      "description": "Fallback modal for active building construction jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_active",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Construction In Progress" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_ready",
+      "name": "Default Building Ready",
+      "description": "Fallback modal for ready building construction jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Construction Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_completed",
+      "name": "Default Building Completed",
+      "description": "Fallback modal for completed building construction jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_completed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Construction Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_failed",
+      "name": "Default Building Failed",
+      "description": "Fallback modal for failed building construction jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Construction Failed" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_upgrade_active",
+      "name": "Default Building Upgrade Active",
+      "description": "Fallback modal for active building upgrade jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_upgrade_active",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Upgrade In Progress" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_upgrade_ready",
+      "name": "Default Building Upgrade Ready",
+      "description": "Fallback modal for ready building upgrade jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_upgrade_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Upgrade Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_upgrade_completed",
+      "name": "Default Building Upgrade Completed",
+      "description": "Fallback modal for completed building upgrade jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_upgrade_completed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Upgrade Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_building_upgrade_failed",
+      "name": "Default Building Upgrade Failed",
+      "description": "Fallback modal for failed building upgrade jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_building_upgrade_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Upgrade Failed" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_dusting_active",
+      "name": "Default Dusting Active",
+      "description": "Fallback modal for active dusting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_dusting_active",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Dusting In Progress" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_dusting_ready",
+      "name": "Default Dusting Ready",
+      "description": "Fallback modal for ready dusting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_dusting_ready",
+        "kind": "job_status",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Dusting Ready!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_dusting_completed",
+      "name": "Default Dusting Completed",
+      "description": "Fallback modal for completed dusting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_dusting_completed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Dusting Complete!" }
+      },
+      "enabled": true
+    },
+    {
+      "id": "default_dusting_failed",
+      "name": "Default Dusting Failed",
+      "description": "Fallback modal for failed dusting jobs when no definition-specific modal is assigned.",
+      "version": 1,
+      "spec": {
+        "version": 1,
+        "id": "default_dusting_failed",
+        "kind": "result",
+        "dismiss": { "backdrop": true, "x": true, "escape": true },
+        "header": { "title": "Dusting Failed" }
       },
       "enabled": true
     },

@@ -131,22 +131,44 @@ export class UiService {
 
     const ctx = await this.buildJobContext(job, def);
 
+    // Level 1: definition-specific modal override.
     if (modalDefId) {
       const spec = await this.resolveModalDef(modalDefId);
       if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
     }
 
-    // Fall back to the system default modal when no custom modal is assigned.
-    const isTerminal = job.status === 'completed' || job.status === 'failed' || job.status === 'collected';
-    if (isTerminal) {
-      let defaultId: string | null = null;
-      if (job.type === 'MissionJob') defaultId = 'default_mission_complete';
-      else if (job.type === 'CraftingJob') defaultId = 'default_crafting_complete';
-      else if (job.type === 'BuildingJob') defaultId = 'default_building_complete';
-      if (defaultId) {
-        const defaultSpec = await this.resolveDefaultModalDef(defaultId);
-        if (defaultSpec) return this.mergeModalDefSpec(generated, defaultSpec, ctx);
+    // Determine normalised state key for fallback lookup.
+    const stateKey: string | null = (() => {
+      switch (job.status) {
+        case 'active': return 'active';
+        case 'ready_notified': return 'ready';
+        case 'completed': return 'completed';
+        case 'failed': return 'failed';
+        default: return (job.status as string) === 'collected' ? 'completed' : null;
       }
+    })();
+
+    if (stateKey) {
+      const isUpgrade = !!(job.data as any)?.upgradeToLevel;
+      const typePrefix: string | null = (() => {
+        switch (job.type) {
+          case 'MissionJob': return 'default_mission';
+          case 'CraftingJob': return 'default_crafting';
+          case 'BuildingJob': return isUpgrade ? 'default_building_upgrade' : 'default_building';
+          case 'DustingJob': return 'default_dusting';
+          default: return null;
+        }
+      })();
+
+      // Level 2: job-type + state default.
+      if (typePrefix) {
+        const typeSpec = await this.resolveDefaultModalDef(`${typePrefix}_${stateKey}`);
+        if (typeSpec) return this.mergeModalDefSpec(generated, typeSpec, ctx);
+      }
+
+      // Level 3: universal job + state default.
+      const genericSpec = await this.resolveDefaultModalDef(`default_job_${stateKey}`);
+      if (genericSpec) return this.mergeModalDefSpec(generated, genericSpec, ctx);
     }
 
     return generated;
@@ -622,6 +644,7 @@ export class UiService {
       case 'MissionJob': return 'Mission';
       case 'CraftingJob': return 'Crafting';
       case 'BuildingJob': return 'Construction';
+      case 'DustingJob': return 'Dusting';
       default: return 'Job';
     }
   }
@@ -642,6 +665,8 @@ export class UiService {
         return await this.prisma.recipeDef.findFirst({ where: { id: defId } });
       } else if (job.type === 'BuildingJob') {
         return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId } });
+      } else if (job.type === 'DustingJob') {
+        return await (this.prisma as any).itemDefinition.findFirst({ where: { id: defId } });
       }
     } catch {}
     return null;
