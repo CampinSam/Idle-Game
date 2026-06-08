@@ -91,18 +91,20 @@ model WalletNonce {
 }
 
 model NftCollectionDef {
-  id                   String     @id
+  id                   String         @id
   name                 String
   chain                String
   collectionId         String
   entityDefinitionId   String?
   locationDefinitionId String?
-  mintMode             String     @default("one_per_token")
-  active               Boolean    @default(true)
-  data                 Json       @default("{}")
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  itemDefinitionId     String?
+  mintMode             String         @default("one_per_token")
+  active               Boolean        @default(true)
+  data                 Json           @default("{}")
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
   nftAssets            NftAsset[]
+  itemInstances        ItemInstance[]
 
   @@unique([chain, collectionId])
   @@map("nft_collection_defs")
@@ -704,23 +706,28 @@ model ItemDefinition {
 }
 
 model ItemInstance {
-  id           String         @id @default(uuid())
-  userId       String
-  definitionId String
-  quantity     Int            @default(1)
-  state        Json?
-  equippedToId String?
-  bound        Boolean        @default(false)
-  tradeLocked  Boolean        @default(false)
-  data         Json?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  definition   ItemDefinition @relation(fields: [definitionId], references: [id])
-  user         User           @relation("UserItemInstances", fields: [userId], references: [id], onDelete: Cascade)
+  id                  String              @id @default(uuid())
+  userId              String
+  definitionId        String
+  quantity            Int                 @default(1)
+  state               Json?
+  equippedToId        String?
+  bound               Boolean             @default(false)
+  tradeLocked         Boolean             @default(false)
+  data                Json?
+  nftAssetId          String?
+  nftCollectionDefId  String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  definition          ItemDefinition      @relation(fields: [definitionId], references: [id])
+  user                User                @relation("UserItemInstances", fields: [userId], references: [id], onDelete: Cascade)
+  nftCollection       NftCollectionDef?   @relation(fields: [nftCollectionDefId], references: [id])
 
   @@index([userId])
   @@index([definitionId])
   @@index([equippedToId])
+  @@index([nftAssetId])
+  @@index([nftCollectionDefId])
   @@map("item_instances")
 }
 

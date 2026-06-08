@@ -33,7 +33,7 @@ Create a new NFT collection definition.
 }
 ```
 
-Either `entityDefinitionId` or `locationDefinitionId` must be set (not both).
+Exactly one of `entityDefinitionId`, `locationDefinitionId`, or `itemDefinitionId` must be set.
 
 ---
 

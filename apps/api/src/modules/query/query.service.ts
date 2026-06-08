@@ -289,7 +289,15 @@ export class QueryService {
         take: 50,
       }),
       this.prisma.itemInstance.findMany({
-        where: { userId },
+        where: {
+          userId,
+          ...(disabledCollectionIds.length > 0 && {
+            OR: [
+              { nftCollectionDefId: null },
+              { nftCollectionDefId: { notIn: disabledCollectionIds } },
+            ],
+          }),
+        },
         include: { definition: true },
       }),
       this.prisma.playerDelta.findFirst({

@@ -22,6 +22,7 @@ export interface CreateCollectionDto {
   collectionId: string;
   entityDefinitionId?: string;
   locationDefinitionId?: string;
+  itemDefinitionId?: string;
   mintMode?: string;
   data?: Record<string, any>;
 }
@@ -30,6 +31,7 @@ export interface UpdateCollectionDto {
   name?: string;
   entityDefinitionId?: string;
   locationDefinitionId?: string;
+  itemDefinitionId?: string;
   mintMode?: string;
   active?: boolean;
   data?: Record<string, any>;
@@ -126,23 +128,26 @@ export class NftCollectionService {
     }));
   }
 
-  private validateCollectionMode(entityDefinitionId?: string | null, locationDefinitionId?: string | null): void {
-    const hasEntity = !!entityDefinitionId;
-    const hasLocation = !!locationDefinitionId;
-    if (hasEntity && hasLocation) {
+  private validateCollectionMode(
+    entityDefinitionId?: string | null,
+    locationDefinitionId?: string | null,
+    itemDefinitionId?: string | null,
+  ): void {
+    const modes = [!!entityDefinitionId, !!locationDefinitionId, !!itemDefinitionId].filter(Boolean).length;
+    if (modes > 1) {
       throw new BadRequestException(
-        `A collection must target either an entityDefinitionId or a locationDefinitionId, not both`,
+        `A collection must target exactly one of: entityDefinitionId, locationDefinitionId, or itemDefinitionId`,
       );
     }
-    if (!hasEntity && !hasLocation) {
+    if (modes === 0) {
       throw new BadRequestException(
-        `A collection must have either an entityDefinitionId or a locationDefinitionId`,
+        `A collection must have exactly one of: entityDefinitionId, locationDefinitionId, or itemDefinitionId`,
       );
     }
   }
 
   async createCollection(dto: CreateCollectionDto) {
-    this.validateCollectionMode(dto.entityDefinitionId, dto.locationDefinitionId);
+    this.validateCollectionMode(dto.entityDefinitionId, dto.locationDefinitionId, dto.itemDefinitionId);
     return (this.prisma as any).nftCollectionDef.create({
       data: {
         id: dto.id,
@@ -151,6 +156,7 @@ export class NftCollectionService {
         collectionId: dto.collectionId,
         entityDefinitionId: dto.entityDefinitionId ?? null,
         locationDefinitionId: dto.locationDefinitionId ?? null,
+        itemDefinitionId: dto.itemDefinitionId ?? null,
         mintMode: dto.mintMode ?? 'one_per_token',
         data: dto.data ?? {},
       },
@@ -163,7 +169,8 @@ export class NftCollectionService {
 
     const nextEntityId = 'entityDefinitionId' in dto ? dto.entityDefinitionId : existing.entityDefinitionId;
     const nextLocationId = 'locationDefinitionId' in dto ? dto.locationDefinitionId : existing.locationDefinitionId;
-    this.validateCollectionMode(nextEntityId, nextLocationId);
+    const nextItemId = 'itemDefinitionId' in dto ? dto.itemDefinitionId : existing.itemDefinitionId;
+    this.validateCollectionMode(nextEntityId, nextLocationId, nextItemId);
 
     return (this.prisma as any).nftCollectionDef.update({
       where: { id },
@@ -194,8 +201,8 @@ export class NftCollectionService {
   async createInstances(id: string): Promise<{ started: true; total: number }> {
     const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
     if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
-    if (!collection.entityDefinitionId && !collection.locationDefinitionId) {
-      throw new BadRequestException(`Collection "${id}" has neither entityDefinitionId nor locationDefinitionId`);
+    if (!collection.entityDefinitionId && !collection.locationDefinitionId && !collection.itemDefinitionId) {
+      throw new BadRequestException(`Collection "${id}" has neither entityDefinitionId, locationDefinitionId, nor itemDefinitionId`);
     }
 
     const cachedAssets = await (this.prisma as any).nftAsset.findMany({
@@ -225,7 +232,9 @@ export class NftCollectionService {
 
     const runner = collection.entityDefinitionId
       ? this.runEntityInstanceCreation(collection, nftAssetIds)
-      : this.runLocationInstanceCreation(collection, nftAssetIds);
+      : collection.locationDefinitionId
+        ? this.runLocationInstanceCreation(collection, nftAssetIds)
+        : this.runItemInstanceCreation(collection, nftAssetIds);
 
     runner.catch((err) => {
       this.logger.error(`Background instance creation failed for collection "${id}": ${err}`);
@@ -364,6 +373,31 @@ export class NftCollectionService {
   }
 
   /**
+   * Item instances cannot be bulk pre-minted because `ItemInstance.userId` is
+   * required — every item must belong to a specific player from the moment it
+   * is created.  Item NFT instances are therefore created on-demand during
+   * `syncUserCollections` / `claimFromCachedOwnership` when a player's wallet
+   * ownership is confirmed.
+   *
+   * This runner completes immediately so the job status is reported correctly,
+   * and logs a clear explanation so operators know why no rows were written.
+   */
+  private async runItemInstanceCreation(collection: any, nftAssetIds: string[]) {
+    this.logger.log(
+      `Item instance creation [${collection.id}]: ItemInstances require a known owner and are created on-demand during player sync — no bulk pre-mint performed (${nftAssetIds.length} token(s) will be provisioned when the owning player next syncs their wallet).`,
+    );
+    this.createInstancesJobs.set(collection.id, {
+      status: 'done',
+      total: nftAssetIds.length,
+      processed: nftAssetIds.length,
+      upserted: 0,
+      failed: 0,
+      startedAt: this.createInstancesJobs.get(collection.id)?.startedAt,
+      finishedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
    * DB-only login reconciliation: matches NftAsset.ownerAddress against the
    * user's linked wallets and claims/transfers any entity or location rows that
    * belong to this user according to the cached ownership data.
@@ -402,12 +436,13 @@ export class NftCollectionService {
     const collectionIds = [...new Set(ownedAssets.map((a: any) => a.collectionId as string))];
     const collections = await (this.prisma as any).nftCollectionDef.findMany({
       where: { id: { in: collectionIds }, active: true },
-      select: { id: true, locationDefinitionId: true },
+      select: { id: true, locationDefinitionId: true, itemDefinitionId: true },
     });
     const collectionMap = new Map<string, any>(collections.map((c: any) => [c.id as string, c]));
 
     const claimedEntityIds: string[] = [];
     const claimedLocationIds: string[] = [];
+    const claimedItemIds: string[] = [];
     const prevOwnerDeletes: Array<{ userId: string; entity: string; id: string }> = [];
     let claimed = 0;
     let transfers = 0;
@@ -431,6 +466,23 @@ export class NftCollectionService {
           claimedLocationIds.push(loc.id);
           if (prevId) {
             prevOwnerDeletes.push({ userId: prevId, entity: 'location', id: loc.id });
+            transfers++;
+          }
+          claimed++;
+        } else if (collection.itemDefinitionId) {
+          const itemInst = await (this.prisma as any).itemInstance.findFirst({
+            where: { nftAssetId: asset.nftAssetId },
+            select: { id: true, userId: true },
+          });
+          if (!itemInst || itemInst.userId === userId) continue;
+          const prevId: string | null = itemInst.userId;
+          await (this.prisma as any).itemInstance.update({
+            where: { id: itemInst.id },
+            data: { userId },
+          });
+          claimedItemIds.push(itemInst.id);
+          if (prevId) {
+            prevOwnerDeletes.push({ userId: prevId, entity: 'item', id: itemInst.id });
             transfers++;
           }
           claimed++;
@@ -505,6 +557,20 @@ export class NftCollectionService {
         }
       } catch (err) {
         this.logger.error(`claimFromCachedOwnership: failed to load location rows: ${err}`);
+      }
+    }
+
+    if (claimedItemIds.length > 0) {
+      try {
+        const fullItems = await (this.prisma as any).itemInstance.findMany({
+          where: { id: { in: claimedItemIds } },
+          include: { definition: true },
+        });
+        for (const item of fullItems) {
+          allPatches.push({ op: 'upsert', entity: 'item', id: item.id, data: item });
+        }
+      } catch (err) {
+        this.logger.error(`claimFromCachedOwnership: failed to load item rows: ${err}`);
       }
     }
 
