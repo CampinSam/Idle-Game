@@ -23,7 +23,7 @@ interface SyncGift {
 }
 
 const PAGE_CLASS =
-  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto ' +
+  'flex-1 min-h-0 overflow-x-hidden overflow-y-auto touch-pan-y ' +
   '[-webkit-overflow-scrolling:touch] overscroll-contain space-y-4';
 
 const CARD_CLASS =

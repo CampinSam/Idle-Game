@@ -1397,7 +1397,7 @@ export default function StoreContent() {
       )}
 
 
-      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch]">
+      <div className="flex-1 min-h-0 overflow-y-auto touch-pan-y [-webkit-overflow-scrolling:touch] overscroll-contain">
         <StoreHeroCarousel heroes={heroes} onTabSelect={setActiveTab} />
 
         <div className="flex gap-2 flex-wrap px-3.5 pt-3 pb-2.5">
