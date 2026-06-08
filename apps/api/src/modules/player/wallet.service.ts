@@ -137,20 +137,25 @@ export class WalletService {
       return { success: true, changed: false, address: wallet.address };
     }
 
-    const normalized = normalizeCardanoAddress(wallet.address);
+    const bech32 = normalizeCardanoAddress(wallet.address);
+    // Normalize all the way to stake key — that is the canonical identity stored
+    // in linked_wallets for Cardano.  Enterprise/script addresses (no embeddable
+    // stake key) stay as their bech32 form.
+    const normalized = normalizeToStakeKey(bech32);
+    const paymentAddr = normalized !== bech32 ? bech32 : null;
 
     const conflict = await (this.prisma as any).linkedWallet.findUnique({
       where: { chain_address: { chain: wallet.chain, address: normalized } },
     });
     if (conflict && conflict.id !== walletId) {
       throw new BadRequestException(
-        'A wallet with the converted bech32 address already exists for this account',
+        'A wallet with the converted address already exists for this account',
       );
     }
 
     await (this.prisma as any).linkedWallet.update({
       where: { id: walletId },
-      data: { address: normalized },
+      data: { address: normalized, ...(paymentAddr ? { paymentAddress: paymentAddr } : {}) },
     });
 
     return { success: true, changed: true, address: normalized };

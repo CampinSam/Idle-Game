@@ -51,10 +51,10 @@ async function main() {
       continue;
     }
 
-    const existingStakeRow: { id: string; isPrimary: boolean } | null =
+    const existingStakeRow: { id: string; userId: string; isPrimary: boolean } | null =
       await (prisma as any).linkedWallet.findUnique({
         where: { chain_address: { chain: 'CARDANO', address: stakeKey } },
-        select: { id: true, isPrimary: true },
+        select: { id: true, userId: true, isPrimary: true },
       });
 
     if (existingStakeRow) {
