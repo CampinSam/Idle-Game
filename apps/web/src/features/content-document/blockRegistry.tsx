@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { ContentBlock, RewardItem } from '@derp/shared';
 import { MissionHeroPanel } from '../missions/components/panels/MissionHeroPanel';
 import { MissionStatsPanel } from '../missions/components/panels/MissionStatsPanel';
@@ -116,8 +116,25 @@ function MissionSynergyBlock(_: BlockComponentProps) {
 function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const matchedRules: any[] = data.synergy?.matchedRules ?? [];
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () =>
+      document.documentElement.style.setProperty('--mission-sticky-h', `${el.offsetHeight}px`);
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    update();
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--mission-sticky-h');
+    };
+  }, []);
+
   return (
     <div
+      ref={ref}
       className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
       style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
     >
