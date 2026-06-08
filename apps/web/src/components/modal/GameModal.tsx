@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction } from '@derp/shared';
+import type { ModalSpecV1, ModalButton as ModalButtonSpec, ModalAction, ModalSkipCost } from '@derp/shared';
 import { computeEffectivePage } from '@derp/shared';
 import BlockRenderer from './blocks/BlockRenderer';
 import AssetImage from './AssetImage';
+import ItemQty from '../ItemQty';
 import QuantityPickerContext from '../../context/QuantityPickerContext';
+import { useNow } from '../../hooks/useNow';
+import { useAppSelector } from '../../store';
+
 export interface GameModalProps {
   spec: ModalSpecV1;
   isOpen: boolean;
@@ -18,10 +22,12 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
   const [pendingConfirmBtn, setPendingConfirmBtn] = useState<ModalButtonSpec | null>(null);
   const [pickerValues, setPickerValues] = useState<Record<string, number>>({});
 
+  const now = useNow(500);
+  const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
+
   useEffect(() => {
     setPageIndex(0);
     setPendingConfirmBtn(null);
-    // Initialize picker values from all quantityInput blocks in the spec
     const initial: Record<string, number> = {};
     for (const page of spec.pages ?? []) {
       for (const block of page.body ?? []) {
@@ -44,6 +50,42 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
 
   const totalPages = Array.isArray(spec.pages) ? spec.pages.length : 0;
   const { header, body, buttons, dismiss } = computeEffectivePage(spec, pageIndex);
+
+  const progressBlock = useMemo(() => {
+    for (const page of spec.pages ?? []) {
+      for (const block of page.body ?? []) {
+        if (block.type === 'progress' && block.startsAt && block.endsAt) {
+          return block;
+        }
+      }
+    }
+    return null;
+  }, [spec]);
+
+  const computeCurrentSkipCosts = useCallback(
+    (baseCosts: ModalSkipCost[], skipType: 'absolute' | 'scaling'): ModalSkipCost[] => {
+      if (skipType === 'absolute' || !progressBlock?.startsAt || !progressBlock?.endsAt) {
+        return baseCosts;
+      }
+      const totalDuration = Date.parse(progressBlock.endsAt) - Date.parse(progressBlock.startsAt);
+      const remaining = Math.max(0, Date.parse(progressBlock.endsAt) - now);
+      const multiplier = totalDuration > 0 ? remaining / totalDuration : 0;
+      return baseCosts.map((c) => ({
+        ...c,
+        amount: multiplier < 1 ? Math.max(1, Math.ceil(c.amount * multiplier)) : c.amount,
+      }));
+    },
+    [progressBlock, now],
+  );
+
+  const isSkipAffordable = useCallback(
+    (costs: ModalSkipCost[]): boolean =>
+      costs.every((c) => {
+        if (!c.currencyId) return true;
+        return (currencyBalances[c.currencyId] ?? 0) >= c.amount;
+      }),
+    [currencyBalances],
+  );
 
   useEffect(() => {
     if (!isOpen || !dismiss.escape) return;
@@ -161,16 +203,37 @@ export default function GameModal({ spec, isOpen, onRequestClose, navigate, onAc
             </div>
 
             <div className="gm-footer">
-              {buttons.map((btn) => (
-                <button
-                  key={btn.id}
-                  className={`gm-btn gm-btn-${btn.variant}`}
-                  disabled={btn.disabled || actionLoading === btn.id}
-                  onClick={() => handleButtonClick(btn)}
-                >
-                  {actionLoading === btn.id ? '...' : btn.label}
-                </button>
-              ))}
+              {buttons.map((btn) => {
+                const currentCosts = btn.skipMeta
+                  ? computeCurrentSkipCosts(btn.skipMeta.baseCosts, btn.skipMeta.skipType)
+                  : null;
+                const skipDisabled = currentCosts ? !isSkipAffordable(currentCosts) : false;
+                const isDisabled = btn.disabled || skipDisabled || actionLoading === btn.id;
+
+                return (
+                  <button
+                    key={btn.id}
+                    className={`gm-btn gm-btn-${btn.variant}`}
+                    disabled={isDisabled}
+                    onClick={() => handleButtonClick(btn)}
+                  >
+                    {actionLoading === btn.id ? (
+                      '...'
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <span>{btn.label}</span>
+                        {currentCosts && currentCosts.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            {currentCosts.map((c, i) => (
+                              <ItemQty key={i} src={c.assetKey ?? c.label} amount={c.amount} size={13} />
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
         </>
 

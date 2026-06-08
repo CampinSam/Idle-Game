@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TickService } from '../tick/tick.service';
 import { GameRulesService } from '../game-rules/game-rules.service';
+import { CurrencyService } from '../currency/currency.service';
 import { resolveSpec } from './modal-def-resolver.util';
 import { calcXpForLevel, diffLocationLevelUnlocks, type LocationLevelUnlocks } from '../game-rules/level-config.util';
 import { DEFAULT_XP_DEPOSIT_COST } from '../location/location-xp.constants';
@@ -71,6 +72,7 @@ export class UiService {
     private prisma: PrismaService,
     private tickService: TickService,
     private gameRulesService: GameRulesService,
+    private currencyService: CurrencyService,
   ) {}
 
   async buildModalForJob(userId: string, jobId: string): Promise<any> {
@@ -549,16 +551,48 @@ export class UiService {
     const skipInfo = this.buildSkipInfo(job);
     if (!isReady && skipInfo) {
       const computedCosts = this.computeSkipCosts(skipInfo, progress);
+      const currencyIds = skipInfo.skipCost
+        .filter((c: any) => c.type === 'currency')
+        .map((c: any) => c.id as string);
+
+      const [currencyDefs, balances] = await Promise.all([
+        currencyIds.length > 0
+          ? (this.prisma as any).currency.findMany({
+              where: { id: { in: currencyIds } },
+              select: { id: true, name: true, iconKey: true },
+            })
+          : [],
+        job.userId ? this.currencyService.getBalances(job.userId) : {},
+      ]);
+
+      const currencyDefMap = new Map<string, { name: string; iconKey?: string }>(
+        (currencyDefs as any[]).map((c: any) => [c.id, { name: c.name, iconKey: c.iconKey ?? undefined }]),
+      );
+
+      const canAfford = computedCosts.every((c: any) => {
+        if (c.type !== 'currency') return true;
+        return ((balances as Record<string, number>)[c.id as string] ?? 0) >= c.amount;
+      });
+
+      const baseCosts = skipInfo.skipCost.map((c: any) => {
+        const def = currencyDefMap.get(c.id);
+        return {
+          assetKey: def?.iconKey ?? c.id,
+          label: def?.name ?? c.id,
+          amount: c.amount,
+          ...(c.type === 'currency' ? { currencyId: c.id } : {}),
+        };
+      });
+
       buttons.push({
         id: 'skip',
         label: 'Skip',
         variant: 'secondary',
+        disabled: !canAfford,
         action: { type: 'SKIP', targetType: 'job', targetId: job.id },
-        requiresConfirm: {
-          title: 'Skip early?',
-          body: this.buildSkipConfirmBody(computedCosts),
-          confirmLabel: 'Skip',
-          cancelLabel: 'Wait',
+        skipMeta: {
+          baseCosts,
+          skipType: (skipInfo.skipType === 'absolute' ? 'absolute' : 'scaling') as 'absolute' | 'scaling',
         },
       });
     }

@@ -38,6 +38,13 @@ export interface ModalTelemetry {
   experiment?: string;
 }
 
+export interface ModalSkipCost {
+  assetKey?: string;
+  label: string;
+  amount: number;
+  currencyId?: string;
+}
+
 export interface ModalButton {
   id: string;
   label: string;
@@ -49,6 +56,10 @@ export interface ModalButton {
     body?: ModalBlock[];
     confirmLabel?: string;
     cancelLabel?: string;
+  };
+  skipMeta?: {
+    baseCosts: ModalSkipCost[];
+    skipType: 'absolute' | 'scaling';
   };
 }
 
