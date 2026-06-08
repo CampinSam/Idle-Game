@@ -747,7 +747,24 @@ export class UiService {
       merged.pages = resolved.pages;
     }
     if (Array.isArray(resolved.buttons) && resolved.buttons.length > 0) {
-      merged.buttons = resolved.buttons;
+      // Preserve skipMeta and disabled (affordability) from generated skip buttons.
+      // These are server-computed at request time and cannot be embedded in a static spec.
+      const generatedSkipBtn = (generated.buttons as any[] | undefined)?.find(
+        (b: any) => b.id === 'skip' || b.action?.type === 'SKIP',
+      );
+      merged.buttons = resolved.buttons.map((btn: any) => {
+        const isSkipBtn = btn.id === 'skip' || btn.action?.type === 'SKIP';
+        if (isSkipBtn && generatedSkipBtn) {
+          return { ...btn, skipMeta: generatedSkipBtn.skipMeta, disabled: generatedSkipBtn.disabled };
+        }
+        if (isSkipBtn && !generatedSkipBtn) {
+          this.logger.warn(
+            `Modal spec introduced a skip button (id="${btn.id}") but the generated modal has no computed skipMeta. ` +
+            `Skip button will be rendered without cost metadata. Modal id: ${generated.id ?? 'unknown'}`,
+          );
+        }
+        return btn;
+      });
     }
     return merged;
   }
