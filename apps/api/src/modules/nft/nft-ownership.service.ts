@@ -56,19 +56,29 @@ export class NftOwnershipService {
   }
 
   /**
-   * Like getOwnedInCollection but throws on any RPC failure so callers can
-   * distinguish "wallet genuinely holds 0 tokens" from "query failed".
-   * Use this wherever an empty result would trigger unclaim reconciliation.
+   * Query owned assets and return a typed OwnershipQueryResult so callers can
+   * distinguish "wallet genuinely holds 0 tokens" (isDefinitive: true, assets: [])
+   * from "RPC query failed" (isDefinitive: false, assets: []).
+   *
+   * Use this wherever an empty result would otherwise trigger unclaim
+   * reconciliation — callers must skip reconciliation when isDefinitive is false.
    */
-  async getOwnedInCollectionStrict(
+  async getOwnedInCollectionWithResult(
     chain: SupportedChain,
     address: string,
     collectionId: string,
-  ): Promise<OwnedAsset[]> {
-    if (chain === 'CARDANO') {
-      return this.cardano.getOwnedAssetsStrict(address, collectionId);
+  ): Promise<OwnershipQueryResult> {
+    try {
+      if (chain === 'CARDANO') {
+        const assets = await this.cardano.getOwnedAssetsStrict(address, collectionId);
+        return { assets, isDefinitive: true };
+      }
+      const assets = await this.evm.getOwnedAssetsStrict(address, collectionId, chain);
+      return { assets, isDefinitive: true };
+    } catch (err) {
+      this.logger.warn(`NFT ownership query failed for ${chain}/${address} — will skip reconciliation: ${err}`);
+      return { assets: [], isDefinitive: false };
     }
-    return this.evm.getOwnedAssetsStrict(address, collectionId, chain);
   }
 
   /**

@@ -559,18 +559,16 @@ export class NftCollectionService {
       if (collection.locationDefinitionId) {
         // ── Location-backed collection (e.g. Derp Outposts) ──────────────────
         for (const wallet of matchingWallets) {
-          let ownedAssets: { assetId: string; quantity: number }[] = [];
-          try {
-            ownedAssets = await this.nftOwnership.getOwnedInCollectionStrict(
-              collection.chain as SupportedChain,
-              wallet.address,
-              collection.collectionId,
-            );
-          } catch (err) {
-            this.logger.warn(`Failed to fetch NFTs for wallet ${wallet.address} on ${collection.chain}: ${err}`);
+          const ownershipResult = await this.nftOwnership.getOwnedInCollectionWithResult(
+            collection.chain as SupportedChain,
+            wallet.address,
+            collection.collectionId,
+          );
+          if (!ownershipResult.isDefinitive) {
             isDefinitive = false;
             continue;
           }
+          const ownedAssets = ownershipResult.assets;
 
           for (const asset of ownedAssets) {
             const nftAssetId = `${collection.chain}:${collection.collectionId}:${asset.assetId}`;
@@ -691,18 +689,16 @@ export class NftCollectionService {
       } else {
         // ── Entity-backed collection (existing behaviour) ─────────────────────
         for (const wallet of matchingWallets) {
-          let ownedAssets: { assetId: string; quantity: number }[] = [];
-          try {
-            ownedAssets = await this.nftOwnership.getOwnedInCollectionStrict(
-              collection.chain as SupportedChain,
-              wallet.address,
-              collection.collectionId,
-            );
-          } catch (err) {
-            this.logger.warn(`Failed to fetch NFTs for wallet ${wallet.address} on ${collection.chain}: ${err}`);
+          const ownershipResult = await this.nftOwnership.getOwnedInCollectionWithResult(
+            collection.chain as SupportedChain,
+            wallet.address,
+            collection.collectionId,
+          );
+          if (!ownershipResult.isDefinitive) {
             isDefinitive = false;
             continue;
           }
+          const ownedAssets = ownershipResult.assets;
 
           for (const asset of ownedAssets) {
             const nftAssetId = `${collection.chain}:${collection.collectionId}:${asset.assetId}`;
@@ -929,6 +925,15 @@ export class NftCollectionService {
       this.logger.log(
         `NFT sync for user ${userId}: ${notImported} on-chain asset(s) held but not yet in entities table — awaiting on-chain reconciler worker.`,
       );
+    }
+
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { lastNftSyncAt: new Date() } as any,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to update lastNftSyncAt for user ${userId}: ${err}`);
     }
 
     return {
