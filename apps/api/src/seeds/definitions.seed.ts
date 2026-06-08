@@ -152,7 +152,47 @@ function validateEntityDefinition(row: any): void {
   }
 }
 
-export async function seedDefinitions(prisma: any) {
+/**
+ * All table keys accepted by the `tables` filter parameter.
+ * Corresponds to the top-level sections of definitions.json plus the two
+ * hard-coded internal sections (powerDefs, nftUniquePowers).
+ */
+export const SEED_DEFINITION_TABLES = [
+  'regionDefinitions',
+  'displayDefs',
+  'currencies',
+  'entityDefinitions',
+  'missionCategoryDefs',
+  'locationDefinitions',
+  'roomDefs',
+  'buildingDefs',
+  'missionDefs',
+  'recipeDefs',
+  'itemDefinitions',
+  'giftDefs',
+  'shopItemDefs',
+  'eventDefinitions',
+  'lootboxDefs',
+  'bundleDefs',
+  'checkInDefs',
+  'questDefs',
+  'modalDefs',
+  'defaultModalDefs',
+  'homeBannerDefs',
+  'systemIconDefs',
+  'synergyRules',
+  'powerDefs',
+  'nftUniquePowers',
+] as const;
+
+/**
+ * Seed game-content definitions from the JSON seed files.
+ *
+ * @param prisma  - Prisma client instance.
+ * @param tables  - Optional allowlist of table keys (from SEED_DEFINITION_TABLES).
+ *                  When omitted or empty, all tables are written.
+ */
+export async function seedDefinitions(prisma: any, tables?: string[]) {
   const defs = loadJson('definitions.json');
   const itemDefs = loadJson('item-defs.json');
   const bundleDefs = loadJson('bundle-defs.json');
@@ -162,18 +202,18 @@ export async function seedDefinitions(prisma: any) {
     return;
   }
 
-  if (defs.regionDefinitions) {
+  const allowed = tables && tables.length > 0 ? new Set(tables) : null;
+  const should = (key: string) => !allowed || allowed.has(key);
+
+  if (should('regionDefinitions') && defs.regionDefinitions) {
     await upsertMany(prisma, 'regionDefinition', defs.regionDefinitions);
   }
 
-  if (defs.displayDefs) {
+  if (should('displayDefs') && defs.displayDefs) {
     await upsertMany(prisma, 'displayDef', defs.displayDefs);
   }
 
-  if (defs.currencies) {
-    // Force upsert: currency definitions in definitions.json are the source of
-    // truth. upsertManyForce ensures canonical rows (enabled, showInTopBar,
-    // sortOrder, and crypto metadata) are always in sync with the seed data on every boot.
+  if (should('currencies') && defs.currencies) {
     await upsertManyForce(prisma, 'currency', defs.currencies, (r) => {
       const copy = { ...r };
       if (copy.cap !== null && copy.cap !== undefined) {
@@ -189,59 +229,49 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
-  if (defs.entityDefinitions) {
-    // Validate every row up-front so a missing progression/init block fails
-    // the whole seed batch (no partial migration). Task #371: no fallbacks —
-    // an invalid definition must never reach Prisma.
+  if (should('entityDefinitions') && defs.entityDefinitions) {
     for (const row of defs.entityDefinitions) {
       validateEntityDefinition(row);
     }
-    // Force-update so changes to slots/equipmentSlots/traits/progression caps
-    // propagate to existing rows on every boot.
     await upsertManyForce(prisma, 'entityDefinition', defs.entityDefinitions);
   }
 
-  if (defs.missionCategoryDefs) {
+  if (should('missionCategoryDefs') && defs.missionCategoryDefs) {
     const withoutParents = defs.missionCategoryDefs.filter((d: any) => !d.parentId);
     const withParents = defs.missionCategoryDefs.filter((d: any) => d.parentId);
     await upsertMany(prisma, 'missionCategoryDef', withoutParents);
     await upsertMany(prisma, 'missionCategoryDef', withParents);
   }
 
-  if (defs.locationDefinitions) {
-    // Force-update so changes to allowed buildings (e.g. adding bld_forge to
-    // derp_outpost) propagate to existing rows on every boot.
+  if (should('locationDefinitions') && defs.locationDefinitions) {
     await upsertManyForce(prisma, 'locationDefinition', defs.locationDefinitions);
   }
 
-  if (defs.roomDefs) {
+  if (should('roomDefs') && defs.roomDefs) {
     await upsertMany(prisma, 'roomDef', defs.roomDefs);
   }
 
-  if (defs.buildingDefs) {
-    // Force-update so newly added `displayDefId` / `category` fields are
-    // applied to pre-existing building defs.
+  if (should('buildingDefs') && defs.buildingDefs) {
     await upsertManyForce(prisma, 'buildingDef', defs.buildingDefs);
   }
 
-  if (defs.missionDefs) {
+  if (should('missionDefs') && defs.missionDefs) {
     await upsertMany(prisma, 'missionDef', defs.missionDefs);
   }
 
-  if (defs.recipeDefs) {
-    // Force-update so the new `displayDefId` link is applied to existing recipes.
+  if (should('recipeDefs') && defs.recipeDefs) {
     await upsertManyForce(prisma, 'recipeDef', defs.recipeDefs);
   }
 
-  if (itemDefs && itemDefs.length > 0) {
+  if (should('itemDefinitions') && itemDefs && itemDefs.length > 0) {
     await upsertMany(prisma, 'itemDefinition', itemDefs);
   }
 
-  if (defs.giftDefs) {
+  if (should('giftDefs') && defs.giftDefs) {
     await upsertMany(prisma, 'giftDef', defs.giftDefs);
   }
 
-  if (defs.shopItemDefs) {
+  if (should('shopItemDefs') && defs.shopItemDefs) {
     await upsertMany(prisma, 'shopItemDef', defs.shopItemDefs, (r) => {
       const copy = { ...r };
       if (copy.limitedUntil) {
@@ -251,36 +281,36 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
-  if (defs.eventDefinitions) {
+  if (should('eventDefinitions') && defs.eventDefinitions) {
     await upsertMany(prisma, 'eventDefinition', defs.eventDefinitions);
   }
 
-  if (defs.lootboxDefs) {
+  if (should('lootboxDefs') && defs.lootboxDefs) {
     await upsertManyForce(prisma, 'lootboxDef', defs.lootboxDefs);
   }
 
-  if (Array.isArray(bundleDefs) && bundleDefs.length > 0) {
+  if (should('bundleDefs') && Array.isArray(bundleDefs) && bundleDefs.length > 0) {
     await upsertManyForce(prisma, 'bundleDef', bundleDefs);
   }
 
-  if (defs.checkInDefs) {
+  if (should('checkInDefs') && defs.checkInDefs) {
     await upsertManyForce(prisma, 'checkInDef', defs.checkInDefs);
   }
 
-  if (defs.questDefs) {
+  if (should('questDefs') && defs.questDefs) {
     await upsertManyForce(prisma, 'questDef', defs.questDefs);
   }
 
-  if (defs.modalDefs) {
+  if (should('modalDefs') && defs.modalDefs) {
     await upsertManyForce(prisma, 'modalDef', defs.modalDefs);
   }
 
-  if (defs.defaultModalDefs) {
+  if (should('defaultModalDefs') && defs.defaultModalDefs) {
     await upsertManyForce(prisma, 'defaultModalDef', defs.defaultModalDefs);
   }
 
   const homeBannerDefs = loadJson('home-banner-defs.json');
-  if (Array.isArray(homeBannerDefs) && homeBannerDefs.length > 0) {
+  if (should('homeBannerDefs') && Array.isArray(homeBannerDefs) && homeBannerDefs.length > 0) {
     await upsertManyForce(prisma, 'homeBannerDef', homeBannerDefs, (r: any) => {
       const copy = { ...r };
       if (copy.startsAt) copy.startsAt = new Date(copy.startsAt);
@@ -289,12 +319,12 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
-  if (defs.systemIconDefs) {
+  if (should('systemIconDefs') && defs.systemIconDefs) {
     await upsertMany(prisma, 'systemIconDef', defs.systemIconDefs);
   }
 
   const synergyRules = loadJson('synergy-rules.json');
-  if (Array.isArray(synergyRules) && synergyRules.length > 0) {
+  if (should('synergyRules') && Array.isArray(synergyRules) && synergyRules.length > 0) {
     await upsertManyForce(prisma, 'synergyRule', synergyRules, (r: any) => {
       const copy = { ...r };
       if (copy.startsAt) copy.startsAt = new Date(copy.startsAt);
@@ -303,8 +333,13 @@ export async function seedDefinitions(prisma: any) {
     });
   }
 
-  await seedPowerDefs(prisma);
-  await seedNftUniquePowers(prisma);
+  if (should('powerDefs')) {
+    await seedPowerDefs(prisma);
+  }
+
+  if (should('nftUniquePowers')) {
+    await seedNftUniquePowers(prisma);
+  }
 
   logger.log('Definition seeding complete');
 }

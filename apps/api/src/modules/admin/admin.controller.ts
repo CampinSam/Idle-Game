@@ -21,6 +21,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 import { GameMetricsService } from './game-metrics.service';
+import { seedDefinitions, SEED_DEFINITION_TABLES } from '../../seeds/definitions.seed';
+import { seedSounds } from '../../seeds/sounds.seed';
+import { seedRetention } from '../../seeds/retention.seed';
+import { seedTags } from '../../seeds/tags.seed';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -1598,6 +1602,126 @@ export class AdminController {
         ? metricsParam.split(',').map(s => s.trim()).filter(Boolean)
         : [];
     return this.gameMetricsService.getMetricHistory(metricNames, days);
+  }
+
+  // ─── Seed Management (super_admin only) ──────────────────────────────────────
+
+  @Get('seed/tables')
+  getSeedTables(@Req() req: any) {
+    if (req.adminUser.role !== 'super_admin') {
+      throw new ForbiddenException('Requires super_admin role');
+    }
+    return {
+      seeds: ['definitions', 'sounds', 'retention', 'tags', 'contentDocuments'],
+      definitionTables: [...SEED_DEFINITION_TABLES],
+    };
+  }
+
+  @Post('seed/run')
+  async runSeed(
+    @Req() req: any,
+    @Body() body: { seeds?: string[]; tables?: string[] },
+  ) {
+    if (req.adminUser.role !== 'super_admin') {
+      throw new ForbiddenException('Requires super_admin role');
+    }
+
+    const ALL_SEEDS = ['definitions', 'sounds', 'retention', 'tags', 'contentDocuments'];
+    const seeds = body.seeds && body.seeds.length > 0 ? body.seeds : ALL_SEEDS;
+
+    const unknown = seeds.filter((s) => !ALL_SEEDS.includes(s));
+    if (unknown.length > 0) {
+      throw new BadRequestException(`Unknown seed(s): ${unknown.join(', ')}. Valid values: ${ALL_SEEDS.join(', ')}`);
+    }
+
+    if (body.tables && body.tables.length > 0) {
+      const validTables = new Set(SEED_DEFINITION_TABLES as unknown as string[]);
+      const badTables = body.tables.filter((t) => !validTables.has(t));
+      if (badTables.length > 0) {
+        throw new BadRequestException(`Unknown table(s): ${badTables.join(', ')}. Call GET /admin/seed/tables for valid keys.`);
+      }
+    }
+
+    const results: Record<string, string> = {};
+
+    for (const seed of seeds) {
+      try {
+        switch (seed) {
+          case 'definitions':
+            await seedDefinitions(this.prisma, body.tables);
+            results[seed] = 'ok';
+            break;
+          case 'sounds':
+            await seedSounds(this.prisma);
+            results[seed] = 'ok';
+            break;
+          case 'retention':
+            await seedRetention(this.prisma);
+            results[seed] = 'ok';
+            break;
+          case 'tags':
+            await seedTags(this.prisma);
+            results[seed] = 'ok';
+            break;
+          case 'contentDocuments':
+            await this.runContentDocumentsSeed();
+            results[seed] = 'ok';
+            break;
+        }
+      } catch (err: any) {
+        results[seed] = `error: ${err?.message ?? String(err)}`;
+        this.logger.error(`Seed "${seed}" failed: ${err?.message ?? err}`, err?.stack);
+      }
+    }
+
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'seed_run',
+      tableName: 'system',
+      diff: { seeds, tables: body.tables ?? 'all', results },
+    });
+
+    return {
+      ran: seeds,
+      tables: body.tables && body.tables.length > 0 ? body.tables : 'all',
+      results,
+    };
+  }
+
+  private async runContentDocumentsSeed(): Promise<void> {
+    const documents = [
+      {
+        key: 'mission_planning_document',
+        context: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
+        blocks: [
+          { type: 'mission_hero' },
+          { type: 'mission_planning_sticky' },
+          { type: 'team_section' },
+          { type: 'reward_list' },
+        ],
+      },
+    ];
+
+    for (const doc of documents) {
+      const docData = {
+        id: doc.key,
+        version: 1,
+        blocks: doc.blocks,
+        context: (doc as any).context ?? null,
+      };
+      await (this.prisma as any).gameDefinition.upsert({
+        where: { type_key_version: { type: 'content_document', key: doc.key, version: 1 } },
+        create: {
+          type: 'content_document',
+          key: doc.key,
+          version: 1,
+          isActive: true,
+          data: docData,
+        },
+        update: { data: docData },
+      });
+      this.logger.log(`Content document "${doc.key}" seeded`);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

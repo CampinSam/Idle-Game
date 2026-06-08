@@ -2596,3 +2596,76 @@ Browse all location instances across all players with filtering and pagination.
   "limit": 50
 }
 ```
+
+---
+
+## Seed Management
+
+These endpoints let a **super_admin** trigger definition/content seeds on demand. Seeds no longer run automatically at startup — they must be triggered explicitly via these endpoints.
+
+### `GET /api/admin/seed/tables`
+
+Returns the list of available seed groups and the individual table keys accepted by `POST /api/admin/seed/run`.
+
+**Auth:** `super_admin` only
+
+**Response:**
+```json
+{
+  "seeds": ["definitions", "sounds", "retention", "tags", "contentDocuments"],
+  "definitionTables": [
+    "regionDefinitions", "displayDefs", "currencies", "entityDefinitions",
+    "missionCategoryDefs", "locationDefinitions", "roomDefs", "buildingDefs",
+    "missionDefs", "recipeDefs", "itemDefinitions", "giftDefs", "shopItemDefs",
+    "eventDefinitions", "lootboxDefs", "bundleDefs", "checkInDefs", "questDefs",
+    "modalDefs", "defaultModalDefs", "homeBannerDefs", "systemIconDefs",
+    "synergyRules", "powerDefs", "nftUniquePowers"
+  ]
+}
+```
+
+---
+
+### `POST /api/admin/seed/run`
+
+Runs one or more content seeds. All seeds run if `seeds` is omitted. Within the `definitions` seed, only the listed `tables` are written if `tables` is provided.
+
+**Auth:** `super_admin` only
+
+**Body:**
+```json
+{
+  "seeds": ["definitions", "sounds", "retention", "tags", "contentDocuments"],
+  "tables": ["currencies", "modalDefs"]
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `seeds` | optional | Array of seed group names. Omit to run all seeds. |
+| `tables` | optional | Array of definition table keys (only applies to the `definitions` seed). Omit to write all tables. |
+
+**Response:**
+```json
+{
+  "ran": ["definitions"],
+  "tables": ["currencies", "modalDefs"],
+  "results": {
+    "definitions": "ok"
+  }
+}
+```
+
+If a seed fails, its entry in `results` will be `"error: <message>"` rather than `"ok"`. Other seeds in the same request continue running regardless. The action is always recorded in the admin audit log.
+
+**Seed groups:**
+
+| Key | What it writes |
+|-----|----------------|
+| `definitions` | All definition tables from `definitions.json`, `item-defs.json`, `bundle-defs.json`, `home-banner-defs.json`, `synergy-rules.json`, plus hard-coded `powerDefs` and `nftUniquePowers`. Supports per-table filtering via `tables`. |
+| `sounds` | Sound definitions (`Sound` table). |
+| `retention` | Daily/weekly quest defs and achievement defs (`QuestDef` table with `category='achievement'`). |
+| `tags` | Visual tag and reusable effect catalog (`Tag`, `EffectCatalog` tables). |
+| `contentDocuments` | `GameDefinition` content document entries (e.g. `mission_planning_document`). |
+
+**Note on `upsertMany` vs `upsertManyForce`:** Tables seeded with `upsertManyForce` (currencies, entityDefinitions, locationDefinitions, buildingDefs, recipeDefs, lootboxDefs, bundleDefs, checkInDefs, questDefs, modalDefs, defaultModalDefs, homeBannerDefs, synergyRules) will **overwrite** existing rows. Tables seeded with plain `upsertMany` only insert new rows and leave existing rows untouched.

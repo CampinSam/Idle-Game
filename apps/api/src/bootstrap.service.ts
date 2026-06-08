@@ -2,10 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from './prisma/prisma.service';
 import { EntityService } from './modules/entity/entity.service';
-import { seedDefinitions } from './seeds/definitions.seed';
-import { seedSounds } from './seeds/sounds.seed';
-import { seedRetention } from './seeds/retention.seed';
-import { seedTags } from './seeds/tags.seed';
 import {
   buildSeedConsumableMap,
   canonicalConsumableData,
@@ -28,11 +24,10 @@ export class BootstrapService implements OnModuleInit {
 
   /**
    * Wrap a single boot step so any throw is attributed to a named stage
-   * before being rethrown. Without this, a failure deep inside (say)
-   * `seedDefinitions` surfaces as a bare Prisma error with no context about
-   * which OnModuleInit phase was running — the exact failure mode that made
-   * Task #368's silent bootstrap hang so hard to diagnose. We rethrow so
-   * Nest still aborts startup; main.ts's top-level catch then surfaces it.
+   * before being rethrown. Without this, a failure deep inside a boot step
+   * surfaces as a bare Prisma error with no context about which OnModuleInit
+   * phase was running. We rethrow so Nest still aborts startup; main.ts's
+   * top-level catch then surfaces it.
    */
   private async runStep<T>(name: string, fn: () => Promise<T>): Promise<T> {
     const start = Date.now();
@@ -58,18 +53,6 @@ export class BootstrapService implements OnModuleInit {
     await this.runStep('seedNftCollections', () => this.seedNftCollections());
     await this.runStep('seedEffectDefinitions', () => this.seedEffectDefinitions());
     await this.runStep('seedConsumableItems', () => this.seedConsumableItems());
-    await this.runStep('seedDefinitions', () => seedDefinitions(this.prisma));
-    await this.runStep('seedSounds', () => seedSounds(this.prisma));
-    // Retention loop content (daily/weekly quests + achievements). Kept
-    // separate from `seedDefinitions` so the giant definitions.json file
-    // doesn't have to know about cadence-aware quest defs or achievement
-    // defs (which now use category='achievement' in the QuestDef table).
-    await this.runStep('seedRetention', () => seedRetention(this.prisma));
-    // Visual tag + reusable effect catalog. Cheap; seeded last so any
-    // earlier failure (which is far more likely to be schema-related)
-    // surfaces before we get into UI catalog territory.
-    await this.runStep('seedTags', () => seedTags(this.prisma));
-    await this.runStep('seedContentDocuments', () => this.seedContentDocuments());
     // Idempotent: ensures the four gem packs exist in stripe.products / stripe.prices
     // so GET /v1/payments/packs returns data even before Stripe is connected.
     // ON CONFLICT DO NOTHING means real Stripe-synced rows are never overwritten.
@@ -1124,42 +1107,4 @@ export class BootstrapService implements OnModuleInit {
     }
   }
 
-  // ─── Content Document Seeds ─────────────────────────────────────────────────
-
-  private async seedContentDocuments(): Promise<void> {
-    const documents = [
-      {
-        key: 'mission_planning_document',
-        context: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
-        blocks: [
-          { type: 'mission_hero' },
-          { type: 'mission_planning_sticky' },
-          { type: 'team_section' },
-          { type: 'reward_list' },
-        ],
-      },
-    ];
-
-    for (const doc of documents) {
-      const docData = {
-        id: doc.key,
-        version: 1,
-        blocks: doc.blocks,
-        context: (doc as any).context ?? null,
-      };
-      await (this.prisma as any).gameDefinition.upsert({
-        where: { type_key_version: { type: 'content_document', key: doc.key, version: 1 } },
-        create: {
-          type: 'content_document',
-          key: doc.key,
-          version: 1,
-          isActive: true,
-          data: docData,
-        },
-        update: { data: docData },
-      });
-
-      this.logger.log(`Content document "${doc.key}" ensured`);
-    }
-  }
 }
