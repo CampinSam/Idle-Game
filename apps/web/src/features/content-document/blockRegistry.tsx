@@ -117,29 +117,49 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const matchedRules: any[] = data.synergy?.matchedRules ?? [];
   const ref = useRef<HTMLDivElement>(null);
+  const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const update = () =>
+
+    // Track height for picker-bar offset
+    const updateHeight = () =>
       document.documentElement.style.setProperty('--mission-sticky-h', `${el.offsetHeight}px`);
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    update();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(el);
+    updateHeight();
+
+    // Detect when the element is pinned (stuck) using scroll position
+    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null;
+    let scrollHandler: (() => void) | null = null;
+    if (scrollEl) {
+      scrollHandler = () => {
+        const elRect = el.getBoundingClientRect();
+        const containerRect = scrollEl.getBoundingClientRect();
+        setIsSticky(elRect.top <= containerRect.top + 1);
+      };
+      scrollEl.addEventListener('scroll', scrollHandler, { passive: true });
+      scrollHandler();
+    }
+
     return () => {
-      observer.disconnect();
+      resizeObserver.disconnect();
       document.documentElement.style.removeProperty('--mission-sticky-h');
+      if (scrollEl && scrollHandler) {
+        scrollEl.removeEventListener('scroll', scrollHandler);
+      }
     };
   }, []);
 
   return (
     <div
       ref={ref}
-      className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
+      className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
       style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
     >
       <div className="grid grid-cols-2 gap-3">
-        <MissionRequirementsBlock />
+        <MissionRequirementsBlock isSticky={isSticky} />
         <MissionStatsPanel
           missionPower={data.missionPower ?? 0}
           difficulty={data.difficulty ?? 0}
@@ -149,6 +169,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
           powerRatio={data.powerRatio ?? 0}
           hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
           loading={data.statsLoading ?? false}
+          isSticky={isSticky}
         />
       </div>
       {matchedRules.length > 0 && (

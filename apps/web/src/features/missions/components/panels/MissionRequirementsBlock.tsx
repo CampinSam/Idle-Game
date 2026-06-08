@@ -6,12 +6,17 @@ const PANEL_TITLE_CLASS = 'text-[11px] font-extrabold tracking-[0.08em] uppercas
 const ROW_LABEL_CLASS = 'text-[11px] font-semibold text-text-secondary';
 const ROW_VALUE_CLASS = 'text-[12px] font-bold text-text-primary';
 
+interface MissionRequirementsBlockProps {
+  isSticky?: boolean;
+}
+
 /**
  * Standalone details panel that reads from SurfaceContext data.
  * Registered as the `mission_requirements` content block type.
  * Shows: mission costs, non-team requirements, injury chance, and recovery time.
+ * When isSticky=true, collapses to a single ✅/❌ "Requirements" row.
  */
-export function MissionRequirementsBlock() {
+export function MissionRequirementsBlock({ isSticky = false }: MissionRequirementsBlockProps) {
   const { data } = useSurfaceContext();
   const requirements: Array<{ label?: string; met: boolean }> = data.previewRequirements ?? [];
   const loading: boolean = data.previewLoading ?? false;
@@ -26,6 +31,20 @@ export function MissionRequirementsBlock() {
   const hasInjury = injuryRate > 0;
   const hasRecovery = injuryRecoveryTicks > 0;
   const hasAnything = hasCosts || hasRequirements || hasInjury || hasRecovery;
+
+  if (isSticky) {
+    const allMet = requirements.length === 0 || requirements.every((r) => r.met);
+    const icon = allMet ? '✅' : '❌';
+    const color = allMet ? '#10b981' : '#ef4444';
+    return (
+      <div className="rounded-xl border border-[rgba(139,92,246,0.18)] bg-black/20 px-3 py-2 flex items-center gap-2">
+        <span className="text-base leading-none flex-shrink-0">{icon}</span>
+        <span className="text-[11px] font-extrabold tracking-[0.08em] uppercase flex-1" style={{ color }}>
+          Requirements
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={PANEL_CLASS}>

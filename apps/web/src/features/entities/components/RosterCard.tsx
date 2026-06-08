@@ -121,17 +121,17 @@ export default function RosterCard({
       {showInlinePicker && (
         <>
           <div
-            className="sticky z-10 px-3 pt-3 pb-2 flex flex-col gap-2 rounded-t-xl"
+            className="sticky z-10 px-3 pt-1.5 pb-1.5 flex flex-col gap-1.5 rounded-t-xl"
             style={{ top: 'var(--mission-sticky-h, 0px)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
           >
-            <div className="flex items-center justify-between gap-2 px-1">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-extrabold tracking-widest uppercase text-text-secondary">
-                Tap to toggle · {selectedIds.length}/{maxSlots} chosen
+                {selectedIds.length}/{maxSlots} chosen
               </span>
               <button
                 type="button"
                 onClick={() => onPickerOpenChange(false)}
-                className="text-[11px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
+                className="text-[10px] font-extrabold tracking-wide text-[#c4b5fd] hover:text-white cursor-pointer"
               >
                 ▲ Close
               </button>
