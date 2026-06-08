@@ -131,7 +131,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     updateHeight();
 
     // Detect when the element is pinned (stuck) using scroll position
-    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null;
+    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null; // touchAction: touch-pan-y already on the scroll container
     let scrollHandler: (() => void) | null = null;
     if (scrollEl) {
       scrollHandler = () => {
