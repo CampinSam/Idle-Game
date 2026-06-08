@@ -182,7 +182,7 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
           claimingDay={claimingDay}
         />
       )}
-      {isCheckInAvailable && (
+      {isCheckInAvailable ? (
         <button
           type="button"
           disabled={checkingIn}
@@ -198,7 +198,15 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
             '✦ Check In'
           )}
         </button>
-      )}
+      ) : claimedThisWindow ? (
+        <button
+          type="button"
+          disabled
+          className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.25)] text-[#6ee7b7] opacity-60 cursor-not-allowed"
+        >
+          ✦ Checked In
+        </button>
+      ) : null}
       <RewardClaimButton
         claimedToday={claimedThisWindow}
         nextWindowLabel={!hasClaimable && !isCheckInAvailable ? countdown : null}

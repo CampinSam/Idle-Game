@@ -25,6 +25,7 @@ function MissionHeroBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const { def, currentCat, missionCategoryDefs = [], onBack, hasLeadIn, openLeadIn } = data;
   if (!def) return null;
+  const showDescriptionBox = def.description || hasLeadIn;
   return (
     <div className="-mx-4 -mt-3">
       <MissionHeroPanel
@@ -33,19 +34,21 @@ function MissionHeroBlock(_: BlockComponentProps) {
         missionCategoryDefs={missionCategoryDefs}
         onBack={onBack}
       />
-      {def.description && (
-        <p className="m-0 px-4 pt-2.5 text-[13px] leading-relaxed text-text-secondary">
-          {def.description}
-        </p>
-      )}
-      {hasLeadIn && (
-        <div className="px-4 pt-2">
-          <button
-            onClick={openLeadIn}
-            className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
-          >
-            📖 Open Narrative
-          </button>
+      {showDescriptionBox && (
+        <div className="mx-4 mt-2.5 rounded-lg bg-white/[0.04] border border-[rgba(139,92,246,0.2)] border-l-2 border-l-[rgba(167,139,250,0.5)] px-3 py-2.5 flex flex-col gap-2">
+          {def.description && (
+            <p className="m-0 text-[13px] leading-relaxed text-text-secondary">
+              {def.description}
+            </p>
+          )}
+          {hasLeadIn && (
+            <button
+              onClick={openLeadIn}
+              className="w-full px-3 py-1.5 rounded-xl text-[rgba(167,139,250,0.9)] border border-[rgba(139,92,246,0.3)] bg-[rgba(139,92,246,0.08)] hover:bg-[rgba(139,92,246,0.15)] cursor-pointer text-[12px] font-semibold tracking-wide"
+            >
+              📖 Open Narrative
+            </button>
+          )}
         </div>
       )}
     </div>

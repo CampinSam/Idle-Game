@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchMissionDefs, fetchMissionCategoryDefs } from '../../store/gameSlice';
 import { useModal } from '../../context/ModalContext';
+import { useCommand } from '../../hooks/useCommand';
 import { api } from '../../services/api';
 import {
   useSyncEntities,
@@ -35,6 +36,7 @@ export default function MissionsContent() {
   const entities = useSyncEntities();
   const activeMissions = useSyncActiveMissions();
 
+  const { execute } = useCommand();
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -125,6 +127,16 @@ export default function MissionsContent() {
     }
   }, [pushModal]);
 
+  const handleCompleteJob = useCallback(async (jobId: string) => {
+    try {
+      await execute('CompleteMission', { jobId });
+      const spec = await api.getModalSpec({ jobId });
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err) {
+      console.error('[MissionsContent] Failed to complete mission:', err);
+    }
+  }, [execute, pushModal]);
+
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
     return (
       <MissionBuilder
@@ -151,6 +163,7 @@ export default function MissionsContent() {
     activityCollapsed,
     onToggleActivity: () => setActivityCollapsed(c => !c),
     onOpenJob: handleViewJob,
+    onCompleteJob: handleCompleteJob,
   };
 
   const catBorder = currentCat?.display?.borderColor;

@@ -9,6 +9,8 @@ import { audioEngine } from '../../../services/AudioEngine';
 import { api } from '../../../services/api';
 import { extractTeamSizeBounds, formatDuration } from './missionUtils';
 import { ContentDocumentRenderer } from '../../content-document/ContentDocumentRenderer';
+import { Badge } from '../../../components/ui';
+import { getDifficultyDisplay } from '@derp/shared';
 
 export interface MissionBuilderProps {
   defId?: string;
@@ -169,6 +171,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
     statsLoading: previewLoading && !preview,
     previewRequirements,
     previewLoading,
+    missionCost,
     entities,
     selectedEntities,
     teamMax,
@@ -179,7 +182,8 @@ export function MissionBuilder(props: MissionBuilderProps) {
   }), [
     rawActiveDef, currentCat, missionCategoryDefs, onBack, missionPower, difficulty,
     successChance, injuryChance, injuryRate, powerRatio, liveSynergy, previewLoading,
-    preview, previewRequirements, entities, selectedEntities, teamMax, hasLeadIn, openLeadIn,
+    preview, previewRequirements, missionCost, entities, selectedEntities, teamMax,
+    hasLeadIn, openLeadIn,
   ]);
 
   if (!rawActiveDef || !currentCat) {
@@ -191,6 +195,7 @@ export function MissionBuilder(props: MissionBuilderProps) {
   }
 
   const missionDuration = rawActiveDef?.timer?.duration ?? 0;
+  const diffInfo = getDifficultyDisplay(difficulty);
 
   return (
     <div
@@ -200,6 +205,28 @@ export function MissionBuilder(props: MissionBuilderProps) {
         className="overflow-clip rounded-2xl border flex flex-col relative flex-1 min-h-0"
         style={{ borderColor: 'rgba(139,92,246,0.3)', background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
+        {/* Sticky header */}
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b border-[rgba(139,92,246,0.18)]" style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex-shrink-0 px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/15 text-white text-[12px] font-bold hover:bg-white/10 cursor-pointer"
+            >
+              ← Back
+            </button>
+          )}
+          <span className="flex-1 min-w-0 font-cinzel text-[14px] font-extrabold tracking-wide text-white truncate">
+            {rawActiveDef.name}
+          </span>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Badge tone="info" className="!border-[rgba(168,85,247,0.4)] !bg-[rgba(168,85,247,0.3)] !text-[#C084FC] !text-[9px]">{diffInfo.tier}</Badge>
+            <Badge tone="neutral" className="!border-transparent !text-white !text-[9px]" style={{ background: diffInfo.color }}>{diffInfo.label}</Badge>
+            {missionDuration > 0 && (
+              <Badge tone="neutral" className="!bg-[rgba(0,0,0,0.35)] !text-white/80 !border-white/10 !text-[9px]">⏱ {formatDuration(missionDuration)}</Badge>
+            )}
+          </div>
+        </div>
+
         <div className="flex-1 min-h-0 overflow-y-auto">
           <ContentDocumentRenderer
             documentId="mission_planning_document"
@@ -219,48 +246,38 @@ export function MissionBuilder(props: MissionBuilderProps) {
           )}
           <div className="flex flex-col gap-2 p-2 border-t border-[rgba(139,92,246,0.18)]" style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}>
             <div className="grid grid-cols-2 gap-2">
-              {idleEntities.length === 0 && selectedEntities.length === 0 ? (
-                <div className="col-span-2 text-center text-[13px] font-bold text-text-secondary py-1">
-                  No entities available
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={handleAutoAssign}
-                    disabled={idleEntities.length === 0}
-                    className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
-                  >
-                    AUTO BUILD TEAM
-                  </button>
-                  {selectedEntities.length > 0 && (
-                    <button
-                      disabled={!canStart}
-                      onClick={handleStart}
-                      className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
-                        START MISSION ⚡
-                      </span>
-                      <span className="flex items-center gap-1.5 mt-0.5">
-                        {missionDuration > 0 && (
-                          <span className="text-[10px] font-semibold opacity-60">
-                            ⏱ {formatDuration(missionDuration)}
-                          </span>
-                        )}
-                        {missionCost.length > 0 && (
-                          <span
-                            className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
-                          >
-                            {missionCost.map((c, i) => (
-                              <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
-                            ))}
-                          </span>
-                        )}
-                      </span>
-                    </button>
+              <button
+                onClick={handleAutoAssign}
+                disabled={idleEntities.length === 0}
+                className="px-3 py-2 rounded-xl text-white border border-white/15 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13px] font-extrabold tracking-wide uppercase"
+              >
+                AUTO BUILD TEAM
+              </button>
+              <button
+                disabled={!canStart}
+                onClick={handleStart}
+                className="flex flex-col items-center justify-center px-3 py-2 rounded-xl text-white border border-[rgba(167,139,250,0.55)] bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <span className="text-[13px] font-extrabold tracking-wide uppercase leading-tight">
+                  START MISSION ⚡
+                </span>
+                <span className="flex items-center gap-1.5 mt-0.5">
+                  {missionDuration > 0 && (
+                    <span className="text-[10px] font-semibold opacity-60">
+                      ⏱ {formatDuration(missionDuration)}
+                    </span>
                   )}
-                </>
-              )}
+                  {missionCost.length > 0 && (
+                    <span
+                      className={`flex items-center gap-1 ${canAffordMission ? 'opacity-75' : 'opacity-90 [filter:hue-rotate(-30deg)_saturate(2)_brightness(0.9)]'}`}
+                    >
+                      {missionCost.map((c, i) => (
+                        <ItemQty key={i} src={c.id} amount={c.amount} size={11} />
+                      ))}
+                    </span>
+                  )}
+                </span>
+              </button>
             </div>
           </div>
         </div>

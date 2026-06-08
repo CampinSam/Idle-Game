@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
 import { Card, EmptyState, SectionHeader } from '../../../components/ui';
 import { createCountdownTimer, useCurrentTick } from '../../../tick';
@@ -14,24 +14,21 @@ interface MissionShellProps {
   activityCollapsed: boolean;
   onToggleActivity: () => void;
   onOpenJob: (jobId: string) => void;
+  onCompleteJob?: (jobId: string) => Promise<void>;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  ready: 'text-[#10B981]',
-  'in-progress': 'text-[#F59E0B]',
-  completed: 'text-[#10B981]',
-  failed: 'text-[#ef4444]',
-};
 
 function MissionActiveRow({
   m,
   missionDefs,
   onOpenJob,
+  onCompleteJob,
 }: {
   m: any;
   missionDefs: any[];
   onOpenJob: (id: string) => void;
+  onCompleteJob?: (id: string) => Promise<void>;
 }) {
+  const [completing, setCompleting] = useState(false);
   const currentTick = useCurrentTick();
   const timer = (m.startTick != null && m.durationTicks != null)
     ? createCountdownTimer({ startTick: m.startTick, durationTicks: m.durationTicks })
@@ -43,6 +40,17 @@ function MissionActiveRow({
     ? Math.min(100, Math.max(2, ((m.durationTicks - remainingTicks) / m.durationTicks) * 100))
     : 2;
 
+  const handleComplete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (completing || !onCompleteJob) return;
+    setCompleting(true);
+    try {
+      await onCompleteJob(m.id);
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   return (
     <div
       key={m.id}
@@ -52,16 +60,33 @@ function MissionActiveRow({
       <span className="flex-1 min-w-0 text-[13px] font-bold text-text-primary truncate">
         {missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}
       </span>
-      <span className={`text-[11px] font-bold tracking-wide whitespace-nowrap ${isReady ? STATUS_COLORS.ready : STATUS_COLORS['in-progress']}`}>
-        {isReady ? '✅ Ready' : `⏱ ${formatTimeShort(remaining)}`}
-      </span>
-      {!isReady && (
-        <div className="w-24 h-1.5 rounded-full bg-black/40 overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
-            style={{ width: `${progress}%` }}
-          />
+      {isReady ? (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[11px] font-bold tracking-wide text-[#10B981] whitespace-nowrap">
+            ✅ Ready
+          </span>
+          {onCompleteJob && (
+            <button
+              disabled={completing}
+              onClick={handleComplete}
+              className="px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] text-white border border-[rgba(167,139,250,0.55)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-[filter]"
+            >
+              {completing ? '…' : 'Complete'}
+            </button>
+          )}
         </div>
+      ) : (
+        <>
+          <span className="text-[11px] font-bold tracking-wide whitespace-nowrap text-[#F59E0B]">
+            ⏱ {formatTimeShort(remaining)}
+          </span>
+          <div className="w-24 h-1.5 rounded-full bg-black/40 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </>
       )}
     </div>
   );
@@ -76,6 +101,7 @@ export function MissionShell({
   activityCollapsed,
   onToggleActivity,
   onOpenJob,
+  onCompleteJob,
 }: MissionShellProps) {
   const hasHistory = missionHistory.length > 0;
   const collapsed = activityCollapsed && hasHistory;
@@ -94,6 +120,7 @@ export function MissionShell({
               m={m}
               missionDefs={missionDefs}
               onOpenJob={onOpenJob}
+              onCompleteJob={onCompleteJob}
             />
           ))}
           {Array.from({ length: emptyCount }).map((_, i) => (
@@ -148,8 +175,8 @@ export function MissionShell({
                       <span className="flex-1 min-w-0 text-[13px] font-bold text-text-primary truncate">
                         {histName}
                       </span>
-                      <span className={`text-[11px] font-bold tracking-wide whitespace-nowrap ${isCompleted ? STATUS_COLORS.completed : STATUS_COLORS.failed}`}>
-                        {isCompleted ? '✅ Success' : '❌ Failed'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide border whitespace-nowrap ${isCompleted ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                        {isCompleted ? 'Success' : 'Failed'}
                       </span>
                     </div>
                   );

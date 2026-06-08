@@ -1134,9 +1134,9 @@ export class BootstrapService implements OnModuleInit {
         blocks: [
           { type: 'mission_hero' },
           { type: 'mission_stats_requirements' },
+          { type: 'mission_synergy' },
           { type: 'divider' },
           { type: 'team_section' },
-          { type: 'mission_synergy' },
           { type: 'divider' },
           { type: 'reward_list' },
         ],
