@@ -171,6 +171,23 @@ export class QueryService {
       this.logger.warn(`Failed to ensure check-in instances on bootstrap for ${userId}: ${err}`);
     }
 
+    // Pre-fetch disabled NFT collection IDs so we can gate player game state.
+    const disabledCollectionRows = await (this.prisma as any).nftCollectionDef.findMany({
+      where: { active: false },
+      select: { id: true },
+    });
+    const disabledCollectionIds: string[] = disabledCollectionRows.map((c: any) => c.id as string);
+
+    // Pre-fetch NFT asset IDs belonging to disabled collections for location filtering.
+    let disabledNftAssetIds: string[] = [];
+    if (disabledCollectionIds.length > 0) {
+      const disabledAssets = await (this.prisma as any).nftAsset.findMany({
+        where: { collectionId: { in: disabledCollectionIds } },
+        select: { nftAssetId: true },
+      });
+      disabledNftAssetIds = disabledAssets.map((a: any) => a.nftAssetId as string);
+    }
+
     const [
       user,
       entities,
@@ -213,7 +230,15 @@ export class QueryService {
         },
       }),
       (this.prisma as any).entity.findMany({
-        where: { ownerUserId: userId },
+        where: {
+          ownerUserId: userId,
+          ...(disabledCollectionIds.length > 0 && {
+            OR: [
+              { nftCollectionDefId: null },
+              { nftCollectionDefId: { notIn: disabledCollectionIds } },
+            ],
+          }),
+        },
         include: {
           equipment: true,
           // Surface the full definition so the client can render the right
@@ -223,7 +248,15 @@ export class QueryService {
         orderBy: { createdAt: 'desc' },
       }),
       (this.prisma as any).locationInstance.findMany({
-        where: { ownerUserId: userId },
+        where: {
+          ownerUserId: userId,
+          ...(disabledNftAssetIds.length > 0 && {
+            OR: [
+              { nftAssetId: null },
+              { nftAssetId: { notIn: disabledNftAssetIds } },
+            ],
+          }),
+        },
         include: {
           definition: true,
           buildings: {

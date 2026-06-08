@@ -401,7 +401,7 @@ export class NftCollectionService {
 
     const collectionIds = [...new Set(ownedAssets.map((a: any) => a.collectionId as string))];
     const collections = await (this.prisma as any).nftCollectionDef.findMany({
-      where: { id: { in: collectionIds } },
+      where: { id: { in: collectionIds }, active: true },
       select: { id: true, locationDefinitionId: true },
     });
     const collectionMap = new Map<string, any>(collections.map((c: any) => [c.id as string, c]));
