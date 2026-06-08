@@ -29,6 +29,7 @@ function MissionActiveRow({
   onCompleteJob?: (id: string) => Promise<void>;
 }) {
   const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   const currentTick = useCurrentTick();
   const timer = (m.startTick != null && m.durationTicks != null)
     ? createCountdownTimer({ startTick: m.startTick, durationTicks: m.durationTicks })
@@ -44,14 +45,18 @@ function MissionActiveRow({
     e.stopPropagation();
     if (completing || !onCompleteJob) return;
     setCompleting(true);
+    setCompleteError(null);
     try {
       await onCompleteJob(m.id);
+    } catch (err: any) {
+      setCompleteError(err?.message ?? 'Failed to complete mission. Please try again.');
     } finally {
       setCompleting(false);
     }
   };
 
   return (
+    <div className="flex flex-col gap-1">
     <div
       key={m.id}
       onClick={() => onOpenJob(m.id)}
@@ -88,6 +93,12 @@ function MissionActiveRow({
           </div>
         </>
       )}
+    </div>
+    {completeError && (
+      <div className="px-2 py-1.5 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.35)] text-[#fca5a5] text-[11px] leading-tight">
+        ⚠ {completeError}
+      </div>
+    )}
     </div>
   );
 }
