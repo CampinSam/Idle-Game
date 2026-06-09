@@ -4,10 +4,7 @@ import { RewardNode, type NodeState } from './RewardNode';
 interface RewardTrackProps {
   cycleLength: number;
   streak: number;
-  claimableDays: Record<number, any>;
   dayIcons?: Record<number, string | null | undefined>;
-  onClaimDay: (dayIndex: number) => void;
-  claimingDay: number | null;
 }
 
 function isMilestoneDay(day: number, cycleLength: number): boolean {
@@ -18,16 +15,14 @@ function isMilestoneDay(day: number, cycleLength: number): boolean {
   return false;
 }
 
-function RewardTrackInner({ cycleLength, streak, claimableDays, dayIcons, onClaimDay, claimingDay }: RewardTrackProps) {
+function RewardTrackInner({ cycleLength, streak, dayIcons }: RewardTrackProps) {
   const currentDay = streak % cycleLength;
 
   const nodes = useMemo(() => {
     const result: { day: number; state: NodeState; milestone: boolean }[] = [];
     for (let i = 0; i < cycleLength; i++) {
       let state: NodeState;
-      if (claimableDays[i]) {
-        state = 'claimable';
-      } else if (i < currentDay) {
+      if (i < currentDay) {
         state = 'claimed';
       } else if (i === currentDay) {
         state = 'current';
@@ -37,7 +32,7 @@ function RewardTrackInner({ cycleLength, streak, claimableDays, dayIcons, onClai
       result.push({ day: i, state, milestone: isMilestoneDay(i, cycleLength) });
     }
     return result;
-  }, [cycleLength, currentDay, claimableDays]);
+  }, [cycleLength, currentDay]);
 
   return (
     <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-2 pb-1">
@@ -59,8 +54,6 @@ function RewardTrackInner({ cycleLength, streak, claimableDays, dayIcons, onClai
               state={n.state}
               isMilestone={n.milestone}
               iconKey={dayIcons?.[n.day]}
-              onClaim={() => onClaimDay(n.day)}
-              claiming={claimingDay === n.day}
             />
           </div>
         ))}

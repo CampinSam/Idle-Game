@@ -1,51 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSyncCheckIns, useSyncGifts } from '../../hooks/useSyncSelectors';
-import { useCommand } from '../../hooks/useCommand';
-import { audioEngine } from '../../services/AudioEngine';
-import { useModal } from '../../context/ModalContext';
+import { useEffect, useMemo, useState } from 'react';
+import { useSyncCheckIns } from '../../hooks/useSyncSelectors';
 import { serverNow } from '../../services/clockSync';
+import { getWindowStart, getWindowDurationMs, formatCountdown } from './checkinUtils';
 import { RewardTrack } from './RewardTrack';
-import { RewardClaimButton } from './RewardClaimButton';
-
-function getWindowDurationMs(frequency: any): number {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-  if (type === 'daily') return 24 * 60 * 60 * 1000;
-  if (type === 'every_x_days') return interval * 24 * 60 * 60 * 1000;
-  if (type === 'weekly') return 7 * 24 * 60 * 60 * 1000;
-  if (type === 'monthly') return 30 * 24 * 60 * 60 * 1000;
-  return 24 * 60 * 60 * 1000;
-}
-
-function getWindowStart(frequency: any, now: Date): Date {
-  const type = frequency?.type ?? 'daily';
-  const interval = frequency?.interval ?? 1;
-  if (type === 'daily') {
-    const d = new Date(now); d.setUTCHours(0, 0, 0, 0); return d;
-  }
-  if (type === 'every_x_days') {
-    const windowMs = interval * 24 * 60 * 60 * 1000;
-    return new Date(Math.floor(now.getTime() / windowMs) * windowMs);
-  }
-  if (type === 'weekly') {
-    const d = new Date(now); d.setUTCHours(0, 0, 0, 0);
-    const day = d.getUTCDay();
-    d.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1));
-    return d;
-  }
-  if (type === 'monthly') {
-    const d = new Date(now); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d;
-  }
-  const d = new Date(now); d.setUTCHours(0, 0, 0, 0); return d;
-}
-
-function formatCountdown(ms: number): string | null {
-  if (ms <= 0) return null;
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
 
 interface CheckInTrackProps {
   defId: string;
@@ -53,15 +10,6 @@ interface CheckInTrackProps {
 
 export default function CheckInTrack({ defId }: CheckInTrackProps) {
   const checkins = useSyncCheckIns();
-  const gifts = useSyncGifts();
-  const { pushModal } = useModal();
-  const { execute } = useCommand({
-    onUiIntent: (intent) => {
-      if (intent.type === 'modal' && intent.spec) pushModal(intent.spec);
-    },
-  });
-  const [claimingDay, setClaimingDay] = useState<number | null>(null);
-  const [checkingIn, setCheckingIn] = useState(false);
   const [countdown, setCountdown] = useState('');
 
   const instance = useMemo(
@@ -85,38 +33,6 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
     return map;
   }, [def]);
 
-  const claimableGiftsByDay = useMemo(() => {
-    if (!instance || !def) return {};
-    const map: Record<number, any> = {};
-    for (const g of gifts) {
-      if ((g as any).sourceType !== 'checkin' || (g as any).sourceId !== def.id || (g as any).status !== 'UNCLAIMED') continue;
-      const ctx = (g as any).snapshot?.contextData?.checkin;
-      const day = ctx && typeof ctx.day === 'number' ? ctx.day : streak % cycleLength;
-      map[day] = g;
-    }
-    return map;
-  }, [instance, def, gifts, streak, cycleLength]);
-
-  const hasClaimable = Object.keys(claimableGiftsByDay).length > 0;
-
-  const isCheckInAvailable = useMemo(() => {
-    if (hasClaimable) return false;
-    if (!instance) return true;
-    if (!instance.lastClaimedAt) return true;
-    const lastClaimed = new Date(instance.lastClaimedAt);
-    const now = new Date(serverNow());
-    const windowStart = getWindowStart(frequency, now);
-    return lastClaimed < windowStart;
-  }, [instance, frequency, hasClaimable]);
-
-  const claimedThisWindow = useMemo(() => {
-    if (!instance?.lastClaimedAt) return false;
-    const lastClaimed = new Date(instance.lastClaimedAt);
-    const now = new Date(serverNow());
-    const windowStart = getWindowStart(frequency, now);
-    return lastClaimed >= windowStart && !hasClaimable;
-  }, [instance, frequency, hasClaimable]);
-
   useEffect(() => {
     const tick = () => {
       const now = new Date(serverNow());
@@ -127,43 +43,16 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
       setCountdown(formatCountdown(remaining) ?? '');
     };
     tick();
-    const id = setInterval(tick, 60000);
+    const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
   }, [frequency]);
-
-  const handleClaimDay = useCallback(async (dayIndex: number) => {
-    const gift = claimableGiftsByDay[dayIndex];
-    if (!gift || claimingDay !== null) return;
-    setClaimingDay(dayIndex);
-    try {
-      await execute('ClaimGift', { giftId: (gift as any).id });
-      audioEngine.play('sfx.reward.checkin');
-    } catch (err) {
-      console.error('[CheckInTrack] Claim failed:', err);
-    } finally {
-      setClaimingDay(null);
-    }
-  }, [claimableGiftsByDay, claimingDay, execute]);
-
-  const handleCheckIn = useCallback(async () => {
-    if (checkingIn) return;
-    setCheckingIn(true);
-    try {
-      await execute('ClaimCheckIn', {});
-      audioEngine.play('sfx.reward.checkin');
-    } catch (err) {
-      console.error('[CheckInTrack] Check-in failed:', err);
-    } finally {
-      setCheckingIn(false);
-    }
-  }, [checkingIn, execute]);
 
   if (!def) return null;
 
   return (
-    <div className="checkin-track flex flex-col gap-2.5 py-3">
+    <div className="checkin-track flex flex-col gap-1 py-3">
       <div className="flex items-center justify-between">
-        <span className="[font-family:'Cinzel',serif] text-[16px] font-bold text-[#e2d9ff]">
+        <span className="[font-family:'Cinzel',serif] text-[15px] font-bold text-[#e2d9ff]">
           {def.name}
         </span>
         {countdown && (
@@ -176,41 +65,9 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
         <RewardTrack
           cycleLength={cycleLength}
           streak={streak}
-          claimableDays={claimableGiftsByDay}
           dayIcons={dayIcons}
-          onClaimDay={handleClaimDay}
-          claimingDay={claimingDay}
         />
       )}
-      {isCheckInAvailable ? (
-        <button
-          type="button"
-          disabled={checkingIn}
-          onClick={handleCheckIn}
-          className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold bg-[rgba(139,92,246,0.18)] border border-[rgba(139,92,246,0.45)] text-[#c4b5fd] hover:bg-[rgba(139,92,246,0.28)] hover:border-[rgba(139,92,246,0.65)] active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {checkingIn ? (
-            <>
-              <span className="inline-block w-3.5 h-3.5 border-2 border-[#a78bfa] border-t-transparent rounded-full animate-spin" />
-              Checking in…
-            </>
-          ) : (
-            '✦ Check In'
-          )}
-        </button>
-      ) : claimedThisWindow ? (
-        <button
-          type="button"
-          disabled
-          className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[13px] font-bold bg-[rgba(16,185,129,0.08)] border border-[rgba(16,185,129,0.25)] text-[#6ee7b7] opacity-60 cursor-not-allowed"
-        >
-          ✦ Checked In
-        </button>
-      ) : null}
-      <RewardClaimButton
-        claimedToday={claimedThisWindow}
-        nextWindowLabel={!hasClaimable && !isCheckInAvailable ? countdown : null}
-      />
     </div>
   );
 }

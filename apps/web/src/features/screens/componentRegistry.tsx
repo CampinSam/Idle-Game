@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNow } from '../../hooks/useNow';
 import { useNavigate, useParams } from 'react-router-dom';
+import { isInstanceCheckInAvailable } from '../checkin/checkinUtils';
 import type { ScreenSectionDefinition } from '@derp/shared';
 import {
   useSyncEntities,
@@ -433,48 +434,46 @@ function SkeletonCardComp({ section }: ScreenComponentProps) {
   );
 }
 
-function DailyCheckInCardComp({ section, onAction }: ScreenComponentProps) {
+function DailyCheckInCardComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
-  const actionKey = props.actionKey as string | undefined;
 
   const checkins = useSyncCheckIns() as any[];
   const gifts = useSyncGifts() as any[];
   const { execute } = useCommand();
-  const [claiming, setClaiming] = useState(false);
+  const navigate = useNavigate();
+  const nowMs = useNow(60_000);
+  const [checkingIn, setCheckingIn] = useState(false);
+
+  const canCheckIn = useMemo(
+    () => checkins.some((inst) => isInstanceCheckInAvailable(inst, nowMs)),
+    [checkins, nowMs],
+  );
+
+  const hasPendingGifts = useMemo(
+    () => (gifts as any[]).some((g) => g.sourceType === 'checkin' && g.status === 'UNCLAIMED'),
+    [gifts],
+  );
+
+  const handleCheckIn = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (checkingIn) return;
+    setCheckingIn(true);
+    try {
+      await execute('ClaimCheckIn', {});
+      audioEngine.play('sfx.reward.checkin');
+    } catch (err) {
+      console.error('[DailyCheckInCard] Check-in failed:', err);
+    } finally {
+      setCheckingIn(false);
+    }
+  }, [checkingIn, execute]);
+
+  if (!canCheckIn && !hasPendingGifts) return null;
 
   const instance = checkins[0] ?? null;
   const def = instance?.checkInDef ?? null;
   const streak = instance?.streak ?? 0;
   const cycleLength = def?.cycleLength ?? 7;
-
-  const claimableGift = useMemo(() => {
-    if (!def) return null;
-    return (gifts as any[]).find(
-      (g) => g.sourceType === 'checkin' && g.sourceId === def.id && g.status === 'UNCLAIMED',
-    ) ?? null;
-  }, [def, gifts]);
-
-  const claimedToday = useMemo(() => {
-    if (!instance?.lastClaimedAt || claimableGift) return false;
-    const lastClaimed = new Date(instance.lastClaimedAt);
-    const windowStart = new Date();
-    windowStart.setUTCHours(0, 0, 0, 0);
-    return lastClaimed >= windowStart;
-  }, [instance, claimableGift]);
-
-  const handleClaim = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!claimableGift || claiming) return;
-    setClaiming(true);
-    try {
-      await execute('ClaimGift', { giftId: (claimableGift as any).id });
-      audioEngine.play('sfx.reward.checkin');
-    } catch (err) {
-      console.error('[DailyCheckInCard] Claim failed:', err);
-    } finally {
-      setClaiming(false);
-    }
-  }, [claimableGift, claiming, execute]);
 
   const subtitle = def
     ? `Day ${(streak % cycleLength) + 1} of ${cycleLength}`
@@ -482,34 +481,30 @@ function DailyCheckInCardComp({ section, onAction }: ScreenComponentProps) {
 
   return (
     <Card
-      className="mb-4 p-4 flex items-center gap-3 border-amber-500/25 cursor-pointer hover:-translate-y-0.5 transition-all"
-      onClick={actionKey ? () => onAction(actionKey) : undefined}
+      className="mb-4 p-4 flex items-center gap-3 border-amber-500/25 hover:-translate-y-0.5 transition-all"
+      onClick={canCheckIn ? undefined : () => navigate('/rewards')}
     >
       <span className="text-3xl flex-shrink-0">🎁</span>
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-bold text-text-primary">Daily Check-In</div>
         <div className="text-[11px] text-text-secondary mt-0.5 truncate">{subtitle}</div>
       </div>
-      {claimableGift ? (
+      {canCheckIn ? (
         <button
-          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide disabled:opacity-60 shrink-0"
-          onClick={handleClaim}
-          disabled={claiming}
+          className="ml-auto bg-gradient-to-br from-[rgba(139,92,246,0.8)] to-[rgba(109,40,217,0.9)] text-white rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide disabled:opacity-60 shrink-0 shadow-[0_0_12px_rgba(139,92,246,0.35)] active:scale-95 transition-all"
+          onClick={handleCheckIn}
+          disabled={checkingIn}
         >
-          {claiming ? '…' : String(props.actionLabel ?? 'CLAIM')}
+          {checkingIn ? '…' : '✦ Check In'}
         </button>
-      ) : claimedToday ? (
-        <div className="ml-auto shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-[#4ade80] bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)]">
-          ✓ Claimed
-        </div>
-      ) : actionKey ? (
+      ) : (
         <button
-          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide shrink-0"
-          onClick={(e) => { e.stopPropagation(); onAction(actionKey); }}
+          className="ml-auto bg-gradient-to-br from-amber-500 to-amber-600 text-[#1a1640] rounded-lg px-3.5 py-1.5 text-xs font-extrabold tracking-wide shrink-0 active:scale-95 transition-all"
+          onClick={(e) => { e.stopPropagation(); navigate('/rewards'); }}
         >
-          {String(props.actionLabel ?? 'VIEW')}
+          See Rewards
         </button>
-      ) : null}
+      )}
     </Card>
   );
 }
