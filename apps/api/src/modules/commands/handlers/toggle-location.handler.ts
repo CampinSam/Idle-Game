@@ -23,7 +23,6 @@ function makeConsequencesBlock(): ModalBlock {
 
 function buildSwapButton(
   activeId: string,
-  activeName: string,
   enableLocationId: string,
   label: string,
 ): ModalButton {
@@ -35,19 +34,6 @@ function buildSwapButton(
       type: 'EXECUTE_COMMAND',
       command: 'SwapOutpost',
       payload: { disableLocationId: activeId, enableLocationId },
-    },
-    requiresConfirm: {
-      title: 'Confirm Swap',
-      body: [
-        {
-          type: 'richText',
-          doc: [
-            { t: 'p', c: [{ t: 'strong', c: [{ t: 'text', v: `Deactivating ${activeName} will immediately:` }] }] },
-          ],
-        },
-        makeConsequencesBlock(),
-      ],
-      confirmLabel: 'Deactivate & Activate',
     },
   };
 }
@@ -119,7 +105,7 @@ export class ToggleLocationHandler implements CommandHandler {
             },
             makeConsequencesBlock(),
           ];
-          pageButtons = [buildSwapButton(active.id, activeName, locationId, `Deactivate ${activeName} & Activate`)];
+          pageButtons = [buildSwapButton(active.id, locationId, `Deactivate ${activeName} & Activate`)];
         } else {
           pageBody = [
             {
@@ -140,7 +126,7 @@ export class ToggleLocationHandler implements CommandHandler {
             },
           ];
           pageButtons = locationStats.map((loc: any) =>
-            buildSwapButton(loc.id, loc.name || 'Outpost', locationId, `Deactivate ${loc.name || 'Outpost'}`),
+            buildSwapButton(loc.id, locationId, `Deactivate ${loc.name || 'Outpost'}`),
           );
         }
 

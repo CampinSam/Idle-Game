@@ -105,8 +105,20 @@ export function OutpostDetailsCard({ outpost }: OutpostDetailsCardProps) {
       <div className="p-3.5">
         {activeTab === 'LEVEL' && (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center justify-between gap-2">
               <Badge tone="info">Level {outpost.level}</Badge>
+              <button
+                type="button"
+                disabled={isMax}
+                title={isMax ? 'Outpost is at max level' : undefined}
+                onClick={handleDeposit}
+                className="px-3 py-1 rounded-full border border-[rgba(167,139,250,0.55)] text-[#ede9fe] text-[11px] font-bold tracking-[0.06em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:grayscale disabled:brightness-75"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(109,40,217,0.4))',
+                }}
+              >
+                {isMax ? 'Max Level' : '＋ Deposit XP'}
+              </button>
             </div>
 
             {outpost.xp != null && (
@@ -125,21 +137,6 @@ export function OutpostDetailsCard({ outpost }: OutpostDetailsCardProps) {
                 </span>
               </div>
             )}
-
-            <div>
-              <button
-                type="button"
-                disabled={isMax}
-                title={isMax ? 'Outpost is at max level' : undefined}
-                onClick={handleDeposit}
-                className="px-3 py-1.5 rounded-full border border-[rgba(167,139,250,0.55)] text-[#ede9fe] text-[11px] font-bold tracking-[0.06em] cursor-pointer transition-[filter,transform] hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:grayscale disabled:brightness-75"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(109,40,217,0.4))',
-                }}
-              >
-                {isMax ? 'Max Level' : '＋ Deposit XP'}
-              </button>
-            </div>
           </div>
         )}
 

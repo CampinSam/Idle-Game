@@ -94,17 +94,16 @@ export default function DerpOutpostPage({ outpost }: LocationPageProps) {
     (b.buildingDefId || b.defId || b.definitionId) === WAREHOUSE_DEF_ID;
   const warehouseBuildings = buildingsData.filter(isWarehouse);
   const hasWarehouse = warehouseBuildings.length > 0;
-  const nonWarehouseBuildings = buildingsData.filter((b: any) => !isWarehouse(b));
 
   const sortedBuildings = useMemo(
     () =>
-      [...nonWarehouseBuildings].sort((a: any, b: any) => {
+      [...buildingsData].sort((a: any, b: any) => {
         const oa = CATEGORY_ORDER[a.category] ?? 99;
         const ob = CATEGORY_ORDER[b.category] ?? 99;
         if (oa !== ob) return oa - ob;
         return (a.name || '').localeCompare(b.name || '');
       }),
-    [nonWarehouseBuildings],
+    [buildingsData],
   );
 
   const constructingBuildings = buildingsData.filter(

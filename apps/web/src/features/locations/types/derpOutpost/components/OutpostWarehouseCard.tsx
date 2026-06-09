@@ -73,6 +73,7 @@ export function OutpostWarehouseCard({
   const [claiming, setClaiming] = useState(false);
   const [lootPopItems, setLootPopItems] = useState<LootPopItem[]>([]);
   const lootPopKey = useRef(0);
+  const claimEpoch = useRef(0);
   const [showPreview, setShowPreview] = useState(false);
   const [cmdError, setCmdError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -111,6 +112,7 @@ export function OutpostWarehouseCard({
       await execute('ClaimLocation', { locationId: outpost.id });
       audioEngine.play('sfx.location.claim');
       audioEngine.play('sfx.economy.currency_earn');
+      claimEpoch.current += 1;
       if (snapshot.length > 0) {
         lootPopKey.current += 1;
         setLootPopItems(snapshot);
@@ -297,7 +299,7 @@ export function OutpostWarehouseCard({
               (s) => s.outputType === res.outputType && s.outputRefId === res.outputRefId,
             );
             const netRatePerHour: number = matchingSummary?.netRatePerHour ?? 0;
-            const resetKey: string = (outpost as any)?.storage?.lastSettledAt ?? res.key;
+            const resetKey: string = `${(outpost as any)?.storage?.lastSettledAt ?? res.key}:${claimEpoch.current}`;
 
             return (
               <div key={res.key}>

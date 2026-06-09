@@ -38,7 +38,7 @@ export default function LootPop({ items, durationMs = 1500, onComplete }: LootPo
       {items.map((item) => (
         <span
           key={item.key}
-          className="text-[11px] font-bold text-[#10B981] bg-[rgba(16,185,129,0.2)] border border-[rgba(16,185,129,0.35)] px-2 py-[3px] rounded-md whitespace-nowrap inline-flex items-center gap-[3px] backdrop-blur-[4px]"
+          className="text-[11px] font-bold text-[#d1fae5] bg-[rgba(6,78,59,0.88)] border border-[rgba(52,211,153,0.55)] px-2 py-[3px] rounded-md whitespace-nowrap inline-flex items-center gap-[3px] shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
         >
           {item.icon && <span className="inline-flex items-center text-[13px]">{item.icon}</span>}
           {item.label}
