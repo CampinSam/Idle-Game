@@ -29,12 +29,14 @@ export class SyncEngine {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
   private destroyed = false;
+  private hasEverConnected = false;
   private globalPowerHandlers = new Set<GlobalPowerChangeHandler>();
   private boostChangeHandlers = new Set<BoostChangeHandler>();
   private bootstrapUiIntentHandlers = new Set<BootstrapUiIntentHandler>();
 
   constructor(store: Store<RootState>) {
     this.store = store;
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
   }
 
   onGlobalPowerChange(handler: GlobalPowerChangeHandler): () => void {
@@ -83,6 +85,7 @@ export class SyncEngine {
       this.store.dispatch(setSnapshot(response));
       const systemIconDefs: Array<{ id: string }> = (response.snapshot.state as any)?.systemIconDefs ?? [];
       setSystemIconRegistry(systemIconDefs.map((d) => d.id));
+      this.hasEverConnected = true;
       this.store.dispatch(setStatus('connected'));
       this.openStream();
       if (Array.isArray(response.ui) && response.ui.length > 0) {
@@ -92,17 +95,33 @@ export class SyncEngine {
       if (this.destroyed) return;
       console.error('[SyncEngine] Bootstrap failed:', err);
       this.store.dispatch(setError(err.message || 'Bootstrap failed'));
-      this.store.dispatch(setStatus('disconnected'));
+      // After a successful initial connection, keep stale data visible by
+      // staying in 'reconnecting' rather than switching to 'disconnected'.
+      // 'disconnected' is reserved for the initial load failure (no data yet).
+      const nextStatus = this.hasEverConnected ? 'reconnecting' : 'disconnected';
+      this.store.dispatch(setStatus(nextStatus));
       this.scheduleReconnect();
     }
   }
 
   stop(): void {
     this.destroyed = true;
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.closeStream();
     this.clearReconnect();
     this.store.dispatch(resetSync());
   }
+
+  private onVisibilityChange = () => {
+    if (document.visibilityState !== 'visible') return;
+    const status = this.store.getState().sync.status;
+    if (status !== 'connected' && status !== 'bootstrapping') {
+      // Tab became visible while disconnected/reconnecting — skip the
+      // remaining backoff timer and reconnect immediately.
+      this.clearReconnect();
+      this.start();
+    }
+  };
 
   private openStream(): void {
     if (this.destroyed) return;
