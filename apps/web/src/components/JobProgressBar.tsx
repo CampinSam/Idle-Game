@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createCountdownTimer } from '../tick/TickTimer';
 import { useCurrentTick } from '../tick/TickEngine';
 import { useTickRemainingMs } from '../tick/useTickValue';
+import { useProgressAnimation } from '../hooks/useProgressAnimation';
 
 function fmtMs(ms: number): string {
   if (ms <= 0 || !isFinite(ms)) return '';
@@ -90,6 +91,8 @@ export default function JobProgressBar({
     : !!actionLabel && !!onAction;
   const currentActionLabel = isReady ? readyActionLabel : actionLabel;
 
+  const fillStyle = useProgressAnimation(fillPct, resolvedRemainingMs, startTick ?? 0);
+
   // ─── Pill variant (replaces BuildingProgressBar) ──────────────────────────
   if (variant === 'pill') {
     const pillText = compact
@@ -115,12 +118,11 @@ export default function JobProgressBar({
           <div
             className={[
               'absolute top-0 left-0 h-full rounded-[inherit]',
-              'transition-[width] duration-500 ease-out',
               isReady
                 ? '[background:linear-gradient(90deg,#059669,#10B981)]'
                 : '[background:linear-gradient(90deg,#d97706,#f59e0b)]',
             ].join(' ')}
-            style={{ width: `${fillPct}%` }}
+            style={fillStyle}
           />
           <span
             className={[
@@ -184,8 +186,8 @@ export default function JobProgressBar({
       )}
       <div className={`w-full ${barH} rounded-full bg-[rgba(255,255,255,0.07)] overflow-hidden`}>
         <div
-          className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-          style={{ width: `${fillPct}%`, background: fillBg }}
+          className="h-full rounded-full"
+          style={{ ...fillStyle, background: fillBg }}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSyncCheckIns } from '../../hooks/useSyncSelectors';
-import { serverNow } from '../../services/clockSync';
+import { useNow } from '../../hooks/useNow';
 import { getWindowStart, getWindowDurationMs, formatCountdown } from './checkinUtils';
 import { RewardTrack } from './RewardTrack';
 
@@ -10,7 +10,7 @@ interface CheckInTrackProps {
 
 export default function CheckInTrack({ defId }: CheckInTrackProps) {
   const checkins = useSyncCheckIns();
-  const [countdown, setCountdown] = useState('');
+  const now = useNow(60_000);
 
   const instance = useMemo(
     () => (checkins as any[]).find((c) => c.checkInDefId === defId) ?? null,
@@ -33,19 +33,14 @@ export default function CheckInTrack({ defId }: CheckInTrackProps) {
     return map;
   }, [def]);
 
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date(serverNow());
-      const windowStart = getWindowStart(frequency, now);
-      const windowMs = getWindowDurationMs(frequency);
-      const nextWindow = new Date(windowStart.getTime() + windowMs);
-      const remaining = nextWindow.getTime() - now.getTime();
-      setCountdown(formatCountdown(remaining) ?? '');
-    };
-    tick();
-    const id = setInterval(tick, 60_000);
-    return () => clearInterval(id);
-  }, [frequency]);
+  const countdown = useMemo(() => {
+    const nowDate = new Date(now);
+    const windowStart = getWindowStart(frequency, nowDate);
+    const windowMs = getWindowDurationMs(frequency);
+    const nextWindow = new Date(windowStart.getTime() + windowMs);
+    const remaining = nextWindow.getTime() - now;
+    return formatCountdown(remaining) ?? '';
+  }, [now, frequency]);
 
   if (!def) return null;
 

@@ -1,25 +1,53 @@
 import { useState, useEffect } from 'react';
 import { serverNow } from '../services/clockSync';
 
-export function useNow(intervalMs = 1000) {
+type Subscriber = () => void;
+
+interface RegistryEntry {
+  timerId: ReturnType<typeof setInterval>;
+  subscribers: Set<Subscriber>;
+}
+
+const registry = new Map<number, RegistryEntry>();
+let visibilityBound = false;
+
+function ensureVisibilityBound(): void {
+  if (visibilityBound || typeof document === 'undefined') return;
+  visibilityBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      registry.forEach((entry) => {
+        entry.subscribers.forEach((cb) => cb());
+      });
+    }
+  });
+}
+
+function subscribe(intervalMs: number, cb: Subscriber): () => void {
+  ensureVisibilityBound();
+  let entry = registry.get(intervalMs);
+  if (!entry) {
+    const timerId = setInterval(() => {
+      const e = registry.get(intervalMs);
+      if (e) e.subscribers.forEach((s) => s());
+    }, intervalMs);
+    entry = { timerId, subscribers: new Set() };
+    registry.set(intervalMs, entry);
+  }
+  entry.subscribers.add(cb);
+  return () => {
+    const e = registry.get(intervalMs);
+    if (!e) return;
+    e.subscribers.delete(cb);
+    if (e.subscribers.size === 0) {
+      clearInterval(e.timerId);
+      registry.delete(intervalMs);
+    }
+  };
+}
+
+export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(serverNow);
-
-  useEffect(() => {
-    const tick = () => setNow(serverNow());
-    const id = setInterval(tick, intervalMs);
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        tick();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [intervalMs]);
-
+  useEffect(() => subscribe(intervalMs, () => setNow(serverNow())), [intervalMs]);
   return now;
 }

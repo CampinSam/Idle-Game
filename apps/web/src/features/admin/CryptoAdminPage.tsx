@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { adminApi } from './adminApi';
+import { useNow } from '../../hooks/useNow';
 
 type OracleStatus = {
   lovelacePerUsd: number;
@@ -13,9 +14,9 @@ type OracleStatus = {
 
 type OracleHealth = 'green' | 'yellow' | 'red';
 
-function getOracleHealth(status: OracleStatus): OracleHealth {
+function getOracleHealth(status: OracleStatus, now = Date.now()): OracleHealth {
   if (status.usingFallback || !status.newestSampleAt) return 'red';
-  const ageMs = Date.now() - new Date(status.newestSampleAt).getTime();
+  const ageMs = now - new Date(status.newestSampleAt).getTime();
   const ageMin = ageMs / 60_000;
   if (ageMin < 10) return 'green';
   if (ageMin < 30) return 'yellow';
@@ -28,9 +29,9 @@ const HEALTH_STYLES: Record<OracleHealth, { dot: string; border: string; label: 
   red:    { dot: '#ff6b6b', border: 'rgba(255,107,107,0.35)', label: 'Stale',    labelColor: '#ff6b6b' },
 };
 
-function formatAge(isoString: string | null): string {
+function formatAge(isoString: string | null, now = Date.now()): string {
   if (!isoString) return '—';
-  const ageMs = Date.now() - new Date(isoString).getTime();
+  const ageMs = now - new Date(isoString).getTime();
   const s = Math.floor(ageMs / 1_000);
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
@@ -43,8 +44,8 @@ function AdaOracleWidget() {
   const [status, setStatus] = useState<OracleStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(Date.now());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const now = useNow(15_000);
 
   const load = useCallback(async () => {
     try {
@@ -64,14 +65,7 @@ function AdaOracleWidget() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [load]);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 15_000);
-    return () => clearInterval(t);
-  }, []);
-
-  void now;
-
-  const health: OracleHealth = status ? getOracleHealth(status) : 'red';
+  const health: OracleHealth = status ? getOracleHealth(status, now) : 'red';
   const hs = HEALTH_STYLES[health];
 
   return (
@@ -127,7 +121,7 @@ function AdaOracleWidget() {
           <div>
             <div style={{ color: '#666', fontSize: '0.72rem', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Sample</div>
             <div style={{ color: health === 'red' ? '#ff6b6b' : health === 'yellow' ? '#fbbf24' : '#e0e0ff', fontWeight: 600 }}>
-              {formatAge(status.newestSampleAt)}
+              {formatAge(status.newestSampleAt, now)}
             </div>
           </div>
           <div>
