@@ -117,6 +117,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const matchedRules: any[] = data.synergy?.matchedRules ?? [];
   const ref = useRef<HTMLDivElement>(null);
+  const isStickyRef = useRef(false);
   const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
@@ -130,24 +131,40 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     resizeObserver.observe(el);
     updateHeight();
 
-    // Detect pinned state by comparing the sticky element's visual top against
-    // the scroll container's top. When pinned, getBoundingClientRect().top
-    // equals the container's top (the element is visually at top:0).
-    // This comparison is correct precisely because it uses VISUAL position:
-    // pinned → tops match → isSticky=true; unpinned → element is below container
-    // top → isSticky=false.
+    // Detect pinned state by comparing the sticky element's visual top to the
+    // scroll container's top. When pinned, getBoundingClientRect().top equals
+    // the container's top (the element is visually at top:0).
     //
-    // The only failure mode was scroll-anchor adjusting scrollTop when the
-    // block collapsed, which un-pinned the element and flipped isSticky=false.
-    // That is neutralised by [overflow-anchor:none] on the scroll container
-    // (MissionBuilder.tsx), so this simple comparison is now stable.
+    // Two failure modes are prevented:
+    // 1. Scroll-anchor adjusting scrollTop on collapse → neutralised by
+    //    [overflow-anchor:none] on the scroll container (MissionBuilder.tsx).
+    // 2. Browser scroll-bounds enforcement snapping scrollTop when the
+    //    collapsed content is too short to sustain the current scrollTop →
+    //    prevented by locking contentDiv.style.minHeight to the pre-collapse
+    //    scrollHeight. The lock is set synchronously (before setIsSticky so
+    //    the DOM is already constrained before React re-renders the collapsed
+    //    form) and released when the block expands again.
     const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null; // touchAction: touch-pan-y already on the scroll container
+    const contentDiv = scrollEl?.firstElementChild as HTMLElement | null;
     let scrollHandler: (() => void) | null = null;
     if (scrollEl) {
       scrollHandler = () => {
         const elRect = el.getBoundingClientRect();
         const containerRect = scrollEl.getBoundingClientRect();
-        setIsSticky(elRect.top <= containerRect.top + 1);
+        const shouldBeSticky = elRect.top <= containerRect.top + 1;
+
+        if (shouldBeSticky === isStickyRef.current) return;
+        isStickyRef.current = shouldBeSticky;
+
+        if (shouldBeSticky) {
+          // Lock min-height BEFORE React renders the collapsed form so the
+          // scroll container cannot shrink and snap scrollTop downward.
+          if (contentDiv) contentDiv.style.minHeight = `${scrollEl.scrollHeight}px`;
+        } else {
+          // Release the lock so the expanded form can determine its own height.
+          if (contentDiv) contentDiv.style.minHeight = '';
+        }
+        setIsSticky(shouldBeSticky);
       };
       scrollEl.addEventListener('scroll', scrollHandler, { passive: true });
       scrollHandler();
@@ -156,9 +173,8 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     return () => {
       resizeObserver.disconnect();
       document.documentElement.style.removeProperty('--mission-sticky-h');
-      if (scrollEl && scrollHandler) {
-        scrollEl.removeEventListener('scroll', scrollHandler);
-      }
+      if (scrollEl && scrollHandler) scrollEl.removeEventListener('scroll', scrollHandler);
+      if (contentDiv) contentDiv.style.minHeight = '';
     };
   }, []);
 
