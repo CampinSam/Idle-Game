@@ -10,6 +10,10 @@ import { IdempotencyService } from '../infrastructure/idempotency.service';
 import { JobService } from './job.service';
 import { JobPreviewService, JobPreviewDto } from './job-preview.service';
 import { JOB_TYPE_CONFIG } from './job.constants';
+import { MissionService } from '../mission/mission.service';
+import { CraftingService } from '../crafting/crafting.service';
+import { LocationService } from '../location/location.service';
+import { DustingService } from '../dusting/dusting.service';
 
 @Controller('jobs')
 @UseGuards(JwtAuthGuard)
@@ -25,6 +29,10 @@ export class JobController {
     private jobService: JobService,
     private idempotency: IdempotencyService,
     private jobPreviewService: JobPreviewService,
+    private missionService: MissionService,
+    private craftingService: CraftingService,
+    private locationService: LocationService,
+    private dustingService: DustingService,
   ) {}
 
   @Post('preview')
@@ -191,10 +199,82 @@ export class JobController {
 
     this.logger.log(`Job ${id} skipped by user ${user.id}. Costs: ${JSON.stringify(finalCosts)}`);
 
+    // Auto-complete immediately — the player paid to skip the wait, so they
+    // don't need to press a separate "Complete" button.
+    try {
+      await this._autoCompleteAfterSkip(user.id, job);
+    } catch (err) {
+      // Skip cost was already spent; log the failure but don't surface it
+      // to the player. The job will remain in ready_notified state and they
+      // can complete it manually.
+      this.logger.warn(`Skip auto-complete failed for job ${id}: ${err}`);
+    }
+
     return {
       skipped: true,
       costs: finalCosts,
     };
+  }
+
+  private async _autoCompleteAfterSkip(userId: string, job: any): Promise<void> {
+    switch (job.type) {
+      case 'MissionJob':
+        await this.missionService.completeMission(userId, job.id);
+        break;
+
+      case 'CraftingJob':
+        await this.craftingService.collectCrafting(userId, job.id);
+        break;
+
+      case 'BuildingJob': {
+        const data = job.data as any;
+        if (!data?.locationId || !data?.buildingId) {
+          throw new Error(`BuildingJob ${job.id} missing locationId or buildingId in data field`);
+        }
+        await this.locationService.completeBuilding(userId, data.locationId, data.buildingId);
+        break;
+      }
+
+      case 'DustingJob':
+        await this.dustingService.collectDusting(userId, { jobId: job.id });
+        break;
+
+      default:
+        this.logger.warn(`_autoCompleteAfterSkip: unhandled job type "${job.type}" for job ${job.id}`);
+    }
+
+    // Push a lightweight delta so SSE subscribers see the updated job state
+    // immediately (entities freed, rewards applied, etc.) without waiting for
+    // the next tick-sync or manual refresh.
+    try {
+      const updatedJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
+      const patches: any[] = [];
+      if (updatedJob) {
+        patches.push({ op: 'upsert', entity: 'job', id: updatedJob.id, data: updatedJob });
+      }
+
+      if (job.type === 'MissionJob') {
+        const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
+        if (teamIds.length > 0) {
+          const entities = await (this.prisma as any).entity.findMany({
+            where: { id: { in: teamIds }, ownerUserId: userId },
+            include: { equipment: true, definition: true },
+          });
+          for (const entity of entities) {
+            patches.push({ op: 'upsert', entity: 'entity', id: entity.id, data: entity });
+          }
+        }
+      }
+
+      if (patches.length > 0) {
+        const delta = await (this.prisma as any).playerDelta.create({
+          data: { userId, patches: patches as any, ui: [] as any },
+        });
+        this.pubsub.publish(`player:${userId}`, { userId, deltaId: delta.id.toString() });
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to push post-skip delta for user ${userId}: ${err}`);
+    }
   }
 
   @Post('notify')

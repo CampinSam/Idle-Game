@@ -9,6 +9,10 @@ import { EntityModule } from '../entity/entity.module';
 import { SynergyModule } from '../synergy/synergy.module';
 import { EffectModule } from '../effect/effect.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MissionModule } from '../mission/mission.module';
+import { CraftingModule } from '../crafting/crafting.module';
+import { LocationModule } from '../location/location.module';
+import { DustingModule } from '../dusting/dusting.module';
 
 @Module({
   imports: [
@@ -19,6 +23,10 @@ import { InventoryModule } from '../inventory/inventory.module';
     SynergyModule,
     EffectModule,
     InventoryModule,
+    MissionModule,
+    CraftingModule,
+    LocationModule,
+    DustingModule,
   ],
   controllers: [JobController],
   providers: [JobService, JobPreviewService],
