@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNow } from '../../hooks/useNow';
+import { useNow, useInterval } from '../../hooks/useNow';
 import { useNavigate } from 'react-router-dom';
 import { useHomeBanners } from '../../hooks/useSyncSelectors';
 import { formatSeasonRemaining } from '../../utils/formatSeasonRemaining';
@@ -59,13 +59,8 @@ export function BannerCarousel() {
     [banners],
   );
 
-  useEffect(() => {
-    if (banners.length < 2 || autoAdvanceDisabled || paused) return;
-    const id = setInterval(() => {
-      setPage((p) => (p + 1) % banners.length);
-    }, autoAdvanceMs);
-    return () => clearInterval(id);
-  }, [banners.length, autoAdvanceMs, autoAdvanceDisabled, paused]);
+  const autoAdvanceEnabled = banners.length >= 2 && !autoAdvanceDisabled && !paused;
+  useInterval(() => setPage((p) => (p + 1) % banners.length), autoAdvanceMs, autoAdvanceEnabled);
 
   const pauseAutoAdvance = useCallback(() => {
     setPaused(true);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useInterval } from '../../../hooks/useNow';
 import { adminApi } from '../../admin/adminApi';
 import type { AdminMe } from '../../admin/adminApi';
 
@@ -84,11 +85,8 @@ export default function AdminV2Dashboard({ me, onNavigate }: Props) {
     }
   }, [perms.player_read, perms.system_tools]);
 
-  useEffect(() => {
-    fetchQuickStats();
-    const interval = setInterval(fetchQuickStats, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchQuickStats]);
+  useEffect(() => { fetchQuickStats(); }, [fetchQuickStats]);
+  useInterval(fetchQuickStats, 60_000);
 
   useEffect(() => {
     if (perms.approve) {

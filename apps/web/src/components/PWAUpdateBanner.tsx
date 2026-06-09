@@ -1,25 +1,29 @@
+import { useState } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { useInterval } from '../hooks/useNow';
 
 export default function PWAUpdateBanner() {
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(_swUrl, registration) {
-      if (!registration) return;
-      const intervalMs = 30_000;
-      setInterval(() => {
-        if (registration.installing) return;
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-        registration.update().catch((err) => {
-          console.warn('[PWA] update() failed:', err);
-        });
-      }, intervalMs);
+    onRegisteredSW(_swUrl, reg) {
+      if (reg) setRegistration(reg);
     },
     onRegisterError(error) {
       console.error('[PWA] Service worker registration failed:', error);
     },
   });
+
+  useInterval(() => {
+    if (!registration || registration.installing) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    registration.update().catch((err) => {
+      console.warn('[PWA] update() failed:', err);
+    });
+  }, 30_000, !!registration);
 
   if (!import.meta.env.PROD) return null;
   if (!needRefresh) return null;

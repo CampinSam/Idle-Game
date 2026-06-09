@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNow } from '../../hooks/useNow';
+import { useNow, useInterval } from '../../hooks/useNow';
 import { serverNow } from '../../services/clockSync';
 import type { ModalSpecV1 } from '@derp/shared';
 import { useAppSelector } from '../../store';
@@ -115,11 +115,8 @@ function StoreHeroCarousel({
   useEffect(() => {
     if (page >= activeHeroes.length && activeHeroes.length > 0) setPage(0);
   }, [activeHeroes.length, page]);
-  useEffect(() => {
-    if (activeHeroes.length < 2 || paused) return;
-    const id = setInterval(() => setPage((p) => (p + 1) % activeHeroes.length), HERO_AUTO_ADVANCE_MS);
-    return () => clearInterval(id);
-  }, [activeHeroes.length, paused]);
+  const heroAutoAdvanceEnabled = activeHeroes.length >= 2 && !paused;
+  useInterval(() => setPage((p) => (p + 1) % activeHeroes.length), HERO_AUTO_ADVANCE_MS, heroAutoAdvanceEnabled);
 
   const pauseAutoAdvance = useCallback(() => {
     setPaused(true);
@@ -564,7 +561,6 @@ function CryptoPayModal({
   const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired' | 'failed'>('pending');
   const [copied, setCopied] = useState(false);
   const [confirmedGems, setConfirmedGems] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeft = useExpiryCountdown(state.expiresAt);
 
   // Guided CIP-30 state (Cardano only)
@@ -609,37 +605,33 @@ function CryptoPayModal({
   }, [state.purchaseId]);
 
   // Poll fallback — only for non-guided OR after guided submission
+  const pollEnabled = status === 'pending' && (!canUseGuided || guidedStep === 'submitted');
+
+  const poll = useCallback(async () => {
+    try {
+      const resp = await fetch(`/api/v1/purchases/${state.purchaseId}`, {
+        headers: authHeaders(),
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data.status === 'CONFIRMED') {
+        setConfirmedGems(data.gemAmount ?? 0);
+        setStatus('confirmed');
+      } else if (data.status === 'EXPIRED' || data.status === 'FAILED') {
+        setStatus(data.status === 'EXPIRED' ? 'expired' : 'failed');
+      }
+    } catch { }
+  }, [state.purchaseId]);
+
+  // Immediate poll when conditions first become true (fires before the interval tick).
   useEffect(() => {
-    if (status !== 'pending') return;
-    // Don't start polling until we're actually waiting on-chain
-    if (canUseGuided && guidedStep !== 'submitted') return;
+    if (pollEnabled) poll();
+  }, [pollEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const poll = async () => {
-      try {
-        const resp = await fetch(`/api/v1/purchases/${state.purchaseId}`, {
-          headers: authHeaders(),
-        });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        if (data.status === 'CONFIRMED') {
-          setConfirmedGems(data.gemAmount ?? 0);
-          setStatus('confirmed');
-        } else if (data.status === 'EXPIRED' || data.status === 'FAILED') {
-          setStatus(data.status === 'EXPIRED' ? 'expired' : 'failed');
-        }
-      } catch { }
-    };
-
-    poll();
-    pollRef.current = setInterval(poll, 5000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [state.purchaseId, status, canUseGuided, guidedStep]);
+  useInterval(poll, 5000, pollEnabled);
 
   useEffect(() => {
     if (status === 'confirmed') {
-      if (pollRef.current) clearInterval(pollRef.current);
       const t = setTimeout(() => onConfirmed(confirmedGems), 1800);
       return () => clearTimeout(t);
     }

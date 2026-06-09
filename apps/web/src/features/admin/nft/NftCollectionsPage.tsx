@@ -120,7 +120,7 @@ export default function NftCollectionsPage() {
   const [seedResult, setSeedResult] = useState<{ skipped: boolean; inserted: number } | null>(null);
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedError, setSeedError] = useState<string | null>(null);
-  const pollTimers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+  const pollTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   function patchState(id: string, patch: Partial<CollectionState>) {
     setStates(prev => ({ ...prev, [id]: { ...(prev[id] ?? emptyState()), ...patch } }));
@@ -133,22 +133,25 @@ export default function NftCollectionsPage() {
     isDone: (data: any) => boolean,
     onDone?: () => void,
   ) {
-    const timerKey = key;
-    if (pollTimers.current[timerKey]) clearInterval(pollTimers.current[timerKey]);
-    pollTimers.current[timerKey] = setInterval(async () => {
+    if (pollTimers.current[key]) clearTimeout(pollTimers.current[key]);
+
+    const tick = async () => {
       try {
         const data = await fetcher();
         onTick(data);
         if (isDone(data)) {
-          clearInterval(pollTimers.current[timerKey]);
-          delete pollTimers.current[timerKey];
+          delete pollTimers.current[key];
           onDone?.();
+          return;
         }
       } catch {
-        clearInterval(pollTimers.current[timerKey]);
-        delete pollTimers.current[timerKey];
+        delete pollTimers.current[key];
+        return;
       }
-    }, 2000);
+      pollTimers.current[key] = setTimeout(tick, 2000);
+    };
+
+    pollTimers.current[key] = setTimeout(tick, 2000);
   }
 
   const load = useCallback(async () => {
@@ -242,7 +245,7 @@ export default function NftCollectionsPage() {
     init();
     return () => {
       cancelled = true;
-      for (const t of Object.values(pollTimers.current)) clearInterval(t);
+      for (const t of Object.values(pollTimers.current)) clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

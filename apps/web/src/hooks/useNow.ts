@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { serverNow } from '../services/clockSync';
 
 type Subscriber = () => void;
@@ -50,4 +50,18 @@ export function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(serverNow);
   useEffect(() => subscribe(intervalMs, () => setNow(serverNow())), [intervalMs]);
   return now;
+}
+
+/**
+ * Runs `callback` on every tick of the shared interval registry at `intervalMs`.
+ * Gets visibility-wake handling for free (fires immediately when the tab becomes
+ * visible again). Set `enabled` to false to pause without unmounting.
+ */
+export function useInterval(callback: () => void, intervalMs: number, enabled = true): void {
+  const callbackRef = useRef(callback);
+  useEffect(() => { callbackRef.current = callback; });
+  useEffect(() => {
+    if (!enabled) return;
+    return subscribe(intervalMs, () => callbackRef.current());
+  }, [intervalMs, enabled]);
 }

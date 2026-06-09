@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
 import { adminApi } from './adminApi';
-import { useNow } from '../../hooks/useNow';
+import { useNow, useInterval } from '../../hooks/useNow';
 
 type OracleStatus = {
   lovelacePerUsd: number;
@@ -44,7 +44,6 @@ function AdaOracleWidget() {
   const [status, setStatus] = useState<OracleStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const now = useNow(15_000);
 
   const load = useCallback(async () => {
@@ -59,11 +58,8 @@ function AdaOracleWidget() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-    intervalRef.current = setInterval(load, 60_000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
+  useInterval(load, 60_000);
 
   const health: OracleHealth = status ? getOracleHealth(status, now) : 'red';
   const hs = HEALTH_STYLES[health];

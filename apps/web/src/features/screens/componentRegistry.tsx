@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNow } from '../../hooks/useNow';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNow, useInterval } from '../../hooks/useNow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { isInstanceCheckInAvailable } from '../checkin/checkinUtils';
 import type { ScreenSectionDefinition } from '@derp/shared';
@@ -837,35 +837,33 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!defId) return;
-    let cancelled = false;
+  const cancelledRef = useRef(false);
 
-    const poll = async () => {
-      try {
-        const res = await fetch(`${_telemetryApiBase}/telemetry/${defId}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: TelemetryData = await res.json();
-        if (!cancelled) {
-          setData(json);
-          setLoading(false);
-          setError(null);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message ?? 'Failed to load');
-          setLoading(false);
-        }
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`${_telemetryApiBase}/telemetry/${defId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: TelemetryData = await res.json();
+      if (!cancelledRef.current) {
+        setData(json);
+        setLoading(false);
+        setError(null);
       }
-    };
+    } catch (e: any) {
+      if (!cancelledRef.current) {
+        setError(e?.message ?? 'Failed to load');
+        setLoading(false);
+      }
+    }
+  }, [defId]);
 
+  useEffect(() => {
+    cancelledRef.current = false;
     poll();
-    const id = setInterval(poll, pollSeconds * 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [defId, pollSeconds]);
+    return () => { cancelledRef.current = true; };
+  }, [poll]);
+
+  useInterval(poll, pollSeconds * 1000, !!defId);
 
   if (!defId) return null;
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useInterval } from '../../hooks/useNow';
 import {
   LayoutDashboard, FileText, CheckSquare, Users, Radio,
   Coins, Settings, HeadphonesIcon, Shield, ChevronLeft,
@@ -513,9 +514,11 @@ export default function AdminV2Shell() {
   const [collapsed, setCollapsed] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [keyPending, setKeyPending] = useState(false);
-  const keyPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const meRef = useRef<AdminMe | null>(null);
 
-  const pollKeyPending = useCallback(async (account: AdminMe) => {
+  const pollKeyPending = useCallback(async () => {
+    const account = meRef.current;
+    if (!account) return;
     const isSuperAdmin = account.role.slug === 'super_admin' || !!account.isBootstrap;
     const perms = account.effectivePermissions ?? account.role.permissionFlags;
     if (!isSuperAdmin && !perms.system_tools) return;
@@ -535,6 +538,7 @@ export default function AdminV2Shell() {
     }
     adminApi.getMe()
       .then(account => {
+        meRef.current = account;
         setMe(account);
         const saved = readPersistedNav();
         if (saved) {
@@ -542,20 +546,19 @@ export default function AdminV2Shell() {
           setActiveSub(saved.sub);
           persistNav(saved.section, saved.sub);
         }
-        pollKeyPending(account);
-        keyPollRef.current = setInterval(() => pollKeyPending(account), KEY_POLL_INTERVAL_MS);
+        pollKeyPending();
       })
       .catch(() => {
         clearAdminToken();
         clearPersistedNav();
       })
       .finally(() => setChecking(false));
-    return () => {
-      if (keyPollRef.current) clearInterval(keyPollRef.current);
-    };
   }, [pollKeyPending]);
 
+  useInterval(pollKeyPending, KEY_POLL_INTERVAL_MS, !!me);
+
   const handleLogin = useCallback((account: AdminMe) => {
+    meRef.current = account;
     setMe(account);
     const isSuperAdmin = account.role.slug === 'super_admin' || !!account.isBootstrap;
     const defaultSection: Section =
@@ -563,15 +566,13 @@ export default function AdminV2Shell() {
     setActiveSection(defaultSection);
     setActiveSub(null);
     persistNav(defaultSection, null);
-    pollKeyPending(account);
-    if (keyPollRef.current) clearInterval(keyPollRef.current);
-    keyPollRef.current = setInterval(() => pollKeyPending(account), KEY_POLL_INTERVAL_MS);
+    pollKeyPending();
   }, [pollKeyPending]);
 
   const handleLogout = useCallback(() => {
     clearAdminToken();
     clearPersistedNav();
-    if (keyPollRef.current) clearInterval(keyPollRef.current);
+    meRef.current = null;
     setMe(null);
     setKeyPending(false);
     setActiveSection('dashboard');
