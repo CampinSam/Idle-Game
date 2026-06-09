@@ -11,16 +11,29 @@ interface RegistryEntry {
 const registry = new Map<number, RegistryEntry>();
 let visibilityBound = false;
 
+function flushAllSubscribers(): void {
+  registry.forEach((entry) => {
+    entry.subscribers.forEach((cb) => cb());
+  });
+}
+
 function ensureVisibilityBound(): void {
   if (visibilityBound || typeof document === 'undefined') return;
   visibilityBound = true;
+
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      registry.forEach((entry) => {
-        entry.subscribers.forEach((cb) => cb());
-      });
+      flushAllSubscribers();
     }
   });
+
+  window.addEventListener('pageshow', (e: PageTransitionEvent) => {
+    if (e.persisted) {
+      flushAllSubscribers();
+    }
+  });
+
+  document.addEventListener('resume', flushAllSubscribers);
 }
 
 function subscribe(intervalMs: number, cb: Subscriber): () => void {
