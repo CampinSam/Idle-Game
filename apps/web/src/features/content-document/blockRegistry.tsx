@@ -156,44 +156,42 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
   }, []);
 
   return (
-    // Single flex child — avoids the double-gap that a fragment would create
-    // inside the parent's gap-3 flex container.
-    <div className="relative">
-      {/* 1px sentinel absolutely positioned 1px above this wrapper's top edge.
-          Because it is NOT sticky its rect always reflects the true document-
-          flow position. When it exits the scroll container's top edge the
-          sticky block has just pinned; when it re-enters it has un-pinned.
-          1px height (not 0) makes IntersectionObserver unambiguous at the
-          exact boundary. */}
+    <div
+      ref={ref}
+      className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
+      style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
+    >
+      {/* Sentinel: 1px, absolutely positioned 1px above this sticky div.
+          A sticky element is a containing block for absolute children, so this
+          sentinel moves with the div. While the div is in normal flow the
+          sentinel sits 1px above the div's top, fully inside the scroll
+          container → IntersectionObserver "intersecting" → isSticky=false.
+          Once the div pins at top:0 the sentinel is 1px above the container's
+          top edge — outside the root — so the observer fires "not intersecting"
+          → isSticky=true. No separate flex child, so no double flex-gap. */}
       <div
         ref={sentinelRef}
         aria-hidden
-        className="absolute left-0 right-0 h-px"
+        className="absolute left-0 right-0 h-px pointer-events-none"
         style={{ top: -1 }}
       />
-      <div
-        ref={ref}
-        className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
-        style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <MissionRequirementsBlock isSticky={isSticky} />
-          <MissionStatsPanel
-            missionPower={data.missionPower ?? 0}
-            difficulty={data.difficulty ?? 0}
-            successChance={data.successChance ?? 0}
-            injuryChance={data.injuryChance ?? 0}
-            injuryRate={data.injuryRate ?? 0}
-            powerRatio={data.powerRatio ?? 0}
-            hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
-            loading={data.statsLoading ?? false}
-            isSticky={isSticky}
-          />
-        </div>
-        {matchedRules.length > 0 && (
-          <MissionSynergyPanel matchedRules={matchedRules} />
-        )}
+      <div className="grid grid-cols-2 gap-3">
+        <MissionRequirementsBlock isSticky={isSticky} />
+        <MissionStatsPanel
+          missionPower={data.missionPower ?? 0}
+          difficulty={data.difficulty ?? 0}
+          successChance={data.successChance ?? 0}
+          injuryChance={data.injuryChance ?? 0}
+          injuryRate={data.injuryRate ?? 0}
+          powerRatio={data.powerRatio ?? 0}
+          hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
+          loading={data.statsLoading ?? false}
+          isSticky={isSticky}
+        />
       </div>
+      {matchedRules.length > 0 && (
+        <MissionSynergyPanel matchedRules={matchedRules} />
+      )}
     </div>
   );
 }
