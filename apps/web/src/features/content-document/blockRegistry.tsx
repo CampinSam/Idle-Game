@@ -156,13 +156,24 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
   }, []);
 
   return (
-    <>
-      {/* Zero-height sentinel — its scroll position is measured by the
-          IntersectionObserver to detect when the sticky block has pinned. */}
-      <div ref={sentinelRef} aria-hidden className="h-0" />
+    // Single flex child — avoids the double-gap that a fragment would create
+    // inside the parent's gap-3 flex container.
+    <div className="relative">
+      {/* 1px sentinel absolutely positioned 1px above this wrapper's top edge.
+          Because it is NOT sticky its rect always reflects the true document-
+          flow position. When it exits the scroll container's top edge the
+          sticky block has just pinned; when it re-enters it has un-pinned.
+          1px height (not 0) makes IntersectionObserver unambiguous at the
+          exact boundary. */}
+      <div
+        ref={sentinelRef}
+        aria-hidden
+        className="absolute left-0 right-0 h-px"
+        style={{ top: -1 }}
+      />
       <div
         ref={ref}
-        className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
+        className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
         style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
       >
         <div className="grid grid-cols-2 gap-3">
@@ -183,7 +194,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
           <MissionSynergyPanel matchedRules={matchedRules} />
         )}
       </div>
-    </>
+    </div>
   );
 }
 
