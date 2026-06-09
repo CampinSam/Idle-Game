@@ -138,7 +138,7 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     // measuring a sticky element's getBoundingClientRect() (which returns the
     // visual/pinned position). When the sentinel exits the scroll container's
     // top edge the sticky block has pinned; when it re-enters it has un-pinned.
-    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null;
+    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null; // touchAction: touch-pan-y already on the scroll container
     let observer: IntersectionObserver | null = null;
     if (scrollEl) {
       observer = new IntersectionObserver(
