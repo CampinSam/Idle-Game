@@ -116,14 +116,12 @@ function MissionSynergyBlock(_: BlockComponentProps) {
 function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const matchedRules: any[] = data.synergy?.matchedRules ?? [];
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
     const el = ref.current;
-    if (!sentinel || !el) return;
+    if (!el) return;
 
     // Track height for picker-bar offset
     const updateHeight = () =>
@@ -132,49 +130,44 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     resizeObserver.observe(el);
     updateHeight();
 
-    // Use an IntersectionObserver on a zero-height sentinel placed just before
-    // the sticky wrapper. The sentinel is NOT sticky, so its measured position
-    // is always the true document-flow position — immune to the ambiguity of
-    // measuring a sticky element's getBoundingClientRect() (which returns the
-    // visual/pinned position). When the sentinel exits the scroll container's
-    // top edge the sticky block has pinned; when it re-enters it has un-pinned.
+    // Detect pinned state by comparing the sticky element's visual top against
+    // the scroll container's top. When pinned, getBoundingClientRect().top
+    // equals the container's top (the element is visually at top:0).
+    // This comparison is correct precisely because it uses VISUAL position:
+    // pinned → tops match → isSticky=true; unpinned → element is below container
+    // top → isSticky=false.
+    //
+    // The only failure mode was scroll-anchor adjusting scrollTop when the
+    // block collapsed, which un-pinned the element and flipped isSticky=false.
+    // That is neutralised by [overflow-anchor:none] on the scroll container
+    // (MissionBuilder.tsx), so this simple comparison is now stable.
     const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null; // touchAction: touch-pan-y already on the scroll container
-    let observer: IntersectionObserver | null = null;
+    let scrollHandler: (() => void) | null = null;
     if (scrollEl) {
-      observer = new IntersectionObserver(
-        ([entry]) => setIsSticky(!entry.isIntersecting),
-        { root: scrollEl, threshold: 0 },
-      );
-      observer.observe(sentinel);
+      scrollHandler = () => {
+        const elRect = el.getBoundingClientRect();
+        const containerRect = scrollEl.getBoundingClientRect();
+        setIsSticky(elRect.top <= containerRect.top + 1);
+      };
+      scrollEl.addEventListener('scroll', scrollHandler, { passive: true });
+      scrollHandler();
     }
 
     return () => {
       resizeObserver.disconnect();
-      observer?.disconnect();
       document.documentElement.style.removeProperty('--mission-sticky-h');
+      if (scrollEl && scrollHandler) {
+        scrollEl.removeEventListener('scroll', scrollHandler);
+      }
     };
   }, []);
 
   return (
     <div
       ref={ref}
-      className="sticky top-0 z-10 flex flex-col gap-3 pb-1"
+      className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
       style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
     >
-      {/* Sentinel: 1px, absolutely positioned 1px above this sticky div.
-          A sticky element is a containing block for absolute children, so this
-          sentinel moves with the div. While the div is in normal flow the
-          sentinel sits 1px above the div's top, fully inside the scroll
-          container → IntersectionObserver "intersecting" → isSticky=false.
-          Once the div pins at top:0 the sentinel is 1px above the container's
-          top edge — outside the root — so the observer fires "not intersecting"
-          → isSticky=true. No separate flex child, so no double flex-gap. */}
-      <div
-        ref={sentinelRef}
-        aria-hidden
-        className="absolute left-0 right-0 h-px pointer-events-none"
-        style={{ top: -1 }}
-      />
       <div className="grid grid-cols-2 gap-3">
         <MissionRequirementsBlock isSticky={isSticky} />
         <MissionStatsPanel
