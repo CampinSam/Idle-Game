@@ -116,12 +116,14 @@ function MissionSynergyBlock(_: BlockComponentProps) {
 function MissionPlanningStickyBlock(_: BlockComponentProps) {
   const { data } = useSurfaceContext();
   const matchedRules: any[] = data.synergy?.matchedRules ?? [];
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const [isSticky, setIsSticky] = useState(false);
 
   useEffect(() => {
+    const sentinel = sentinelRef.current;
     const el = ref.current;
-    if (!el) return;
+    if (!sentinel || !el) return;
 
     // Track height for picker-bar offset
     const updateHeight = () =>
@@ -130,52 +132,58 @@ function MissionPlanningStickyBlock(_: BlockComponentProps) {
     resizeObserver.observe(el);
     updateHeight();
 
-    // Detect when the element is pinned (stuck) using scroll position
-    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null; // touchAction: touch-pan-y already on the scroll container
-    let scrollHandler: (() => void) | null = null;
+    // Use an IntersectionObserver on a zero-height sentinel placed just before
+    // the sticky wrapper. The sentinel is NOT sticky, so its measured position
+    // is always the true document-flow position — immune to the ambiguity of
+    // measuring a sticky element's getBoundingClientRect() (which returns the
+    // visual/pinned position). When the sentinel exits the scroll container's
+    // top edge the sticky block has pinned; when it re-enters it has un-pinned.
+    const scrollEl = el.closest('.overflow-y-auto') as HTMLElement | null;
+    let observer: IntersectionObserver | null = null;
     if (scrollEl) {
-      scrollHandler = () => {
-        const elRect = el.getBoundingClientRect();
-        const containerRect = scrollEl.getBoundingClientRect();
-        setIsSticky(elRect.top <= containerRect.top + 1);
-      };
-      scrollEl.addEventListener('scroll', scrollHandler, { passive: true });
-      scrollHandler();
+      observer = new IntersectionObserver(
+        ([entry]) => setIsSticky(!entry.isIntersecting),
+        { root: scrollEl, threshold: 0 },
+      );
+      observer.observe(sentinel);
     }
 
     return () => {
       resizeObserver.disconnect();
+      observer?.disconnect();
       document.documentElement.style.removeProperty('--mission-sticky-h');
-      if (scrollEl && scrollHandler) {
-        scrollEl.removeEventListener('scroll', scrollHandler);
-      }
     };
   }, []);
 
   return (
-    <div
-      ref={ref}
-      className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
-      style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
-    >
-      <div className="grid grid-cols-2 gap-3">
-        <MissionRequirementsBlock isSticky={isSticky} />
-        <MissionStatsPanel
-          missionPower={data.missionPower ?? 0}
-          difficulty={data.difficulty ?? 0}
-          successChance={data.successChance ?? 0}
-          injuryChance={data.injuryChance ?? 0}
-          injuryRate={data.injuryRate ?? 0}
-          powerRatio={data.powerRatio ?? 0}
-          hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
-          loading={data.statsLoading ?? false}
-          isSticky={isSticky}
-        />
+    <>
+      {/* Zero-height sentinel — its scroll position is measured by the
+          IntersectionObserver to detect when the sticky block has pinned. */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+      <div
+        ref={ref}
+        className="sticky top-0 z-10 flex flex-col gap-3 -mt-px pt-px pb-1"
+        style={{ background: 'linear-gradient(160deg,#1a1640 0%,#221a50 100%)' }}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <MissionRequirementsBlock isSticky={isSticky} />
+          <MissionStatsPanel
+            missionPower={data.missionPower ?? 0}
+            difficulty={data.difficulty ?? 0}
+            successChance={data.successChance ?? 0}
+            injuryChance={data.injuryChance ?? 0}
+            injuryRate={data.injuryRate ?? 0}
+            powerRatio={data.powerRatio ?? 0}
+            hasSynergyBonus={!!(data.synergy?.missionPowerBonus > 0)}
+            loading={data.statsLoading ?? false}
+            isSticky={isSticky}
+          />
+        </div>
+        {matchedRules.length > 0 && (
+          <MissionSynergyPanel matchedRules={matchedRules} />
+        )}
       </div>
-      {matchedRules.length > 0 && (
-        <MissionSynergyPanel matchedRules={matchedRules} />
-      )}
-    </div>
+    </>
   );
 }
 
