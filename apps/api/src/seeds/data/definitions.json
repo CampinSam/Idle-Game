@@ -7683,7 +7683,19 @@
         "id": "default_job_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Job In Progress" }
+        "header": { "title": "Job In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7697,7 +7709,12 @@
         "id": "default_job_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Job Ready!" }
+        "header": { "title": "Job Ready!", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7711,7 +7728,17 @@
         "id": "default_job_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Job Complete!" }
+        "header": { "title": "Job Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7725,7 +7752,11 @@
         "id": "default_job_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Job Failed" }
+        "header": { "title": "Job Failed", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7846,7 +7877,19 @@
         "id": "default_crafting_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Crafting In Progress" }
+        "header": { "title": "Crafting In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7860,7 +7903,12 @@
         "id": "default_crafting_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Crafting Ready!" }
+        "header": { "title": "Crafting Ready!", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7874,7 +7922,18 @@
         "id": "default_crafting_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Crafting Complete!" }
+        "header": { "title": "Crafting Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } },
+          { "id": "craft_again", "label": "Craft Again", "variant": "secondary", "action": { "type": "CRAFT_AGAIN", "recipeDefId": "${job.defId}" } }
+        ]
       },
       "enabled": true
     },
@@ -7888,7 +7947,11 @@
         "id": "default_crafting_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Crafting Failed" }
+        "header": { "title": "Crafting Failed", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7902,7 +7965,19 @@
         "id": "default_building_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Construction In Progress" }
+        "header": { "title": "Construction In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7916,7 +7991,12 @@
         "id": "default_building_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Construction Ready!" }
+        "header": { "title": "Construction Ready!", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7930,7 +8010,17 @@
         "id": "default_building_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Construction Complete!" }
+        "header": { "title": "Construction Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7944,7 +8034,11 @@
         "id": "default_building_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Construction Failed" }
+        "header": { "title": "Construction Failed", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7958,7 +8052,19 @@
         "id": "default_building_upgrade_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Upgrade In Progress" }
+        "header": { "title": "Upgrade In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7972,7 +8078,12 @@
         "id": "default_building_upgrade_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Upgrade Ready!" }
+        "header": { "title": "Upgrade Ready!", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7986,7 +8097,17 @@
         "id": "default_building_upgrade_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Upgrade Complete!" }
+        "header": { "title": "Upgrade Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -8000,7 +8121,11 @@
         "id": "default_building_upgrade_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Upgrade Failed" }
+        "header": { "title": "Upgrade Failed", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -8014,7 +8139,19 @@
         "id": "default_dusting_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Dusting In Progress" }
+        "header": { "title": "Dusting In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -8028,7 +8165,12 @@
         "id": "default_dusting_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Dusting Ready!" }
+        "header": { "title": "Dusting Ready!", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -8042,7 +8184,17 @@
         "id": "default_dusting_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Dusting Complete!" }
+        "header": { "title": "Dusting Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -8056,7 +8208,11 @@
         "id": "default_dusting_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Dusting Failed" }
+        "header": { "title": "Dusting Failed", "subtitle": "${def.name}" },
+        "pages": [{ "body": [] }],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
