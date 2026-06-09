@@ -10,6 +10,34 @@ import ItemQty from '../../../../../components/ItemQty';
 import LootPop, { type LootPopItem } from '../../../../../components/LootPop';
 import { Divider, OutpostCard } from '../../../../../components/ui';
 import { formatAmount } from '../../../../../utils/locationProduction';
+import { useProgressAnimation } from '../../../../../hooks/useProgressAnimation';
+
+function WarehouseStorageBar({
+  current,
+  capacity,
+  netRatePerHour,
+  resetKey,
+  barClass,
+}: {
+  current: number;
+  capacity: number;
+  netRatePerHour: number;
+  resetKey: string | number;
+  barClass: string;
+}) {
+  const pct = capacity > 0 ? Math.min((current / capacity) * 100, 100) : 0;
+  const remainingMs =
+    netRatePerHour > 0
+      ? ((capacity - current) / netRatePerHour) * 3600 * 1000
+      : Infinity;
+  const fillStyle = useProgressAnimation(pct, remainingMs, resetKey);
+
+  return (
+    <div className="h-1 rounded-full bg-black/45 overflow-hidden">
+      <div className={`h-full rounded-full ${barClass}`} style={fillStyle} />
+    </div>
+  );
+}
 
 interface StorageItem {
   key: string;
@@ -265,6 +293,12 @@ export function OutpostWarehouseCard({
 
             const indicator = isFull ? '🔴' : isNearFull ? '⚠️' : null;
 
+            const matchingSummary = resourceSummaries.find(
+              (s) => s.outputType === res.outputType && s.outputRefId === res.outputRefId,
+            );
+            const netRatePerHour: number = matchingSummary?.netRatePerHour ?? 0;
+            const resetKey: string = (outpost as any)?.storage?.lastSettledAt ?? res.key;
+
             return (
               <div key={res.key}>
                 {idx > 0 && <Divider className="my-2" />}
@@ -281,12 +315,13 @@ export function OutpostWarehouseCard({
                         {name}
                       </span>
                     </div>
-                    <div className="h-1 rounded-full bg-black/45 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-[400ms] ${barClass}`}
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
+                    <WarehouseStorageBar
+                      current={res.current}
+                      capacity={res.capacity}
+                      netRatePerHour={netRatePerHour}
+                      resetKey={resetKey}
+                      barClass={barClass}
+                    />
                   </div>
                   <span className="text-[10px] font-bold text-[#fcd34d] whitespace-nowrap ml-1">
                     {formatAmount(res.current)}/{formatAmount(res.capacity)}

@@ -5,6 +5,30 @@ import BuildingProgressBar from '../../../../../components/BuildingProgressBar';
 import { Divider, EmptyState, OutpostCard, OutpostCardTitle } from '../../../../../components/ui';
 import { formatRate, formatTimeRemaining, computeInventoryAmount } from '../../../../../utils/locationProduction';
 import { useNow } from '../../../../../hooks/useNow';
+import { useProgressAnimation } from '../../../../../hooks/useProgressAnimation';
+
+function ProductionCycleBar({
+  cycleSeconds,
+  elapsedSecs,
+}: {
+  cycleSeconds: number;
+  elapsedSecs: number;
+}) {
+  const cycleElapsed = cycleSeconds > 0 ? elapsedSecs % cycleSeconds : 0;
+  const barPct = cycleSeconds > 0 ? (cycleElapsed / cycleSeconds) * 100 : 0;
+  const remainingMs = cycleSeconds > 0 ? (cycleSeconds - cycleElapsed) * 1000 : Infinity;
+  const cycleIndex = cycleSeconds > 0 ? Math.floor(elapsedSecs / cycleSeconds) : 0;
+  const fillStyle = useProgressAnimation(barPct, remainingMs, cycleIndex);
+
+  return (
+    <div className="h-1 rounded-full bg-black/40 overflow-hidden">
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-[#10b981] to-[#34d399]"
+        style={fillStyle}
+      />
+    </div>
+  );
+}
 
 interface OutpostProductionCardProps {
   outpost: any;
@@ -63,9 +87,6 @@ export function OutpostProductionCard({
               const hasConsumptionSubRow = consumed > 0;
 
               const cycleSeconds = grossRate > 0 ? 3600 / grossRate : 0;
-              const barPct = cycleSeconds > 0
-                ? ((elapsedSecs % cycleSeconds) / cycleSeconds) * 100
-                : 0;
 
               return (
                 <div key={res.key}>
@@ -83,12 +104,7 @@ export function OutpostProductionCard({
                         +{formatRate(grossRate)}/h
                       </span>
                     </div>
-                    <div className="h-1 rounded-full bg-black/40 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#10b981] to-[#34d399] transition-none"
-                        style={{ width: `${Math.min(barPct, 100)}%` }}
-                      />
-                    </div>
+                    <ProductionCycleBar cycleSeconds={cycleSeconds} elapsedSecs={elapsedSecs} />
                   </div>
 
                   {hasConsumptionSubRow && (
