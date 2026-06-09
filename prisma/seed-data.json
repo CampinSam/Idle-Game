@@ -3,46 +3,63 @@
     "version": "1.0",
     "exportedAt": "2026-02-15T12:00:00.000Z",
     "tables": [
-      "Currency",
-      "ItemDef",
-      "EntityDefinition",
-      "RegionDefinition",
-      "LocationDefinition",
-      "BuildingDef",
-      "RoomDef",
-      "DisplayDef",
-      "MissionCategoryDef",
-      "MissionDef",
-      "RecipeDef",
-      "EventDefinition",
-      "GiftDef"
+      "currency",
+      "regionDefinition",
+      "displayDef",
+      "entityDefinition",
+      "locationDefinition",
+      "buildingDef",
+      "roomDef",
+      "missionCategoryDef",
+      "missionDef",
+      "recipeDef",
+      "itemDefinition",
+      "giftDef",
+      "shopItemDef",
+      "eventDefinition",
+      "lootboxDef",
+      "bundleDef",
+      "checkInDef",
+      "questDef",
+      "modalDef",
+      "defaultModalDef",
+      "homeBannerDef",
+      "systemIconDef",
+      "synergyRule",
+      "powerDef",
+      "soundDef",
+      "tagDef",
+      "visualEffectDef",
+      "effectDef",
+      "nftCollectionDef",
+      "gameDefinition"
     ],
-    "description": "Complete seed data for Derp Universe extracted from seed.ts"
+    "description": "Unified seed data for Derp Universe. Run pnpm export-seed to regenerate from live DB."
   },
-  "Currency": [
+  "currency": [
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "💎",
+      "symbol": "\ud83d\udc8e",
       "iconKey": "arcanium",
       "type": "SOFT"
     },
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "essence",
       "type": "HARD"
     },
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "gems",
       "type": "PREMIUM"
     }
   ],
-  "ItemDef": [
+  "itemDefinition": [
     {
       "id": "mat_iron_ore",
       "name": "Iron Ore",
@@ -228,7 +245,7 @@
       }
     }
   ],
-  "EntityDefinition": [
+  "entityDefinition": [
     {
       "id": "derp_bird",
       "name": "Derp Bird",
@@ -1113,7 +1130,7 @@
       "data": {}
     }
   ],
-  "RegionDefinition": [
+  "regionDefinition": [
     {
       "id": "derpshire_valley",
       "displayName": "Derpshire Valley",
@@ -1124,7 +1141,7 @@
       "data": {}
     }
   ],
-  "LocationDefinition": [
+  "locationDefinition": [
     {
       "id": "derp_outpost",
       "kind": "outpost_fungible",
@@ -1407,7 +1424,7 @@
       "data": {}
     }
   ],
-  "BuildingDef": [
+  "buildingDef": [
     {
       "id": "gen_arcanium_mine",
       "name": "Arcanium Mine",
@@ -1603,7 +1620,7 @@
       "requirements": []
     }
   ],
-  "RoomDef": [
+  "roomDef": [
     {
       "id": "room_storage_vault",
       "name": "Storage Vault",
@@ -1661,7 +1678,7 @@
       ]
     }
   ],
-  "DisplayDef": [
+  "displayDef": [
     {
       "id": "display_quick_mission",
       "name": "Quick Mission",
@@ -1703,7 +1720,7 @@
       "data": {}
     }
   ],
-  "MissionCategoryDef": [
+  "missionCategoryDef": [
     {
       "id": "cat_quick",
       "name": "Quick Missions",
@@ -1781,7 +1798,7 @@
       "data": {}
     }
   ],
-  "MissionDef": [
+  "missionDef": [
     {
       "id": "mission_quick_gather",
       "name": "Quick Gather",
@@ -2024,10 +2041,10 @@
         }
       ],
       "rewardPreview": [
-        "⚡ 40-80 XP",
-        "🛡️ 20-40 KXP",
-        "💎 20-50 soft_arcanium",
-        "🎁 1-3 iron_ore (10%)"
+        "\u26a1 40-80 XP",
+        "\ud83d\udee1\ufe0f 20-40 KXP",
+        "\ud83d\udc8e 20-50 soft_arcanium",
+        "\ud83c\udf81 1-3 iron_ore (10%)"
       ],
       "visibilityRequirements": [
         {
@@ -2038,7 +2055,7 @@
       "data": {}
     }
   ],
-  "RecipeDef": [
+  "recipeDef": [
     {
       "id": "recipe_iron_sword",
       "name": "Forge Iron Sword",
@@ -2487,7 +2504,7 @@
       }
     }
   ],
-  "EventDefinition": [
+  "eventDefinition": [
     {
       "id": "evt_welcome_gift",
       "name": "Welcome Gift",
@@ -2534,7 +2551,7 @@
       "enabled": true
     }
   ],
-  "GiftDef": [
+  "giftDef": [
     {
       "id": "gift_welcome_gems",
       "name": "Welcome Gems",
@@ -2574,7 +2591,7 @@
       "enabled": true
     }
   ],
-  "GameDefinition": [
+  "gameDefinition": [
     {
       "id": "gamedef_home_v1",
       "type": "screen_composition",
@@ -2695,7 +2712,7 @@
         "status": "draft",
         "metadata": {
           "name": "Store Screen",
-          "description": "Main store screen. Draft — not yet active.",
+          "description": "Main store screen. Draft \u2014 not yet active.",
           "owner": "design",
           "tags": [
             "store",
@@ -2744,5 +2761,21 @@
         }
       }
     }
-  ]
+  ],
+  "shopItemDef": [],
+  "lootboxDef": [],
+  "bundleDef": [],
+  "checkInDef": [],
+  "questDef": [],
+  "modalDef": [],
+  "defaultModalDef": [],
+  "homeBannerDef": [],
+  "systemIconDef": [],
+  "synergyRule": [],
+  "powerDef": [],
+  "soundDef": [],
+  "tagDef": [],
+  "visualEffectDef": [],
+  "effectDef": [],
+  "nftCollectionDef": []
 }

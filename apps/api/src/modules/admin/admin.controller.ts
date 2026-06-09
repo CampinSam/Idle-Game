@@ -21,10 +21,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { objectStorageClient } from '../../integrations/object-storage/objectStorage';
 import { GameMetricsService } from './game-metrics.service';
-import { seedDefinitions, SEED_DEFINITION_TABLES } from '../../seeds/definitions.seed';
-import { seedSounds } from '../../seeds/sounds.seed';
-import { seedRetention } from '../../seeds/retention.seed';
-import { seedTags } from '../../seeds/tags.seed';
+import { SeedSyncService, SEED_TABLE_ORDER } from '../../seeds/seed-sync.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -49,6 +46,7 @@ export class AdminController {
     private prisma: PrismaService,
     private authService: AuthService,
     private gameMetricsService: GameMetricsService,
+    private seedSyncService: SeedSyncService,
   ) {}
 
   // ─── Identity ────────────────────────────────────────────────────────────────
@@ -252,6 +250,7 @@ export class AdminController {
     }
     const result = await this.screensService.create(body);
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_create', tableName: 'game_definitions', diff: { key: body.key, version: body.version, type: body.type }, metadata: { bypassReview: true } });
+    void this.seedSyncService.syncTable('gameDefinition');
     return result;
   }
 
@@ -278,6 +277,7 @@ export class AdminController {
     }
     const result = await this.screensService.update(id, body);
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_update', tableName: 'game_definitions', recordId: id, metadata: { bypassReview: true } });
+    void this.seedSyncService.syncTable('gameDefinition');
     return result;
   }
 
@@ -295,6 +295,7 @@ export class AdminController {
     }
     const result = await this.screensService.archive(id);
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'game_definition_archive', tableName: 'game_definitions', recordId: id, metadata: { bypassReview: true } });
+    void this.seedSyncService.syncTable('gameDefinition');
     return result;
   }
 
@@ -764,6 +765,7 @@ export class AdminController {
     }
     const result = await (this.prisma as any).systemIconDef.create({ data: { id: body.id, name: body.name } });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'system_icon_create', recordId: body.id, diff: body });
+    void this.seedSyncService.syncTable('systemIconDef');
     return result;
   }
 
@@ -773,6 +775,7 @@ export class AdminController {
     if (!existing) throw new BadRequestException(`System icon key '${key}' not found`);
     const result = await (this.prisma as any).systemIconDef.delete({ where: { id: key } });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'system_icon_delete', recordId: key });
+    void this.seedSyncService.syncTable('systemIconDef');
     return result;
   }
 
@@ -1042,6 +1045,7 @@ export class AdminController {
   async createSoundDef(@Req() req: any, @Body() body: { key: string; name: string; bus: AudioBus; fileKey?: string; description?: string }) {
     const result = await this.prisma.soundDef.create({ data: body });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_create', recordId: result.id, diff: { key: body.key, bus: body.bus } });
+    void this.seedSyncService.syncTable('soundDef');
     return result;
   }
 
@@ -1049,6 +1053,7 @@ export class AdminController {
   async updateSoundDef(@Req() req: any, @Param('id') id: string, @Body() body: { key?: string; name?: string; bus?: AudioBus; fileKey?: string; description?: string; enabled?: boolean }) {
     const result = await this.prisma.soundDef.update({ where: { id }, data: body });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_update', recordId: id, diff: body });
+    void this.seedSyncService.syncTable('soundDef');
     return result;
   }
 
@@ -1056,6 +1061,7 @@ export class AdminController {
   async deleteSoundDef(@Req() req: any, @Param('id') id: string) {
     const result = await this.prisma.soundDef.delete({ where: { id } });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'audio_sound_delete', recordId: id });
+    void this.seedSyncService.syncTable('soundDef');
     return result;
   }
 
@@ -1179,6 +1185,7 @@ export class AdminController {
       recordId: result.id,
       diff: { name: body.name, powerType: body.powerType },
     });
+    void this.seedSyncService.syncTable('powerDef');
     return result;
   }
 
@@ -1207,6 +1214,7 @@ export class AdminController {
       recordId: id,
       diff: body,
     });
+    void this.seedSyncService.syncTable('powerDef');
     return result;
   }
 
@@ -1218,6 +1226,7 @@ export class AdminController {
       action: 'power_def_delete',
       recordId: id,
     });
+    void this.seedSyncService.syncTable('powerDef');
     return result;
   }
 
@@ -1611,117 +1620,54 @@ export class AdminController {
     if (req.adminUser.role !== 'super_admin') {
       throw new ForbiddenException('Requires super_admin role');
     }
-    return {
-      seeds: ['definitions', 'sounds', 'retention', 'tags', 'contentDocuments'],
-      definitionTables: [...SEED_DEFINITION_TABLES],
-    };
+    return { tables: [...SEED_TABLE_ORDER] };
   }
 
   @Post('seed/run')
   async runSeed(
     @Req() req: any,
-    @Body() body: { seeds?: string[]; tables?: string[] },
+    @Body() body: { tables?: string[] },
   ) {
     if (req.adminUser.role !== 'super_admin') {
       throw new ForbiddenException('Requires super_admin role');
     }
 
-    const ALL_SEEDS = ['definitions', 'sounds', 'retention', 'tags', 'contentDocuments'];
-    const seeds = body.seeds && body.seeds.length > 0 ? body.seeds : ALL_SEEDS;
-
-    const unknown = seeds.filter((s) => !ALL_SEEDS.includes(s));
-    if (unknown.length > 0) {
-      throw new BadRequestException(`Unknown seed(s): ${unknown.join(', ')}. Valid values: ${ALL_SEEDS.join(', ')}`);
-    }
-
     if (body.tables && body.tables.length > 0) {
-      const validTables = new Set(SEED_DEFINITION_TABLES as unknown as string[]);
+      const validTables = new Set<string>([...SEED_TABLE_ORDER]);
       const badTables = body.tables.filter((t) => !validTables.has(t));
       if (badTables.length > 0) {
         throw new BadRequestException(`Unknown table(s): ${badTables.join(', ')}. Call GET /admin/seed/tables for valid keys.`);
       }
     }
 
-    const results: Record<string, string> = {};
-
-    for (const seed of seeds) {
-      try {
-        switch (seed) {
-          case 'definitions':
-            await seedDefinitions(this.prisma, body.tables);
-            results[seed] = 'ok';
-            break;
-          case 'sounds':
-            await seedSounds(this.prisma);
-            results[seed] = 'ok';
-            break;
-          case 'retention':
-            await seedRetention(this.prisma);
-            results[seed] = 'ok';
-            break;
-          case 'tags':
-            await seedTags(this.prisma);
-            results[seed] = 'ok';
-            break;
-          case 'contentDocuments':
-            await this.runContentDocumentsSeed();
-            results[seed] = 'ok';
-            break;
-        }
-      } catch (err: any) {
-        results[seed] = `error: ${err?.message ?? String(err)}`;
-        this.logger.error(`Seed "${seed}" failed: ${err?.message ?? err}`, err?.stack);
-      }
-    }
+    const results = await this.seedSyncService.runSeed(body.tables);
 
     await this.adminAuditService.log({
       adminId: req.adminUser.id,
       action: 'seed_run',
       tableName: 'system',
-      diff: { seeds, tables: body.tables ?? 'all', results },
+      diff: { tables: body.tables ?? 'all', results },
     });
 
     return {
-      ran: seeds,
       tables: body.tables && body.tables.length > 0 ? body.tables : 'all',
       results,
     };
   }
 
-  private async runContentDocumentsSeed(): Promise<void> {
-    const documents = [
-      {
-        key: 'mission_planning_document',
-        context: { missionMode: 'planning', teamMode: 'editable', rewardMode: 'preview' },
-        blocks: [
-          { type: 'mission_hero' },
-          { type: 'mission_planning_sticky' },
-          { type: 'team_section' },
-          { type: 'reward_list' },
-        ],
-      },
-    ];
-
-    for (const doc of documents) {
-      const docData = {
-        id: doc.key,
-        version: 1,
-        blocks: doc.blocks,
-        context: (doc as any).context ?? null,
-      };
-      await (this.prisma as any).gameDefinition.upsert({
-        where: { type_key_version: { type: 'content_document', key: doc.key, version: 1 } },
-        create: {
-          type: 'content_document',
-          key: doc.key,
-          version: 1,
-          isActive: true,
-          data: docData,
-        },
-        update: { data: docData },
-      });
-      this.logger.log(`Content document "${doc.key}" seeded`);
+  @Post('seed/snapshot')
+  async createSeedSnapshot(@Req() req: any) {
+    if (req.adminUser.role !== 'super_admin') {
+      throw new ForbiddenException('Requires super_admin role');
     }
+    const snapshot = await this.seedSyncService.createSnapshot();
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'seed_snapshot',
+      tableName: 'system',
+      diff: snapshot,
+    });
+    return snapshot;
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1775,6 +1721,7 @@ export class AdminController {
       diff: body,
       metadata: { bypassReview: true },
     });
+    void this.seedSyncService.syncTable(table);
     return result;
   }
 
@@ -1810,6 +1757,7 @@ export class AdminController {
       diff: body,
       metadata: { bypassReview: true },
     });
+    void this.seedSyncService.syncTable(table);
     return result;
   }
 
@@ -1848,6 +1796,7 @@ export class AdminController {
       recordId: id,
       metadata: { bypassReview: true },
     });
+    void this.seedSyncService.syncTable(table);
     return result;
   }
 

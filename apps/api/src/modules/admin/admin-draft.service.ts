@@ -10,6 +10,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import { ScreensService } from '../screens/screens.service';
+import { SeedSyncService } from '../../seeds/seed-sync.service';
 import { TABLE_KEY_TO_GROUP } from './admin-permissions';
 import { validateEntityDefinitionTraitsShape } from '@derp/shared';
 
@@ -21,6 +22,7 @@ export class AdminDraftService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly adminService: AdminService,
     private readonly screensService: ScreensService,
+    private readonly seedSyncService: SeedSyncService,
   ) {}
 
   // ─── Boot-time recovery ──────────────────────────────────────────────────────
@@ -362,6 +364,7 @@ export class AdminDraftService implements OnModuleInit {
     } catch (auditErr: any) {
       this.logger.error(`Audit log failed for gemPack draft ${id}: ${auditErr?.message}`);
     }
+    void this.seedSyncService.syncTable(draft.tableName);
     return approved;
   }
 
@@ -437,6 +440,9 @@ export class AdminDraftService implements OnModuleInit {
       this.logger.log(
         `Draft ${id} approved by ${reviewerId}: ${draft.operation} on ${draft.tableName}/${draft.recordId}`,
       );
+      return approved;
+    }).then((approved: any) => {
+      void this.seedSyncService.syncTable(approved.tableName);
       return approved;
     });
   }

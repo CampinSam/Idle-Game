@@ -27,6 +27,7 @@ import { ScreensService } from '../screens/screens.service';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminGuard } from './admin.guard';
 import { GameMetricsService } from './game-metrics.service';
+import { SeedSyncService } from '../../seeds/seed-sync.service';
 
 @Module({
   imports: [
@@ -51,7 +52,7 @@ import { GameMetricsService } from './game-metrics.service';
     PaymentModule,
   ],
   controllers: [AdminController, AdminAuthController],
-  providers: [AdminService, AdminAuthService, AdminAuditService, AdminDraftService, ScreensService, AdminGuard, GameMetricsService],
-  exports: [AdminGuard],
+  providers: [AdminService, AdminAuthService, AdminAuditService, AdminDraftService, ScreensService, AdminGuard, GameMetricsService, SeedSyncService],
+  exports: [AdminGuard, SeedSyncService],
 })
 export class AdminModule {}
