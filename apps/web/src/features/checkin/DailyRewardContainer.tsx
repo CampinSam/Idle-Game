@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSyncCheckIns, useSyncGifts } from '../../hooks/useSyncSelectors';
+import { useSyncCheckIns } from '../../hooks/useSyncSelectors';
 import { useCommand } from '../../hooks/useCommand';
 import { useNow } from '../../hooks/useNow';
 import { audioEngine } from '../../services/AudioEngine';
@@ -9,9 +8,7 @@ import CheckInTrack from './CheckInTrack';
 
 export default function DailyRewardContainer() {
   const checkins = useSyncCheckIns() as any[];
-  const gifts = useSyncGifts() as any[];
   const { execute } = useCommand();
-  const navigate = useNavigate();
   const nowMs = useNow(60_000);
 
   const [checkingIn, setCheckingIn] = useState(false);
@@ -20,11 +17,6 @@ export default function DailyRewardContainer() {
   const canCheckIn = useMemo(
     () => checkins.some((inst) => isInstanceCheckInAvailable(inst, nowMs)),
     [checkins, nowMs],
-  );
-
-  const hasPendingGifts = useMemo(
-    () => (gifts as any[]).some((g) => g.sourceType === 'checkin' && g.status === 'UNCLAIMED'),
-    [gifts],
   );
 
   const handleCheckIn = useCallback(async () => {
@@ -61,14 +53,6 @@ export default function DailyRewardContainer() {
             ) : (
               '✦ Check In'
             )}
-          </button>
-        ) : hasPendingGifts ? (
-          <button
-            type="button"
-            onClick={() => navigate('/rewards')}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[14px] font-bold bg-gradient-to-br from-[rgba(245,158,11,0.2)] to-[rgba(217,119,6,0.15)] border border-[rgba(245,158,11,0.45)] text-[#fcd34d] hover:from-[rgba(245,158,11,0.3)] hover:to-[rgba(217,119,6,0.25)] hover:border-[rgba(245,158,11,0.65)] active:scale-[0.97] transition-all shadow-[0_0_12px_rgba(245,158,11,0.15)]"
-          >
-            🎁 See Rewards
           </button>
         ) : (
           <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-[#9ca3af] bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)]">

@@ -56,7 +56,7 @@ function PendingGiftsCard() {
   const [errorId, setErrorId] = useState<string | null>(null);
 
   const pendingGifts = useMemo(
-    () => gifts.filter((g) => g.status === 'UNCLAIMED' && g.sourceType !== 'checkin'),
+    () => gifts.filter((g) => g.status === 'UNCLAIMED'),
     [gifts],
   );
 
