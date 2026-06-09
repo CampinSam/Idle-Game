@@ -5,22 +5,6 @@ import { LocationService } from '../../location/location.service';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
 import type { ModalSpecV1, ModalBlock, ModalButton } from '@derp/shared';
 
-function makeConsequencesBlock(): ModalBlock {
-  return {
-    type: 'richText',
-    doc: [
-      {
-        t: 'ul',
-        c: [
-          { t: 'li', c: [{ t: 'text', v: 'All available resources are collected' }] },
-          { t: 'li', c: [{ t: 'text', v: 'All assigned workers are freed' }] },
-          { t: 'li', c: [{ t: 'text', v: 'All active jobs are cancelled' }] },
-        ],
-      },
-    ],
-  };
-}
-
 function buildSwapButton(
   activeId: string,
   enableLocationId: string,
@@ -90,52 +74,52 @@ export class ToggleLocationHandler implements CommandHandler {
           }),
         );
 
-        let pageBody: ModalBlock[];
-        let pageButtons: ModalButton[];
+        const multiSlot = locationStats.length > 1;
 
-        if (maxOutposts === 1) {
-          const active = locationStats[0];
-          const activeName = active.name || 'Outpost';
-          pageBody = [
-            {
-              type: 'richText',
-              doc: [
-                { t: 'p', c: [{ t: 'strong', c: [{ t: 'text', v: `Deactivating ${activeName} will immediately:` }] }] },
-              ],
-            },
-            makeConsequencesBlock(),
-          ];
-          pageButtons = [buildSwapButton(active.id, locationId, `Deactivate ${activeName} & Activate`)];
-        } else {
-          pageBody = [
-            {
-              type: 'richText',
-              doc: [
+        const introText = multiSlot
+          ? 'You have reached your outpost limit. Choose which outpost to deactivate:'
+          : `You have reached your outpost limit. Deactivating ${locationStats[0].name || 'your outpost'} will immediately:`;
+
+        const pageBody: ModalBlock[] = [
+          {
+            type: 'richText',
+            doc: [{ t: 'p' as const, c: [{ t: 'text' as const, v: introText }] }],
+          },
+          {
+            type: 'metaRows',
+            rows: locationStats.map((loc: any) => ({
+              label: loc.name || 'Outpost',
+              value: `${loc.workerCount} worker${loc.workerCount !== 1 ? 's' : ''} · ${loc.activeJobs} active job${loc.activeJobs !== 1 ? 's' : ''}`,
+            })),
+          } as ModalBlock,
+          ...(multiSlot
+            ? ([
                 {
-                  t: 'p',
-                  c: [{ t: 'text', v: 'You have reached your outpost limit. Choose which outpost to deactivate:' }],
+                  type: 'richText',
+                  doc: [
+                    { t: 'p' as const, c: [{ t: 'strong' as const, c: [{ t: 'text' as const, v: 'Deactivating an outpost will immediately:' }] }] },
+                  ],
                 },
-              ],
-            },
-            {
-              type: 'metaRows',
-              rows: locationStats.map((loc: any) => ({
-                label: loc.name || 'Outpost',
-                value: `${loc.workerCount} worker${loc.workerCount !== 1 ? 's' : ''} · ${loc.activeJobs} active job${loc.activeJobs !== 1 ? 's' : ''}`,
-              })),
-            },
-            {
-              type: 'richText',
-              doc: [
-                { t: 'p', c: [{ t: 'strong', c: [{ t: 'text', v: 'Deactivating an outpost will immediately:' }] }] },
-              ],
-            },
-            makeConsequencesBlock(),
-          ];
-          pageButtons = locationStats.map((loc: any) =>
-            buildSwapButton(loc.id, locationId, `Deactivate ${loc.name || 'Outpost'}`),
-          );
-        }
+              ] as ModalBlock[])
+            : []),
+          {
+            type: 'richText',
+            doc: [
+              {
+                t: 'ul' as const,
+                c: [
+                  { t: 'li' as const, c: [{ t: 'text' as const, v: 'All available resources are collected' }] },
+                  { t: 'li' as const, c: [{ t: 'text' as const, v: 'All assigned workers are freed' }] },
+                  { t: 'li' as const, c: [{ t: 'text' as const, v: 'All active jobs are cancelled' }] },
+                ],
+              },
+            ],
+          },
+        ];
+
+        const pageButtons: ModalButton[] = locationStats.map((loc: any) =>
+          buildSwapButton(loc.id, locationId, `Deactivate ${loc.name || 'Outpost'}`),
+        );
 
         const spec: ModalSpecV1 = {
           version: 1,
