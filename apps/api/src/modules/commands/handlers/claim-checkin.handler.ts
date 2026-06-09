@@ -38,14 +38,7 @@ export class ClaimCheckInHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [
-        {
-          type: 'local_toast' as const,
-          tone: 'success' as const,
-          title: 'Checked In!',
-          body: 'Streak: ' + maxStreak,
-        },
-      ],
+      ui: [],
     };
   }
 }

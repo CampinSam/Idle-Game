@@ -383,6 +383,39 @@ export class NotificationService {
   }
 
   /**
+   * Same as createForCommand but marks the record as already-read immediately,
+   * so it lands silently in the notification centre without triggering a toast.
+   * Use for player-initiated actions whose effects are informative but expected.
+   */
+  async createForCommandSilent(data: {
+    userId: string;
+    type: string;
+    category: string;
+    title: string;
+    body: string;
+    deepLink?: any;
+    meta?: any;
+  }, tx?: any) {
+    const notif = tx ? (tx as any).notification : this.notification;
+    return notif.create({
+      data: {
+        userId: data.userId,
+        type: data.type,
+        category: data.category,
+        priority: 'normal',
+        title: data.title,
+        body: data.body,
+        deepLink: data.deepLink ?? {},
+        meta: data.meta ?? { count: 1 },
+        groupKey: null,
+        sourceType: null,
+        sourceId: null,
+        readAt: new Date(),
+      },
+    });
+  }
+
+  /**
    * Upserts the single notification record that tracks a job through its
    * entire lifecycle (started → job_ready → complete/collected).
    *

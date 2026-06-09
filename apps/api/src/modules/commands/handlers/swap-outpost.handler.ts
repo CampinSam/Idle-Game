@@ -50,12 +50,7 @@ export class SwapOutpostHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{
-        type: 'local_toast' as const,
-        tone: 'success' as const,
-        title: 'Outpost Swapped',
-        body: `${disableName} deactivated. ${enableName} is now active.`,
-      }],
+      ui: [],
     };
   }
 }

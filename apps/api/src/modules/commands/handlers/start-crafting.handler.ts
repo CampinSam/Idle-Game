@@ -34,15 +34,13 @@ export class StartCraftingHandler implements CommandHandler {
       title: 'Crafting Started',
       body: 'Crafting job has begun.',
       deepLink: { craftJobId: result.id },
+      readAt: new Date(),
     }, ctx.tx);
     pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [
-        { type: 'local_toast' as const, tone: 'info' as const, title: 'Crafting Started', body: 'Crafting job has begun.' },
-        { type: 'notification' as const, notificationId: notification.id },
-      ],
+      ui: [],
     };
   }
 }

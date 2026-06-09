@@ -171,7 +171,7 @@ export class ToggleLocationHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'info' as const, title: 'Location Updated', body: enabled ? 'Location enabled.' : 'Location disabled.' }],
+      ui: [],
     };
   }
 }

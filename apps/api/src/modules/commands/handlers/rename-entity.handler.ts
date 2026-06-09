@@ -48,7 +48,7 @@ export class RenameEntityHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Renamed', body: `Renamed to "${trimmedName}"` }],
+      ui: [],
     };
   }
 }

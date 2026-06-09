@@ -51,12 +51,13 @@ export class CompleteMissionHandler implements CommandHandler {
       title,
       body,
       deepLink: { jobId },
+      readAt: new Date(),
     }, ctx.tx);
     pb.upsertNotification(notification);
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: notification.id }],
+      ui: [],
     };
   }
 }

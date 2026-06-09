@@ -205,7 +205,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
       ? `⚡ ${resolved.name}: +${resolved.value}% world tick speed for ${resolved.durationMinutes} min!`
       : `${resolved.name} activated for ${resolved.durationMinutes} minutes!`;
 
-    const notification = await this.notificationService.createForCommand({
+    const notification = await this.notificationService.createForCommandSilent({
       userId: ctx.userId,
       type: 'power_activated',
       category: 'system',
@@ -217,7 +217,7 @@ export class TriggerEntityPowerHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: notification.id }],
+      ui: [],
     };
   }
 }

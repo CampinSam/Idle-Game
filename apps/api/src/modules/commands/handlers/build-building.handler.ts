@@ -37,8 +37,9 @@ export class BuildBuildingHandler implements CommandHandler {
           title: 'Construction Started',
           body: 'Building construction has begun.',
           deepLink: { jobId: buildingJob.id },
+          readAt: new Date(),
         }, ctx.tx)
-      : await this.notificationService.createForCommand({
+      : await this.notificationService.createForCommandSilent({
           userId: ctx.userId,
           type: 'construction_started',
           category: 'locations',
@@ -50,7 +51,7 @@ export class BuildBuildingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: notification.id }],
+      ui: [],
     };
   }
 }

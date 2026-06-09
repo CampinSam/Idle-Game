@@ -40,15 +40,14 @@ export class StartDustingHandler implements CommandHandler {
         title: 'Dusting Started',
         body: 'Dusting job has begun.',
         deepLink: { jobId: result.job.id },
+        readAt: new Date(),
       }, ctx.tx);
       pb.upsertNotification(notification);
     }
 
     return {
       patches: pb.build(),
-      ui: instantRewards
-        ? []
-        : [{ type: 'local_toast' as const, tone: 'info' as const, title: 'Dusting Started', body: 'Dusting job has begun.' }],
+      ui: [],
       meta: instantRewards ? { instantRewards, jobId: result.job.id } : undefined,
     };
   }

@@ -18,7 +18,7 @@ export class AssignWorkerHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Worker Assigned', body: 'Worker assigned to the location.' }],
+      ui: [],
     };
   }
 }

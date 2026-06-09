@@ -7,14 +7,10 @@ import {
   buildItemPatches,
 } from '../patch-builder';
 import { LocationService } from '../../location/location.service';
-import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class DepositLocationXpHandler implements CommandHandler {
-  constructor(
-    private locationService: LocationService,
-    private notificationService: NotificationService,
-  ) {}
+  constructor(private locationService: LocationService) {}
 
   async execute(ctx: CommandContext, payload: any): Promise<CommandHandlerResult> {
     const { locationId, costOption, charges } = payload || {};
@@ -49,41 +45,15 @@ export class DepositLocationXpHandler implements CommandHandler {
     } else {
       await buildItemPatches(pb, ctx.tx, ctx.userId);
     }
-    // Push the level-up notification through the same patch stream so the
-    // client's NotificationContext (driven from sync patches) sees it
-    // immediately — required for both the in-page auto-open flow and the
-    // notification-tap flow.
+    // Push the level-up notification (high priority) through the patch stream so the
+    // client's NotificationContext sees it immediately — the sync pipeline will toast it.
     if (result.notification) {
       pb.upsertNotification(result.notification);
     }
 
-    const body = result.leveledUp
-      ? `Outpost reached Level ${result.newLevel}!`
-      : `+${result.xpGained} XP deposited`;
-    const title = result.leveledUp ? 'Level Up!' : 'XP Deposited';
-
-    // For level-up, the locationService already created a location_level_up notification;
-    // re-use it as the command feedback so the drawer shows one entry, not two.
-    // For a plain XP deposit, create a lightweight command notification.
-    let commandNotifId: string;
-    if (result.notification) {
-      commandNotifId = result.notification.id;
-    } else {
-      const newNotif = await this.notificationService.createForCommand({
-        userId: ctx.userId,
-        type: 'xp_deposited',
-        category: 'location',
-        title,
-        body,
-        deepLink: { locationId, screen: `/locations/${locationId}` },
-      }, ctx.tx);
-      pb.upsertNotification(newNotif);
-      commandNotifId = newNotif.id;
-    }
-
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: commandNotifId }],
+      ui: [],
     };
   }
 }

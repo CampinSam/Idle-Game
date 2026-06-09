@@ -224,7 +224,7 @@ export class UseConsumableHandler implements CommandHandler {
       ? { entityId: targetId, screen: `/entities/${targetId}` }
       : {};
 
-    const notification = await this.notificationService.createForCommand({
+    const notification = await this.notificationService.createForCommandSilent({
       userId: ctx.userId,
       type: 'consumable_used',
       category: 'general',
@@ -236,7 +236,7 @@ export class UseConsumableHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'notification' as const, notificationId: notification.id }],
+      ui: [],
     };
   }
 

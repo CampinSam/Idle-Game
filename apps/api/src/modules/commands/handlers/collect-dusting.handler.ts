@@ -25,7 +25,7 @@ export class CollectDustingHandler implements CommandHandler {
 
     return {
       patches: pb.build(),
-      ui: [{ type: 'local_toast' as const, tone: 'success' as const, title: 'Dusting Complete', body: 'Dusted item collected successfully.' }],
+      ui: [],
     };
   }
 }
