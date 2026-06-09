@@ -124,6 +124,13 @@ export class ToggleLocationHandler implements CommandHandler {
                 value: `${loc.workerCount} worker${loc.workerCount !== 1 ? 's' : ''} · ${loc.activeJobs} active job${loc.activeJobs !== 1 ? 's' : ''}`,
               })),
             },
+            {
+              type: 'richText',
+              doc: [
+                { t: 'p', c: [{ t: 'strong', c: [{ t: 'text', v: 'Deactivating an outpost will immediately:' }] }] },
+              ],
+            },
+            makeConsequencesBlock(),
           ];
           pageButtons = locationStats.map((loc: any) =>
             buildSwapButton(loc.id, locationId, `Deactivate ${loc.name || 'Outpost'}`),
