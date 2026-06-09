@@ -187,6 +187,42 @@ export const BLOCK_META: Record<string, BlockMeta> = {
       </div>
     ),
   },
+  entityRoster: {
+    friendlyName: 'Entity Roster',
+    description: 'Grid of entity cards showing portrait, level, and mission outcome (XP gained, level-up, injury).',
+    group: 'Lists',
+    color: '#38bdf8',
+    fromHint: 'e.g. team  or  entityOutcomes',
+    fromShape: 'array of { id, name, level, portraitKey?, outcome?: { injured, xpGained, levelBefore, levelAfter } }',
+    preview: () => (
+      <div style={{ width: '100%', display: 'flex', gap: 4 }}>
+        {[1, 2].map(i => (
+          <div key={i} style={{ flex: 1, background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 5, padding: '4px 6px', textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>
+            <div style={{ fontSize: 16, marginBottom: 2 }}>👤</div>
+            <div style={{ color: '#e2e8f0', fontWeight: 700 }}>Lv{i + 3}</div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  characterEvents: {
+    friendlyName: 'Character Events',
+    description: 'Inline badges for level-up and injury events that occurred during a mission.',
+    group: 'Lists',
+    color: '#a3e635',
+    fromHint: 'e.g. results.characterEvents',
+    fromShape: 'array of { type: "level_up"|"injured", entityName, newLevel? }',
+    preview: () => (
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3, fontSize: 10, color: '#cbd5e1' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: '#fbbf24' }}>⬆</span><span>Hero leveled up to 5!</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: '#f87171' }}>💔</span><span>Ranger was injured.</span>
+        </div>
+      </div>
+    ),
+  },
   error: {
     friendlyName: 'Error Message',
     description: 'Red error banner for failure messages.',
@@ -237,6 +273,16 @@ export const COMMON_TOKEN_PATHS: { path: string; note: string }[] = [
   { path: 'results.rewards', note: 'Reward array — wire to a Rewards block via "from".' },
   { path: 'results.message', note: 'Server-supplied message string.' },
   { path: 'results.errorMessage', note: 'Server-supplied error string.' },
+  { path: 'results.characterEvents', note: 'Level-up / injury events — wire to a Character Events block via "from".' },
   { path: 'context.*', note: 'Custom context fields injected by the dispatcher.' },
   { path: 'gift', note: 'Gift object, when the modal is shown for a gift.' },
+  { path: 'team', note: 'Entity roster for active missions — wire to an Entity Roster block via "from".' },
+  { path: 'entityOutcomes', note: 'Per-entity results for completed missions — wire to an Entity Roster block via "from".' },
+  { path: 'rewardItems', note: 'Pre-processed reward list for completed missions — wire to a Rewards List block via "from".' },
+  { path: 'narrativeDoc', note: 'Rich text narrative for completed missions — wire to a Rich Text block via "from".' },
+  { path: 'timerInfo', note: 'Timer/progress data for active missions — wire to Timer or Progress bar block via "from".' },
+  { path: 'job.id', note: 'The job ID — use in COMPLETE_JOB or SKIP actions.' },
+  { path: 'job.defId', note: 'The job definition ID — use in REPEAT_MISSION action.' },
+  { path: 'job.team', note: 'Array of entity IDs — use as entityIds in REPEAT_MISSION action.' },
+  { path: 'def.name', note: 'The definition name — use as a subtitle token e.g. ${def.name}.' },
 ];

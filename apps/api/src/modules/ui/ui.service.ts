@@ -30,22 +30,22 @@ function resolveMissionTierModal(
   return null;
 }
 
-interface TeamEntitySnapshot {
-  id: string;
-  name: string;
-  level: number;
-  xp: number;
-  stats: Record<string, unknown>;
-  traits: Record<string, unknown>;
-}
-
-interface JobContext {
-  job: { id: string; type: string; defId: string; status: string };
+interface RichJobContext {
+  job: { id: string; type: string; defId: string; status: string; team: string[] };
   results: Record<string, unknown>;
   data: Record<string, unknown>;
   def: Record<string, unknown>;
   timer: Record<string, unknown>;
-  team: TeamEntitySnapshot[];
+  team: Array<{ id: string; name: string; level: number; portraitKey?: string }>;
+  entityOutcomes: Array<{
+    id: string; name: string; level: number; portraitKey?: string;
+    outcome?: { injured: boolean; xpGained: number; levelBefore: number; levelAfter: number };
+  }>;
+  narrativeDoc: any[];
+  rewardItems: Array<{ name: string; qty: number; assetKey?: string; rarity?: string }>;
+  timerInfo: {
+    endsAt: string; startsAt: string; current: number; max: number; isReady: boolean;
+  } | null;
 }
 
 interface GiftContext {
@@ -86,94 +86,86 @@ export class UiService {
       this.tickService.getTickInfo(),
     ]);
 
+    const ctx = await this.buildRichJobContext(job, def, tickInfo);
+
     const defName = def?.name || job.defId || 'Unknown';
     const typeLabel = this.getJobTypeLabel(job.type);
     const results = job.results as any;
 
-    let generated: any;
-    let modalDefId: string | null = null;
-
+    // --- Resolve specific modal def ID ---
+    const quality = (results?.quality ?? 'common') as string;
+    let specificDefId: string | null = null;
     switch (job.status) {
       case 'active':
-        generated = await this.buildActiveJobModal(job, def, defName, typeLabel, tickInfo);
-        modalDefId = def?.activeModalDefId ?? null;
+        specificDefId = (def as any)?.activeModalDefId ?? null;
         break;
       case 'ready_notified':
-        generated = await this.buildActiveJobModal(job, def, defName, typeLabel, tickInfo);
-        modalDefId = def?.readyModalDefId ?? null;
+        specificDefId = (def as any)?.readyModalDefId ?? null;
         break;
       case 'completed':
-        generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
-        if (job.type === 'MissionJob') {
-          const quality = (results?.quality ?? 'common') as string;
-          modalDefId = resolveMissionTierModal((def as any)?.tiers, quality);
-        } else {
-          modalDefId = def?.completedModalDefId ?? null;
-        }
+        specificDefId = job.type === 'MissionJob'
+          ? resolveMissionTierModal((def as any)?.tiers, quality)
+          : ((def as any)?.completedModalDefId ?? null);
         break;
       case 'failed':
-        generated = await this.buildCompletedJobModal(job, defName, typeLabel, results);
-        if (job.type === 'MissionJob') {
-          modalDefId = resolveMissionTierModal((def as any)?.tiers, 'failure');
-        } else {
-          modalDefId = def?.failedModalDefId ?? null;
-        }
+        specificDefId = job.type === 'MissionJob'
+          ? resolveMissionTierModal((def as any)?.tiers, 'failure')
+          : ((def as any)?.failedModalDefId ?? null);
         break;
       default:
-        generated = job.status === 'collected'
-          ? await this.buildCompletedJobModal(job, defName, typeLabel, results)
-          : this.buildGenericJobModal(job, defName, typeLabel);
-        if (job.type === 'MissionJob') {
-          const quality = (results?.quality ?? 'common') as string;
-          modalDefId = resolveMissionTierModal((def as any)?.tiers, quality);
-        } else {
-          modalDefId = def?.completedModalDefId ?? null;
-        }
+        specificDefId = job.type === 'MissionJob'
+          ? resolveMissionTierModal((def as any)?.tiers, quality)
+          : ((def as any)?.completedModalDefId ?? null);
     }
 
-    const ctx = await this.buildJobContext(job, def);
-
-    // Level 1: definition-specific modal override.
-    if (modalDefId) {
-      const spec = await this.resolveModalDef(modalDefId);
-      if (spec) return this.mergeModalDefSpec(generated, spec, ctx);
-    }
-
-    // Determine normalised state key for fallback lookup.
-    const stateKey: string | null = (() => {
-      switch (job.status) {
-        case 'active': return 'active';
-        case 'ready_notified': return 'ready';
-        case 'completed': return 'completed';
-        case 'failed': return 'failed';
-        default: return (job.status as string) === 'collected' ? 'completed' : null;
+    const stateKey = this.getJobStateKey(job.status);
+    const isUpgrade = !!(job.data as any)?.upgradeToLevel;
+    const typePrefix: string | null = (() => {
+      switch (job.type) {
+        case 'MissionJob': return 'default_mission';
+        case 'CraftingJob': return 'default_crafting';
+        case 'BuildingJob': return isUpgrade ? 'default_building_upgrade' : 'default_building';
+        case 'DustingJob': return 'default_dusting';
+        default: return null;
       }
     })();
 
-    if (stateKey) {
-      const isUpgrade = !!(job.data as any)?.upgradeToLevel;
-      const typePrefix: string | null = (() => {
-        switch (job.type) {
-          case 'MissionJob': return 'default_mission';
-          case 'CraftingJob': return 'default_crafting';
-          case 'BuildingJob': return isUpgrade ? 'default_building_upgrade' : 'default_building';
-          case 'DustingJob': return 'default_dusting';
-          default: return null;
-        }
-      })();
+    // Try modal defs in fallback order.
+    let modal: any = null;
+    if (specificDefId) modal = await this.buildModal(specificDefId, ctx);
+    if (!modal && stateKey && typePrefix) modal = await this.buildModal(`${typePrefix}_${stateKey}`, ctx);
+    if (!modal && stateKey) modal = await this.buildModal(`default_job_${stateKey}`, ctx);
 
-      // Level 2: job-type + state default.
-      if (typePrefix) {
-        const typeSpec = await this.resolveDefaultModalDef(`${typePrefix}_${stateKey}`);
-        if (typeSpec) return this.mergeModalDefSpec(generated, typeSpec, ctx);
-      }
-
-      // Level 3: universal job + state default.
-      const genericSpec = await this.resolveDefaultModalDef(`default_job_${stateKey}`);
-      if (genericSpec) return this.mergeModalDefSpec(generated, genericSpec, ctx);
+    if (!modal) {
+      // Final fallback: minimal empty modal used when no modal def is defined at all.
+      modal = {
+        version: 1,
+        id: `job_${job.id}`,
+        kind: 'job',
+        dismiss: { backdrop: true, x: true, escape: true },
+        header: { title: typeLabel, subtitle: defName },
+        pages: [{ body: [] }],
+        buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+      };
     }
 
-    return generated;
+    // Enrich skip button with server-computed cost metadata (can't be in static spec).
+    if (stateKey === 'active') {
+      await this.enrichModalSkipButton(modal, job, def, ctx);
+    }
+
+    return { ...modal, telemetry: { sourceType: 'job', sourceId: job.id, jobId: job.id } };
+  }
+
+  /**
+   * Generic modal builder: looks up a ModalDef (then DefaultModalDef) by ID,
+   * resolves all token/from expressions against the provided context, and
+   * returns the fully-resolved ModalSpecV1.  Returns null if not found or disabled.
+   */
+  async buildModal(defId: string, ctx: Record<string, any>): Promise<any | null> {
+    const spec = (await this.resolveModalDef(defId)) ?? (await this.resolveDefaultModalDef(defId));
+    if (!spec) return null;
+    return resolveSpec(spec, ctx);
   }
 
   async buildModalForNotification(userId: string, notificationId: string): Promise<any> {
@@ -301,326 +293,258 @@ export class UiService {
     return generated;
   }
 
-  private async buildCompletedJobModal(job: any, defName: string, typeLabel: string, results: any): Promise<any> {
-    const isSuccess = job.type === 'MissionJob' ? results?.success !== false : true;
-    const rawRewards: any[] = results?.rewards || [];
+  /**
+   * Builds an enriched context object for a job modal.  All body structure
+   * comes from the modal def spec; this method only computes the raw data
+   * that `from`-field expressions and `${token}` substitutions reference.
+   */
+  private async buildRichJobContext(job: any, def: any, tickInfo: any): Promise<RichJobContext> {
+    const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
+    const results = job.results as any;
+    const timer = job.timer as any;
+
+    // --- Active job timer info ---
+    let timerInfo: RichJobContext['timerInfo'] = null;
+    if (timer?.startTick != null && timer?.durationTicks != null) {
+      const tickRate = (tickInfo?.currentRate ?? 1) as number;
+      const currentTick = (tickInfo?.currentTick ?? 0) as number;
+      const remainingTicks = Math.max(0, (timer.startTick + timer.durationTicks) - currentTick);
+      const remainingMs = tickRate > 0 ? (remainingTicks / tickRate) * 1000 : 0;
+      const endsAt = new Date(Date.now() + remainingMs).toISOString();
+      const elapsed = Math.max(0, timer.durationTicks - remainingTicks);
+      const current = elapsed;
+      const max = timer.durationTicks as number;
+      const durationMs = tickRate > 0 ? (max / tickRate) * 1000 : 0;
+      const startsAt = new Date(Date.parse(endsAt) - durationMs).toISOString();
+      timerInfo = { endsAt, startsAt, current, max, isReady: current >= max };
+    }
+
+    // --- Team roster with portrait keys (for active job display) ---
+    let team: RichJobContext['team'] = [];
+    if (teamIds.length > 0) {
+      try {
+        const entityRecords = await (this.prisma as any).entity.findMany({
+          where: { id: { in: teamIds }, ownerUserId: job.userId },
+          select: { id: true, display: true, speciesId: true, imageUrl: true, progression: true },
+        });
+        const entityMap = new Map<string, any>(entityRecords.map((e: any) => [e.id, e]));
+        team = teamIds
+          .map(id => entityMap.get(id))
+          .filter(Boolean)
+          .map((e: any) => ({
+            id: e.id,
+            name: (e.display as any)?.name || e.speciesId || 'Entity',
+            level: (e.progression as any)?.level ?? 1,
+            portraitKey: e.imageUrl ?? undefined,
+          }));
+      } catch {}
+    }
+
+    // --- Entity outcomes with portrait keys (for completed job display) ---
+    let entityOutcomes: RichJobContext['entityOutcomes'] = [];
+    const entityResults: any[] = (results?.entityResults as any[]) || [];
+    if (entityResults.length > 0) {
+      const entityIds = entityResults.map((er: any) => er.id);
+      const imageUrlMap = new Map<string, string | null>();
+      try {
+        const entityRecords = await (this.prisma as any).entity.findMany({
+          where: { id: { in: entityIds } },
+          select: { id: true, imageUrl: true },
+        });
+        for (const e of entityRecords) imageUrlMap.set(e.id, e.imageUrl ?? null);
+      } catch {}
+      entityOutcomes = entityResults.map((er: any) => ({
+        id: er.id,
+        name: er.name ?? 'Entity',
+        level: er.newLevel ?? er.level ?? 1,
+        portraitKey: imageUrlMap.get(er.id) ?? undefined,
+        outcome: {
+          injured: er.injured ?? false,
+          xpGained: er.xpGained ?? 0,
+          levelBefore: er.oldLevel ?? er.level ?? 1,
+          levelAfter: er.newLevel ?? er.level ?? 1,
+        },
+      }));
+    }
+
+    // --- Narrative text as RichTextDoc array ---
     const texts: string[] = results?.texts || [];
-    const characterEvents: any[] = results?.characterEvents || [];
-    const data = job.data as any;
-    const isUpgrade = !!data?.upgradeToLevel;
+    const narrativeDoc = texts.map((text: string) => ({
+      t: 'p',
+      c: [{ t: 'em', c: [{ t: 'text', v: text }] }],
+    }));
 
-    // --- Merge duplicate reward entries by type+key ---
-    const mergedMap = new Map<string, any>();
-    for (const r of rawRewards) {
-      const key = `${r.type}::${r.key ?? r.type}`;
-      const existing = mergedMap.get(key);
-      if (existing) {
-        existing.amount = (existing.amount ?? 0) + (r.amount ?? 1);
-      } else {
-        mergedMap.set(key, { ...r, amount: r.amount ?? 1 });
+    // --- Pre-processed reward items (merged, sorted, XP total fixed) ---
+    let rewardItems: RichJobContext['rewardItems'] = [];
+    const rawRewards: any[] = results?.rewards || [];
+    if (rawRewards.length > 0) {
+      const mergedMap = new Map<string, any>();
+      for (const r of rawRewards) {
+        const key = `${r.type}::${r.key ?? r.type}`;
+        const existing = mergedMap.get(key);
+        if (existing) {
+          existing.amount = (existing.amount ?? 0) + (r.amount ?? 1);
+        } else {
+          mergedMap.set(key, { ...r, amount: r.amount ?? 1 });
+        }
       }
-    }
-    const merged = Array.from(mergedMap.values());
+      const merged = Array.from(mergedMap.values());
 
-    // --- Fetch sort keys for currencies and items ---
-    const XP_TYPES = new Set(['entity_xp', 'keeper_xp']);
-    const RARITY_ORDER: Record<string, number> = Object.fromEntries(
-      Object.entries(SHARED_RARITY_ORDER).map(([k, v]) => [k.toUpperCase(), v]),
-    );
+      const XP_TYPES = new Set(['entity_xp', 'keeper_xp']);
+      const RARITY_ORDER: Record<string, number> = Object.fromEntries(
+        Object.entries(SHARED_RARITY_ORDER).map(([k, v]) => [k.toUpperCase(), v]),
+      );
 
-    const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);
-    const itemKeys = merged.filter(r => r.type === 'item' && r.key).map(r => r.key as string);
+      const currencyKeys = merged.filter(r => r.type === 'currency' && r.key).map(r => r.key as string);
+      const itemKeys = merged.filter(r => r.type === 'item' && r.key).map(r => r.key as string);
 
-    const [currencyDefs, itemDefs] = await Promise.all([
-      currencyKeys.length > 0
-        ? (this.prisma as any).currencyDef.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, sortOrder: true } })
-        : Promise.resolve([]),
-      itemKeys.length > 0
-        ? (this.prisma as any).itemDefinition.findMany({ where: { id: { in: itemKeys } }, select: { id: true, rarity: true } })
-        : Promise.resolve([]),
-    ]);
+      const [currencyDefs, itemDefs] = await Promise.all([
+        currencyKeys.length > 0
+          ? (this.prisma as any).currencyDef.findMany({ where: { id: { in: currencyKeys } }, select: { id: true, sortOrder: true } })
+          : Promise.resolve([]),
+        itemKeys.length > 0
+          ? (this.prisma as any).itemDefinition.findMany({ where: { id: { in: itemKeys } }, select: { id: true, rarity: true } })
+          : Promise.resolve([]),
+      ]);
 
-    const currencySortOrder = new Map<string, number>((currencyDefs as any[]).map((c: any) => [c.id, c.sortOrder ?? 0]));
-    const itemRarity = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.id, RARITY_ORDER[d.rarity] ?? 0]));
+      const currencySortOrder = new Map<string, number>((currencyDefs as any[]).map((c: any) => [c.id, c.sortOrder ?? 0]));
+      const itemRarityOrder = new Map<string, number>((itemDefs as any[]).map((d: any) => [d.id, RARITY_ORDER[d.rarity] ?? 0]));
+      const itemRarityStr = new Map<string, string>((itemDefs as any[]).map((d: any) => [d.id, d.rarity]));
 
-    // --- Sort: XP → currencies (by sortOrder) → items (by rarity) ---
-    const rewards = merged.sort((a: any, b: any) => {
-      const ga = XP_TYPES.has(a.type) ? 0 : a.type === 'currency' ? 1 : 2;
-      const gb = XP_TYPES.has(b.type) ? 0 : b.type === 'currency' ? 1 : 2;
-      if (ga !== gb) return ga - gb;
-      if (a.type === 'currency') return (currencySortOrder.get(a.key) ?? 0) - (currencySortOrder.get(b.key) ?? 0);
-      if (a.type === 'item') return (itemRarity.get(a.key) ?? 0) - (itemRarity.get(b.key) ?? 0);
-      return 0;
-    });
-
-    let title: string;
-    if (job.type === 'MissionJob') {
-      title = isSuccess ? 'Mission Complete!' : 'Mission Failed';
-    } else if (job.type === 'CraftingJob') {
-      title = 'Crafting Complete!';
-    } else if (job.type === 'BuildingJob') {
-      title = isUpgrade ? 'Upgrade Complete!' : 'Construction Complete!';
-    } else {
-      title = `${typeLabel} Complete!`;
-    }
-
-    const body: any[] = [];
-
-    if (texts.length > 0) {
-      body.push({
-        type: 'richText',
-        doc: texts.map((text: string) => ({
-          t: 'p',
-          c: [{ t: 'em', c: [{ t: 'text', v: text }] }],
-        })),
+      const sorted = merged.sort((a: any, b: any) => {
+        const ga = XP_TYPES.has(a.type) ? 0 : a.type === 'currency' ? 1 : 2;
+        const gb = XP_TYPES.has(b.type) ? 0 : b.type === 'currency' ? 1 : 2;
+        if (ga !== gb) return ga - gb;
+        if (a.type === 'currency') return (currencySortOrder.get(a.key) ?? 0) - (currencySortOrder.get(b.key) ?? 0);
+        if (a.type === 'item') return (itemRarityOrder.get(a.key) ?? 0) - (itemRarityOrder.get(b.key) ?? 0);
+        return 0;
       });
-    }
 
-    if (job.type === 'MissionJob') {
-      const entityResults: any[] = (results?.entityResults as any[]) || [];
-      if (entityResults.length > 0) {
-        const entityIds = entityResults.map((er: any) => er.id);
-        const imageUrlMap = new Map<string, string | null>();
-        try {
-          const entityRecords = await (this.prisma as any).entity.findMany({
-            where: { id: { in: entityIds } },
-            select: { id: true, imageUrl: true },
-          });
-          for (const e of entityRecords) {
-            imageUrlMap.set(e.id, e.imageUrl ?? null);
-          }
-        } catch {}
-        const rosterBlock = {
-          type: 'entityRoster',
-          editable: false,
-          entities: entityResults.map((er: any) => ({
-            id: er.id,
-            name: er.name ?? 'Entity',
-            level: er.newLevel ?? er.level ?? 1,
-            portraitKey: imageUrlMap.get(er.id) ?? undefined,
-            outcome: {
-              injured: er.injured ?? false,
-              xpGained: er.xpGained ?? 0,
-              levelBefore: er.oldLevel ?? er.level ?? 1,
-              levelAfter: er.newLevel ?? er.level ?? 1,
-            },
-          })),
-        };
-        const insertIdx = texts.length > 0 ? 1 : 0;
-        body.splice(insertIdx, 0, rosterBlock);
-      }
-    }
+      // Entity XP total: sum actual xpGained from outcomes (fixes the stored
+      // per-entity amount being shown instead of the total across all entities).
+      const totalEntityXp = entityOutcomes.reduce((sum, eo) => sum + (eo.outcome?.xpGained ?? 0), 0);
 
-    if (rewards.length > 0) {
-      body.push({
-        type: 'rewardsList',
-        title: 'Rewards',
-        items: rewards.map((r: any) => ({
-          name: this.resolveRewardName(r),
-          qty: r.amount ?? 1,
-          assetKey: r.key ?? this.resolveSystemRewardAssetKey(r.type),
-        })),
-      });
-    }
-
-    if (characterEvents.length > 0) {
-      body.push({ type: 'characterEvents', items: characterEvents });
-    }
-
-    if (job.type === 'MissionJob' && !isSuccess) {
-      body.push({
-        type: 'richText',
-        doc: [{ t: 'p', c: [{ t: 'text', v: 'Your team was unsuccessful. Try again with a stronger team!' }] }],
-      });
-    }
-
-    if (job.type === 'CraftingJob' && results?.quality) {
-      body.push({
-        type: 'metaRows',
-        rows: [{ label: 'Quality', value: results.quality.toUpperCase() }],
-      });
-    }
-
-    const buttons: any[] = [
-      {
-        id: 'continue',
-        label: 'Continue',
-        variant: 'primary',
-        action: { type: 'CLOSE_MODAL' },
-      },
-    ];
-
-    if (job.type === 'MissionJob' && isSuccess) {
-      buttons.push({
-        id: 'repeat',
-        label: 'Start Again',
-        variant: 'secondary',
-        action: { type: 'REPEAT_MISSION', defId: job.defId, entityIds: Array.isArray(job.team) ? job.team : [] },
-      });
-    } else if (job.type === 'CraftingJob') {
-      buttons.push({
-        id: 'craft_again',
-        label: 'Craft Again',
-        variant: 'secondary',
-        action: { type: 'CRAFT_AGAIN', recipeDefId: job.defId },
-      });
+      rewardItems = sorted.map((r: any) => ({
+        name: this.resolveRewardName(r),
+        qty: (r.type === 'entity_xp' && totalEntityXp > 0) ? totalEntityXp : (r.amount ?? 1),
+        assetKey: r.key ?? this.resolveSystemRewardAssetKey(r.type),
+        rarity: r.type === 'item' ? itemRarityStr.get(r.key) : undefined,
+      }));
     }
 
     return {
-      version: 1,
-      id: `job_${job.id}_result`,
-      kind: `${job.type.replace('Job', '').toLowerCase()}_result`,
-      dismiss: { backdrop: true, x: true, escape: true },
-      header: {
-        title,
-        subtitle: defName,
+      job: {
+        id: job.id,
+        type: job.type,
+        defId: job.defId,
+        status: job.status,
+        team: teamIds,
       },
-      pages: [{ body }],
-      buttons,
-      telemetry: {
-        sourceType: 'job',
-        sourceId: job.id,
-        jobId: job.id,
-      },
+      results: (results as Record<string, unknown>) || {},
+      data: (job.data as Record<string, unknown>) || {},
+      def: def || {},
+      timer: (job.timer as Record<string, unknown>) || {},
+      team,
+      entityOutcomes,
+      narrativeDoc,
+      rewardItems,
+      timerInfo,
     };
   }
 
-  private async buildActiveJobModal(job: any, def: any, defName: string, typeLabel: string, tickInfo: any): Promise<any> {
-    const timer = job.timer as any;
-    const tickRate = tickInfo.currentRate ?? 1;
-
-    let endsAt: string | null = null;
-    let progress = { current: 0, max: 1 };
-
-    if (timer?.startTick != null && timer?.durationTicks != null) {
-      const remainingTicks = Math.max(0, (timer.startTick + timer.durationTicks) - tickInfo.currentTick);
-      const remainingMs = tickRate > 0 ? (remainingTicks / tickRate) * 1000 : 0;
-      endsAt = new Date(Date.now() + remainingMs).toISOString();
-
-      const elapsed = Math.max(0, timer.durationTicks - remainingTicks);
-      progress = { current: elapsed, max: timer.durationTicks };
-    }
-
-    const isReady = progress.current >= progress.max;
-
-    const body: any[] = [];
-
-    if (job.type === 'MissionJob') {
-      const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
-      if (teamIds.length > 0) {
-        try {
-          const entityRecords = await (this.prisma as any).entity.findMany({
-            where: { id: { in: teamIds }, ownerUserId: job.userId },
-            select: { id: true, display: true, speciesId: true, imageUrl: true, progression: true },
-          });
-          const entityMap = new Map<string, any>(entityRecords.map((e: any) => [e.id, e]));
-          const entities = teamIds
-            .map((id) => entityMap.get(id))
-            .filter(Boolean)
-            .map((e: any) => ({
-              id: e.id,
-              name: (e.display as any)?.name || e.speciesId || 'Entity',
-              level: (e.progression as any)?.level ?? 1,
-              portraitKey: e.imageUrl ?? undefined,
-            }));
-          if (entities.length > 0) {
-            body.push({ type: 'entityRoster', editable: false, entities });
-          }
-        } catch {}
-      }
-    }
-
-    if (!isReady && endsAt) {
-      const durationMs = tickRate > 0 ? (timer.durationTicks / tickRate) * 1000 : 0;
-      const startsAt = new Date(Date.parse(endsAt) - durationMs).toISOString();
-      body.push({ type: 'timer', endsAt, label: 'Time Remaining' });
-      body.push({ type: 'progress', current: progress.current, max: progress.max, startsAt, endsAt });
-    }
-
-    const buttons: any[] = [];
-
-    if (isReady) {
-      buttons.push({
-        id: 'complete',
-        label: 'Complete',
-        variant: 'primary',
-        action: { type: 'COMPLETE_JOB', jobId: job.id },
-      });
-    }
-
+  /**
+   * Enriches the skip button in an active-job modal with server-computed cost
+   * metadata (affordability, scaled costs).  If the job is not skippable,
+   * removes any SKIP button from the modal entirely.
+   */
+  private async enrichModalSkipButton(modal: any, job: any, def: any, ctx: RichJobContext): Promise<void> {
     const skipInfo = this.buildSkipInfo(job, def);
-    if (!isReady && skipInfo) {
-      const computedCosts = this.computeSkipCosts(skipInfo, progress);
-      const currencyIds = skipInfo.skipCost
-        .filter((c: any) => c.type === 'currency')
-        .map((c: any) => c.id as string);
-
-      const [currencyDefs, balances] = await Promise.all([
-        currencyIds.length > 0
-          ? (this.prisma as any).currency.findMany({
-              where: { id: { in: currencyIds } },
-              select: { id: true, name: true, iconKey: true },
-            })
-          : [],
-        job.userId ? this.currencyService.getBalances(job.userId) : {},
-      ]);
-
-      const currencyDefMap = new Map<string, { name: string; iconKey?: string }>(
-        (currencyDefs as any[]).map((c: any) => [c.id, { name: c.name, iconKey: c.iconKey ?? undefined }]),
-      );
-
-      const canAfford = computedCosts.every((c: any) => {
-        if (c.type !== 'currency') return true;
-        return ((balances as Record<string, number>)[c.id as string] ?? 0) >= c.amount;
-      });
-
-      const baseCosts = skipInfo.skipCost.map((c: any) => {
-        const def = currencyDefMap.get(c.id);
-        return {
-          assetKey: def?.iconKey ?? c.id,
-          label: def?.name ?? c.id,
-          amount: c.amount,
-          ...(c.type === 'currency' ? { currencyId: c.id } : {}),
-        };
-      });
-
-      buttons.push({
-        id: 'skip',
-        label: 'Skip',
-        variant: 'secondary',
-        disabled: !canAfford,
-        action: { type: 'SKIP', targetType: 'job', targetId: job.id },
-        skipMeta: {
-          baseCosts,
-          skipType: (skipInfo.skipType === 'absolute' ? 'absolute' : 'scaling') as 'absolute' | 'scaling',
-        },
-      });
+    if (!skipInfo) {
+      if (Array.isArray(modal.buttons)) {
+        modal.buttons = modal.buttons.filter((b: any) => b.id !== 'skip' && b.action?.type !== 'SKIP');
+      }
+      return;
     }
 
-    buttons.push({
-      id: 'close',
-      label: 'Close',
-      variant: isReady ? 'secondary' : 'ghost',
-      action: { type: 'CLOSE_MODAL' },
+    const timerInfo = ctx.timerInfo;
+    const progress = timerInfo
+      ? { current: timerInfo.current, max: timerInfo.max }
+      : { current: 0, max: 1 };
+
+    // Don't show skip button when the job is already ready.
+    if (timerInfo?.isReady) {
+      if (Array.isArray(modal.buttons)) {
+        modal.buttons = modal.buttons.filter((b: any) => b.id !== 'skip' && b.action?.type !== 'SKIP');
+      }
+      return;
+    }
+
+    const computedCosts = this.computeSkipCosts(skipInfo, progress);
+    const currencyIds = skipInfo.skipCost
+      .filter((c: any) => c.type === 'currency')
+      .map((c: any) => c.id as string);
+
+    const [currencyDefs, balances] = await Promise.all([
+      currencyIds.length > 0
+        ? (this.prisma as any).currency.findMany({
+            where: { id: { in: currencyIds } },
+            select: { id: true, name: true, iconKey: true },
+          })
+        : Promise.resolve([]),
+      job.userId ? this.currencyService.getBalances(job.userId) : Promise.resolve({}),
+    ]);
+
+    const currencyDefMap = new Map<string, { name: string; iconKey?: string }>(
+      (currencyDefs as any[]).map((c: any) => [c.id, { name: c.name, iconKey: c.iconKey ?? undefined }]),
+    );
+
+    const canAfford = computedCosts.every((c: any) => {
+      if (c.type !== 'currency') return true;
+      return ((balances as Record<string, number>)[c.id as string] ?? 0) >= c.amount;
     });
 
-    return {
-      version: 1,
-      id: `job_${job.id}_active`,
-      kind: `${job.type.replace('Job', '').toLowerCase()}_progress`,
-      dismiss: { backdrop: true, x: true, escape: true },
-      header: {
-        title: isReady ? `${typeLabel} Ready!` : `${typeLabel} In Progress`,
-        subtitle: defName,
-      },
-      pages: [{ body }],
-      buttons,
-      telemetry: {
-        sourceType: 'job',
-        sourceId: job.id,
-        jobId: job.id,
-      },
+    const baseCosts = skipInfo.skipCost.map((c: any) => {
+      const cdef = currencyDefMap.get(c.id);
+      return {
+        assetKey: cdef?.iconKey ?? c.id,
+        label: cdef?.name ?? c.id,
+        amount: c.amount,
+        ...(c.type === 'currency' ? { currencyId: c.id } : {}),
+      };
+    });
+
+    const skipMeta = {
+      baseCosts,
+      skipType: (skipInfo.skipType === 'absolute' ? 'absolute' : 'scaling') as 'absolute' | 'scaling',
     };
+
+    if (Array.isArray(modal.buttons)) {
+      const skipBtn = modal.buttons.find((b: any) => b.id === 'skip' || b.action?.type === 'SKIP');
+      if (skipBtn) {
+        skipBtn.skipMeta = skipMeta;
+        skipBtn.disabled = !canAfford;
+      } else {
+        // Skip button not in spec — add it dynamically.
+        modal.buttons.push({
+          id: 'skip',
+          label: 'Skip',
+          variant: 'secondary',
+          disabled: !canAfford,
+          action: { type: 'SKIP', targetType: 'job', targetId: job.id },
+          skipMeta,
+        });
+      }
+    }
+  }
+
+  private getJobStateKey(status: string): string | null {
+    switch (status) {
+      case 'active': return 'active';
+      case 'ready_notified': return 'ready';
+      case 'completed': return 'completed';
+      case 'failed': return 'failed';
+      default: return (status as string) === 'collected' ? 'completed' : null;
+    }
   }
 
   private formatDuration(seconds: number): string {
@@ -629,23 +553,6 @@ export class UiService {
     const h = Math.floor(m / 60);
     if (h > 0) return `${h}h ${m % 60}m`;
     return `${m}m`;
-  }
-
-  private buildGenericJobModal(job: any, defName: string, typeLabel: string): any {
-    return {
-      version: 1,
-      id: `job_${job.id}`,
-      kind: 'job',
-      dismiss: { backdrop: true, x: true, escape: true },
-      header: {
-        title: typeLabel,
-        subtitle: defName,
-      },
-      pages: [{ body: [] }],
-      buttons: [
-        { id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } },
-      ],
-    };
   }
 
   /**
@@ -734,7 +641,7 @@ export class UiService {
     }
   }
 
-  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: JobContext | GiftContext | LocationContext): any {
+  private mergeModalDefSpec(generated: any, spec: ModalSpecV1, ctx?: GiftContext | LocationContext | Record<string, any>): any {
     if (!spec || typeof spec !== 'object') return generated;
 
     const resolved = ctx ? resolveSpec(spec, ctx as Record<string, any>) : spec;
@@ -819,49 +726,6 @@ export class UiService {
     return blocks;
   }
 
-  private async buildJobContext(job: any, def: any): Promise<JobContext> {
-    const teamIds: string[] = Array.isArray(job.team) ? job.team : [];
-    let team: TeamEntitySnapshot[] = [];
-
-    if (teamIds.length > 0) {
-      try {
-        const entities = await (this.prisma as any).entity.findMany({
-          where: { id: { in: teamIds }, ownerUserId: job.userId },
-        });
-        const entityMap = new Map<string, any>();
-        for (const e of entities) {
-          entityMap.set(e.id, e);
-        }
-        for (const id of teamIds) {
-          const e = entityMap.get(id);
-          if (!e) continue;
-          const progression = (e.progression as any) || {};
-          team.push({
-            id: e.id,
-            name: (e.display as any)?.name || e.speciesId || 'Entity',
-            level: progression.level || 1,
-            xp: Number(progression.xp || 0),
-            stats: (e.stats as Record<string, unknown>) || {},
-            traits: (e.traits as Record<string, unknown>) || {},
-          });
-        }
-      } catch {}
-    }
-
-    return {
-      job: {
-        id: job.id,
-        type: job.type,
-        defId: job.defId,
-        status: job.status,
-      },
-      results: (job.results as Record<string, unknown>) || {},
-      data: (job.data as Record<string, unknown>) || {},
-      def: def || {},
-      timer: (job.timer as Record<string, unknown>) || {},
-      team,
-    };
-  }
 
   private buildGiftContext(gift: any, snapshot: any): GiftContext {
     return {

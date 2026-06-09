@@ -7739,7 +7739,20 @@
         "id": "default_mission_active",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Mission In Progress" }
+        "header": { "title": "Mission In Progress", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "entityRoster", "editable": false, "entities": [], "from": "team" },
+              { "type": "timer", "endsAt": null, "label": "Time Remaining", "from": "timerInfo" },
+              { "type": "progress", "label": "Progress", "current": 0, "max": 100, "from": "timerInfo" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "skip", "label": "Skip", "variant": "secondary", "action": { "type": "SKIP", "targetType": "job", "targetId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "ghost", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7753,7 +7766,18 @@
         "id": "default_mission_ready",
         "kind": "job_status",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Mission Ready!" }
+        "header": { "title": "Mission Ready!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "entityRoster", "editable": false, "entities": [], "from": "team" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "complete", "label": "Complete", "variant": "primary", "action": { "type": "COMPLETE_JOB", "jobId": "${job.id}" } },
+          { "id": "close", "label": "Close", "variant": "secondary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },
@@ -7767,7 +7791,21 @@
         "id": "default_mission_completed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Mission Complete!" }
+        "header": { "title": "Mission Complete!", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "richText", "doc": [], "from": "narrativeDoc" },
+              { "type": "entityRoster", "editable": false, "entities": [], "from": "entityOutcomes" },
+              { "type": "rewardsList", "title": "Rewards", "items": [], "from": "rewardItems" },
+              { "type": "characterEvents", "items": [], "from": "results.characterEvents" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } },
+          { "id": "repeat", "label": "Start Again", "variant": "secondary", "action": { "type": "REPEAT_MISSION", "defId": "${job.defId}", "entityIds": "${job.team}" } }
+        ]
       },
       "enabled": true
     },
@@ -7781,7 +7819,20 @@
         "id": "default_mission_failed",
         "kind": "result",
         "dismiss": { "backdrop": true, "x": true, "escape": true },
-        "header": { "title": "Mission Failed" }
+        "header": { "title": "Mission Failed", "subtitle": "${def.name}" },
+        "pages": [
+          {
+            "body": [
+              { "type": "richText", "doc": [], "from": "narrativeDoc" },
+              { "type": "entityRoster", "editable": false, "entities": [], "from": "entityOutcomes" },
+              { "type": "rewardsList", "title": "Consolation", "items": [], "from": "rewardItems" },
+              { "type": "characterEvents", "items": [], "from": "results.characterEvents" }
+            ]
+          }
+        ],
+        "buttons": [
+          { "id": "continue", "label": "Continue", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
       },
       "enabled": true
     },

@@ -108,7 +108,16 @@ function mapRewardItemClient(r: any): any {
 
 function resolveAllStringsClient(obj: any, ctx: Record<string, any>): any {
   if (obj == null) return obj;
-  if (typeof obj === 'string') return resolveTokensClient(obj, ctx);
+  if (typeof obj === 'string') {
+    // Single-token expressions preserve the raw type (array, number, etc.) so that
+    // e.g. entityIds: "${job.team}" resolves to an array rather than a comma-joined string.
+    const solo = /^\$\{([^}]+)\}$/.exec(obj);
+    if (solo) {
+      const val = getByPath(ctx, solo[1].trim());
+      if (val !== undefined && val !== null) return val;
+    }
+    return resolveTokensClient(obj, ctx);
+  }
   if (Array.isArray(obj)) return obj.map(item => resolveAllStringsClient(item, ctx));
   if (typeof obj === 'object') {
     const result: any = {};
@@ -165,6 +174,12 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
               resolved.rewards = data.rewards.map(mapRewardItemClient);
             }
           }
+          break;
+        case 'entityRoster':
+          if (Array.isArray(data)) resolved.entities = data;
+          break;
+        case 'characterEvents':
+          if (Array.isArray(data)) resolved.items = data;
           break;
         case 'error':
           if (typeof data === 'string') resolved.message = data;
@@ -319,6 +334,8 @@ export const BLOCK_DEFAULTS: Record<string, () => ModalBlock> = {
       { type: 'richText', doc: [{ t: 'p', c: [{ t: 'text', v: 'Surprise!' }] }] },
     ],
   }),
+  entityRoster: () => ({ type: 'entityRoster', editable: false, entities: [] }),
+  characterEvents: () => ({ type: 'characterEvents', items: [] }),
   error: () => ({ type: 'error', message: 'Something went wrong.' }),
 };
 
@@ -327,6 +344,7 @@ const BLOCK_COLORS: Record<string, string> = {
   timer: '#fb923c', progress: '#34d399', rewardsPreview: '#fbbf24',
   rewardsList: '#fbbf24', inventoryDelta: '#f472b6', giftReveal: '#f59e0b',
   list: '#60a5fa', clickReveal: '#c084fc', error: '#ef4444',
+  entityRoster: '#38bdf8', characterEvents: '#a3e635',
 };
 
 export const BUTTON_DEFAULTS: () => ModalButton = () => ({
@@ -349,11 +367,13 @@ const FROM_HINTS: Record<string, string> = {
   rewardsList: 'e.g. results.rewards',
   rewardsPreview: 'e.g. results.rewards',
   inventoryDelta: 'e.g. results.delta',
-  timer: 'e.g. timer.endsAt',
-  progress: 'e.g. timer.progress',
+  timer: 'e.g. timerInfo',
+  progress: 'e.g. timerInfo',
   image: 'e.g. results.image',
   giftReveal: 'e.g. gift',
   error: 'e.g. results.errorMessage',
+  entityRoster: 'e.g. team  or  entityOutcomes',
+  characterEvents: 'e.g. results.characterEvents',
 };
 
 // ─── Shared input styles ──────────────────────────────────────────────────────
@@ -965,6 +985,35 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
             </div>
           </div>
         </>
+      );
+    }
+
+    case 'entityRoster': {
+      const editable = (block as any).editable ?? false;
+      return (
+        <Row>
+          <div style={{ flex: 1 }}>
+            <Field label="Editable" hint="If true, the player can swap or remove entities from the roster.">
+              <select style={{ ...inp, padding: '5px 10px' }} value={String(editable)} onChange={e => set({ editable: e.target.value === 'true' })}>
+                <option value="false">No (view only)</option>
+                <option value="true">Yes (player can edit)</option>
+              </select>
+            </Field>
+          </div>
+          <div style={{ flex: 2 }}>
+            <Field label="Static entities (optional)" hint="Only needed if not using 'from'. Use 'from' with team or entityOutcomes for dynamic data.">
+              <input style={inp} value={JSON.stringify((block as any).entities || [])} onChange={e => { try { set({ entities: JSON.parse(e.target.value) }); } catch {} }} placeholder='[{"id":"...","name":"Hero","level":5}]' />
+            </Field>
+          </div>
+        </Row>
+      );
+    }
+
+    case 'characterEvents': {
+      return (
+        <Field label="Static events (optional)" hint="Only needed if not using 'from'. Use 'from' with results.characterEvents for dynamic data.">
+          <input style={inp} value={JSON.stringify((block as any).items || [])} onChange={e => { try { set({ items: JSON.parse(e.target.value) }); } catch {} }} placeholder='[{"type":"level_up","entityName":"Hero","newLevel":5}]' />
+        </Field>
       );
     }
 

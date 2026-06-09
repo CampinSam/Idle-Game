@@ -28,7 +28,17 @@ export function resolveTokens(str: string, ctx: Record<string, any>): string {
 
 function resolveAllStrings(obj: any, ctx: Record<string, any>): any {
   if (obj == null) return obj;
-  if (typeof obj === 'string') return resolveTokens(obj, ctx);
+  if (typeof obj === 'string') {
+    // If the entire value is a single ${...} token, preserve the raw type.
+    // This allows arrays (e.g. entityIds: "${job.team}") to pass through correctly
+    // rather than being coerced to a comma-separated string.
+    const solo = /^\$\{([^}]+)\}$/.exec(obj);
+    if (solo) {
+      const val = getByPath(ctx, solo[1].trim());
+      if (val !== undefined && val !== null) return val;
+    }
+    return resolveTokens(obj, ctx);
+  }
   if (Array.isArray(obj)) return obj.map(item => resolveAllStrings(item, ctx));
   if (typeof obj === 'object') {
     const result: any = {};
@@ -167,11 +177,13 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
             if (data.current !== undefined) resolved.current = Number(data.current);
             if (data.max !== undefined) resolved.max = Number(data.max);
             if (data.label) resolved.label = data.label;
+            if (data.startsAt) resolved.startsAt = data.startsAt;
+            if (data.endsAt) resolved.endsAt = data.endsAt;
           }
           break;
 
         case 'richText':
-          if (typeof data === 'string') {
+          if (typeof data === 'string' && data.length > 0) {
             resolved.doc = [{ t: 'p', c: [{ t: 'text', v: data }] }];
           } else if (Array.isArray(data)) {
             resolved.doc = data;
@@ -208,6 +220,18 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
             resolved.message = data;
           } else if (typeof data === 'object' && data.message) {
             resolved.message = data.message;
+          }
+          break;
+
+        case 'entityRoster':
+          if (Array.isArray(data)) {
+            resolved.entities = data;
+          }
+          break;
+
+        case 'characterEvents':
+          if (Array.isArray(data)) {
+            resolved.items = data;
           }
           break;
       }
