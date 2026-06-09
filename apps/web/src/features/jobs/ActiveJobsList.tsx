@@ -9,6 +9,7 @@ import { api } from '../../services/api';
 import type { DeltaResponse } from '../../services/api';
 import { EmptyState } from '../../components/ui';
 import ItemQty from '../../components/ItemQty';
+import JobProgressBar from '../../components/JobProgressBar';
 
 const JOB_ICON: Record<string, string> = {
   MissionJob: '🗺️',
@@ -219,17 +220,13 @@ export function ActiveJobRow({
             </div>
           </div>
 
-          <div className={`w-full ${compact ? 'h-1' : 'h-1.5'} rounded-full bg-[rgba(255,255,255,0.07)] overflow-hidden`}>
-            <div
-              className="h-full rounded-full transition-[width] duration-1000 ease-linear"
-              style={{
-                width: `${progressPct}%`,
-                background: isReady
-                  ? 'linear-gradient(90deg, #059669, #10b981)'
-                  : `linear-gradient(90deg, ${color}99, ${color})`,
-              }}
-            />
-          </div>
+          <JobProgressBar
+            progressPct={progressPct}
+            remainingMs={remainingMs}
+            color={color}
+            compact={compact}
+            showMeta={false}
+          />
 
           {!compact && (
             <span className="text-[10px] text-text-secondary uppercase tracking-wider">{label}</span>

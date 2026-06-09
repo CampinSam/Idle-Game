@@ -1,9 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { ANTI_WHALE_CAPS } from '@derp/shared';
 import { Card, EmptyState, SectionHeader } from '../../../components/ui';
-import { createCountdownTimer, useCurrentTick } from '../../../tick';
-import { useTickRemainingMs } from '../../../tick/useTickValue';
-import { formatTimeShort } from './missionUtils';
+import JobProgressBar from '../../../components/JobProgressBar';
 
 interface MissionShellProps {
   middle: ReactNode;
@@ -30,19 +28,8 @@ function MissionActiveRow({
 }) {
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const currentTick = useCurrentTick();
-  const timer = (m.startTick != null && m.durationTicks != null)
-    ? createCountdownTimer({ startTick: m.startTick, durationTicks: m.durationTicks })
-    : null;
-  const remaining = useTickRemainingMs(timer);
-  const isReady = remaining <= 0;
-  const remainingTicks = timer ? timer.getValue(currentTick) : 0;
-  const progress = (m.durationTicks && m.durationTicks > 0)
-    ? Math.min(100, Math.max(2, ((m.durationTicks - remainingTicks) / m.durationTicks) * 100))
-    : 2;
 
-  const handleComplete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleComplete = async () => {
     if (completing || !onCompleteJob) return;
     setCompleting(true);
     setCompleteError(null);
@@ -65,34 +52,18 @@ function MissionActiveRow({
       <span className="flex-1 min-w-0 text-[13px] font-bold text-text-primary truncate">
         {missionDefs.find((d: any) => d.id === m.defId)?.name ?? m.defId ?? 'Unknown Mission'}
       </span>
-      {isReady ? (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-[11px] font-bold tracking-wide text-[#10B981] whitespace-nowrap">
-            ✅ Ready
-          </span>
-          {onCompleteJob && (
-            <button
-              disabled={completing}
-              onClick={handleComplete}
-              className="px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wide bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] text-white border border-[rgba(167,139,250,0.55)] hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-[filter]"
-            >
-              {completing ? '…' : 'Complete'}
-            </button>
-          )}
-        </div>
-      ) : (
-        <>
-          <span className="text-[11px] font-bold tracking-wide whitespace-nowrap text-[#F59E0B]">
-            ⏱ {formatTimeShort(remaining)}
-          </span>
-          <div className="w-24 h-1.5 rounded-full bg-black/40 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#a78bfa] to-[#8b5cf6] transition-[width] duration-[1000ms] ease-linear"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </>
-      )}
+      <div className="flex-shrink-0 w-36" onClick={(e) => e.stopPropagation()}>
+        <JobProgressBar
+          startTick={m.startTick}
+          durationTicks={m.durationTicks}
+          color="#8b5cf6"
+          compact
+          readyLabel="✅ Ready"
+          readyActionLabel={onCompleteJob ? (completing ? '…' : 'Complete') : undefined}
+          onAction={onCompleteJob ? handleComplete : undefined}
+          actionDisabled={completing}
+        />
+      </div>
     </div>
     {completeError && (
       <div className="px-2 py-1.5 rounded-md bg-[rgba(239,68,68,0.12)] border border-[rgba(239,68,68,0.35)] text-[#fca5a5] text-[11px] leading-tight">
