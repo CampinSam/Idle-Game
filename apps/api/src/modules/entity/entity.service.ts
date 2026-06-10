@@ -192,7 +192,13 @@ export class EntityService {
       gainsPerLevel.push({ level: newLevel, gains: result.gains });
     }
 
-    const updatedProgression = { ...progression, level: newLevel, xp: newXp, levelHistory };
+    const updatedProgression = {
+      ...progression,
+      level: newLevel,
+      xp: newXp,
+      lifetimeXp: (Number(progression.lifetimeXp ?? 0)) + effectiveXp,
+      levelHistory,
+    };
     const updated = await (db as any).entity.update({
       where: { id: entityId },
       data: { progression: updatedProgression, stats: currentStats },

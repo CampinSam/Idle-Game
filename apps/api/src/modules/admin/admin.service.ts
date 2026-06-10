@@ -1433,18 +1433,22 @@ export class AdminService {
     const currentLevel = Math.max(1, Number(progression.level ?? 1));
     const residualXp = Math.max(0, Number(progression.xp ?? 0));
 
-    // Reconstruct lifetime XP from the current progression curve so that
-    // curve changes take effect immediately on rebuild.
-    // lifetimeXp = sum(thresholds for levels 1..currentLevel-1) + residual
-    let lifetimeXp = residualXp;
-    try {
-      const rules = getProgressionRules(definition, entity.definitionId);
-      for (let L = 1; L < currentLevel; L++) {
-        lifetimeXp += xpForNextLevel(rules, L);
-      }
-    } catch {
-      // No progression rules — level stays unchanged.
+    // Use the persisted lifetimeXp field (cumulative XP ever earned) so that
+    // curve changes take effect immediately on rebuild. For entities that predate
+    // lifetimeXp tracking, fall back to reconstructing it from the current curve.
+    let lifetimeXp: number;
+    if (typeof progression.lifetimeXp === 'number' && progression.lifetimeXp >= 0) {
+      lifetimeXp = progression.lifetimeXp;
+    } else {
       lifetimeXp = residualXp;
+      try {
+        const rules = getProgressionRules(definition, entity.definitionId);
+        for (let L = 1; L < currentLevel; L++) {
+          lifetimeXp += xpForNextLevel(rules, L);
+        }
+      } catch {
+        lifetimeXp = residualXp;
+      }
     }
     const targetLevel = Math.max(1, levelFromXp(lifetimeXp, definition?.progression));
 

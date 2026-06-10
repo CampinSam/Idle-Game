@@ -9,6 +9,7 @@ import {
   type StatGainConfig,
 } from '@derp/math';
 import { resolveRnd } from './rnd-resolver.util';
+import { getProgressionRules, xpForNextLevel } from './entity-progression-rules.util';
 
 export {
   STAT_KEYS,
@@ -26,7 +27,7 @@ export interface GeneratedEntityData {
   display: { name: string };
   stats: Record<string, any>;
   traits: Record<string, string | number | boolean | null>;
-  progression: { level: number; xp: number; ascension: number; levelHistory: any[] };
+  progression: { level: number; xp: number; lifetimeXp: number; ascension: number; levelHistory: any[] };
   state: { status: string };
   seed: number;
 }
@@ -205,6 +206,21 @@ export async function generateEntityData(
     initialHistory = leveled.levelHistory;
   }
 
+  // Compute lifetime XP so rebuild can re-derive level from the current curve.
+  // For a freshly-created entity at startingLevel, no residual XP has been earned yet,
+  // so lifetimeXp = sum of thresholds for levels 1..(startingLevel-1).
+  let initialLifetimeXp = 0;
+  if (startingLevel > 1) {
+    try {
+      const progRules = getProgressionRules(entityDef, definitionId);
+      for (let L = 1; L < startingLevel; L++) {
+        initialLifetimeXp += xpForNextLevel(progRules, L);
+      }
+    } catch {
+      initialLifetimeXp = 0;
+    }
+  }
+
   return {
     ownerUserId: userId,
     definitionId,
@@ -212,7 +228,7 @@ export async function generateEntityData(
     display: { name: resolvedName },
     stats: initialStats,
     traits,
-    progression: { level: startingLevel, xp: 0, ascension: 0, levelHistory: initialHistory },
+    progression: { level: startingLevel, xp: 0, lifetimeXp: initialLifetimeXp, ascension: 0, levelHistory: initialHistory },
     state: { status: 'idle' },
     seed: resolvedSeed,
   };
