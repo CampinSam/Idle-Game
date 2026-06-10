@@ -570,6 +570,8 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
   const [saving, setSaving] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState<string | null>(null);
   const [rebuilding, setRebuilding] = useState<string | null>(null);
+  const [pendingRebuild, setPendingRebuild] = useState<string | null>(null);
+  const [rebuildDiffs, setRebuildDiffs] = useState<Record<string, { before: any; after: any }>>({});
   const [entityMsgs, setEntityMsgs] = useState<Record<string, { text: string; type: 'success' | 'error' }>>({});
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -636,24 +638,21 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
     } finally { setReconciling(null); }
   };
 
-  const rebuildEntity = async (entity: any) => {
-    if (!window.confirm(
-      `Re-derive traits + stats + level for entity "${(entity.display as any)?.name || entity.id}" from its stored seed?\n\nThis will overwrite current base stats. Equipped-stat boosts are re-applied at render time and are not affected.`
-    )) return;
-    setRebuilding(entity.id);
+  const startRebuild = (entity: any) => {
     setEntityMsgs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    setRebuildDiffs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    setPendingRebuild(entity.id);
+  };
+
+  const confirmRebuild = async (entityId: string) => {
+    setPendingRebuild(null);
+    setRebuilding(entityId);
     try {
-      const result = await adminApi.regenerateEntity(entity.id);
-      setEntityMsgs((prev) => ({
-        ...prev,
-        [entity.id]: {
-          text: `Rebuilt — level ${result.before.level} → ${result.after.level}`,
-          type: 'success',
-        },
-      }));
+      const result = await adminApi.regenerateEntity(entityId);
+      setRebuildDiffs((prev) => ({ ...prev, [entityId]: result }));
       onReload();
     } catch (e: any) {
-      setEntityMsgs((prev) => ({ ...prev, [entity.id]: { text: e.message, type: 'error' } }));
+      setEntityMsgs((prev) => ({ ...prev, [entityId]: { text: e.message, type: 'error' } }));
     } finally { setRebuilding(null); }
   };
 
@@ -698,19 +697,47 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
                 {reconciling === entity.id ? '...' : '⚙ Reconcile'}
               </button>
               {isSuperAdmin && (
-                <button
-                  onClick={() => rebuildEntity(entity)}
-                  disabled={rebuilding === entity.id}
-                  title="Re-derive traits, stats and level from seed (super_admin only)"
-                  style={{
-                    padding: '0.35rem 0.65rem', marginRight: '0.5rem', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 6,
-                    background: rebuilding === entity.id ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.2)',
-                    color: '#c4b5fd', cursor: rebuilding === entity.id ? 'default' : 'pointer',
-                    fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
-                  }}
-                >
-                  {rebuilding === entity.id ? '...' : '🔁 Rebuild'}
-                </button>
+                pendingRebuild === entity.id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: '0.5rem', flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.72rem', color: '#f59e0b', maxWidth: 160 }}>
+                      Overwrite base stats from seed?
+                    </span>
+                    <button
+                      onClick={() => setPendingRebuild(null)}
+                      style={{
+                        padding: '0.25rem 0.6rem', border: '1px solid #2a2a4a', borderRadius: 4,
+                        background: 'rgba(255,255,255,0.05)', color: '#6a6a9a',
+                        cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => confirmRebuild(entity.id)}
+                      style={{
+                        padding: '0.25rem 0.6rem', border: '1px solid rgba(220,38,38,0.5)', borderRadius: 4,
+                        background: 'rgba(220,38,38,0.3)', color: '#f87171',
+                        cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
+                      }}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => startRebuild(entity)}
+                    disabled={rebuilding === entity.id}
+                    title="Re-derive traits, stats and level from seed (super_admin only)"
+                    style={{
+                      padding: '0.35rem 0.65rem', marginRight: '0.5rem', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 6,
+                      background: rebuilding === entity.id ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.2)',
+                      color: '#c4b5fd', cursor: rebuilding === entity.id ? 'default' : 'pointer',
+                      fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+                    }}
+                  >
+                    {rebuilding === entity.id ? '...' : '🔁 Rebuild'}
+                  </button>
+                )
               )}
             </div>
 
@@ -719,6 +746,41 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
                 <StatusMsg msg={entityMsgs[entity.id].text} type={entityMsgs[entity.id].type} />
               </div>
             )}
+
+            {rebuildDiffs[entity.id] && (() => {
+              const diff = rebuildDiffs[entity.id];
+              const before = diff.before?.stats || {};
+              const after = diff.after?.stats || {};
+              const changed = STAT_KEYS.filter((k) => before[k] !== after[k]);
+              return (
+                <div style={{
+                  margin: '0 0.9rem 0.75rem',
+                  padding: '0.6rem 0.8rem',
+                  background: 'rgba(108,99,255,0.08)',
+                  border: '1px solid rgba(108,99,255,0.25)',
+                  borderRadius: 6,
+                  fontSize: '0.78rem',
+                }}>
+                  <div style={{ color: '#a89fff', fontWeight: 700, marginBottom: 6 }}>
+                    ✓ Rebuilt — Level {diff.before.level} → {diff.after.level}
+                  </div>
+                  {changed.length === 0 ? (
+                    <div style={{ color: '#5a5a8a' }}>Stats unchanged</div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {changed.map((k) => (
+                        <div key={k} style={{ color: '#9090c8' }}>
+                          <span style={{ color: '#6060a0' }}>{k}: </span>
+                          <span style={{ color: '#f87171' }}>{before[k] ?? '–'}</span>
+                          <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
+                          <span style={{ color: '#34d399' }}>{after[k] ?? '–'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {isOpen && (
               <div style={{ padding: '0 0.9rem 0.9rem' }}>

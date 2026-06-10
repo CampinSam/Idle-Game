@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from './adminApi';
 
+const STAT_KEYS = ['ATK', 'DEF', 'SPD', 'FOC', 'LCK', 'VIT'] as const;
+
 type CollectionRow = {
   definitionId: string;
   definitionName: string;
@@ -9,6 +11,7 @@ type CollectionRow = {
   nftCount: number;
   claimedNftCount: number;
   avgLevel: number | null;
+  avgStats: Record<string, number | null>;
   jobStatus: JobStatus | null;
 };
 
@@ -61,10 +64,15 @@ function JobStatusBadge({ job }: { job: JobStatus | null }) {
   );
 }
 
-export default function EntityCollectionsPage() {
+interface Props {
+  isSuperAdmin?: boolean;
+}
+
+export default function EntityCollectionsPage({ isSuperAdmin }: Props) {
   const [collections, setCollections] = useState<CollectionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Record<string, { text: string; type: 'success' | 'error' }>>({});
 
@@ -98,7 +106,7 @@ export default function EntityCollectionsPage() {
           load();
         }
       } catch {}
-    }, 1500);
+    }, 2000);
   }, [load]);
 
   useEffect(() => {
@@ -107,11 +115,8 @@ export default function EntityCollectionsPage() {
     };
   }, []);
 
-  const handleStartRebuild = async (definitionId: string) => {
-    if (!window.confirm(
-      `This will re-derive traits + stats + level for ALL entities in this collection from their stored seeds.\n\nThis cannot be undone. Proceed?`
-    )) return;
-
+  const handleConfirmRebuild = async (definitionId: string) => {
+    setConfirmingId(null);
     setStartingId(definitionId);
     setMsgs((prev) => { const n = { ...prev }; delete n[definitionId]; return n; });
     try {
@@ -153,8 +158,8 @@ export default function EntityCollectionsPage() {
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#c0c0e8', marginBottom: 4 }}>Entity Collections</div>
         <div style={{ fontSize: 12, color: '#5a5a8a', lineHeight: 1.5 }}>
-          Aggregate view of all entity definitions. Super-admins can trigger a full rebuild — this re-derives
-          base traits, stats, and level from each entity's stored seed and NFT attributes.
+          Aggregate view of all entity definitions.
+          {isSuperAdmin && ' Super-admins can trigger a full rebuild — this re-derives base traits, stats, and level from each entity\'s stored seed and NFT attributes.'}
         </div>
       </div>
 
@@ -168,6 +173,7 @@ export default function EntityCollectionsPage() {
         const job = col.jobStatus;
         const isRunning = job?.status === 'running';
         const isStarting = startingId === col.definitionId;
+        const isConfirming = confirmingId === col.definitionId;
 
         return (
           <div key={col.definitionId} className={CARD}>
@@ -210,20 +216,70 @@ export default function EntityCollectionsPage() {
                     </div>
                   )}
                 </div>
+
+                {col.totalCount > 0 && col.avgStats && (
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                    {STAT_KEYS.map((k) => {
+                      const v = col.avgStats[k];
+                      if (v == null) return null;
+                      return (
+                        <div key={k} style={{ fontSize: 11 }}>
+                          <span style={{ color: '#4a4a7a' }}>{k}: </span>
+                          <span style={{ color: '#9090c8', fontWeight: 600 }}>{v.toFixed(1)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              <button
-                onClick={() => handleStartRebuild(col.definitionId)}
-                disabled={isRunning || isStarting}
-                style={{
-                  padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: isRunning || isStarting ? 'default' : 'pointer',
-                  background: isRunning || isStarting ? 'rgba(124,58,237,0.1)' : 'rgba(124,58,237,0.35)',
-                  border: '1px solid rgba(124,58,237,0.5)', borderRadius: 6, color: '#c4b5fd',
-                  flexShrink: 0, whiteSpace: 'nowrap',
-                }}
-              >
-                {isStarting ? 'Starting…' : isRunning ? 'Running…' : '⚙ Rebuild All'}
-              </button>
+              {isSuperAdmin && (
+                <div style={{ flexShrink: 0 }}>
+                  {!isConfirming ? (
+                    <button
+                      onClick={() => setConfirmingId(col.definitionId)}
+                      disabled={isRunning || isStarting}
+                      style={{
+                        padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                        cursor: isRunning || isStarting ? 'default' : 'pointer',
+                        background: isRunning || isStarting ? 'rgba(124,58,237,0.1)' : 'rgba(124,58,237,0.35)',
+                        border: '1px solid rgba(124,58,237,0.5)', borderRadius: 6, color: '#c4b5fd',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {isStarting ? 'Starting…' : isRunning ? 'Running…' : '⚙ Rebuild All'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                      <div style={{ fontSize: 11, color: '#f59e0b', textAlign: 'right', maxWidth: 200 }}>
+                        Re-derive traits+stats from seed for all {col.totalCount.toLocaleString()} entities. This cannot be undone.
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => setConfirmingId(null)}
+                          style={{
+                            padding: '4px 10px', fontSize: 11, cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid #2a2a4a',
+                            borderRadius: 4, color: '#6a6a9a',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleConfirmRebuild(col.definitionId)}
+                          style={{
+                            padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            background: 'rgba(220,38,38,0.3)', border: '1px solid rgba(220,38,38,0.5)',
+                            borderRadius: 4, color: '#f87171',
+                          }}
+                        >
+                          Confirm Rebuild
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <JobStatusBadge job={job} />

@@ -644,6 +644,7 @@ export const adminApi = {
       nftCount: number;
       claimedNftCount: number;
       avgLevel: number | null;
+      avgStats: { ATK: number | null; DEF: number | null; SPD: number | null; FOC: number | null; LCK: number | null; VIT: number | null };
       jobStatus: { status: string; total: number; processed: number; updated: number; failed: number; startedAt?: string; finishedAt?: string; error?: string } | null;
     }>>('/entity-collections'),
 

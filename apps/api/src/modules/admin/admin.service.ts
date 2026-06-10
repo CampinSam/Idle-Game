@@ -10,7 +10,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
 import { CraftingService } from '../crafting/crafting.service';
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import { NftCollectionService } from '../nft/nft-collection.service';
-import { STAT_KEYS, computeScaling, computeCompositRarity, levelFromXp, type ScalingContribution } from '@derp/math';
+import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
@@ -18,7 +18,6 @@ import type { RichSelection, TraitPrimitive } from '@derp/shared';
 import { validateEntityTraitsShape } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { buildEntityDataFromNftMetadata } from '../nft/nft-entity-builder';
-import { getProgressionRules, xpForNextLevel } from '../entity/entity-progression-rules.util';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
@@ -1430,23 +1429,11 @@ export class AdminService {
 
     const definition = entity.definition;
     const progression = (entity.progression as any) || {};
-    const currentLevel = Math.max(1, Number(progression.level ?? 1));
-    const residualXp = Math.max(0, Number(progression.xp ?? 0));
-
-    // Compute lifetime XP = sum of all consumed thresholds + residual.
-    // This lets levelFromXp re-derive the correct level even if the XP curve changed.
-    let lifetimeXp = residualXp;
-    try {
-      const rules = getProgressionRules(definition, entity.definitionId);
-      for (let L = 1; L < currentLevel; L++) {
-        lifetimeXp += xpForNextLevel(rules, L);
-      }
-    } catch {
-      // Progression rules missing — keep current level, just replay stat gains.
-      lifetimeXp = residualXp;
-    }
-
-    const targetLevel = Math.max(1, levelFromXp(lifetimeXp, definition?.progression));
+    // Use the authoritative stored level as the rebuild target.
+    // Rebuild re-derives traits+stats from seed; level is preserved as-is since
+    // the entity's actual accumulated XP is not stored separately and cannot be
+    // faithfully re-derived without it.
+    const targetLevel = Math.max(1, Number(progression.level ?? 1));
 
     const beforeTraits = entity.traits;
     const beforeStats = entity.stats;
@@ -1524,41 +1511,53 @@ export class AdminService {
     });
 
     return {
-      before: { traits: beforeTraits, stats: beforeStats, level: currentLevel },
+      before: { traits: beforeTraits, stats: beforeStats, level: targetLevel },
       after: { traits: updated.traits, stats: updated.stats, level: targetLevel },
     };
   }
 
   /**
    * Aggregate stats per EntityDefinition for the Collections page.
+   * Uses LEFT JOIN so definitions with zero entities are still included.
    */
   async getEntityCollections(): Promise<any[]> {
-    const definitions = await (this.prisma as any).entityDefinition.findMany({
-      select: { id: true, name: true, speciesId: true },
-    });
-    const defMap: Record<string, any> = {};
-    for (const d of definitions) defMap[d.id] = d;
-
     const rows: any[] = await (this.prisma as any).$queryRaw`
       SELECT
-        e."definitionId",
-        COUNT(*)::int                                                                  AS "totalCount",
-        COUNT(e."nftAssetId")::int                                                     AS "nftCount",
+        d.id                                                                                       AS "definitionId",
+        d.name                                                                                     AS "definitionName",
+        d."speciesId"                                                                              AS "speciesId",
+        COUNT(e.id)::int                                                                           AS "totalCount",
+        COUNT(e."nftAssetId")::int                                                                 AS "nftCount",
         COUNT(CASE WHEN e."ownerUserId" IS NOT NULL AND e."nftAssetId" IS NOT NULL THEN 1 END)::int AS "claimedNftCount",
-        ROUND(AVG(((e.progression::jsonb)->>'level')::numeric), 2)::float              AS "avgLevel"
-      FROM "Entity" e
-      GROUP BY e."definitionId"
-      ORDER BY e."definitionId"
+        ROUND(AVG(((e.progression::jsonb)->>'level')::numeric),   2)::float                       AS "avgLevel",
+        ROUND(AVG((e.stats::jsonb->>'ATK')::numeric), 2)::float                                    AS "avgATK",
+        ROUND(AVG((e.stats::jsonb->>'DEF')::numeric), 2)::float                                    AS "avgDEF",
+        ROUND(AVG((e.stats::jsonb->>'SPD')::numeric), 2)::float                                    AS "avgSPD",
+        ROUND(AVG((e.stats::jsonb->>'FOC')::numeric), 2)::float                                    AS "avgFOC",
+        ROUND(AVG((e.stats::jsonb->>'LCK')::numeric), 2)::float                                    AS "avgLCK",
+        ROUND(AVG((e.stats::jsonb->>'VIT')::numeric), 2)::float                                    AS "avgVIT"
+      FROM "EntityDefinition" d
+      LEFT JOIN "Entity" e ON e."definitionId" = d.id
+      GROUP BY d.id, d.name, d."speciesId"
+      ORDER BY d.name
     `;
 
     return rows.map((row) => ({
       definitionId: row.definitionId,
-      definitionName: defMap[row.definitionId]?.name ?? row.definitionId,
-      speciesId: defMap[row.definitionId]?.speciesId ?? null,
+      definitionName: row.definitionName ?? row.definitionId,
+      speciesId: row.speciesId ?? null,
       totalCount: Number(row.totalCount ?? 0),
       nftCount: Number(row.nftCount ?? 0),
       claimedNftCount: Number(row.claimedNftCount ?? 0),
-      avgLevel: typeof row.avgLevel === 'number' ? row.avgLevel : null,
+      avgLevel: row.avgLevel != null ? Number(row.avgLevel) : null,
+      avgStats: {
+        ATK: row.avgATK != null ? Number(row.avgATK) : null,
+        DEF: row.avgDEF != null ? Number(row.avgDEF) : null,
+        SPD: row.avgSPD != null ? Number(row.avgSPD) : null,
+        FOC: row.avgFOC != null ? Number(row.avgFOC) : null,
+        LCK: row.avgLCK != null ? Number(row.avgLCK) : null,
+        VIT: row.avgVIT != null ? Number(row.avgVIT) : null,
+      },
       jobStatus: this.rebuildJobs.get(row.definitionId) ?? null,
     }));
   }

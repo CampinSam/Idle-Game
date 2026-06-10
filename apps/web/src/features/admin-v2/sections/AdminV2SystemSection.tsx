@@ -111,7 +111,7 @@ export default function AdminV2SystemSection({ me, activeTool, onToolChange }: P
         )}
         {activeTool === 'entity-collections' && (
           <div className="min-h-full" style={{ height: '100%', overflow: 'auto' }}>
-            <EntityCollectionsPage />
+            <EntityCollectionsPage isSuperAdmin={me.role.slug === 'super_admin'} />
           </div>
         )}
       </div>
