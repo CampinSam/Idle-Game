@@ -749,9 +749,20 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
 
             {rebuildDiffs[entity.id] && (() => {
               const diff = rebuildDiffs[entity.id];
-              const before = diff.before?.stats || {};
-              const after = diff.after?.stats || {};
-              const changed = STAT_KEYS.filter((k) => before[k] !== after[k]);
+              const bStats = diff.before?.stats || {};
+              const aStats = diff.after?.stats || {};
+              const bTraits = diff.before?.traits || {};
+              const aTraits = diff.after?.traits || {};
+              const changedStats = STAT_KEYS.filter((k) => bStats[k] !== aStats[k]);
+              const allTraitKeys = Array.from(new Set([
+                ...Object.keys(bTraits),
+                ...Object.keys(aTraits),
+              ]));
+              const changedTraits = allTraitKeys.filter((slot) => {
+                const bv = typeof bTraits[slot] === 'object' ? bTraits[slot]?.traitId : bTraits[slot];
+                const av = typeof aTraits[slot] === 'object' ? aTraits[slot]?.traitId : aTraits[slot];
+                return bv !== av;
+              });
               return (
                 <div style={{
                   margin: '0 0.9rem 0.75rem',
@@ -764,18 +775,41 @@ function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload
                   <div style={{ color: '#a89fff', fontWeight: 700, marginBottom: 6 }}>
                     ✓ Rebuilt — Level {diff.before.level} → {diff.after.level}
                   </div>
-                  {changed.length === 0 ? (
-                    <div style={{ color: '#5a5a8a' }}>Stats unchanged</div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                      {changed.map((k) => (
-                        <div key={k} style={{ color: '#9090c8' }}>
-                          <span style={{ color: '#6060a0' }}>{k}: </span>
-                          <span style={{ color: '#f87171' }}>{before[k] ?? '–'}</span>
-                          <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
-                          <span style={{ color: '#34d399' }}>{after[k] ?? '–'}</span>
-                        </div>
-                      ))}
+                  {changedStats.length === 0 && changedTraits.length === 0 && (
+                    <div style={{ color: '#5a5a8a' }}>Stats and traits unchanged</div>
+                  )}
+                  {changedStats.length > 0 && (
+                    <div style={{ marginBottom: changedTraits.length > 0 ? 6 : 0 }}>
+                      <div style={{ color: '#5a5a8a', fontSize: '0.72rem', marginBottom: 4 }}>STATS</div>
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                        {changedStats.map((k) => (
+                          <div key={k} style={{ color: '#9090c8' }}>
+                            <span style={{ color: '#6060a0' }}>{k}: </span>
+                            <span style={{ color: '#f87171' }}>{bStats[k] ?? '–'}</span>
+                            <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
+                            <span style={{ color: '#34d399' }}>{aStats[k] ?? '–'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {changedTraits.length > 0 && (
+                    <div>
+                      <div style={{ color: '#5a5a8a', fontSize: '0.72rem', marginBottom: 4 }}>TRAITS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {changedTraits.map((slot) => {
+                          const bv = typeof bTraits[slot] === 'object' ? (bTraits[slot]?.traitId ?? JSON.stringify(bTraits[slot])) : String(bTraits[slot] ?? '–');
+                          const av = typeof aTraits[slot] === 'object' ? (aTraits[slot]?.traitId ?? JSON.stringify(aTraits[slot])) : String(aTraits[slot] ?? '–');
+                          return (
+                            <div key={slot} style={{ color: '#9090c8' }}>
+                              <span style={{ color: '#6060a0' }}>{slot}: </span>
+                              <span style={{ color: '#f87171' }}>{bv}</span>
+                              <span style={{ color: '#4a4a7a', margin: '0 3px' }}>→</span>
+                              <span style={{ color: '#34d399' }}>{av}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>

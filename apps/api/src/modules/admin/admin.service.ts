@@ -10,7 +10,7 @@ import { LocationSettlementService } from '../location/location-settlement.servi
 import { CraftingService } from '../crafting/crafting.service';
 import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import { NftCollectionService } from '../nft/nft-collection.service';
-import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
+import { STAT_KEYS, computeScaling, computeCompositRarity, levelFromXp, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
@@ -18,6 +18,7 @@ import type { RichSelection, TraitPrimitive } from '@derp/shared';
 import { validateEntityTraitsShape } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
 import { buildEntityDataFromNftMetadata } from '../nft/nft-entity-builder';
+import { getProgressionRules, xpForNextLevel } from '../entity/entity-progression-rules.util';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
@@ -1429,11 +1430,23 @@ export class AdminService {
 
     const definition = entity.definition;
     const progression = (entity.progression as any) || {};
-    // Use the authoritative stored level as the rebuild target.
-    // Rebuild re-derives traits+stats from seed; level is preserved as-is since
-    // the entity's actual accumulated XP is not stored separately and cannot be
-    // faithfully re-derived without it.
-    const targetLevel = Math.max(1, Number(progression.level ?? 1));
+    const currentLevel = Math.max(1, Number(progression.level ?? 1));
+    const residualXp = Math.max(0, Number(progression.xp ?? 0));
+
+    // Reconstruct lifetime XP from the current progression curve so that
+    // curve changes take effect immediately on rebuild.
+    // lifetimeXp = sum(thresholds for levels 1..currentLevel-1) + residual
+    let lifetimeXp = residualXp;
+    try {
+      const rules = getProgressionRules(definition, entity.definitionId);
+      for (let L = 1; L < currentLevel; L++) {
+        lifetimeXp += xpForNextLevel(rules, L);
+      }
+    } catch {
+      // No progression rules — level stays unchanged.
+      lifetimeXp = residualXp;
+    }
+    const targetLevel = Math.max(1, levelFromXp(lifetimeXp, definition?.progression));
 
     const beforeTraits = entity.traits;
     const beforeStats = entity.stats;
@@ -1511,7 +1524,7 @@ export class AdminService {
     });
 
     return {
-      before: { traits: beforeTraits, stats: beforeStats, level: targetLevel },
+      before: { traits: beforeTraits, stats: beforeStats, level: currentLevel },
       after: { traits: updated.traits, stats: updated.stats, level: targetLevel },
     };
   }
