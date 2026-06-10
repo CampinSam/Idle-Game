@@ -267,6 +267,21 @@ export class SeedSyncService {
     return results;
   }
 
+  /**
+   * row_to_json in PostgreSQL serialises TIMESTAMP (no tz) columns without a
+   * timezone suffix, e.g. "2026-05-26T22:03:25.753". Prisma rejects those
+   * because it expects a full ISO-8601 string. This helper converts any
+   * date-like string values to proper Date objects so Prisma accepts them.
+   */
+  private normalizeDates(record: any): any {
+    const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+    const out: any = {};
+    for (const [k, v] of Object.entries(record)) {
+      out[k] = typeof v === 'string' && ISO_RE.test(v) ? new Date(v) : v;
+    }
+    return out;
+  }
+
   private async upsertTable(modelName: SeedTableName, records: any[]): Promise<void> {
     const model = (this.prisma as any)[modelName];
     if (!model) {
@@ -282,9 +297,10 @@ export class SeedSyncService {
       const children = records.filter((r) => r.parentId);
       for (const batch of [parents, children]) {
         for (const raw of batch) {
-          const record = transform ? transform(raw) : raw;
+          const base = transform ? transform(raw) : raw;
+          const record = this.normalizeDates(base);
           const where = buildWhere(record);
-          const { id: _id, ...rest } = record;
+          const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
         }
       }
@@ -292,9 +308,10 @@ export class SeedSyncService {
     }
 
     for (const raw of records) {
-      const record = transform ? transform(raw) : raw;
+      const base = transform ? transform(raw) : raw;
+      const record = this.normalizeDates(base);
       const where = buildWhere(record);
-      const { id: _id, ...rest } = record;
+      const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
       try {
         await model.upsert({ where, update: rest, create: record });
       } catch (err: any) {
