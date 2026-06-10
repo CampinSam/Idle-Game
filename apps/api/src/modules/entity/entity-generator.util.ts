@@ -52,6 +52,7 @@ export async function generateEntityData(
   definitionId: string,
   displayName?: string,
   seed?: number,
+  startingLevelOverride?: number,
 ): Promise<GeneratedEntityData> {
   const entityDef = await (prisma as any).entityDefinition.findUnique({
     where: { id: definitionId },
@@ -86,7 +87,7 @@ export async function generateEntityData(
       `EntityDefinition "${definitionId}" is missing required \`init.scratch.startingLevel\``,
     );
   }
-  const startingLevel: number = scratchRules.startingLevel;
+  const startingLevel: number = startingLevelOverride ?? scratchRules.startingLevel;
   const initBaseStats = initRules.baseStats as Record<string, number>;
   if (!initBaseStats || typeof initBaseStats !== 'object') {
     throw new Error(

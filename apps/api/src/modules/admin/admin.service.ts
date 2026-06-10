@@ -1460,13 +1460,18 @@ export class AdminService {
 
     if (!entity.nftAssetId) {
       // Scratch path — fully deterministic from seed
-      const seed = typeof entity.seed === 'number' ? entity.seed : undefined;
+      if (typeof entity.seed !== 'number') {
+        throw new BadRequestException(
+          `Entity "${entityId}" has no seed — run a seed backfill migration before rebuilding`,
+        );
+      }
       const generated = await generateEntityData(
         this.prisma,
         entity.ownerUserId ?? 'system',
         entity.definitionId,
         (entity.display as any)?.name ?? undefined,
-        seed,
+        entity.seed,
+        1, // force level 1; gains are replayed separately to targetLevel
       );
       level1Stats = generated.stats;
       level1Traits = generated.traits;
@@ -1553,8 +1558,8 @@ export class AdminService {
         ROUND(AVG((e.stats::jsonb->>'FOC')::numeric), 2)::float                                    AS "avgFOC",
         ROUND(AVG((e.stats::jsonb->>'LCK')::numeric), 2)::float                                    AS "avgLCK",
         ROUND(AVG((e.stats::jsonb->>'VIT')::numeric), 2)::float                                    AS "avgVIT"
-      FROM "EntityDefinition" d
-      LEFT JOIN "Entity" e ON e."definitionId" = d.id
+      FROM entity_definitions d
+      LEFT JOIN entities e ON e."definitionId" = d.id
       GROUP BY d.id, d.name, d."speciesId"
       ORDER BY d.name
     `;
