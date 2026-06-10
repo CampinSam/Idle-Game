@@ -229,6 +229,204 @@ describe('EffectService.resolveForTarget', () => {
   });
 });
 
+describe('EffectService.getPassiveEffectsFromEquipment', () => {
+  it('returns an empty array when targetType is not ENTITY', async () => {
+    const prisma = makeMockPrisma();
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.PLAYER,
+      'user-1',
+    );
+
+    expect(rows).toEqual([]);
+    expect(prisma.entityEquipment.findMany).not.toHaveBeenCalled();
+    expect(prisma.itemInstance.findMany).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty array when the entity has no equipped items', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([]);
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.ENTITY,
+      'ent-1',
+    );
+
+    expect(rows).toEqual([]);
+    expect(prisma.entityEquipment.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.itemInstance.findMany).not.toHaveBeenCalled();
+  });
+
+  it('synthesises a STAT_BOOST row from equipData.stats', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([
+      { itemInstanceId: 'inst-1' },
+    ]);
+    prisma.itemInstance.findMany.mockResolvedValue([
+      {
+        id: 'inst-1',
+        definition: {
+          id: 'item-def-sword',
+          passiveEffects: [],
+          equipData: { slot: 'weapon', stats: { ATK: 15, SPD: 3 } },
+        },
+      },
+    ]);
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.ENTITY,
+      'ent-1',
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].effectDefId).toBe('equip:item-def-sword:stat_boost');
+    expect(rows[0].category).toBe(EffectCategory.STAT_BOOST);
+    expect(rows[0].valueMode).toBe(EffectValueMode.FLAT_ADD);
+    expect(rows[0].value).toBe(0);
+    expect(rows[0].stats).toEqual({ ATK: 15, SPD: 3 });
+    expect(rows[0].currentStacks).toBe(1);
+  });
+
+  it('returns matching rows for explicit passiveEffects entries', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([
+      { itemInstanceId: 'inst-2' },
+    ]);
+    prisma.itemInstance.findMany.mockResolvedValue([
+      {
+        id: 'inst-2',
+        definition: {
+          id: 'item-def-ring',
+          passiveEffects: [
+            {
+              category: EffectCategory.MISSION_POWER,
+              valueMode: EffectValueMode.PERCENT_ADD,
+              value: 10,
+              stats: null,
+              trait: null,
+            },
+            {
+              category: EffectCategory.XP_MULTIPLIER,
+              valueMode: EffectValueMode.FLAT_ADD,
+              value: 5,
+              stats: null,
+              trait: null,
+            },
+          ],
+          equipData: {},
+        },
+      },
+    ]);
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.ENTITY,
+      'ent-1',
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].effectDefId).toBe('passive:item-def-ring:mission_power');
+    expect(rows[0].category).toBe(EffectCategory.MISSION_POWER);
+    expect(rows[0].valueMode).toBe(EffectValueMode.PERCENT_ADD);
+    expect(rows[0].value).toBe(10);
+    expect(rows[1].effectDefId).toBe('passive:item-def-ring:xp_multiplier');
+    expect(rows[1].category).toBe(EffectCategory.XP_MULTIPLIER);
+    expect(rows[1].value).toBe(5);
+  });
+
+  it('combines passiveEffects rows and a STAT_BOOST row when both are present', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([
+      { itemInstanceId: 'inst-3' },
+    ]);
+    prisma.itemInstance.findMany.mockResolvedValue([
+      {
+        id: 'inst-3',
+        definition: {
+          id: 'item-def-focus',
+          passiveEffects: [
+            {
+              category: EffectCategory.SUCCESS_CHANCE,
+              valueMode: EffectValueMode.FLAT_ADD,
+              value: 2,
+              stats: null,
+              trait: null,
+            },
+          ],
+          equipData: { slot: 'accessory', stats: { INT: 8 } },
+        },
+      },
+    ]);
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.ENTITY,
+      'ent-1',
+    );
+
+    expect(rows).toHaveLength(2);
+    const passiveRow = rows.find((r) => r.category === EffectCategory.SUCCESS_CHANCE);
+    const statRow = rows.find((r) => r.category === EffectCategory.STAT_BOOST);
+    expect(passiveRow).toBeDefined();
+    expect(passiveRow!.value).toBe(2);
+    expect(statRow).toBeDefined();
+    expect(statRow!.stats).toEqual({ INT: 8 });
+  });
+
+  it('skips passiveEffects entries missing category or valueMode', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([
+      { itemInstanceId: 'inst-4' },
+    ]);
+    prisma.itemInstance.findMany.mockResolvedValue([
+      {
+        id: 'inst-4',
+        definition: {
+          id: 'item-def-broken',
+          passiveEffects: [
+            { category: null, valueMode: EffectValueMode.FLAT_ADD, value: 5 },
+            { category: EffectCategory.MISSION_POWER, valueMode: null, value: 5 },
+            { category: EffectCategory.STAT_BOOST, valueMode: EffectValueMode.FLAT_ADD, value: 7 },
+          ],
+          equipData: {},
+        },
+      },
+    ]);
+    const { svc } = makeService(prisma);
+
+    const rows = await svc.getPassiveEffectsFromEquipment(
+      'user-1',
+      EffectTargetType.ENTITY,
+      'ent-1',
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].value).toBe(7);
+  });
+
+  it('queries entityEquipment with the correct userId ownership filter', async () => {
+    const prisma = makeMockPrisma();
+    prisma.entityEquipment.findMany.mockResolvedValue([]);
+    const { svc } = makeService(prisma);
+
+    await svc.getPassiveEffectsFromEquipment('user-42', EffectTargetType.ENTITY, 'ent-99');
+
+    expect(prisma.entityEquipment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { entityId: 'ent-99', entity: { ownerUserId: 'user-42' } },
+      }),
+    );
+  });
+});
+
 describe('EffectService.applyEffect', () => {
   it('creates a new active effect row when no matching active effect exists', async () => {
     const prisma = makeMockPrisma();
