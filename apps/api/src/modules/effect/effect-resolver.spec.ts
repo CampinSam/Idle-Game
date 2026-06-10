@@ -150,6 +150,12 @@ describe('resolveEffects — FLAT_SET', () => {
     expect(mod.flatAdd).toBe(42);
   });
 
+  it('scales flatAdd by stacks (value * currentStacks)', () => {
+    const row = makeRow({ valueMode: EffectValueMode.FLAT_SET, value: 42, currentStacks: 3 });
+    const mod = resolveEffects([row], EffectCategory.STAT_BOOST);
+    expect(mod.flatAdd).toBe(126); // 42 * 3
+  });
+
   it('last FLAT_SET wins when multiple rows present', () => {
     const rows = [
       makeRow({ valueMode: EffectValueMode.FLAT_SET, value: 10 }),
