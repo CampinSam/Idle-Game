@@ -441,6 +441,7 @@ export default function AdminV2PlayersSection({ me }: Props) {
               player={player}
               onBack={() => setPlayer(null)}
               onReload={reloadPlayer}
+              isSuperAdmin={me.role.slug === 'super_admin'}
             />
           )}
           {activeTab === 'wallet' && <WalletTab playerId={player.id} canWrite={!!canWrite} />}

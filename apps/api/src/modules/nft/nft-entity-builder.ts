@@ -4,6 +4,22 @@ import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribut
 import { resolveRnd } from '../entity/rnd-resolver.util';
 import type { TraitPrimitive } from '@derp/shared';
 
+/**
+ * Deterministic PRNG — mulberry32.
+ * Returns a function that yields float values in [0, 1) from a 32-bit integer seed.
+ * Identical implementation to entity-generator.util.ts — kept local to avoid
+ * cross-module imports between parallel service files.
+ */
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let z = Math.imul(s ^ (s >>> 15), 1 | s);
+    z = (z + Math.imul(z ^ (z >>> 7), 61 | z)) ^ z;
+    return ((z ^ (z >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
 export async function buildEntityDataFromNftMetadata(
   prisma: PrismaService,
   collection: {
@@ -15,6 +31,7 @@ export async function buildEntityDataFromNftMetadata(
     data?: Record<string, any> | null;
   },
   meta: NftMetadata,
+  seed?: number,
 ): Promise<Record<string, any>> {
   const entityDef = await (prisma as any).entityDefinition.findUnique({
     where: { id: collection.entityDefinitionId },
@@ -33,6 +50,17 @@ export async function buildEntityDataFromNftMetadata(
 
   const scalingContributions: ScalingContribution[] = [];
   const traits: Record<string, TraitPrimitive> = {};
+
+  // When a seed is provided, use mulberry32 to produce a deterministic seededPicker
+  // for RND resolution — identical pattern to entity-generator.util.ts.
+  // When absent, fall back to Math.random (backward-compatible for legacy callers).
+  const resolvedSeed = typeof seed === 'number' && Number.isInteger(seed)
+    ? (seed & 0x7fffffff)
+    : undefined;
+  const rng = resolvedSeed !== undefined ? mulberry32(resolvedSeed) : null;
+  const seededPicker = rng
+    ? (visibleStats: readonly string[]) => visibleStats[Math.floor(rng() * visibleStats.length)]
+    : undefined;
 
   const normalizedAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(meta.attributes)) {
@@ -171,12 +199,14 @@ export async function buildEntityDataFromNftMetadata(
     const slotStats = (traitDef.slotStats as any)?.[slotName];
     if (slotStats && typeof slotStats === 'object') {
       // Resolve RND immediately so it never lands in baseStats as 'RND'.
-      // Mirrors entity-generator.util.ts so NFT-built entities follow the
-      // same stat-resolution path as randomly generated ones.
+      // Pass seededPicker (derived from entity.seed) so RND resolution is
+      // deterministic — rebuilds always produce the same stats for the same
+      // NFT attributes + seed pair.
       const resolved = resolveRnd(
         Object.fromEntries(
           Object.entries(slotStats).filter(([k, v]) => k === 'RND' || typeof v === 'number'),
         ) as Record<string, number | number[]>,
+        seededPicker,
       );
       for (const [stat, value] of Object.entries(resolved)) {
         baseStats[stat] = (baseStats[stat] || 0) + value;

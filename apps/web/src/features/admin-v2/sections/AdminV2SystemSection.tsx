@@ -8,13 +8,15 @@ import ScreenComposerPage from '../../admin/screen-composer/ScreenComposerPage';
 import ModalEditorPage from '../../admin/modal-editor/ModalEditorPage';
 import PlayerEventsAdminPage from '../../admin/player-events/PlayerEventsAdminPage';
 import NftCollectionsPage from '../../admin/nft/NftCollectionsPage';
+import EntityCollectionsPage from '../../admin/EntityCollectionsPage';
 import AdminV2PlayersSection from './AdminV2PlayersSection';
 import type { AdminMe } from '../../admin/adminApi';
 
-export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events' | 'nft-collections';
+export type SystemTool = 'icons' | 'audio' | 'tags' | 'telemetry' | 'god-mode' | 'selection-tester' | 'crypto' | 'screens' | 'modal-editor' | 'player-events' | 'nft-collections' | 'entity-collections';
 
 export const SYSTEM_TOOLS: { key: SystemTool; label: string }[] = [
   { key: 'nft-collections', label: 'NFT Collections' },
+  { key: 'entity-collections', label: 'Entity Collections' },
   { key: 'icons', label: 'Icons' },
   { key: 'audio', label: 'Audio' },
   { key: 'tags', label: 'Tags & Effects' },
@@ -105,6 +107,11 @@ export default function AdminV2SystemSection({ me, activeTool, onToolChange }: P
         {activeTool === 'player-events' && (
           <div className="min-h-full" style={{ height: '100%', overflow: 'auto' }}>
             <PlayerEventsAdminPage />
+          </div>
+        )}
+        {activeTool === 'entity-collections' && (
+          <div className="min-h-full" style={{ height: '100%', overflow: 'auto' }}>
+            <EntityCollectionsPage />
           </div>
         )}
       </div>

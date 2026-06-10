@@ -627,6 +627,37 @@ export const adminApi = {
   recordMetricSnapshot: () =>
     adminRequest<{ success: boolean }>('/metrics/record-snapshot', { method: 'POST', body: JSON.stringify({}) }),
 
+  // ─── Entity Rebuild ───────────────────────────────────────────────────────
+
+  regenerateEntity: (entityId: string) =>
+    adminRequest<{ before: { traits: any; stats: any; level: number }; after: { traits: any; stats: any; level: number } }>(
+      `/entities/${entityId}/regenerate`,
+      { method: 'POST', body: JSON.stringify({}) },
+    ),
+
+  getEntityCollections: () =>
+    adminRequest<Array<{
+      definitionId: string;
+      definitionName: string;
+      speciesId: string | null;
+      totalCount: number;
+      nftCount: number;
+      claimedNftCount: number;
+      avgLevel: number | null;
+      jobStatus: { status: string; total: number; processed: number; updated: number; failed: number; startedAt?: string; finishedAt?: string; error?: string } | null;
+    }>>('/entity-collections'),
+
+  getEntityCollectionJobStatus: (definitionId: string) =>
+    adminRequest<{ status: 'idle' | 'running' | 'done' | 'error'; total: number; processed: number; updated: number; failed: number; startedAt?: string; finishedAt?: string; error?: string }>(
+      `/entity-collections/${encodeURIComponent(definitionId)}/job`,
+    ),
+
+  startEntityCollectionRebuild: (definitionId: string) =>
+    adminRequest<{ started: true; total: number }>(
+      `/entity-collections/${encodeURIComponent(definitionId)}/regenerate`,
+      { method: 'POST', body: JSON.stringify({}) },
+    ),
+
   uploadMedia: (file: File, targetDir?: string) => {
     const formData = new FormData();
     formData.append('file', file);

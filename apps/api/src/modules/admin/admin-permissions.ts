@@ -138,6 +138,18 @@ export function resolveRequiredPermission(
     return { allowed: true };
   }
 
+  // Entity regenerate: super_admin only (must come before the generic /entities allow-all block)
+  if (adminPath.startsWith('/entities') && adminPath.endsWith('/regenerate') && M === 'POST') {
+    return requireRole(user, 'super_admin');
+  }
+
+  // Entity collections: system_tools for reads/job status; super_admin for bulk rebuild
+  if (adminPath.startsWith('/entity-collections')) {
+    if (M === 'POST' && adminPath.endsWith('/regenerate')) return requireRole(user, 'super_admin');
+    if (isWrite) return requirePerm(user, 'system_tools');
+    return requirePerm(user, 'system_tools');
+  }
+
   // Always allowed for any authenticated admin
   if (
     adminPath === '/me' ||

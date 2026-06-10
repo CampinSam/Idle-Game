@@ -8,6 +8,7 @@ export {
   computeCompositRarity,
   applyWeightedLevelUp,
   getPowerScore,
+  levelFromXp,
   type StatKey,
   type ScalingContribution,
   type LevelUpResult,

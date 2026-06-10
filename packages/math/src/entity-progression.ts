@@ -220,6 +220,47 @@ export function applyWeightedLevelUp(
 }
 
 /**
+ * Derive the level an entity would be at given its accumulated **lifetime** XP
+ * and the definition's progression config (EntityDefinition.progression).
+ *
+ * Mirrors the level loop in addEntityXp exactly: starting at level 1, apply
+ * the curve thresholds until the remaining XP is below the next threshold or
+ * maxLevel is reached.
+ *
+ * Note: `addEntityXp` stores **residual** XP (above the current level's
+ * threshold, below the next). Pass *lifetime* XP here — the sum of all
+ * threshold XP consumed to reach the current level plus the residual.
+ * The rebuild pipeline computes this from (level + residual) before calling.
+ */
+export function levelFromXp(xp: number, progressionConfig: any): number {
+  if (!progressionConfig || typeof progressionConfig !== 'object') return 1;
+  const maxLevel =
+    typeof progressionConfig.maxLevel === 'number' ? progressionConfig.maxLevel : 100;
+  const curve = progressionConfig.xpCurve as any;
+  if (!curve || typeof curve !== 'object') return 1;
+
+  let level = 1;
+  let remaining = Math.max(0, Math.floor(xp));
+
+  while (level < maxLevel) {
+    let needed: number;
+    if (curve.kind === 'geometric') {
+      needed = Math.floor(curve.base * Math.pow(curve.ratio, level - 1));
+    } else if (curve.kind === 'table') {
+      const v = curve.perLevel?.[level - 1];
+      if (typeof v !== 'number') break;
+      needed = Math.floor(v);
+    } else {
+      break;
+    }
+    if (remaining < needed) break;
+    remaining -= needed;
+    level++;
+  }
+  return level;
+}
+
+/**
  * Power score for an entity given its stats. Matches the display formula
  * used on the Entities page and the mission-power calculation.
  */

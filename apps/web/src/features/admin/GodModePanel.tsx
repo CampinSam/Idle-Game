@@ -564,11 +564,12 @@ function EntityStatusBadge({ status }: { status: string }) {
   );
 }
 
-function EntitiesTab({ player, onReload }: { player: any; onReload: () => void }) {
+function EntitiesTab({ player, onReload, isSuperAdmin }: { player: any; onReload: () => void; isSuperAdmin?: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [entityEdits, setEntityEdits] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState<string | null>(null);
+  const [rebuilding, setRebuilding] = useState<string | null>(null);
   const [entityMsgs, setEntityMsgs] = useState<Record<string, { text: string; type: 'success' | 'error' }>>({});
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -635,6 +636,27 @@ function EntitiesTab({ player, onReload }: { player: any; onReload: () => void }
     } finally { setReconciling(null); }
   };
 
+  const rebuildEntity = async (entity: any) => {
+    if (!window.confirm(
+      `Re-derive traits + stats + level for entity "${(entity.display as any)?.name || entity.id}" from its stored seed?\n\nThis will overwrite current base stats. Equipped-stat boosts are re-applied at render time and are not affected.`
+    )) return;
+    setRebuilding(entity.id);
+    setEntityMsgs((prev) => { const n = { ...prev }; delete n[entity.id]; return n; });
+    try {
+      const result = await adminApi.regenerateEntity(entity.id);
+      setEntityMsgs((prev) => ({
+        ...prev,
+        [entity.id]: {
+          text: `Rebuilt — level ${result.before.level} → ${result.after.level}`,
+          type: 'success',
+        },
+      }));
+      onReload();
+    } catch (e: any) {
+      setEntityMsgs((prev) => ({ ...prev, [entity.id]: { text: e.message, type: 'error' } }));
+    } finally { setRebuilding(null); }
+  };
+
   const entities = player.entities || [];
 
   return (
@@ -675,6 +697,21 @@ function EntitiesTab({ player, onReload }: { player: any; onReload: () => void }
               >
                 {reconciling === entity.id ? '...' : '⚙ Reconcile'}
               </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => rebuildEntity(entity)}
+                  disabled={rebuilding === entity.id}
+                  title="Re-derive traits, stats and level from seed (super_admin only)"
+                  style={{
+                    padding: '0.35rem 0.65rem', marginRight: '0.5rem', border: '1px solid rgba(124,58,237,0.4)', borderRadius: 6,
+                    background: rebuilding === entity.id ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.2)',
+                    color: '#c4b5fd', cursor: rebuilding === entity.id ? 'default' : 'pointer',
+                    fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+                  }}
+                >
+                  {rebuilding === entity.id ? '...' : '🔁 Rebuild'}
+                </button>
+              )}
             </div>
 
             {entityMsgs[entity.id] && (
@@ -913,9 +950,10 @@ interface GodModePanelProps {
   player: any;
   onBack: () => void;
   onReload: () => void;
+  isSuperAdmin?: boolean;
 }
 
-export function GodModePanel({ player, onBack, onReload }: GodModePanelProps) {
+export function GodModePanel({ player, onBack, onReload, isSuperAdmin }: GodModePanelProps) {
   const [tab, setTab] = useState<GodTab>('profile');
 
   return (
@@ -948,7 +986,7 @@ export function GodModePanel({ player, onBack, onReload }: GodModePanelProps) {
         {tab === 'profile' && <ProfileTab player={player} onReload={onReload} />}
         {tab === 'items' && <ItemsTab player={player} />}
         {tab === 'jobs' && <JobsTab player={player} />}
-        {tab === 'entities' && <EntitiesTab player={player} onReload={onReload} />}
+        {tab === 'entities' && <EntitiesTab player={player} onReload={onReload} isSuperAdmin={isSuperAdmin} />}
         {tab === 'locations' && <LocationsTab player={player} />}
         {tab === 'effects' && <EffectsTab player={player} />}
         {tab === 'telemetry' && <TelemetryTab player={player} />}

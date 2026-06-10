@@ -8,15 +8,17 @@ import { InventoryService } from '../inventory/inventory.service';
 import { LocationService } from '../location/location.service';
 import { LocationSettlementService } from '../location/location-settlement.service';
 import { CraftingService } from '../crafting/crafting.service';
-import { generateEntityData } from '../entity/entity-generator.util';
+import { generateEntityData, levelUpEntityToLevel } from '../entity/entity-generator.util';
 import { NftCollectionService } from '../nft/nft-collection.service';
-import { STAT_KEYS, computeScaling, computeCompositRarity, type ScalingContribution } from '@derp/math';
+import { STAT_KEYS, computeScaling, computeCompositRarity, levelFromXp, type ScalingContribution } from '@derp/math';
 import { GameRulesService, GameUser, TeamEntitySnap } from '../game-rules/game-rules.service';
 import type { SelectionContext } from '../selection/selection.types';
 import type { TraceNode } from '../selection/selection-resolver.service';
 import type { RichSelection, TraitPrimitive } from '@derp/shared';
 import { validateEntityTraitsShape } from '@derp/shared';
 import { normalizeOutcomeFieldsForModel } from '../game-rules/outcome-spec.util';
+import { buildEntityDataFromNftMetadata } from '../nft/nft-entity-builder';
+import { getProgressionRules, xpForNextLevel } from '../entity/entity-progression-rules.util';
 import { computeEquippedStats } from '../entity/entity-stats.util';
 import { SeededRng } from '@derp/math';
 import { HomeBannerService } from '../home-banner/home-banner.service';
@@ -1396,6 +1398,262 @@ export class AdminService {
         iconSize: meta.iconSize ? Number(meta.iconSize) : 40,
       };
     });
+  }
+
+  // ─── Entity Rebuild ───────────────────────────────────────────────────────
+
+  private readonly rebuildJobs = new Map<string, {
+    status: 'running' | 'done' | 'error';
+    total: number;
+    processed: number;
+    updated: number;
+    failed: number;
+    startedAt: string;
+    finishedAt?: string;
+    error?: string;
+  }>();
+
+  /**
+   * Fully re-derive traits, stats, and level for a single entity from its
+   * stored seed (scratch) or stored NFT attributes + seed (NFT-backed).
+   *
+   * Preserved: id, ownerUserId, nftAssetId, nftCollectionDefId, ecosystemId,
+   * definitionId, speciesId, role, display, state, equipment, seed, xp,
+   * ascension, version.
+   */
+  async regenerateEntity(entityId: string): Promise<{ before: any; after: any }> {
+    const entity = await (this.prisma as any).entity.findUnique({
+      where: { id: entityId },
+      include: { definition: true },
+    });
+    if (!entity) throw new NotFoundException(`Entity "${entityId}" not found`);
+
+    const definition = entity.definition;
+    const progression = (entity.progression as any) || {};
+    const currentLevel = Math.max(1, Number(progression.level ?? 1));
+    const residualXp = Math.max(0, Number(progression.xp ?? 0));
+
+    // Compute lifetime XP = sum of all consumed thresholds + residual.
+    // This lets levelFromXp re-derive the correct level even if the XP curve changed.
+    let lifetimeXp = residualXp;
+    try {
+      const rules = getProgressionRules(definition, entity.definitionId);
+      for (let L = 1; L < currentLevel; L++) {
+        lifetimeXp += xpForNextLevel(rules, L);
+      }
+    } catch {
+      // Progression rules missing — keep current level, just replay stat gains.
+      lifetimeXp = residualXp;
+    }
+
+    const targetLevel = Math.max(1, levelFromXp(lifetimeXp, definition?.progression));
+
+    const beforeTraits = entity.traits;
+    const beforeStats = entity.stats;
+
+    let level1Stats: Record<string, any>;
+    let level1Traits: Record<string, any>;
+
+    if (!entity.nftAssetId) {
+      // Scratch path — fully deterministic from seed
+      const seed = typeof entity.seed === 'number' ? entity.seed : undefined;
+      const generated = await generateEntityData(
+        this.prisma,
+        entity.ownerUserId ?? 'system',
+        entity.definitionId,
+        (entity.display as any)?.name ?? undefined,
+        seed,
+      );
+      level1Stats = generated.stats;
+      level1Traits = generated.traits;
+    } else {
+      // NFT path — NFT attributes drive trait choices; seed drives RND resolution
+      const collection = await (this.prisma as any).nftCollectionDef.findUnique({
+        where: { id: entity.nftCollectionDefId },
+      });
+      if (!collection) {
+        throw new BadRequestException(
+          `NftCollectionDef "${entity.nftCollectionDefId}" not found for entity "${entityId}"`,
+        );
+      }
+      const state = (entity.state as any) || {};
+      const nftAttributes = state.nftAttributes as Record<string, string> | undefined;
+      if (!nftAttributes || Object.keys(nftAttributes).length === 0) {
+        throw new BadRequestException(
+          `Entity "${entityId}" has no stored nftAttributes — run a metadata refresh first`,
+        );
+      }
+      const display = (entity.display as any) || {};
+      const meta = {
+        assetId: (entity.nftAssetId as string).split(':')[2] ?? '',
+        name: display.name ?? '',
+        imageUrl: display.imageUrl ?? '',
+        attributes: nftAttributes,
+        rawMeta: state.nftRawMeta ?? {},
+        ...(state.nftAttributesRaw !== undefined ? { attributesRaw: state.nftAttributesRaw as string } : {}),
+      };
+      const seed = typeof entity.seed === 'number' ? entity.seed : undefined;
+      const nftData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta, seed);
+      level1Stats = nftData.stats;
+      level1Traits = nftData.traits;
+    }
+
+    // Replay level-up gains from level 1 to targetLevel
+    let finalStats: Record<string, any> = { ...level1Stats };
+    let finalHistory: Array<{ level: number; gains: Record<string, number> }> = [];
+    if (targetLevel > 1) {
+      const leveled = levelUpEntityToLevel(finalStats, targetLevel, definition?.progression?.statGain);
+      finalStats = leveled.stats;
+      finalHistory = leveled.levelHistory;
+    }
+
+    const updatedProgression = {
+      ...progression,
+      level: targetLevel,
+      levelHistory: finalHistory,
+      // xp (residual) and ascension are preserved as-is
+    };
+
+    const updated = await (this.prisma as any).entity.update({
+      where: { id: entityId },
+      data: {
+        traits: level1Traits,
+        stats: finalStats,
+        progression: updatedProgression,
+      },
+    });
+
+    return {
+      before: { traits: beforeTraits, stats: beforeStats, level: currentLevel },
+      after: { traits: updated.traits, stats: updated.stats, level: targetLevel },
+    };
+  }
+
+  /**
+   * Aggregate stats per EntityDefinition for the Collections page.
+   */
+  async getEntityCollections(): Promise<any[]> {
+    const definitions = await (this.prisma as any).entityDefinition.findMany({
+      select: { id: true, name: true, speciesId: true },
+    });
+    const defMap: Record<string, any> = {};
+    for (const d of definitions) defMap[d.id] = d;
+
+    const rows: any[] = await (this.prisma as any).$queryRaw`
+      SELECT
+        e."definitionId",
+        COUNT(*)::int                                                                  AS "totalCount",
+        COUNT(e."nftAssetId")::int                                                     AS "nftCount",
+        COUNT(CASE WHEN e."ownerUserId" IS NOT NULL AND e."nftAssetId" IS NOT NULL THEN 1 END)::int AS "claimedNftCount",
+        ROUND(AVG(((e.progression::jsonb)->>'level')::numeric), 2)::float              AS "avgLevel"
+      FROM "Entity" e
+      GROUP BY e."definitionId"
+      ORDER BY e."definitionId"
+    `;
+
+    return rows.map((row) => ({
+      definitionId: row.definitionId,
+      definitionName: defMap[row.definitionId]?.name ?? row.definitionId,
+      speciesId: defMap[row.definitionId]?.speciesId ?? null,
+      totalCount: Number(row.totalCount ?? 0),
+      nftCount: Number(row.nftCount ?? 0),
+      claimedNftCount: Number(row.claimedNftCount ?? 0),
+      avgLevel: typeof row.avgLevel === 'number' ? row.avgLevel : null,
+      jobStatus: this.rebuildJobs.get(row.definitionId) ?? null,
+    }));
+  }
+
+  getEntityCollectionJob(definitionId: string): any {
+    const job = this.rebuildJobs.get(definitionId);
+    if (!job) return { status: 'idle', total: 0, processed: 0, updated: 0, failed: 0 };
+    return job;
+  }
+
+  async startEntityCollectionRebuild(
+    definitionId: string,
+  ): Promise<{ started: true; total: number }> {
+    const existing = this.rebuildJobs.get(definitionId);
+    if (existing?.status === 'running') {
+      throw new BadRequestException(`Rebuild already running for definition "${definitionId}"`);
+    }
+
+    const count = await (this.prisma as any).entity.count({ where: { definitionId } });
+
+    this.rebuildJobs.set(definitionId, {
+      status: 'running',
+      total: count,
+      processed: 0,
+      updated: 0,
+      failed: 0,
+      startedAt: new Date().toISOString(),
+    });
+
+    this.runEntityCollectionRebuild(definitionId).catch((err) => {
+      this.logger.error(`Entity collection rebuild failed for ${definitionId}: ${err}`);
+      const current = this.rebuildJobs.get(definitionId);
+      if (current) {
+        this.rebuildJobs.set(definitionId, {
+          ...current,
+          status: 'error',
+          error: String(err),
+          finishedAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    return { started: true, total: count };
+  }
+
+  private async runEntityCollectionRebuild(definitionId: string): Promise<void> {
+    const BATCH_SIZE = 10;
+    const BATCH_DELAY_MS = 200;
+
+    let processed = 0;
+    let updated = 0;
+    let failed = 0;
+    let cursor: string | undefined;
+
+    while (true) {
+      const entities: any[] = await (this.prisma as any).entity.findMany({
+        where: { definitionId },
+        select: { id: true },
+        take: BATCH_SIZE,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { id: 'asc' },
+      });
+
+      if (entities.length === 0) break;
+      cursor = entities[entities.length - 1].id;
+
+      for (const { id } of entities) {
+        try {
+          await this.regenerateEntity(id);
+          updated++;
+        } catch (err) {
+          this.logger.warn(`Entity rebuild failed for ${id}: ${err}`);
+          failed++;
+        }
+        processed++;
+        const current = this.rebuildJobs.get(definitionId);
+        if (current) {
+          this.rebuildJobs.set(definitionId, { ...current, processed, updated, failed });
+        }
+      }
+
+      await new Promise<void>((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
+
+    const current = this.rebuildJobs.get(definitionId);
+    if (current) {
+      this.rebuildJobs.set(definitionId, {
+        ...current,
+        status: 'done',
+        processed,
+        updated,
+        failed,
+        finishedAt: new Date().toISOString(),
+      });
+    }
   }
 
   async getAdminGemPack(packId: string): Promise<any> {

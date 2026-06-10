@@ -462,10 +462,13 @@ export class NftCollectionService {
 
             const cachedAsset = await this.nftAssetCache.fetchAndCache(nftAssetId);
             const meta = nftAssetRowToMetadata(cachedAsset);
-            const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
+            // Generate a deterministic seed for this entity so that RND stat
+            // resolution (and future rebuilds) are reproducible.
+            const entitySeed = Math.random() * 0x7fffffff | 0;
+            const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta, entitySeed);
 
             await (this.prisma as any).entity.create({
-              data: { ...entityData, nftAssetId, nftCollectionDefId: collection.id },
+              data: { ...entityData, seed: entitySeed, nftAssetId, nftCollectionDefId: collection.id },
             });
 
             this.nftImageImport.invalidateKnownCidCache();
@@ -1451,7 +1454,7 @@ export class NftCollectionService {
 
       const entities = await (this.prisma as any).entity.findMany({
         where: { nftCollectionDefId: collection.id },
-        select: { id: true, nftAssetId: true, display: true, state: true },
+        select: { id: true, nftAssetId: true, display: true, state: true, seed: true },
       });
 
       total += entities.length;
@@ -1508,7 +1511,8 @@ export class NftCollectionService {
             ...(state.nftAttributesRaw !== undefined ? { attributesRaw: state.nftAttributesRaw as string } : {}),
           };
 
-          const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta);
+          const entitySeed = typeof entity.seed === 'number' ? entity.seed : undefined;
+          const entityData = await buildEntityDataFromNftMetadata(this.prisma, collection, meta, entitySeed);
 
           await (this.prisma as any).entity.update({
             where: { id: entity.id },

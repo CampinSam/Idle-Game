@@ -652,6 +652,44 @@ export class AdminController {
     return result;
   }
 
+  @Post('entities/:id/regenerate')
+  async regenerateEntity(@Req() req: any, @Param('id') id: string) {
+    if (req.adminUser.role !== 'super_admin') {
+      throw new ForbiddenException('Requires super_admin role');
+    }
+    const result = await this.adminService.regenerateEntity(id);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'entity_regenerate',
+      diff: { entityId: id, before: result.before, after: result.after },
+    });
+    return result;
+  }
+
+  @Get('entity-collections')
+  async getEntityCollections(@Req() req: any) {
+    return this.adminService.getEntityCollections();
+  }
+
+  @Get('entity-collections/:definitionId/job')
+  async getEntityCollectionJob(@Req() req: any, @Param('definitionId') definitionId: string) {
+    return this.adminService.getEntityCollectionJob(definitionId);
+  }
+
+  @Post('entity-collections/:definitionId/regenerate')
+  async startEntityCollectionRebuild(@Req() req: any, @Param('definitionId') definitionId: string) {
+    if (req.adminUser.role !== 'super_admin') {
+      throw new ForbiddenException('Requires super_admin role');
+    }
+    const result = await this.adminService.startEntityCollectionRebuild(definitionId);
+    await this.adminAuditService.log({
+      adminId: req.adminUser.id,
+      action: 'entity_collection_rebuild_start',
+      diff: { definitionId, total: result.total },
+    });
+    return result;
+  }
+
   @Post('backfill/production-rates')
   async backfillProductionRates(@Req() req: any) {
     const locations = await (this.prisma as any).locationInstance.findMany({
