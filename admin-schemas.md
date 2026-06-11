@@ -2799,7 +2799,7 @@ Determines how the `value` number is applied to a baseline.
 | `stack_additive` | Each application adds a new stack up to `maxStacks`. Effective value accumulates: `value × currentStacks`. |
 | `stack_multiplicative` | Each application adds a stack up to `maxStacks`. Effective value compounds multiplicatively across stacks. |
 | `stack_capped` | Stacks accumulate but the total effective value is capped at `cap`. Use when you want stacking behaviour with an upper ceiling. |
-| `no_stack` | Only one copy may be active. A second application is silently ignored if one is already present. |
+| `no_stack` | Only one copy may be active. A second application attempt throws a `400 Bad Request` error (`"Effect … is already active and cannot stack"`). |
 
 ---
 
@@ -2874,11 +2874,11 @@ Managed via `GET/POST/PUT/DELETE /api/admin/power-defs` and the generic admin sm
 | `description` | string | | Optional admin notes. |
 | `powerType` | `PowerType` | ✓ | Mechanical category of the power. See values below. |
 | `effectDefId` | string \| null | | Reference to an `EffectDef` row. Required when `powerType = "effect_backed"`; `null` for all other types. |
-| `defaultValue` | number | | Default effect magnitude. Falls back to `50` if not set. |
-| `defaultValueMode` | string | | Default `EffectValueMode`. Falls back to `"percent_add"` if not set. |
-| `defaultDurationMinutes` | number | | Default activation duration in minutes. Falls back to `30`. |
-| `defaultDailyLimit` | number | | Default maximum times per day this power can fire. Falls back to `1`. |
-| `defaultScope` | string | | Default target scope (e.g. `"global"`, `"self"`). Falls back to `"global"`. |
+| `defaultValue` | number | | Default effect magnitude. Schema default `0`. |
+| `defaultValueMode` | string | | Default `EffectValueMode`. Schema default `"percent_add"`. |
+| `defaultDurationMinutes` | number | | Default activation duration in minutes. Schema default `30`. |
+| `defaultDailyLimit` | number | | Default maximum times per day this power can fire. Schema default `1`. |
+| `defaultScope` | string | | Default target scope (e.g. `"global"`, `"self"`). Schema default `"global"`. |
 | `selection` | Json | | Default `EffectSelection` object (`{ scope, agg, filter? }`) applied when the trigger does not supply its own. |
 | `enabled` | boolean | | When `false`, the power cannot be triggered. Default `true`. |
 
@@ -3095,6 +3095,8 @@ Managed via the generic admin smart table (`questDef`).
 | `cadence` | string | | Controls the auto-reset schedule. Default `"oneoff"`. Valid values: `"oneoff"` (never auto-resets), `"daily"` (resets each UTC midnight), `"weekly"` (resets each UTC Monday midnight). The shared cadence utility also recognises `"monthly"` and `"every_x_days"` as accepted strings, but the server's automatic reset job currently only processes `daily` and `weekly` quests. Always `"oneoff"` for `category: "achievement"`. |
 | `enabled` | boolean | | Default `true`. Disabled quests are excluded from listing and event processing. |
 | `sortOrder` | number | | Display ordering within the quests/achievements list. Lower = shown first. Default `0`. |
+| `repeatable` | boolean | | When `true` (and `cadence` is `"oneoff"`), the quest resets to `active` after being claimed so the player can complete it again. Cadence quests (`daily`/`weekly`) are implicitly repeatable regardless of this flag. Default `false`. |
+| `version` | number | | Internal schema version for the quest def record. Incremented by the system. Default `1`. |
 | `requirements` | Json | | `RichSelection` tree evaluated at list time — gates whether the quest is visible to the player. |
 | `objectives` | Json | ✓ | Array of `Objective` entries defining what the player must do. See below. |
 | `rewardSpec` | Json | | Outcome entries array (same format as mission rewards) granted when the player claims the quest. |
