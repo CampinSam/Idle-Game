@@ -2681,3 +2681,557 @@ Exports the current DB state for all 30 tables to Object Storage and saves a ver
 ```
 
 The snapshot also overwrites the live `seed/seed-data.json` key, making it the new canonical source for subsequent `POST /api/admin/seed/run` calls.
+
+---
+
+## Effect Definitions — `EffectDef` Fields
+
+`EffectDef` rows define the mechanical template for an effect. They are authored in the admin smart table (`effectDef`) and referenced by ID everywhere effects are applied — global powers, consumable items, equipment passive effects, achievements, and more.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique snake_case identifier (e.g. `xp_boost_flat`). |
+| `name` | string | ✓ | Human-readable display name. |
+| `description` | string | | Admin notes describing the effect's purpose. |
+| `category` | `EffectCategory` | ✓ | What game system this effect modifies. See enum below. |
+| `valueMode` | `EffectValueMode` | ✓ | How the `value` number is applied to the base. See enum below. |
+| `durationModel` | `EffectDurationModel` | ✓ | How the effect's lifetime is tracked. See enum below. |
+| `stackingRule` | `EffectStackingRule` | ✓ | What happens when the same effect is applied a second time. See enum below. |
+| `targetType` | `EffectTargetType` | ✓ | Which game object the effect acts upon. See enum below. |
+| `value` | number | | Primary scalar magnitude. Meaning depends on `valueMode` (e.g. `50` = +50% for `percent_add`). Required for most categories; omit for `stat_boost` (use `stats`) and `trait_grant` (use `trait`). |
+| `stats` | `EffectStatMap` | | Per-stat distribution. Used by `stat_boost` category and for `RND` weighting in `trait_grant`. See [EffectStatMap](#effectstatmap--stat-distribution-object). |
+| `trait` | string | | Trait archetype name to grant. Required for `trait_grant` category; ignored otherwise. |
+| `durationSec` | number | | Duration in real seconds. Required when `durationModel` is `timed`. |
+| `durationTicks` | number | | Duration in game ticks. Required when `durationModel` is `tick_based`. |
+| `maxStacks` | number | | Maximum simultaneous stacks. Required for `stack_additive`, `stack_multiplicative`, `stack_capped` stacking rules. Default `1`. |
+| `maxUses` | number | | Maximum trigger events before the effect expires. Required when `durationModel` is `count_based`. |
+| `cap` | number | | Upper bound on the accumulated value when `stackingRule` is `stack_capped`. |
+| `resourceId` | string | | Scopes the effect to a specific resource (currency or item ID). Used by `production_rate`, `currency_multiplier`, `storage_capacity`, and similar resource-targeted categories. |
+| `sessionType` | string | | Session discriminator for `session` durationModel. The effect expires when the named session ends. |
+| `meta` | Json | | Arbitrary extra data for UI or system hints. Not evaluated by the effect resolver. |
+
+---
+
+## `EffectCategory` Enum
+
+| Value | Description |
+|-------|-------------|
+| `stat_boost` | Modifies entity combat stats (ATK, DEF, SPD, FOC, LCK, VIT). Use `stats` field instead of `value`. |
+| `mission_power` | Adds to a team's total mission power score. |
+| `success_chance` | Adjusts the mission success-chance roll. |
+| `reward_multiplier` | Multiplies the quantity of mission/crafting rewards. |
+| `xp_multiplier` | Multiplies entity XP earned from any source. |
+| `keeper_xp_multiplier` | Multiplies keeper (player account) XP earned. |
+| `production_rate` | Modifies the production rate of a specific resource. `resourceId` required. |
+| `storage_capacity` | Modifies the storage cap for a specific resource. `resourceId` required. |
+| `timer_speed` | Global timer speed boost — applies to all timed activities simultaneously. |
+| `mission_timer_speed` | Timer speed boost for missions only. |
+| `crafting_timer_speed` | Timer speed boost for crafting only. |
+| `building_build_timer_speed` | Timer speed for new building construction. |
+| `building_upgrade_timer_speed` | Timer speed for building upgrades. |
+| `injury_recovery_speed` | Timer speed for entity injury recovery. |
+| `dusting_timer_speed` | Timer speed for item dusting jobs. |
+| `mission_timer_speed_boost` | Dedicated mission timer speed boost (stacks separately from `mission_timer_speed`). |
+| `crafting_timer_speed_boost` | Dedicated crafting timer speed boost. |
+| `building_build_timer_speed_boost` | Dedicated building build speed boost. |
+| `building_upgrade_timer_speed_boost` | Dedicated building upgrade speed boost. |
+| `dusting_timer_speed_boost` | Dedicated dusting speed boost. |
+| `mission_duration_reduction` | Reduces mission duration by a flat or percentage amount. |
+| `crafting_duration_reduction` | Reduces crafting duration. |
+| `building_build_duration_reduction` | Reduces new building construction time. |
+| `building_upgrade_duration_reduction` | Reduces upgrade construction time. |
+| `dusting_duration_reduction` | Reduces dusting job time. |
+| `injury_recovery_reduction` | Reduces the time or cost of injury recovery. |
+| `trait_grant` | Grants a trait to the target entity. `trait` field required. `stats` field used for RND weighting if desired. |
+| `currency_multiplier` | Multiplies currency earned from a specific source. `resourceId` = currencyId. |
+| `cost_discount` | Reduces the cost of a specific action. |
+| `slot_unlock` | Unlocks additional slots (e.g. equipment slots) on the target. `value` = count to unlock. |
+| `protection` | Provides a protection shield reducing damage or loss. |
+| `reveal` | Reveals hidden information or entities. |
+| `threat_reduction` | Reduces threat level at locations. |
+| `craft_luck` | Adds to the entity's crafting luck (CL) for quality tier rolls. |
+| `worker_efficiency` | Multiplies the output of worker assignments at locations. |
+| `cooldown_reduction` | Reduces action cooldowns. |
+| `level_up_bonus` | Awards bonus stats on level-up. |
+
+---
+
+## `EffectValueMode` Enum
+
+Determines how the `value` number is applied to a baseline.
+
+| Value | Applied as | Description |
+|-------|-----------|-------------|
+| `flat_add` | `base + value` | Adds `value` directly to the base. Use for additive bonuses (e.g. `+10 ATK`). |
+| `percent_add` | `base × (1 + value/100)` | Adds `value` percent. `value = 50` → +50%. Negative values reduce the base. |
+| `multiplier` | `base × value` | Multiplies the base by `value`. `value = 1.5` → +50%; `value = 2.0` → double. |
+| `flat_set` | `value` (replaces base) | Replaces the base outright, ignoring any prior value. |
+| `bps` | `base × (1 + value/10000)` | Basis points — `value = 100` means +1%. Use for fine-grained financial adjustments. |
+| `flat_grant` | grant `value` units | Grants `value` units of something (trait tokens, currency, etc.) rather than modifying a stat. |
+| `random_range` | `random(0, value)` | `value` is the upper bound of a uniform random range resolved at activation time. |
+
+---
+
+## `EffectDurationModel` Enum
+
+| Value | Required extra fields | Description |
+|-------|----------------------|-------------|
+| `instant` | — | Fires once and immediately expires. No persistent `ActiveEffect` row is created. Used for one-time grants. |
+| `timed` | `durationSec` | Expires after `durationSec` real seconds. Active until its `expiresAt` timestamp passes. |
+| `tick_based` | `durationTicks` | Expires after `durationTicks` game ticks. Active until `expiresAtTick` is reached. |
+| `count_based` | `maxUses` | Expires after being triggered `maxUses` times. `remainingUses` decrements on each qualifying event. |
+| `session` | `sessionType` | Tied to a named session. Expires when the session identified by `sessionType + sessionId` ends. |
+| `permanent` | — | Never expires. No `expiresAt` or `expiresAtTick`. Used for achievement rewards and one-time unlocks. |
+| `until_removed` | — | Persists until explicitly removed via admin tool or a game event (e.g. equipment unequip, buff dispel). |
+
+---
+
+## `EffectStackingRule` Enum
+
+| Value | Description |
+|-------|-------------|
+| `replace` | The new application replaces any existing active effect with the same `effectDefId`. Only one copy can be active at a time. |
+| `refresh` | The new application resets the timer of the existing effect without changing its value. The effect's `expiresAt` is recalculated from now. |
+| `stack_additive` | Each application adds a new stack up to `maxStacks`. Effective value accumulates: `value × currentStacks`. |
+| `stack_multiplicative` | Each application adds a stack up to `maxStacks`. Effective value compounds multiplicatively across stacks. |
+| `stack_capped` | Stacks accumulate but the total effective value is capped at `cap`. Use when you want stacking behaviour with an upper ceiling. |
+| `no_stack` | Only one copy may be active. A second application is silently ignored if one is already present. |
+
+---
+
+## `EffectTargetType` Enum
+
+| Value | Description |
+|-------|-------------|
+| `entity` | The effect applies to a single entity instance. |
+| `player` | The effect applies to the player account (keeper-level modifiers, currency multipliers, etc.). |
+| `location` | The effect applies to a location instance (production rate, storage capacity, etc.). |
+| `team` | The effect applies to a mission team as a whole. |
+| `job` | The effect applies to a specific active job. |
+| `global` | The effect applies globally — to all targets of the underlying scope at once. Used by `GlobalActivePower`. |
+
+---
+
+## `EffectStatMap` — Stat Distribution Object
+
+Used by `stat_boost` effects on `EffectDef.stats` and on `PassiveEffectSpec.stats`. Each key specifies the value contributed to that stat when the effect is applied.
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `ATK` | number | Attack contribution |
+| `DEF` | number | Defence contribution |
+| `SPD` | number | Speed contribution |
+| `FOC` | number | Focus contribution |
+| `LCK` | number | Luck contribution |
+| `VIT` | number | Vitality contribution |
+| `RND` | number \| number[] | **Special — resolution directive.** Each entry independently picks a random visible stat (ATK/DEF/SPD/FOC/LCK/VIT) at award time and applies its full value to that stat. The same stat may be chosen more than once. Use a plain number for a single random draw; use an array for multiple independent draws. `RND` is never stored on an entity or shown in UI — it resolves to a concrete stat at the moment of application. |
+
+**Example — +10 ATK, +5 DEF, one random stat draw of +3:**
+
+```json
+{ "ATK": 10, "DEF": 5, "RND": 3 }
+```
+
+---
+
+## `EffectDefOverrides` — Safe Override Subset
+
+When a consumable or global power applies an `EffectDef`, it may supply overrides that shadow the def's values at activation time. Only the fields below can be overridden — structural identity fields (`category`, `valueMode`, `durationModel`, `stackingRule`, `targetType`) are intentionally excluded to preserve mechanical intent.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `value` | number | Override the def's `value`. |
+| `stats` | `EffectStatMap` | Override the def's `stats` distribution. |
+| `durationSec` | number | Override `durationSec` (meaningful for `timed` durationModel only). |
+| `durationTicks` | number | Override `durationTicks` (meaningful for `tick_based` durationModel only). |
+| `maxStacks` | number | Override the `maxStacks` cap. |
+| `maxUses` | number | Override `maxUses` (meaningful for `count_based` durationModel only). |
+| `cap` | number | Override the stacking value cap. |
+| `resourceId` | string | Override the resource scope. |
+
+**Where overrides appear:**
+- `ConsumableEffectSpec.effectOverrides` — on `ItemDefinition.consumableData.effects[]` entries.
+- `GlobalActivePower.effectOverrides` — in `POST /admin/global-powers` body.
+
+---
+
+## Power Definitions — `PowerDef` Fields
+
+`PowerDef` rows define reusable power templates. When a global power is triggered via the UI or an event handler, it may reference a `PowerDef` by `powerDefId` instead of supplying all parameters inline. Fields from the def are used as defaults; the trigger payload may override individual fields.
+
+Managed via `GET/POST/PUT/DELETE /api/admin/power-defs` and the generic admin smart table (`powerDef`).
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique snake_case identifier (e.g. `xp_boost_30min`). |
+| `name` | string | ✓ | Human-readable display name shown in the admin UI. |
+| `description` | string | | Optional admin notes. |
+| `powerType` | `PowerType` | ✓ | Mechanical category of the power. See values below. |
+| `effectDefId` | string \| null | | Reference to an `EffectDef` row. Required when `powerType = "effect_backed"`; `null` for all other types. |
+| `defaultValue` | number | | Default effect magnitude. Falls back to `50` if not set. |
+| `defaultValueMode` | string | | Default `EffectValueMode`. Falls back to `"percent_add"` if not set. |
+| `defaultDurationMinutes` | number | | Default activation duration in minutes. Falls back to `30`. |
+| `defaultDailyLimit` | number | | Default maximum times per day this power can fire. Falls back to `1`. |
+| `defaultScope` | string | | Default target scope (e.g. `"global"`, `"self"`). Falls back to `"global"`. |
+| `selection` | Json | | Default `EffectSelection` object (`{ scope, agg, filter? }`) applied when the trigger does not supply its own. |
+| `enabled` | boolean | | When `false`, the power cannot be triggered. Default `true`. |
+
+### `powerType` values
+
+| Value | `effectDefId` | Description |
+|-------|--------------|-------------|
+| `tick_speed_boost` | `null` (required) | Speeds up the global game tick rate via the `BoostEvent` pipeline — no `EffectDef` used. |
+| `effect_backed` | required | Delegates fully to an `EffectDef` for all mechanical resolution. |
+| `keeper_xp_boost` | `null` | Multiplies keeper (player account) XP earned. Shorthand type — no `EffectDef` required. |
+| `entity_xp_boost` | `null` | Multiplies entity XP earned. Shorthand type. |
+| `mission_power_boost` | `null` | Adds to team mission power. Shorthand type. |
+| `mission_duration_reduction` | `null` | Reduces mission duration. Shorthand type. |
+| `crafting_duration_reduction` | `null` | Reduces crafting duration. Shorthand type. |
+| `building_build_duration_reduction` | `null` | Reduces new-build construction time. Shorthand type. |
+| `building_upgrade_duration_reduction` | `null` | Reduces upgrade construction time. Shorthand type. |
+| `injury_recovery_boost` | `null` | Speeds up entity injury recovery. Shorthand type. |
+
+> **Tip:** Use `effect_backed` + an `EffectDef` when you need fine-grained control over stacking, targeting, or duration. Use shorthand types for simple one-off boosts where the system defaults are sufficient.
+
+---
+
+## EntityDefinition — `progression` Schema
+
+The `progression` JSON blob on an `EntityDefinition` controls how entities gain XP and stats at each level-up. Omitting the entire field (or any sub-key) applies the documented defaults, which reproduce the original hardcoded behaviour.
+
+### Top-level fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `maxLevel` | number | `100` | The level cap for entities of this definition. |
+| `xpCurve` | `XpCurveConfig` | `{ "kind": "geometric", "base": 100, "ratio": 1.15 }` | Controls how much XP is required to advance each level. |
+| `statGain` | `StatGainConfig` | See sub-sections below | Controls which stats grow and by how much at each level. |
+
+### `xpCurve` — `XpCurveConfig`
+
+#### `kind: "geometric"` (default)
+
+XP required for level _n_: `floor(base × ratio^(n−1))`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `base` | number | `100` | XP needed to reach level 2 (the first level-up threshold). |
+| `ratio` | number | `1.15` | Exponential growth factor. `1.15` means each level costs ~15% more XP than the previous. |
+
+**Example:**
+```json
+{ "kind": "geometric", "base": 100, "ratio": 1.15 }
+```
+
+#### `kind: "table"`
+
+Explicit per-level XP table for non-exponential or hand-tuned progressions.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `perLevel` | number[] | XP thresholds indexed from 0. Index 0 = XP to reach level 2, index 1 = level 3, etc. When the entity's level exceeds the array length, it is capped at the last defined level. |
+
+**Example:**
+```json
+{ "kind": "table", "perLevel": [100, 120, 150, 200, 280] }
+```
+
+### `statGain` — `StatGainConfig`
+
+#### `guaranteed`
+
+Fixed stat points awarded every level-up, regardless of rarity or weights. Partial objects accepted — only named stats receive a guaranteed grant.
+
+**Default:** `+1` to every stat (`ATK`, `DEF`, `SPD`, `FOC`, `LCK`, `VIT`).
+
+```json
+{ "guaranteed": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 } }
+```
+
+#### `bonusPool`
+
+Additional stat points distributed on top of the guaranteed grant. Two variants:
+
+**`rarityScaled`** (default) — pool size scales with the entity's rarity and current level:
+
+Pool = `floor(base × compositRarity^(level × exponent))`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `kind` | `"rarityScaled"` | required | Selects this variant. |
+| `base` | number | `14` | Pool at level 1 for a common entity (`compositRarity = 1.0`). |
+| `exponent` | number | `0.16` | Controls how steeply rarity compounds with level. Higher = rarer entities pull further ahead at high levels. |
+| `rarityField` | string | `"compositRarity"` | Key on `entity.stats` that holds the rarity scalar. Change only if you store it under a different key. |
+
+**`flat`** — fixed pool per level-up regardless of rarity:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kind` | `"flat"` | Selects this variant. |
+| `amount` | number | Fixed bonus pool per level-up for every entity. |
+
+#### `distribution`
+
+Controls how the bonus pool is split between uniform draws and rarity-weighted draws.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `uniformShare` | number 0–1 | `0.5` | Fraction of the bonus pool distributed with equal probability across all stats. |
+| `weightedShare` | number 0–1 | `0.5` | Fraction distributed according to the entity's trait scaling weights. `uniformShare + weightedShare` should equal `1`. |
+| `weightsField` | string | `"scaling"` | Key on `entity.stats` holding the per-stat weight map (produced by `computeScaling()` at entity generation time). If the `RND` key is present in the weights map, when selected it picks a random visible stat instead of a fixed one. |
+
+### Full defaults example
+
+```json
+{
+  "maxLevel": 100,
+  "xpCurve": { "kind": "geometric", "base": 100, "ratio": 1.15 },
+  "statGain": {
+    "guaranteed": { "ATK": 1, "DEF": 1, "SPD": 1, "FOC": 1, "LCK": 1, "VIT": 1 },
+    "bonusPool": { "kind": "rarityScaled", "base": 14, "exponent": 0.16, "rarityField": "compositRarity" },
+    "distribution": { "uniformShare": 0.5, "weightedShare": 0.5, "weightsField": "scaling" }
+  }
+}
+```
+
+---
+
+## CheckInDef — Track Configuration Fields
+
+`CheckInDef` rows define daily/weekly check-in tracks. Each row is an independent track; a player participates in all enabled tracks simultaneously, receiving a reward from each on claim.
+
+Managed via the generic admin smart table (`checkInDef`).
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `daily_login_track`). |
+| `name` | string | ✓ | Admin-facing display name. |
+| `description` | string | | Optional admin notes. |
+| `enabled` | boolean | | Default `true`. Disabled tracks are ignored for all players. |
+| `frequency` | Json | | Cadence object controlling how often the track window resets. See below. Default `{ "type": "daily" }`. |
+| `cycleLength` | number | | Number of reward slots in one cycle. After `cycleLength` claims the streak wraps back to day 0. Default `7`. |
+| `requireStreak` | boolean | | When `true`, missing a claim window resets the player's streak to day 0. When `false`, gaps are forgiven and the player continues from where they left off. Default `false`. |
+| `allowReclaim` | boolean | | When `true`, a streak reset (due to `requireStreak`) still allows the player to claim day 0 immediately in the new cycle. Default `false`. |
+| `rewards` | Json | | Ordered array of `RewardSlot` entries (see below). One slot fires per claim based on the player's current streak position. |
+
+### `frequency` object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | `"daily"` \| `"weekly"` | `"daily"` — window resets every UTC midnight. `"weekly"` — window resets every UTC Monday midnight. |
+
+### `rewards[]` — `RewardSlot` shape
+
+Each element in the `rewards` array represents one slot in the cycle.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `day` | number | ✓ | Zero-based slot index. The resolver selects the slot where `day === playerStreak % cycleLength`. |
+| `gift` | `GiftSpec` | ✓ | The reward to grant. Either `{ "giftDefId": "..." }` (reference) or an `InlineGiftDef`. See [GiftSpec — Inline Gift Definitions](#giftspec--inline-gift-definitions). |
+
+**Example — 7-day daily cycle with streak enforcement:**
+
+```json
+{
+  "frequency": { "type": "daily" },
+  "cycleLength": 7,
+  "requireStreak": true,
+  "allowReclaim": false,
+  "rewards": [
+    { "day": 0, "gift": { "giftDefId": "gift_day1_coins" } },
+    { "day": 1, "gift": { "giftDefId": "gift_day2_coins" } },
+    { "day": 2, "gift": { "giftDefId": "gift_day3_mat" } },
+    { "day": 3, "gift": { "giftDefId": "gift_day4_coins" } },
+    { "day": 4, "gift": { "giftDefId": "gift_day5_mat" } },
+    { "day": 5, "gift": { "giftDefId": "gift_day6_coins" } },
+    { "day": 6, "gift": {
+        "name": "Weekly Bonus",
+        "rewardSpec": [{ "type": "currency", "key": "hard_essence", "min": 10, "max": 10 }],
+        "instant": true
+      }
+    }
+  ]
+}
+```
+
+---
+
+## QuestDef — Complete Field Reference
+
+`QuestDef` rows define both quests and achievements. The `category` field distinguishes them — `"achievement"` rows appear in the Achievements panel and never reset; `"quest"` rows appear in the Quests panel and may reset on a cadence.
+
+Managed via the generic admin smart table (`questDef`).
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier (e.g. `quest_boss_hunter`). |
+| `name` | string | ✓ | Player-facing display name. |
+| `description` | string | | Player-facing description of what needs to be done. |
+| `iconKey` | string | | Asset key for the quest/achievement icon. |
+| `category` | `"quest"` \| `"achievement"` | | `"quest"` (default) — shown in the Quests panel. `"achievement"` — shown in the Achievements panel; lifetime one-shot, never resets. |
+| `tier` | number | | Achievement prestige tier: `1` = Bronze, `2` = Silver, `3` = Gold. Used for visual theming on `achievement`-category defs. |
+| `cadence` | `"daily"` \| `"weekly"` \| `null` | | When set, the quest auto-resets at the start of each UTC day (`"daily"`) or each UTC Monday (`"weekly"`). `null` = one-off; never auto-resets. Always `null` for `category: "achievement"`. |
+| `enabled` | boolean | | Default `true`. Disabled quests are excluded from listing and event processing. |
+| `sortOrder` | number | | Display ordering within the quests/achievements list. Lower = shown first. Default `0`. |
+| `requirements` | Json | | `RichSelection` tree evaluated at list time — gates whether the quest is visible to the player. |
+| `objectives` | Json | ✓ | Array of `Objective` entries defining what the player must do. See below. |
+| `rewardSpec` | Json | | Outcome entries array (same format as mission rewards) granted when the player claims the quest. |
+| `rewardPreview` | Json | | Optional static preview array `[{ type, id, amount }]` shown before the player claims. Useful when the actual reward is randomised. |
+| `permanentEffectSpec` | Json | | **Achievement-category only.** Applied once on first claim. Grants a permanent `ActiveEffect` with no expiry. See below. |
+
+### `objectives[]` — Objective shape
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `eventType` | string | | Fast-path filter — objective only increments when a telemetry event of this type fires. Omit to match any event (rely on `selector` for filtering). |
+| `selector` | `RichSelection` | | Full condition tree evaluated against the combined `SelectionContext` (player, entities, inventory, locations, and the live `event` scope). |
+| `target` | number | ✓ | Number of qualifying increments required to complete this objective. |
+| `description` | string | | Optional label shown in the player UI (e.g. `"Complete 3 boss missions"`). |
+
+### `permanentEffectSpec` — Achievement Permanent Effect
+
+Used on `category: "achievement"` defs to grant a lifetime bonus when the achievement is first claimed. Creates a `permanent` `ActiveEffect` (no expiry) on the player.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `effectDefId` | string | ID of the `EffectDef` to activate. |
+| `targetType` | `EffectTargetType` | Target of the effect. Falls back to the def's own `targetType` if omitted. |
+| `targetId` | string | Explicit target ID. Falls back to the claiming player's `userId` if omitted. |
+| `value` | number | Override the def's `value`. Falls back to the def's value if omitted. |
+| `stats` | `EffectStatMap` | Override the def's `stats`. Falls back to the def's stats if omitted. |
+
+**Example:**
+
+```json
+{
+  "permanentEffectSpec": {
+    "effectDefId": "stat_boost_atk_permanent",
+    "targetType": "player",
+    "value": 25
+  }
+}
+```
+
+---
+
+## ItemDefinition — Data Blob Sub-Schemas
+
+`ItemDefinition` rows carry several optional JSON blob fields that activate different game systems. All blobs are `null` by default; populate only the one that matches the item's type and purpose.
+
+### `consumableData` — Consumable Items
+
+Present when the item can be **used** directly from inventory (`type: CONSUMABLE`). Contains a `ConsumableData` object.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `effects` | `ConsumableEffectSpec[]` | ✓ | Array of effects applied when the item is consumed. |
+
+**`effects[]` entry — `ConsumableEffectSpec`:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `effectDefId` | string | ✓ | ID of the `EffectDef` to activate on use. |
+| `targetType` | `EffectTargetType` | ✓ | Which target the effect is applied to (`player`, `entity`, etc.). Each effect carries its own target — there is no top-level `targetType`. |
+| `effectOverrides` | `EffectDefOverrides` | | Optional field overrides that shadow the def's values at activation time. See [EffectDefOverrides](#effectdefoverrides--safe-override-subset). |
+
+**Example:**
+
+```json
+{
+  "consumableData": {
+    "effects": [
+      {
+        "effectDefId": "xp_boost_30min",
+        "targetType": "player",
+        "effectOverrides": { "value": 50, "durationSec": 1800 }
+      }
+    ]
+  }
+}
+```
+
+---
+
+### `passiveEffects` — Equipment Passive Bonuses
+
+Present on **equipment** items (`type: EQUIPMENT`). Defines passive effects applied while the item is equipped to an entity. Each entry is a `PassiveEffectSpec` — a lightweight inline effect that does not require a separate `EffectDef` row and does not create `ActiveEffect` records; it is resolved at query time from the equipped item.
+
+**`PassiveEffectSpec` fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `EffectCategory` | ✓ | What game system the passive modifies. |
+| `valueMode` | `EffectValueMode` | ✓ | How the value is applied. |
+| `value` | number | | Primary scalar. Required for most categories; omit for `stat_boost` (use `stats` instead). |
+| `stats` | `EffectStatMap` | | Per-stat distribution. Use for `stat_boost` category. |
+| `trait` | string | | Trait archetype name to grant. Use for `trait_grant` category. |
+
+**Example:**
+
+```json
+{
+  "passiveEffects": [
+    { "category": "stat_boost", "valueMode": "flat_add", "stats": { "ATK": 10, "DEF": 5 } },
+    { "category": "xp_multiplier", "valueMode": "percent_add", "value": 15 }
+  ]
+}
+```
+
+---
+
+### `equipData` — Equipment Slot Configuration
+
+Present on **equipment** items (`type: EQUIPMENT`). Specifies which equipment slot the item occupies and its flat stat bonuses applied while equipped.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `slot` | string | Equipment slot identifier (e.g. `"weapon"`, `"armour"`, `"accessory"`). Must match a slot defined on the entity definition's equipment configuration. |
+| `stats` | `Record<StatKey, number>` | Map of stat name → flat bonus value added to the entity while this item is equipped (e.g. `{ "ATK": 15, "SPD": 3 }`). Resolved via the effect resolver at query time — does not mutate `Entity.stats` directly. |
+
+**Example:**
+
+```json
+{
+  "equipData": {
+    "slot": "weapon",
+    "stats": { "ATK": 15, "SPD": 3 }
+  }
+}
+```
+
+> **Note:** `equipData.stats` produces a synthetic `stat_boost` / `flat_add` effect row when the effect resolver loads equipped items. `passiveEffects` entries are evaluated alongside it and stack normally with other active effects.
+
+---
+
+### `dustingData` — Item Breakdown
+
+Present when the item can be broken down via the dusting system. See the full field reference in [Item Dusting — Commands](#item-dusting--commands).
+
+---
+
+### `lootboxDefId` — Lootbox / Gacha Items
+
+Present on **lootbox** items (`type: LOOTBOX`). A plain string field (not a nested blob) referencing the `LootboxDef` row that determines the outcome pool when the player opens this item.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `lootboxDefId` | string | ID of the `LootboxDef` whose outcome pool is rolled on open. Managed via the `lootboxDef` admin smart table. |
+
+**Example (top-level field on the ItemDefinition):**
+
+```json
+{
+  "id": "lootbox_standard",
+  "name": "Standard Lootbox",
+  "type": "LOOTBOX",
+  "lootboxDefId": "lootbox_standard_pool"
+}
+```
