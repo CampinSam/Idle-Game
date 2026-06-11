@@ -1339,6 +1339,411 @@ type GiftSpec = { giftDefId: string } | InlineGiftDef;
 
 ---
 
+## GiftDef — Standalone Gift Definitions
+
+A `GiftDef` row is a reusable gift template stored in the database. Any `GiftSpec` that uses `{ "giftDefId": "..." }` resolves to one of these rows at issue time. Use a `GiftDef` when the same gift is issued from multiple sources (events, check-in tracks, admin tooling) so that presentation and rules stay in sync.
+
+**DB table:** `gift_defs`
+
+### Field table
+
+| Field | Type | Default | Required | Description |
+|-------|------|---------|----------|-------------|
+| `id` | string | — | ✓ | Stable slug identifier, e.g. `gift_welcome_pack`. Must be unique. |
+| `name` | string | — | ✓ | Admin-facing display name shown in the definition editor. |
+| `version` | integer | `1` | — | Monotonically increasing author version. Snapshot at issue time for audit purposes. |
+| `presentation` | `GiftPresentation` | `{}` | — | UI hints for the gift card and reveal screen. See [presentation sub-fields](#giftpresentation-sub-fields) below. |
+| `claimRules` | `GiftClaimRules` | `{}` | — | Constraints applied when the gift is issued and when it is claimed. See [claimRules sub-fields](#giftclaimrules-sub-fields) below. |
+| `rewardSpec` | `OutcomeEntry[]` | `{}` | — | Reward entries to grant on claim. Same shape as mission/lootbox outcome arrays. See [Outcome Entry Types](#outcome-entry-types). |
+| `instant` | boolean | `true` | — | `true` — rewards are granted immediately on claim. `false` — a `GIFT_PACKAGE` item is added to the player's inventory to be opened later. |
+| `enabled` | boolean | `true` | — | Disabled rows cannot be issued or referenced. |
+| `modalDefId` | string | `null` | — | Optional `ModalDef.id` to display when the player opens this gift. |
+| `createdAt` | ISO datetime | now | — | Record creation timestamp (read-only). |
+| `updatedAt` | ISO datetime | — | — | Last-modified timestamp (read-only). |
+
+### `GiftPresentation` sub-fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Heading shown on the gift card and notification. |
+| `subtitle` | string | Optional secondary line below the title. |
+| `iconKey` | string | Asset key for the gift icon/thumbnail. |
+| `animationKey` | string | Asset key for a reveal animation (played on claim). |
+| `accentColor` | string | Hex colour used as the card accent, e.g. `"#FFD700"`. |
+
+### `GiftClaimRules` sub-fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `limitPerPlayer` | integer | Maximum number of times a single player may claim gifts backed by this definition. Applies only when the gift was issued using `{ "giftDefId": "..." }` — inline gifts have no limit enforcement. |
+| `expiresInSeconds` | integer | Seconds from issue time until the gift expires. Expired gifts are marked `EXPIRED` and cannot be claimed. Omit for no expiry. |
+
+### Admin endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/admin/definitions/giftDef` | List all gift definitions. |
+| `GET` | `/admin/definitions/giftDef/:id` | Fetch a single gift definition. |
+| `POST` | `/admin/definitions/giftDef` | Create a new gift definition. |
+| `PUT` | `/admin/definitions/giftDef/:id` | Replace a gift definition. |
+| `PATCH` | `/admin/definitions/giftDef/:id` | Partially update a gift definition. |
+| `DELETE` | `/admin/definitions/giftDef/:id` | Delete a gift definition (use `enabled: false` to soft-disable instead). |
+| `POST` | `/admin/gifts/send` | Immediately issue a gift to a player by `giftDefId`. Body: `{ "userId", "giftDefId", "contextData?" }`. |
+
+### Example — minimal gift definition
+
+```json
+{
+  "id": "gift_welcome_pack",
+  "name": "Welcome Pack",
+  "presentation": {
+    "title": "Welcome to Derp Universe!",
+    "iconKey": "gift_welcome",
+    "accentColor": "#4CAF50"
+  },
+  "claimRules": {
+    "limitPerPlayer": 1,
+    "expiresInSeconds": 604800
+  },
+  "rewardSpec": [
+    { "type": "currency", "key": "soft_coins", "min": 500, "max": 500 },
+    { "type": "item", "key": "mat_starter_ore", "min": 5, "max": 5 }
+  ],
+  "instant": true,
+  "modalDefId": "modal_welcome_reveal"
+}
+```
+
+---
+
+## EventDefinition — System Event Definitions
+
+An `EventDefinition` row describes a named server-side event that can be dispatched to trigger backend logic on behalf of a player. Events are dispatched by admin tooling, the tick processor, or other game systems. The `handlerKey` field selects which handler function is executed.
+
+**DB table:** `event_definitions`
+
+### Field table
+
+| Field | Type | Default | Required | Description |
+|-------|------|---------|----------|-------------|
+| `id` | string | — | ✓ | Stable slug identifier, e.g. `event_mission_complete_bonus`. Must be unique. |
+| `name` | string | — | ✓ | Admin-facing display name. |
+| `version` | integer | `1` | — | Monotonically increasing author version for audit. |
+| `kind` | string | `"system"` | — | Categorisation label for filtering in the admin panel. Informational only; has no effect on dispatch. |
+| `handlerKey` | string | — | ✓ | Selects the server-side handler function to execute. See [handler keys](#handler-keys) below. |
+| `security` | `EventSecurity` | `{}` | — | Access control restrictions. See [security sub-fields](#eventsecurity-sub-fields) below. |
+| `inputSchema` | JSON object | `{}` | — | Optional JSON Schema (draft-07 or compatible) documenting the expected `payload` shape. Used for documentation and editor validation only — the server does not strictly validate against it at dispatch time. |
+| `enabled` | boolean | `true` | — | Disabled events cannot be dispatched; the server returns `400`. |
+| `createdAt` | ISO datetime | now | — | Record creation timestamp (read-only). |
+| `updatedAt` | ISO datetime | — | — | Last-modified timestamp (read-only). |
+
+### Handler keys
+
+| `handlerKey` | What it does | Required payload fields |
+|--------------|-------------|------------------------|
+| `createGiftForPlayer` | Issues a gift to the target player. | `gift` — a `GiftSpec` (either `{ "giftDefId": "..." }` or a full `InlineGiftDef`). Optional: `contextData` (object) merged into the gift snapshot for template token resolution. |
+
+> **Adding new handler keys:** the `handlerKey` enum is enforced in `EventService.dispatch()`. Any key not listed in the `switch` statement throws `400 — Unknown handler key`. A new handler requires a code change in addition to the definition row.
+
+### `EventSecurity` sub-fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `allowedEmitters` | `string[]` | Whitelist of `sourceType` values permitted to dispatch this event. Common values: `"MissionJob"`, `"CraftingJob"`, `"BuildingJob"`, `"admin"`. If omitted, any source type is allowed. |
+
+### Context enrichment
+
+When `sourceType` is one of `MissionJob`, `CraftingJob`, or `BuildingJob`, the dispatcher automatically looks up the job record and injects it as `{ job: { id, type, defId, status, team, results, data, timer } }` into the gift's `contextData`. This lets `rewardSpec` and `modalDef` specs use tokens like `${job.team}` or `${job.results.tier}`.
+
+Any additional keys provided in `payload.contextData` are merged on top of the auto-enriched context.
+
+### Admin endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/admin/definitions/eventDefinition` | List all event definitions. |
+| `GET` | `/admin/definitions/eventDefinition/:id` | Fetch a single event definition. |
+| `POST` | `/admin/definitions/eventDefinition` | Create a new event definition. |
+| `PUT` | `/admin/definitions/eventDefinition/:id` | Replace an event definition. |
+| `PATCH` | `/admin/definitions/eventDefinition/:id` | Partially update an event definition. |
+| `DELETE` | `/admin/definitions/eventDefinition/:id` | Delete an event definition. |
+| `POST` | `/admin/events/dispatch` | Manually dispatch an event to a player. Body: `{ "defId", "userId", "payload?" }`. |
+
+### Example — event definition for a mission completion bonus
+
+```json
+{
+  "id": "event_mission_legendary_reward",
+  "name": "Mission Legendary Tier Reward",
+  "kind": "mission",
+  "handlerKey": "createGiftForPlayer",
+  "security": {
+    "allowedEmitters": ["MissionJob"]
+  },
+  "inputSchema": {
+    "type": "object",
+    "required": ["gift"],
+    "properties": {
+      "gift": { "$ref": "#/complexTypes/GiftSpec" }
+    }
+  },
+  "enabled": true
+}
+```
+
+**Payload sent at dispatch time (by the job processor):**
+
+```json
+{
+  "gift": { "giftDefId": "gift_legendary_mission_crate" }
+}
+```
+
+---
+
+## ModalDef and DefaultModalDef
+
+`ModalDef` and `DefaultModalDef` rows store server-rendered modal specifications. Any system that opens a modal by ID — missions, gifts, check-ins, manual admin triggers — references one of these rows. The server resolves template tokens in the spec using a context object before sending the rendered spec to the client.
+
+**DB tables:** `modal_defs` (editable), `default_modal_defs` (read-only; cannot be created or deleted via admin API).
+
+> **`DefaultModalDef` is read-only:** these rows are seeded by the game system (e.g. mission outcome templates) and may only be updated via `PATCH`. Creating or deleting via the admin API returns `405`.
+
+### Field table
+
+Both models share the same columns:
+
+| Field | Type | Default | Required | Description |
+|-------|------|---------|----------|-------------|
+| `id` | string | — | ✓ | Stable slug identifier, e.g. `modal_mission_complete`. Must be unique within the table. |
+| `name` | string | — | ✓ | Admin-facing display name. |
+| `description` | string | `null` | — | Optional longer description for admin panel context. |
+| `version` | integer | `1` | — | Monotonically increasing author version. |
+| `spec` | `ModalSpecV1` | `{}` | — | The full modal specification. See [ModalSpecV1 structure](#modalspecv1-structure) below. |
+| `enabled` | boolean | `true` | — | Disabled modals return `404` when fetched by the client. |
+| `createdAt` | ISO datetime | now | — | Record creation timestamp (read-only). |
+| `updatedAt` | ISO datetime | — | — | Last-modified timestamp (read-only). |
+
+### Admin endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/admin/definitions/modalDef` | List all modal definitions. |
+| `GET` | `/admin/definitions/modalDef/:id` | Fetch a single modal definition. |
+| `POST` | `/admin/definitions/modalDef` | Create a new modal definition. |
+| `PUT` | `/admin/definitions/modalDef/:id` | Replace a modal definition. |
+| `PATCH` | `/admin/definitions/modalDef/:id` | Partially update a modal definition. |
+| `DELETE` | `/admin/definitions/modalDef/:id` | Delete a modal definition. |
+| `GET` | `/admin/definitions/defaultModalDef` | List all default modal definitions. |
+| `GET` | `/admin/definitions/defaultModalDef/:id` | Fetch a single default modal definition. |
+| `PATCH` | `/admin/definitions/defaultModalDef/:id` | Partially update a default modal definition (only allowed operation). |
+
+### `ModalSpecV1` structure
+
+The `spec` field must conform to `ModalSpecV1`. All string values inside `spec` may contain `${path.to.value}` tokens that are resolved server-side using the context injected at render time (e.g. `${job.results.tier}`, `${mission.name}`).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `version` | `1` | ✓ | Always `1`. |
+| `id` | string | ✓ | Stable identifier echoed in the rendered response for client-side cache keying. |
+| `kind` | string | ✓ | Semantic category, e.g. `"gift_reveal"`, `"mission_outcome"`, `"narrative"`. Informational. |
+| `dismiss` | `{ backdrop, x, escape }` | ✓ | Which interactions can close the modal. Each field is a boolean. |
+| `header` | `ModalHeader` | ✓ | Top-bar content for the modal (see below). |
+| `buttons` | `ModalButton[]` | ✓ | Default action buttons shared by all pages unless overridden. |
+| `pages` | `ModalPageSpec[]` | ✓ | One entry per page. Single-page modals have exactly one entry. |
+| `showPageIndicator` | boolean | — | Show dot-style page progress indicator for multi-page modals. Default: `false`. |
+| `telemetry` | `ModalTelemetry` | — | Optional tracking metadata attached to open/close events. Fields: `sourceType`, `sourceId`, `notificationId`, `jobId`, `templateId`, `experiment`. |
+
+#### `ModalHeader`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | ✓ | Main heading. Supports `${...}` tokens. |
+| `subtitle` | string | — | Secondary heading below the title. |
+| `icon` | `{ assetKey, alt? }` | — | Small icon shown beside the title. |
+| `banner` | `{ assetKey, alt? }` | — | Full-width hero image at the top of the modal. |
+
+#### `ModalPageSpec`
+
+Each page inherits `header`, `buttons`, and `dismiss` from the root spec and can override them per-page:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `body` | `ModalBlock[]` | Required. The blocks rendered in the page body (see block reference below). |
+| `header` | `Partial<ModalHeader>` | Overrides the root header fields for this page only. |
+| `buttons` | `ModalButton[]` | Replaces the root buttons entirely for this page. |
+| `dismiss` | `{ backdrop?, x?, escape? }` | Overrides individual dismiss flags for this page. |
+
+#### `ModalButton`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier within the modal. |
+| `label` | string | ✓ | Button text. Supports `${...}` tokens. |
+| `variant` | `"primary" \| "secondary" \| "ghost" \| "danger"` | ✓ | Visual style. |
+| `disabled` | boolean | — | Renders the button as non-interactive when `true`. |
+| `action` | `ModalAction` | ✓ | What happens when the button is tapped. See [action types](#modal-action-types) below. |
+| `requiresConfirm` | `{ title, body?, confirmLabel?, cancelLabel? }` | — | Shows an inline confirmation dialog before executing the action. `body` is a `ModalBlock[]`. |
+| `skipMeta` | `{ baseCosts, skipType }` | — | Skip/speed-up metadata. `baseCosts` is an array of `{ assetKey?, label, amount, currencyId? }`; `skipType` is `"absolute"` or `"scaling"`. |
+
+#### Modal action types
+
+| `type` | Additional fields | Description |
+|--------|-------------------|-------------|
+| `CLOSE_MODAL` | — | Dismisses the modal. |
+| `NEXT_PAGE` | — | Advances to the next page (no-op on the last page). |
+| `PREV_PAGE` | — | Returns to the previous page (no-op on the first page). |
+| `NAVIGATE` | `route: string`, `params?` | Navigates to a client route. |
+| `ACK_NOTIFICATION` | `notificationId: string` | Marks a notification as read. |
+| `COMPLETE_JOB` | `jobId: string` | Finalises an in-progress job. |
+| `CLAIM_GIFT` | `giftId: string` | Claims a gift instance. |
+| `OPEN_INVENTORY` | — | Opens the inventory screen. |
+| `OPEN_MISSIONS` | — | Opens the missions screen. |
+| `OPEN_CRAFTING` | — | Opens the crafting screen. |
+| `REPEAT_MISSION` | `defId: string`, `entityIds?` | Re-dispatches the same mission. |
+| `CRAFT_AGAIN` | `recipeDefId: string` | Re-runs the same crafting recipe. |
+| `API_CALL` | `apiKey: string`, `payload?` | Fires a registered API action key server-side. |
+| `BUILD_BUILDING` | `locationId`, `buildingDefId` | Starts construction of a building. |
+| `UPGRADE_BUILDING` | `locationId`, `buildingId` | Starts a building upgrade. |
+| `SHOP_PURCHASE` | `shopItemDefId: string` | Purchases a shop item. |
+| `DEPOSIT_LOCATION_XP` | `locationId`, `costOption`, `charges?`, `chargesBindingId?` | Deposits XP charges into a location. |
+| `PRESTIGE` | — | Triggers player prestige. |
+| `SKIP` | `targetType: string`, `targetId: string` | Skips a timed activity (uses `skipMeta` cost). |
+| `EXECUTE_COMMAND` | `command: string`, `payload` | Executes an arbitrary game command server-side. |
+
+### Block reference
+
+Every `ModalPageSpec.body` is an array of `ModalBlock` objects. Each block has a `type` discriminant. String fields in blocks support `${...}` token interpolation unless noted.
+
+> For the full block vocabulary with visual examples, see `render-blocks.md`.
+
+| `type` | Key fields | Description |
+|--------|-----------|-------------|
+| `richText` | `doc: RichTextDoc`, `from?` | Structured rich text. `doc` is an array of `RichTextNode` (see below). |
+| `divider` | — | A horizontal separator line. |
+| `image` | `image: { assetKey, alt? }`, `caption?`, `display?`, `from?` | Displays an asset image. `display`: `{ align?, sizing?, width?, borderRadius? }`. |
+| `metaRows` | `rows: { label, value, valueItems? }[]`, `from?` | Key-value table rows. `valueItems` is `{ assetKey, amount }[]` for icon+number display. |
+| `timer` | `endsAt: string` (ISO), `label?`, `from?` | Live countdown to `endsAt`. |
+| `progress` | `current`, `max`, `label?`, `startsAt?`, `endsAt?`, `from?` | Progress bar. Can be time-driven (with `startsAt`/`endsAt`) or value-driven (`current`/`max`). |
+| `rewardsPreview` | `items: RewardItem[]`, `from?` | Compact icon grid of potential rewards. |
+| `rewardsList` | `title?`, `items: RewardItem[]`, `from?` | Labelled list of granted rewards. |
+| `inventoryDelta` | `items: { assetKey?, name, qtyDelta }[]`, `from?` | Shows item quantity changes (+/−). |
+| `giftReveal` | `gift: { giftId, title, image? }`, `rewards?`, `from?` | Gift opening reveal with reward list. |
+| `list` | `list: string` (dot-path), `children: ModalBlock[]`, `emptyText?` | Iterates a context array; renders `children` once per item with `item`/`index` in scope. |
+| `clickReveal` | `cover?`, `coverImage?`, `tags?`, `soundMap?`, `fxMap?`, `children: ModalBlock[]` | Tap-to-reveal container. `soundMap`/`fxMap` are `"key=asset,*=fallback"` strings. |
+| `error` | `message: string`, `from?` | Displays an error message in a styled error box. |
+| `characterEvents` | `items: CharacterEvent[]`, `from?` | Shows level-up or injury events. Each item: `{ type: "level_up" \| "injured", entityName, newLevel? }`. |
+| `entityRoster` | `editable: boolean`, `entities: Entity[]`, `from?` | Displays a team roster. Entity shape: `{ id, name, level, portraitKey?, powerContribution?, outcome? }`. |
+| `quantityInput` | `id`, `min`, `max`, `defaultValue`, `resourceId`, `costAmount`, `xpPerCharge`, `from?` | Numeric stepper for XP charge deposit flows. |
+
+#### `from` — context binding
+
+Most block types accept an optional `from` field containing a dot-path string (e.g. `"job.results.rewards"`). When present, the resolver reads that path from the render context and maps the data onto the block's primary content fields, overriding any static values. This is how templates stay generic while content is injected at render time.
+
+#### `RewardItem`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Display name of the reward. |
+| `qty` | number | Quantity granted. |
+| `assetKey` | string | Asset key for the reward icon. |
+| `rarity` | string | Optional rarity label (`"common"`, `"rare"`, etc.). |
+| `note` | string | Optional footnote shown below the item. |
+
+#### `RichTextDoc` and `RichTextNode`
+
+`RichTextDoc` is an array of `RichTextNode`. Each node is one of:
+
+| `t` | Additional fields | Description |
+|-----|-------------------|-------------|
+| `"p"` | `c: RichTextNode[]` | Paragraph block. |
+| `"h1"` | `c: RichTextNode[]` | Level-1 heading. |
+| `"h2"` | `c: RichTextNode[]` | Level-2 heading. |
+| `"ul"` | `c: RichTextNode[]` | Unordered list container. |
+| `"li"` | `c: RichTextNode[]` | List item. |
+| `"strong"` | `c: RichTextNode[]` | Bold inline text. |
+| `"em"` | `c: RichTextNode[]` | Italic inline text. |
+| `"code"` | `c: RichTextNode[]` | Inline code span. |
+| `"link"` | `c: RichTextNode[]`, `href: string` | Hyperlink. |
+| `"text"` | `v: string` | Literal text leaf. Supports `${...}` token interpolation. |
+| `"br"` | — | Line break. |
+| `"token"` | `key: string` | Context token; resolved to the value at `key` in the render context at display time. |
+
+### Example — single-page gift reveal modal
+
+```json
+{
+  "id": "modal_welcome_reveal",
+  "name": "Welcome Pack Reveal",
+  "spec": {
+    "version": 1,
+    "id": "modal_welcome_reveal",
+    "kind": "gift_reveal",
+    "dismiss": { "backdrop": false, "x": true, "escape": true },
+    "header": {
+      "title": "Welcome to Derp Universe!",
+      "banner": { "assetKey": "banner_welcome" }
+    },
+    "buttons": [
+      { "id": "close", "label": "Claim", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+    ],
+    "pages": [
+      {
+        "body": [
+          {
+            "type": "richText",
+            "doc": [
+              { "t": "p", "c": [{ "t": "text", "v": "Here's what you've received:" }] }
+            ]
+          },
+          { "type": "rewardsList", "from": "grants" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Example — multi-page narrative modal with token interpolation
+
+```json
+{
+  "id": "modal_mission_briefing",
+  "name": "Mission Briefing",
+  "spec": {
+    "version": 1,
+    "id": "modal_mission_briefing",
+    "kind": "narrative",
+    "dismiss": { "backdrop": true, "x": true, "escape": true },
+    "header": { "title": "${mission.name}" },
+    "buttons": [],
+    "showPageIndicator": true,
+    "pages": [
+      {
+        "body": [
+          { "type": "image", "image": { "assetKey": "${mission.bannerKey}" } },
+          { "type": "richText", "from": "mission.briefingDoc" }
+        ],
+        "buttons": [
+          { "id": "next", "label": "Next", "variant": "primary", "action": { "type": "NEXT_PAGE" } }
+        ]
+      },
+      {
+        "body": [
+          { "type": "metaRows", "from": "mission.stats" }
+        ],
+        "buttons": [
+          { "id": "prev", "label": "Back", "variant": "ghost", "action": { "type": "PREV_PAGE" } },
+          { "id": "close", "label": "Got it", "variant": "primary", "action": { "type": "CLOSE_MODAL" } }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## Purchases — `/v1/purchases`
 
 Unified purchase API supporting Stripe and crypto (USDC/ADA) payment rails.
