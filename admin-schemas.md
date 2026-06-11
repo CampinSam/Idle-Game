@@ -2710,7 +2710,9 @@ The snapshot also overwrites the live `seed/seed-data.json` key, making it the n
 | `cap` | number | | Upper bound on the accumulated value when `stackingRule` is `stack_capped`. |
 | `resourceId` | string | | Scopes the effect to a specific resource (currency or item ID). Used by `production_rate`, `currency_multiplier`, `storage_capacity`, and similar resource-targeted categories. |
 | `sessionType` | string | | Session discriminator for `session` durationModel. The effect expires when the named session ends. |
-| `meta` | Json | | Arbitrary extra data for UI or system hints. Not evaluated by the effect resolver. |
+| `meta` | Json | | Arbitrary extra data for UI or system hints. Not evaluated by the effect resolver. Default `{}`. |
+| `iconKey` | string | | Asset key for the effect's icon (used in admin UI listings). |
+| `enabled` | boolean | | When `false`, this def is excluded from all active game systems. Default `true`. |
 
 ---
 
@@ -3022,9 +3024,22 @@ Managed via the generic admin smart table (`checkInDef`).
 
 ### `frequency` object
 
+A `FrequencyShape` JSON blob stored on the def.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `type` | `"daily"` \| `"weekly"` | `"daily"` — window resets every UTC midnight. `"weekly"` — window resets every UTC Monday midnight. |
+| `type` | string | Cadence type. Default `"daily"`. See values below. |
+| `interval` | number | Number of days per window. Required only when `type` is `"every_x_days"`. |
+
+**Supported `type` values:**
+
+| Value | Reset behaviour |
+|-------|----------------|
+| `"daily"` | Window resets each UTC midnight. |
+| `"weekly"` | Window resets each UTC Monday at 00:00 UTC (ISO week). |
+| `"monthly"` | Window resets on the 1st of each month at 00:00 UTC. |
+| `"every_x_days"` | Epoch-aligned window of `interval` days (e.g. `interval: 3` = every 72 h aligned to Unix epoch). `interval` is required. |
+| `"oneoff"` | Window never resets. The player can claim once and never again. Useful for one-time welcome tracks. |
 
 ### `rewards[]` — `RewardSlot` shape
 
@@ -3075,16 +3090,14 @@ Managed via the generic admin smart table (`questDef`).
 | `id` | string | ✓ | Unique identifier (e.g. `quest_boss_hunter`). |
 | `name` | string | ✓ | Player-facing display name. |
 | `description` | string | | Player-facing description of what needs to be done. |
-| `iconKey` | string | | Asset key for the quest/achievement icon. |
 | `category` | `"quest"` \| `"achievement"` | | `"quest"` (default) — shown in the Quests panel. `"achievement"` — shown in the Achievements panel; lifetime one-shot, never resets. |
-| `tier` | number | | Achievement prestige tier: `1` = Bronze, `2` = Silver, `3` = Gold. Used for visual theming on `achievement`-category defs. |
-| `cadence` | `"daily"` \| `"weekly"` \| `null` | | When set, the quest auto-resets at the start of each UTC day (`"daily"`) or each UTC Monday (`"weekly"`). `null` = one-off; never auto-resets. Always `null` for `category: "achievement"`. |
+| `tier` | number | | Achievement prestige tier: `1` = Bronze, `2` = Silver, `3` = Gold. Used for visual theming on `achievement`-category defs. Default `1`. |
+| `cadence` | string | | Controls the auto-reset schedule. Default `"oneoff"`. Valid values: `"oneoff"` (never auto-resets), `"daily"` (resets each UTC midnight), `"weekly"` (resets each UTC Monday midnight). The shared cadence utility also recognises `"monthly"` and `"every_x_days"` as accepted strings, but the server's automatic reset job currently only processes `daily` and `weekly` quests. Always `"oneoff"` for `category: "achievement"`. |
 | `enabled` | boolean | | Default `true`. Disabled quests are excluded from listing and event processing. |
 | `sortOrder` | number | | Display ordering within the quests/achievements list. Lower = shown first. Default `0`. |
 | `requirements` | Json | | `RichSelection` tree evaluated at list time — gates whether the quest is visible to the player. |
 | `objectives` | Json | ✓ | Array of `Objective` entries defining what the player must do. See below. |
 | `rewardSpec` | Json | | Outcome entries array (same format as mission rewards) granted when the player claims the quest. |
-| `rewardPreview` | Json | | Optional static preview array `[{ type, id, amount }]` shown before the player claims. Useful when the actual reward is randomised. |
 | `permanentEffectSpec` | Json | | **Achievement-category only.** Applied once on first claim. Grants a permanent `ActiveEffect` with no expiry. See below. |
 
 ### `objectives[]` — Objective shape
