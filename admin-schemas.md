@@ -3680,6 +3680,7 @@ All keys are optional. Omitted keys fall back to the default purple RPG theme so
 | `subtitleColor` | string | `#c4b5fd` | CSS colour for the subtitle / countdown line |
 | `taglineColor` | string | `rgba(255,255,255,0.6)` | CSS colour for the tagline / description line |
 | `accentColor` | string | `rgba(139,92,246,0.3)` | Drives the card border colour and hover glow shadow |
+| `cardBackground` | string | `#0f0a28` | Solid fallback background colour used when no `backgroundImage` is set |
 | `overlayGradient` | string | dark purple diagonal gradient | Full CSS gradient string (e.g. `linear-gradient(...)`) rendered over the background image |
 | `ctaVariant` | `"primary"` \| `"gold"` \| `"outline"` \| `"ghost"` | `"primary"` | Pre-built CTA button style preset |
 | `ctaBackground` | string | — | Custom CSS `background` for the CTA button — overrides `ctaVariant` when set |

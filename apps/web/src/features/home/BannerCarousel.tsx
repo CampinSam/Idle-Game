@@ -27,6 +27,7 @@ const CTA_VARIANT_CLASSES: Record<string, string> = {
 
 interface BannerDisplay {
   accentColor: string;
+  cardBackground: string;
   overlayGradient: string;
   titleColor: string;
   subtitleColor: string;
@@ -45,6 +46,7 @@ function resolveBannerDisplay(banner: HomeBannerSnapshot): BannerDisplay {
   const d = (banner.display && typeof banner.display === 'object') ? banner.display : {};
   return {
     accentColor: (d.accentColor as string) || DEFAULT_ACCENT_COLOR,
+    cardBackground: (d.cardBackground as string) || '#0f0a28',
     overlayGradient: (d.overlayGradient as string) || DEFAULT_OVERLAY_GRADIENT,
     titleColor: (d.titleColor as string) || DEFAULT_TITLE_COLOR,
     subtitleColor: (d.subtitleColor as string) || DEFAULT_SUBTITLE_COLOR,
@@ -180,6 +182,7 @@ export function BannerCarousel() {
         style={{
           borderColor: display.accentColor,
           boxShadow: cardHovered ? `0 8px 24px ${display.accentColor}` : undefined,
+          backgroundColor: banner.backgroundImage ? undefined : display.cardBackground,
         }}
         data-testid="home-banner"
         data-banner-id={banner.id}

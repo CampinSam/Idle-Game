@@ -1893,6 +1893,10 @@
           "type": "string",
           "description": "Drives the card border colour and hover glow shadow. Default: rgba(139,92,246,0.3)"
         },
+        "cardBackground": {
+          "type": "string",
+          "description": "Solid fallback background colour used when no backgroundImage is set. Default: #0f0a28"
+        },
         "overlayGradient": {
           "type": "string",
           "description": "Full CSS gradient string rendered over the background image (e.g. 'linear-gradient(...)'). Default: dark purple diagonal."
