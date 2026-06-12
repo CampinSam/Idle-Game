@@ -32,6 +32,8 @@ import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
 import { ClaimCheckInHandler } from './handlers/claim-checkin.handler';
+import { ContinueMissionHandler } from './handlers/continue-mission.handler';
+import { AbandonMissionHandler } from './handlers/abandon-mission.handler';
 
 @Injectable()
 export class CommandRouter {
@@ -40,6 +42,8 @@ export class CommandRouter {
   constructor(
     private startMission: StartMissionHandler,
     private completeMission: CompleteMissionHandler,
+    private continueMission: ContinueMissionHandler,
+    private abandonMission: AbandonMissionHandler,
     private claimReward: ClaimRewardHandler,
     private startCrafting: StartCraftingHandler,
     private collectCrafting: CollectCraftingHandler,
@@ -73,6 +77,8 @@ export class CommandRouter {
   ) {
     this.handlers.set('StartMission', this.startMission);
     this.handlers.set('CompleteMission', this.completeMission);
+    this.handlers.set('ContinueMission', this.continueMission);
+    this.handlers.set('AbandonMission', this.abandonMission);
     this.handlers.set('ClaimReward', this.claimReward);
     this.handlers.set('StartCrafting', this.startCrafting);
     this.handlers.set('CollectCrafting', this.collectCrafting);

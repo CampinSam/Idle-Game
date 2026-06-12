@@ -34,6 +34,8 @@ import { StartDustingHandler } from './handlers/start-dusting.handler';
 import { CollectDustingHandler } from './handlers/collect-dusting.handler';
 import { SwapOutpostHandler } from './handlers/swap-outpost.handler';
 import { ClaimCheckInHandler } from './handlers/claim-checkin.handler';
+import { ContinueMissionHandler } from './handlers/continue-mission.handler';
+import { AbandonMissionHandler } from './handlers/abandon-mission.handler';
 import { CheckInModule } from '../checkin/checkin.module';
 import { MissionModule } from '../mission/mission.module';
 import { CraftingModule } from '../crafting/crafting.module';
@@ -74,6 +76,8 @@ import { NotificationModule } from '../notification/notification.module';
     CommandRouter,
     StartMissionHandler,
     CompleteMissionHandler,
+    ContinueMissionHandler,
+    AbandonMissionHandler,
     ClaimRewardHandler,
     StartCraftingHandler,
     CollectCraftingHandler,

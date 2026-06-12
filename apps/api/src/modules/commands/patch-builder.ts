@@ -14,6 +14,9 @@ function serializeJob(job: any) {
     team: job.team,
     data: job.data,
     results: job.results,
+    currentPhase: job.currentPhase ?? 0,
+    phaseResults: job.phaseResults ?? null,
+    accumulatedState: job.accumulatedState ?? null,
     startTick: timer?.startTick ?? null,
     durationTicks: timer?.durationTicks ?? null,
   };

@@ -534,6 +534,10 @@ model MissionDef {
   maxSuccessChance       Int                 @default(100)
   injuryRate             Float?              @default(0)
   injuryRecoveryTicks    Int?                @default(0)
+  mode                   String              @default("single")
+  phases                 Json?
+  rewardsMode            String              @default("final_bundle")
+  maxFailures            Int?
   timer                  Json                @default("{\"duration\": 0, \"skipable\": false, \"boostable\": true, \"skip_cost\": [], \"skip_type\": \"absolute\"}")
   tiers                  Json                @default("{}")
   success                Json?
@@ -593,20 +597,23 @@ model RecipeDef {
 }
 
 model Job {
-  id          String   @id @default(uuid())
-  userId      String
-  ecosystemId String?
-  type        JobType
-  defId       String
-  status      String   @default("active")
-  timer       Json     @default("{}")
-  team        Json     @default("[]")
-  results     Json?
-  data        Json     @default("{}")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  readyAtTick Int?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String   @id @default(uuid())
+  userId           String
+  ecosystemId      String?
+  type             JobType
+  defId            String
+  status           String   @default("active")
+  timer            Json     @default("{}")
+  team             Json     @default("[]")
+  results          Json?
+  data             Json     @default("{}")
+  currentPhase     Int      @default(0)
+  phaseResults     Json?
+  accumulatedState Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  readyAtTick      Int?
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([ecosystemId])

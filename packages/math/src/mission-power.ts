@@ -47,10 +47,31 @@ export const calculateInjuryChance = (
 /**
  * Calculate recovery ticks for an injured entity.
  * Formula: baseRecoveryTicks * (1 - VIT / (VIT + 100)), rounded to nearest integer.
+ * Higher VIT → shorter recovery.
  */
 export const calculateInjuryRecoveryTicks = (
   baseRecoveryTicks: number,
   vit: number,
 ): number => {
   return Math.round(baseRecoveryTicks * (1 - vit / (vit + 100)));
+};
+
+/**
+ * Reduce an injury's MP penalty severity based on entity VIT.
+ * Uses the same curve as recovery-tick reduction so both duration and
+ * severity scale consistently: higher VIT → weaker penalty (closer to 1.0).
+ *
+ * Formula: 1 - (1 - basePenalty) * (1 - VIT / (VIT + 100))
+ *
+ * Examples (basePenalty = 0.8 → 20 % MP loss):
+ *   VIT=0   → 0.80  (full penalty)
+ *   VIT=100 → 0.90  (half the penalty)
+ *   VIT=∞   → 1.00  (no penalty)
+ */
+export const calculateInjuryPenaltyMultiplier = (
+  basePenalty: number,
+  vit: number,
+): number => {
+  const vitFactor = 1 - vit / (vit + 100);
+  return 1 - (1 - basePenalty) * vitFactor;
 };

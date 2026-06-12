@@ -25,6 +25,7 @@ import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryCh
 import type { EntityForMP } from '@derp/math';
 import { EffectService } from '../effect/effect.service';
 import { SynergyResolverService } from '../synergy/synergy-resolver.service';
+import { buildInjuredUntilMap, consumeSessionEffectCharges, PhaseInjury } from './mission-phase.utils';
 
 // ── Mission tier helpers (mirrors crafting.service.ts pattern) ───────────────
 
@@ -117,6 +118,9 @@ export class MissionService {
       team: job.team,
       status: job.status,
       result: job.results,
+      currentPhase: job.currentPhase ?? 0,
+      phaseResults: job.phaseResults ?? null,
+      accumulatedState: job.accumulatedState ?? null,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };
@@ -236,7 +240,7 @@ export class MissionService {
 
   async getActiveMissions(userId: string) {
     const jobs = await (this.prisma as any).job.findMany({
-      where: { userId, type: 'MissionJob', status: { in: ['active', 'ready_notified'] } },
+      where: { userId, type: 'MissionJob', status: { in: ['active', 'ready_notified', 'phase_ready'] } },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -337,7 +341,7 @@ export class MissionService {
     }
 
     const activeMissions = await (db as any).job.count({
-      where: { userId, type: 'MissionJob', status: { in: ['active', 'ready_notified'] } },
+      where: { userId, type: 'MissionJob', status: { in: ['active', 'ready_notified', 'phase_ready'] } },
     });
     const maxMissions = ANTI_WHALE_CAPS.maxActiveMissions(user.keeperLevel);
     if (activeMissions >= maxMissions) {
@@ -364,7 +368,12 @@ export class MissionService {
     const now = new Date();
     const currentTick = await this.tickService.getCurrentTick(now);
     const timer = dbDef.timer as any;
-    const durationSeconds = timer?.duration ?? 0;
+    const isMultiPhase = (dbDef as any).mode === 'multi_phase';
+    const phases: any[] = isMultiPhase && Array.isArray((dbDef as any).phases) ? (dbDef as any).phases : [];
+    // For multi-phase missions, phase 0 duration overrides the def-level timer
+    const durationSeconds = (isMultiPhase && phases.length > 0 && typeof phases[0].duration === 'number')
+      ? phases[0].duration
+      : (timer?.duration ?? 0);
     const boostable = timer?.boostable ?? true;
     let durationTicks = boostable ? durationSecondsToTicks(durationSeconds) : durationSeconds;
 
@@ -436,8 +445,24 @@ export class MissionService {
         status: 'active',
         timer: { startTick: currentTick, durationTicks },
         team: entityIds,
-        data: { difficulty: dbDef.difficulty, seed, synergy: synergySnapshot },
+        data: {
+          difficulty: dbDef.difficulty,
+          seed,
+          synergy: synergySnapshot,
+          ...(isMultiPhase ? { isMultiPhase: true } : {}),
+        },
         readyAtTick: Math.floor(currentTick) + durationTicks,
+        currentPhase: 0,
+        ...(isMultiPhase ? {
+          accumulatedState: {
+            injuries: [],
+            currentPhaseAttempts: 0,
+            currentPhaseSuccesses: 0,
+            currentPhaseFailures: 0,
+            totalMissionFailures: 0,
+            bankedRewards: [],
+          },
+        } : {}),
       },
     });
 
@@ -654,7 +679,7 @@ export class MissionService {
     const db = externalTx;
     this.logger.log(`completeMission called: userId=${userId.slice(0,8)}, missionId=${missionId.slice(0,8)}`);
     const mission = await (db as any).job.findFirst({
-      where: { id: missionId, userId, type: 'MissionJob', status: { in: ['active', 'ready_notified'] } },
+      where: { id: missionId, userId, type: 'MissionJob', status: { in: ['active', 'ready_notified', 'phase_ready'] } },
     });
     if (!mission) {
       this.logger.warn(`completeMission: no active mission found for id=${missionId.slice(0,8)}, userId=${userId.slice(0,8)}`);
@@ -792,7 +817,18 @@ export class MissionService {
 
     const missionSeed = mission.data.seed;
     const rng = new SeededRng(missionSeed);
-    const success = rng.chance(successChance);
+    let success = rng.chance(successChance);
+
+    const isMultiPhase = (def as any).mode === 'multi_phase';
+    const rewardsMode: string = (def as any).rewardsMode ?? 'final_bundle';
+    const accumulatedPhaseResults: any[] = isMultiPhase && Array.isArray(mission.phaseResults) ? (mission.phaseResults as any[]) : [];
+
+    // For multi-phase missions the per-phase success was already rolled by the tick processor.
+    // Override the re-rolled value so reward resolution uses the correct outcome.
+    if (isMultiPhase && accumulatedPhaseResults.length > 0) {
+      const lastPhaseResult = accumulatedPhaseResults[accumulatedPhaseResults.length - 1];
+      success = (mission.data as any)?.lastPhaseSuccess ?? lastPhaseResult?.success ?? success;
+    }
 
     // ── Quality tier selection ──────────────────────────────────────────────
     // Mission outcomes are driven entirely by the `tiers` JSON block.
@@ -850,6 +886,9 @@ export class MissionService {
       qualityLabel = success ? 'Success' : 'Failure';
       outcomeItems = [];
     }
+
+    // For per_phase rewardsMode, suppress the final bundle — all rewards come from per-phase resolution.
+    if (isMultiPhase && rewardsMode === 'per_phase') outcomeItems = [];
 
     const grantedRewards: { type: string; key?: string; amount?: number; name?: string; defId?: string }[] = [];
     const entityResultsMap = new Map<string, { id: string; name: string; oldLevel: number; newLevel: number; xpGained: number; leveledUp: boolean; injured: boolean }>();
@@ -974,10 +1013,125 @@ export class MissionService {
       await (db as any).user.update({ where: { id: userId }, data: { flags: reqContext.userFlags as any } });
     }
 
+    // ── Per-phase rewards (per_phase / hybrid rewardsMode) ─────────────────────
+    if (isMultiPhase && (rewardsMode === 'per_phase' || rewardsMode === 'hybrid')) {
+      const phaseDefArray: any[] = Array.isArray((def as any).phases) ? (def as any).phases : [];
+      for (const phaseResult of accumulatedPhaseResults) {
+        if (!phaseResult.success) continue;
+        const phaseDef = phaseDefArray[phaseResult.phaseIndex];
+        if (!phaseDef) continue;
+        const phaseTiersRaw = phaseDef.tiers ?? {};
+        const hasPhaseTiers = Object.keys(phaseTiersRaw).some(
+          (k) => k !== 'sigma' && Array.isArray(phaseTiersRaw[k]?.rewards) && phaseTiersRaw[k].rewards.length > 0,
+        );
+        let phaseOutcomeItems: any[] = [];
+        if (hasPhaseTiers) {
+          const phaseTiers = getMissionTiers(phaseTiersRaw);
+          const phaseQuality: string = phaseResult.quality ?? 'common';
+          const tierKeys = QUALITY_TIERS.map((t: any) => t.key);
+          const rolledIdx = tierKeys.indexOf(phaseQuality);
+          for (let i = rolledIdx >= 0 ? rolledIdx : tierKeys.length - 1; i >= 0; i--) {
+            const candidate = phaseTiers[tierKeys[i]];
+            if (candidate && candidate.rewards && candidate.rewards.length > 0) {
+              phaseOutcomeItems = candidate.rewards;
+              break;
+            }
+          }
+        } else if (Array.isArray(phaseDef.success?.rewards)) {
+          phaseOutcomeItems = phaseDef.success.rewards;
+        }
+        if (phaseOutcomeItems.length === 0) continue;
+        const phaseRng = new SeededRng(`${missionSeed}_reward_phase_${phaseResult.phaseIndex}`);
+        const { resolved: phaseResolved } = await this.gameRules.resolveOutcomesAsync(phaseOutcomeItems, reqContext, phaseRng);
+        for (const { entry: pe, amount: rawPa } of phaseResolved) {
+          let pa = rawPa;
+          if (!pa || pa <= 0) continue;
+          if (pe.type === 'entity_xp') {
+            pa = Math.floor(applyModifier(pa, xpMod));
+            if (pa > 0 && entities.length > 0) {
+              const perEntity = Math.max(1, Math.floor(pa / entities.length));
+              for (const entity of entities) {
+                try {
+                  await this.entityService.addEntityXp(entity.id, userId, perEntity, db, { skipEffects: true });
+                  grantedRewards.push({ type: 'entity_xp', key: 'XP', amount: perEntity });
+                } catch (err) { this.logger.warn(`Per-phase entity_xp grant failed: ${err}`); }
+              }
+            }
+          } else if (pe.type === 'keeper_xp') {
+            pa = Math.floor(applyModifier(pa, keeperXpMod));
+            if (pa > 0) {
+              try {
+                const kUser = await db.user.findUnique({ where: { id: userId } });
+                if (kUser) {
+                  let newXp = Number(kUser.keeperXp) + pa;
+                  let newLevel = kUser.keeperLevel;
+                  while (newLevel < 100 && newXp >= XP_PER_LEVEL(newLevel)) {
+                    newXp -= XP_PER_LEVEL(newLevel);
+                    newLevel++;
+                  }
+                  await db.user.update({ where: { id: userId }, data: { keeperXp: BigInt(newXp), keeperLevel: newLevel } });
+                }
+                grantedRewards.push({ type: 'keeper_xp', amount: pa });
+              } catch (err) { this.logger.warn(`Per-phase keeper_xp grant failed: ${err}`); }
+            }
+          } else if (pe.type === 'currency') {
+            pa = Math.floor(applyModifier(pa, currencyMod));
+            if (pa > 0 && pe.key) {
+              try {
+                await this.currencyService.creditTx(db, {
+                  userId, currencyId: pe.key, amount: pa,
+                  reason: `Mission: ${def.name} (phase ${phaseResult.phaseIndex})`, sourceType: 'mission', sourceId: missionId,
+                });
+                const name = await this.gameRules.resolveName('currency', pe.key);
+                grantedRewards.push({ type: 'currency', key: pe.key, amount: pa, name });
+              } catch (err) { this.logger.warn(`Per-phase currency grant failed: ${err}`); }
+            }
+          } else if (pe.type === 'item') {
+            pa = Math.max(1, Math.floor(applyModifier(pa, rewardMod)));
+            if (pa > 0 && pe.key) {
+              try {
+                await this.inventoryService.addItemTx(db, {
+                  userId, itemId: pe.key, quantity: pa,
+                  reason: `Mission: ${def.name} (phase ${phaseResult.phaseIndex})`, sourceType: 'mission', sourceId: missionId,
+                });
+                const name = await this.gameRules.resolveName('item', pe.key);
+                grantedRewards.push({ type: 'item', key: pe.key, amount: pa, name });
+              } catch (err) { this.logger.warn(`Per-phase item grant failed: ${err}`); }
+            }
+          } else {
+            this.logger.warn(`Per-phase reward type '${pe.type}' skipped (unhandled type for phase rewards).`);
+          }
+        }
+      }
+    }
+
+    // ── Injury resolution ──────────────────────────────────────────────────────
     const injuredEntityUntilTick = new Map<string, number>();
-    if (!success) {
+    const injuryRecoveryTicksBase = (def.injuryRecoveryTicks as number | null) ?? 0;
+    if (isMultiPhase) {
+      // Multi-phase: use remainingPenaltyTicks from accumulatedState DIRECTLY — they have already
+      // been ticked down through each phase, and VIT was applied at injury time.
+      // No additional recovery math is applied here.
+      const phaseAccumulated: any = mission.accumulatedState ?? {};
+      const phaseInjuries: PhaseInjury[] = phaseAccumulated.injuries ?? [];
+      const phaseInjuredUntil = buildInjuredUntilMap(phaseInjuries, currentTick);
+      for (const [entityId, injuredUntilTick] of phaseInjuredUntil.entries()) {
+        injuredEntityUntilTick.set(entityId, injuredUntilTick);
+        const entity = entities.find((e: any) => e.id === entityId);
+        const existing = entityResultsMap.get(entityId);
+        if (existing) {
+          existing.injured = true;
+        } else {
+          entityResultsMap.set(entityId, {
+            id: entityId,
+            name: (entity as any)?.name || 'Entity',
+            oldLevel: 0, newLevel: 0, xpGained: 0, leveledUp: false, injured: true,
+          });
+        }
+      }
+    } else if (!success) {
+      // Single-phase: roll for injuries on failure
       const injuryRate = (def.injuryRate as number | null) ?? 0;
-      const injuryRecoveryTicksBase = (def.injuryRecoveryTicks as number | null) ?? 0;
       if (injuryRate > 0 && injuryRecoveryTicksBase > 0) {
         const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate);
         if (injuryChance > 0) {
@@ -1007,11 +1161,7 @@ export class MissionService {
                 entityResultsMap.set(entity.id, {
                   id: entity.id,
                   name: (entity as any).name || 'Entity',
-                  oldLevel: 0,
-                  newLevel: 0,
-                  xpGained: 0,
-                  leveledUp: false,
-                  injured: true,
+                  oldLevel: 0, newLevel: 0, xpGained: 0, leveledUp: false, injured: true,
                 });
               }
             }
@@ -1168,6 +1318,120 @@ export class MissionService {
         rewards: grantedRewards,
         removedEffectIds: sessionEffects.map((e: any) => e.id),
       },
+    };
+  }
+
+  /**
+   * Advance a phase_ready multi-phase mission to the next phase.
+   * Resets per-phase counters, updates the timer, and sets status back to 'active'.
+   */
+  async advanceToNextPhase(userId: string, jobId: string, externalTx?: any): Promise<void> {
+    const db = externalTx ?? this.prisma;
+    const job = await (db as any).job.findFirst({
+      where: { id: jobId, userId, type: 'MissionJob', status: 'phase_ready' },
+    });
+    if (!job) throw new NotFoundException('No phase_ready mission found');
+
+    const def = await (db as any).missionDef.findUnique({ where: { id: job.defId } });
+    const phases: any[] = Array.isArray(def?.phases) ? def.phases : [];
+    const nextPhaseIndex = (job.currentPhase ?? 0) + 1;
+    if (nextPhaseIndex >= phases.length) {
+      throw new BadRequestException('No next phase available — call completeMission instead');
+    }
+
+    const nextPhase = phases[nextPhaseIndex];
+    const now = new Date();
+    const currentTick = await this.tickService.getCurrentTick(now);
+    const timer = def?.timer as any;
+    const boostable = timer?.boostable ?? true;
+    const rawDuration = typeof nextPhase.duration === 'number' ? nextPhase.duration : (timer?.duration ?? 0);
+    const durationTicks = boostable ? durationSecondsToTicks(rawDuration) : rawDuration;
+
+    const accumulated: any = (job.accumulatedState as any) ?? {};
+    // Consume session-effect charges for the upcoming phase attempt (attempt start)
+    await consumeSessionEffectCharges(jobId, db).catch((err) =>
+      this.logger.warn(`advanceToNextPhase: consumeSessionEffectCharges failed for job ${jobId}: ${err}`),
+    );
+    await (db as any).job.update({
+      where: { id: jobId },
+      data: {
+        status: 'active',
+        currentPhase: nextPhaseIndex,
+        timer: { startTick: currentTick, durationTicks },
+        readyAtTick: Math.floor(currentTick) + durationTicks,
+        accumulatedState: {
+          ...accumulated,
+          currentPhaseAttempts: 0,
+          currentPhaseSuccesses: 0,
+          currentPhaseFailures: 0,
+        },
+      },
+    });
+  }
+
+  /**
+   * Abandon an active or phase_ready multi-phase mission.
+   * Grants no rewards (abandoned = forfeited). Applies injury carryover from accumulated state,
+   * frees all entities, cleans up session effects, and marks the job as 'abandoned'.
+   */
+  async abandonMission(userId: string, jobId: string, externalTx?: any): Promise<{ entityIds: string[]; removedEffectIds: string[] }> {
+    const db = externalTx ?? this.prisma;
+    const job = await (db as any).job.findFirst({
+      where: { id: jobId, userId, type: 'MissionJob', status: { in: ['phase_ready', 'active'] } },
+    });
+    if (!job) throw new NotFoundException('No active or phase_ready mission found');
+
+    const entityIds: string[] = Array.isArray(job.team) ? job.team : [];
+    const entities = await (db as any).entity.findMany({ where: { id: { in: entityIds } } });
+    const accumulated: any = (job.accumulatedState as any) ?? {};
+    const injuriesFromState: any[] = accumulated.injuries ?? [];
+
+    // ── Injury carryover + entity release ─────────────────────────────────────
+    // Use remainingPenaltyTicks DIRECTLY — they were ticked down through each phase.
+    // Multiple injuries per entity: the longest remaining ticks wins.
+    const now = new Date();
+    const currentTick = await this.tickService.getCurrentTick(now);
+    const injuredUntilMap = buildInjuredUntilMap(injuriesFromState as PhaseInjury[], currentTick);
+
+    for (const entityId of entityIds) {
+      const ent = entities.find((e: any) => e.id === entityId);
+      if (!ent) continue;
+      const st = (ent.state as any) || {};
+      const injuredUntilTick = injuredUntilMap.get(entityId);
+      if (injuredUntilTick !== undefined) {
+        await (db as any).entity.update({
+          where: { id: entityId },
+          data: { state: { ...st, status: 'injured' }, injuredUntilTick },
+        });
+      } else {
+        await (db as any).entity.update({ where: { id: entityId }, data: { state: { ...st, status: 'idle' } } });
+      }
+    }
+
+    // Remove session effects
+    const sessionEffects = await (db as any).activeEffect.findMany({
+      where: { sessionType: 'mission', sessionId: jobId },
+    });
+    if (sessionEffects.length > 0) {
+      await (db as any).activeEffect.deleteMany({ where: { sessionType: 'mission', sessionId: jobId } });
+    }
+
+    // Mark abandoned — no rewards granted on abandon
+    await (db as any).job.update({
+      where: { id: jobId },
+      data: {
+        status: 'abandoned',
+        results: {
+          success: false,
+          abandoned: true,
+          phaseResults: job.phaseResults ?? null,
+        },
+      },
+    });
+
+    return {
+      entityIds,
+      removedEffectIds: sessionEffects.map((e: any) => e.id),
     };
   }
 

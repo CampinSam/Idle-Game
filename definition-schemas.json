@@ -1306,6 +1306,64 @@
         }
       }
     },
+    "MissionDef_multi_phase_fields": {
+      "description": "MissionDef multi-phase expedition fields. Set mode='multi_phase' and populate 'phases' to create expedition-style missions with ordered stages, persistent injuries, and per-phase outcomes.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["single", "multi_phase"],
+          "default": "single",
+          "description": "'single' (default) — standard one-phase mission. 'multi_phase' — expedition with ordered phases from the 'phases' array. Phase 0 duration overrides the def-level timer."
+        },
+        "phases": {
+          "type": "array",
+          "description": "Ordered phase definitions for multi_phase missions. Required when mode='multi_phase'.",
+          "items": {
+            "type": "object",
+            "required": ["duration", "continueRules"],
+            "properties": {
+              "name": { "type": "string", "description": "Display name for this phase." },
+              "description": { "type": "string", "description": "Flavour text shown to the player." },
+              "duration": { "type": "number", "description": "Phase duration in seconds." },
+              "difficulty": { "type": "number", "description": "Phase-specific difficulty. Falls back to def-level difficulty if omitted." },
+              "injuryRate": { "type": "number", "description": "Phase-specific injury rate (0.0–1.0). Falls back to def-level injuryRate." },
+              "injuryPenalty": { "type": "number", "default": 0.8, "description": "Direct MP effectiveness multiplier for injured entities in subsequent phases (0.8 = entity operates at 80% MP). Entity VIT reduces both the severity and duration of the penalty. Multiple injuries on the same entity compound multiplicatively." },
+              "count": { "type": "number", "default": 1, "description": "Number of roll attempts for this phase before advancing." },
+              "maxFailuresForCount": { "type": "number", "description": "If set, force-advance after this many failures regardless of count." },
+              "tiers": { "type": "object", "description": "Per-tier reward blocks for this phase (same shape as def-level tiers). Used for per_phase / hybrid rewardsMode." },
+              "modifiers": { "type": "array", "description": "Phase-local effect modifiers (future use)." },
+              "continueRules": {
+                "type": "object",
+                "required": ["onSuccess", "onFailure"],
+                "properties": {
+                  "onSuccess": {
+                    "type": "string",
+                    "enum": ["next_phase", "complete", "end_job", "wait"],
+                    "description": "Action when this phase succeeds. 'next_phase'=auto-advance, 'complete'=mark ready for collection, 'end_job'=abandon, 'wait'=pause for player decision (phase_ready status)."
+                  },
+                  "onFailure": {
+                    "type": "string",
+                    "enum": ["next_phase", "complete", "end_job", "wait"],
+                    "description": "Action when this phase fails."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "rewardsMode": {
+          "type": "string",
+          "enum": ["final_bundle", "per_phase", "hybrid"],
+          "default": "final_bundle",
+          "description": "'final_bundle' (default) — single reward roll at mission end using def-level tiers. 'per_phase' — resolve rewards from each phase's tiers at collection time; no final bundle. 'hybrid' — per-phase rewards AND a final bundle."
+        },
+        "maxFailures": {
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Maximum total phase failures across the expedition before force-ending (end_job). null = unlimited failures."
+        }
+      }
+    },
     "MissionDef_modal_fields": {
       "description": "MissionDef modal hook fields. These are optional ModalDef references that attach custom narrative or informational modals to different stages of a mission's lifecycle.",
       "properties": {
@@ -1320,6 +1378,10 @@
         "readyModalDefId": {
           "type": "string",
           "description": "ModalDef.id shown when the mission is ready to claim (falls back to activeModalDefId if unset)."
+        },
+        "phaseDecisionModalDefId": {
+          "type": "string",
+          "description": "ModalDef.id shown when a multi-phase mission is in phase_ready status (player must decide: continue or abandon). Falls back to 'default_mission_phase_ready' DefaultModalDef."
         },
         "completedModalDefId": {
           "type": "string",

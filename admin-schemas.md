@@ -557,8 +557,94 @@ When evaluating quest objectives, the SelectionContext is extended with an `even
 | `leadInModalDefId` | `ModalDef.id` for the narrative lead-in (auto-opened once per session; reopenable). |
 | `activeModalDefId` | `ModalDef.id` shown while the mission job is in progress. |
 | `readyModalDefId` | `ModalDef.id` when ready to claim (falls back to `activeModalDefId`). |
+| `phaseDecisionModalDefId` | `ModalDef.id` for multi-phase `phase_ready` decision point. Falls back to `default_mission_phase_ready`. |
 | `completedModalDefId` | `ModalDef.id` after mission success. |
 | `failedModalDefId` | `ModalDef.id` on mission failure (falls back to `completedModalDefId`). |
+
+---
+
+## Multi-Phase Missions (Expedition Mode)
+
+Multi-phase missions extend the base mission system with ordered phases, persistent cross-phase injuries, and player decision points. Single-phase missions are entirely unaffected.
+
+### MissionDef fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mode` | `"single" \| "multi_phase"` | `"single"` | Set to `"multi_phase"` to activate expedition mode. |
+| `phases` | `MissionPhaseDefinition[]` | `null` | Ordered phase specs. Required for `multi_phase`. Phase 0 duration overrides the def-level timer. |
+| `rewardsMode` | `"final_bundle" \| "per_phase" \| "hybrid"` | `"final_bundle"` | How rewards are resolved. |
+| `maxFailures` | `number \| null` | `null` | Total phase failures allowed before force-abandoning. `null` = unlimited. |
+
+### `MissionPhaseDefinition` shape
+
+```json
+{
+  "name": "Forest Approach",
+  "description": "The team crosses the treeline.",
+  "duration": 300,
+  "difficulty": 50,
+  "injuryRate": 0.3,
+  "injuryPenalty": 0.8,
+  "count": 1,
+  "maxFailuresForCount": null,
+  "tiers": { /* same shape as def-level tiers; used for per_phase/hybrid rewards */ },
+  "continueRules": {
+    "onSuccess": "next_phase",
+    "onFailure": "wait"
+  }
+}
+```
+
+### `continueRules` actions
+
+| Action | Description |
+|--------|-------------|
+| `next_phase` | Auto-advance to the next phase (or complete if last phase). |
+| `complete` | Mark job as `ready_notified` — player collects rewards normally. |
+| `end_job` | Abandon immediately; no final rewards. Partial per-phase rewards banked if `rewardsMode` is not `final_bundle`. |
+| `wait` | Pause at `phase_ready` status — player must choose to continue or abandon. |
+
+### `rewardsMode` values
+
+| Mode | Description |
+|------|-------------|
+| `final_bundle` | Single reward roll at collection using def-level `tiers`. Default. |
+| `per_phase` | Each phase's tiers are resolved at collection; no final bundle. |
+| `hybrid` | Per-phase rewards + final bundle at collection. |
+
+### New job statuses
+
+| Status | Description |
+|--------|-------------|
+| `phase_ready` | Multi-phase job paused at a player decision point (`continueRules.onSuccess/Failure = "wait"`). Player must send `ContinueMission` or `AbandonMission`. |
+| `abandoned` | Terminal status. Job ended without final rewards (but banked per-phase rewards may have been granted). |
+
+### New commands
+
+#### `ContinueMission`
+
+Advances a `phase_ready` multi-phase mission to the next phase, or completes it if no phases remain.
+
+```json
+{ "command": "ContinueMission", "payload": { "jobId": "<job-id>" } }
+```
+
+#### `AbandonMission`
+
+Abandons a `phase_ready` multi-phase mission. Frees entities, grants banked per-phase rewards (if `rewardsMode` is `per_phase` or `hybrid`), and marks the job `abandoned`.
+
+```json
+{ "command": "AbandonMission", "payload": { "jobId": "<job-id>" } }
+```
+
+### Injury persistence
+
+Injuries accumulated across phases are tracked in `job.accumulatedState.injuries` as `{ entityId, penalty, remainingPenaltyTicks }` entries. `penalty` is a direct MP effectiveness multiplier (default `0.8` = entity operates at 80% MP). Entity VIT reduces both the severity (`penalty` closer to 1.0) and duration (`remainingPenaltyTicks`) at injury time, using the same VIT curve as single-phase recovery. Multiple injuries on the same entity compound multiplicatively. Entity status is only set to `injured` at final `completeMission` — entities remain `mission` status throughout the expedition.
+
+### Phase modal
+
+When a job enters `phase_ready`, the client shows a **Decide** button on the active jobs list. Clicking opens the modal spec returned by `GET /api/ui/modal?jobId=<id>`. Configure `phaseDecisionModalDefId` on the `MissionDef` for a custom modal, or define a `DefaultModalDef` with id `default_mission_phase_ready` for a site-wide fallback.
 
 ---
 

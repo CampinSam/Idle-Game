@@ -8,6 +8,9 @@ import { GlobalPowerService } from '../global-power/global-power.service';
 import { createJobReadyNotifications } from '../job/job-notification.helper';
 import { LocationService } from '../location/location.service';
 import { PatchBuilder, buildLocationPatches } from '../commands/patch-builder';
+import { ANTI_WHALE_CAPS } from '@derp/shared';
+import { calculateMP, calculateTeamMP, calculateSuccessChance, calculateInjuryChance, SeededRng, durationSecondsToTicks, rollQualityFromCl, QUALITY_TIERS } from '@derp/math';
+import { applyInjuryPenalties, tickDownInjuryPenalties, buildInjuredUntilMap, computeInitialPenaltyTicks, computeInjuryPenaltyForEntity, consumeSessionEffectCharges, PhaseInjury } from '../mission/mission-phase.utils';
 
 const POLL_INTERVAL_MS = 200;
 const TICK_SYNC_INTERVAL_MS = 30_000;
@@ -228,7 +231,7 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
         readyAtTick: { not: null, lte: currentTick },
         status: 'active',
       },
-      select: { id: true, userId: true, type: true, defId: true, timer: true, team: true, data: true, results: true },
+      select: { id: true, userId: true, type: true, defId: true, timer: true, team: true, data: true, results: true, currentPhase: true, phaseResults: true, accumulatedState: true },
     });
 
     if (readyJobs.length === 0) return;
@@ -248,25 +251,34 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
 
     for (const [userId, jobs] of byUser) {
       try {
-        await this.notifyJobsReadyForUser(userId, jobs);
+        await this.notifyJobsReadyForUser(userId, jobs, currentTick);
       } catch (err) {
         this.logger.warn(`Job readiness processing failed for user ${userId}: ${err}`);
       }
     }
   }
 
-  private async notifyJobsReadyForUser(userId: string, jobs: any[]): Promise<void> {
-    const jobIds = jobs.map((j) => j.id);
+  private async notifyJobsReadyForUser(userId: string, jobs: any[], currentTick: number): Promise<void> {
+    // Multi-phase MissionJobs manage their own status transitions via processMultiPhaseMissionPhase.
+    const multiPhaseJobs = jobs.filter(
+      (j: any) => j.type === 'MissionJob' && (j.data as any)?.isMultiPhase === true,
+    );
+    const regularJobs = jobs.filter(
+      (j: any) => !(j.type === 'MissionJob' && (j.data as any)?.isMultiPhase === true),
+    );
+    const regularJobIds = regularJobs.map((j: any) => j.id);
 
     // Split building jobs (auto-completed server-side) from others (require player action)
-    const buildingJobs = jobs.filter((j: any) => j.type === 'BuildingJob');
-    const otherJobs = jobs.filter((j: any) => j.type !== 'BuildingJob');
+    const buildingJobs = regularJobs.filter((j: any) => j.type === 'BuildingJob');
+    const otherJobs = regularJobs.filter((j: any) => j.type !== 'BuildingJob');
 
-    // Mark all ready jobs as ready_notified first
-    await (this.prisma as any).job.updateMany({
-      where: { id: { in: jobIds }, status: 'active' },
-      data: { status: 'ready_notified' },
-    });
+    // Mark only regular jobs as ready_notified
+    if (regularJobIds.length > 0) {
+      await (this.prisma as any).job.updateMany({
+        where: { id: { in: regularJobIds }, status: 'active' },
+        data: { status: 'ready_notified' },
+      });
+    }
 
     const allPatches: any[] = [];
 
@@ -393,6 +405,23 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       }
     }
 
+    // ── Multi-phase MissionJobs: process phase outcome ─────────────────────────
+    for (const job of multiPhaseJobs) {
+      try {
+        const phaseResult = await this.processMultiPhaseMissionPhase(job, currentTick);
+        allPatches.push(...phaseResult.patches);
+        if (phaseResult.shouldNotify) {
+          await createJobReadyNotifications(this.prisma, this.notificationService, this.logger, userId, [job]);
+        }
+      } catch (err) {
+        this.logger.warn(`Multi-phase processing failed for job ${job.id}: ${err}`);
+        // Fallback: mark ready_notified so the client is aware
+        await (this.prisma as any).job.update({ where: { id: job.id }, data: { status: 'ready_notified' } });
+        const fallbackJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
+        if (fallbackJob) allPatches.push(this.serializeJobToPatch(fallbackJob));
+      }
+    }
+
     if (allPatches.length === 0) return;
 
     const delta = await (this.prisma as any).playerDelta.create({
@@ -404,6 +433,315 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       deltaId: typeof delta.id === 'bigint' ? delta.id.toString() : String(delta.id),
     });
 
-    this.logger.log(`Pushed job-ready delta for user ${userId} (${otherJobs.length} notified, ${buildingJobs.length} auto-completed)`);
+    this.logger.log(`Pushed job-ready delta for user ${userId} (${otherJobs.length} notified, ${buildingJobs.length} auto-completed, ${multiPhaseJobs.length} multi-phase processed)`);
+  }
+
+  private serializeJobToPatch(job: any) {
+    const timer = job.timer as any;
+    return {
+      op: 'upsert' as const,
+      entity: 'job',
+      id: job.id,
+      data: {
+        id: job.id,
+        type: job.type,
+        defId: job.defId,
+        status: job.status,
+        timer: job.timer,
+        team: job.team,
+        data: job.data,
+        results: job.results,
+        currentPhase: job.currentPhase ?? 0,
+        phaseResults: job.phaseResults ?? null,
+        accumulatedState: job.accumulatedState ?? null,
+        startTick: timer?.startTick ?? null,
+        durationTicks: timer?.durationTicks ?? null,
+      },
+    };
+  }
+
+  private async processMultiPhaseMissionPhase(
+    job: any,
+    currentTick: number,
+  ): Promise<{ patches: any[]; shouldNotify: boolean }> {
+    const def = await (this.prisma as any).missionDef.findUnique({ where: { id: job.defId } });
+    if (!def) {
+      this.logger.warn(`Multi-phase: missionDef not found for job ${job.id}`);
+      const updated = await (this.prisma as any).job.update({
+        where: { id: job.id },
+        data: { status: 'ready_notified' },
+      });
+      return { patches: [this.serializeJobToPatch(updated)], shouldNotify: true };
+    }
+
+    const phases: any[] = Array.isArray(def.phases) ? def.phases : [];
+    const currentPhaseIndex: number = job.currentPhase ?? 0;
+    const phase = phases[currentPhaseIndex];
+
+    if (!phase) {
+      this.logger.warn(`Multi-phase: phase ${currentPhaseIndex} missing for job ${job.id}`);
+      const updated = await (this.prisma as any).job.update({
+        where: { id: job.id },
+        data: { status: 'ready_notified' },
+      });
+      return { patches: [this.serializeJobToPatch(updated)], shouldNotify: true };
+    }
+
+    const entityIds: string[] = Array.isArray(job.team) ? job.team : [];
+    const entities = await (this.prisma as any).entity.findMany({
+      where: { id: { in: entityIds } },
+      select: { id: true, stats: true, traits: true },
+    });
+
+    const accumulated: any = job.accumulatedState ?? {
+      injuries: [],
+      currentPhaseAttempts: 0,
+      currentPhaseSuccesses: 0,
+      currentPhaseFailures: 0,
+      totalMissionFailures: 0,
+      bankedRewards: [],
+    };
+
+    // Calculate team MP applying per-entity injury penalties (multiple injuries stack multiplicatively)
+    const injuries: PhaseInjury[] = accumulated.injuries ?? [];
+    let rawTeamMP = applyInjuryPenalties(entities, injuries);
+
+    const persistedSynergy = (job.data as any)?.synergy;
+    if (persistedSynergy?.totals) {
+      const syn = persistedSynergy.totals;
+      if (typeof syn.synergyScore === 'number' && syn.synergyScore !== 0) rawTeamMP += syn.synergyScore;
+      const mpBonus = syn.statModifiers?.['MISSION_POWER']?.percentAdd ?? 0;
+      if (mpBonus !== 0) rawTeamMP *= 1 + mpBonus / 100;
+    }
+
+    const cap = ANTI_WHALE_CAPS.mpEffectivenessCap;
+    const teamMP = rawTeamMP <= cap ? rawTeamMP : cap + Math.sqrt(rawTeamMP - cap);
+
+    const difficulty: number = phase.difficulty ?? def.difficulty ?? 0;
+    const successChance = calculateSuccessChance(teamMP, difficulty, def.minSuccessChance ?? 0, def.maxSuccessChance ?? 100);
+
+    const phaseSeed = `${(job.data as any)?.seed ?? job.id}_phase_${currentPhaseIndex}_attempt_${accumulated.currentPhaseAttempts ?? 0}`;
+    const rng = new SeededRng(phaseSeed);
+    const success = rng.chance(successChance);
+
+    let quality = success ? 'common' : 'failure';
+    if (success && phase.tiers && typeof phase.tiers === 'object') {
+      const hasPhaseTiers = Object.keys(phase.tiers).some(
+        (k) => k !== 'sigma' && Array.isArray(phase.tiers[k]?.rewards) && phase.tiers[k].rewards.length > 0,
+      );
+      if (hasPhaseTiers) {
+        try { quality = rollQualityFromCl(teamMP, rng).key; } catch { /* keep 'common' */ }
+      }
+    }
+
+    // Update counters
+    const newAccumulated = { ...accumulated };
+    newAccumulated.currentPhaseAttempts = (accumulated.currentPhaseAttempts ?? 0) + 1;
+    if (success) {
+      newAccumulated.currentPhaseSuccesses = (accumulated.currentPhaseSuccesses ?? 0) + 1;
+    } else {
+      newAccumulated.currentPhaseFailures = (accumulated.currentPhaseFailures ?? 0) + 1;
+      newAccumulated.totalMissionFailures = (accumulated.totalMissionFailures ?? 0) + 1;
+    }
+
+    // Phase injuries on failure — multiple injuries per entity are allowed and stack multiplicatively.
+    // Both duration (remainingPenaltyTicks) and severity (penalty) are reduced by entity VIT at
+    // injury time, using the same curve as single-phase recovery: higher VIT → shorter, weaker injury.
+    const injuryRate: number = phase.injuryRate ?? def.injuryRate ?? 0;
+    if (!success && injuryRate > 0 && entities.length > 0) {
+      const injuryChance = calculateInjuryChance(difficulty, teamMP, injuryRate);
+      if (injuryChance > 0) {
+        for (const entity of entities) {
+          if (rng.chance(injuryChance)) {
+            const vit: number = (entity.stats as any)?.VIT ?? 0;
+            const penalty = computeInjuryPenaltyForEntity(phase, vit);
+            const remainingPenaltyTicks = computeInitialPenaltyTicks(phase, def, vit);
+            newAccumulated.injuries = [
+              ...(newAccumulated.injuries ?? []),
+              { entityId: entity.id, penalty, remainingPenaltyTicks },
+            ];
+          }
+        }
+      }
+    }
+
+    // ── Action determination ───────────────────────────────────────────────────
+    // Two independent mechanisms:
+    //
+    // 1. Count-based success repetition (independent of allowRetry):
+    //    Re-arm until currentPhaseSuccesses >= phase.count.
+    //
+    // 2. Failure retry (allowRetry defaults to FALSE — must be explicitly enabled):
+    //    Re-arm on failure while allowRetry === true and per-phase failure cap not reached.
+    //
+    // When mission-level maxFailures is reached, trigger continueRules.onFailure (not
+    // a hard end_job override) so phase designers control the terminal behavior.
+    const maxFailures: number | null = def.maxFailures ?? null;
+    const missionFailureLimitReached = maxFailures !== null && newAccumulated.totalMissionFailures >= maxFailures;
+    const rules = phase.continueRules ?? { onSuccess: 'complete', onFailure: 'end_job' };
+
+    const phaseCount: number = phase.count ?? 1;
+    const maxFailuresForCount: number | null = phase.maxFailuresForCount ?? null;
+    const successCountMet = newAccumulated.currentPhaseSuccesses >= phaseCount;
+    const failureCapReached = maxFailuresForCount !== null && newAccumulated.currentPhaseFailures >= maxFailuresForCount;
+
+    let action: string;
+    if (success && !successCountMet) {
+      // More successes still needed — re-arm regardless of continueRules or retry flags
+      action = '_rearm';
+    } else if (!success && phase.allowRetry === true && !failureCapReached && !missionFailureLimitReached) {
+      // Failure retry: only when explicitly enabled and caps not reached
+      action = '_rearm';
+    } else {
+      // Phase concluded — apply continueRules; mission failure limit forces onFailure path
+      action = (success && !missionFailureLimitReached)
+        ? (rules.onSuccess ?? 'complete')
+        : (rules.onFailure ?? 'end_job');
+    }
+
+    // ── Phase result snapshot — only on phase completion, not on retry re-arms ─
+    // phaseResults stores one entry per concluded phase (when count target met or
+    // retries exhausted), not one per attempt.
+    const existingPhaseResults: any[] = Array.isArray(job.phaseResults) ? job.phaseResults : [];
+    const phaseResult = {
+      phaseIndex: currentPhaseIndex,
+      phaseName: phase.name ?? `Phase ${currentPhaseIndex + 1}`,
+      success,
+      quality,
+      teamMP: Number(teamMP.toFixed(2)),
+    };
+    const completedPhaseResults = action === '_rearm'
+      ? existingPhaseResults
+      : [...existingPhaseResults, phaseResult];
+
+    // Elapsed ticks for this phase (used for injury tick-down in every branch)
+    const phaseDurationTicks = (job.timer as any)?.durationTicks
+      ?? Math.max(1, durationSecondsToTicks(phase.duration ?? 60));
+
+    // Resolve boostable flag once for timer calculations below
+    const phaseBoostable = (def?.timer as any)?.boostable ?? true;
+
+    const patches: any[] = [];
+
+    if (action === '_rearm') {
+      const dur = Math.max(1, phaseBoostable
+        ? durationSecondsToTicks(phase.duration ?? 60)
+        : Math.round(phase.duration ?? 60));
+      // Tick down injuries by the elapsed phase duration
+      newAccumulated.injuries = tickDownInjuryPenalties(newAccumulated.injuries ?? [], phaseDurationTicks);
+      // Consume session-effect charges at the start of the upcoming attempt
+      await consumeSessionEffectCharges(job.id, this.prisma).catch((err) =>
+        this.logger.warn(`consumeSessionEffectCharges failed for job ${job.id}: ${err}`),
+      );
+      const updated = await (this.prisma as any).job.update({
+        where: { id: job.id },
+        data: {
+          status: 'active',
+          readyAtTick: Math.floor(currentTick) + dur,
+          timer: { startTick: currentTick, durationTicks: dur },
+          phaseResults: existingPhaseResults,
+          accumulatedState: newAccumulated,
+        },
+      });
+      patches.push(this.serializeJobToPatch(updated));
+      return { patches, shouldNotify: false };
+    }
+
+    if (action === 'next_phase') {
+      const nextPhaseIndex = currentPhaseIndex + 1;
+      if (nextPhaseIndex < phases.length) {
+        const nextPhase = phases[nextPhaseIndex];
+        const dur = Math.max(1, phaseBoostable
+          ? durationSecondsToTicks(nextPhase.duration ?? 60)
+          : Math.round(nextPhase.duration ?? 60));
+        // Tick down injuries by the completed phase's duration before advancing
+        newAccumulated.injuries = tickDownInjuryPenalties(newAccumulated.injuries ?? [], phaseDurationTicks);
+        newAccumulated.currentPhaseAttempts = 0;
+        newAccumulated.currentPhaseSuccesses = 0;
+        newAccumulated.currentPhaseFailures = 0;
+        // Consume session-effect charges at the start of the next phase's attempt
+        await consumeSessionEffectCharges(job.id, this.prisma).catch((err) =>
+          this.logger.warn(`consumeSessionEffectCharges failed for job ${job.id}: ${err}`),
+        );
+        const updated = await (this.prisma as any).job.update({
+          where: { id: job.id },
+          data: {
+            status: 'active',
+            currentPhase: nextPhaseIndex,
+            readyAtTick: Math.floor(currentTick) + dur,
+            timer: { startTick: currentTick, durationTicks: dur },
+            phaseResults: completedPhaseResults,
+            accumulatedState: newAccumulated,
+          },
+        });
+        patches.push(this.serializeJobToPatch(updated));
+        return { patches, shouldNotify: false };
+      }
+      // No more phases — fall through to complete
+    }
+
+    if (action === 'complete' || action === 'next_phase') {
+      newAccumulated.injuries = tickDownInjuryPenalties(newAccumulated.injuries ?? [], phaseDurationTicks);
+      const updated = await (this.prisma as any).job.update({
+        where: { id: job.id },
+        data: {
+          status: 'ready_notified',
+          phaseResults: completedPhaseResults,
+          accumulatedState: newAccumulated,
+          data: { ...(job.data as any), lastPhaseSuccess: success },
+        },
+      });
+      patches.push(this.serializeJobToPatch(updated));
+      return { patches, shouldNotify: true };
+    }
+
+    if (action === 'wait') {
+      newAccumulated.injuries = tickDownInjuryPenalties(newAccumulated.injuries ?? [], phaseDurationTicks);
+      const updated = await (this.prisma as any).job.update({
+        where: { id: job.id },
+        data: {
+          status: 'phase_ready',
+          phaseResults: completedPhaseResults,
+          accumulatedState: newAccumulated,
+        },
+      });
+      patches.push(this.serializeJobToPatch(updated));
+      return { patches, shouldNotify: true };
+    }
+
+    // end_job — tick down injuries, then release entities using remainingPenaltyTicks directly.
+    // Multiple injuries per entity: the longest remaining ticks wins for recovery time.
+    // Delete all session-scoped ActiveEffect rows for this mission so they do not persist.
+    await (this.prisma as any).activeEffect.deleteMany({
+      where: { sessionType: 'mission', sessionId: job.id },
+    });
+    newAccumulated.injuries = tickDownInjuryPenalties(newAccumulated.injuries ?? [], phaseDurationTicks);
+    const injuredUntilMap = buildInjuredUntilMap(newAccumulated.injuries, currentTick);
+    for (const entityId of entityIds) {
+      const ent = await (this.prisma as any).entity.findUnique({ where: { id: entityId } });
+      if (ent) {
+        const st = (ent.state as any) || {};
+        const injuredUntilTick = injuredUntilMap.get(entityId);
+        if (injuredUntilTick !== undefined) {
+          await (this.prisma as any).entity.update({
+            where: { id: entityId },
+            data: { state: { ...st, status: 'injured' }, injuredUntilTick },
+          });
+        } else {
+          await (this.prisma as any).entity.update({ where: { id: entityId }, data: { state: { ...st, status: 'idle' } } });
+        }
+      }
+    }
+    const updated = await (this.prisma as any).job.update({
+      where: { id: job.id },
+      data: {
+        status: 'abandoned',
+        phaseResults: completedPhaseResults,
+        accumulatedState: newAccumulated,
+        results: { success: false, abandoned: true, phaseResults: completedPhaseResults },
+      },
+    });
+    patches.push(this.serializeJobToPatch(updated));
+    return { patches, shouldNotify: true };
   }
 }

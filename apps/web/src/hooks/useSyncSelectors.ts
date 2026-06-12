@@ -57,7 +57,7 @@ export function useSyncStatus() {
 export function useSyncActiveMissions() {
   const jobs = useSyncJobs();
   return useMemo(
-    () => jobs.filter((j: any) => j.type === 'MissionJob' && (j.status === 'active' || j.status === 'ready_notified')),
+    () => jobs.filter((j: any) => j.type === 'MissionJob' && (j.status === 'active' || j.status === 'ready_notified' || j.status === 'phase_ready')),
     [jobs],
   );
 }
@@ -66,7 +66,7 @@ export function useAllActiveJobs() {
   const jobs = useSyncJobs();
   const locations = useSyncLocations();
   return useMemo(() => {
-    const activeStatuses = new Set(['active', 'ready_notified']);
+    const activeStatuses = new Set(['active', 'ready_notified', 'phase_ready']);
     const missionAndCraftingJobs = jobs
       .filter(
         (j: any) =>

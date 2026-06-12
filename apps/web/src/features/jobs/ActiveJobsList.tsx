@@ -148,15 +148,17 @@ export function ActiveJobRow({
   skipBaseCosts,
   skipType,
 }: ActiveJobRowProps) {
-  const isReady = remainingMs <= 0;
+  const isPhaseReady = job.status === 'phase_ready';
+  const isReady = remainingMs <= 0 || isPhaseReady;
   const icon = JOB_ICON[job.type] ?? '⏱️';
   const label = JOB_LABEL[job.type] ?? job.type;
-  const color = JOB_COLOR[job.type] ?? '#8b5cf6';
+  const color = isPhaseReady ? '#f59e0b' : (JOB_COLOR[job.type] ?? '#8b5cf6');
   const timeLabel = isReady ? null : formatTimeLeft(remainingMs);
   const showSkipButton = !!onSkip && !isReady;
   // Building jobs auto-complete server-side; no Complete button needed
-  const showCompleteButton = isReady && !!onComplete && job.type !== 'BuildingJob';
-  const hasRightAction = showSkipButton || showCompleteButton;
+  // phase_ready jobs show a "Decide" button handled via onClick (opens modal)
+  const showCompleteButton = isReady && !!onComplete && job.type !== 'BuildingJob' && !isPhaseReady;
+  const hasRightAction = showSkipButton || showCompleteButton || isPhaseReady;
 
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
@@ -194,6 +196,11 @@ export function ActiveJobRow({
           <div className="flex items-center justify-between gap-2">
             <span className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-bold text-[#e2d9ff] capitalize truncate`}>
               {job.name || label}
+              {isPhaseReady && (
+                <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider text-[#fcd34d] bg-[rgba(245,158,11,0.15)] border border-[rgba(245,158,11,0.35)] rounded px-1 py-0.5">
+                  Phase {(job.currentPhase ?? 0) + 1} Complete
+                </span>
+              )}
             </span>
             {timeLabel && (
               <span className="text-[11px] font-bold text-text-secondary whitespace-nowrap flex-shrink-0">
@@ -215,6 +222,19 @@ export function ActiveJobRow({
           )}
         </div>
       </button>
+
+      {/* Decide button — phase_ready missions (opens modal) */}
+      {isPhaseReady && (
+        <div className="pr-3 pl-1 flex-shrink-0 self-center">
+          <button
+            type="button"
+            onClick={onClick}
+            className={`font-bold rounded-md border border-[rgba(245,158,11,0.5)] text-[#fcd34d] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.22)] transition-colors whitespace-nowrap ${compact ? 'text-[10px] px-2 py-0.5' : 'text-[11px] px-2.5 py-1'}`}
+          >
+            Decide
+          </button>
+        </div>
+      )}
 
       {/* Complete button — ready non-building jobs only */}
       {showCompleteButton && (

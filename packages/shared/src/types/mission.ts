@@ -1,6 +1,58 @@
 import type { Requirements } from './rich-selection';
 
-export type MissionStatus = 'active' | 'completed' | 'failed';
+export type MissionStatus = 'active' | 'completed' | 'failed' | 'phase_ready' | 'abandoned';
+
+export type RewardsMode = 'per_phase' | 'final_bundle' | 'hybrid';
+
+export type ContinueRuleAction = 'next_phase' | 'complete' | 'end_job' | 'wait';
+
+export interface ContinueRules {
+  onSuccess: ContinueRuleAction;
+  onFailure: ContinueRuleAction;
+}
+
+export interface MissionPhaseDefinition {
+  name?: string;
+  description?: string;
+  duration: number;
+  difficulty?: number;
+  requirements?: Requirements;
+  modifiers?: Record<string, any>;
+  successOutcome?: any;
+  failureOutcome?: any;
+  tiers?: Record<string, any>;
+  continueRules: ContinueRules;
+  count?: number;
+  maxFailuresForCount?: number;
+  allowRetry?: boolean;
+  injuryRate?: number;
+  injuryRecoveryTicks?: number;
+  injuryPenalty?: number;
+  injuryPenaltyDuration?: number;
+}
+
+export interface InjuryEntry {
+  entityId: string;
+  penalty: number;
+  remainingPenaltyTicks: number;
+}
+
+export interface MissionAccumulatedState {
+  injuries: InjuryEntry[];
+  currentPhaseSuccesses: number;
+  currentPhaseFailures: number;
+  totalMissionFailures: number;
+  bankedRewards?: any[];
+}
+
+export interface PhaseResult {
+  phaseIndex: number;
+  phaseName: string;
+  success: boolean;
+  quality?: string;
+  rewards?: any[];
+  injuredEntityIds?: string[];
+}
 
 export interface RewardEntry {
   type: 'entity_xp' | 'keeper_xp' | 'currency' | 'item';
@@ -67,6 +119,10 @@ export interface MissionDefinition {
   name: string;
   description: string;
   difficulty: number;
+  mode?: 'single' | 'multi_phase';
+  phases?: MissionPhaseDefinition[];
+  rewardsMode?: RewardsMode;
+  maxFailures?: number;
   injuryRate?: number;
   injuryRecoveryTicks?: number;
   timer: import('./timer').Timer;

@@ -102,6 +102,9 @@ export class UiService {
       case 'ready_notified':
         specificDefId = (def as any)?.readyModalDefId ?? null;
         break;
+      case 'phase_ready':
+        specificDefId = (def as any)?.phaseDecisionModalDefId ?? null;
+        break;
       case 'completed':
         specificDefId = job.type === 'MissionJob'
           ? resolveMissionTierModal((def as any)?.tiers, quality)
@@ -541,6 +544,7 @@ export class UiService {
     switch (status) {
       case 'active': return 'active';
       case 'ready_notified': return 'ready';
+      case 'phase_ready': return 'phase_ready';
       case 'completed': return 'completed';
       case 'failed': return 'failed';
       default: return (status as string) === 'collected' ? 'completed' : null;
