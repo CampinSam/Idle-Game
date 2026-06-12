@@ -177,9 +177,13 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
 
     case 'tempflag': {
       const tf = ctx.tempFlags;
-      if (!tf) return [0];
-      const v = tf[field];
-      return [v !== undefined ? v : 0];
+      const v = tf ? tf[field] : undefined;
+      if (v !== undefined) return [v];
+      // For numeric operators default to 0 so an unset counter reads as zero.
+      // For existence checks (exists/not_exists) preserve undefined so they
+      // correctly report the flag as absent.
+      const numericOps = new Set<string>(['gt', 'gte', 'lt', 'lte', 'between']);
+      return [numericOps.has(rule.operator as string) ? 0 : undefined];
     }
 
     default:
