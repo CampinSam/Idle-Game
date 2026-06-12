@@ -44,6 +44,14 @@ export default function MissionsContent() {
     dispatch(fetchMissionCategoryDefs());
   }, [dispatch]);
 
+  // Re-fetch defs whenever the SSE stream (re)connects so stale cached
+  // definitions (missing mode/phases etc.) are replaced without a hard refresh.
+  useEffect(() => {
+    if (syncStatus === 'connected') {
+      dispatch(fetchMissionDefs());
+    }
+  }, [syncStatus, dispatch]);
+
   const allCategories = useMemo(() => {
     const catMap = new Map<string, any>();
     for (const catDef of missionCategoryDefs) {

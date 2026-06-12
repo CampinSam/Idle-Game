@@ -85,6 +85,11 @@ function MissionActiveRow({
   const phaseResults: any[] = Array.isArray(m.phaseResults) ? m.phaseResults : [];
   const lastResult: any | null = phaseResults.length > 0 ? phaseResults[phaseResults.length - 1] : null;
 
+  // Count-based phase progress (e.g. Phase 1 needs 3 successes)
+  const currentPhaseDef = phases[currentPhaseIdx] ?? null;
+  const phaseCount: number = currentPhaseDef?.count ?? 1;
+  const currentSuccesses: number = (m.accumulatedState as any)?.currentPhaseSuccesses ?? 0;
+
   const isPhaseReady = m.status === 'phase_ready';
   const isReadyNotified = m.status === 'ready_notified';
 
@@ -210,6 +215,8 @@ function MissionActiveRow({
                   ? `Phase ${currentPhaseIdx + 1} Done`
                   : isReadyNotified
                   ? 'Complete'
+                  : phaseCount > 1
+                  ? `Phase ${currentPhaseIdx + 1}/${totalPhases} · ${currentSuccesses}/${phaseCount}`
                   : `Phase ${currentPhaseIdx + 1} / ${totalPhases}`}
               </span>
             )}
@@ -236,7 +243,7 @@ function MissionActiveRow({
               durationTicks={m.durationTicks}
               color={isReadyNotified ? '#10b981' : '#8b5cf6'}
               compact
-              readyLabel="✅ Ready"
+              readyLabel={isMultiPhase && m.status === 'active' ? '⟳' : '✅ Ready'}
               actionLabel={showSkipButton ? 'Skip' : undefined}
               readyActionLabel={
                 isReadyNotified && onCompleteJob
