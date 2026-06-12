@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch } from "../store";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useMemo } from "react";
 import { fetchCurrencyDefs } from "../store/gameSlice";
 import { logout } from "../store/authSlice";
 import { useNotifications } from "../context/NotificationContext";
@@ -27,7 +27,7 @@ import { useLevelUpAudio } from "../hooks/useLevelUpAudio";
 import { useSeasonStartAudio } from "../hooks/useSeasonStartAudio";
 import { useEntityProgressionAudio } from "../hooks/useEntityProgressionAudio";
 import { useBootstrapModals } from "../hooks/useBootstrapModals";
-import { useBuildingCompletionWatcher } from "../hooks/useBuildingCompletionWatcher";
+import { useAutoCompletingJobWatcher, type AutoCompletingJobConfig } from "../hooks/useAutoCompletingJobWatcher";
 
 export default function Layout() {
   const dispatch = useAppDispatch();
@@ -48,6 +48,31 @@ export default function Layout() {
   const [showMenu, setShowMenu] = useState(false);
   const [showNotifCenter, setShowNotifCenter] = useState(false);
 
+  const buildings = useAppSelector((s) => s.sync.buildings);
+
+  const autoCompletingJobConfigs = useMemo<AutoCompletingJobConfig[]>(
+    () => [
+      {
+        jobType: 'BuildingJob',
+        toastTitle: '🏗️ Construction Complete!',
+        toastIcon: '🏗️',
+        accentColor: '#f97316',
+        sfxKey: 'sfx.building.complete',
+        durationMs: 6000,
+        resolveName: (job) => {
+          const buildingId = job?.data?.buildingId;
+          if (buildingId && (buildings as any)[buildingId]) {
+            return (buildings as any)[buildingId].name ?? '';
+          }
+          return job?.defId ? String(job.defId).replace(/_/g, ' ') : '';
+        },
+        toastBody: (name) =>
+          name ? `${name} has finished upgrading.` : 'A building has finished upgrading.',
+      },
+    ],
+    [buildings],
+  );
+
   useEffect(() => {
     audioEngine.init();
     installButtonSfx();
@@ -57,7 +82,7 @@ export default function Layout() {
   useSeasonStartAudio();
   useEntityProgressionAudio();
   useBootstrapModals();
-  useBuildingCompletionWatcher();
+  useAutoCompletingJobWatcher(autoCompletingJobConfigs);
 
   const hasClaimableRewards =
     gifts.some((g: any) => g.status === "UNCLAIMED") ||
