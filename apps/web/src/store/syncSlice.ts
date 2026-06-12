@@ -42,6 +42,7 @@ export interface HomeBannerSnapshot {
   endsAt: string | null;
   seasonId: string | null;
   config: Record<string, any>;
+  display: Record<string, any>;
 }
 
 export interface GlobalPowerSnapshot {

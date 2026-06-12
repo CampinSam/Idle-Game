@@ -1872,6 +1872,90 @@
         }
       },
       "additionalProperties": false
+    },
+    "HomeBannerDisplay": {
+      "type": "object",
+      "description": "Visual customisation options for a HomeBannerDef row. All keys are optional — omitted keys fall back to the default purple RPG theme.",
+      "properties": {
+        "titleColor": {
+          "type": "string",
+          "description": "CSS colour for the banner title. Default: #f0e6ff"
+        },
+        "subtitleColor": {
+          "type": "string",
+          "description": "CSS colour for the subtitle / countdown line. Default: #c4b5fd"
+        },
+        "taglineColor": {
+          "type": "string",
+          "description": "CSS colour for the tagline / description line. Default: rgba(255,255,255,0.6)"
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "Drives the card border colour and hover glow shadow. Default: rgba(139,92,246,0.3)"
+        },
+        "overlayGradient": {
+          "type": "string",
+          "description": "Full CSS gradient string rendered over the background image (e.g. 'linear-gradient(...)'). Default: dark purple diagonal."
+        },
+        "ctaVariant": {
+          "type": "string",
+          "enum": ["primary", "gold", "outline", "ghost"],
+          "description": "Pre-built CTA button style preset. Default: primary (purple gradient)."
+        },
+        "ctaBackground": {
+          "type": "string",
+          "description": "Custom CSS background for the CTA button — overrides ctaVariant when set."
+        },
+        "ctaTextColor": {
+          "type": "string",
+          "description": "Custom CSS text colour for the CTA button — overrides ctaVariant when set."
+        },
+        "badge": {
+          "type": "string",
+          "description": "Short promotional chip text rendered in the top-right corner (e.g. 'NEW', 'LIMITED TIME')."
+        },
+        "badgeColor": {
+          "type": "string",
+          "description": "Background colour of the badge chip. Default: #7c3aed"
+        },
+        "textAlign": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "description": "Text alignment for the overlay content block. Default: left"
+        },
+        "imageHeight": {
+          "type": "number",
+          "description": "Card height in pixels when a backgroundImage is present. Default: 170"
+        },
+        "imageObjectPosition": {
+          "type": "string",
+          "description": "CSS object-position for the background image (e.g. 'top', '50% 20%'). Default: center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "HomeBannerConfig": {
+      "type": "object",
+      "description": "Behaviour options for a HomeBannerDef row. All keys are optional.",
+      "properties": {
+        "autoAdvance": {
+          "type": "boolean",
+          "description": "Set false to disable auto-advance for the whole carousel while this banner is in the active set. Default: true"
+        },
+        "autoAdvanceMs": {
+          "type": "number",
+          "description": "Override the auto-advance interval in milliseconds. The carousel uses the highest value across all active banners. Default: 7000"
+        },
+        "tagline": {
+          "type": "string",
+          "description": "Short tagline rendered below the subtitle. Overrides description as the tagline text."
+        },
+        "deriveFromActiveSeason": {
+          "type": "boolean",
+          "description": "When true, substitutes title, endsAt, startsAt, and seasonId from the current active Season row. Banner is hidden if no active Season exists. Default: false"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

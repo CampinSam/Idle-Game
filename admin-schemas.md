@@ -3637,6 +3637,79 @@ Present when the item can be broken down via the dusting system. See the full fi
 
 ---
 
+## Home Banners — `HomeBannerDef`
+
+Home banner rows are managed through the generic admin smart-editor at `GET /api/admin/records/homeBannerDef`.
+
+### Core fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `name` | string | Internal admin name |
+| `title` | string | Banner heading shown to players |
+| `subtitle` | string? | Short subheading or countdown label |
+| `description` | string? | Longer body copy (also used as tagline fallback) |
+| `backgroundImage` | string? | Asset path or URL for the card background image |
+| `ctaLabel` | string? | Call-to-action button label |
+| `ctaRoute` | string? | Client-side route the CTA and card tap navigate to |
+| `priority` | number | Display order — higher values appear first |
+| `startsAt` | datetime? | ISO — banner hidden before this time |
+| `endsAt` | datetime? | ISO — banner hidden after this time |
+| `status` | string | `"active"` (shown) or `"inactive"` (hidden) |
+| `seasonId` | string? | Linked season FK |
+| `config` | Json | Behaviour options (see below) |
+| `display` | Json | Visual customisation options (see below) |
+
+### `config` — Behaviour options
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `autoAdvance` | boolean | `true` | Set `false` to disable auto-advance for the whole carousel while this banner is in the active set |
+| `autoAdvanceMs` | number | `7000` | Override the auto-advance interval in milliseconds (carousel uses the highest value across all active banners) |
+| `tagline` | string | — | Short tagline rendered below the subtitle; overrides `description` as tagline |
+| `deriveFromActiveSeason` | boolean | `false` | When `true`, substitutes `title`, `endsAt`, `startsAt`, and `seasonId` from the current active Season row; banner is hidden if no active Season exists |
+
+### `display` — Visual customisation options
+
+All keys are optional. Omitted keys fall back to the default purple RPG theme so existing banners with an empty `display: {}` render identically to before.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `titleColor` | string | `#f0e6ff` | CSS colour for the banner title |
+| `subtitleColor` | string | `#c4b5fd` | CSS colour for the subtitle / countdown line |
+| `taglineColor` | string | `rgba(255,255,255,0.6)` | CSS colour for the tagline / description line |
+| `accentColor` | string | `rgba(139,92,246,0.3)` | Drives the card border colour and hover glow shadow |
+| `overlayGradient` | string | dark purple diagonal gradient | Full CSS gradient string (e.g. `linear-gradient(...)`) rendered over the background image |
+| `ctaVariant` | `"primary"` \| `"gold"` \| `"outline"` \| `"ghost"` | `"primary"` | Pre-built CTA button style preset |
+| `ctaBackground` | string | — | Custom CSS `background` for the CTA button — overrides `ctaVariant` when set |
+| `ctaTextColor` | string | — | Custom CSS text colour for the CTA button — overrides `ctaVariant` when set |
+| `badge` | string | — | Short promotional chip text rendered in the top-right corner (e.g. `"NEW"`, `"LIMITED TIME"`) |
+| `badgeColor` | string | `#7c3aed` | Background colour of the badge chip |
+| `textAlign` | `"left"` \| `"center"` \| `"right"` | `"left"` | Text alignment for the overlay content block |
+| `imageHeight` | number | `170` | Card height in pixels when a `backgroundImage` is present |
+| `imageObjectPosition` | string | `"center"` | CSS `object-position` for the background image (e.g. `"top"`, `"50% 20%"`) |
+
+**Example — season event banner with gold CTA and a badge:**
+
+```json
+{
+  "display": {
+    "overlayGradient": "linear-gradient(135deg, rgba(20,8,40,0.9) 0%, rgba(60,20,10,0.5) 70%, transparent 100%)",
+    "titleColor": "#fde68a",
+    "subtitleColor": "#fcd34d",
+    "accentColor": "rgba(251,191,36,0.4)",
+    "ctaVariant": "gold",
+    "badge": "LIMITED TIME",
+    "badgeColor": "#b45309",
+    "imageHeight": 200,
+    "imageObjectPosition": "top"
+  }
+}
+```
+
+---
+
 ### `lootboxDefId` — Lootbox / Gacha Items
 
 Present on **lootbox** items (`type: LOOTBOX`). A plain string field (not a nested blob) referencing the `LootboxDef` row that determines the outcome pool when the player opens this item.

@@ -14,6 +14,7 @@ export interface HomeBannerSnapshot {
   endsAt: string | null;
   seasonId: string | null;
   config: Record<string, any>;
+  display: Record<string, any>;
 }
 
 @Injectable()
@@ -83,6 +84,8 @@ export class HomeBannerService {
         }
       }
 
+      const display = (row.display && typeof row.display === 'object') ? row.display : {};
+
       result.push({
         id: row.id,
         title,
@@ -96,6 +99,7 @@ export class HomeBannerService {
         endsAt: endsAtStr,
         seasonId,
         config: mergedCfg,
+        display,
       });
     }
 

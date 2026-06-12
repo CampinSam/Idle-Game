@@ -1024,6 +1024,7 @@ model HomeBannerDef {
   status          String    @default("active")
   seasonId        String?
   config          Json      @default("{}")
+  display         Json      @default("{}")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   season          Season?   @relation(fields: [seasonId], references: [id])
