@@ -494,6 +494,7 @@ export class GameRulesService {
               case 'increment': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) + Number(item.value ?? 1); break;
               case 'decrement': reqContext.userFlags[item.key] = (typeof reqContext.userFlags[item.key] === 'number' ? reqContext.userFlags[item.key] as number : 0) - Number(item.value ?? 1); break;
               case 'invert':    reqContext.userFlags[item.key] = !reqContext.userFlags[item.key]; break;
+              case 'unset':
               case 'remove':    delete reqContext.userFlags[item.key]; break;
             }
             flags.push({ entry: item });
@@ -505,6 +506,7 @@ export class GameRulesService {
               case 'increment': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) + Number(item.value ?? 1); break;
               case 'decrement': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) - Number(item.value ?? 1); break;
               case 'invert':    tf[item.key] = !tf[item.key]; break;
+              case 'unset':
               case 'remove':    delete tf[item.key]; break;
             }
           } else if (item.type === 'emitEvent') {

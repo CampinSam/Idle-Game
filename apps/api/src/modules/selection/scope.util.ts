@@ -177,8 +177,9 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
 
     case 'tempflag': {
       const tf = ctx.tempFlags;
-      if (!tf) return [undefined];
-      return [tf[field]];
+      if (!tf) return [0];
+      const v = tf[field];
+      return [v !== undefined ? v : 0];
     }
 
     default:
