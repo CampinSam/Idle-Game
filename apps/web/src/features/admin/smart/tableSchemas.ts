@@ -54,6 +54,12 @@ export interface FieldDef {
    * on a sibling field value (e.g. GameDefinition.data changes by .type).
    */
   typeResolver?: (record: Record<string, any>) => string;
+  /**
+   * Optional predicate that controls whether this field is rendered at all.
+   * When provided, the field (and its errors) are omitted if it returns false.
+   * The field's stored value is NOT cleared on hide — only the UI is suppressed.
+   */
+  visibleWhen?: (record: Record<string, any>) => boolean;
 }
 
 export interface SectionDef {
@@ -179,10 +185,10 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       sortOrder:            { type: 'number',        default: 0,     description: 'Display order within category',                                             section: 'basic' },
       inline:               { type: 'boolean',       default: false, description: 'Show as inline pill on category card',                                      section: 'basic' },
       inlineLabel:          { type: 'string',                        description: 'Label for inline pill (defaults to duration)',                               section: 'basic' },
-      mode:                 { type: 'string',        default: 'single', description: '"single" (default) or "multi_phase". Multi-phase missions use the phases array and advance through ordered stages.', section: 'outcomes' },
-      phases:               { type: 'json',          default: null,  description: 'Array of MissionPhaseDefinition objects (multi_phase only). Each: { name?, description?, duration (seconds), difficulty?, injuryRate?, injuryPenalty?, injuryPenaltyDuration?, continueRules: { onSuccess: next_phase|complete|end_job|wait, onFailure: next_phase|complete|end_job|wait }, count?, maxFailuresForCount?, tiers?, modifiers? }', section: 'outcomes' },
-      rewardsMode:          { type: 'string',        default: 'final_bundle', description: '"final_bundle" (default) — single reward roll at end; "per_phase" — rewards banked from each phase; "hybrid" — per-phase banked rewards plus a final bundle.', section: 'outcomes' },
-      maxFailures:          { type: 'number',        default: null,  description: 'Max total phase failures before the expedition is force-ended (end_job). null = unlimited.', section: 'outcomes' },
+      mode:                 { type: 'enum',          enum: 'missionMode', default: 'single', description: '"single" (default) or "multi_phase". Multi-phase missions use the phases array and advance through ordered stages.', section: 'outcomes' },
+      phases:               { type: 'missionPhases', default: [],    description: 'Ordered phase definitions (multi_phase only). Phase 0 duration overrides the def-level timer.', section: 'outcomes', visibleWhen: (r) => r.mode === 'multi_phase' },
+      rewardsMode:          { type: 'enum',          enum: 'missionRewardsMode', default: 'final_bundle', description: '"final_bundle" (default) — single reward roll at end; "per_phase" — rewards banked from each phase; "hybrid" — per-phase banked rewards plus a final bundle.', section: 'outcomes', visibleWhen: (r) => r.mode === 'multi_phase' },
+      maxFailures:          { type: 'number',        default: null,  description: 'Max total phase failures before the expedition is force-ended (end_job). null = unlimited.', section: 'outcomes', visibleWhen: (r) => r.mode === 'multi_phase' },
       timer:                { type: 'timerSpec',                     description: 'Duration and skip settings (used for single-phase; phase[0].duration overrides for multi_phase)',                                                section: 'outcomes' },
       minSuccessChance:     { type: 'number',        default: 0,     description: 'Min success chance (0–100)',                                                section: 'outcomes' },
       maxSuccessChance:     { type: 'number',        default: 100,   description: 'Max success chance (0–100)',                                                section: 'outcomes' },
@@ -195,10 +201,13 @@ export const TABLE_SCHEMAS: Record<string, TableSchema> = {
       launchRequirements:   { type: 'richSelection', default: null,  description: 'Launch-time gate evaluated with the real selected team (teamSize, entity traits). Both requirements AND launchRequirements must pass server-side for startMission to succeed.', section: 'requirements' },
       visibilityRequirements: { type: 'richSelection', default: null, description: 'Visibility conditions',                                                    section: 'requirements' },
       displayDefId:         { type: 'ref',           refTable: 'DisplayDef', description: 'Visual styling',                                                    section: 'display' },
-      leadInModalDefId:     { type: 'ref',           refTable: 'ModalDef', description: 'Narrative modal shown automatically when a player opens this mission (once per session). Player can reopen via the "Open Narrative" button.', section: 'display' },
-      activeModalDefId:     { type: 'ref',           refTable: 'ModalDef', description: 'Custom modal while mission is active',                                section: 'display' },
-      readyModalDefId:      { type: 'ref',           refTable: 'ModalDef', description: 'Custom modal when mission is ready to claim (falls back to active)',  section: 'display' },
-      data:                 { type: 'json',          default: {},    description: 'Extra data',                                                                section: 'display' },
+      leadInModalDefId:           { type: 'ref', refTable: 'ModalDef', description: 'Narrative modal shown automatically when a player opens this mission (once per session). Player can reopen via the "Open Narrative" button.', section: 'display' },
+      activeModalDefId:           { type: 'ref', refTable: 'ModalDef', description: 'Custom modal while mission is active',                                                              section: 'display' },
+      readyModalDefId:            { type: 'ref', refTable: 'ModalDef', description: 'Custom modal when mission is ready to claim (falls back to active)',                               section: 'display' },
+      phaseDecisionModalDefId:    { type: 'ref', refTable: 'ModalDef', description: 'Modal shown at phase_ready decision point (multi_phase). Falls back to default_mission_phase_ready DefaultModalDef.', section: 'display', visibleWhen: (r) => r.mode === 'multi_phase' },
+      completedModalDefId:        { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown after the mission completes successfully',                                       section: 'display' },
+      failedModalDefId:           { type: 'ref', refTable: 'ModalDef', description: 'Custom modal shown when the mission fails (falls back to completedModalDefId)',                     section: 'display' },
+      data:                       { type: 'json',    default: {},   description: 'Extra data',                                                                                           section: 'display' },
     },
   },
   MissionCategoryDef: {

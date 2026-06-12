@@ -112,6 +112,7 @@ function SectionedFormBody({
   sections.forEach(s => {
     let n = 0;
     fieldsBySection[s.id].forEach(([fname, fdef]) => {
+      if (fdef.visibleWhen && !fdef.visibleWhen(record)) return;
       const effectiveType = fdef.typeResolver ? fdef.typeResolver(record) : fdef.type;
       n += structuredFieldErrorCount(effectiveType, record[fname]);
       if (fdef.required) {
@@ -180,21 +181,23 @@ function SectionedFormBody({
               {activeSection.description}
             </div>
           )}
-          {activeFields.map(([fieldName, fieldDef]) => {
-            const resolvedDef = fieldDef.typeResolver
-              ? { ...fieldDef, type: fieldDef.typeResolver(record) }
-              : fieldDef;
-            return (
-              <SmartField
-                key={fieldName}
-                fieldName={fieldName}
-                fieldDef={resolvedDef}
-                value={record[fieldName]}
-                onChange={val => onSetField(fieldName, val)}
-                enumOptions={enumOptions}
-              />
-            );
-          })}
+          {activeFields
+            .filter(([, fdef]) => !fdef.visibleWhen || fdef.visibleWhen(record))
+            .map(([fieldName, fieldDef]) => {
+              const resolvedDef = fieldDef.typeResolver
+                ? { ...fieldDef, type: fieldDef.typeResolver(record) }
+                : fieldDef;
+              return (
+                <SmartField
+                  key={fieldName}
+                  fieldName={fieldName}
+                  fieldDef={resolvedDef}
+                  value={record[fieldName]}
+                  onChange={val => onSetField(fieldName, val)}
+                  enumOptions={enumOptions}
+                />
+              );
+            })}
           {activeFields.length === 0 && (
             <div style={{ color: '#555', fontSize: 12 }}>No fields in this section.</div>
           )}
@@ -415,6 +418,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     if (!schema || !editorState.record) return [] as string[];
     const msgs: string[] = [];
     Object.entries(schema.fields).forEach(([fname, fdef]) => {
+      if (fdef.visibleWhen && !fdef.visibleWhen(editorState.record!)) return;
       const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
       msgs.push(...structuredFieldMessages(effectiveType, fname, editorState.record![fname]));
     });
@@ -425,6 +429,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     if (!schema || !editorState.record) return 0;
     let n = 0;
     Object.entries(schema.fields).forEach(([fname, fdef]) => {
+      if (fdef.visibleWhen && !fdef.visibleWhen(editorState.record!)) return;
       const effectiveType = fdef.typeResolver ? fdef.typeResolver(editorState.record!) : fdef.type;
       n += structuredFieldErrorCount(effectiveType, editorState.record![fname]);
     });
@@ -1144,16 +1149,18 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                 />
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {schema && Object.entries(schema.fields).map(([fieldName, fieldDef]) => (
-                    <SmartField
-                      key={fieldName}
-                      fieldName={fieldName}
-                      fieldDef={fieldDef}
-                      value={editorState.record![fieldName]}
-                      onChange={val => dispatch({ type: 'SET_FIELD', field: fieldName, value: val })}
-                      enumOptions={enumOptions}
-                    />
-                  ))}
+                  {schema && Object.entries(schema.fields)
+                    .filter(([, fdef]) => !fdef.visibleWhen || fdef.visibleWhen(editorState.record!))
+                    .map(([fieldName, fieldDef]) => (
+                      <SmartField
+                        key={fieldName}
+                        fieldName={fieldName}
+                        fieldDef={fieldDef}
+                        value={editorState.record![fieldName]}
+                        onChange={val => dispatch({ type: 'SET_FIELD', field: fieldName, value: val })}
+                        enumOptions={enumOptions}
+                      />
+                    ))}
                   {!schema && (
                     <div style={{ color: '#555', fontSize: 13 }}>
                       No schema defined for this table. Records can still be saved.

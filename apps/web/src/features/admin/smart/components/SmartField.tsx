@@ -35,6 +35,7 @@ import { TelemetrySubEventListEditor } from './structured/TelemetrySubEventListE
 import OutcomeTiersEditor from './structured/OutcomeTiersEditor';
 import ContentDocumentDataEditor from './structured/ContentDocumentDataEditor';
 import DustingDataEditor from './structured/DustingDataEditor';
+import MissionPhasesEditor from './structured/MissionPhasesEditor';
 import { uniquesErrorCount } from './structured/validation';
 
 type SafeKind = 'array' | 'object' | 'passthrough';
@@ -77,6 +78,7 @@ const STRUCTURED_REGISTRY: Record<string, RegistryEntry> = {
   outcomeTiers:            { Component: OutcomeTiersEditor,             safe: 'passthrough' },
   contentDocumentData:     { Component: ContentDocumentDataEditor,      safe: 'passthrough' },
   dustingData:             { Component: DustingDataEditor,              safe: 'passthrough' },
+  missionPhases:           { Component: MissionPhasesEditor,            safe: 'array' },
 };
 
 function safeValue(value: any, kind: SafeKind): any {
@@ -102,6 +104,8 @@ const FALLBACK_ENUMS: Record<string, string[]> = {
   eventKind: ['system', 'player', 'admin'],
   handlerKey: ['on_claim_location', 'on_complete_mission', 'on_claim_reward'],
   checkInFrequency: ['daily', 'every_x_days', 'weekly', 'monthly'],
+  missionMode: ['single', 'multi_phase'],
+  missionRewardsMode: ['final_bundle', 'per_phase', 'hybrid'],
 };
 
 function JSONField({ value, onChange, onBlur, touched, error, path }: {
