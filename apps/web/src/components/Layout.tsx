@@ -28,6 +28,7 @@ import { useSeasonStartAudio } from "../hooks/useSeasonStartAudio";
 import { useEntityProgressionAudio } from "../hooks/useEntityProgressionAudio";
 import { useBootstrapModals } from "../hooks/useBootstrapModals";
 import { useAutoCompletingJobWatcher, type AutoCompletingJobConfig } from "../hooks/useAutoCompletingJobWatcher";
+import { useMissionAbandonedWatcher } from "../hooks/useMissionAbandonedWatcher";
 
 export default function Layout() {
   const dispatch = useAppDispatch();
@@ -83,6 +84,7 @@ export default function Layout() {
   useEntityProgressionAudio();
   useBootstrapModals();
   useAutoCompletingJobWatcher(autoCompletingJobConfigs);
+  useMissionAbandonedWatcher();
 
   const hasClaimableRewards =
     gifts.some((g: any) => g.status === "UNCLAIMED") ||

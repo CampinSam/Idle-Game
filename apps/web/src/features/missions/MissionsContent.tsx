@@ -129,8 +129,12 @@ export default function MissionsContent() {
 
   const handleCompleteJob = useCallback(async (jobId: string) => {
     await execute('CompleteMission', { jobId });
-    const spec = await api.getModalSpec({ jobId });
-    if (spec?.version === 1) pushModal(spec);
+    try {
+      const spec = await api.getModalSpec({ jobId });
+      if (spec?.version === 1) pushModal(spec);
+    } catch (err) {
+      console.warn('[MissionsContent] Failed to fetch mission result modal:', err);
+    }
   }, [execute, pushModal]);
 
   if (currentCategoryId && selectedMission && selectedDef && currentCat) {
