@@ -16,7 +16,8 @@ export type ScopeType =
   | 'recipe'
   | 'season'
   | 'event'
-  | 'context';
+  | 'context'
+  | 'tempflag';
 
 export type AggregateType =
   | 'self'

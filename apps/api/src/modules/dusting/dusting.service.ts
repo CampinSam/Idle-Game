@@ -192,10 +192,15 @@ export class DustingService {
       });
 
       if (dustingData.instant) {
-        const resolvedRewards = await this.resolveDusting(tx, userId, job.id, def, dustingData, qty, seed);
+        const resolvedRewards = await this.resolveDusting(tx, userId, job.id, def, dustingData, qty, seed, {});
+        const tempFlagsToSave = Object.keys(resolvedRewards.tempFlags).length > 0 ? resolvedRewards.tempFlags : undefined;
         const updated = await (tx as any).job.update({
           where: { id: job.id },
-          data: { status: 'collected', results: resolvedRewards.results },
+          data: {
+            status: 'collected',
+            results: resolvedRewards.results,
+            ...(tempFlagsToSave ? { data: { seed, quantity: qty, itemInstanceId, tempFlags: tempFlagsToSave } } : {}),
+          },
         });
         return { job: updated, instantRewards: resolvedRewards.grantedRewards };
       }
@@ -234,11 +239,16 @@ export class DustingService {
     const seed = (job.data as any)?.seed ?? jobId;
 
     const doWrites = async (tx: any) => {
-      const resolvedRewards = await this.resolveDusting(tx, userId, jobId, def, dustingData, jobQuantity, seed);
+      const resolvedRewards = await this.resolveDusting(tx, userId, jobId, def, dustingData, jobQuantity, seed, (job.data as any)?.tempFlags ?? {});
+      const tempFlagsToSave = Object.keys(resolvedRewards.tempFlags).length > 0 ? resolvedRewards.tempFlags : undefined;
 
       const updated = await (tx as any).job.update({
         where: { id: jobId },
-        data: { status: 'collected', results: resolvedRewards.results },
+        data: {
+          status: 'collected',
+          results: resolvedRewards.results,
+          ...(tempFlagsToSave ? { data: { ...(job.data as any), tempFlags: tempFlagsToSave } } : {}),
+        },
       });
 
       let updatedNotification: any = null;
@@ -273,10 +283,12 @@ export class DustingService {
     dustingData: DustingData,
     quantity: number,
     seed: string,
+    initialTempFlags?: Record<string, any>,
   ) {
     const user = await (tx as any).user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
     const reqContext = this.gameRules.buildRequirementContext(user as any);
+    reqContext.tempFlags = initialTempFlags ?? {};
 
     const tiers = buildDustingTiers(dustingData);
     const centerOverrides = buildCenterOverrides(tiers);
@@ -371,6 +383,7 @@ export class DustingService {
 
     return {
       grantedRewards,
+      tempFlags: reqContext.tempFlags ?? {},
       results: {
         quality,
         qualityLabel,

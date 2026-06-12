@@ -30,6 +30,7 @@ export interface TeamEntitySnap {
 export interface RequirementContext {
   user: GameUser;
   userFlags: Record<string, unknown>;
+  tempFlags?: Record<string, any>;
   allPlayerLocations?: LocationContext[];
   currentLocation?: LocationContext;
   parentBuilding?: { buildingDefId: string; rooms?: { roomDefId: string }[] };
@@ -110,7 +111,7 @@ export class GameRulesService {
   buildRequirementContext(user: GameUser, extra?: Partial<RequirementContext>): RequirementContext {
     const userFlags: Record<string, unknown> =
       (user.flags && typeof user.flags === 'object') ? user.flags as Record<string, unknown> : {};
-    return { user, userFlags, ...extra };
+    return { user, userFlags, tempFlags: {}, ...extra };
   }
 
   reqCtxToSelCtx(context: RequirementContext): SelectionContext {
@@ -157,6 +158,7 @@ export class GameRulesService {
             teamSize: context.teamSize,
           }
         : undefined,
+      tempFlags: context.tempFlags ?? {},
     };
   }
 
@@ -495,6 +497,16 @@ export class GameRulesService {
               case 'remove':    delete reqContext.userFlags[item.key]; break;
             }
             flags.push({ entry: item });
+          } else if (item.type === 'tempflag') {
+            if (!this.rollOdds(item.odds, rng)) continue;
+            const tf = (reqContext.tempFlags ??= {});
+            switch (item.operation) {
+              case 'set':       tf[item.key] = item.value; break;
+              case 'increment': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) + Number(item.value ?? 1); break;
+              case 'decrement': tf[item.key] = (typeof tf[item.key] === 'number' ? tf[item.key] as number : 0) - Number(item.value ?? 1); break;
+              case 'invert':    tf[item.key] = !tf[item.key]; break;
+              case 'remove':    delete tf[item.key]; break;
+            }
           } else if (item.type === 'emitEvent') {
             if (!this.rollOdds(item.odds, rng)) continue;
             resolved.push({ entry: item });

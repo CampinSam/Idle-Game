@@ -175,6 +175,12 @@ export function resolveScope(rule: RichSelectionRule, ctx: SelectionContext): an
       return [undefined];
     }
 
+    case 'tempflag': {
+      const tf = ctx.tempFlags;
+      if (!tf) return [undefined];
+      return [tf[field]];
+    }
+
     default:
       return [undefined];
   }

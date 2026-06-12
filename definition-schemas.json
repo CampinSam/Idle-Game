@@ -49,7 +49,28 @@
         },
         "scope": {
           "type": "string",
-          "description": "Which context object to read from (player, entity, team, location, etc.)."
+          "enum": [
+            "player",
+            "entity",
+            "entity_slot",
+            "team",
+            "team_member",
+            "inventory",
+            "currency_balance",
+            "item",
+            "location",
+            "currentLocation",
+            "building",
+            "room",
+            "job",
+            "mission",
+            "recipe",
+            "season",
+            "event",
+            "context",
+            "tempflag"
+          ],
+          "description": "Which context object to read from. Use 'tempflag' to read ephemeral flags set during the current resolution walk (by 'tempflag' outcome entries). Tempflags are never written to user.flags."
         },
         "field": {
           "type": "string",

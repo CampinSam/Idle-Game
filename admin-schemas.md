@@ -432,7 +432,8 @@ Outcome arrays appear on mission `success` / `failure` blocks and inside bundle 
 | `item` | `key`, `min`, `max`, `odds` | Grants `min`–`max` copies of the named item |
 | `entity_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP split across all mission entities |
 | `keeper_xp` | `min`, `max`, `odds` | Grants `min`–`max` XP to the keeper (player account) |
-| `flag` | `operation`, `key`, `value`, `odds` | Mutates a user flag. Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove` |
+| `flag` | `operation`, `key`, `value`, `odds` | Mutates a **persistent** user flag (written to `user.flags`). Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove` |
+| `tempflag` | `operation`, `key`, `value`, `odds` | Mutates an **ephemeral** flag scoped to the current resolution walk only. Never written to `user.flags`. For job-based contexts (mission, crafting, dusting) the flag is persisted in `Job.data.tempFlags` and discarded when the job is collected. For instant-resolution contexts (lootbox, gift, quest) it is in-memory only. Operations: `set`, `unset`, `increment`, `decrement`, `invert`, `remove`. Test with `scope: "tempflag"` in requirements. |
 | `text` | `message`, `odds` | Weighted flavor-text entry; the resolver picks one text per bundle pass and surfaces it in the result modal |
 | `emitEvent` | `defId`, `payload`, `idempotencyKey`, `odds` | Dispatches a named game event |
 | `nothing` | `odds` | **No-op weight entry** — selected by the picker but grants nothing. Use this to express low-probability rewards in pick-mode bundles (see example below). |

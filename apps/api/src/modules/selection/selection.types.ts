@@ -60,4 +60,5 @@ export interface SelectionContext {
   parentBuilding?: SelectionBuildingContext;
   missionContext?: SelectionMissionContext;
   event?: SelectionEventContext;
+  tempFlags?: Record<string, any>;
 }

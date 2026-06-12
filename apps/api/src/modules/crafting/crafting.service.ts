@@ -567,6 +567,7 @@ export class CraftingService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
     const reqContext = this.gameRules.buildRequirementContext(user as any);
+    reqContext.tempFlags = (job.data as any)?.tempFlags ?? {};
 
     const entityId = job.team[0];
     const entity = await (this.prisma as any).entity.findUnique({ where: { id: entityId } });
@@ -710,6 +711,9 @@ export class CraftingService {
 
       await this.entityService.setEntityStatus(entity.id, userId, 'idle', tx);
 
+      const tempFlagsToSave = reqContext.tempFlags && Object.keys(reqContext.tempFlags).length > 0
+        ? reqContext.tempFlags
+        : undefined;
       return await (tx as any).job.update({
         where: { id: jobId },
         data: {
@@ -728,6 +732,7 @@ export class CraftingService {
             rewards: grantedRewards,
             ...(rolledTexts.length > 0 ? { texts: rolledTexts } : {}),
           },
+          ...(tempFlagsToSave ? { data: { ...(job.data as any), tempFlags: tempFlagsToSave } } : {}),
         },
       });
     };

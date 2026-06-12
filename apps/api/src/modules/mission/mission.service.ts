@@ -714,6 +714,7 @@ export class MissionService {
     const user = await db.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Player not found');
     const reqContext = this.gameRules.buildRequirementContext(user);
+    reqContext.tempFlags = (mission.data as any)?.tempFlags ?? {};
 
     const entityIds = mission.team as string[];
     const entities = await (db as any).entity.findMany({
@@ -1067,11 +1068,15 @@ export class MissionService {
       });
     }
 
+    const tempFlagsToSave = reqContext.tempFlags && Object.keys(reqContext.tempFlags).length > 0
+      ? reqContext.tempFlags
+      : undefined;
     const updated = await (db as any).job.update({
       where: { id: missionId },
       data: {
         status: success ? 'completed' : 'failed',
         results,
+        ...(tempFlagsToSave ? { data: { ...(mission.data as any), tempFlags: tempFlagsToSave } } : {}),
       },
     });
 
