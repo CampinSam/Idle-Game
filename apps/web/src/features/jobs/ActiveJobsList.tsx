@@ -10,6 +10,7 @@ import type { DeltaResponse } from '../../services/api';
 import { EmptyState } from '../../components/ui';
 import ItemQty from '../../components/ItemQty';
 import JobProgressBar from '../../components/JobProgressBar';
+import { useCollectJob } from '../../hooks/useCollectJob';
 
 const JOB_ICON: Record<string, string> = {
   MissionJob: '🗺️',
@@ -97,13 +98,7 @@ function SkipCostChip({ cost, affordable }: { cost: SkipCost; affordable: boolea
   }, [cost, currencyDefs, itemDefs]);
 
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-opacity ${
-        affordable
-          ? 'border-[rgba(6,182,212,0.4)] bg-[rgba(6,182,212,0.08)] text-[#67e8f9]'
-          : 'border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-text-secondary opacity-50'
-      }`}
-    >
+    <span className={`inline-flex items-center gap-0.5 transition-opacity ${affordable ? '' : 'opacity-50'}`}>
       <ItemQty src={iconKey} amount={cost.amount} size={11} />
     </span>
   );
@@ -136,6 +131,7 @@ interface ActiveJobRowProps {
   compact?: boolean;
   onClick: () => void;
   onSkip?: () => void;
+  onComplete?: () => void;
   skipBaseCosts?: SkipCost[];
   skipType?: string;
 }
@@ -148,6 +144,7 @@ export function ActiveJobRow({
   compact,
   onClick,
   onSkip,
+  onComplete,
   skipBaseCosts,
   skipType,
 }: ActiveJobRowProps) {
@@ -157,6 +154,9 @@ export function ActiveJobRow({
   const color = JOB_COLOR[job.type] ?? '#8b5cf6';
   const timeLabel = isReady ? null : formatTimeLeft(remainingMs);
   const showSkipButton = !!onSkip && !isReady;
+  // Building jobs auto-complete server-side; no Complete button needed
+  const showCompleteButton = isReady && !!onComplete && job.type !== 'BuildingJob';
+  const hasRightAction = showSkipButton || showCompleteButton;
 
   const currencyBalances = useAppSelector((s) => s.sync.currencyBalances);
 
@@ -174,11 +174,6 @@ export function ActiveJobRow({
     [currentCosts, currencyBalances],
   );
 
-  // In compact mode (home-page widget) chips and the skip button are intentionally
-  // suppressed — compact rows are a quick-glance summary only. Full skip interaction
-  // belongs on the dedicated ActiveJobsPage (non-compact).
-  const showCostChips = currentCosts.length > 0 && !isReady && !compact;
-
   return (
     <div
       className={`relative flex items-center border-t border-[rgba(139,92,246,0.1)] ${isReady ? 'bg-[rgba(16,185,129,0.06)]' : ''}`}
@@ -186,7 +181,7 @@ export function ActiveJobRow({
       <button
         type="button"
         onClick={onClick}
-        className={`flex-1 min-w-0 text-left flex items-center gap-3 pl-4 ${showSkipButton && !compact ? 'pr-2' : 'pr-4'} ${compact ? 'py-2' : 'py-2.5'} hover:bg-[rgba(139,92,246,0.06)] transition-colors`}
+        className={`flex-1 min-w-0 text-left flex items-center gap-3 pl-4 ${hasRightAction ? 'pr-2' : 'pr-4'} ${compact ? 'py-2' : 'py-2.5'} hover:bg-[rgba(139,92,246,0.06)] transition-colors`}
       >
         <div
           className={`flex items-center justify-center ${compact ? 'w-7 h-7 text-base' : 'w-[34px] h-[34px] text-xl'} rounded-lg flex-shrink-0`}
@@ -200,24 +195,11 @@ export function ActiveJobRow({
             <span className={`${compact ? 'text-[12px]' : 'text-[13px]'} font-bold text-[#e2d9ff] capitalize truncate`}>
               {job.name || label}
             </span>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {showCostChips && (
-                <div className="flex items-center gap-1">
-                  {currentCosts.map((c, i) => (
-                    <SkipCostChip key={`${c.id}-${i}`} cost={c} affordable={canAfford} />
-                  ))}
-                </div>
-              )}
-              {isReady ? (
-                <span className="bg-[rgba(16,185,129,0.2)] text-[#6ee7b7] text-[10px] font-extrabold px-2 py-0.5 rounded-md tracking-wide">
-                  READY
-                </span>
-              ) : timeLabel ? (
-                <span className="text-[11px] font-bold text-text-secondary whitespace-nowrap">
-                  {timeLabel}
-                </span>
-              ) : null}
-            </div>
+            {timeLabel && (
+              <span className="text-[11px] font-bold text-text-secondary whitespace-nowrap flex-shrink-0">
+                {timeLabel}
+              </span>
+            )}
           </div>
 
           <JobProgressBar
@@ -234,15 +216,50 @@ export function ActiveJobRow({
         </div>
       </button>
 
-      {showSkipButton && !compact && (
-        <div className="pr-4 pl-1 flex-shrink-0 self-center">
+      {/* Complete button — ready non-building jobs only */}
+      {showCompleteButton && (
+        <div className="pr-3 pl-1 flex-shrink-0 self-center">
           <button
             type="button"
-            onClick={onSkip}
-            className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-[rgba(6,182,212,0.4)] text-[#67e8f9] bg-[rgba(6,182,212,0.08)] hover:bg-[rgba(6,182,212,0.18)] transition-colors whitespace-nowrap"
+            onClick={onComplete}
+            className={`font-bold rounded-md border border-[rgba(16,185,129,0.5)] text-[#6ee7b7] bg-[rgba(16,185,129,0.12)] hover:bg-[rgba(16,185,129,0.22)] transition-colors whitespace-nowrap ${compact ? 'text-[10px] px-2 py-0.5' : 'text-[11px] px-2.5 py-1'}`}
           >
-            Skip
+            Complete
           </button>
+        </div>
+      )}
+
+      {/* Skip button — shown in both compact and large when job is skippable */}
+      {showSkipButton && (
+        <div className="pr-3 pl-1 flex-shrink-0 self-center">
+          {!compact && currentCosts.length > 0 ? (
+            // Large mode: costs embedded inline in the button
+            <button
+              type="button"
+              onClick={onSkip}
+              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border transition-colors whitespace-nowrap ${
+                canAfford
+                  ? 'border-[rgba(6,182,212,0.4)] text-[#67e8f9] bg-[rgba(6,182,212,0.08)] hover:bg-[rgba(6,182,212,0.18)]'
+                  : 'border-[rgba(255,255,255,0.12)] text-text-secondary bg-[rgba(255,255,255,0.04)] opacity-60'
+              }`}
+            >
+              <span>Skip</span>
+              <span className="flex items-center gap-0.5">
+                {currentCosts.map((c, i) => (
+                  <SkipCostChip key={`${c.id}-${i}`} cost={c} affordable={canAfford} />
+                ))}
+              </span>
+            </button>
+          ) : (
+            // Compact or no-cost: plain Skip label, confirmation dialogue handles costs
+            <button
+              type="button"
+              onClick={onSkip}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-[rgba(6,182,212,0.4)] text-[#67e8f9] bg-[rgba(6,182,212,0.08)] hover:bg-[rgba(6,182,212,0.18)] transition-colors whitespace-nowrap"
+            >
+              Skip
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -277,6 +294,7 @@ export function ActiveJobsList({
   const currentTick = useCurrentTick();
   const tickRate = useTickRate();
   const cursor = useAppSelector((s) => s.sync.cursor);
+  const { collectJob } = useCollectJob();
 
   const [skipInfoMap, setSkipInfoMap] = useState<Map<string, SkipInfo>>(new Map());
   const [confirmSkip, setConfirmSkip] = useState<SkipConfirmState | null>(null);
@@ -285,12 +303,12 @@ export function ActiveJobsList({
 
   // Prefetch skipInfo for all skippable job types so the skip button is shown when applicable.
   useEffect(() => {
-    const dustingJobs = (allActiveJobs as any[]).filter(
+    const skippableJobs = (allActiveJobs as any[]).filter(
       (j) => SKIPPABLE_JOB_TYPES.has(j.type) && !skipInfoMap.has(j.id),
     );
-    if (dustingJobs.length === 0) return;
+    if (skippableJobs.length === 0) return;
 
-    for (const j of dustingJobs) {
+    for (const j of skippableJobs) {
       api
         .getJob(j.id)
         .then((detail: any) => {
@@ -408,6 +426,15 @@ export function ActiveJobsList({
     setSkipError(null);
   }, []);
 
+  const handleCompleteClick = useCallback(
+    (jobId: string) => {
+      collectJob(jobId).catch((err) => {
+        console.warn('[ActiveJobsList] collectJob failed:', err);
+      });
+    },
+    [collectJob],
+  );
+
   if (displayed.length === 0 && showEmpty) {
     return <EmptyState message={emptyMessage ?? 'No active jobs'} />;
   }
@@ -428,6 +455,7 @@ export function ActiveJobsList({
             compact={compact}
             onClick={() => handleJobClick(j)}
             onSkip={si?.skipable ? () => handleSkipClick(j.id, j.type) : undefined}
+            onComplete={() => handleCompleteClick(j.id)}
             skipBaseCosts={si?.skipable ? si.skipCost : undefined}
             skipType={si?.skipType}
           />

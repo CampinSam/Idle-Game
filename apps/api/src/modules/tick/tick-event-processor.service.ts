@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { NotificationService } from '../notification/notification.service';
@@ -6,6 +6,8 @@ import { TickService } from './tick.service';
 import { BoostService } from './boost.service';
 import { GlobalPowerService } from '../global-power/global-power.service';
 import { createJobReadyNotifications } from '../job/job-notification.helper';
+import { LocationService } from '../location/location.service';
+import { PatchBuilder, buildLocationPatches } from '../commands/patch-builder';
 
 const POLL_INTERVAL_MS = 200;
 const TICK_SYNC_INTERVAL_MS = 30_000;
@@ -52,6 +54,8 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
     private readonly notificationService: NotificationService,
     private readonly globalPowerService: GlobalPowerService,
     private readonly boostService: BoostService,
+    @Inject(forwardRef(() => LocationService))
+    private readonly locationService: LocationService,
   ) {}
 
   onModuleInit() {
@@ -254,56 +258,145 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
   private async notifyJobsReadyForUser(userId: string, jobs: any[]): Promise<void> {
     const jobIds = jobs.map((j) => j.id);
 
+    // Split building jobs (auto-completed server-side) from others (require player action)
+    const buildingJobs = jobs.filter((j: any) => j.type === 'BuildingJob');
+    const otherJobs = jobs.filter((j: any) => j.type !== 'BuildingJob');
+
+    // Mark all ready jobs as ready_notified first
     await (this.prisma as any).job.updateMany({
       where: { id: { in: jobIds }, status: 'active' },
       data: { status: 'ready_notified' },
     });
 
-    const createdNotifs = await createJobReadyNotifications(
-      this.prisma,
-      this.notificationService,
-      this.logger,
-      userId,
-      jobs,
-    );
+    const allPatches: any[] = [];
 
-    const updatedJobs = await (this.prisma as any).job.findMany({
-      where: { id: { in: jobIds }, userId },
-    });
+    // ── Non-building jobs: notify player to collect manually ──────────────────
+    if (otherJobs.length > 0) {
+      const otherJobIds = otherJobs.map((j: any) => j.id);
 
-    const notifPatches = createdNotifs.map((n: any) => ({
-      op: 'upsert' as const,
-      entity: 'notification',
-      id: n.id,
-      data: n,
-    }));
+      const createdNotifs = await createJobReadyNotifications(
+        this.prisma,
+        this.notificationService,
+        this.logger,
+        userId,
+        otherJobs,
+      );
 
-    const jobPatches = updatedJobs.map((j: any) => {
-      const timer = j.timer as any;
-      return {
-        op: 'upsert' as const,
-        entity: 'job',
-        id: j.id,
-        data: {
+      const updatedOtherJobs = await (this.prisma as any).job.findMany({
+        where: { id: { in: otherJobIds }, userId },
+      });
+
+      for (const n of createdNotifs) {
+        allPatches.push({ op: 'upsert' as const, entity: 'notification', id: n.id, data: n });
+      }
+      for (const j of updatedOtherJobs) {
+        const timer = j.timer as any;
+        allPatches.push({
+          op: 'upsert' as const,
+          entity: 'job',
           id: j.id,
-          type: j.type,
-          defId: j.defId,
-          status: j.status,
-          timer: j.timer,
-          team: j.team,
-          data: j.data,
-          results: j.results,
-          startTick: timer?.startTick ?? null,
-          durationTicks: timer?.durationTicks ?? null,
-        },
-      };
-    });
+          data: {
+            id: j.id,
+            type: j.type,
+            defId: j.defId,
+            status: j.status,
+            timer: j.timer,
+            team: j.team,
+            data: j.data,
+            results: j.results,
+            startTick: timer?.startTick ?? null,
+            durationTicks: timer?.durationTicks ?? null,
+          },
+        });
+      }
+    }
 
-    const patches = [...notifPatches, ...jobPatches];
-    if (patches.length === 0) return;
+    // ── Building jobs: auto-complete immediately ───────────────────────────────
+    for (const job of buildingJobs) {
+      try {
+        const jobData = job.data as any;
+        const locationId = jobData?.locationId;
+        const buildingId = jobData?.buildingId;
+
+        if (!locationId || !buildingId) {
+          this.logger.warn(`BuildingJob ${job.id} missing locationId or buildingId in data — skipping auto-complete`);
+          // Still push the ready_notified job patch so the client is aware
+          const timer = job.timer as any;
+          allPatches.push({
+            op: 'upsert' as const,
+            entity: 'job',
+            id: job.id,
+            data: {
+              id: job.id, type: job.type, defId: job.defId, status: 'ready_notified',
+              timer: job.timer, team: job.team, data: job.data, results: job.results,
+              startTick: timer?.startTick ?? null, durationTicks: timer?.durationTicks ?? null,
+            },
+          });
+          continue;
+        }
+
+        const result = await this.locationService.completeBuilding(userId, locationId, buildingId);
+
+        // Location patch (reflects upgraded building + recalculated meta)
+        const pb = new PatchBuilder();
+        await buildLocationPatches(pb, this.prisma, userId, locationId);
+        allPatches.push(...pb.build());
+
+        // Job patch (status: completed)
+        const completedJob = await (this.prisma as any).job.findUnique({ where: { id: job.id } });
+        if (completedJob) {
+          const timer = completedJob.timer as any;
+          allPatches.push({
+            op: 'upsert' as const,
+            entity: 'job',
+            id: completedJob.id,
+            data: {
+              id: completedJob.id,
+              type: completedJob.type,
+              defId: completedJob.defId,
+              status: completedJob.status,
+              timer: completedJob.timer,
+              team: completedJob.team,
+              data: completedJob.data,
+              results: completedJob.results,
+              startTick: timer?.startTick ?? null,
+              durationTicks: timer?.durationTicks ?? null,
+            },
+          });
+        }
+
+        // Notification from completeBuilding (building_complete type)
+        if (result.updatedNotification) {
+          allPatches.push({
+            op: 'upsert' as const,
+            entity: 'notification',
+            id: result.updatedNotification.id,
+            data: result.updatedNotification,
+          });
+        }
+
+        this.logger.log(`Auto-completed BuildingJob ${job.id} for user ${userId} (location=${locationId}, building=${buildingId})`);
+      } catch (err) {
+        this.logger.warn(`Auto-complete failed for BuildingJob ${job.id}: ${err}`);
+        // Fall back: push as ready_notified so the client at least sees the job is done
+        const timer = job.timer as any;
+        allPatches.push({
+          op: 'upsert' as const,
+          entity: 'job',
+          id: job.id,
+          data: {
+            id: job.id, type: job.type, defId: job.defId, status: 'ready_notified',
+            timer: job.timer, team: job.team, data: job.data, results: job.results,
+            startTick: timer?.startTick ?? null, durationTicks: timer?.durationTicks ?? null,
+          },
+        });
+      }
+    }
+
+    if (allPatches.length === 0) return;
 
     const delta = await (this.prisma as any).playerDelta.create({
-      data: { userId, patches: patches as any, ui: [] as any },
+      data: { userId, patches: allPatches as any, ui: [] as any },
     });
 
     this.pubsub.publish(`player:${userId}`, {
@@ -311,6 +404,6 @@ export class TickEventProcessorService implements OnModuleInit, OnModuleDestroy 
       deltaId: typeof delta.id === 'bigint' ? delta.id.toString() : String(delta.id),
     });
 
-    this.logger.log(`Pushed job-ready delta for user ${userId} (${jobs.length} jobs)`);
+    this.logger.log(`Pushed job-ready delta for user ${userId} (${otherJobs.length} notified, ${buildingJobs.length} auto-completed)`);
   }
 }

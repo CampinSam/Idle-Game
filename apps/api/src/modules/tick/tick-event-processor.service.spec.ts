@@ -83,6 +83,10 @@ function makeService() {
     expireStaleBoosts: jest.fn(async () => 0),
   };
 
+  const locationService: any = {
+    completeBuilding: jest.fn(async () => ({ id: 'b1', updatedNotification: null })),
+  };
+
   const svc = new TickEventProcessorService(
     prisma as any,
     tickService,
@@ -90,6 +94,7 @@ function makeService() {
     notificationService,
     globalPowerService,
     boostService,
+    locationService,
   );
 
   (svc as any).logger = {
