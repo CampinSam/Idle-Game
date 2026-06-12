@@ -7,6 +7,7 @@ import { structuredFieldErrorCount, structuredFieldMessages } from './components
 import { migrateMissionOutcomes, needsMissionMigration } from './migrateMissionOutcomes';
 import { detectBadRichSelectionFields, BadRichSelectionField } from './legacyRichSelectionCheck';
 import TelemetryCardPreviewPanel from '../telemetry/TelemetryCardPreviewPanel';
+import MissionOutcomesSectionEditor from './components/structured/MissionOutcomesSectionEditor';
 
 interface TableEntry {
   key: string;
@@ -1133,6 +1134,54 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                 )}
               </div>
 
+              {/* Mission mode toggle — sits between the record header bar and section tabs */}
+              {getSchemaName() === 'MissionDef' && editorState.record && (() => {
+                const mode = editorState.record.mode || 'single';
+                const setMode = (m: string) => dispatch({ type: 'SET_FIELD', field: 'mode', value: m });
+                return (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 0,
+                    padding: '10px 20px', borderBottom: '1px solid #1a1a3e',
+                    flexShrink: 0, background: '#0a0a1a',
+                  }}>
+                    <span style={{ fontSize: 11, color: '#555', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 12 }}>
+                      Mission Mode
+                    </span>
+                    {[
+                      { value: 'single',      label: 'Regular',    desc: 'Single-phase mission with a fixed timer and one reward roll' },
+                      { value: 'multi_phase', label: 'Expedition',  desc: 'Multi-phase mission with per-phase outcomes, injuries, and continue rules' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        title={opt.desc}
+                        onClick={() => setMode(opt.value)}
+                        style={{
+                          padding: '5px 16px',
+                          background: mode === opt.value ? 'linear-gradient(135deg,#7c3aed,#a78bfa)' : '#111128',
+                          border: mode === opt.value ? 'none' : '1px solid #2a2a4e',
+                          borderRadius: opt.value === 'single' ? '6px 0 0 6px' : '0 6px 6px 0',
+                          color: mode === opt.value ? '#fff' : '#666',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: mode === opt.value ? 700 : 500,
+                          fontFamily: 'inherit',
+                          letterSpacing: '0.03em',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                    {mode === 'multi_phase' && (
+                      <span style={{ fontSize: 11, color: '#555', marginLeft: 12 }}>
+                        Phase data is preserved when switching modes.
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {schema?.sections && schema.sections.length > 0 ? (
                 <SectionedFormBody
                   schema={schema}
@@ -1144,6 +1193,16 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                   customSectionContent={
                     getSchemaName() === 'TelemetryDef'
                       ? { preview: <TelemetryCardPreviewPanel record={editorState.record!} /> }
+                      : getSchemaName() === 'MissionDef'
+                      ? {
+                          outcomes: (
+                            <MissionOutcomesSectionEditor
+                              record={editorState.record!}
+                              onSetField={(field, value) => dispatch({ type: 'SET_FIELD', field, value })}
+                              enumOptions={enumOptions}
+                            />
+                          ),
+                        }
                       : undefined
                   }
                 />
