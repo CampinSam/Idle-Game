@@ -25,6 +25,7 @@ import { HomeBannerService } from '../home-banner/home-banner.service';
 import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -67,6 +68,7 @@ export class AdminService {
     private commandService: CommandService,
     private tickProcessor: TickEventProcessorService,
     private nftCollectionService: NftCollectionService,
+    private notificationService: NotificationService,
   ) {}
 
   /**
@@ -95,6 +97,41 @@ export class AdminService {
     } catch (err) {
       this.logger.warn(`emitAdminDelta pubsub publish failed for user ${userId}: ${(err as any)?.message ?? err}`);
     }
+  }
+
+  /**
+   * Creates a persistent notification record, appends it as an upsert patch
+   * alongside the provided state patches, then emits the combined delta over
+   * SSE. The notification appears in the player's feed immediately with no
+   * page refresh required.
+   *
+   * Notification errors are logged and swallowed — a failed notification
+   * must never block the underlying admin mutation from being visible.
+   */
+  private async emitAdminDeltaWithNotif(
+    userId: string,
+    patches: any[],
+    notif: { title: string; body: string; meta?: any },
+    ui: any[] = [],
+  ): Promise<void> {
+    let allPatches = patches;
+    try {
+      const notification = await this.notificationService.createNotification({
+        userId,
+        type: 'admin_grant',
+        category: 'system',
+        priority: 'normal',
+        title: notif.title,
+        body: notif.body,
+        meta: notif.meta ?? { count: 1 },
+      });
+      const pb = new PatchBuilder();
+      pb.upsertNotification(notification);
+      allPatches = [...patches, ...pb.build()];
+    } catch (err) {
+      this.logger.warn(`Admin notification creation failed for user ${userId}: ${(err as any)?.message ?? err}`);
+    }
+    await this.emitAdminDelta(userId, allPatches, ui);
   }
 
   async listPlayers(params: { q?: string; page?: number; limit?: number }) {
@@ -182,7 +219,20 @@ export class AdminService {
 
     const pb = new PatchBuilder();
     pb.upsertPlayer(updated);
-    await this.emitAdminDelta(id, pb.build());
+
+    const meaningfulChange = data.keeperLevel !== undefined || data.keeperXp !== undefined || data.prestigeTokens !== undefined;
+    if (meaningfulChange) {
+      const parts: string[] = [];
+      if (data.keeperLevel !== undefined) parts.push(`Keeper Level set to ${data.keeperLevel}`);
+      if (data.keeperXp !== undefined) parts.push(`Keeper XP set to ${data.keeperXp}`);
+      if (data.prestigeTokens !== undefined) parts.push(`Prestige Tokens set to ${data.prestigeTokens}`);
+      await this.emitAdminDeltaWithNotif(id, pb.build(), {
+        title: 'Admin Update',
+        body: parts.join(', '),
+      });
+    } else {
+      await this.emitAdminDelta(id, pb.build());
+    }
 
     return serializeBigInts(updated);
   }
@@ -200,7 +250,10 @@ export class AdminService {
 
     const pb = new PatchBuilder();
     pb.upsertPlayer(updated);
-    await this.emitAdminDelta(id, pb.build());
+    await this.emitAdminDeltaWithNotif(id, pb.build(), {
+      title: 'Admin Grant',
+      body: `You now have ${slots} bonus outpost slot${slots !== 1 ? 's' : ''}`,
+    });
 
     return serializeBigInts(updated);
   }
@@ -209,23 +262,22 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException(`Player ${userId} not found`);
 
-    const result = await this.prisma.userCurrencyBalance.upsert({
-      where: {
-        userId_currencyId: { userId, currencyId },
-      },
-      create: {
-        userId,
-        currencyId,
-        balance: BigInt(balance),
-      },
-      update: {
-        balance: BigInt(balance),
-      },
-    });
+    const [result, currencyDef] = await Promise.all([
+      this.prisma.userCurrencyBalance.upsert({
+        where: { userId_currencyId: { userId, currencyId } },
+        create: { userId, currencyId, balance: BigInt(balance) },
+        update: { balance: BigInt(balance) },
+      }),
+      (this.prisma as any).currency.findUnique({ where: { id: currencyId }, select: { name: true } }),
+    ]);
 
     const pb = new PatchBuilder();
     await buildCurrencyPatches(pb, this.prisma, userId);
-    await this.emitAdminDelta(userId, pb.build());
+    const currencyLabel = currencyDef?.name ?? currencyId;
+    await this.emitAdminDeltaWithNotif(userId, pb.build(), {
+      title: 'Admin Grant',
+      body: `Your ${currencyLabel} was set to ${balance.toLocaleString?.() ?? balance}`,
+    });
 
     return serializeBigInts(result);
   }
@@ -573,7 +625,10 @@ export class AdminService {
 
     const pb = new PatchBuilder();
     await buildItemPatches(pb, this.prisma, userId);
-    await this.emitAdminDelta(userId, pb.build(), [{
+    await this.emitAdminDeltaWithNotif(userId, pb.build(), {
+      title: 'Admin Grant',
+      body: `Received ${quantity}× ${itemDef.name}`,
+    }, [{
       type: 'local_toast',
       tone: 'success',
       title: 'Admin Grant',
@@ -616,7 +671,17 @@ export class AdminService {
 
     const pb = new PatchBuilder();
     await buildEntityPatch(pb, this.prisma, entityId);
-    await this.emitAdminDelta(userId, pb.build());
+
+    const entityName = (updated.display as any)?.name ?? 'Entity';
+    const changedFields: string[] = [];
+    if (data.stats !== undefined) changedFields.push('stats');
+    if (data.level !== undefined) changedFields.push(`level → ${data.level}`);
+    if (data.name !== undefined) changedFields.push(`name → ${data.name}`);
+    if (data.traits !== undefined) changedFields.push('traits');
+    await this.emitAdminDeltaWithNotif(userId, pb.build(), {
+      title: 'Admin Update',
+      body: `${entityName}'s ${changedFields.join(', ')} ${changedFields.length === 1 ? 'was' : 'were'} modified`,
+    });
 
     return serializeBigInts(updated);
   }
