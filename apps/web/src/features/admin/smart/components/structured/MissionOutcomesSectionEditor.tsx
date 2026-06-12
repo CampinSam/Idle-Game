@@ -422,7 +422,7 @@ export default function MissionOutcomesSectionEditor({ record, onSetField, enumO
   const isMultiPhase = record.mode === 'multi_phase';
   const phases: MissionPhase[] = Array.isArray(record.phases) ? record.phases : [];
   const [activePhaseIdx, setActivePhaseIdx] = useState(0);
-  const [globalOpen, setGlobalOpen] = useState(true);
+  const [globalOpen, setGlobalOpen] = useState(false);
 
   const rewardsMode: string = record.rewardsMode ?? 'final_bundle';
   const showFinalTiers = rewardsMode !== 'per_phase';
@@ -515,7 +515,7 @@ export default function MissionOutcomesSectionEditor({ record, onSetField, enumO
         </button>
 
         {globalOpen && (
-          <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '0 20px 16px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 260, overflowY: 'auto' }}>
             <div style={{ fontSize: 11, color: '#666' }}>
               Global settings apply to the expedition as a whole. Per-phase overrides take precedence where available.
             </div>
