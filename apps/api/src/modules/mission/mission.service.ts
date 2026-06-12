@@ -220,6 +220,8 @@ export class MissionService {
       description: def.description,
       difficulty: def.difficulty,
       timer: def.timer,
+      mode: def.mode ?? null,
+      phases: def.phases ?? [],
       requirements: def.requirements,
       launchRequirements: def.launchRequirements ?? null,
       visibilityRequirements: def.visibilityRequirements,
