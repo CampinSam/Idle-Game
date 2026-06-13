@@ -155,6 +155,34 @@ export class UiService {
       isInlineViewer = true;
     }
 
+    // Short-circuit: phase_ready multi-phase missions without a per-def phaseDecisionModalDefId
+    // get the inline decision modal with phase overview + Continue/Abandon buttons.
+    if (
+      !modal &&
+      job.type === 'MissionJob' &&
+      job.status === 'phase_ready' &&
+      (def as any)?.mode === 'multi_phase' &&
+      ctx.phases.length > 0 &&
+      !specificDefId
+    ) {
+      modal = this.buildMultiPhaseDecisionModal(ctx, defName, job.id);
+      isInlineViewer = true;
+    }
+
+    // Short-circuit: ready_notified multi-phase missions without a per-def readyModalDefId
+    // get the inline collect modal with phase history above the Collect button.
+    if (
+      !modal &&
+      job.type === 'MissionJob' &&
+      job.status === 'ready_notified' &&
+      (def as any)?.mode === 'multi_phase' &&
+      ctx.phases.length > 0 &&
+      !specificDefId
+    ) {
+      modal = this.buildMultiPhaseCollectModal(ctx, defName, job.id);
+      isInlineViewer = true;
+    }
+
     // Try modal defs in fallback order (skipped above for multi-phase active viewer).
     if (!modal && specificDefId) modal = await this.buildModal(specificDefId, ctx);
     if (!modal && stateKey && typePrefix) modal = await this.buildModal(`${typePrefix}_${stateKey}`, ctx);
@@ -563,6 +591,159 @@ export class UiService {
       },
       pages: [{ body }],
       buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+    };
+  }
+
+  /**
+   * Builds the inline decision modal for a multi-phase mission in phase_ready status.
+   * Shows the entity roster, phase overview, and Continue/Abandon action buttons.
+   */
+  private buildMultiPhaseDecisionModal(ctx: RichJobContext, defName: string, jobId: string): any {
+    const body: any[] = [];
+
+    if (ctx.team.length > 0) {
+      body.push({
+        type: 'entityRoster',
+        editable: false,
+        entities: ctx.team.map(e => ({
+          id: e.id,
+          name: e.name,
+          level: e.level,
+          portraitKey: e.portraitKey,
+        })),
+      });
+    }
+
+    body.push({
+      type: 'mission_phases',
+      currentPhaseIndex: ctx.currentPhase,
+      totalPhases: ctx.phases.length,
+      phaseResults: ctx.phaseResults,
+      currentPhaseSuccesses: ctx.currentPhaseSuccesses,
+      phases: ctx.phases,
+      tickRate: ctx.tickRate,
+    });
+
+    const completedPhases = ctx.phaseResults.length;
+    const remainingPhases = ctx.phases.length - completedPhases;
+    const subtitle = ctx.defCategory ?? 'Expedition Decision';
+
+    return {
+      version: 1,
+      id: `job_${jobId}_decision`,
+      kind: 'job',
+      dismiss: { backdrop: false, x: false, escape: false },
+      header: {
+        title: defName,
+        subtitle,
+      },
+      pages: [{ body }],
+      buttons: [
+        {
+          id: 'continue',
+          label: remainingPhases > 1 ? `Continue (${remainingPhases} phases left)` : 'Continue to Final Phase',
+          variant: 'primary',
+          action: {
+            type: 'EXECUTE_COMMAND',
+            command: 'ContinueMission',
+            payload: { jobId },
+          },
+        },
+        {
+          id: 'abandon',
+          label: 'Abandon Expedition',
+          variant: 'danger',
+          requiresConfirm: {
+            title: 'Abandon Expedition?',
+            confirmLabel: 'Abandon',
+            cancelLabel: 'Keep Going',
+          },
+          action: {
+            type: 'EXECUTE_COMMAND',
+            command: 'AbandonMission',
+            payload: { jobId },
+          },
+        },
+      ],
+    };
+  }
+
+  /**
+   * Builds the inline collect modal for a multi-phase mission in ready_notified status.
+   * Shows the entity roster, full phase history, rewards, and a Collect button.
+   */
+  private buildMultiPhaseCollectModal(ctx: RichJobContext, defName: string, jobId: string): any {
+    const body: any[] = [];
+
+    if (ctx.team.length > 0) {
+      body.push({
+        type: 'entityRoster',
+        editable: false,
+        entities: ctx.team.map(e => ({
+          id: e.id,
+          name: e.name,
+          level: e.level,
+          portraitKey: e.portraitKey,
+        })),
+      });
+    }
+
+    body.push({
+      type: 'mission_phases',
+      currentPhaseIndex: ctx.currentPhase,
+      totalPhases: ctx.phases.length,
+      phaseResults: ctx.phaseResults,
+      currentPhaseSuccesses: ctx.currentPhaseSuccesses,
+      phases: ctx.phases,
+      tickRate: ctx.tickRate,
+    });
+
+    if (ctx.narrativeDoc.length > 0) {
+      body.push({ type: 'richText', doc: ctx.narrativeDoc });
+    }
+
+    if (ctx.rewardItems.length > 0) {
+      body.push({ type: 'rewardsList', items: ctx.rewardItems });
+    }
+
+    if (ctx.entityOutcomes.length > 0) {
+      body.push({
+        type: 'entityRoster',
+        editable: false,
+        entities: ctx.entityOutcomes.map(e => ({
+          id: e.id,
+          name: e.name,
+          level: e.level,
+          portraitKey: e.portraitKey,
+          outcome: e.outcome,
+        })),
+      });
+    }
+
+    const subtitle = ctx.defCategory ?? 'Expedition Complete';
+
+    return {
+      version: 1,
+      id: `job_${jobId}_collect`,
+      kind: 'job',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: {
+        title: defName,
+        subtitle,
+      },
+      pages: [{ body }],
+      buttons: [
+        {
+          id: 'collect',
+          label: 'Collect Rewards',
+          variant: 'primary',
+          action: {
+            type: 'EXECUTE_COMMAND',
+            command: 'CompleteMission',
+            payload: { jobId },
+          },
+        },
+      ],
     };
   }
 
