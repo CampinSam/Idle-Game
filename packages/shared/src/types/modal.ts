@@ -101,7 +101,8 @@ export type ModalBlock =
   | ModalBlockError
   | ModalBlockCharacterEvents
   | ModalBlockEntityRoster
-  | ModalBlockQuantityInput;
+  | ModalBlockQuantityInput
+  | ModalBlockMissionPhases;
 
 export interface ModalBlockRichText {
   type: 'richText';
@@ -257,6 +258,22 @@ export interface ModalBlockQuantityInput {
   from?: string;
 }
 
+export interface ModalBlockMissionPhaseDef {
+  durationSeconds: number;
+  count?: number;
+  label?: string;
+}
+
+export interface ModalBlockMissionPhases {
+  type: 'mission_phases';
+  currentPhaseIndex: number;
+  totalPhases: number;
+  phaseResults: Array<{ phaseIndex: number; success: boolean }>;
+  currentPhaseSuccesses: number;
+  phases: ModalBlockMissionPhaseDef[];
+  timerEndsAt?: string;
+}
+
 export interface RewardItem {
   assetKey?: string;
   name: string;
@@ -316,6 +333,7 @@ export const MODAL_BLOCK_TYPES = [
   'characterEvents',
   'entityRoster',
   'quantityInput',
+  'mission_phases',
 ] as const;
 
 /**

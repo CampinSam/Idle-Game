@@ -46,6 +46,10 @@ interface RichJobContext {
   timerInfo: {
     endsAt: string; startsAt: string; current: number; max: number; isReady: boolean;
   } | null;
+  currentPhase: number;
+  phaseResults: Array<{ phaseIndex: number; success: boolean }>;
+  currentPhaseSuccesses: number;
+  phases: Array<{ durationSeconds: number; count?: number; label?: string }>;
 }
 
 interface GiftContext {
@@ -140,16 +144,63 @@ export class UiService {
     if (!modal && stateKey) modal = await this.buildModal(`default_job_${stateKey}`, ctx);
 
     if (!modal) {
-      // Final fallback: minimal empty modal used when no modal def is defined at all.
-      modal = {
-        version: 1,
-        id: `job_${job.id}`,
-        kind: 'job',
-        dismiss: { backdrop: true, x: true, escape: true },
-        header: { title: typeLabel, subtitle: defName },
-        pages: [{ body: [] }],
-        buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
-      };
+      // For active multi-phase missions with no configured modal def: build a rich
+      // inline viewer showing the team roster, current phase timer, and phase overview.
+      if (job.type === 'MissionJob' && job.status === 'active' && (def as any)?.mode === 'multi_phase' && ctx.phases.length > 0) {
+        const body: any[] = [];
+
+        if (ctx.team.length > 0) {
+          body.push({
+            type: 'entityRoster',
+            editable: false,
+            entities: ctx.team.map(e => ({
+              id: e.id,
+              name: e.name,
+              level: e.level,
+              portraitKey: e.portraitKey,
+            })),
+          });
+        }
+
+        if (ctx.timerInfo && !ctx.timerInfo.isReady) {
+          body.push({
+            type: 'timer',
+            endsAt: ctx.timerInfo.endsAt,
+            label: `Phase ${ctx.currentPhase + 1} of ${ctx.phases.length}`,
+          });
+        }
+
+        body.push({
+          type: 'mission_phases',
+          currentPhaseIndex: ctx.currentPhase,
+          totalPhases: ctx.phases.length,
+          phaseResults: ctx.phaseResults,
+          currentPhaseSuccesses: ctx.currentPhaseSuccesses,
+          phases: ctx.phases,
+          timerEndsAt: ctx.timerInfo?.endsAt,
+        });
+
+        modal = {
+          version: 1,
+          id: `job_${job.id}_viewer`,
+          kind: 'job',
+          dismiss: { backdrop: true, x: true, escape: true },
+          header: { title: defName, subtitle: 'Active Expedition' },
+          pages: [{ body }],
+          buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+        };
+      } else {
+        // Final fallback: minimal empty modal used when no modal def is defined at all.
+        modal = {
+          version: 1,
+          id: `job_${job.id}`,
+          kind: 'job',
+          dismiss: { backdrop: true, x: true, escape: true },
+          header: { title: typeLabel, subtitle: defName },
+          pages: [{ body: [] }],
+          buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+        };
+      }
     }
 
     // Enrich skip button with server-computed cost metadata (can't be in static spec).
@@ -435,6 +486,21 @@ export class UiService {
       }));
     }
 
+    // --- Multi-phase job state ---
+    const currentPhase: number = (job.currentPhase as number) ?? 0;
+    const phaseResults: Array<{ phaseIndex: number; success: boolean }> =
+      Array.isArray(job.phaseResults) ? (job.phaseResults as any[]) : [];
+    const accumulatedState: any = job.accumulatedState ?? {};
+    const currentPhaseSuccesses: number = accumulatedState?.currentPhaseSuccesses ?? 0;
+
+    // Map def phases to a display-friendly shape (duration in seconds)
+    const rawDefPhases: any[] = Array.isArray((def as any)?.phases) ? (def as any).phases : [];
+    const phases = rawDefPhases.map((p: any) => ({
+      durationSeconds: typeof p.duration === 'number' ? p.duration : 0,
+      count: typeof p.count === 'number' && p.count > 1 ? p.count : undefined,
+      label: typeof p.label === 'string' ? p.label : undefined,
+    }));
+
     return {
       job: {
         id: job.id,
@@ -452,6 +518,10 @@ export class UiService {
       narrativeDoc,
       rewardItems,
       timerInfo,
+      currentPhase,
+      phaseResults,
+      currentPhaseSuccesses,
+      phases,
     };
   }
 
