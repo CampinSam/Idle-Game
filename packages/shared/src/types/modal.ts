@@ -259,7 +259,7 @@ export interface ModalBlockQuantityInput {
 }
 
 export interface ModalBlockMissionPhaseDef {
-  durationSeconds: number;
+  durationTicks: number;
   count?: number;
   label?: string;
 }
@@ -271,6 +271,7 @@ export interface ModalBlockMissionPhases {
   phaseResults: Array<{ phaseIndex: number; success: boolean }>;
   currentPhaseSuccesses: number;
   phases: ModalBlockMissionPhaseDef[];
+  tickRate: number;
   timerEndsAt?: string;
 }
 

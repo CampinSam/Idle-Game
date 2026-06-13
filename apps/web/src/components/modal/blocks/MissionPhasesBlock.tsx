@@ -1,7 +1,8 @@
 import type { ModalBlockMissionPhases } from '@derp/shared';
 import { useNow } from '../../../hooks/useNow';
 
-function formatSeconds(seconds: number): string {
+function formatDurationTicks(ticks: number, tickRate: number): string {
+  const seconds = tickRate > 0 ? Math.round(ticks / tickRate) : 0;
   if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -26,6 +27,7 @@ export default function MissionPhasesBlock({ block }: { block: ModalBlockMission
     phaseResults,
     currentPhaseSuccesses,
     phases,
+    tickRate,
     timerEndsAt,
   } = block;
 
@@ -50,7 +52,7 @@ export default function MissionPhasesBlock({ block }: { block: ModalBlockMission
           const isCurrent = i === currentPhaseIndex && !isCompleted;
           const isUpcoming = !isCompleted && !isCurrent;
 
-          const durationLabel = formatSeconds(phase.durationSeconds);
+          const durationLabel = formatDurationTicks(phase.durationTicks, tickRate);
           const countLabel = (phase.count ?? 1) > 1 ? ` × ${phase.count}` : '';
           const phaseLabel = phase.label ? phase.label : `Phase ${i + 1}`;
 

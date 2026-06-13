@@ -49,7 +49,9 @@ interface RichJobContext {
   currentPhase: number;
   phaseResults: Array<{ phaseIndex: number; success: boolean }>;
   currentPhaseSuccesses: number;
-  phases: Array<{ durationSeconds: number; count?: number; label?: string }>;
+  phases: Array<{ durationTicks: number; count?: number; label?: string }>;
+  tickRate: number;
+  defCategory: string | null;
 }
 
 interface GiftContext {
@@ -141,6 +143,7 @@ export class UiService {
     // rich inline viewer regardless of any generic default_mission_active DefaultModalDef in the
     // DB. A per-def activeModalDefId always wins (designers can still override per-mission).
     let modal: any = null;
+    let isInlineViewer = false;
     if (
       job.type === 'MissionJob' &&
       job.status === 'active' &&
@@ -149,6 +152,7 @@ export class UiService {
       !specificDefId
     ) {
       modal = this.buildMultiPhaseActiveViewerModal(ctx, defName, job.id);
+      isInlineViewer = true;
     }
 
     // Try modal defs in fallback order (skipped above for multi-phase active viewer).
@@ -169,8 +173,8 @@ export class UiService {
       };
     }
 
-    // Enrich skip button with server-computed cost metadata (can't be in static spec).
-    if (stateKey === 'active') {
+    // Enrich skip button for active jobs — skip for the inline viewer (close-only modal).
+    if (stateKey === 'active' && !isInlineViewer) {
       await this.enrichModalSkipButton(modal, job, def, ctx);
     }
 
@@ -459,13 +463,28 @@ export class UiService {
     const accumulatedState: any = job.accumulatedState ?? {};
     const currentPhaseSuccesses: number = accumulatedState?.currentPhaseSuccesses ?? 0;
 
-    // Map def phases to a display-friendly shape (duration in seconds)
+    const tickRate = (tickInfo?.currentRate ?? 1) as number;
+
+    // Map def phases — phase.duration is in seconds; convert to ticks for the block contract.
     const rawDefPhases: any[] = Array.isArray((def as any)?.phases) ? (def as any).phases : [];
     const phases = rawDefPhases.map((p: any) => ({
-      durationSeconds: typeof p.duration === 'number' ? p.duration : 0,
+      durationTicks: typeof p.duration === 'number' ? Math.round(p.duration * tickRate) : 0,
       count: typeof p.count === 'number' && p.count > 1 ? p.count : undefined,
       label: typeof p.label === 'string' ? p.label : undefined,
     }));
+
+    // Resolve mission category name for header display.
+    let defCategory: string | null = null;
+    const categoryDefId = (def as any)?.missionCategoryDefId;
+    if (categoryDefId) {
+      try {
+        const cat = await (this.prisma as any).missionCategoryDef.findUnique({
+          where: { id: categoryDefId },
+          select: { name: true },
+        });
+        defCategory = cat?.name ?? null;
+      } catch {}
+    }
 
     return {
       job: {
@@ -488,6 +507,8 @@ export class UiService {
       phaseResults,
       currentPhaseSuccesses,
       phases,
+      tickRate,
+      defCategory,
     };
   }
 
@@ -527,6 +548,7 @@ export class UiService {
       phaseResults: ctx.phaseResults,
       currentPhaseSuccesses: ctx.currentPhaseSuccesses,
       phases: ctx.phases,
+      tickRate: ctx.tickRate,
       timerEndsAt: ctx.timerInfo?.endsAt,
     });
 
@@ -535,7 +557,10 @@ export class UiService {
       id: `job_${jobId}_viewer`,
       kind: 'job',
       dismiss: { backdrop: true, x: true, escape: true },
-      header: { title: defName, subtitle: 'Active Expedition' },
+      header: {
+        title: defName,
+        subtitle: ctx.defCategory ?? 'Active Expedition',
+      },
       pages: [{ body }],
       buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
     };
