@@ -167,7 +167,8 @@ export interface MetaRowValueItem {
 
 export interface ModalBlockMetaRows {
   type: 'metaRows';
-  rows: { label: string; value: string; valueItems?: MetaRowValueItem[] }[];
+  /** Optional when populated via `from` at resolve time. */
+  rows?: { label: string; value: string; valueItems?: MetaRowValueItem[] }[];
   from?: string;
   revealOptions?: ModalRevealOptions;
 }

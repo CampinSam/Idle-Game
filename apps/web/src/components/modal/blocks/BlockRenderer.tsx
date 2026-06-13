@@ -53,7 +53,7 @@ export default function BlockRenderer({ block }: { block: ModalBlock }) {
     }
 
     case 'metaRows':
-      return <MetaRowsBlock rows={block.rows} revealOptions={block.revealOptions} />;
+      return <MetaRowsBlock rows={block.rows ?? []} revealOptions={block.revealOptions} />;
 
     case 'timer':
       return (

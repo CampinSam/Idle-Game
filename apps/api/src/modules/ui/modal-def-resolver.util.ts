@@ -121,7 +121,12 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
         doc: [{ t: 'p', c: [{ t: 'text', v: emptyText }] }],
       } as ModalBlock);
     }
-    return { type: 'list', list: expr, children: out } as ModalBlock;
+    const listResult: Record<string, unknown> = { type: 'list', list: expr, children: out };
+    if (b.emptyText) listResult.emptyText = b.emptyText;
+    if ((b as any).revealOptions) {
+      listResult.revealOptions = resolveAllStrings((b as any).revealOptions, ctx);
+    }
+    return listResult as unknown as ModalBlock;
   }
 
   const fromPath: string | undefined = b.from;
