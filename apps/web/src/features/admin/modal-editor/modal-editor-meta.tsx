@@ -180,7 +180,7 @@ export const BLOCK_META: Record<string, BlockMeta> = {
     group: 'Reveal',
     color: '#c084fc',
     fromHint: 'use Tags + Sound/FX maps instead of "from"',
-    fromShape: 'tags: "${item.rarity}"\nsoundMap: "legendary=sfx.x, *=sfx.y"\nfxMap: "rare=burst, *=shimmer"',
+    fromShape: 'tags: "${item.rarity}"\nsoundMap: "legendary=sfx.x, *=sfx.y"\nfxMap: "legendary=sparkle_gold, rare=burst, *=shimmer"',
     preview: () => (
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center', fontSize: 10, color: '#c084fc' }}>
         <span>👆 Tap to reveal</span>

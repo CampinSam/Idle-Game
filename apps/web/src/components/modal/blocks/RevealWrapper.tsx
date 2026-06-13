@@ -3,6 +3,7 @@ import type { AssetRef } from '@derp/shared';
 import { parseTagMap, lookupTagMap, splitTags } from '@derp/shared';
 import AssetImage from '../AssetImage';
 import { audioEngine } from '../../../services/AudioEngine';
+import ParticleOverlay, { getParticlePreset } from './ParticleOverlay';
 
 interface RevealWrapperProps {
   cover?: string;
@@ -19,10 +20,14 @@ interface RevealWrapperProps {
  * Sound and FX are driven by the resolved `tags` string — the parent list
  * renderer is responsible for resolving tagsFrom into a per-item tag before
  * passing it here.
+ *
+ * FX values that have a registered particle preset in ParticleOverlay will
+ * render a particle burst overlay in addition to their CSS class.
  */
 export default function RevealWrapper({ cover, coverImage, tags, soundMap, fxMap, children }: RevealWrapperProps) {
   const [revealed, setRevealed] = useState(false);
   const [fxClass, setFxClass] = useState('');
+  const [activeFx, setActiveFx] = useState<string | null>(null);
 
   const tagList = useMemo(() => splitTags(tags), [tags]);
   const soundPairs = useMemo(() => parseTagMap(soundMap), [soundMap]);
@@ -35,7 +40,10 @@ export default function RevealWrapper({ cover, coverImage, tags, soundMap, fxMap
       try { audioEngine.play(sound); } catch {}
     }
     const fx = lookupTagMap(fxPairs, tagList);
-    if (fx) setFxClass(`gm-reveal-fx-${fx}`);
+    if (fx) {
+      setFxClass(`gm-reveal-fx-${fx}`);
+      setActiveFx(fx);
+    }
     setRevealed(true);
   };
 
@@ -56,8 +64,11 @@ export default function RevealWrapper({ cover, coverImage, tags, soundMap, fxMap
     );
   }
 
+  const particlePreset = activeFx ? getParticlePreset(activeFx) : undefined;
+
   return (
-    <div className={`gm-reveal-content ${fxClass}`}>
+    <div className={`gm-reveal-content ${fxClass}`} style={particlePreset ? { position: 'relative' } : undefined}>
+      {particlePreset && <ParticleOverlay preset={particlePreset} />}
       {children}
     </div>
   );
