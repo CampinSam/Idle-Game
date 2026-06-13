@@ -56,7 +56,7 @@ type DefType = typeof DEF_TYPES[number];
 // ─── Prop schema hints (from render-blocks.md) ────────────────────────────────
 
 interface PropHint {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker' | 'missionDefPicker' | 'recipeDefPicker' | 'locationDefPicker' | 'storeItemPicker';
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'enum' | 'entityPicker' | 'missionDefPicker' | 'recipeDefPicker' | 'locationDefPicker' | 'storeItemPicker' | 'telemetryDefPicker';
   description?: string;
   required?: boolean;
   options?: string[];
@@ -119,7 +119,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     entityId: { type: 'entityPicker', description: 'Entity ID to pin for preview. When omitted the admin preview shows the first entity in the sync store.' },
   },
   TelemetryCard: {
-    telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
+    telemetryDefId: { type: 'telemetryDefPicker', description: 'ID of the telemetry definition to fetch', required: true },
     displayType: {
       type: 'enum',
       options: ['number', 'progress_bar', 'comparison', 'ranking', 'leaderboard', 'bar_chart', 'medal_podium'],
@@ -1378,6 +1378,153 @@ function QuestDefPicker({
   );
 }
 
+// ─── Telemetry definition picker ─────────────────────────────────────────────
+
+function TelemetryDefPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [allDefs, setAllDefs] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fetchedRef = useRef(false);
+
+  const loadDefs = useCallback(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setLoading(true);
+    setError('');
+    adminApi.telemetryList()
+      .then((defs: any[]) => {
+        setAllDefs(defs.map((d: any) => ({ id: d.id, name: d.name ?? d.id })));
+        setLoading(false);
+      })
+      .catch((e: any) => {
+        fetchedRef.current = false;
+        setError(e.message || 'Failed to load telemetry definitions');
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => { if (value) loadDefs(); }, [value, loadDefs]);
+  useEffect(() => { if (open) loadDefs(); }, [open, loadDefs]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = query
+    ? allDefs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))
+    : allDefs;
+  const selected = allDefs.find(d => d.id === value);
+
+  return (
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          style={{ ...inputStyle, flex: 1 }}
+          placeholder="telemetry def id"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          style={{ ...inputStyle, width: 'auto', padding: '0 8px', flexShrink: 0, cursor: 'pointer', fontSize: 10, color: open ? '#22d3ee' : '#6b7280', borderColor: open ? 'rgba(34,211,238,0.4)' : undefined }}
+          title="Pick telemetry definition"
+        >{open ? '▲ pick' : '▼ pick'}</button>
+      </div>
+      {value && selected && <div style={{ fontSize: 10, color: '#10b981', fontStyle: 'italic', paddingLeft: 2 }}>✓ {selected.name}</div>}
+      {value && !selected && allDefs.length > 0 && !loading && <div style={{ fontSize: 10, color: '#f59e0b', fontStyle: 'italic', paddingLeft: 2 }}>⚠ ID not found — may still be valid</div>}
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: '#0f0f1e', border: '1px solid rgba(34,211,238,0.3)', borderRadius: 6, padding: 6, maxHeight: 220, overflow: 'hidden' }}>
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="search by name or id…" autoFocus style={{ ...inputStyle, width: '100%', fontSize: 11, boxSizing: 'border-box' as const }} />
+          {error && <div style={{ color: '#f87171', fontSize: 10 }}>{error}</div>}
+          {loading && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px' }}>Loading…</div>}
+          <div style={{ overflowY: 'auto' as const, flex: 1 }}>
+            {!loading && filtered.length === 0 && <div style={{ color: '#555', fontSize: 10, padding: '4px 2px', fontStyle: 'italic' }}>No telemetry definitions found</div>}
+            {filtered.map(opt => (
+              <button key={opt.id} type="button" onClick={() => { onChange(opt.id); setOpen(false); setQuery(''); }}
+                style={{ display: 'block', width: '100%', textAlign: 'left' as const, padding: '4px 6px', background: opt.id === value ? 'rgba(34,211,238,0.15)' : 'transparent', border: 'none', borderRadius: 4, cursor: 'pointer', color: opt.id === value ? '#22d3ee' : '#67e8f9', fontSize: 11, fontFamily: 'inherit' }}
+                title={opt.id}>
+                <span style={{ fontWeight: 600 }}>{opt.name}</span>
+                <span style={{ color: '#555', marginLeft: 6, fontSize: 9, fontFamily: 'monospace' }}>{opt.id}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Telemetry sub-event picker (used inside TelemetryCard entries editor) ────
+
+function TelemetrySubEventPicker({
+  defId,
+  value,
+  onChange,
+}: {
+  defId: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [subEventKeys, setSubEventKeys] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const fetchedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!defId || fetchedRef.current === defId) return;
+    fetchedRef.current = defId;
+    setLoading(true);
+    adminApi.telemetryGet(defId)
+      .then((def: any) => {
+        const keys = Array.isArray(def?.subEvents)
+          ? def.subEvents.map((e: any) => e.key).filter(Boolean)
+          : [];
+        setSubEventKeys(keys);
+        setLoading(false);
+      })
+      .catch(() => { fetchedRef.current = null; setLoading(false); });
+  }, [defId]);
+
+  if (!defId) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, width: '100%' }} placeholder="sub-event key" />
+        <span style={{ fontSize: 9, color: '#555', paddingLeft: 2 }}>Set telemetryDefId first to see available keys</span>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <input type="text" value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, width: '100%' }} placeholder="loading keys…" disabled />;
+  }
+
+  if (subEventKeys.length === 0) {
+    return <input type="text" value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, width: '100%' }} placeholder="sub-event key" />;
+  }
+
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+      <option value="">— pick key —</option>
+      {subEventKeys.map(k => <option key={k} value={k}>{k}</option>)}
+    </select>
+  );
+}
+
 // ─── Section actions context ──────────────────────────────────────────────────
 // Provides the action keys defined on the current section so ActionKeyPicker
 // can surface them in its datalist without prop-drilling through every layer.
@@ -1451,7 +1598,7 @@ function ActionKeyPicker({
 interface ArrayFieldSchema {
   key: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'enum' | 'resourceDefPicker' | 'actionKeyPicker' | 'itemDefPicker' | 'questDefPicker';
+  type: 'string' | 'number' | 'boolean' | 'enum' | 'resourceDefPicker' | 'actionKeyPicker' | 'itemDefPicker' | 'questDefPicker' | 'telemetrySubEventPicker';
   options?: string[];
   optional?: boolean;
 }
@@ -1499,7 +1646,7 @@ const ARRAY_FIELD_SCHEMAS: Record<string, ArrayFieldSchema[]> = {
     { key: 'href',        label: 'href',           type: 'string', optional: true },
   ],
   'TelemetryCard.entries': [
-    { key: 'key',   label: 'key',   type: 'string' },
+    { key: 'key',   label: 'key',   type: 'telemetrySubEventPicker' },
     { key: 'label', label: 'label', type: 'string' },
     { key: 'icon',  label: 'icon',  type: 'string', optional: true },
     { key: 'color', label: 'color', type: 'string', optional: true },
@@ -1510,10 +1657,12 @@ function ArrayOfObjectsEditor({
   value,
   fieldSchemas,
   onChange,
+  context = {},
 }: {
   value: unknown[];
   fieldSchemas: ArrayFieldSchema[];
   onChange: (arr: unknown[]) => void;
+  context?: Record<string, unknown>;
 }) {
   const [mode, setMode] = useState<'rows' | 'raw'>('rows');
   const [rawText, setRawText] = useState(() => JSON.stringify(value, null, 2));
@@ -1556,6 +1705,7 @@ function ArrayOfObjectsEditor({
     if (f.type === 'actionKeyPicker') return 160;
     if (f.type === 'itemDefPicker') return 170;
     if (f.type === 'questDefPicker') return 170;
+    if (f.type === 'telemetrySubEventPicker') return 160;
     return 90;
   };
 
@@ -1680,6 +1830,12 @@ function ArrayOfObjectsEditor({
                           value={String(rowObj[f.key] ?? '')}
                           onChange={v => updateField(rowIdx, f.key, v)}
                         />
+                      ) : f.type === 'telemetrySubEventPicker' ? (
+                        <TelemetrySubEventPicker
+                          defId={String(context.telemetryDefId ?? '')}
+                          value={String(rowObj[f.key] ?? '')}
+                          onChange={v => updateField(rowIdx, f.key, v)}
+                        />
                       ) : (
                         <input
                           type="text"
@@ -1799,6 +1955,7 @@ function StructuredFieldsEditor({
           : hint?.type === 'recipeDefPicker' ? 'recipeDefPicker'
           : hint?.type === 'locationDefPicker' ? 'locationDefPicker'
           : hint?.type === 'storeItemPicker' ? 'storeItemPicker'
+          : hint?.type === 'telemetryDefPicker' ? 'telemetryDefPicker'
           : hint?.type === 'array' || hint?.type === 'object' ? 'json'
           : detectPropType(val);
         const isMissing = highlightKeys.includes(key);
@@ -1838,6 +1995,11 @@ function StructuredFieldsEditor({
                   value={String(val ?? '')}
                   onChange={v => updateProp(key, v)}
                 />
+              ) : ptype === 'telemetryDefPicker' ? (
+                <TelemetryDefPicker
+                  value={String(val ?? '')}
+                  onChange={v => updateProp(key, v)}
+                />
               ) : ptype === 'enum' ? (
                 <select
                   value={String(val ?? '')}
@@ -1867,11 +2029,16 @@ function StructuredFieldsEditor({
                   const arraySchema = componentKey ? ARRAY_FIELD_SCHEMAS[`${componentKey}.${key}`] : undefined;
                   if (arraySchema) {
                     const arrVal = Array.isArray(val) ? val : [];
+                    const arrayContext: Record<string, unknown> = {};
+                    if (componentKey === 'TelemetryCard' && key === 'entries') {
+                      arrayContext.telemetryDefId = props.telemetryDefId ?? '';
+                    }
                     return (
                       <ArrayOfObjectsEditor
                         value={arrVal}
                         fieldSchemas={arraySchema}
                         onChange={arr => updateProp(key, arr)}
+                        context={arrayContext}
                       />
                     );
                   }
