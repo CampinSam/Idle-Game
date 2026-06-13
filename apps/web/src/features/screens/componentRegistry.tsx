@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { resolveAssetUrl } from '../../utils/iconResolver';
 import { useNow, useInterval } from '../../hooks/useNow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { isInstanceCheckInAvailable } from '../checkin/checkinUtils';
@@ -823,6 +824,27 @@ function parseTelemetryCount(count: string): number {
 
 const _telemetryApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '/api';
 
+function isEmojiString(str: string): boolean {
+  return /\p{Emoji}/u.test(str);
+}
+
+function TelemetryIcon({ icon, size = 18 }: { icon: string; size?: number }) {
+  if (isEmojiString(icon)) {
+    return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }}>{icon}</span>;
+  }
+  const src = resolveAssetUrl(icon);
+  if (!src) return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }}>{icon}</span>;
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0, borderRadius: 3 }}
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+    />
+  );
+}
+
 export function TelemetryCardComp({ section }: ScreenComponentProps) {
   const props = section.props ?? {};
   const defId = props.telemetryDefId as string | undefined;
@@ -832,6 +854,8 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
   const metricKey = props.metricKey as string | undefined;
   const target = props.target != null ? Number(props.target) : undefined;
   const entries = Array.isArray(props.entries) ? (props.entries as TelemetryEntryConfig[]) : [];
+  const sortDirection = (props.sortDirection as 'desc' | 'asc') ?? 'desc';
+  const rowStyle = (props.rowStyle as 'uniform' | 'podium') ?? 'uniform';
 
   const [data, setData] = useState<TelemetryData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -906,7 +930,11 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
       <Card className="mb-4 p-4">
         <SectionHeader title={cardTitle} />
         <div className="mt-3 text-center py-2">
-          {entry?.icon && <div className="text-3xl mb-2">{entry.icon}</div>}
+          {entry?.icon && (
+            <div className="flex justify-center mb-2">
+              <TelemetryIcon icon={entry.icon} size={36} />
+            </div>
+          )}
           <div className="text-4xl font-black text-text-primary tabular-nums">
             {count.toLocaleString()}
           </div>
@@ -932,7 +960,7 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
         <SectionHeader title={cardTitle} />
         {entry && (
           <div className="mt-2 flex items-center gap-2 text-[12px] text-text-secondary">
-            {entry.icon && <span>{entry.icon}</span>}
+            {entry.icon && <TelemetryIcon icon={entry.icon} size={14} />}
             <span>{entry.label}</span>
           </div>
         )}
@@ -976,7 +1004,7 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
         <SectionHeader title={cardTitle} />
         <div className="mt-3 flex justify-between items-center text-[11px] mb-2">
           <div className="flex items-center gap-1">
-            {leftCfg.icon && <span>{leftCfg.icon}</span>}
+            {leftCfg.icon && <TelemetryIcon icon={leftCfg.icon} size={14} />}
             <span className="font-bold" style={{ color: leftColor }}>
               {leftCfg.label}
             </span>
@@ -985,7 +1013,7 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
             <span className="font-bold" style={{ color: rightColor }}>
               {rightCfg.label}
             </span>
-            {rightCfg.icon && <span>{rightCfg.icon}</span>}
+            {rightCfg.icon && <TelemetryIcon icon={rightCfg.icon} size={14} />}
           </div>
         </div>
         <div className="flex h-4 rounded-full overflow-hidden">
@@ -1021,40 +1049,167 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
     );
   }
 
-  const ranked = [...data.counts]
+  const sortedCounts = [...data.counts]
     .map((c) => ({ ...c, parsed: parseTelemetryCount(c.count), entry: getEntry(c.subEventKey) }))
-    .sort((a, b) => b.parsed - a.parsed);
+    .sort((a, b) => sortDirection === 'asc' ? a.parsed - b.parsed : b.parsed - a.parsed);
+
   const medals = ['🥇', '🥈', '🥉'];
+
+  if (displayType === 'bar_chart') {
+    const maxCount = sortedCounts.reduce((m, c) => Math.max(m, c.parsed), 1);
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={cardTitle} />
+        <div className="mt-3 space-y-2">
+          {sortedCounts.length === 0 && (
+            <div className="text-[11px] text-text-secondary text-center py-2">No data yet</div>
+          )}
+          {sortedCounts.map(({ subEventKey, parsed, entry }) => {
+            const fillPct = maxCount > 0 ? (parsed / maxCount) * 100 : 0;
+            const barColor = entry.color ?? '#8b5cf6';
+            return (
+              <div key={subEventKey}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  {entry.icon && <TelemetryIcon icon={entry.icon} size={13} />}
+                  <span
+                    className="text-[11px] font-semibold flex-1 truncate"
+                    style={entry.color ? { color: entry.color } : { color: '#c4b5fd' }}
+                  >
+                    {entry.label}
+                  </span>
+                  <span className="text-[12px] font-black tabular-nums text-text-primary ml-1">
+                    {parsed.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-2.5 bg-white/8 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${fillPct}%`, backgroundColor: barColor }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
+
+  if (displayType === 'medal_podium') {
+    const top3 = sortedCounts.slice(0, 3);
+    const rest = sortedCounts.slice(3);
+    const [first, second, third] = top3;
+    const podiumHeights = ['80px', '60px', '48px'];
+    const podiumColors = ['#f59e0b', '#9ca3af', '#cd7c3e'];
+    const podiumOrder = [second, first, third];
+    const podiumRankLabel = [2, 1, 3];
+    const podiumHeightIndex = [1, 0, 2];
+
+    return (
+      <Card className="mb-4 p-4">
+        <SectionHeader title={cardTitle} />
+        <div className="mt-4 flex items-end justify-center gap-2">
+          {podiumOrder.map((item, col) => {
+            if (!item) return <div key={col} className="flex-1" />;
+            const rank = podiumRankLabel[col];
+            const heightPx = podiumHeights[podiumHeightIndex[col]];
+            const accentColor = podiumColors[podiumHeightIndex[col]];
+            const entry = item.entry;
+            const isFirst = rank === 1;
+            return (
+              <div
+                key={item.subEventKey}
+                className="flex-1 flex flex-col items-center gap-1 min-w-0"
+              >
+                {entry.icon && (
+                  <TelemetryIcon icon={entry.icon} size={isFirst ? 28 : 20} />
+                )}
+                <div
+                  className="text-[11px] font-bold text-center truncate w-full px-1"
+                  style={entry.color ? { color: entry.color } : { color: accentColor }}
+                >
+                  {entry.label}
+                </div>
+                <div
+                  className={`font-black tabular-nums text-text-primary ${isFirst ? 'text-[16px]' : 'text-[13px]'}`}
+                >
+                  {item.parsed.toLocaleString()}
+                </div>
+                <div
+                  className="w-full rounded-t-lg flex items-center justify-center"
+                  style={{ height: heightPx, backgroundColor: accentColor + '28', border: `1px solid ${accentColor}40`, borderBottom: 'none' }}
+                >
+                  <span className="text-[11px] font-black" style={{ color: accentColor }}>
+                    #{rank}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {rest.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-white/10 space-y-1">
+            {rest.map(({ subEventKey, parsed, entry }, i) => (
+              <div key={subEventKey} className="flex items-center gap-2 px-1 py-1">
+                <span className="text-[10px] text-text-secondary w-5 text-center flex-shrink-0">
+                  #{i + 4}
+                </span>
+                {entry.icon && <TelemetryIcon icon={entry.icon} size={12} />}
+                <span
+                  className="flex-1 text-[11px] font-semibold truncate"
+                  style={entry.color ? { color: entry.color } : undefined}
+                >
+                  {entry.label}
+                </span>
+                <span className="text-[12px] font-black tabular-nums text-text-primary">
+                  {parsed.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    );
+  }
 
   return (
     <Card className="mb-4 p-4">
       <SectionHeader title={cardTitle} />
       <div className="mt-3 space-y-1">
-        {ranked.length === 0 && (
+        {sortedCounts.length === 0 && (
           <div className="text-[11px] text-text-secondary text-center py-2">No data yet</div>
         )}
-        {ranked.map(({ subEventKey, parsed, entry }, i) => (
-          <div
-            key={subEventKey}
-            className={`flex items-center gap-2.5 px-2 py-2 rounded-lg ${
-              i === 0 ? 'bg-white/5 border border-white/10' : ''
-            }`}
-          >
-            <span className="text-base flex-shrink-0 w-6 text-center leading-none">
-              {medals[i] ?? `#${i + 1}`}
-            </span>
-            {entry.icon && <span className="text-sm flex-shrink-0">{entry.icon}</span>}
-            <span
-              className="flex-1 text-[12px] font-bold text-text-primary truncate"
-              style={entry.color ? { color: entry.color } : undefined}
+        {sortedCounts.map(({ subEventKey, parsed, entry }, i) => {
+          const isPodium = rowStyle === 'podium';
+          const scaleClass = isPodium
+            ? i === 0 ? 'text-[14px]' : i === 1 ? 'text-[12px]' : 'text-[11px]'
+            : 'text-[12px]';
+          const paddingClass = isPodium
+            ? i === 0 ? 'py-2.5 px-2' : i === 1 ? 'py-2 px-2' : 'py-1.5 px-2'
+            : 'py-2 px-2';
+          const highlighted = i === 0 ? 'bg-white/5 border border-white/10' : '';
+          const iconSize = isPodium ? (i === 0 ? 18 : i === 1 ? 15 : 13) : 15;
+          return (
+            <div
+              key={subEventKey}
+              className={`flex items-center gap-2.5 rounded-lg ${paddingClass} ${highlighted}`}
             >
-              {entry.label}
-            </span>
-            <span className="text-[13px] font-black tabular-nums text-text-primary">
-              {parsed.toLocaleString()}
-            </span>
-          </div>
-        ))}
+              <span className="flex-shrink-0 w-6 text-center leading-none" style={{ fontSize: isPodium && i === 0 ? 20 : 16 }}>
+                {medals[i] ?? `#${i + 1}`}
+              </span>
+              {entry.icon && <TelemetryIcon icon={entry.icon} size={iconSize} />}
+              <span
+                className={`flex-1 font-bold text-text-primary truncate ${scaleClass}`}
+                style={entry.color ? { color: entry.color } : undefined}
+              >
+                {entry.label}
+              </span>
+              <span className={`font-black tabular-nums text-text-primary ${isPodium && i === 0 ? 'text-[15px]' : 'text-[13px]'}`}>
+                {parsed.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );

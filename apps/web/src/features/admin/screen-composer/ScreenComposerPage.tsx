@@ -122,8 +122,18 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
     displayType: {
       type: 'enum',
-      options: ['number', 'progress_bar', 'comparison', 'leaderboard'],
-      description: 'How the metric data is visualised (default: "number")',
+      options: ['number', 'progress_bar', 'comparison', 'ranking', 'bar_chart', 'medal_podium'],
+      description: 'How the metric data is visualised (default: "number"). ranking = leaderboard list; bar_chart = horizontal bars; medal_podium = 3-column podium for top 3.',
+    },
+    sortDirection: {
+      type: 'enum',
+      options: ['desc', 'asc'],
+      description: 'Sort order for ranking / bar_chart / medal_podium: "desc" = highest first (default), "asc" = lowest first.',
+    },
+    rowStyle: {
+      type: 'enum',
+      options: ['uniform', 'podium'],
+      description: 'Row sizing for ranking mode only: "uniform" = equal rows (default), "podium" = 1st row is largest, 2nd medium, 3rd+ small.',
     },
     title: { type: 'string', description: 'Card title. Falls back to definition name then "📊 METRICS".' },
     metricKey: { type: 'string', description: 'Which sub-event key to display (for number and progress_bar modes)' },
@@ -131,7 +141,7 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     pollIntervalSeconds: { type: 'number', description: 'How often to re-fetch in seconds (default: 30, min: 5)' },
     entries: {
       type: 'array',
-      description: 'Display overrides per sub-event key: [{ key, label, icon?, color? }]',
+      description: 'Display overrides per sub-event key: [{ key, label, icon?, color? }]. icon accepts emoji or an asset key string.',
     },
   },
   SeasonProgressCard: {
