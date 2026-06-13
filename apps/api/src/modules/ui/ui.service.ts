@@ -137,70 +137,36 @@ export class UiService {
       }
     })();
 
-    // Try modal defs in fallback order.
+    // Short-circuit: active multi-phase missions without a per-def activeModalDefId get the
+    // rich inline viewer regardless of any generic default_mission_active DefaultModalDef in the
+    // DB. A per-def activeModalDefId always wins (designers can still override per-mission).
     let modal: any = null;
-    if (specificDefId) modal = await this.buildModal(specificDefId, ctx);
+    if (
+      job.type === 'MissionJob' &&
+      job.status === 'active' &&
+      (def as any)?.mode === 'multi_phase' &&
+      ctx.phases.length > 0 &&
+      !specificDefId
+    ) {
+      modal = this.buildMultiPhaseActiveViewerModal(ctx, defName, job.id);
+    }
+
+    // Try modal defs in fallback order (skipped above for multi-phase active viewer).
+    if (!modal && specificDefId) modal = await this.buildModal(specificDefId, ctx);
     if (!modal && stateKey && typePrefix) modal = await this.buildModal(`${typePrefix}_${stateKey}`, ctx);
     if (!modal && stateKey) modal = await this.buildModal(`default_job_${stateKey}`, ctx);
 
     if (!modal) {
-      // For active multi-phase missions with no configured modal def: build a rich
-      // inline viewer showing the team roster, current phase timer, and phase overview.
-      if (job.type === 'MissionJob' && job.status === 'active' && (def as any)?.mode === 'multi_phase' && ctx.phases.length > 0) {
-        const body: any[] = [];
-
-        if (ctx.team.length > 0) {
-          body.push({
-            type: 'entityRoster',
-            editable: false,
-            entities: ctx.team.map(e => ({
-              id: e.id,
-              name: e.name,
-              level: e.level,
-              portraitKey: e.portraitKey,
-            })),
-          });
-        }
-
-        if (ctx.timerInfo && !ctx.timerInfo.isReady) {
-          body.push({
-            type: 'timer',
-            endsAt: ctx.timerInfo.endsAt,
-            label: `Phase ${ctx.currentPhase + 1} of ${ctx.phases.length}`,
-          });
-        }
-
-        body.push({
-          type: 'mission_phases',
-          currentPhaseIndex: ctx.currentPhase,
-          totalPhases: ctx.phases.length,
-          phaseResults: ctx.phaseResults,
-          currentPhaseSuccesses: ctx.currentPhaseSuccesses,
-          phases: ctx.phases,
-          timerEndsAt: ctx.timerInfo?.endsAt,
-        });
-
-        modal = {
-          version: 1,
-          id: `job_${job.id}_viewer`,
-          kind: 'job',
-          dismiss: { backdrop: true, x: true, escape: true },
-          header: { title: defName, subtitle: 'Active Expedition' },
-          pages: [{ body }],
-          buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
-        };
-      } else {
-        // Final fallback: minimal empty modal used when no modal def is defined at all.
-        modal = {
-          version: 1,
-          id: `job_${job.id}`,
-          kind: 'job',
-          dismiss: { backdrop: true, x: true, escape: true },
-          header: { title: typeLabel, subtitle: defName },
-          pages: [{ body: [] }],
-          buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
-        };
-      }
+      // Final fallback: minimal empty modal used when no modal def is defined at all.
+      modal = {
+        version: 1,
+        id: `job_${job.id}`,
+        kind: 'job',
+        dismiss: { backdrop: true, x: true, escape: true },
+        header: { title: typeLabel, subtitle: defName },
+        pages: [{ body: [] }],
+        buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
+      };
     }
 
     // Enrich skip button with server-computed cost metadata (can't be in static spec).
@@ -522,6 +488,56 @@ export class UiService {
       phaseResults,
       currentPhaseSuccesses,
       phases,
+    };
+  }
+
+  /**
+   * Builds the rich inline viewer modal for an active multi-phase mission.
+   * Called before any DefaultModalDef lookup so it always takes priority over
+   * generic default_mission_active records in the DB.
+   */
+  private buildMultiPhaseActiveViewerModal(ctx: RichJobContext, defName: string, jobId: string): any {
+    const body: any[] = [];
+
+    if (ctx.team.length > 0) {
+      body.push({
+        type: 'entityRoster',
+        editable: false,
+        entities: ctx.team.map(e => ({
+          id: e.id,
+          name: e.name,
+          level: e.level,
+          portraitKey: e.portraitKey,
+        })),
+      });
+    }
+
+    if (ctx.timerInfo && !ctx.timerInfo.isReady) {
+      body.push({
+        type: 'timer',
+        endsAt: ctx.timerInfo.endsAt,
+        label: `Phase ${ctx.currentPhase + 1} of ${ctx.phases.length}`,
+      });
+    }
+
+    body.push({
+      type: 'mission_phases',
+      currentPhaseIndex: ctx.currentPhase,
+      totalPhases: ctx.phases.length,
+      phaseResults: ctx.phaseResults,
+      currentPhaseSuccesses: ctx.currentPhaseSuccesses,
+      phases: ctx.phases,
+      timerEndsAt: ctx.timerInfo?.endsAt,
+    });
+
+    return {
+      version: 1,
+      id: `job_${jobId}_viewer`,
+      kind: 'job',
+      dismiss: { backdrop: true, x: true, escape: true },
+      header: { title: defName, subtitle: 'Active Expedition' },
+      pages: [{ body }],
+      buttons: [{ id: 'close', label: 'Close', variant: 'secondary', action: { type: 'CLOSE_MODAL' } }],
     };
   }
 
