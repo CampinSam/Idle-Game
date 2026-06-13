@@ -8,6 +8,7 @@ import { TelemetryContextBuilderService } from '../../telemetry/telemetry-contex
 import { GameRulesService } from '../../game-rules/game-rules.service';
 import { NotificationService } from '../../notification/notification.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { resolveSpec } from '../../ui/modal-def-resolver.util';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -168,9 +169,9 @@ export class OpenLootBoxHandler implements CommandHandler {
       ],
     };
 
-    // Apply default_lootbox_reveal template — lets operators customize header/buttons
-    // via the admin panel. Generated pages (reward text) are preserved when the
-    // default has no pages of its own.
+    // Apply default_lootbox_reveal template — lets operators customize header/buttons/pages
+    // via the admin panel. When the template has pages (e.g. rewardsList with revealOptions),
+    // it is resolved against a context built from the actual grants so `from:` expressions work.
     try {
       const templateRow = await (this.prisma as any).defaultModalDef.findUnique({
         where: { id: 'default_lootbox_reveal' },
@@ -181,7 +182,35 @@ export class OpenLootBoxHandler implements CommandHandler {
           generatedSpec.header = { ...generatedSpec.header, ...tpl.header };
         }
         if (Array.isArray(tpl.pages) && tpl.pages.length > 0) {
-          generatedSpec.pages = tpl.pages;
+          // Build a rewards context so `from: 'rewards'` and tagsFrom resolve correctly.
+          const itemKeys = allGrants.filter((g: any) => g.type === 'item' && g.itemDefId).map((g: any) => g.itemDefId as string);
+          const itemRarityMap = new Map<string, string>();
+          if (itemKeys.length > 0) {
+            const itemDefs = await (this.prisma as any).itemDefinition.findMany({
+              where: { id: { in: itemKeys } },
+              select: { id: true, rarity: true },
+            });
+            for (const d of itemDefs as { id: string; rarity: string | null }[]) {
+              if (d.rarity) itemRarityMap.set(d.id, d.rarity);
+            }
+          }
+          const rewards = allGrants.map((g: any) => {
+            if (g.type === 'currency') {
+              return { name: g.currencyId ?? 'Currency', qty: g.amount ?? 1, assetKey: g.currencyId };
+            }
+            if (g.type === 'item') {
+              return {
+                name: g.itemDefId ?? 'Item',
+                qty: g.qty ?? 1,
+                assetKey: g.itemDefId,
+                rarity: itemRarityMap.get(g.itemDefId) ?? undefined,
+              };
+            }
+            return { name: g.type ?? 'Reward', qty: g.amount ?? g.qty ?? 1 };
+          });
+          const ctx = { rewards, lootboxName: lootboxDef.name };
+          const resolved = resolveSpec(tpl, ctx);
+          generatedSpec.pages = resolved.pages ?? tpl.pages;
         }
         if (Array.isArray(tpl.buttons) && tpl.buttons.length > 0) {
           generatedSpec.buttons = tpl.buttons;
