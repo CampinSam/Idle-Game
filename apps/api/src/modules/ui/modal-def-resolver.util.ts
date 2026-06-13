@@ -166,14 +166,23 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
         case 'timer':
           if (typeof data === 'string') {
             resolved.endsAt = data;
-          } else if (typeof data === 'object' && data.endsAt) {
-            resolved.endsAt = data.endsAt;
+            resolved.wallClock = true;
+          } else if (typeof data === 'object' && data !== null) {
+            // Tick-native (raw DB timer object — preferred)
+            if (data.startTick !== undefined) resolved.startTick = Number(data.startTick);
+            if (data.durationTicks !== undefined) resolved.durationTicks = Number(data.durationTicks);
+            // Wall-clock fallback
+            if (data.endsAt) { resolved.endsAt = data.endsAt; resolved.wallClock = true; }
             if (data.label) resolved.label = data.label;
           }
           break;
 
         case 'progress':
-          if (typeof data === 'object') {
+          if (typeof data === 'object' && data !== null) {
+            // Tick-native (raw DB timer object — preferred)
+            if (data.startTick !== undefined) resolved.startTick = Number(data.startTick);
+            if (data.durationTicks !== undefined) resolved.durationTicks = Number(data.durationTicks);
+            // Count / timestamp fallback
             if (data.current !== undefined) resolved.current = Number(data.current);
             if (data.max !== undefined) resolved.max = Number(data.max);
             if (data.label) resolved.label = data.label;
@@ -191,9 +200,9 @@ function resolveBlock(block: ModalBlock, ctx: Record<string, any>): ModalBlock {
           break;
 
         case 'image':
-          if (typeof data === 'object') {
+          if (typeof data === 'object' && data !== null) {
             resolved.image = {
-              assetKey: data.assetKey || data.url || '',
+              assetKey: data.assetKey || data.url || data.backgroundImage || data.cardBackground || '',
               alt: data.alt || data.caption || '',
             };
             if (data.caption) resolved.caption = data.caption;

@@ -85,6 +85,27 @@ export type ModalAction =
   | { type: 'SKIP'; targetType: string; targetId: string }
   | { type: 'EXECUTE_COMMAND'; command: string; payload: Record<string, unknown> };
 
+/**
+ * Per-item reveal options for list-style blocks.
+ * Each rendered item is wrapped in a tap-to-reveal cover.
+ *
+ * `tagsFrom` is a dot-path into each item's data object used to resolve a
+ * per-item tag for soundMap/fxMap lookup (e.g. "rarity" on a rewardsList uses
+ * each reward's rarity field). It takes precedence over the static `tags`
+ * string when both are present. Silently ignored on the `list` block whose
+ * children are ModalBlock objects rather than data items.
+ */
+export interface ModalRevealOptions {
+  cover?: string;
+  coverImage?: AssetRef;
+  /** Static tag string applied uniformly to every item. Overridden per-item by tagsFrom. */
+  tags?: string;
+  /** Dot-path into each item's data to resolve a per-item tag (e.g. "rarity"). Takes precedence over tags when both are present. */
+  tagsFrom?: string;
+  soundMap?: string;
+  fxMap?: string;
+}
+
 export type ModalBlock =
   | ModalBlockRichText
   | ModalBlockDivider
@@ -132,7 +153,8 @@ export interface ImageDisplay {
 
 export interface ModalBlockImage {
   type: 'image';
-  image: AssetRef;
+  /** Optional when `from` is used to populate the image at resolve time. */
+  image?: AssetRef;
   caption?: string;
   display?: ImageDisplay;
   from?: string;
@@ -147,11 +169,19 @@ export interface ModalBlockMetaRows {
   type: 'metaRows';
   rows: { label: string; value: string; valueItems?: MetaRowValueItem[] }[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockTimer {
   type: 'timer';
-  endsAt: string;
+  /** Game tick when the timer started. Primary (tick-native) mode — renderer reads currentTick live from the Redux store. */
+  startTick?: number;
+  /** Total duration in game ticks. Primary (tick-native) mode. */
+  durationTicks?: number;
+  /** UTC ISO timestamp the timer counts down to. Wall-clock mode only; requires wallClock: true. */
+  endsAt?: string;
+  /** Set to true when endsAt is a genuine wall-clock anchor (daily resets, season ends). Tick-native fields take priority when present. */
+  wallClock?: boolean;
   label?: string;
   from?: string;
 }
@@ -159,8 +189,14 @@ export interface ModalBlockTimer {
 export interface ModalBlockProgress {
   type: 'progress';
   label?: string;
-  current: number;
-  max: number;
+  /** Game tick when the job started. Tick-native mode (preferred over startsAt/endsAt). */
+  startTick?: number;
+  /** Total duration in game ticks. Tick-native mode. */
+  durationTicks?: number;
+  /** Current progress count. Count mode — used only when tick fields are absent. */
+  current?: number;
+  /** Maximum progress count. Count mode. */
+  max?: number;
   startsAt?: string;
   endsAt?: string;
   from?: string;
@@ -168,21 +204,24 @@ export interface ModalBlockProgress {
 
 export interface ModalBlockRewardsPreview {
   type: 'rewardsPreview';
-  items: RewardItem[];
+  items?: RewardItem[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockRewardsList {
   type: 'rewardsList';
   title?: string;
-  items: RewardItem[];
+  items?: RewardItem[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockInventoryDelta {
   type: 'inventoryDelta';
-  items: { assetKey?: string; name: string; qtyDelta: number }[];
+  items?: { assetKey?: string; name: string; qtyDelta: number }[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockGiftReveal {
@@ -197,6 +236,7 @@ export interface ModalBlockList {
   list: string;
   children: ModalBlock[];
   emptyText?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockClickReveal {
@@ -221,8 +261,9 @@ export type CharacterEvent =
 
 export interface ModalBlockCharacterEvents {
   type: 'characterEvents';
-  items: CharacterEvent[];
+  items?: CharacterEvent[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockEntityRosterEntity {
@@ -242,8 +283,9 @@ export interface ModalBlockEntityRosterEntity {
 export interface ModalBlockEntityRoster {
   type: 'entityRoster';
   editable: boolean;
-  entities: ModalBlockEntityRosterEntity[];
+  entities?: ModalBlockEntityRosterEntity[];
   from?: string;
+  revealOptions?: ModalRevealOptions;
 }
 
 export interface ModalBlockQuantityInput {

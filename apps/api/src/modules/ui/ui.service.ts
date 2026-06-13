@@ -35,6 +35,7 @@ interface RichJobContext {
   results: Record<string, unknown>;
   data: Record<string, unknown>;
   def: Record<string, unknown>;
+  defDisplay: Record<string, unknown> | null;
   timer: Record<string, unknown>;
   team: Array<{ id: string; name: string; level: number; portraitKey?: string }>;
   entityOutcomes: Array<{
@@ -525,6 +526,7 @@ export class UiService {
       results: (results as Record<string, unknown>) || {},
       data: (job.data as Record<string, unknown>) || {},
       def: def || {},
+      defDisplay: (def as any)?.displayDef ?? null,
       timer: (job.timer as Record<string, unknown>) || {},
       team,
       entityOutcomes,
@@ -898,11 +900,11 @@ export class UiService {
     if (!defId) return null;
     try {
       if (job.type === 'MissionJob') {
-        return await this.prisma.missionDef.findFirst({ where: { id: defId } });
+        return await this.prisma.missionDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
       } else if (job.type === 'CraftingJob') {
-        return await this.prisma.recipeDef.findFirst({ where: { id: defId } });
+        return await this.prisma.recipeDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
       } else if (job.type === 'BuildingJob') {
-        return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId } });
+        return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
       } else if (job.type === 'DustingJob') {
         return await (this.prisma as any).itemDefinition.findFirst({ where: { id: defId } });
       }

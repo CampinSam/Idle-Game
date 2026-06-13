@@ -68,12 +68,14 @@ An image block with optional caption and display controls for alignment, sizing,
 }
 ```
 
+`from: "defDisplay"` populates `image.assetKey` from the definition's `DisplayDef` record (`backgroundImage` → `cardBackground` precedence). The `image` field may be omitted when `from` is used.
+
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `image` | `AssetRef` | ✅ | Asset key to resolve. See [AssetRef](#assetref). |
+| `image` | `AssetRef` | — | Asset key to resolve. Optional when `from` populates it at resolve time. See [AssetRef](#assetref). |
 | `caption` | `string` | — | Small caption text rendered below the image. |
 | `display` | `ImageDisplay` | — | Layout controls. See table below. |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `from` | `string` | — | Source metadata hint for tooling. `"defDisplay"` resolves the definition's banner image. |
 
 **`ImageDisplay` properties:**
 
@@ -107,52 +109,93 @@ A table of label → value pairs. Values can optionally include inline item icon
 | `rows[].value` | `string` | ✅ | Right-side value text. |
 | `rows[].valueItems` | `MetaRowValueItem[]` | — | Optional list of icon+amount items rendered alongside the value string. Each item: `{ assetKey: string, amount: number }`. |
 | `from` | `string` | — | Source metadata hint for tooling. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-row tap-to-reveal. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
 ### `timer`
 
-A live countdown timer that ticks down to an ISO timestamp. Triggers a modal refresh when it reaches zero (via `ModalRefreshContext`).
+A live countdown timer. Triggers a modal refresh when it reaches zero (via `ModalRefreshContext`).
+
+**Tick-native mode (preferred):** Supply `startTick` + `durationTicks`. The renderer reads `currentTick` and `tickRate` live from the Redux sync store and computes `remainingSeconds = (startTick + durationTicks − currentTick) / tickRate`.
+
+**Wall-clock mode:** Supply `endsAt` (UTC ISO) + `wallClock: true`. Use this only for genuine calendar anchors (daily resets, season ends) where game ticks are not the right unit.
+
+`from: "timer"` copies `startTick`/`durationTicks` directly from the raw DB timer object — tick-native mode with zero extra fields needed.
+
+```json
+{ "type": "timer", "from": "timer" }
+```
 
 ```json
 {
   "type": "timer",
-  "endsAt": "2026-06-01T00:00:00Z",
+  "startTick": 14200,
+  "durationTicks": 3600,
   "label": "Mission completes in"
+}
+```
+
+```json
+{
+  "type": "timer",
+  "endsAt": "2026-12-31T00:00:00Z",
+  "wallClock": true,
+  "label": "Season ends in"
 }
 ```
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `endsAt` | `string` (ISO 8601) | ✅ | UTC timestamp the timer counts down to. |
+| `startTick` | `number` | — | Game tick when the timer started. **Tick-native mode.** |
+| `durationTicks` | `number` | — | Total duration in game ticks. **Tick-native mode.** |
+| `endsAt` | `string` (ISO 8601) | — | UTC timestamp for wall-clock mode. Requires `wallClock: true`. |
+| `wallClock` | `boolean` | — | Set to `true` when `endsAt` is a genuine calendar anchor. Tick-native fields take priority when present. |
 | `label` | `string` | — | Text shown above the countdown digits. |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `from` | `string` | — | Source metadata hint for tooling. `"timer"` maps `startTick`/`durationTicks` from the raw DB timer object. |
 
 ---
 
 ### `progress`
 
-A labelled progress bar. Can be driven by explicit `current`/`max` values or auto-derived from `startsAt`/`endsAt` timestamps.
+A labelled progress bar. Three modes, evaluated in priority order:
+
+1. **Tick-native (preferred):** `startTick` + `durationTicks`. Fill = `(currentTick − startTick) / durationTicks`. `from: "timer"` populates these from the raw DB timer object.
+2. **Timestamp:** `startsAt` + `endsAt` (ISO 8601). Fill is computed from wall-clock time.
+3. **Count:** `current` + `max`. Static or externally updated fill.
+
+```json
+{ "type": "progress", "from": "timer" }
+```
 
 ```json
 {
   "type": "progress",
   "label": "Crafting…",
-  "current": 40,
-  "max": 100,
-  "startsAt": "2026-05-23T10:00:00Z",
-  "endsAt": "2026-05-23T12:00:00Z"
+  "startTick": 14200,
+  "durationTicks": 3600
+}
+```
+
+```json
+{
+  "type": "progress",
+  "label": "Quest step",
+  "current": 3,
+  "max": 5
 }
 ```
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `current` | `number` | ✅ | Current progress value. |
-| `max` | `number` | ✅ | Maximum (100%) value. |
+| `startTick` | `number` | — | Game tick when the job started. **Tick-native mode.** |
+| `durationTicks` | `number` | — | Total duration in game ticks. **Tick-native mode.** |
+| `current` | `number` | — | Current progress count. **Count mode** (used only when tick fields are absent). |
+| `max` | `number` | — | Maximum count. **Count mode.** |
 | `label` | `string` | — | Text shown above the bar. |
-| `startsAt` | `string` (ISO 8601) | — | Start time; used to auto-compute `current` when time-driven. |
-| `endsAt` | `string` (ISO 8601) | — | End time; used to auto-compute fill when time-driven. |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `startsAt` | `string` (ISO 8601) | — | Start time for timestamp mode. |
+| `endsAt` | `string` (ISO 8601) | — | End time for timestamp mode. |
+| `from` | `string` | — | Source metadata hint for tooling. `"timer"` maps `startTick`/`durationTicks` from the raw DB timer object. |
 
 ---
 
@@ -172,8 +215,9 @@ A compact reward grid showing estimated/upcoming rewards. Renders with a "Previe
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `items` | `RewardItem[]` | ✅ | List of rewards to display. See [RewardItem](#rewarditem). |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `items` | `RewardItem[]` | — | List of rewards to display. Populated by `from` at resolve time when omitted. See [RewardItem](#rewarditem). |
+| `from` | `string` | — | Source metadata hint for tooling. `"rewardItems"` populates the items array from job reward results. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-item tap-to-reveal. `tagsFrom: "rarity"` uses each reward's rarity for per-item sound/FX. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -193,9 +237,10 @@ An expanded reward list with an optional custom title. Used for confirmed/collec
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `items` | `RewardItem[]` | ✅ | List of rewards to display. See [RewardItem](#rewarditem). |
+| `items` | `RewardItem[]` | — | List of rewards to display. Populated by `from` at resolve time when omitted. See [RewardItem](#rewarditem). |
 | `title` | `string` | — | Section title shown above the list. Defaults to `"Rewards"`. |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `from` | `string` | — | Source metadata hint for tooling. `"rewardItems"` populates the items array from job reward results. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-item tap-to-reveal. `tagsFrom: "rarity"` uses each reward's rarity for per-item sound/FX. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -215,11 +260,12 @@ Shows changes to the player's inventory — positive quantities in green, negati
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `items` | `InventoryDeltaItem[]` | ✅ | List of inventory changes. |
+| `items` | `InventoryDeltaItem[]` | — | List of inventory changes. Populated by `from` at resolve time when omitted. |
 | `items[].name` | `string` | ✅ | Display name of the item. |
 | `items[].assetKey` | `string` | — | Asset key for the item icon. |
 | `items[].qtyDelta` | `number` | ✅ | Change in quantity. Negative = consumed, positive = gained. |
 | `from` | `string` | — | Source metadata hint for tooling. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-item tap-to-reveal. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -270,6 +316,7 @@ A container block that renders its children in sequence. The `list` string is a 
 | `list` | `string` | ✅ | Identifier for this list (used by tooling/logging). |
 | `children` | `ModalBlock[]` | ✅ | Nested blocks rendered in order. Each child can be any `ModalBlock` type. |
 | `emptyText` | `string` | — | Fallback text shown when `children` is empty. |
+| `revealOptions` | `ModalRevealOptions` | — | Wraps each child block in a tap-to-reveal cover. Note: `tagsFrom` has no effect here because children are `ModalBlock` objects, not data items. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -334,11 +381,12 @@ A list of character milestone events from a completed mission — level-ups and 
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `items` | `CharacterEvent[]` | ✅ | List of events. |
+| `items` | `CharacterEvent[]` | — | List of events. Populated by `from` at resolve time when omitted. |
 | `items[].type` | `"level_up" \| "injured"` | ✅ | Event type. |
 | `items[].entityName` | `string` | ✅ | Display name of the entity. |
 | `items[].newLevel` | `number` | ✅ (level_up only) | The level the entity reached. |
 | `from` | `string` | — | Source metadata hint for tooling. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-event tap-to-reveal. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -371,7 +419,7 @@ A roster panel showing a set of entities with their levels, power contributions,
 | Property | Type | Required | Description |
 |---|---|---|---|
 | `editable` | `boolean` | ✅ | Whether the roster allows entity selection/removal (not yet implemented in renderer; reserved for future use). |
-| `entities` | `EntityRosterEntity[]` | ✅ | List of entities in the roster. |
+| `entities` | `EntityRosterEntity[]` | — | List of entities in the roster. Populated by `from` at resolve time when omitted. |
 | `entities[].id` | `string` | ✅ | Entity instance ID. |
 | `entities[].name` | `string` | ✅ | Display name. |
 | `entities[].level` | `number` | ✅ | Current level. |
@@ -382,7 +430,8 @@ A roster panel showing a set of entities with their levels, power contributions,
 | `entities[].outcome.xpGained` | `number` | ✅ | XP awarded. |
 | `entities[].outcome.levelBefore` | `number` | ✅ | Level at mission start. |
 | `entities[].outcome.levelAfter` | `number` | ✅ | Level after XP applied. |
-| `from` | `string` | — | Source metadata hint for tooling. |
+| `from` | `string` | — | Source metadata hint for tooling. `"entityOutcomes"` populates from job outcome data; `"team"` populates active team with no outcomes. |
+| `revealOptions` | `ModalRevealOptions` | — | Per-entity tap-to-reveal. See [ModalRevealOptions](#modalrevealoptions). |
 
 ---
 
@@ -841,6 +890,35 @@ Used by `rewardsPreview`, `rewardsList`, and `giftReveal`.
 | `rarity` | `string` | Rarity tag (e.g. `"common"`, `"rare"`, `"legendary"`). Used for colour/styling. |
 | `note` | `string` | Optional footnote (e.g. `"×2 weekend bonus"`). |
 
+### `ModalRevealOptions`
+
+Used by `metaRows`, `rewardsPreview`, `rewardsList`, `inventoryDelta`, `list`, `characterEvents`, and `entityRoster` to wrap each rendered item in a per-item tap-to-reveal mechanic. The `clickReveal` block has its own equivalent fields directly on the block.
+
+| Field | Type | Description |
+|---|---|---|
+| `cover` | `string` | Text shown on the un-tapped cover button. Defaults to `"Tap to reveal"`. |
+| `coverImage` | `AssetRef` | Image shown on the cover before tap. Replaces the text cover when set. |
+| `tags` | `string` | Static comma-separated tag string applied uniformly to every item (e.g. `"legendary"`). Used for sound/FX map lookup. Overridden per-item by `tagsFrom`. |
+| `tagsFrom` | `string` | Dot-path into each item's data to resolve a per-item tag (e.g. `"rarity"` on a `rewardsList` reads each reward's `rarity` field). Takes precedence over `tags` when both are present. Silently ignored on `list` (children are `ModalBlock` objects, not data items). |
+| `soundMap` | `string` | `"tag=sfxKey, *=fallback"` map resolving which sound plays on reveal. |
+| `fxMap` | `string` | `"tag=fxKey, *=fallback"` map resolving which visual effect plays on reveal. |
+
+**Example — reveal each reward individually with rarity-driven sound:**
+```json
+{
+  "type": "rewardsList",
+  "from": "rewardItems",
+  "revealOptions": {
+    "cover": "Tap to reveal",
+    "tagsFrom": "rarity",
+    "soundMap": "legendary=sfx_legendary, rare=sfx_rare, *=sfx_common",
+    "fxMap": "legendary=sparkle_gold, *=sparkle_white"
+  }
+}
+```
+
+---
+
 ### `AssetRef`
 
 Used by `image`, `giftReveal`, and `clickReveal`.
@@ -861,6 +939,43 @@ The building block of a `RichTextDoc` (used by the `richText` modal block).
 | `{ t: "p" \| "h1" \| "h2" \| "ul" \| "li" \| "strong" \| "em" \| "code", c: RichTextNode[] }` | A structural or formatting container. |
 | `{ t: "link", c: RichTextNode[], href: string }` | A hyperlink. |
 | `{ t: "token", key: string }` | A server-resolved dynamic value substitution. |
+
+---
+
+## Context Token Reference
+
+The modal resolver (`modal-def-resolver.util.ts`) enriches the authoring context with data from the triggering job before substituting `${token}` placeholders in block fields. The tokens listed below are available in any modal definition whose `from` fields or string values use template interpolation.
+
+### Job context tokens (all job types)
+
+| Token | Value |
+|---|---|
+| `${job.id}` | Job instance ID. |
+| `${job.status}` | Current job status string. |
+| `${job.defId}` | Definition ID that created this job. |
+
+### `defDisplay` tokens (MissionJob, CraftingJob, BuildingJob)
+
+When the job's definition has a linked `DisplayDef` record, the following tokens are available. They are ideal for populating `image` blocks dynamically without hard-coding asset keys in every modal definition.
+
+| Token | Value |
+|---|---|
+| `${defDisplay.backgroundImage}` | Background/banner image asset key from `DisplayDef`. |
+| `${defDisplay.cardBackground}` | Card-level background image asset key from `DisplayDef`. |
+| `${defDisplay.borderColor}` | CSS border colour from `DisplayDef`. |
+
+**Example — using `defDisplay` for the modal header banner:**
+```json
+{
+  "type": "image",
+  "from": "defDisplay"
+}
+```
+
+Or via explicit template in a `richText` token node:
+```json
+{ "t": "token", "key": "defDisplay.backgroundImage" }
+```
 
 ---
 
