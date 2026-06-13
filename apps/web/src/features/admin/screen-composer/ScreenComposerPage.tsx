@@ -122,8 +122,8 @@ const COMPONENT_PROP_HINTS: Record<string, Record<string, PropHint>> = {
     telemetryDefId: { type: 'string', description: 'ID of the telemetry definition to fetch', required: true },
     displayType: {
       type: 'enum',
-      options: ['number', 'progress_bar', 'comparison', 'ranking', 'bar_chart', 'medal_podium'],
-      description: 'How the metric data is visualised (default: "number"). ranking = leaderboard list; bar_chart = horizontal bars; medal_podium = 3-column podium for top 3.',
+      options: ['number', 'progress_bar', 'comparison', 'ranking', 'leaderboard', 'bar_chart', 'medal_podium'],
+      description: 'How the metric data is visualised (default: "number"). ranking/leaderboard = ranked list; bar_chart = horizontal bars; medal_podium = 3-column podium for top 3.',
     },
     sortDirection: {
       type: 'enum',

@@ -829,18 +829,25 @@ function isEmojiString(str: string): boolean {
 }
 
 function TelemetryIcon({ icon, size = 18 }: { icon: string; size?: number }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
   if (isEmojiString(icon)) {
     return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }}>{icon}</span>;
   }
+
   const src = resolveAssetUrl(icon);
-  if (!src) return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }}>{icon}</span>;
+
+  if (!src || imgFailed) {
+    return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }}>{icon}</span>;
+  }
+
   return (
     <img
       src={src}
       alt=""
       draggable={false}
       style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0, borderRadius: 3 }}
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      onError={() => setImgFailed(true)}
     />
   );
 }
