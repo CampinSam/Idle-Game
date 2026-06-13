@@ -189,6 +189,23 @@ function resolveBlockClient(block: any, ctx: Record<string, any>): any {
     }
   }
 
+  if (block.type === 'mission_phases') {
+    return {
+      type: 'mission_phases',
+      currentPhaseIndex: 1,
+      totalPhases: 3,
+      phaseResults: [{ phaseIndex: 0, success: true }],
+      currentPhaseSuccesses: 0,
+      phases: [
+        { durationTicks: 600, label: 'Phase 1' },
+        { durationTicks: 900, label: 'Phase 2' },
+        { durationTicks: 600, label: 'Phase 3' },
+      ],
+      tickRate: 10,
+      timerEndsAt: new Date(Date.now() + 90_000).toISOString(),
+    };
+  }
+
   if (block.type === 'clickReveal') {
     const childBlocks: any[] = Array.isArray(block.children) ? block.children : [];
     return {
@@ -336,6 +353,15 @@ export const BLOCK_DEFAULTS: Record<string, () => ModalBlock> = {
   }),
   entityRoster: () => ({ type: 'entityRoster', editable: false, entities: [] }),
   characterEvents: () => ({ type: 'characterEvents', items: [] }),
+  mission_phases: () => ({
+    type: 'mission_phases',
+    currentPhaseIndex: 0,
+    totalPhases: 1,
+    phaseResults: [],
+    currentPhaseSuccesses: 0,
+    phases: [{ durationTicks: 600, label: 'Phase 1' }],
+    tickRate: 10,
+  }),
   error: () => ({ type: 'error', message: 'Something went wrong.' }),
 };
 
@@ -344,7 +370,7 @@ const BLOCK_COLORS: Record<string, string> = {
   timer: '#fb923c', progress: '#34d399', rewardsPreview: '#fbbf24',
   rewardsList: '#fbbf24', inventoryDelta: '#f472b6', giftReveal: '#f59e0b',
   list: '#60a5fa', clickReveal: '#c084fc', error: '#ef4444',
-  entityRoster: '#38bdf8', characterEvents: '#a3e635',
+  entityRoster: '#38bdf8', characterEvents: '#a3e635', mission_phases: '#a78bfa',
 };
 
 export const BUTTON_DEFAULTS: () => ModalButton = () => ({
@@ -1014,6 +1040,14 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
         <Field label="Static events (optional)" hint="Only needed if not using 'from'. Use 'from' with results.characterEvents for dynamic data.">
           <input style={inp} value={JSON.stringify((block as any).items || [])} onChange={e => { try { set({ items: JSON.parse(e.target.value) }); } catch {} }} placeholder='[{"type":"level_up","entityName":"Hero","newLevel":5}]' />
         </Field>
+      );
+    }
+
+    case 'mission_phases': {
+      return (
+        <div style={{ padding: '8px 10px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 6, fontSize: 12, color: '#a78bfa', lineHeight: 1.5 }}>
+          Data is injected at runtime from the active job context — no configuration needed.
+        </div>
       );
     }
 

@@ -223,6 +223,32 @@ export const BLOCK_META: Record<string, BlockMeta> = {
       </div>
     ),
   },
+  mission_phases: {
+    friendlyName: 'Mission Phases',
+    description: 'Phase-by-phase progress tracker for multi-phase missions. All data is injected at runtime — no configuration needed.',
+    group: 'Status',
+    color: '#a78bfa',
+    fromHint: '',
+    fromShape: 'Injected at runtime from the active job context (phases, phaseResults, tickRate, etc.)',
+    preview: () => (
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3, fontSize: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: '#34d399', fontWeight: 800 }}>✓</span>
+          <span style={{ color: '#94a3b8' }}>Phase 1</span>
+          <span style={{ marginLeft: 'auto', color: '#34d399/60', fontSize: 9 }}>Done</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 4, padding: '2px 4px' }}>
+          <span style={{ color: '#a78bfa', fontWeight: 800 }}>▶</span>
+          <span style={{ color: '#e2e8f0' }}>Phase 2</span>
+          <span style={{ marginLeft: 'auto', color: '#a78bfa', fontVariantNumeric: 'tabular-nums' }}>0:42</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'inline-block' }} />
+          <span style={{ color: '#64748b' }}>Phase 3</span>
+        </div>
+      </div>
+    ),
+  },
   error: {
     friendlyName: 'Error Message',
     description: 'Red error banner for failure messages.',
