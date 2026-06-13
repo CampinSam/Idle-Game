@@ -998,7 +998,7 @@ function BlockEditor({ block, onChange, tokenPaths }: { block: ModalBlock; onCha
           <Field label="Sound map" hint='First matching tag wins; * is the fallback. Values come from the audio mappings table (Admin → Audio).'>
             <TagValueMapEditor kind="sound" value={(block as any).soundMap || ''} onChange={v => set({ soundMap: v })} placeholder="legendary=sfx.reveal_legendary, rare=sfx.reveal_rare, *=sfx.reveal_default" />
           </Field>
-          <Field label="FX map" hint='First matching tag wins; * is the fallback. Built-in effects: shimmer, burst, glow, pulse, sparkle_gold, sparkle_blue, sparkle_purple. Sparkle variants emit a particle burst overlay + coloured glow.'>
+          <Field label="FX map" hint='First matching tag wins; * is the fallback. Built-in effects: shimmer, burst, glow, pulse, sparkle_gold, sparkle_blue, sparkle_purple, confetti. Sparkle variants emit a particle burst overlay + coloured glow. confetti emits multi-colour rectangular strips with rotation — ideal for celebrations like streaks or quest completions.'>
             <TagValueMapEditor kind="fx" value={(block as any).fxMap || ''} onChange={v => set({ fxMap: v })} placeholder="legendary=sparkle_gold, rare=burst, *=shimmer" />
           </Field>
           <div style={{ marginTop: 10 }}>

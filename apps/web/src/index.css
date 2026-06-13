@@ -2416,9 +2416,17 @@ input:focus {
   50%  { box-shadow: 0 0 18px 3px rgba(167,139,250,0.45); }
   100% { box-shadow: 0 0 0px  0px rgba(167,139,250,0); }
 }
+.gm-reveal-fx-confetti {
+  animation: gm-reveal-fade 0.35s ease-out;
+}
 @keyframes gm-particle-fly {
   0%   { transform: translate(0, 0) scale(1); opacity: 1; }
   100% { transform: translate(var(--gm-ptx), var(--gm-pty)) scale(0); opacity: 0; }
+}
+@keyframes gm-confetti-fly {
+  0%   { transform: translate(0, 0) rotate(var(--gm-prot)) scale(1); opacity: 1; }
+  60%  { opacity: 0.85; }
+  100% { transform: translate(var(--gm-ptx), var(--gm-pty)) rotate(calc(var(--gm-prot) + 540deg)) scale(0.2); opacity: 0; }
 }
 .gm-error-block {
   background: rgba(239, 68, 68, 0.08);
