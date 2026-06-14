@@ -31,11 +31,13 @@ export const SEED_TABLE_ORDER = [
   'homeBannerDef',
   'systemIconDef',
   'synergyRule',
+  // effectDef must come before powerDef so PowerDef.effectDefId slugs can be
+  // resolved to UUID FK values during the seed pass (see upsertTable).
+  'effectDef',
   'powerDef',
   'soundDef',
   'tagDef',
   'visualEffectDef',
-  'effectDef',
   'nftCollectionDef',
   'gameDefinition',
 ] as const;
@@ -117,20 +119,13 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
   },
   /**
    * UUID PK migration: PowerDef.id is now a UUID; the slug lives in key.
-   * effectDefId in legacy seed data may be a slug rather than a UUID.
-   * If effectDefId is a slug (not a UUID), omit it from the record so the
-   * DB-authoritative UUID value (set by the migration) is not overwritten.
+   * effectDefId slug → UUID resolution is handled asynchronously in upsertTable
+   * (see the powerDef special-case block) after effectDef rows are committed.
    */
   powerDef: (r) => {
-    const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const { id, effectDefId, ...rest } = r;
+    const { id, ...rest } = r;
     const key: string = r.key ?? id;
-    // Only include effectDefId if it is already a UUID (post-migration format).
-    // Legacy slug values are excluded so the migrated UUID FK is preserved.
-    const effectDefEntry = (effectDefId == null || UUID_V4.test(effectDefId))
-      ? { effectDefId }
-      : {};
-    return { ...rest, key, ...effectDefEntry };
+    return { ...rest, key };
   },
 };
 
@@ -333,6 +328,43 @@ export class SeedSyncService {
           const where = buildWhere(record);
           const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
+        }
+      }
+      return;
+    }
+
+    if (modelName === 'powerDef') {
+      // effectDef UUID PK migration: PowerDef.effectDefId may arrive as a slug
+      // in legacy seed records.  effectDef is seeded before powerDef (see
+      // SEED_TABLE_ORDER), so we can resolve slug → UUID via a single DB query.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const effectDefs = await this.prisma.effectDef.findMany({ select: { id: true, key: true } });
+      const effectDefByKey = new Map(effectDefs.map((e) => [e.key, e.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+
+        // Resolve slug effectDefId → UUID.  If already a UUID, leave it as-is.
+        const rawEffectDefId: string | null = raw.effectDefId ?? null;
+        if (rawEffectDefId !== null && !UUID_V4.test(rawEffectDefId)) {
+          record.effectDefId = effectDefByKey.get(rawEffectDefId) ?? null;
+          if (record.effectDefId === null) {
+            this.logger.warn(
+              `upsertTable(powerDef): effectDefId slug "${rawEffectDefId}" not found in effect_defs — setting null`,
+            );
+          }
+        }
+
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        try {
+          await model.upsert({ where, update: rest, create: record });
+        } catch (err: any) {
+          this.logger.error(
+            `upsertTable: failed to upsert powerDef (where=${JSON.stringify(where)}): ${err?.message}`,
+          );
+          throw err;
         }
       }
       return;
