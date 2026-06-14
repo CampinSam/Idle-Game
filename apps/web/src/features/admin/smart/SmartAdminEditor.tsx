@@ -513,7 +513,9 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
     const filtered = records.filter((r: any) => {
       if (!search) return true;
       const s = search.toLowerCase();
-      return (r.id || '').toLowerCase().includes(s) || (r.name || '').toLowerCase().includes(s);
+      return (r.id || '').toLowerCase().includes(s)
+        || (r.name || '').toLowerCase().includes(s)
+        || (r.key || '').toLowerCase().includes(s);
     });
     return [...ghostCreateDrafts, ...filtered];
   }, [records, search, ghostCreateDrafts]);
@@ -706,6 +708,8 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                 {filteredRecords.map(r => {
                   const rowBadge = !r._ghostDraft ? (schema?.getRowBadge?.(r) ?? null) : null;
                   const hasPendingDraft = !r._ghostDraft && !!pendingDrafts[r.id];
+                  const primaryLabel = r.name || r.id;
+                  const secondaryLabel = r.name ? (r.key || r.id) : (r.key || null);
                   return (
                     <div
                       key={r.id}
@@ -722,7 +726,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: selectedId === r.id ? (r._ghostDraft ? '#fbbf24' : '#a78bfa') : (r._ghostDraft ? '#d97706' : '#e0e0ff'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-                          {r.id}
+                          {primaryLabel}
                         </div>
                         {r._ghostDraft && (
                           <span style={{
@@ -755,9 +759,9 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
                           </span>
                         )}
                       </div>
-                      {r.name && (
-                        <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.name}
+                      {secondaryLabel && (
+                        <div style={{ fontSize: 11, color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                          {secondaryLabel}
                         </div>
                       )}
                     </div>
@@ -811,7 +815,7 @@ export default function SmartAdminEditor({ adminKey: _, initialTable }: Props) {
               </option>
               {filteredRecords.map(r => (
                 <option key={r.id} value={r.id}>
-                  {r.id}{r.name ? ` — ${r.name}` : ''}
+                  {r.name || r.id}{r.key ? ` (${r.key})` : ''}
                 </option>
               ))}
             </select>

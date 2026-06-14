@@ -35,9 +35,14 @@ export function invalidateRefCache(apiKeyOrTable?: string) {
     return;
   }
   refCache.delete(apiKeyOrTable);
-  // Also try the mapped key in case caller passed schema name
   const mapped = TABLE_API_KEYS[apiKeyOrTable];
   if (mapped) refCache.delete(mapped);
+}
+
+function optionLabel(o: any): string {
+  const name = o.name ?? o.id;
+  const key = o.key;
+  return key ? `${name} (${key})` : name;
 }
 
 interface Props {
@@ -57,7 +62,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
     if (!value) return '';
     const cached = refCache.get(apiKey) || [];
     const found = cached.find((o: any) => o.id === value);
-    return found ? `${found.id}${found.name ? ` — ${found.name}` : ''}` : value;
+    return found ? optionLabel(found) : value;
   });
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -71,7 +76,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setOptions(cached);
       if (value) {
         const found = cached.find((o: any) => o.id === value);
-        setInputText(found ? `${found.id}${found.name ? ` — ${found.name}` : ''}` : value);
+        setInputText(found ? optionLabel(found) : value);
       }
       return;
     }
@@ -81,7 +86,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setOptions(data);
       if (value) {
         const found = data.find((o: any) => o.id === value);
-        if (found) setInputText(`${found.id}${found.name ? ` — ${found.name}` : ''}`);
+        if (found) setInputText(optionLabel(found));
       }
     }).catch(() => {
       refCache.set(apiKey, []);
@@ -94,12 +99,15 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       return;
     }
     const found = options.find((o: any) => o.id === value);
-    setInputText(found ? `${found.id}${found.name ? ` — ${found.name}` : ''}` : value);
+    setInputText(found ? optionLabel(found) : value);
   }, [value, options]);
 
   const filtered = options.filter(o => {
-    const label = `${o.id}${o.name ? ` — ${o.name}` : ''}`.toLowerCase();
-    return label.includes(inputText.toLowerCase());
+    const label = optionLabel(o).toLowerCase();
+    const text = inputText.toLowerCase();
+    return label.includes(text)
+      || (o.id || '').toLowerCase().includes(text)
+      || (o.key || '').toLowerCase().includes(text);
   });
 
   const allItems = [null, ...filtered];
@@ -111,12 +119,12 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setInputText('');
     } else {
       const match = options.find(o => {
-        const label = `${o.id}${o.name ? ` — ${o.name}` : ''}`;
-        return label === trimmed || o.id === trimmed;
+        const label = optionLabel(o);
+        return label === trimmed || o.id === trimmed || o.key === trimmed;
       });
       if (match) {
         onChange(match.id);
-        setInputText(`${match.id}${match.name ? ` — ${match.name}` : ''}`);
+        setInputText(optionLabel(match));
       } else {
         onChange(trimmed);
         setInputText(trimmed);
@@ -158,7 +166,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
           setInputText('');
         } else {
           onChange(item.id);
-          setInputText(`${item.id}${item.name ? ` — ${item.name}` : ''}`);
+          setInputText(optionLabel(item));
         }
       } else {
         commit(inputText);
@@ -169,7 +177,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setOpen(false);
       if (value) {
         const found = options.find(o => o.id === value);
-        setInputText(found ? `${found.id}${found.name ? ` — ${found.name}` : ''}` : value);
+        setInputText(found ? optionLabel(found) : value);
       } else {
         setInputText('');
       }
@@ -191,7 +199,7 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
       setInputText('');
     } else {
       onChange(item.id);
-      setInputText(`${item.id}${item.name ? ` — ${item.name}` : ''}`);
+      setInputText(optionLabel(item));
     }
     setOpen(false);
     onBlur?.();
@@ -293,8 +301,11 @@ export default function RefSelect({ refTable, value, onChange, onBlur, placehold
                   onMouseLeave={() => setHighlightedIndex(-1)}
                 >
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600 }}>{opt.id}</span>
-                    {opt.name && <span style={{ color: '#888' }}>— {opt.name}</span>}
+                    <span style={{ fontWeight: 600 }}>{opt.name ?? opt.id}</span>
+                    {opt.key && <span style={{ color: '#888', fontSize: 11, fontFamily: 'monospace' }}>{opt.key}</span>}
+                    {!opt.key && opt.name && opt.id !== opt.name && (
+                      <span style={{ color: '#666', fontSize: 11, fontFamily: 'monospace' }}>{opt.id}</span>
+                    )}
                     {refTable === 'BundleDef' && Array.isArray(opt.bundle) && (
                       <span style={{ color: '#a78bfa', fontSize: 11 }}>
                         · {opt.bundle.length} {opt.bundle.length === 1 ? 'entry' : 'entries'}

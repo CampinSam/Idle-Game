@@ -361,7 +361,7 @@ function RuleRefEditor({ node, onChange, onRemove, onMoveUp, onMoveDown, isFirst
               <option value="">— select a rule —</option>
               {options.map(o => (
                 <option key={o.id} value={o.id}>
-                  {o.id}{o.name ? ` — ${o.name}` : ''}{o.enabled === false ? ' (disabled)' : ''}
+                  {o.name ?? o.id}{o.key ? ` (${o.key})` : ''}{o.enabled === false ? ' (disabled)' : ''}
                 </option>
               ))}
             </select>

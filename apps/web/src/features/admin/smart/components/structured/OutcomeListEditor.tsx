@@ -597,7 +597,8 @@ function refLabel(refTable: string, id: string | null | undefined): string {
   if (!id) return '?';
   const row = getCachedRefRow(refTable, id);
   if (!row) return id;
-  return row.name ? `${row.name} (${id})` : id;
+  const suffix = row.key || id;
+  return row.name ? `${row.name} (${suffix})` : suffix;
 }
 
 function describeEntry(entry: any): string {
