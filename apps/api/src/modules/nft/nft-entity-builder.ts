@@ -233,7 +233,7 @@ export async function buildEntityDataFromNftMetadata(
 
   return {
     ownerUserId: null,
-    definitionId: collection.entityDefinitionId,
+    definitionId: entityDef.id,
     speciesId: entityDef.speciesId,
     display: {
       name: meta.name,

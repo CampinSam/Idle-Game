@@ -638,10 +638,18 @@ export class LocationService {
     });
     if (!location) throw new NotFoundException("Location not found");
 
+    // Resolve definition first so we can compare by key (game rules use slugs)
+    // and write by id (UUID FK column on location_building_instances).
+    const def = await (this.prisma as any).buildingDef.findFirst({
+      where: { OR: [{ id: buildingDefId }, { key: buildingDefId }] },
+    });
+    if (!def) throw new BadRequestException("Building definition not found");
+
     const locRules = (location.definition?.rules as LevelRules) || {};
     const allowedBuildings = resolveAllowedBuildings(locRules, location.level);
+    // allowedBuildings[].buildingDefId comes from rules JSON — always slug keys.
     const allowedEntry = allowedBuildings.find(
-      (a) => a.buildingDefId === buildingDefId,
+      (a) => a.buildingDefId === def.key,
     );
     if (!allowedEntry)
       throw new BadRequestException(
@@ -649,19 +657,15 @@ export class LocationService {
       );
 
     const maxCount = allowedEntry.maxCount ?? 1;
+    // location.buildings[].buildingDefId is a UUID FK column after migration.
     const existingCount = location.buildings.filter(
-      (b: any) => b.buildingDefId === buildingDefId,
+      (b: any) => b.buildingDefId === def.id,
     ).length;
     if (existingCount >= maxCount) {
       throw new BadRequestException(
         `Maximum ${maxCount} of this building already built`,
       );
     }
-
-    const def = await (this.prisma as any).buildingDef.findFirst({
-      where: { OR: [{ id: buildingDefId }, { key: buildingDefId }] },
-    });
-    if (!def) throw new BadRequestException("Building definition not found");
     const reqContext = await this.buildLocationRequirementContext(
       userId,
       location,
@@ -741,7 +745,7 @@ export class LocationService {
       const building = await (tx as any).locationBuildingInstance.create({
         data: {
           locationId,
-          buildingDefId,
+          buildingDefId: def.id,
           level: 1,
           state: buildingState,
         },
@@ -753,7 +757,7 @@ export class LocationService {
           data: {
             userId,
             type: "BuildingJob",
-            defId: buildingDefId,
+            defId: def.id,
             status: "active",
             timer: { startTick: Math.floor(currentTick), durationTicks },
             team: [],

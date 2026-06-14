@@ -224,7 +224,7 @@ export async function generateEntityData(
 
   return {
     ownerUserId: userId,
-    definitionId,
+    definitionId: entityDef.id,
     speciesId: entityDef.speciesId,
     display: { name: resolvedName },
     stats: initialStats,
