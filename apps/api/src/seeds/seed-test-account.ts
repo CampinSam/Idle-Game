@@ -220,8 +220,8 @@ async function main() {
     // Always reconcile: ensure this asset ID + explicit scope override is
     // present in entityDefinition.rules.uniques (runs whether entity was just
     // created or already existed from a prior run).
-    const defRecord = await (prisma as any).entityDefinition.findUnique({
-      where: { id: defId },
+    const defRecord = await (prisma as any).entityDefinition.findFirst({
+      where: { OR: [{ id: defId }, { key: defId }] },
       select: { rules: true },
     });
     const currentRules = (defRecord?.rules as Record<string, unknown>) ?? {};

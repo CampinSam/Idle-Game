@@ -392,7 +392,7 @@ export class JobPreviewService {
   }
 
   private async getBuildingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const def = await (this.prisma as any).buildingDef.findUnique({ where: { id: dto.defId } });
+    const def = await (this.prisma as any).buildingDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
     if (!def) throw new NotFoundException('Building definition not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

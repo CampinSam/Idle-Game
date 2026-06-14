@@ -11,10 +11,10 @@ export const SEED_TABLE_ORDER = [
   'currency',
   'regionDefinition',
   'displayDef',
-  'entityDefinition',
   'locationDefinition',
   'buildingDef',
   'roomDef',
+  'entityDefinition',
   'missionCategoryDef',
   'missionDef',
   'recipeDef',
@@ -91,6 +91,31 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     if (c.cntWithdrawalFee != null) c.cntWithdrawalFee = BigInt(c.cntWithdrawalFee);
     if (c.cntAutoApprovalThreshold != null) c.cntAutoApprovalThreshold = BigInt(c.cntAutoApprovalThreshold);
     return c;
+  },
+  regionDefinition: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  locationDefinition: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  buildingDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  roomDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  entityDefinition: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
   },
   lootboxDef: (r) => {
     const { id, ...rest } = r;
@@ -179,6 +204,11 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   checkInDef: (r) => ({ key: r.key }),
   giftDef: (r) => ({ key: r.key }),
   currency: (r) => ({ key: r.key }),
+  regionDefinition: (r) => ({ key: r.key }),
+  locationDefinition: (r) => ({ key: r.key }),
+  buildingDef: (r) => ({ key: r.key }),
+  roomDef: (r) => ({ key: r.key }),
+  entityDefinition: (r) => ({ key: r.key }),
   lootboxDef: (r) => ({ key: r.key }),
   bundleDef: (r) => ({ key: r.key }),
   itemDefinition: (r) => ({ key: r.key }),
@@ -371,6 +401,42 @@ export class SeedSyncService {
           const where = buildWhere(record);
           const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
           await model.upsert({ where, update: rest, create: record });
+        }
+      }
+      return;
+    }
+
+    if (modelName === 'locationDefinition') {
+      // UUID PK migration: LocationDefinition.regionId may arrive as a slug.
+      // regionDefinition is seeded before locationDefinition (see SEED_TABLE_ORDER),
+      // so we can resolve slug → UUID via a single DB query.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const regionDefs = await this.prisma.regionDefinition.findMany({ select: { id: true, key: true } });
+      const regionDefByKey = new Map(regionDefs.map((r) => [r.key, r.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+
+        const rawRegionId: string | null = raw.regionId ?? null;
+        if (rawRegionId !== null && !UUID_V4.test(rawRegionId)) {
+          record.regionId = regionDefByKey.get(rawRegionId) ?? null;
+          if (record.regionId === null) {
+            this.logger.warn(
+              `upsertTable(locationDefinition): regionId slug "${rawRegionId}" not found in region_definitions — setting null`,
+            );
+          }
+        }
+
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        try {
+          await model.upsert({ where, update: rest, create: record });
+        } catch (err: any) {
+          this.logger.error(
+            `upsertTable: failed to upsert locationDefinition (where=${JSON.stringify(where)}): ${err?.message}`,
+          );
+          throw err;
         }
       }
       return;

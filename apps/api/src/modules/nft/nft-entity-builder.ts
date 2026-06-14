@@ -33,8 +33,8 @@ export async function buildEntityDataFromNftMetadata(
   meta: NftMetadata,
   seed?: number,
 ): Promise<Record<string, any>> {
-  const entityDef = await (prisma as any).entityDefinition.findUnique({
-    where: { id: collection.entityDefinitionId },
+  const entityDef = await (prisma as any).entityDefinition.findFirst({
+    where: { OR: [{ id: collection.entityDefinitionId }, { key: collection.entityDefinitionId }] },
   });
 
   if (!entityDef) {

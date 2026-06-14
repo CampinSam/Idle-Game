@@ -54,8 +54,8 @@ export async function generateEntityData(
   seed?: number,
   startingLevelOverride?: number,
 ): Promise<GeneratedEntityData> {
-  const entityDef = await (prisma as any).entityDefinition.findUnique({
-    where: { id: definitionId },
+  const entityDef = await (prisma as any).entityDefinition.findFirst({
+    where: { OR: [{ id: definitionId }, { key: definitionId }] },
   });
 
   if (!entityDef) {

@@ -77,10 +77,15 @@ export class LocationService {
    */
   async createStarterOutpost(userId: string): Promise<any> {
     const currentTick = await this.tickService.getCurrentTick();
+    const locationDef = await (this.prisma as any).locationDefinition.findUnique({
+      where: { key: 'derp_outpost' },
+      select: { id: true },
+    });
+    if (!locationDef) throw new NotFoundException('LocationDefinition "derp_outpost" not found');
     const loc = await (this.prisma as any).locationInstance.create({
       data: {
         ownerUserId: userId,
-        definitionId: 'derp_outpost',
+        definitionId: locationDef.id,
         name: 'Starter Outpost',
         kind: 'outpost_fungible',
         level: 1,
@@ -552,9 +557,9 @@ export class LocationService {
 
     const allowedIds = allowedBuildings.map((a) => a.buildingDefId);
     const buildingDefs = await (this.prisma as any).buildingDef.findMany({
-      where: { id: { in: allowedIds } },
+      where: { key: { in: allowedIds } },
     });
-    const defMap = new Map(buildingDefs.map((d: any) => [d.id, d]));
+    const defMap = new Map(buildingDefs.map((d: any) => [d.key, d]));
 
     const reqContext = await this.buildLocationRequirementContext(
       userId,
@@ -653,8 +658,8 @@ export class LocationService {
       );
     }
 
-    const def = await (this.prisma as any).buildingDef.findUnique({
-      where: { id: buildingDefId },
+    const def = await (this.prisma as any).buildingDef.findFirst({
+      where: { OR: [{ id: buildingDefId }, { key: buildingDefId }] },
     });
     if (!def) throw new BadRequestException("Building definition not found");
     const reqContext = await this.buildLocationRequirementContext(

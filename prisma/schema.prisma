@@ -234,7 +234,8 @@ model CurrencyLedger {
 }
 
 model EntityDefinition {
-  id             String   @id
+  id             String   @id @default(uuid())
+  key            String   @unique
   name           String
   speciesId      String
   slots          Json     @default("{}")
@@ -301,7 +302,8 @@ model EntityEquipment {
 }
 
 model RegionDefinition {
-  id                  String               @id
+  id                  String               @id @default(uuid())
+  key                 String               @unique
   displayName         String
   biome               String?
   imageKey            String?
@@ -316,7 +318,8 @@ model RegionDefinition {
 }
 
 model LocationDefinition {
-  id                     String             @id
+  id                     String             @id @default(uuid())
+  key                    String             @unique
   kind                   String             @default("outpost_fungible")
   regionId               String?
   isUnique               Boolean            @default(false)
@@ -336,7 +339,8 @@ model LocationDefinition {
 }
 
 model BuildingDef {
-  id                     String                     @id
+  id                     String                     @id @default(uuid())
+  key                    String                     @unique
   name                   String
   description            String?
   iconKey                String?
@@ -360,7 +364,8 @@ model BuildingDef {
 }
 
 model RoomDef {
-  id                     String                 @id
+  id                     String                 @id @default(uuid())
+  key                    String                 @unique
   name                   String
   description            String?
   tags                   Json                   @default("[]")

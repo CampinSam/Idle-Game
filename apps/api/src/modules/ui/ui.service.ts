@@ -904,7 +904,7 @@ export class UiService {
       } else if (job.type === 'CraftingJob') {
         return await this.prisma.recipeDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
       } else if (job.type === 'BuildingJob') {
-        return await (this.prisma as any).buildingDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
+        return await (this.prisma as any).buildingDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
       } else if (job.type === 'DustingJob') {
         return await (this.prisma as any).itemDefinition.findFirst({ where: { OR: [{ id: defId }, { key: defId }] } });
       }
@@ -1266,22 +1266,22 @@ export class UiService {
     const [buildingDefs, roomDefs] = await Promise.all([
       buildingIds.length > 0
         ? (this.prisma as any).buildingDef.findMany({
-            where: { id: { in: buildingIds } },
-            select: { id: true, name: true },
+            where: { key: { in: buildingIds } },
+            select: { key: true, name: true },
           })
         : Promise.resolve([] as any[]),
       roomIds.length > 0
         ? (this.prisma as any).roomDef.findMany({
-            where: { id: { in: roomIds } },
-            select: { id: true, name: true },
+            where: { key: { in: roomIds } },
+            select: { key: true, name: true },
           })
         : Promise.resolve([] as any[]),
     ]);
     const buildingNameById = new Map<string, string>(
-      (buildingDefs as any[]).map((b) => [b.id, b.name || b.id]),
+      (buildingDefs as any[]).map((b) => [b.key, b.name || b.key]),
     );
     const roomNameById = new Map<string, string>(
-      (roomDefs as any[]).map((r) => [r.id, r.name || r.id]),
+      (roomDefs as any[]).map((r) => [r.key, r.name || r.key]),
     );
 
     const bullets: string[] = [];

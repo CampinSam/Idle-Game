@@ -211,7 +211,8 @@
       },
       "data": {},
       "createdAt": "2026-06-05T17:14:37.024Z",
-      "updatedAt": "2026-06-11T01:09:24.848Z"
+      "updatedAt": "2026-06-11T01:09:24.848Z",
+      "key": "derpshire_valley"
     },
     {
       "id": "frostpeak_range",
@@ -224,7 +225,8 @@
       },
       "data": {},
       "createdAt": "2026-05-15T22:57:27.449Z",
-      "updatedAt": "2026-06-11T01:09:24.853Z"
+      "updatedAt": "2026-06-11T01:09:24.853Z",
+      "key": "frostpeak_range"
     },
     {
       "id": "reconstruction_zone_alpha",
@@ -239,7 +241,8 @@
         "lore": "A partially restored sector where GL!TCH-BIO activity first surged."
       },
       "createdAt": "2026-05-15T22:57:27.454Z",
-      "updatedAt": "2026-06-11T01:09:24.857Z"
+      "updatedAt": "2026-06-11T01:09:24.857Z",
+      "key": "reconstruction_zone_alpha"
     },
     {
       "id": "region_crystal_peaks",
@@ -250,7 +253,8 @@
       "modifiers": {},
       "data": {},
       "createdAt": "2026-05-15T22:57:27.458Z",
-      "updatedAt": "2026-06-11T01:09:24.862Z"
+      "updatedAt": "2026-06-11T01:09:24.862Z",
+      "key": "region_crystal_peaks"
     },
     {
       "id": "region_verdant_glade",
@@ -261,7 +265,8 @@
       "modifiers": {},
       "data": {},
       "createdAt": "2026-05-15T22:57:27.463Z",
-      "updatedAt": "2026-06-11T01:09:24.866Z"
+      "updatedAt": "2026-06-11T01:09:24.866Z",
+      "key": "region_verdant_glade"
     },
     {
       "id": "shadow_marshes",
@@ -274,7 +279,8 @@
       },
       "data": {},
       "createdAt": "2026-05-15T22:57:27.468Z",
-      "updatedAt": "2026-06-11T01:09:24.870Z"
+      "updatedAt": "2026-06-11T01:09:24.870Z",
+      "key": "shadow_marshes"
     },
     {
       "id": "verdant_hollow",
@@ -287,7 +293,8 @@
       },
       "data": {},
       "createdAt": "2026-05-15T22:57:27.472Z",
-      "updatedAt": "2026-06-11T01:09:24.874Z"
+      "updatedAt": "2026-06-11T01:09:24.874Z",
+      "key": "verdant_hollow"
     }
   ],
   "displayDef": [
@@ -1612,7 +1619,8 @@
       "mastery": {
         "enabled": false,
         "branches": []
-      }
+      },
+      "key": "derp_bird"
     },
     {
       "id": "derpling",
@@ -2568,7 +2576,8 @@
       "mastery": {
         "enabled": false,
         "branches": []
-      }
+      },
+      "key": "derpling"
     },
     {
       "id": "pred",
@@ -3524,7 +3533,8 @@
       "mastery": {
         "enabled": false,
         "branches": []
-      }
+      },
+      "key": "pred"
     },
     {
       "id": "derp_ape",
@@ -4480,7 +4490,8 @@
       "mastery": {
         "enabled": false,
         "branches": []
-      }
+      },
+      "key": "derp_ape"
     },
     {
       "id": "perp",
@@ -5491,7 +5502,8 @@
       "mastery": {
         "enabled": false,
         "branches": []
-      }
+      },
+      "key": "perp"
     }
   ],
   "locationDefinition": [
@@ -5552,7 +5564,8 @@
       "visibilityRequirements": null,
       "levelUpModalDefId": null,
       "createdAt": "2026-06-05T17:14:38.961Z",
-      "updatedAt": "2026-06-11T01:09:25.018Z"
+      "updatedAt": "2026-06-11T01:09:25.018Z",
+      "key": "loc_glitch_incubator_site"
     },
     {
       "id": "outpost_default",
@@ -5689,7 +5702,8 @@
       "visibilityRequirements": [],
       "levelUpModalDefId": null,
       "createdAt": "2026-05-15T22:57:27.699Z",
-      "updatedAt": "2026-06-11T01:09:25.013Z"
+      "updatedAt": "2026-06-11T01:09:25.013Z",
+      "key": "outpost_default"
     },
     {
       "id": "derp_outpost",
@@ -5975,7 +5989,8 @@
       "visibilityRequirements": null,
       "levelUpModalDefId": null,
       "createdAt": "2026-06-05T17:14:38.957Z",
-      "updatedAt": "2026-06-11T01:09:25.023Z"
+      "updatedAt": "2026-06-11T01:09:25.023Z",
+      "key": "derp_outpost"
     }
   ],
   "buildingDef": [
@@ -6028,7 +6043,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:39.001Z",
-      "updatedAt": "2026-06-11T01:09:25.028Z"
+      "updatedAt": "2026-06-11T01:09:25.028Z",
+      "key": "gen_mana_collector"
     },
     {
       "id": "bld_prank_workshop",
@@ -6082,7 +6098,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:38.990Z",
-      "updatedAt": "2026-06-11T01:09:25.033Z"
+      "updatedAt": "2026-06-11T01:09:25.033Z",
+      "key": "bld_prank_workshop"
     },
     {
       "id": "gen_iron_excavator",
@@ -6138,7 +6155,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:38.998Z",
-      "updatedAt": "2026-06-11T01:09:25.044Z"
+      "updatedAt": "2026-06-11T01:09:25.044Z",
+      "key": "gen_iron_excavator"
     },
     {
       "id": "sup_watchtower",
@@ -6187,7 +6205,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:39.010Z",
-      "updatedAt": "2026-06-11T01:09:25.048Z"
+      "updatedAt": "2026-06-11T01:09:25.048Z",
+      "key": "sup_watchtower"
     },
     {
       "id": "bld_clone_pod",
@@ -6234,7 +6253,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:38.982Z",
-      "updatedAt": "2026-06-11T01:09:25.052Z"
+      "updatedAt": "2026-06-11T01:09:25.052Z",
+      "key": "bld_clone_pod"
     },
     {
       "id": "bld_data_scrapper",
@@ -6278,7 +6298,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:38.986Z",
-      "updatedAt": "2026-06-11T01:09:25.056Z"
+      "updatedAt": "2026-06-11T01:09:25.056Z",
+      "key": "bld_data_scrapper"
     },
     {
       "id": "bld_forge",
@@ -6320,7 +6341,8 @@
       "failedModalDefId": null,
       "displayDefId": "display_forge",
       "createdAt": "2026-06-05T17:14:38.978Z",
-      "updatedAt": "2026-06-11T01:09:25.060Z"
+      "updatedAt": "2026-06-11T01:09:25.060Z",
+      "key": "bld_forge"
     },
     {
       "id": "stor_warehouse",
@@ -6854,7 +6876,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:39.006Z",
-      "updatedAt": "2026-06-11T01:09:25.065Z"
+      "updatedAt": "2026-06-11T01:09:25.065Z",
+      "key": "stor_warehouse"
     },
     {
       "id": "gen_arcanium_mine",
@@ -7193,7 +7216,8 @@
       "failedModalDefId": null,
       "displayDefId": null,
       "createdAt": "2026-06-05T17:14:38.994Z",
-      "updatedAt": "2026-06-11T01:09:25.038Z"
+      "updatedAt": "2026-06-11T01:09:25.038Z",
+      "key": "gen_arcanium_mine"
     }
   ],
   "roomDef": [
@@ -7226,7 +7250,8 @@
       "requirements": [],
       "visibilityRequirements": [],
       "createdAt": "2026-06-05T17:14:38.967Z",
-      "updatedAt": "2026-06-11T01:09:25.071Z"
+      "updatedAt": "2026-06-11T01:09:25.071Z",
+      "key": "room_storage_vault"
     },
     {
       "id": "room_workshop",
@@ -7257,7 +7282,8 @@
       ],
       "visibilityRequirements": [],
       "createdAt": "2026-06-05T17:14:38.972Z",
-      "updatedAt": "2026-06-11T01:09:25.075Z"
+      "updatedAt": "2026-06-11T01:09:25.075Z",
+      "key": "room_workshop"
     }
   ],
   "missionCategoryDef": [
