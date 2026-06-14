@@ -7,6 +7,8 @@ const DISPLAY_TYPES = [
   { value: 'progress_bar', label: 'Progress Bar — count vs target' },
   { value: 'comparison', label: 'Comparison — two factions vs bar' },
   { value: 'ranking', label: 'Ranking — leaderboard (default)' },
+  { value: 'bar_chart', label: 'Bar Chart — horizontal bars per entry' },
+  { value: 'medal_podium', label: 'Medal Podium — top-3 trophy display' },
 ];
 
 interface EntryConfig {
@@ -305,6 +307,10 @@ export default function TelemetryCardPreviewPanel({ record }: Props) {
               ? 'First two entries are the left and right sides of the bar.'
               : state.displayType === 'ranking'
               ? 'Each entry maps a sub-event key to a display label and style.'
+              : state.displayType === 'bar_chart'
+              ? 'Each entry becomes one horizontal bar (key → label / icon / color).'
+              : state.displayType === 'medal_podium'
+              ? 'First three entries map to gold, silver, and bronze podium slots.'
               : 'Optional: override the label/icon/color for the selected metric.'}
           </div>
 
