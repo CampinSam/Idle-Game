@@ -117,6 +117,24 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     const key: string = r.key ?? id;
     return { ...rest, key };
   },
+  /** UUID PK migration: MissionCategoryDef.id is now a UUID; slug lives in key. */
+  missionCategoryDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: MissionDef.id is now a UUID; slug lives in key. */
+  missionDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: RecipeDef.id is now a UUID; slug lives in key. */
+  recipeDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
   lootboxDef: (r) => {
     const { id, ...rest } = r;
     const key: string = r.key ?? id;
@@ -209,6 +227,9 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   buildingDef: (r) => ({ key: r.key }),
   roomDef: (r) => ({ key: r.key }),
   entityDefinition: (r) => ({ key: r.key }),
+  missionCategoryDef: (r) => ({ key: r.key }),
+  missionDef: (r) => ({ key: r.key }),
+  recipeDef: (r) => ({ key: r.key }),
   lootboxDef: (r) => ({ key: r.key }),
   bundleDef: (r) => ({ key: r.key }),
   itemDefinition: (r) => ({ key: r.key }),
@@ -392,16 +413,66 @@ export class SeedSyncService {
     const buildWhere = TABLE_WHERE[modelName] ?? ((r: any) => ({ id: r.id }));
 
     if (modelName === 'missionCategoryDef') {
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const parents = records.filter((r) => !r.parentId);
       const children = records.filter((r) => r.parentId);
-      for (const batch of [parents, children]) {
-        for (const raw of batch) {
-          const base = transform ? transform(raw) : raw;
-          const record = this.normalizeDates(base);
-          const where = buildWhere(record);
-          const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
-          await model.upsert({ where, update: rest, create: record });
+
+      // Upsert parents first so their UUIDs are stable before children reference them.
+      for (const raw of parents) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        await model.upsert({ where, update: rest, create: record });
+      }
+
+      // Build key → UUID map so child parentId slugs can be resolved.
+      const categoryRows = await model.findMany({ select: { id: true, key: true } });
+      const categoryUuidByKey = new Map(categoryRows.map((r: any) => [r.key, r.id]));
+
+      for (const raw of children) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        // parentId may arrive as slug; after UUID migration it must be UUID.
+        const rawParentId: string | null = raw.parentId ?? null;
+        if (rawParentId !== null && !UUID_V4.test(rawParentId)) {
+          record.parentId = categoryUuidByKey.get(rawParentId) ?? null;
+          if (record.parentId === null) {
+            this.logger.warn(
+              `upsertTable(missionCategoryDef): parentId slug "${rawParentId}" not found — setting null`,
+            );
+          }
         }
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        await model.upsert({ where, update: rest, create: record });
+      }
+      return;
+    }
+
+    if (modelName === 'missionDef') {
+      // missionCategoryDefId FK may arrive as slug; after UUID migration it must be UUID.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const missionCategories = await (this.prisma as any).missionCategoryDef.findMany({
+        select: { id: true, key: true },
+      });
+      const categoryUuidByKey = new Map(missionCategories.map((r: any) => [r.key, r.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        const rawCatId: string | null = raw.missionCategoryDefId ?? null;
+        if (rawCatId !== null && !UUID_V4.test(rawCatId)) {
+          record.missionCategoryDefId = categoryUuidByKey.get(rawCatId) ?? null;
+          if (record.missionCategoryDefId === null) {
+            this.logger.warn(
+              `upsertTable(missionDef): missionCategoryDefId slug "${rawCatId}" not found — setting null`,
+            );
+          }
+        }
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        await model.upsert({ where, update: rest, create: record });
       }
       return;
     }

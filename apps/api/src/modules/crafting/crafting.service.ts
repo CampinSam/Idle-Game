@@ -196,7 +196,7 @@ export class CraftingService {
     let recipeCenterOverrides: Partial<Record<string, number>> = {};
     let recipeSigma: number | undefined;
     if (options.recipeId) {
-      const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: options.recipeId } });
+      const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: options.recipeId }, { key: options.recipeId }] } });
       if (recipe) {
         recipeTiersMap = (recipe.tiers as any) ?? {};
         for (const [key, block] of Object.entries(recipeTiersMap!)) {
@@ -392,7 +392,7 @@ export class CraftingService {
       }
     }
 
-    const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
+    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: recipeId }, { key: recipeId }] } });
     if (!recipe) throw new NotFoundException('Recipe not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -590,7 +590,7 @@ export class CraftingService {
     const jobQuantity: number = (job.data as any)?.quantity ?? 1;
 
     const recipeId = job.defId;
-    const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: recipeId } });
+    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: recipeId }, { key: recipeId }] } });
     if (!recipe) {
       this.logger.warn(`collectCrafting: definition not found for defId=${recipeId}, failing job gracefully`);
       await this.entityService.setEntityStatus(entity.id, userId, 'idle');

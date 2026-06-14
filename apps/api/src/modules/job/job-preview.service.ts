@@ -77,7 +77,7 @@ export class JobPreviewService {
   }
 
   private async getMissionPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const def = await (this.prisma as any).missionDef.findUnique({ where: { id: dto.defId } });
+    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
     if (!def) throw new NotFoundException('Mission not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -247,7 +247,7 @@ export class JobPreviewService {
   }
 
   private async getCraftingPreview(userId: string, dto: JobPreviewDto): Promise<any> {
-    const recipe = await (this.prisma as any).recipeDef.findUnique({ where: { id: dto.defId } });
+    const recipe = await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: dto.defId }, { key: dto.defId }] } });
     if (!recipe) throw new NotFoundException('Recipe not found');
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
