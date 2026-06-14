@@ -1056,8 +1056,13 @@ export function TelemetryCardComp({ section }: ScreenComponentProps) {
     );
   }
 
-  const sortedCounts = [...data.counts]
-    .map((c) => ({ ...c, parsed: parseTelemetryCount(c.count), entry: getEntry(c.subEventKey) }))
+  const baseList = entries.length > 0
+    ? entries.map((e) => {
+        const dbRow = data.counts.find((c) => c.subEventKey === e.key);
+        return { subEventKey: e.key, count: dbRow?.count ?? '0', parsed: dbRow ? parseTelemetryCount(dbRow.count) : 0, entry: e };
+      })
+    : data.counts.map((c) => ({ ...c, parsed: parseTelemetryCount(c.count), entry: getEntry(c.subEventKey) }));
+  const sortedCounts = [...baseList]
     .sort((a, b) => sortDirection === 'asc' ? a.parsed - b.parsed : b.parsed - a.parsed);
 
   const medals = ['🥇', '🥈', '🥉'];
