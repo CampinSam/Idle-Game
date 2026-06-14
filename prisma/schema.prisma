@@ -1218,7 +1218,8 @@ model CryptoRateSample {
 }
 
 model EffectDef {
-  id            String              @id
+  id            String              @id @default(uuid())
+  key           String              @unique
   name          String
   description   String?
   iconKey       String?
@@ -1251,9 +1252,10 @@ model EffectDef {
 }
 
 /// Reusable power blueprint. Embedded PowerRef JSON in entity/location definitions
-/// references a PowerDef by powerDefId and may override individual fields.
+/// references a PowerDef by powerDefId (UUID or key slug) and may override individual fields.
 model PowerDef {
-  id                     String    @id
+  id                     String    @id @default(uuid())
+  key                    String    @unique
   name                   String
   description            String?
   /// 'tick_speed_boost' | 'effect_backed'

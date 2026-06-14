@@ -5,20 +5,47 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class PowerDefService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Resolve a PowerDef by either its UUID id or its slug key.
+   * Returns the UUID id of the matching record, or throws NotFoundException.
+   */
+  private async resolveUuid(keyOrUuid: string): Promise<string> {
+    const def = await this.prisma.powerDef.findFirst({
+      where: { OR: [{ id: keyOrUuid }, { key: keyOrUuid }] },
+      select: { id: true },
+    });
+    if (!def) throw new NotFoundException(`PowerDef "${keyOrUuid}" not found`);
+    return def.id;
+  }
+
+  /**
+   * Resolve an EffectDef reference (UUID or slug key) to a UUID id.
+   * Returns null when effectDefId is null/undefined.
+   */
+  private async resolveEffectDefUuid(effectDefId: string | null | undefined): Promise<string | null> {
+    if (!effectDefId) return null;
+    const def = await (this.prisma as any).effectDef.findFirst({
+      where: { OR: [{ id: effectDefId }, { key: effectDefId }] },
+      select: { id: true },
+    });
+    if (!def) throw new NotFoundException(`EffectDef "${effectDefId}" not found`);
+    return def.id;
+  }
+
   async list(opts: { enabled?: boolean } = {}) {
     const where: any = {};
     if (opts.enabled !== undefined) where.enabled = opts.enabled;
     return this.prisma.powerDef.findMany({
       where,
-      include: { effectDef: { select: { id: true, name: true, category: true } } },
+      include: { effectDef: { select: { id: true, key: true, name: true, category: true } } },
       orderBy: { name: 'asc' },
     });
   }
 
   async getById(id: string) {
-    const def = await this.prisma.powerDef.findUnique({
-      where: { id },
-      include: { effectDef: { select: { id: true, name: true, category: true } } },
+    const def = await this.prisma.powerDef.findFirst({
+      where: { OR: [{ id }, { key: id }] },
+      include: { effectDef: { select: { id: true, key: true, name: true, category: true } } },
     });
     if (!def) throw new NotFoundException(`PowerDef "${id}" not found`);
     return def;
@@ -61,7 +88,14 @@ export class PowerDefService {
     if (data.powerType === 'effect_backed' && !data.effectDefId) {
       throw new BadRequestException('effectDefId is required for effect_backed powers');
     }
-    return this.prisma.powerDef.create({ data });
+
+    // data.id is the caller-provided slug key; id (UUID) is auto-generated.
+    const { id: key, effectDefId: rawEffectDefId, ...rest } = data;
+    const effectDefId = await this.resolveEffectDefUuid(rawEffectDefId);
+
+    return this.prisma.powerDef.create({
+      data: { key, effectDefId, ...rest },
+    });
   }
 
   async update(
@@ -80,15 +114,19 @@ export class PowerDefService {
       enabled: boolean;
     }>,
   ) {
-    const existing = await this.prisma.powerDef.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`PowerDef "${id}" not found`);
-    return this.prisma.powerDef.update({ where: { id }, data });
+    const uuid = await this.resolveUuid(id);
+
+    let resolvedData: any = { ...data };
+    if ('effectDefId' in data) {
+      resolvedData.effectDefId = await this.resolveEffectDefUuid(data.effectDefId);
+    }
+
+    return this.prisma.powerDef.update({ where: { id: uuid }, data: resolvedData });
   }
 
   async delete(id: string) {
-    const existing = await this.prisma.powerDef.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException(`PowerDef "${id}" not found`);
-    return this.prisma.powerDef.delete({ where: { id } });
+    const uuid = await this.resolveUuid(id);
+    return this.prisma.powerDef.delete({ where: { id: uuid } });
   }
 
   /**
@@ -124,14 +162,16 @@ export class PowerDefService {
   }> {
     let def: any = null;
     if (powerRef.powerDefId) {
-      def = await this.prisma.powerDef.findUnique({ where: { id: powerRef.powerDefId } });
+      def = await this.prisma.powerDef.findFirst({
+        where: { OR: [{ id: powerRef.powerDefId }, { key: powerRef.powerDefId }] },
+      });
       if (!def) throw new NotFoundException(`PowerDef "${powerRef.powerDefId}" not found`);
       if (!def.enabled) throw new BadRequestException(`PowerDef "${powerRef.powerDefId}" is disabled`);
     }
 
     // Determine effective key: PowerRef.key → powerType → effectDefId (legacy inline fallback)
     const effectiveKey: string =
-      powerRef.key ?? powerRef.powerType ?? powerRef.effectDefId ?? 'unknown';
+      powerRef.key ?? def?.key ?? powerRef.powerType ?? powerRef.effectDefId ?? 'unknown';
 
     // Normalise tick_boost → tick_speed_boost for backward compatibility.
     // Inline-only powers (no powerDefId) that carry effectDefId but no powerType are
@@ -142,9 +182,14 @@ export class PowerDefService {
       (powerRef.effectDefId ? 'effect_backed' : 'tick_speed_boost');
     const powerType: string = rawType === 'tick_boost' ? 'tick_speed_boost' : rawType;
 
-    const effectDefId: string | null = powerRef.effectDefId !== undefined
+    // Raw effectDefId string (could be slug or UUID) from the def or inline PowerRef.
+    const rawEffectDefId: string | null = powerRef.effectDefId !== undefined
       ? (powerRef.effectDefId ?? null)
       : (def?.effectDefId ?? null);
+
+    // Resolve to UUID so the caller stores the correct FK value in global_active_powers.
+    const effectDefId = await this.resolveEffectDefUuid(rawEffectDefId);
+
     const value: number = powerRef.value ?? def?.defaultValue ?? 50;
     const valueMode: string = powerRef.valueMode ?? def?.defaultValueMode ?? 'percent_add';
     const durationMinutes: number = powerRef.durationMinutes ?? def?.defaultDurationMinutes ?? 30;

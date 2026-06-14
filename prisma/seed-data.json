@@ -39,7 +39,7 @@
     {
       "id": "season_frost_coin",
       "name": "Frost Coin",
-      "symbol": "❄️",
+      "symbol": "\u2744\ufe0f",
       "iconKey": "frost_coin",
       "type": "SEASONAL",
       "seasonId": "season_1",
@@ -91,7 +91,7 @@
     {
       "id": "hard_essence",
       "name": "Essence",
-      "symbol": "💠",
+      "symbol": "\ud83d\udca0",
       "iconKey": "essence",
       "type": "HARD",
       "seasonId": null,
@@ -117,7 +117,7 @@
     {
       "id": "premium_gems",
       "name": "Gems",
-      "symbol": "💎",
+      "symbol": "\ud83d\udc8e",
       "iconKey": "gems",
       "type": "PREMIUM",
       "seasonId": null,
@@ -143,7 +143,7 @@
     {
       "id": "soft_arcanium",
       "name": "Arcanium",
-      "symbol": "🪙",
+      "symbol": "\ud83e\ude99",
       "iconKey": "soft_arcanium",
       "type": "SOFT",
       "seasonId": null,
@@ -169,7 +169,7 @@
     {
       "id": "ada",
       "name": "ADA",
-      "symbol": "₳",
+      "symbol": "\u20b3",
       "iconKey": null,
       "type": "SOFT",
       "seasonId": null,
@@ -222,7 +222,7 @@
     },
     {
       "id": "reconstruction_zone_alpha",
-      "displayName": "Reconstruction Zone █",
+      "displayName": "Reconstruction Zone \u2588",
       "biome": "urban_ruins",
       "imageKey": null,
       "accentColor": null,
@@ -444,7 +444,7 @@
     },
     {
       "id": "display_recipe_default",
-      "name": "Recipe — Default",
+      "name": "Recipe \u2014 Default",
       "borderColor": "#8b5cf6",
       "backgroundImage": null,
       "cardBackground": "linear-gradient(135deg, rgba(139,92,246,0.10), rgba(34,24,88,0.6))",
@@ -6277,7 +6277,7 @@
     {
       "id": "bld_forge",
       "name": "The Forge",
-      "description": "A roaring crucible at the heart of the outpost — where raw materials are refined into wonders.",
+      "description": "A roaring crucible at the heart of the outpost \u2014 where raw materials are refined into wonders.",
       "iconKey": null,
       "category": "WORKSHOP",
       "tags": [
@@ -11196,7 +11196,7 @@
     {
       "id": "mission_perp_1_data_sweep",
       "name": "Data Recovery Sweep",
-      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape’s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They’re not supposed to touch anything important. They’re absolutely going to touch everything.",
+      "description": "The reconstruction zone still hums with abandoned GL!TCH-BIO terminals. Somewhere in the static noise lies Dr. Vape\u2019s earliest calibration logs. Send a PERP to sift through corrupted consoles, extract viable residue, and avoid triggering automated clean-up drones. They\u2019re not supposed to touch anything important. They\u2019re absolutely going to touch everything.",
       "difficulty": 1,
       "minSuccessChance": 0,
       "maxSuccessChance": 100,
@@ -15752,7 +15752,7 @@
       "name": "Daily Login Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is paying off — here's a healthy supply of Arcanium.",
+        "body": "Your streak is paying off \u2014 here's a healthy supply of Arcanium.",
         "title": "Daily Check-In Reward",
         "rarity": "UNCOMMON",
         "iconKey": "soft_arcanium"
@@ -15827,7 +15827,7 @@
       "name": "Weekly Bonus Reward",
       "version": 1,
       "presentation": {
-        "body": "Your streak is climbing — here's a solid Essence reward.",
+        "body": "Your streak is climbing \u2014 here's a solid Essence reward.",
         "title": "Weekly Bonus",
         "rarity": "RARE",
         "iconKey": "essence"
@@ -16001,7 +16001,7 @@
       "name": "Seasonal Check-In Reward",
       "version": 1,
       "presentation": {
-        "body": "The frost grows deeper — so do your rewards.",
+        "body": "The frost grows deeper \u2014 so do your rewards.",
         "title": "Seasonal Reward",
         "rarity": "RARE",
         "iconKey": "frost_coin"
@@ -17919,7 +17919,7 @@
                 "rows": [
                   {
                     "label": "#${index}",
-                    "value": "${item.name} ×${item.qty}"
+                    "value": "${item.name} \u00d7${item.qty}"
                   }
                 ],
                 "type": "metaRows"
@@ -18480,7 +18480,7 @@
     {
       "id": "modal_clickreveal_smoke",
       "name": "Click Reveal Smoke Test",
-      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list — each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
+      "description": "Dev-only modal that demonstrates the clickReveal block composed inside a list \u2014 each reward is hidden behind a tap-to-reveal cover with rarity-driven sound and FX.",
       "version": 1,
       "spec": {
         "id": "modal_clickreveal_smoke",
@@ -18513,7 +18513,7 @@
                     "rows": [
                       {
                         "label": "${item.rarity}",
-                        "value": "${item.name} ×${item.qty}"
+                        "value": "${item.name} \u00d7${item.qty}"
                       }
                     ],
                     "type": "metaRows"
@@ -19572,7 +19572,7 @@
       "id": "banner_active_season",
       "name": "Active Season Banner",
       "title": "ACTIVE SEASON",
-      "subtitle": "SEASON ENDS IN: —",
+      "subtitle": "SEASON ENDS IN: \u2014",
       "description": null,
       "backgroundImage": "/media/images/season-banner.png",
       "ctaLabel": "SEASON MISSIONS",
@@ -19608,7 +19608,7 @@
     {
       "id": "syn_pred_holy_conflict",
       "name": "Predator + Holy Conflict",
-      "description": "Predators and holy-archetype entities (Deity or Monk) conflict on any mission — synergy score drops by 5 once regardless of team size.",
+      "description": "Predators and holy-archetype entities (Deity or Monk) conflict on any mission \u2014 synergy score drops by 5 once regardless of team size.",
       "enabled": true,
       "sourceSelector": null,
       "targetSelector": null,
@@ -19811,7 +19811,7 @@
     {
       "id": "syn_corpo_viking_conflict",
       "name": "Corpo + Viking Conflict",
-      "description": "Corporate and Viking traits clash — each such pair reduces synergy score by 2 (up to 3 applications). Represents contrasting leadership styles.",
+      "description": "Corporate and Viking traits clash \u2014 each such pair reduces synergy score by 2 (up to 3 applications). Represents contrasting leadership styles.",
       "enabled": true,
       "sourceSelector": null,
       "targetSelector": null,
@@ -19872,7 +19872,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.138Z",
-      "updatedAt": "2026-06-11T01:09:26.224Z"
+      "updatedAt": "2026-06-11T01:09:26.224Z",
+      "key": "crafting_instant_reduction"
     },
     {
       "id": "building_build_instant_reduction",
@@ -19888,7 +19889,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.141Z",
-      "updatedAt": "2026-06-11T01:09:26.228Z"
+      "updatedAt": "2026-06-11T01:09:26.228Z",
+      "key": "building_build_instant_reduction"
     },
     {
       "id": "building_upgrade_instant_reduction",
@@ -19904,7 +19906,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.145Z",
-      "updatedAt": "2026-06-11T01:09:26.232Z"
+      "updatedAt": "2026-06-11T01:09:26.232Z",
+      "key": "building_upgrade_instant_reduction"
     },
     {
       "id": "dusting_instant_reduction",
@@ -19920,7 +19923,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.149Z",
-      "updatedAt": "2026-06-11T01:09:26.236Z"
+      "updatedAt": "2026-06-11T01:09:26.236Z",
+      "key": "dusting_instant_reduction"
     },
     {
       "id": "global_tick_boost",
@@ -19936,7 +19940,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T18:06:23.789Z",
-      "updatedAt": "2026-06-11T01:09:26.239Z"
+      "updatedAt": "2026-06-11T01:09:26.239Z",
+      "key": "global_tick_boost"
     },
     {
       "id": "keeper_xp_boost",
@@ -19952,7 +19957,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.223Z",
-      "updatedAt": "2026-06-11T01:09:26.243Z"
+      "updatedAt": "2026-06-11T01:09:26.243Z",
+      "key": "keeper_xp_boost"
     },
     {
       "id": "entity_xp_boost",
@@ -19968,7 +19974,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.226Z",
-      "updatedAt": "2026-06-11T01:09:26.247Z"
+      "updatedAt": "2026-06-11T01:09:26.247Z",
+      "key": "entity_xp_boost"
     },
     {
       "id": "mission_power_boost",
@@ -19984,7 +19991,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.230Z",
-      "updatedAt": "2026-06-11T01:09:26.250Z"
+      "updatedAt": "2026-06-11T01:09:26.250Z",
+      "key": "mission_power_boost"
     },
     {
       "id": "mission_instant_reduction",
@@ -20000,7 +20008,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:22:31.131Z",
-      "updatedAt": "2026-06-11T01:09:26.275Z"
+      "updatedAt": "2026-06-11T01:09:26.275Z",
+      "key": "mission_instant_reduction"
     },
     {
       "id": "mission_duration_reduction",
@@ -20016,7 +20025,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.234Z",
-      "updatedAt": "2026-06-11T01:09:26.253Z"
+      "updatedAt": "2026-06-11T01:09:26.253Z",
+      "key": "mission_duration_reduction"
     },
     {
       "id": "building_build_duration_reduction",
@@ -20032,7 +20042,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.243Z",
-      "updatedAt": "2026-06-11T01:09:26.261Z"
+      "updatedAt": "2026-06-11T01:09:26.261Z",
+      "key": "building_build_duration_reduction"
     },
     {
       "id": "dusting_duration_reduction",
@@ -20048,7 +20059,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-06T14:26:20.038Z",
-      "updatedAt": "2026-06-11T01:09:26.268Z"
+      "updatedAt": "2026-06-11T01:09:26.268Z",
+      "key": "dusting_duration_reduction"
     },
     {
       "id": "crafting_duration_reduction",
@@ -20064,7 +20076,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.238Z",
-      "updatedAt": "2026-06-11T01:09:26.258Z"
+      "updatedAt": "2026-06-11T01:09:26.258Z",
+      "key": "crafting_duration_reduction"
     },
     {
       "id": "building_upgrade_duration_reduction",
@@ -20080,7 +20093,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.246Z",
-      "updatedAt": "2026-06-11T01:09:26.265Z"
+      "updatedAt": "2026-06-11T01:09:26.265Z",
+      "key": "building_upgrade_duration_reduction"
     },
     {
       "id": "injury_recovery_boost",
@@ -20096,7 +20110,8 @@
       "selection": null,
       "enabled": true,
       "createdAt": "2026-06-05T19:13:43.249Z",
-      "updatedAt": "2026-06-11T01:09:26.272Z"
+      "updatedAt": "2026-06-11T01:09:26.272Z",
+      "key": "injury_recovery_boost"
     }
   ],
   "soundDef": [
@@ -20683,7 +20698,7 @@
     {
       "id": "tag_perfect",
       "key": "perfect",
-      "label": "★ Perfect",
+      "label": "\u2605 Perfect",
       "category": "system",
       "color": "#ffffff",
       "backgroundColor": "#2a1a3a",
@@ -21038,7 +21053,7 @@
       "id": "fx_bounce_call",
       "key": "bounce-call",
       "name": "Call-to-action Bounce",
-      "description": "Bounce loop — used on \"claim now\" tags.",
+      "description": "Bounce loop \u2014 used on \"claim now\" tags.",
       "cssAnimation": "bounce",
       "durationMs": 1400,
       "easing": "cubic-bezier(0.28, 0.84, 0.42, 1)",
@@ -21052,7 +21067,7 @@
       "id": "fx_rainbow_perfect",
       "key": "rainbow-perfect",
       "name": "Perfect Rainbow",
-      "description": "Animated rainbow gradient — reserved for \"perfect\" / mythic tier.",
+      "description": "Animated rainbow gradient \u2014 reserved for \"perfect\" / mythic tier.",
       "cssAnimation": "rainbow",
       "durationMs": 4000,
       "easing": "linear",
@@ -21066,7 +21081,7 @@
       "id": "fx_shimmer_gold",
       "key": "shimmer-gold",
       "name": "Gold Shimmer",
-      "description": "Diagonal gold sweep — used on legendary items and ach tags.",
+      "description": "Diagonal gold sweep \u2014 used on legendary items and ach tags.",
       "cssAnimation": "shimmer",
       "durationMs": 2400,
       "easing": "ease-in-out",
@@ -21138,7 +21153,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.960Z",
-      "updatedAt": "2026-06-11T01:09:26.539Z"
+      "updatedAt": "2026-06-11T01:09:26.539Z",
+      "key": "eff_heal"
     },
     {
       "id": "eff_reward_boost",
@@ -21163,7 +21179,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.936Z",
-      "updatedAt": "2026-06-11T01:09:26.596Z"
+      "updatedAt": "2026-06-11T01:09:26.596Z",
+      "key": "eff_reward_boost"
     },
     {
       "id": "eff_nft_building_upgrade_timer_speed",
@@ -21188,7 +21205,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.211Z",
-      "updatedAt": "2026-06-11T01:09:26.565Z"
+      "updatedAt": "2026-06-11T01:09:26.565Z",
+      "key": "eff_nft_building_upgrade_timer_speed"
     },
     {
       "id": "eff_consumable_crafting_duration_reduction",
@@ -21213,7 +21231,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.467Z",
-      "updatedAt": "2026-06-11T01:09:26.620Z"
+      "updatedAt": "2026-06-11T01:09:26.620Z",
+      "key": "eff_consumable_crafting_duration_reduction"
     },
     {
       "id": "eff_nft_injury_recovery_speed",
@@ -21238,7 +21257,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.230Z",
-      "updatedAt": "2026-06-11T01:09:26.661Z"
+      "updatedAt": "2026-06-11T01:09:26.661Z",
+      "key": "eff_nft_injury_recovery_speed"
     },
     {
       "id": "eff_nft_crafting_timer_speed",
@@ -21263,7 +21283,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.204Z",
-      "updatedAt": "2026-06-11T01:09:26.600Z"
+      "updatedAt": "2026-06-11T01:09:26.600Z",
+      "key": "eff_nft_crafting_timer_speed"
     },
     {
       "id": "eff_revival",
@@ -21290,7 +21311,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.965Z",
-      "updatedAt": "2026-06-11T01:09:26.544Z"
+      "updatedAt": "2026-06-11T01:09:26.544Z",
+      "key": "eff_revival"
     },
     {
       "id": "eff_xp_potion_small",
@@ -21315,7 +21337,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.906Z",
-      "updatedAt": "2026-06-11T01:09:26.573Z"
+      "updatedAt": "2026-06-11T01:09:26.573Z",
+      "key": "eff_xp_potion_small"
     },
     {
       "id": "eff_nft_building_build_timer_speed",
@@ -21340,7 +21363,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.208Z",
-      "updatedAt": "2026-06-11T01:09:26.603Z"
+      "updatedAt": "2026-06-11T01:09:26.603Z",
+      "key": "eff_nft_building_build_timer_speed"
     },
     {
       "id": "eff_nft_keeper_xp_boost",
@@ -21365,7 +21389,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.186Z",
-      "updatedAt": "2026-06-11T01:09:26.548Z"
+      "updatedAt": "2026-06-11T01:09:26.548Z",
+      "key": "eff_nft_keeper_xp_boost"
     },
     {
       "id": "eff_nft_entity_xp_boost",
@@ -21390,7 +21415,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.193Z",
-      "updatedAt": "2026-06-11T01:09:26.552Z"
+      "updatedAt": "2026-06-11T01:09:26.552Z",
+      "key": "eff_nft_entity_xp_boost"
     },
     {
       "id": "eff_xp_boost_timed",
@@ -21415,7 +21441,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.912Z",
-      "updatedAt": "2026-06-11T01:09:26.577Z"
+      "updatedAt": "2026-06-11T01:09:26.577Z",
+      "key": "eff_xp_boost_timed"
     },
     {
       "id": "eff_stat_boost_atk",
@@ -21442,7 +21469,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.918Z",
-      "updatedAt": "2026-06-11T01:09:26.580Z"
+      "updatedAt": "2026-06-11T01:09:26.580Z",
+      "key": "eff_stat_boost_atk"
     },
     {
       "id": "eff_success_chance",
@@ -21467,7 +21495,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.941Z",
-      "updatedAt": "2026-06-11T01:09:26.608Z"
+      "updatedAt": "2026-06-11T01:09:26.608Z",
+      "key": "eff_success_chance"
     },
     {
       "id": "eff_xp_scroll",
@@ -21492,7 +21521,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.946Z",
-      "updatedAt": "2026-06-11T01:09:26.611Z"
+      "updatedAt": "2026-06-11T01:09:26.611Z",
+      "key": "eff_xp_scroll"
     },
     {
       "id": "eff_consumable_mission_duration_reduction",
@@ -21517,7 +21547,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.463Z",
-      "updatedAt": "2026-06-11T01:09:26.665Z"
+      "updatedAt": "2026-06-11T01:09:26.665Z",
+      "key": "eff_consumable_mission_duration_reduction"
     },
     {
       "id": "eff_nft_mission_power_boost",
@@ -21542,7 +21573,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.196Z",
-      "updatedAt": "2026-06-11T01:09:26.556Z"
+      "updatedAt": "2026-06-11T01:09:26.556Z",
+      "key": "eff_nft_mission_power_boost"
     },
     {
       "id": "eff_mission_power_flask",
@@ -21567,7 +21599,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.923Z",
-      "updatedAt": "2026-06-11T01:09:26.585Z"
+      "updatedAt": "2026-06-11T01:09:26.585Z",
+      "key": "eff_mission_power_flask"
     },
     {
       "id": "eff_speed_boost",
@@ -21594,7 +21627,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.950Z",
-      "updatedAt": "2026-06-11T01:09:26.616Z"
+      "updatedAt": "2026-06-11T01:09:26.616Z",
+      "key": "eff_speed_boost"
     },
     {
       "id": "eff_heal_minor",
@@ -21621,7 +21655,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.954Z",
-      "updatedAt": "2026-06-11T01:09:26.534Z"
+      "updatedAt": "2026-06-11T01:09:26.534Z",
+      "key": "eff_heal_minor"
     },
     {
       "id": "eff_nft_mission_timer_speed",
@@ -21646,7 +21681,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T20:28:39.200Z",
-      "updatedAt": "2026-06-11T01:09:26.561Z"
+      "updatedAt": "2026-06-11T01:09:26.561Z",
+      "key": "eff_nft_mission_timer_speed"
     },
     {
       "id": "eff_production_boost",
@@ -21671,7 +21707,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.928Z",
-      "updatedAt": "2026-06-11T01:09:26.588Z"
+      "updatedAt": "2026-06-11T01:09:26.588Z",
+      "key": "eff_production_boost"
     },
     {
       "id": "eff_currency_boost",
@@ -21696,7 +21733,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-05T17:14:36.932Z",
-      "updatedAt": "2026-06-11T01:09:26.592Z"
+      "updatedAt": "2026-06-11T01:09:26.592Z",
+      "key": "eff_currency_boost"
     },
     {
       "id": "eff_nft_dusting_timer_speed",
@@ -21721,7 +21759,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:26:08.178Z",
-      "updatedAt": "2026-06-11T01:09:26.569Z"
+      "updatedAt": "2026-06-11T01:09:26.569Z",
+      "key": "eff_nft_dusting_timer_speed"
     },
     {
       "id": "eff_consumable_building_build_duration_reduction",
@@ -21746,7 +21785,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.471Z",
-      "updatedAt": "2026-06-11T01:09:26.629Z"
+      "updatedAt": "2026-06-11T01:09:26.629Z",
+      "key": "eff_consumable_building_build_duration_reduction"
     },
     {
       "id": "eff_consumable_building_upgrade_duration_reduction",
@@ -21771,7 +21811,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.474Z",
-      "updatedAt": "2026-06-11T01:09:26.635Z"
+      "updatedAt": "2026-06-11T01:09:26.635Z",
+      "key": "eff_consumable_building_upgrade_duration_reduction"
     },
     {
       "id": "eff_consumable_dusting_duration_reduction",
@@ -21796,7 +21837,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.477Z",
-      "updatedAt": "2026-06-11T01:09:26.639Z"
+      "updatedAt": "2026-06-11T01:09:26.639Z",
+      "key": "eff_consumable_dusting_duration_reduction"
     },
     {
       "id": "eff_mission_timer_speed_boost",
@@ -21821,7 +21863,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.480Z",
-      "updatedAt": "2026-06-11T01:09:26.642Z"
+      "updatedAt": "2026-06-11T01:09:26.642Z",
+      "key": "eff_mission_timer_speed_boost"
     },
     {
       "id": "eff_crafting_timer_speed_boost",
@@ -21846,7 +21889,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.483Z",
-      "updatedAt": "2026-06-11T01:09:26.646Z"
+      "updatedAt": "2026-06-11T01:09:26.646Z",
+      "key": "eff_crafting_timer_speed_boost"
     },
     {
       "id": "eff_building_build_timer_speed_boost",
@@ -21871,7 +21915,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.486Z",
-      "updatedAt": "2026-06-11T01:09:26.650Z"
+      "updatedAt": "2026-06-11T01:09:26.650Z",
+      "key": "eff_building_build_timer_speed_boost"
     },
     {
       "id": "eff_building_upgrade_timer_speed_boost",
@@ -21896,7 +21941,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.489Z",
-      "updatedAt": "2026-06-11T01:09:26.653Z"
+      "updatedAt": "2026-06-11T01:09:26.653Z",
+      "key": "eff_building_upgrade_timer_speed_boost"
     },
     {
       "id": "eff_dusting_timer_speed_boost",
@@ -21921,7 +21967,8 @@
       "meta": {},
       "enabled": true,
       "createdAt": "2026-06-06T14:17:33.493Z",
-      "updatedAt": "2026-06-11T01:09:26.658Z"
+      "updatedAt": "2026-06-11T01:09:26.658Z",
+      "key": "eff_dusting_timer_speed_boost"
     }
   ],
   "nftCollectionDef": [
@@ -22075,7 +22122,7 @@
             "mobile"
           ],
           "owner": "design",
-          "description": "Main store screen. Draft — not yet active."
+          "description": "Main store screen. Draft \u2014 not yet active."
         },
         "sections": [
           {

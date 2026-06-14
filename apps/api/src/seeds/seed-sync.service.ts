@@ -104,6 +104,34 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     if (c.endsAt) c.endsAt = new Date(c.endsAt);
     return c;
   },
+  /**
+   * UUID PK migration: EffectDef.id is now a UUID; the slug lives in key.
+   * Old seed records have id=slug and no key field.
+   * New seed records (post-migration) have id=UUID and key=slug.
+   * In both cases we strip id (Prisma auto-generates or ignores it) and set key from the slug.
+   */
+  effectDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /**
+   * UUID PK migration: PowerDef.id is now a UUID; the slug lives in key.
+   * effectDefId in legacy seed data may be a slug rather than a UUID.
+   * If effectDefId is a slug (not a UUID), omit it from the record so the
+   * DB-authoritative UUID value (set by the migration) is not overwritten.
+   */
+  powerDef: (r) => {
+    const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const { id, effectDefId, ...rest } = r;
+    const key: string = r.key ?? id;
+    // Only include effectDefId if it is already a UUID (post-migration format).
+    // Legacy slug values are excluded so the migrated UUID FK is preserved.
+    const effectDefEntry = (effectDefId == null || UUID_V4.test(effectDefId))
+      ? { effectDefId }
+      : {};
+    return { ...rest, key, ...effectDefEntry };
+  },
 };
 
 type WhereBuilder = (r: any) => any;
@@ -113,6 +141,9 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   tagDef: (r) => ({ key: r.key }),
   visualEffectDef: (r) => ({ key: r.key }),
   gameDefinition: (r) => ({ type_key_version: { type: r.type, key: r.key, version: r.version } }),
+  // After UUID PK migration: look up by key slug, not by auto-generated UUID id.
+  effectDef: (r) => ({ key: r.key }),
+  powerDef: (r) => ({ key: r.key }),
 };
 
 function getBucketName(): string {

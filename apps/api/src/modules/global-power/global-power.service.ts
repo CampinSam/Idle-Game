@@ -133,9 +133,17 @@ export class GlobalPowerService {
    */
   async triggerPower(dto: CreateGlobalPowerDto): Promise<GlobalActivePowerRecord> {
     if (dto.effectDefId !== null) {
+      // Resolve slug → UUID so the findFirst correctly matches stored UUID values.
+      const resolvedDef = await (this.prisma as any).effectDef.findFirst({
+        where: { OR: [{ id: dto.effectDefId }, { key: dto.effectDefId }] },
+        select: { id: true },
+      });
+      const resolvedEffectDefId: string = resolvedDef?.id ?? dto.effectDefId;
+      dto = { ...dto, effectDefId: resolvedEffectDefId };
+
       const now = new Date();
       const existing = await this.prisma.globalActivePower.findFirst({
-        where: { status: 'active', effectDefId: dto.effectDefId, endTime: { gt: now } },
+        where: { status: 'active', effectDefId: resolvedEffectDefId, endTime: { gt: now } },
       }) as GlobalActivePowerRecord | null;
 
       if (existing) {
@@ -180,9 +188,13 @@ export class GlobalPowerService {
       }
     } else {
       if (!dto.effectDefId) throw new BadRequestException('effectDefId is required');
-      // Validate effectDefId references a real EffectDef via Prisma
-      const def = await (this.prisma as any).effectDef.findFirst({ where: { id: dto.effectDefId, enabled: true } });
+      // Validate effectDefId references a real EffectDef via Prisma (accepts UUID or slug key)
+      const def = await (this.prisma as any).effectDef.findFirst({
+        where: { OR: [{ id: dto.effectDefId }, { key: dto.effectDefId }], enabled: true },
+      });
       if (!def) throw new NotFoundException(`EffectDef "${dto.effectDefId}" not found or disabled`);
+      // Canonicalise to UUID so the stored record references the correct PK.
+      dto = { ...dto, effectDefId: def.id };
     }
 
     // Validate and parse scheduledFor

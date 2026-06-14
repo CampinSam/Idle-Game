@@ -21,6 +21,8 @@ type DbClient = PrismaService | PrismaTx;
 
 interface EffectDefRecord {
   id: string;
+  /** Human-readable slug key (e.g. "flat_atk_bonus"). Stable across UUID migrations. */
+  key: string;
   name: string;
   category: string;
   durationModel: string;
@@ -92,6 +94,10 @@ export class EffectService {
     return (db as any).activeEffect;
   }
 
+  /**
+   * Returns a Map indexed by BOTH the UUID id AND the slug key, so callers
+   * can look up defs by either form without a second DB round-trip.
+   */
   async getEffectDefs(): Promise<Map<string, EffectDefRecord>> {
     const now = Date.now();
     if (this.defCache && now - this.defCacheTime < this.CACHE_TTL) {
@@ -99,7 +105,10 @@ export class EffectService {
     }
     const defs: EffectDefRecord[] = await this.effectDefModel(this.prisma).findMany({ where: { enabled: true } });
     const map = new Map<string, EffectDefRecord>();
-    for (const d of defs) map.set(d.id, d);
+    for (const d of defs) {
+      map.set(d.id, d);  // UUID lookup
+      map.set(d.key, d); // slug lookup (backward compat with JSON blobs storing slug keys)
+    }
     this.defCache = map;
     this.defCacheTime = now;
     return map;
@@ -211,7 +220,7 @@ export class EffectService {
 
     const created: ActiveEffectRecord = await this.activeEffectModel(db).create({
       data: {
-        effectDefId: baseDef.id,
+        effectDefId: baseDef.id, // always store the UUID PK
         userId: params.userId,
         targetType: params.targetType,
         targetId: params.targetId,
