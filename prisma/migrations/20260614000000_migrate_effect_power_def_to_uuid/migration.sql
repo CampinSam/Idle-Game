@@ -57,6 +57,9 @@ DROP INDEX IF EXISTS "effect_defs_uuid_key";
 ALTER TABLE "effect_defs" DROP CONSTRAINT "effect_defs_pkey";
 ALTER TABLE "effect_defs" RENAME COLUMN "id" TO "_old_slug_id";
 ALTER TABLE "effect_defs" RENAME COLUMN "uuid" TO "id";
+-- Set DB-level default so INSERT without explicit id auto-generates a UUID.
+-- Prisma @default(uuid()) alone is not enough without the matching column default.
+ALTER TABLE "effect_defs" ALTER COLUMN "id" SET DEFAULT gen_random_uuid()::text;
 ALTER TABLE "effect_defs" ADD CONSTRAINT "effect_defs_pkey" PRIMARY KEY ("id");
 ALTER TABLE "effect_defs" DROP COLUMN "_old_slug_id";
 
@@ -65,6 +68,8 @@ DROP INDEX IF EXISTS "power_defs_uuid_key";
 ALTER TABLE "power_defs" DROP CONSTRAINT "power_defs_pkey";
 ALTER TABLE "power_defs" RENAME COLUMN "id" TO "_old_slug_id";
 ALTER TABLE "power_defs" RENAME COLUMN "uuid" TO "id";
+-- Set DB-level default so INSERT without explicit id auto-generates a UUID.
+ALTER TABLE "power_defs" ALTER COLUMN "id" SET DEFAULT gen_random_uuid()::text;
 ALTER TABLE "power_defs" ADD CONSTRAINT "power_defs_pkey" PRIMARY KEY ("id");
 ALTER TABLE "power_defs" DROP COLUMN "_old_slug_id";
 
