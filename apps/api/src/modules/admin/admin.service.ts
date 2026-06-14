@@ -414,9 +414,24 @@ export class AdminService {
     return serializeBigInts(records);
   }
 
+  /**
+   * Resolves a definition record by either UUID or key slug.
+   * Tries direct id lookup first; falls back to key-based lookup for
+   * tables that have a `key` unique field.  Returns null if not found.
+   */
+  private async resolveRecord(model: any, value: string): Promise<any | null> {
+    const byId = await model.findUnique({ where: { id: value } });
+    if (byId) return byId;
+    try {
+      return await model.findFirst({ where: { key: value } }) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async getRecord(table: string, id: string) {
     const model = this.getModel(table);
-    const record = await model.findUnique({ where: { id } });
+    const record = await this.resolveRecord(model, id);
     if (!record) throw new NotFoundException(`Record ${id} not found in ${table}`);
     return serializeBigInts(record);
   }
@@ -436,8 +451,10 @@ export class AdminService {
 
   async updateRecord(table: string, id: string, data: any) {
     const model = this.getModel(table);
-    const existing = await model.findUnique({ where: { id } });
+    const existing = await this.resolveRecord(model, id);
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
+
+    const resolvedId: string = existing.id;
 
     this.convertBigIntFields(table, data);
 
@@ -447,10 +464,10 @@ export class AdminService {
 
     const migrated = normalizeOutcomeFieldsForModel(table, data);
     if (migrated > 0) {
-      this.logger.log(`Normalized ${migrated} legacy amount→min/max entries on update ${table}/${id}`);
+      this.logger.log(`Normalized ${migrated} legacy amount→min/max entries on update ${table}/${resolvedId}`);
     }
 
-    const updated = await model.update({ where: { id }, data });
+    const updated = await model.update({ where: { id: resolvedId }, data });
     await this.broadcastIfHomeBanner(table);
     await this.invalidateIfSelectionRule(table);
     return serializeBigInts(updated);
@@ -487,9 +504,10 @@ export class AdminService {
 
   async deleteRecord(table: string, id: string) {
     const model = this.getModel(table);
-    const existing = await model.findUnique({ where: { id } });
+    const existing = await this.resolveRecord(model, id);
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
-    const deleted = await model.delete({ where: { id } });
+    const resolvedId: string = existing.id;
+    const deleted = await model.delete({ where: { id: resolvedId } });
     await this.broadcastIfHomeBanner(table);
     await this.invalidateIfSelectionRule(table);
     return serializeBigInts(deleted);

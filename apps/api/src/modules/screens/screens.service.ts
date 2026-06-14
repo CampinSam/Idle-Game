@@ -84,10 +84,12 @@ export class ScreensService {
             startsAt: { lte: now },
             endsAt: { gt: now },
           },
-          select: { id: true },
+          select: { id: true, key: true },
           orderBy: { endsAt: 'asc' },
         });
-        if (!activeSeason || !avail.seasonIds.includes(activeSeason.id)) {
+        const seasonMatches = activeSeason &&
+          (avail.seasonIds.includes(activeSeason.id) || avail.seasonIds.includes((activeSeason as any).key));
+        if (!seasonMatches) {
           throw new NotFoundException(
             `Screen "${screenKey}" is not available in the current season`,
           );

@@ -20,7 +20,7 @@ export class ContinueMissionHandler implements CommandHandler {
     });
     if (!job) throw new NotFoundException('No phase_ready mission found with that id');
 
-    const def = await (ctx.tx as any).missionDef.findUnique({ where: { id: job.defId } });
+    const def = await (ctx.tx as any).missionDef.findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
     const phases: any[] = Array.isArray(def?.phases) ? def.phases : [];
     const nextPhaseIndex = (job.currentPhase ?? 0) + 1;
 
