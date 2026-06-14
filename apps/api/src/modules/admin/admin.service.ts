@@ -26,6 +26,7 @@ import { PubSubService } from '../infrastructure/pubsub.service';
 import { CommandService } from '../commands/command.service';
 import { TickEventProcessorService } from '../tick/tick-event-processor.service';
 import { NotificationService } from '../notification/notification.service';
+import { resolveDefRecord } from '../../utils/resolve-def-id.util';
 import {
   PatchBuilder,
   buildCurrencyPatches,
@@ -414,24 +415,9 @@ export class AdminService {
     return serializeBigInts(records);
   }
 
-  /**
-   * Resolves a definition record by either UUID or key slug.
-   * Tries direct id lookup first; falls back to key-based lookup for
-   * tables that have a `key` unique field.  Returns null if not found.
-   */
-  private async resolveRecord(model: any, value: string): Promise<any | null> {
-    const byId = await model.findUnique({ where: { id: value } });
-    if (byId) return byId;
-    try {
-      return await model.findFirst({ where: { key: value } }) ?? null;
-    } catch {
-      return null;
-    }
-  }
-
   async getRecord(table: string, id: string) {
     const model = this.getModel(table);
-    const record = await this.resolveRecord(model, id);
+    const record = await resolveDefRecord(model, id);
     if (!record) throw new NotFoundException(`Record ${id} not found in ${table}`);
     return serializeBigInts(record);
   }
@@ -451,7 +437,7 @@ export class AdminService {
 
   async updateRecord(table: string, id: string, data: any) {
     const model = this.getModel(table);
-    const existing = await this.resolveRecord(model, id);
+    const existing = await resolveDefRecord(model, id);
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
 
     const resolvedId: string = existing.id;
@@ -504,7 +490,7 @@ export class AdminService {
 
   async deleteRecord(table: string, id: string) {
     const model = this.getModel(table);
-    const existing = await this.resolveRecord(model, id);
+    const existing = await resolveDefRecord(model, id);
     if (!existing) throw new NotFoundException(`Record ${id} not found in ${table}`);
     const resolvedId: string = existing.id;
     const deleted = await model.delete({ where: { id: resolvedId } });

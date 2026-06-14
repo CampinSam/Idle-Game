@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SelectionResolverService } from '../selection/selection-resolver.service';
 import { TelemetryContextBuilderService } from '../telemetry/telemetry-context-builder.service';
+import { resolveScreenSectionProps } from '../../utils/resolve-def-id.util';
 import type { SelectionContext } from '../selection/selection.types';
 import type {
   ScreenCompositionDefinition,
@@ -145,9 +146,19 @@ export class ScreensService {
       })
       .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 
+    // 6. Resolve any *DefId / *Id prop fields to UUIDs so downstream code is
+    //    always UUID-aware regardless of how the screen composition was authored.
+    const resolvedSections = await Promise.all(
+      filteredSections.map(async s => {
+        if (!s.props || typeof s.props !== 'object') return s;
+        const resolvedProps = await resolveScreenSectionProps(this.prisma, s.props as Record<string, unknown>);
+        return { ...s, props: resolvedProps };
+      }),
+    );
+
     return this.serialize({
       ...row,
-      data: { ...def, sections: filteredSections },
+      data: { ...def, sections: resolvedSections },
     });
   }
 
