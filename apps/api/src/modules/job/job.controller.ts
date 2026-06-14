@@ -61,7 +61,7 @@ export class JobController {
   private async getDefForJob(job: any): Promise<any> {
     const config = JOB_TYPE_CONFIG[job.type];
     if (!config) return null;
-    return (this.prisma as any)[config.defTable].findFirst({ where: { id: job.defId } });
+    return (this.prisma as any)[config.defTable].findFirst({ where: { OR: [{ id: job.defId }, { key: job.defId }] } });
   }
 
   private getDefTimer(job: any, def: any): any {

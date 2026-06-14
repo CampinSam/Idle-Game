@@ -900,9 +900,9 @@ export class UiService {
     if (!defId) return null;
     try {
       if (job.type === 'MissionJob') {
-        return await this.prisma.missionDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
+        return await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
       } else if (job.type === 'CraftingJob') {
-        return await this.prisma.recipeDef.findFirst({ where: { id: defId }, include: { displayDef: true } });
+        return await (this.prisma as any).recipeDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
       } else if (job.type === 'BuildingJob') {
         return await (this.prisma as any).buildingDef.findFirst({ where: { OR: [{ id: defId }, { key: defId }] }, include: { displayDef: true } });
       } else if (job.type === 'DustingJob') {
@@ -1384,7 +1384,7 @@ export class UiService {
   }
 
   async buildLeadInModalForMission(userId: string, missionDefId: string): Promise<ModalSpecV1> {
-    const def = await this.prisma.missionDef.findUnique({ where: { id: missionDefId } });
+    const def = await (this.prisma as any).missionDef.findFirst({ where: { OR: [{ id: missionDefId }, { key: missionDefId }] } });
     if (!def) throw new NotFoundException('Mission definition not found');
 
     const leadInModalDefId = (def as any).leadInModalDefId as string | null | undefined;
