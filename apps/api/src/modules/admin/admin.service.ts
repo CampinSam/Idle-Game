@@ -1547,8 +1547,8 @@ export class AdminService {
       level1Traits = generated.traits;
     } else {
       // NFT path — NFT attributes drive trait choices; seed drives RND resolution
-      const collection = await (this.prisma as any).nftCollectionDef.findUnique({
-        where: { id: entity.nftCollectionDefId },
+      const collection = await (this.prisma as any).nftCollectionDef.findFirst({
+        where: { OR: [{ id: entity.nftCollectionDefId }, { key: entity.nftCollectionDefId }] },
       });
       if (!collection) {
         throw new BadRequestException(

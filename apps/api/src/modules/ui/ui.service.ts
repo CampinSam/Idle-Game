@@ -915,7 +915,7 @@ export class UiService {
   private async resolveModalDef(id: string | null | undefined): Promise<ModalSpecV1 | null> {
     if (!id) return null;
     try {
-      const modalDef = await (this.prisma as any).modalDef.findUnique({ where: { id } });
+      const modalDef = await (this.prisma as any).modalDef.findFirst({ where: { OR: [{ id }, { key: id }] } });
       if (!modalDef || !modalDef.enabled) return null;
       return modalDef.spec && typeof modalDef.spec === 'object' ? (modalDef.spec as ModalSpecV1) : null;
     } catch {}
@@ -924,7 +924,7 @@ export class UiService {
 
   private async resolveDefaultModalDef(systemId: string): Promise<ModalSpecV1 | null> {
     try {
-      const row = await (this.prisma as any).defaultModalDef.findUnique({ where: { id: systemId } });
+      const row = await (this.prisma as any).defaultModalDef.findFirst({ where: { OR: [{ id: systemId }, { key: systemId }] } });
       if (!row) {
         this.logger.warn(`DefaultModalDef missing for system ID "${systemId}" — no fallback spec available`);
         return null;

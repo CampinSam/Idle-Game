@@ -809,9 +809,9 @@ export class AdminController {
 
   @Delete('media/system-icons/:key')
   async deleteSystemIconDef(@Req() req: any, @Param('key') key: string) {
-    const existing = await (this.prisma as any).systemIconDef.findUnique({ where: { id: key } });
+    const existing = await (this.prisma as any).systemIconDef.findFirst({ where: { OR: [{ id: key }, { key }] } });
     if (!existing) throw new BadRequestException(`System icon key '${key}' not found`);
-    const result = await (this.prisma as any).systemIconDef.delete({ where: { id: key } });
+    const result = await (this.prisma as any).systemIconDef.delete({ where: { id: existing.id } });
     await this.adminAuditService.log({ adminId: req.adminUser.id, action: 'system_icon_delete', recordId: key });
     void this.seedSyncService.syncTable('systemIconDef');
     return result;

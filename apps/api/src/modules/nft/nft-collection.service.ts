@@ -164,7 +164,7 @@ export class NftCollectionService {
   }
 
   async updateCollection(id: string, dto: UpdateCollectionDto) {
-    const existing = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
+    const existing = await (this.prisma as any).nftCollectionDef.findFirst({ where: { OR: [{ id }, { key: id }] } });
     if (!existing) throw new NotFoundException(`Collection "${id}" not found`);
 
     const nextEntityId = 'entityDefinitionId' in dto ? dto.entityDefinitionId : existing.entityDefinitionId;
@@ -173,7 +173,7 @@ export class NftCollectionService {
     this.validateCollectionMode(nextEntityId, nextLocationId, nextItemId);
 
     const updated = await (this.prisma as any).nftCollectionDef.update({
-      where: { id },
+      where: { id: existing.id },
       data: dto,
     });
 
@@ -195,10 +195,10 @@ export class NftCollectionService {
   }
 
   async deactivateCollection(id: string) {
-    const existing = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
+    const existing = await (this.prisma as any).nftCollectionDef.findFirst({ where: { OR: [{ id }, { key: id }] } });
     if (!existing) throw new NotFoundException(`Collection "${id}" not found`);
     await (this.prisma as any).nftCollectionDef.update({
-      where: { id },
+      where: { id: existing.id },
       data: { active: false },
     });
 
@@ -394,7 +394,7 @@ export class NftCollectionService {
   }
 
   async createInstances(id: string): Promise<{ started: true; total: number }> {
-    const collection = await (this.prisma as any).nftCollectionDef.findUnique({ where: { id } });
+    const collection = await (this.prisma as any).nftCollectionDef.findFirst({ where: { OR: [{ id }, { key: id }] } });
     if (!collection) throw new NotFoundException(`Collection "${id}" not found`);
     if (!collection.entityDefinitionId && !collection.locationDefinitionId && !collection.itemDefinitionId) {
       throw new BadRequestException(`Collection "${id}" has neither entityDefinitionId, locationDefinitionId, nor itemDefinitionId`);

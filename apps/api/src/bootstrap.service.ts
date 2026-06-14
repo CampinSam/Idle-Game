@@ -283,10 +283,10 @@ export class BootstrapService implements OnModuleInit {
     const SUPER_ADMIN_ROLE_ID = 'role_super_admin';
 
     await this.prisma.adminRole.upsert({
-      where: { id: SUPER_ADMIN_ROLE_ID },
+      where: { key: SUPER_ADMIN_ROLE_ID },
       update: {},
       create: {
-        id: SUPER_ADMIN_ROLE_ID,
+        key: SUPER_ADMIN_ROLE_ID,
         name: 'Super Admin',
         slug: 'super_admin',
         permissionFlags: { read: true, write: true, approve: true, player_read: true, player_write: true, system_tools: true, metrics_read: true },

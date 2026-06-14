@@ -62,8 +62,8 @@ export class EventService {
       idempotencyKey?: string;
     },
   ) {
-    const eventDef = await (this.prisma as any).eventDefinition.findUnique({
-      where: { id: defId },
+    const eventDef = await (this.prisma as any).eventDefinition.findFirst({
+      where: { OR: [{ id: defId }, { key: defId }] },
     });
 
     if (!eventDef) {

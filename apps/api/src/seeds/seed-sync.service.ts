@@ -155,17 +155,69 @@ const TABLE_TRANSFORMS: Partial<Record<SeedTableName, RecordTransform>> = {
     if (c.limitedUntil) c.limitedUntil = new Date(c.limitedUntil);
     return c;
   },
+  /** UUID PK migration: DisplayDef.id is now a UUID; slug lives in key. */
+  displayDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: ModalDef.id is now a UUID; slug lives in key. */
+  modalDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: DefaultModalDef.id is now a UUID; slug lives in key. */
+  defaultModalDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: HomeBannerDef.id is now a UUID; slug lives in key. */
   homeBannerDef: (r) => {
-    const c = { ...r };
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    const c = { ...rest, key };
     if (c.startsAt) c.startsAt = new Date(c.startsAt);
     if (c.endsAt) c.endsAt = new Date(c.endsAt);
     return c;
   },
+  /** UUID PK migration: SystemIconDef.id is now a UUID; slug lives in key. */
+  systemIconDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: SynergyRule.id is now a UUID; slug lives in key. */
   synergyRule: (r) => {
-    const c = { ...r };
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    const c = { ...rest, key };
     if (c.startsAt) c.startsAt = new Date(c.startsAt);
     if (c.endsAt) c.endsAt = new Date(c.endsAt);
     return c;
+  },
+  /** UUID PK migration: EventDefinition.id is now a UUID; slug lives in key. */
+  eventDefinition: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: NftCollectionDef.id is now a UUID; slug lives in key. */
+  nftCollectionDef: (r) => {
+    const { id, ...rest } = r;
+    const key: string = r.key ?? id;
+    return { ...rest, key };
+  },
+  /** UUID PK migration: VisualEffectDef.id is now a UUID; slug already in key. */
+  visualEffectDef: (r) => {
+    const { id, ...rest } = r;
+    return { ...rest };
+  },
+  /** UUID PK migration: TagDef.id is now a UUID; slug already in key. */
+  tagDef: (r) => {
+    const { id, ...rest } = r;
+    return { ...rest };
   },
   /**
    * UUID PK migration: EffectDef.id is now a UUID; the slug lives in key.
@@ -214,6 +266,14 @@ const TABLE_WHERE: Partial<Record<SeedTableName, WhereBuilder>> = {
   soundDef: (r) => ({ key: r.key }),
   tagDef: (r) => ({ key: r.key }),
   visualEffectDef: (r) => ({ key: r.key }),
+  displayDef: (r) => ({ key: r.key }),
+  modalDef: (r) => ({ key: r.key }),
+  defaultModalDef: (r) => ({ key: r.key }),
+  homeBannerDef: (r) => ({ key: r.key }),
+  systemIconDef: (r) => ({ key: r.key }),
+  synergyRule: (r) => ({ key: r.key }),
+  eventDefinition: (r) => ({ key: r.key }),
+  nftCollectionDef: (r) => ({ key: r.key }),
   gameDefinition: (r) => ({ type_key_version: { type: r.type, key: r.key, version: r.version } }),
   // After UUID PK migration: look up by key slug, not by auto-generated UUID id.
   effectDef: (r) => ({ key: r.key }),
@@ -414,6 +474,11 @@ export class SeedSyncService {
 
     if (modelName === 'missionCategoryDef') {
       const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      // Build displayDef key → UUID map for displayDefId resolution.
+      const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
+      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+
       const parents = records.filter((r) => !r.parentId);
       const children = records.filter((r) => r.parentId);
 
@@ -421,6 +486,13 @@ export class SeedSyncService {
       for (const raw of parents) {
         const base = transform ? transform(raw) : raw;
         const record = this.normalizeDates(base);
+        const rawDisplayId: string | null = raw.displayDefId ?? null;
+        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
+          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
+          if (record.displayDefId === null) {
+            this.logger.warn(`upsertTable(missionCategoryDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
+          }
+        }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
         await model.upsert({ where, update: rest, create: record });
@@ -443,6 +515,13 @@ export class SeedSyncService {
             );
           }
         }
+        const rawDisplayId2: string | null = raw.displayDefId ?? null;
+        if (rawDisplayId2 !== null && !UUID_V4.test(rawDisplayId2)) {
+          record.displayDefId = displayDefByKey.get(rawDisplayId2) ?? null;
+          if (record.displayDefId === null) {
+            this.logger.warn(`upsertTable(missionCategoryDef): displayDefId slug "${rawDisplayId2}" not found — setting null`);
+          }
+        }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
         await model.upsert({ where, update: rest, create: record });
@@ -451,12 +530,14 @@ export class SeedSyncService {
     }
 
     if (modelName === 'missionDef') {
-      // missionCategoryDefId FK may arrive as slug; after UUID migration it must be UUID.
+      // missionCategoryDefId and displayDefId FKs may arrive as slugs; must be UUIDs.
       const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const missionCategories = await (this.prisma as any).missionCategoryDef.findMany({
         select: { id: true, key: true },
       });
       const categoryUuidByKey = new Map(missionCategories.map((r: any) => [r.key, r.id]));
+      const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
+      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
 
       for (const raw of records) {
         const base = transform ? transform(raw) : raw;
@@ -470,9 +551,72 @@ export class SeedSyncService {
             );
           }
         }
+        const rawDisplayId: string | null = raw.displayDefId ?? null;
+        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
+          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
+          if (record.displayDefId === null) {
+            this.logger.warn(`upsertTable(missionDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
+          }
+        }
         const where = buildWhere(record);
         const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
         await model.upsert({ where, update: rest, create: record });
+      }
+      return;
+    }
+
+    if (modelName === 'recipeDef') {
+      // displayDefId FK may arrive as slug; after UUID migration it must be UUID.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
+      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        const rawDisplayId: string | null = raw.displayDefId ?? null;
+        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
+          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
+          if (record.displayDefId === null) {
+            this.logger.warn(`upsertTable(recipeDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
+          }
+        }
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        try {
+          await model.upsert({ where, update: rest, create: record });
+        } catch (err: any) {
+          this.logger.error(`upsertTable: failed to upsert recipeDef (where=${JSON.stringify(where)}): ${err?.message}`);
+          throw err;
+        }
+      }
+      return;
+    }
+
+    if (modelName === 'buildingDef') {
+      // displayDefId FK may arrive as slug; after UUID migration it must be UUID.
+      const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const displayDefs = await (this.prisma as any).displayDef.findMany({ select: { id: true, key: true } });
+      const displayDefByKey = new Map(displayDefs.map((d: any) => [d.key, d.id]));
+
+      for (const raw of records) {
+        const base = transform ? transform(raw) : raw;
+        const record = this.normalizeDates(base);
+        const rawDisplayId: string | null = raw.displayDefId ?? null;
+        if (rawDisplayId !== null && !UUID_V4.test(rawDisplayId)) {
+          record.displayDefId = displayDefByKey.get(rawDisplayId) ?? null;
+          if (record.displayDefId === null) {
+            this.logger.warn(`upsertTable(buildingDef): displayDefId slug "${rawDisplayId}" not found — setting null`);
+          }
+        }
+        const where = buildWhere(record);
+        const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = record;
+        try {
+          await model.upsert({ where, update: rest, create: record });
+        } catch (err: any) {
+          this.logger.error(`upsertTable: failed to upsert buildingDef (where=${JSON.stringify(where)}): ${err?.message}`);
+          throw err;
+        }
       }
       return;
     }

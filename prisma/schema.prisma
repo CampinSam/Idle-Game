@@ -92,7 +92,8 @@ model WalletNonce {
 }
 
 model NftCollectionDef {
-  id                   String         @id
+  id                   String         @id @default(uuid())
+  key                  String         @unique
   name                 String
   chain                String
   collectionId         String
@@ -112,7 +113,8 @@ model NftCollectionDef {
 }
 
 model SelectionRuleDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   tags        String[]
@@ -126,7 +128,8 @@ model SelectionRuleDef {
 }
 
 model SynergyRule {
-  id              String    @id
+  id              String    @id @default(uuid())
+  key             String    @unique
   name            String
   description     String?
   enabled         Boolean   @default(true)
@@ -492,7 +495,8 @@ model PlayerDelta {
 }
 
 model DisplayDef {
-  id                  String               @id
+  id                  String               @id @default(uuid())
+  key                 String               @unique
   name                String
   borderColor         String?
   backgroundImage     String?
@@ -796,7 +800,8 @@ model Notification {
 }
 
 model EventDefinition {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   version     Int      @default(1)
   kind        String   @default("system")
@@ -811,7 +816,8 @@ model EventDefinition {
 }
 
 model ModalDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)
@@ -824,7 +830,8 @@ model ModalDef {
 }
 
 model DefaultModalDef {
-  id          String   @id
+  id          String   @id @default(uuid())
+  key         String   @unique
   name        String
   description String?
   version     Int      @default(1)
@@ -1014,7 +1021,8 @@ model QuestInstance {
 }
 
 model Season {
-  id          String          @id
+  id          String          @id @default(uuid())
+  key         String          @unique
   name        String
   ecosystemId String?
   startsAt    DateTime
@@ -1032,7 +1040,8 @@ model Season {
 }
 
 model HomeBannerDef {
-  id              String    @id
+  id              String    @id @default(uuid())
+  key             String    @unique
   name            String
   title           String
   subtitle        String?
@@ -1095,7 +1104,8 @@ model ShopHeroDef {
 }
 
 model ShopTabDef {
-  id                 String           @id
+  id                 String           @id @default(uuid())
+  key                String           @unique
   name               String
   tabType            String           @default("items")
   layout             String           @default("grid-2")
@@ -1401,7 +1411,7 @@ model Outbox {
 }
 
 model VisualEffectDef {
-  id           String   @id
+  id           String   @id @default(uuid())
   key          String   @unique
   name         String
   description  String?
@@ -1419,7 +1429,7 @@ model VisualEffectDef {
 }
 
 model TagDef {
-  id              String           @id
+  id              String           @id @default(uuid())
   key             String           @unique
   label           String
   category        String           @default("system")
@@ -1442,7 +1452,8 @@ model TagDef {
 }
 
 model SystemIconDef {
-  id        String   @id
+  id        String   @id @default(uuid())
+  key       String   @unique
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1471,7 +1482,8 @@ model GlobalActivePower {
 }
 
 model AdminRole {
-  id              String         @id
+  id              String         @id @default(uuid())
+  key             String         @unique
   name            String
   slug            String         @unique
   permissionFlags Json           @default("{}") @map("permission_flags")

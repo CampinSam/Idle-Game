@@ -61,8 +61,8 @@ export class NftAssetCacheService {
    * Does NOT create any game instances — that remains a separate step.
    */
   async importCollection(collectionId: string): Promise<{ started: true; total: number }> {
-    const collection = await (this.prisma as any).nftCollectionDef.findUnique({
-      where: { id: collectionId },
+    const collection = await (this.prisma as any).nftCollectionDef.findFirst({
+      where: { OR: [{ id: collectionId }, { key: collectionId }] },
     });
     if (!collection) throw new NotFoundException(`Collection "${collectionId}" not found`);
     if (collection.chain !== 'CARDANO') {
@@ -239,8 +239,8 @@ export class NftAssetCacheService {
   async refreshOwnership(
     collectionId: string,
   ): Promise<{ started: true; total: number }> {
-    const collection = await (this.prisma as any).nftCollectionDef.findUnique({
-      where: { id: collectionId },
+    const collection = await (this.prisma as any).nftCollectionDef.findFirst({
+      where: { OR: [{ id: collectionId }, { key: collectionId }] },
     });
     if (!collection) throw new NotFoundException(`Collection "${collectionId}" not found`);
     if (collection.chain !== 'CARDANO') {
@@ -365,8 +365,8 @@ export class NftAssetCacheService {
     limit: number,
     ownerAddress?: string,
   ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
-    const collection = await (this.prisma as any).nftCollectionDef.findUnique({
-      where: { id: collectionId },
+    const collection = await (this.prisma as any).nftCollectionDef.findFirst({
+      where: { OR: [{ id: collectionId }, { key: collectionId }] },
     });
     if (!collection) throw new NotFoundException(`Collection "${collectionId}" not found`);
 

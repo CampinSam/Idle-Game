@@ -2,11 +2,11 @@ import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const CANONICAL_TABS = [
-  { id: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', ungroupedPlacement: 'before', sortOrder: 0, enabled: true },
-  { id: 'gems',      name: '💎 Gems',     tabType: 'gems_packs', layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 1, enabled: true },
-  { id: 'currency',  name: 'Currencies',  tabType: 'items',      layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 2, enabled: true },
-  { id: 'bundle',    name: 'Bundles',     tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 3, enabled: true },
-  { id: 'items',     name: 'Items',       tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 4, enabled: true },
+  { key: 'featured',  name: 'Featured',    tabType: 'items',      layout: 'featured', ungroupedPlacement: 'before', sortOrder: 0, enabled: true },
+  { key: 'gems',      name: '💎 Gems',     tabType: 'gems_packs', layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 1, enabled: true },
+  { key: 'currency',  name: 'Currencies',  tabType: 'items',      layout: 'grid-3',   ungroupedPlacement: 'before', sortOrder: 2, enabled: true },
+  { key: 'bundle',    name: 'Bundles',     tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 3, enabled: true },
+  { key: 'items',     name: 'Items',       tabType: 'items',      layout: 'grid-2',   ungroupedPlacement: 'before', sortOrder: 4, enabled: true },
 ];
 
 @Injectable()
@@ -16,7 +16,7 @@ export class ShopService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     for (const tab of CANONICAL_TABS) {
       await this.prisma.shopTabDef.upsert({
-        where: { id: tab.id },
+        where: { key: tab.key },
         update: {},
         create: tab,
       });
